@@ -1,7 +1,7 @@
 # crib.exe — Backlog
 
 Phased roadmap. First pass, written at the end of session 1, updated end
-of sessions 2-9 — expect this to be revised as design and implementation
+of sessions 2-10 — expect this to be revised as design and implementation
 proceed. See `DESIGN.md` for the settled design and its own Open
 Questions section.
 
@@ -10,8 +10,8 @@ Questions section.
 Phase 0, next item: pick which remaining design gap to tackle next
 (each class's starting loadout — needs concrete named subroutines first,
 class unlock order for the middle four, class starting passives, or the
-banked subroutine-tags/node-bypass ideas) — own `/decision-session` per
-item, same live-one-at-a-time discipline as sessions 1-9 (see
+banked node-bypass idea) — own `/decision-session` per item, same
+live-one-at-a-time discipline as sessions 1-10 (see
 `.claude/dev-session.md`).
 
 ## Phase 0 — Remaining design passes
@@ -62,10 +62,11 @@ session before the implementation phases below can be fully scoped:
   Root), each with an icon (Bug/Skull/Padlock/Crown) and color (Red/
   toxic Green/Blue/Gold). Crown and Exploit's exact hue both flagged as
   open to later refinement, not blocking.
-- **Banked idea, not yet designed**: subroutine tags (e.g. Hack,
-  Firewall, Trap) as a classification orthogonal to archetype, that
-  in-run passive items can hook into to enhance tagged subroutines
-  (e.g. "your Trap-tagged subroutines do X"). Noted session 3, deferred.
+- ~~Subroutine tags~~ — done, session 10: 5 starting tags (Trap,
+  Backdoor, Firewall, Worm, Daemon), classified by effect mechanism/
+  timing rather than flavor, orthogonal to archetype and independent of
+  class specialization, multi-tag-per-subroutine allowed, extensible
+  set. Specific passive designs that hook into tags still not written.
 - **Banked idea, not yet designed**: a future ability/class passive that
   lets the player bypass a closed/lost node, turning a normally-permanent
   failure into a recoverable one for specific builds. Noted session 9,

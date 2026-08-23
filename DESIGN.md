@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-9 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-10 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -160,10 +160,8 @@ Broad strokes, not yet detailed:
   Questions).
 - Ascension-style unlockable harder difficulties.
 - An expanding pool of in-run passive items (StS-relic equivalent)
-  findable during runs. **Banked idea**: subroutine tags (e.g. Hack,
-  Firewall, Trap), orthogonal to archetype, that passives could hook into
-  to enhance tagged subroutines — noted but not designed yet, see
-  `BACKLOG.md` Phase 0.
+  findable during runs — including passives that hook into subroutine
+  tags (see Subroutine Tags, below).
 - The installed-loadout slot cap itself (see Subroutine Acquisition,
   below) can grow via a persistent, cross-run unlock, the same as
   everything else on this list.
@@ -383,6 +381,45 @@ This is a primary-affinity mapping, not an exclusivity rule — nothing
 forbids, say, an Exploit subroutine from using an Accumulator trigger if
 a specific design calls for it; it's just not that archetype's typical
 identity.
+
+### Subroutine tags
+
+A second classification axis, orthogonal to archetype and independent of
+class specialization — where archetype splits subroutines by combat
+*role* (offense/attrition/defense/utility), tags split them by effect
+*mechanism/timing*, cutting across all four archetypes. This is what
+makes tags useful to passives in a way a looser flavor label wouldn't be:
+a passive that says "your Trap-tagged subroutines are stronger" pulls
+together subroutines from completely different archetypes into one
+build-around theme, giving the game a second, independent deckbuilding
+axis alongside class choice.
+
+Five starting tags (extensible later, not a fixed exhaustive taxonomy —
+grows the same way the subroutine pool itself grows over time):
+
+- **Trap** — delayed/scheduled: fires now, resolves later (Root's
+  scheduled sabotage; Threshold/Scaling Occurrence subroutines that
+  spring after banking).
+- **Backdoor** — bypasses normal rules or counters (Exploit's piercing
+  burst; anything that ignores mitigation outright).
+- **Firewall** — reactive/defensive, responds to being attacked
+  (Encryption's ward; Enemy-state-triggered defensive effects).
+- **Worm** — chains or propagates (Chained-trigger subroutines; effects
+  that feed or buff other subroutines in the sequence).
+- **Daemon** — persistent/background/ongoing (Accumulator-triggered,
+  DoT/HoT, Always/Cantrip subroutines) — the literal computing term for a
+  background process, a precise fit for the setting.
+
+A subroutine can carry **multiple tags** when it genuinely fits more than
+one (e.g. a Root scheduled-sabotage effect that also chains into another
+subroutine could be both Trap and Worm) — more synergy space for cheap
+complexity cost, since a tag is just a label, not a resource.
+
+**How passives use tags**: an in-run passive item (see Meta-Progression)
+can reference a tag to enhance every subroutine the player has carrying
+it, regardless of archetype — e.g. "your Trap-tagged subroutines do X."
+Specific passive designs aren't written yet; this section defines the
+hook they'd use.
 
 ## Tech Stack
 
