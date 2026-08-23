@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-2 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-3 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -18,6 +18,27 @@ defenses (and eventually a rival hacker/AI) resolved as head-to-head
 Cribbage matches. Deckbuilding isn't about which card to play on your
 turn — it's about which automatic subroutines you've installed, in what
 order, and how well you can actually play Cribbage to trigger them.
+
+## Resources
+
+Two deliberately separate resources, not one shared health stat:
+
+- **Heat** — a persistent, run-spanning resource belonging only to the
+  player (enemies don't persist across fights, so this is player-only by
+  nature). It's a *rising* danger meter, not a depleting health bar: Heat
+  accumulates toward a max (getting caught/burned) rather than draining
+  from full to zero. This is what gives the run its StS-HP-equivalent
+  branch-selection friction — rest vs. push forward, risk vs. reward map
+  choices. Needs a player-facing note somewhere in the eventual UI/copy
+  explaining the "too much heat" idiom the name leans on. Exactly how a
+  lost Control/Breach duel (below) translates into Heat gained is still
+  open — see Open Questions.
+- **Control/Breach** — an in-combat-only shared push/pull meter, a single
+  bar rather than two separate HP pools, that resolves the outcome of one
+  Cribbage duel. Exploit/Malware effects push it toward the opponent's
+  losing end; Encryption effects push it back toward center/your favor
+  (mitigation is an active counter-push, not a StS-style absorbing block
+  stat). Resets each combat.
 
 ## Combat System
 
@@ -43,20 +64,22 @@ threshold, that side's gauge resets to 0 and that side gets a turn.
 ordered loadout of subroutines (not a hand of cards you draw/discard/
 play manually — deliberately not StS's cycling-hand model, to avoid
 stacking a second randomness layer on top of Cribbage's own card luck).
-Each subroutine has its own independent enable-condition that
-accumulates across the whole match, separate from the initiative gauge —
-e.g. "fires every N points scored" (a cooldown) or "fires after scoring
-with a given suit X times" (a tally). When a side's turn happens
-(initiative threshold crossed), *every* subroutine on that side whose
-condition is currently met fires — not just one.
+Each subroutine has its own independent enable-condition (see Subroutine
+Trigger Catalog) that accumulates across the whole match, separate from
+the initiative gauge. When a side's turn happens (initiative threshold
+crossed), *every* subroutine on that side whose condition is currently
+met fires — not just one — and its payload (see Subroutine Payload
+Catalog) resolves against Control/Breach or against the opposing side's
+state.
 
 Loadout order matters: when multiple subroutines fire on the same turn,
 they resolve top-to-bottom like a script. Subroutines can chain — one can
 buff the next subroutine after it in the sequence, or contribute progress
-toward a later subroutine's own enable condition. Order is adjustable as
-a run progresses. **Open question**: whether reordering is ever available
-mid-combat (added tactical friction) or strictly between fights — left
-deliberately open, see Open Questions below.
+toward a later subroutine's own enable condition. Order is adjustable
+between fights (not mid-combat). **Resolved**: full loadout reordering is
+between-fights only; the mid-combat lever is instead toggling individual
+subroutines on/off (see Togglable, in the Trigger Catalog) — one tool per
+context, deliberately not both mid-combat.
 
 ## Map & Run Structure
 
@@ -81,11 +104,14 @@ Broad strokes, not yet detailed:
 - Multiple playable classes, each specializing in 2 of the 4 subroutine
   archetypes below, each with its own distinct starting loadout. Which
   pairings become classes, and what their starting loadouts look like,
-  isn't designed yet — likely needs concrete subroutines to exist first
-  (see Open Questions).
+  isn't designed yet — the payload/trigger catalogs below are the
+  prerequisite groundwork for that (see Open Questions).
 - Ascension-style unlockable harder difficulties.
 - An expanding pool of in-run passive items (StS-relic equivalent)
-  findable during runs.
+  findable during runs. **Banked idea**: subroutine tags (e.g. Hack,
+  Firewall, Trap), orthogonal to archetype, that passives could hook into
+  to enhance tagged subroutines — noted but not designed yet, see
+  `BACKLOG.md` Phase 0.
 
 ### Subroutine archetypes
 
@@ -106,6 +132,90 @@ Theming):
   marking suits) *and* combat-meta state (the player's or enemy's
   initiative gauge/threshold, or other enable-condition counters) —
   "root access" to any piece of the system.
+
+### Subroutine payload catalog
+
+What a subroutine actually does when it fires. Each archetype has
+multiple sub-types rather than one move apiece:
+
+- **Exploit** (4): baseline **instant burst** (push Control/Breach toward
+  the enemy's losing end); **piercing burst** (ignores Encryption's ward/
+  counter-push entirely — true damage, unaffected by mitigation; Exploit's
+  counter to defense-heavy builds); **chain-finisher scaling** (burst
+  scales with how many other subroutines already fired earlier in the
+  same turn — a direct payoff for loadout sequencing, not a generic
+  "execute" mechanic); **risk/reward burst** (bigger push, but using the
+  subroutine costs the player Heat directly — a second Heat-accumulation
+  path alongside losing duels).
+- **Malware** (2): **DoT** (gradual Control/Breach push toward the
+  enemy's losing end over time — see tick cadence below) and **debuffs**
+  (status effects that weaken the target's own functionality going
+  forward, e.g. reduced subroutine effectiveness or slowed gauge fill —
+  a status-effect stack applied *to a side*, distinct from Root's direct
+  rewrites of values/flow).
+- **Encryption** (4): **instant counter-push** (Control/Breach back
+  toward center/your favor); **ward** (reactive negation — blocks a
+  specific incoming effect the moment it would fire); **HoT** (gradual
+  Control/Breach push-back over time, mechanically symmetric to
+  Malware's DoT, same tick-cadence framework); **cleanse** (removes an
+  existing debuff afflicting you).
+- **Root** (3): **instant manipulation** (directly alter a gauge/
+  threshold, a suit tally, or another subroutine's enable-condition
+  progress); **Cribbage-layer manipulation** (force a discard, peek the
+  crib, skew the cut, mark a suit); **scheduled sabotage** (fires now,
+  but its effect doesn't resolve until a specific *future* Cribbage-flow
+  checkpoint — e.g. "at the next deal, force the opponent to send a
+  specific card to the crib" — rather than resolving immediately).
+
+**DoT/HoT tick cadence** is a per-subroutine property, not a universal
+rule — different Malware/Encryption subroutines can use different
+cadences. Two flavors so far: **global pulse** (ticks every X combined
+points scored by *either* side, applies instantly the moment the
+threshold crosses, independent of whose turn it is — exempt from the
+normal "fires on your turn" rule) and **caster's-turn pulse** (ticks only
+when the caster who applied it gets a turn, gated like any normal
+subroutine firing).
+
+### Subroutine trigger catalog
+
+What causes a subroutine to become enabled. Six trigger families, plus
+one orthogonal property:
+
+- **Accumulators** — count something over time, fire at a threshold.
+  Point-count cooldown, suit-count tally; extensible to e.g. rank-count.
+- **Occurrence triggers** — fire instantly the moment a specific *kind*
+  of scoring event happens, not accumulated: scoring a pair, a run, a
+  flush, "his nobs"/"his heels," an exact 15, hitting 31 exactly, winning
+  a "go." Ties subroutine identity most directly to real Cribbage skill —
+  a "run-hunter" or "flush-focused" subroutine becomes a real build.
+  (Illustrative list, not exhaustive — see Open Questions.)
+- **Enemy-state triggers** — fire based on the opponent's condition:
+  their Control/Breach position, their initiative gauge fill %, or
+  whether they currently have one of your Malware debuffs active
+  (cross-archetype combo potential).
+- **Self-state triggers** — fire based on your own condition: Heat
+  above/below a threshold, or dealer vs. non-dealer this hand (uses real
+  Cribbage's own dealer asymmetry as a hook).
+- **Chained triggers** — a subroutine's firing can feed a later one's
+  enable condition.
+- **Always triggers** — no real condition, fires every turn that side
+  gets. Informally called **"Cantrip"** subroutines — meant to be
+  low-power, not heavy hitters: guarantees something always happens each
+  turn even if nothing else is ready (chip damage, feeding another
+  subroutine's accumulator, minor healing/warding).
+- **Togglable** (orthogonal to the 6 families above) — some subroutines
+  carry a manual on/off switch, independent of their base trigger type;
+  off means it never fires regardless of whether its condition is met.
+  This is the confirmed **mid-combat** lever (a between-fights-only
+  toggle would be redundant with just removing the subroutine from the
+  loadout) — e.g. shutting off a Heat-costing Exploit subroutine when
+  already running hot, without touching loadout order/composition.
+
+Subroutines/archetypes are expected to specialize in specific trigger
+families rather than every subroutine drawing generically from all 6 —
+reinforces archetype identity the same way the payload catalog does.
+Which archetypes lean into which trigger families isn't mapped yet — see
+Open Questions.
 
 ## Tech Stack
 
@@ -135,15 +245,18 @@ independently. Which suit maps to which archetype isn't decided yet.
 
 Deferred to future design/decision sessions, not resolved yet:
 
-- Whether loadout reordering is ever available mid-combat, or only
-  between fights (deliberately left open — see Combat System above).
+- Exactly how a lost Control/Breach duel translates into Heat gained
+  (fixed amount? scaled to margin of loss? per-encounter modifiers?) —
+  raised and deliberately banked in session 3, to keep that session on
+  track.
+- Which archetypes lean into which of the 6 subroutine trigger families
+  (concrete affinity mapping, not yet done).
+- The full concrete list of specific occurrence triggers (session 3's
+  pair/run/flush/nobs/15/31/go list is illustrative, not exhaustive).
 - How new subroutines are acquired during a run (combat rewards? a shop?
   both, StS-style?), and whether there's a loadout size/slot limit.
 - How each class's 2-archetype specialization and starting loadout works
-  (the 4 archetypes themselves are now named/defined — see
+  (the payload/trigger catalogs now exist as groundwork — see
   Meta-Progression).
-- What subroutine effects actually do (the damage/buff/debuff design
-  space), and the fuller catalog of enable-condition types beyond the
-  two named so far (point-count cooldown, suit-count tally).
 - Concrete suit re-theming (names/icons for the 4 suits) and which suit
   maps to which archetype.
