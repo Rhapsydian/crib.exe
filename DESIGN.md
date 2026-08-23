@@ -6,9 +6,9 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled in session 1 (`/decision-session`, 2026-08-23). See
-`BACKLOG.md` for the implementation roadmap and `docs/session-logs/` for
-the session-by-session history.
+decisions, settled across sessions 1-2 (`/decision-session`, 2026-08-23).
+See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
+for the session-by-session history.
 
 ## Concept
 
@@ -78,12 +78,34 @@ which also gives meta-progression a natural "new contract types" hook.
 Broad strokes, not yet detailed:
 
 - New subroutines unlock into the available pool over time.
-- Multiple playable classes, each specializing in 2 of 4 subroutine
-  archetypes, each with its own distinct starting loadout. (The 4
-  archetypes themselves aren't designed yet.)
+- Multiple playable classes, each specializing in 2 of the 4 subroutine
+  archetypes below, each with its own distinct starting loadout. Which
+  pairings become classes, and what their starting loadouts look like,
+  isn't designed yet — likely needs concrete subroutines to exist first
+  (see Open Questions).
 - Ascension-style unlockable harder difficulties.
 - An expanding pool of in-run passive items (StS-relic equivalent)
   findable during runs.
+
+### Subroutine archetypes
+
+Four archetypes, one-word named, each tied 1:1 to one of the re-themed
+suits (suit identity and archetype identity are picked together — see
+Theming):
+
+- **Exploit** — burst offense. Direct, hard-hitting subroutines
+  (buffer-overflow/zero-day flavored).
+- **Malware** — damage-over-time/attrition. Corrupting effects that
+  persist and keep dealing damage across future turns (worm/ransomware/
+  logic-bomb flavored).
+- **Encryption** — defense/mitigation. Damage reduction, countering
+  enemy subroutines, hardening your own session.
+- **Root** — systems-control utility/tempo. Deliberately broader than
+  recon/information-gathering: manipulates the Cribbage layer itself
+  (forcing an opponent's discard, peeking the crib, skewing the cut,
+  marking suits) *and* combat-meta state (the player's or enemy's
+  initiative gauge/threshold, or other enable-condition counters) —
+  "root access" to any piece of the system.
 
 ## Tech Stack
 
@@ -99,9 +121,11 @@ is built for ASCII dungeon-crawling and doesn't fit this genre.
 Card suits will be re-themed to match the hacking setting — still 4
 suits mechanically (Cribbage's flush/suit-tally rules need exactly 4),
 just reflavored names/icons rather than classic hearts/clubs/diamonds/
-spades. Not yet named. This connects to the "score with a suit X times"
-subroutine enable-condition, so suit identity may end up tied to
-subroutine archetype identity too.
+spades. Not yet named. Each suit will pair 1:1 with one of the 4
+subroutine archetypes (Exploit/Malware/Encryption/Root, see
+Meta-Progression) — this is now a joint design commitment, so suit names
+should be picked alongside which archetype they represent, not
+independently. Which suit maps to which archetype isn't decided yet.
 
 ## Name
 
@@ -115,9 +139,11 @@ Deferred to future design/decision sessions, not resolved yet:
   between fights (deliberately left open — see Combat System above).
 - How new subroutines are acquired during a run (combat rewards? a shop?
   both, StS-style?), and whether there's a loadout size/slot limit.
-- The 4 subroutine archetypes, and how each class's 2-archetype
-  specialization and starting loadout works.
+- How each class's 2-archetype specialization and starting loadout works
+  (the 4 archetypes themselves are now named/defined — see
+  Meta-Progression).
 - What subroutine effects actually do (the damage/buff/debuff design
   space), and the fuller catalog of enable-condition types beyond the
   two named so far (point-count cooldown, suit-count tally).
-- Concrete suit re-theming (names/icons for the 4 suits).
+- Concrete suit re-theming (names/icons for the 4 suits) and which suit
+  maps to which archetype.
