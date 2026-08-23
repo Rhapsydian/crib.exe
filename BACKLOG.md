@@ -1,19 +1,18 @@
 # crib.exe — Backlog
 
 Phased roadmap. First pass, written at the end of session 1, updated end
-of sessions 2-7 — expect this to be revised as design and implementation
+of sessions 2-8 — expect this to be revised as design and implementation
 proceed. See `DESIGN.md` for the settled design and its own Open
 Questions section.
 
 ## NEXT SESSION
 
 Phase 0, next item: pick which remaining design gap to tackle next
-(class specialization/starting loadouts, the banked Heat-from-lost-duel
-question, or the banked subroutine-tags idea) — own `/decision-session`
-per item, same live-one-at-a-time discipline as sessions 1-7 (see
-`.claude/dev-session.md`). Class specialization likely still wants
-concrete example subroutines built out first, even with the catalogs
-done, since starting loadouts need real subroutines to choose from.
+(each class's starting loadout — needs concrete named subroutines first,
+class unlock order for the middle four, class starting passives, the
+banked Heat-from-lost-duel question, or the banked subroutine-tags idea)
+— own `/decision-session` per item, same live-one-at-a-time discipline as
+sessions 1-8 (see `.claude/dev-session.md`).
 
 ## Phase 0 — Remaining design passes
 
@@ -43,8 +42,16 @@ session before the implementation phases below can be fully scoped:
   undesigned); reward pool scoped to class archetypes + universal
   subroutines; capped installed loadout + owned bench, exact number
   TBD; slot cap growable via meta-progression.
-- Class specialization (2 of 4 archetypes each) + starting loadouts —
-  likely wants concrete example subroutines built out first.
+- ~~Class specialization (which pairings become classes + identities)~~
+  — done, session 8: 6 classes designed (Breacher, Blackhat, Saboteur,
+  Operator, Warden, Ghost), Breacher starting/Ghost last in unlock order.
+  Starting loadouts remain a separate, still-open item below.
+- Each class's starting loadout — needs concrete named subroutines to
+  exist first, not just the abstract payload/trigger catalogs.
+- Class unlock order for the middle four (Blackhat, Saboteur, Operator,
+  Warden) — not specified.
+- Each class's mild starting passive (banked idea, session 8) — not
+  designed yet; floated as a possible fix for Ghost's damage-access gap.
 - ~~Suit re-theming and suit-archetype pairing~~ — done, session 6:
   suits named identically to archetypes (Exploit/Malware/Encryption/
   Root), each with an icon (Bug/Skull/Padlock/Crown) and color (Red/

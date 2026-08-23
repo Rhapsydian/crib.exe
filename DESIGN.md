@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-7 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-8 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -109,10 +109,11 @@ Broad strokes, not yet detailed:
 
 - New subroutines unlock into the available pool over time.
 - Multiple playable classes, each specializing in 2 of the 4 subroutine
-  archetypes below, each with its own distinct starting loadout. Which
-  pairings become classes, and what their starting loadouts look like,
-  isn't designed yet — the payload/trigger catalogs below are the
-  prerequisite groundwork for that (see Open Questions).
+  archetypes below — see Classes, below, for identities. Starting
+  loadouts (the specific subroutines each class begins with) aren't
+  designed yet — that needs concrete named subroutines to exist first,
+  which the payload/trigger catalogs alone don't provide (see Open
+  Questions).
 - Ascension-style unlockable harder difficulties.
 - An expanding pool of in-run passive items (StS-relic equivalent)
   findable during runs. **Banked idea**: subroutine tags (e.g. Hack,
@@ -184,6 +185,35 @@ Theming):
   marking suits) *and* combat-meta state (the player's or enemy's
   initiative gauge/threshold, or other enable-condition counters) —
   "root access" to any piece of the system.
+
+### Classes
+
+Each class specializes in 2 of the 4 archetypes — its reward pool draws
+*primarily* from those two (see Subroutine Acquisition), not
+*exclusively*, so a class with no direct-damage archetype still has
+occasional access to one via the off-class/universal pool. All 6
+possible pairings are designed thematically now; not all need to ship as
+day-one classes — some can sequence in later as meta-progression unlocks
+(the same way StS added Watcher post-launch). Starting loadouts (the
+actual subroutines each class begins with) aren't designed yet — see
+Open Questions.
+
+| Class | Archetypes | Identity |
+|---|---|---|
+| **Breacher** | Exploit + Encryption | Hit hard, then hold the position you just took. The starting/default class — balanced, good onboarding. |
+| **Blackhat** | Exploit + Malware | Pure offense, reckless, naturally Heat-hungry (Exploit's risk/reward payload leans right into this). |
+| **Saboteur** | Malware + Root | Insidious — corrupts from within while manipulating the system around it. |
+| **Operator** | Exploit + Root | Setup-and-strike: Root primes the field, Exploit cashes in. |
+| **Warden** | Malware + Encryption | Patient and grindy — wins by outlasting rather than outpacing. |
+| **Ghost** | Encryption + Root | Pure control, no primary damage access — wins by locking the opponent down and opportunistically finishing with off-class picks. The last class unlocked; the most challenging to play. |
+
+**Banked idea, not designed yet**: each class could get a distinct, mild
+passive ability from the start, the same role StS's class-starting
+relics play (Burning Blood, Ring of the Snake, etc.) — tied to a class's
+flavor. Floated specifically as a possible *additional* way to help
+Ghost's damage-access gap, alongside (not instead of) the off-class
+reward-pool access above; the two would be complementary. Actual passive
+designs are a future session.
 
 ### Subroutine payload catalog
 
@@ -364,6 +394,10 @@ Deferred to future design/decision sessions, not resolved yet:
   (fixed amount? scaled to margin of loss? per-encounter modifiers?) —
   raised and deliberately banked in session 3, to keep that session on
   track.
-- How each class's 2-archetype specialization and starting loadout works
-  (the payload/trigger catalogs now exist as groundwork — see
-  Meta-Progression).
+- Each class's starting loadout (specific subroutines) — needs concrete
+  named subroutines to exist first, not just the abstract catalogs (see
+  Classes, under Meta-Progression).
+- Class unlock order for the middle four (Blackhat, Saboteur, Operator,
+  Warden) — Breacher-first and Ghost-last are settled, the rest aren't.
+- Each class's mild starting passive (banked idea, see Classes) — not
+  designed yet.
