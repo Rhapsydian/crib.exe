@@ -1,20 +1,20 @@
 # crib.exe — Backlog
 
 Phased roadmap. First pass, written at the end of session 1, updated end
-of sessions 2-5 — expect this to be revised as design and implementation
+of sessions 2-6 — expect this to be revised as design and implementation
 proceed. See `DESIGN.md` for the settled design and its own Open
 Questions section.
 
 ## NEXT SESSION
 
 Phase 0, next item: pick which remaining design gap to tackle next
-(suit theming + suit-archetype pairing, subroutine acquisition flow,
-class specialization/starting loadouts, the banked Heat-from-lost-duel
-question, or the banked subroutine-tags idea) — own `/decision-session`
-per item, same live-one-at-a-time discipline as sessions 1-5 (see
-`.claude/dev-session.md`). Class specialization likely still wants
-concrete example subroutines built out first, even with the catalogs
-done, since starting loadouts need real subroutines to choose from.
+(subroutine acquisition flow, class specialization/starting loadouts,
+the banked Heat-from-lost-duel question, or the banked subroutine-tags
+idea) — own `/decision-session` per item, same live-one-at-a-time
+discipline as sessions 1-6 (see `.claude/dev-session.md`). Class
+specialization likely still wants concrete example subroutines built out
+first, even with the catalogs done, since starting loadouts need real
+subroutines to choose from.
 
 ## Phase 0 — Remaining design passes
 
@@ -43,7 +43,11 @@ session before the implementation phases below can be fully scoped:
   loadout size/slot limit.
 - Class specialization (2 of 4 archetypes each) + starting loadouts —
   likely wants concrete example subroutines built out first.
-- Suit re-theming (names/icons) and which suit maps to which archetype.
+- ~~Suit re-theming and suit-archetype pairing~~ — done, session 6:
+  suits named identically to archetypes (Exploit/Malware/Encryption/
+  Root), each with an icon (Bug/Skull/Padlock/Crown) and color (Red/
+  toxic Green/Blue/Gold). Crown and Exploit's exact hue both flagged as
+  open to later refinement, not blocking.
 - **Banked idea, not yet designed**: subroutine tags (e.g. Hack,
   Firewall, Trap) as a classification orthogonal to archetype, that
   in-run passive items can hook into to enhance tagged subroutines

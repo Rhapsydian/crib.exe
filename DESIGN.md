@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-5 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-6 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -269,14 +269,36 @@ is built for ASCII dungeon-crawling and doesn't fit this genre.
 
 ## Theming
 
-Card suits will be re-themed to match the hacking setting — still 4
-suits mechanically (Cribbage's flush/suit-tally rules need exactly 4),
-just reflavored names/icons rather than classic hearts/clubs/diamonds/
-spades. Not yet named. Each suit will pair 1:1 with one of the 4
-subroutine archetypes (Exploit/Malware/Encryption/Root, see
-Meta-Progression) — this is now a joint design commitment, so suit names
-should be picked alongside which archetype they represent, not
-independently. Which suit maps to which archetype isn't decided yet.
+Card suits are re-themed to match the hacking setting — still 4 suits
+mechanically (Cribbage's flush/suit-tally rules need exactly 4), just
+reflavored rather than classic hearts/clubs/diamonds/spades. Each suit is
+named **identically** to the subroutine archetype it powers, rather than
+given its own separate vocabulary — no translation step between "score
+with a suit" and "power an archetype": scoring 3 Malware cards *is*
+charging your Malware subroutines. This also resolves the suit-archetype
+pairing question definitionally — the suits *are* the archetypes — so
+the remaining design work was just each suit's visual identity, same
+relationship a real suit symbol (♠) has to its name (Spade):
+
+| Suit / Archetype | Icon | Color |
+|---|---|---|
+| **Exploit** | Bug — the literal "software bug" a vulnerability targets | Red (offense/danger/alert) |
+| **Malware** | Skull — the universal malware/virus icon | Toxic/acid Green (poison/corruption, deliberately sickly rather than "Matrix green") |
+| **Encryption** | Padlock — the canonical encryption/security symbol (same as HTTPS trust indicators) | Blue (security/trust) |
+| **Root** | Crown — root access as supreme/superuser authority, not a terminal-prompt glyph (overused hacking-media iconography); also breaks the "danger/security" pattern the other three share, fitting since Root is an access concept, not a threat concept | Gold (authority/elite access) |
+
+All four icons are simple, bold, mutually distinct silhouettes suitable
+for small-scale card reproduction, mirroring ♠♥♦♣'s own visual design
+constraints. Color is a reinforcing cue, not the primary differentiator —
+icon shape is what actually distinguishes suits, which is why Exploit's
+red sitting near Malware's green isn't treated as a blocker (a real
+concern for red-green colorblind players if color were the only cue, but
+icon shape isn't affected by colorblindness).
+
+**Flagged for later refinement, not blocking**: Root's Crown icon was
+noted as the weakest of the 4 and may get revisited; Exploit's color
+could shift from red closer to pink/purple (which would also sidestep
+the red/green proximity above, though that's not why it was raised).
 
 ## Name
 
@@ -295,5 +317,3 @@ Deferred to future design/decision sessions, not resolved yet:
 - How each class's 2-archetype specialization and starting loadout works
   (the payload/trigger catalogs now exist as groundwork — see
   Meta-Progression).
-- Concrete suit re-theming (names/icons for the 4 suits) and which suit
-  maps to which archetype.
