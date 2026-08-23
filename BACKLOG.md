@@ -1,18 +1,17 @@
 # crib.exe — Backlog
 
 Phased roadmap. First pass, written at the end of session 1, updated end
-of sessions 2-4 — expect this to be revised as design and implementation
+of sessions 2-5 — expect this to be revised as design and implementation
 proceed. See `DESIGN.md` for the settled design and its own Open
 Questions section.
 
 ## NEXT SESSION
 
 Phase 0, next item: pick which remaining design gap to tackle next
-(concrete occurrence-trigger list, suit theming + suit-archetype
-pairing, subroutine acquisition flow, class specialization/starting
-loadouts, the banked Heat-from-lost-duel question, or the banked
-subroutine-tags idea) — own `/decision-session` per item, same
-live-one-at-a-time discipline as sessions 1-4 (see
+(suit theming + suit-archetype pairing, subroutine acquisition flow,
+class specialization/starting loadouts, the banked Heat-from-lost-duel
+question, or the banked subroutine-tags idea) — own `/decision-session`
+per item, same live-one-at-a-time discipline as sessions 1-5 (see
 `.claude/dev-session.md`). Class specialization likely still wants
 concrete example subroutines built out first, even with the catalogs
 done, since starting loadouts need real subroutines to choose from.
@@ -34,8 +33,10 @@ session before the implementation phases below can be fully scoped:
   Exploit↔Occurrence, Malware↔Accumulators, Encryption↔Self-state,
   Root↔Enemy-state; Chained and Always/Cantrip are universal, not
   archetype-exclusive.
-- Full concrete list of specific occurrence triggers (session 3's list
-  was illustrative, not exhaustive).
+- ~~Full concrete list of specific occurrence triggers~~ — done, session
+  5: 8 categories (Fifteen, Pair, Run, Flush, His Nobs, His Heels,
+  Thirty-One, Go), each with 3 firing variations (Instant/Threshold/
+  Scaling).
 - Exactly how a lost Control/Breach duel translates into Heat gained —
   raised and deliberately banked in session 3.
 - Subroutine acquisition flow during a run (rewards/shop/both) and

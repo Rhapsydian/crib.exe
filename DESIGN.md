@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-4 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-5 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -187,14 +187,43 @@ archetype's subroutines can use — the same role Togglable already plays:
   Point-count cooldown, suit-count tally; extensible to e.g. rank-count.
   **Malware's primary family** — corruption incubating/spreading on a
   steady, guaranteed schedule fits the attrition fantasy precisely.
-- **Occurrence triggers** — fire instantly the moment a specific *kind*
-  of scoring event happens, not accumulated: scoring a pair, a run, a
-  flush, "his nobs"/"his heels," an exact 15, hitting 31 exactly, winning
-  a "go." Ties subroutine identity most directly to real Cribbage skill —
-  a "run-hunter" or "flush-focused" subroutine becomes a real build.
-  (Illustrative list, not exhaustive — see Open Questions.) **Exploit's
-  primary family** — a specific great play is the "vulnerability found,"
-  opportunistic and spiky, matching burst identity directly.
+- **Occurrence triggers** — fire on a specific *kind* of scoring event,
+  not accumulated points. Ties subroutine identity most directly to real
+  Cribbage skill — a "run-hunter" or "flush-focused" subroutine becomes a
+  real build. **Exploit's primary family** — a specific great play is the
+  "vulnerability found," opportunistic and spiky, matching burst identity
+  directly. Scoped to the caster's own scoring events (an "enemy scores
+  X" trigger belongs to Enemy-state instead, not here). 8 concrete
+  categories, covering every scoring-event kind Cribbage's own rules
+  define, each unified across the play/pegging phase and the show/count
+  phase rather than split into separate play-vs-show trigger types
+  (simpler base; phase-specific variants are a possible future
+  refinement, not needed now):
+  1. **Fifteen** — cards summing to 15 (play or count).
+  2. **Pair** — covers pair, pair royal (3-of-a-kind), and double pair
+     royal (4-of-a-kind) as magnitude variants of the same kind.
+  3. **Run** — covers run, double run, triple run, and quadruple run as
+     magnitude variants.
+  4. **Flush** — 4-in-hand or 5-with-starter, same suit.
+  5. **His Nobs** — holding the Jack matching the starter's suit.
+  6. **His Heels** — the starter card itself is a Jack (dealer-only,
+     scores at the cut, before play begins — rare, dealer-favoring).
+  7. **Thirty-One** — hitting the pegging count exactly.
+  8. **Go** — playing the last card when the count isn't 31 (mutually
+     exclusive with Thirty-One).
+
+  Each of the 8 categories above can use one of **3 firing variations**:
+  **Instant** (the default — fires immediately on every single instance,
+  independently, no banking); **Threshold** (occurrences bank silently;
+  the subroutine isn't ready until N have happened, then fires with its
+  normal/flat payload — same shape as an Accumulator, but counting
+  discrete occurrences of a specific kind rather than raw points); or
+  **Scaling** (occurrences bank up to a per-subroutine cap, and payload
+  magnitude scales with how many were actually banked when it fires —
+  e.g. 3 pairs banked before firing hits harder than 1; the swingy,
+  variance-rewarding option). All three reset the banked count after
+  firing, same as every subroutine's normal "fire, then reset and wait
+  again" rule.
 - **Enemy-state triggers** — fire based on the opponent's condition:
   their Control/Breach position, their initiative gauge fill %, or
   whether they currently have one of your Malware debuffs active
@@ -261,8 +290,6 @@ Deferred to future design/decision sessions, not resolved yet:
   (fixed amount? scaled to margin of loss? per-encounter modifiers?) —
   raised and deliberately banked in session 3, to keep that session on
   track.
-- The full concrete list of specific occurrence triggers (session 3's
-  pair/run/flush/nobs/15/31/go list is illustrative, not exhaustive).
 - How new subroutines are acquired during a run (combat rewards? a shop?
   both, StS-style?), and whether there's a loadout size/slot limit.
 - How each class's 2-archetype specialization and starting loadout works
