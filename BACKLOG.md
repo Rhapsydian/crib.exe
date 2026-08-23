@@ -1,7 +1,7 @@
 # crib.exe — Backlog
 
 Phased roadmap. First pass, written at the end of session 1, updated end
-of sessions 2-10 — expect this to be revised as design and implementation
+of sessions 2-11 — expect this to be revised as design and implementation
 proceed. See `DESIGN.md` for the settled design and its own Open
 Questions section.
 
@@ -9,10 +9,9 @@ Questions section.
 
 Phase 0, next item: pick which remaining design gap to tackle next
 (each class's starting loadout — needs concrete named subroutines first,
-class unlock order for the middle four, class starting passives, or the
-banked node-bypass idea) — own `/decision-session` per item, same
-live-one-at-a-time discipline as sessions 1-10 (see
-`.claude/dev-session.md`).
+class unlock order for the middle four, or the banked node-bypass idea)
+— own `/decision-session` per item, same live-one-at-a-time discipline as
+sessions 1-11 (see `.claude/dev-session.md`).
 
 ## Phase 0 — Remaining design passes
 
@@ -55,8 +54,11 @@ session before the implementation phases below can be fully scoped:
   exist first, not just the abstract payload/trigger catalogs.
 - Class unlock order for the middle four (Blackhat, Saboteur, Operator,
   Warden) — not specified.
-- Each class's mild starting passive (banked idea, session 8) — not
-  designed yet; floated as a possible fix for Ghost's damage-access gap.
+- ~~Each class's mild starting passive~~ — done, session 11: Foothold
+  (Breacher), Zero Day (Blackhat), Sleeper Cell (Saboteur), Primed
+  (Operator), Feedback Loop (Warden), Return to Sender (Ghost — the one
+  doing real structural work, fixing the damage-access gap rather than
+  just adding flavor).
 - ~~Suit re-theming and suit-archetype pairing~~ — done, session 6:
   suits named identically to archetypes (Exploit/Malware/Encryption/
   Root), each with an icon (Bug/Skull/Padlock/Crown) and color (Red/

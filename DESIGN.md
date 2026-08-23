@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-10 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-11 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -240,22 +240,25 @@ day-one classes — some can sequence in later as meta-progression unlocks
 actual subroutines each class begins with) aren't designed yet — see
 Open Questions.
 
-| Class | Archetypes | Identity |
-|---|---|---|
-| **Breacher** | Exploit + Encryption | Hit hard, then hold the position you just took. The starting/default class — balanced, good onboarding. |
-| **Blackhat** | Exploit + Malware | Pure offense, reckless, naturally Heat-hungry (Exploit's risk/reward payload leans right into this). |
-| **Saboteur** | Malware + Root | Insidious — corrupts from within while manipulating the system around it. |
-| **Operator** | Exploit + Root | Setup-and-strike: Root primes the field, Exploit cashes in. |
-| **Warden** | Malware + Encryption | Patient and grindy — wins by outlasting rather than outpacing. |
-| **Ghost** | Encryption + Root | Pure control, no primary damage access — wins by locking the opponent down and opportunistically finishing with off-class picks. The last class unlocked; the most challenging to play. |
+| Class | Archetypes | Identity | Starting Passive |
+|---|---|---|---|
+| **Breacher** | Exploit + Encryption | Hit hard, then hold the position you just took. The starting/default class — balanced, good onboarding. | **Foothold** — the first time Control/Breach crosses to your favor each fight, gain a small extra push in your favor. |
+| **Blackhat** | Exploit + Malware | Pure offense, reckless, naturally Heat-hungry (Exploit's risk/reward payload leans right into this). | **Zero Day** — the first Heat-costing Exploit subroutine each combat costs no Heat. |
+| **Saboteur** | Malware + Root | Insidious — corrupts from within while manipulating the system around it. | **Sleeper Cell** — the first Malware debuff applied each combat also advances one Root subroutine's condition. |
+| **Operator** | Exploit + Root | Setup-and-strike: Root primes the field, Exploit cashes in. | **Primed** — the first time a Root subroutine fires each combat, reduce the next Exploit subroutine's trigger threshold. |
+| **Warden** | Malware + Encryption | Patient and grindy — wins by outlasting rather than outpacing. | **Feedback Loop** — Encryption HoT effects also apply a small Malware DoT tick to the enemy. |
+| **Ghost** | Encryption + Root | Pure control, no primary damage access — wins by locking the opponent down and opportunistically finishing with off-class picks. The last class unlocked; the most challenging to play. | **Return to Sender** — a portion of Control/Breach pushed back via Encryption's counter-push carries through past center into the enemy's territory. |
 
-**Banked idea, not designed yet**: each class could get a distinct, mild
-passive ability from the start, the same role StS's class-starting
-relics play (Burning Blood, Ring of the Snake, etc.) — tied to a class's
-flavor. Floated specifically as a possible *additional* way to help
-Ghost's damage-access gap, alongside (not instead of) the off-class
-reward-pool access above; the two would be complementary. Actual passive
-designs are a future session.
+All 6 are innate for the whole run once that class is picked, not
+something found mid-run — the same role StS's class-starting relics
+(Burning Blood, Ring of the Snake, etc.) play. Five of the six are mild
+tempo/consistency nudges reinforcing a class's identity; **Ghost's is
+doing real structural work, not just flavor** — rather than granting
+off-class access to Exploit/Malware, "Return to Sender" makes Ghost's own
+toolkit (pure defense) double as offense, directly answering the
+damage-access gap noted when Ghost was introduced above (defending so
+precisely that the attacker's own aggression backfires on them),
+complementary to the off-class reward-pool access Ghost already has.
 
 ### Subroutine payload catalog
 
@@ -476,5 +479,3 @@ Deferred to future design/decision sessions, not resolved yet:
   Classes, under Meta-Progression).
 - Class unlock order for the middle four (Blackhat, Saboteur, Operator,
   Warden) — Breacher-first and Ghost-last are settled, the rest aren't.
-- Each class's mild starting passive (banked idea, see Classes) — not
-  designed yet.
