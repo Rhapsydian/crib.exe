@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-6 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-7 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -96,6 +96,13 @@ rather than resetting to a new map. Different runs are reskinned as
 different named contract targets (a company, an agency, a rival hacker),
 which also gives meta-progression a natural "new contract types" hook.
 
+Node types aren't fully enumerated yet beyond gatekeeper/boss encounters
+and regular fights, but one is settled: a **Merge** node (see Subroutine
+Acquisition, under Meta-Progression) — a deliberate git/version-control
+pun that fits the coding/hacking setting precisely — where held duplicate
+subroutine material gets spent to upgrade a base copy, creating real
+map-routing tension around detouring toward one.
+
 ## Meta-Progression
 
 Broad strokes, not yet detailed:
@@ -112,6 +119,51 @@ Broad strokes, not yet detailed:
   Firewall, Trap), orthogonal to archetype, that passives could hook into
   to enhance tagged subroutines — noted but not designed yet, see
   `BACKLOG.md` Phase 0.
+- The installed-loadout slot cap itself (see Subroutine Acquisition,
+  below) can grow via a persistent, cross-run unlock, the same as
+  everything else on this list.
+
+### Subroutine acquisition
+
+How subroutines are actually acquired and managed during a run:
+
+**Channels**: combat rewards (a choice offered after winning a fight,
+StS-style) and a shop (spend **Data** — the run's currency, stolen data
+sold on a black market — on a specific pick rather than a random offer).
+Events are a probable third channel but aren't designed at all yet, so
+not detailed here. Reward quality scales with encounter difficulty: a
+regular fight offers a standard choice, an elite/gatekeeper fight offers
+a better one (more options, better odds, or guaranteed rarity — exact
+tuning TBD).
+
+**Reward pool scoping**: draws primarily from the player's class's 2
+specialized archetypes (see Meta-Progression above), plus a smaller pool
+of universal subroutines — the natural home for Chained and Always/
+Cantrip subroutines, since those trigger families were already
+established (session 4) as universal rather than archetype-exclusive.
+
+**Loadout structure**: a slot cap on the *installed* loadout (what's
+actually active and evaluated each fight) separate from a broader
+*owned* collection (a bench) the player curates from between fights —
+acquiring more than you can slot is never wasted, it's optionality for
+matching a build to the next fight. Subroutines are always-evaluated, not
+drawn like a StS hand, so an uncapped installed loadout would risk
+late-run bloat/unreadability — a cap is necessary, not just a numbers
+question. The exact slot number is left to playtesting; 6 (echoing
+Cribbage's dealt hand) is a floated thematic possibility, not a
+commitment.
+
+**Duplicate subroutines**: acquiring a subroutine you already own doesn't
+auto-merge and doesn't just stack as a second slot-hungry independent
+copy (which would be a strictly worse reward than a new subroutine, given
+the loadout is capped). Instead it becomes held **material** sitting on
+the bench, unusable on its own until spent at a **Merge** map node (see
+Map & Run Structure) to upgrade the base copy. Merging improves
+magnitude/efficiency only — bigger payload, lower trigger threshold, a
+higher Scaling bank cap — never payload sub-type or trigger family, since
+those are a subroutine's core identity and shouldn't change via a
+duplicate. Likely capped at some max rank; exact number TBD, same
+treatment as the loadout slot count.
 
 ### Subroutine archetypes
 
@@ -312,8 +364,6 @@ Deferred to future design/decision sessions, not resolved yet:
   (fixed amount? scaled to margin of loss? per-encounter modifiers?) —
   raised and deliberately banked in session 3, to keep that session on
   track.
-- How new subroutines are acquired during a run (combat rewards? a shop?
-  both, StS-style?), and whether there's a loadout size/slot limit.
 - How each class's 2-archetype specialization and starting loadout works
   (the payload/trigger catalogs now exist as groundwork — see
   Meta-Progression).

@@ -1,20 +1,19 @@
 # crib.exe — Backlog
 
 Phased roadmap. First pass, written at the end of session 1, updated end
-of sessions 2-6 — expect this to be revised as design and implementation
+of sessions 2-7 — expect this to be revised as design and implementation
 proceed. See `DESIGN.md` for the settled design and its own Open
 Questions section.
 
 ## NEXT SESSION
 
 Phase 0, next item: pick which remaining design gap to tackle next
-(subroutine acquisition flow, class specialization/starting loadouts,
-the banked Heat-from-lost-duel question, or the banked subroutine-tags
-idea) — own `/decision-session` per item, same live-one-at-a-time
-discipline as sessions 1-6 (see `.claude/dev-session.md`). Class
-specialization likely still wants concrete example subroutines built out
-first, even with the catalogs done, since starting loadouts need real
-subroutines to choose from.
+(class specialization/starting loadouts, the banked Heat-from-lost-duel
+question, or the banked subroutine-tags idea) — own `/decision-session`
+per item, same live-one-at-a-time discipline as sessions 1-7 (see
+`.claude/dev-session.md`). Class specialization likely still wants
+concrete example subroutines built out first, even with the catalogs
+done, since starting loadouts need real subroutines to choose from.
 
 ## Phase 0 — Remaining design passes
 
@@ -39,8 +38,11 @@ session before the implementation phases below can be fully scoped:
   Scaling).
 - Exactly how a lost Control/Breach duel translates into Heat gained —
   raised and deliberately banked in session 3.
-- Subroutine acquisition flow during a run (rewards/shop/both) and
-  loadout size/slot limit.
+- ~~Subroutine acquisition flow + loadout size/slot limit~~ — done,
+  session 7: combat rewards + shop (currency "Data") + events (probable,
+  undesigned); reward pool scoped to class archetypes + universal
+  subroutines; capped installed loadout + owned bench, exact number
+  TBD; slot cap growable via meta-progression.
 - Class specialization (2 of 4 archetypes each) + starting loadouts —
   likely wants concrete example subroutines built out first.
 - ~~Suit re-theming and suit-archetype pairing~~ — done, session 6:
