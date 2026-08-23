@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-3 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-4 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -179,31 +179,44 @@ subroutine firing).
 ### Subroutine trigger catalog
 
 What causes a subroutine to become enabled. Six trigger families, plus
-one orthogonal property:
+one orthogonal property. Four of the families are each one archetype's
+primary identity; the other two are universal, cross-cutting tools any
+archetype's subroutines can use — the same role Togglable already plays:
 
 - **Accumulators** — count something over time, fire at a threshold.
   Point-count cooldown, suit-count tally; extensible to e.g. rank-count.
+  **Malware's primary family** — corruption incubating/spreading on a
+  steady, guaranteed schedule fits the attrition fantasy precisely.
 - **Occurrence triggers** — fire instantly the moment a specific *kind*
   of scoring event happens, not accumulated: scoring a pair, a run, a
   flush, "his nobs"/"his heels," an exact 15, hitting 31 exactly, winning
   a "go." Ties subroutine identity most directly to real Cribbage skill —
   a "run-hunter" or "flush-focused" subroutine becomes a real build.
-  (Illustrative list, not exhaustive — see Open Questions.)
+  (Illustrative list, not exhaustive — see Open Questions.) **Exploit's
+  primary family** — a specific great play is the "vulnerability found,"
+  opportunistic and spiky, matching burst identity directly.
 - **Enemy-state triggers** — fire based on the opponent's condition:
   their Control/Breach position, their initiative gauge fill %, or
   whether they currently have one of your Malware debuffs active
-  (cross-archetype combo potential).
+  (cross-archetype combo potential). **Root's primary family** — Root's
+  payloads are already enemy-directed (their gauge, tallies,
+  subroutines), so it makes sense for its triggers to watch the enemy
+  too.
 - **Self-state triggers** — fire based on your own condition: Heat
   above/below a threshold, or dealer vs. non-dealer this hand (uses real
-  Cribbage's own dealer asymmetry as a hook).
-- **Chained triggers** — a subroutine's firing can feed a later one's
-  enable condition.
-- **Always triggers** — no real condition, fires every turn that side
-  gets. Informally called **"Cantrip"** subroutines — meant to be
-  low-power, not heavy hitters: guarantees something always happens each
-  turn even if nothing else is ready (chip damage, feeding another
-  subroutine's accumulator, minor healing/warding).
-- **Togglable** (orthogonal to the 6 families above) — some subroutines
+  Cribbage's own dealer asymmetry as a hook). **Encryption's primary
+  family** — defense reacting to your own peril, an introspective/
+  protective trigger for a protective archetype.
+- **Chained triggers** (universal) — a subroutine's firing can feed a
+  later one's enable condition. Not tied to one archetype; any
+  archetype's subroutines can chain into each other.
+- **Always triggers** (universal) — no real condition, fires every turn
+  that side gets. Informally called **"Cantrip"** subroutines — meant to
+  be low-power, not heavy hitters: guarantees something always happens
+  each turn even if nothing else is ready (chip damage, feeding another
+  subroutine's accumulator, minor healing/warding). Any archetype can
+  have a cheap Cantrip-tier version.
+- **Togglable** (orthogonal to all 6 families above) — some subroutines
   carry a manual on/off switch, independent of their base trigger type;
   off means it never fires regardless of whether its condition is met.
   This is the confirmed **mid-combat** lever (a between-fights-only
@@ -211,11 +224,10 @@ one orthogonal property:
   loadout) — e.g. shutting off a Heat-costing Exploit subroutine when
   already running hot, without touching loadout order/composition.
 
-Subroutines/archetypes are expected to specialize in specific trigger
-families rather than every subroutine drawing generically from all 6 —
-reinforces archetype identity the same way the payload catalog does.
-Which archetypes lean into which trigger families isn't mapped yet — see
-Open Questions.
+This is a primary-affinity mapping, not an exclusivity rule — nothing
+forbids, say, an Exploit subroutine from using an Accumulator trigger if
+a specific design calls for it; it's just not that archetype's typical
+identity.
 
 ## Tech Stack
 
@@ -249,8 +261,6 @@ Deferred to future design/decision sessions, not resolved yet:
   (fixed amount? scaled to margin of loss? per-encounter modifiers?) —
   raised and deliberately banked in session 3, to keep that session on
   track.
-- Which archetypes lean into which of the 6 subroutine trigger families
-  (concrete affinity mapping, not yet done).
 - The full concrete list of specific occurrence triggers (session 3's
   pair/run/flush/nobs/15/31/go list is illustrative, not exhaustive).
 - How new subroutines are acquired during a run (combat rewards? a shop?
