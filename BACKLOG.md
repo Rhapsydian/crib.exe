@@ -1,7 +1,7 @@
 # crib.exe — Backlog
 
 Phased roadmap. First pass, written at the end of session 1, updated end
-of sessions 2-8 — expect this to be revised as design and implementation
+of sessions 2-9 — expect this to be revised as design and implementation
 proceed. See `DESIGN.md` for the settled design and its own Open
 Questions section.
 
@@ -9,10 +9,10 @@ Questions section.
 
 Phase 0, next item: pick which remaining design gap to tackle next
 (each class's starting loadout — needs concrete named subroutines first,
-class unlock order for the middle four, class starting passives, the
-banked Heat-from-lost-duel question, or the banked subroutine-tags idea)
-— own `/decision-session` per item, same live-one-at-a-time discipline as
-sessions 1-8 (see `.claude/dev-session.md`).
+class unlock order for the middle four, class starting passives, or the
+banked subroutine-tags/node-bypass ideas) — own `/decision-session` per
+item, same live-one-at-a-time discipline as sessions 1-9 (see
+`.claude/dev-session.md`).
 
 ## Phase 0 — Remaining design passes
 
@@ -35,8 +35,13 @@ session before the implementation phases below can be fully scoped:
   5: 8 categories (Fifteen, Pair, Run, Flush, His Nobs, His Heels,
   Thirty-One, Go), each with 3 firing variations (Instant/Threshold/
   Scaling).
-- Exactly how a lost Control/Breach duel translates into Heat gained —
-  raised and deliberately banked in session 3.
+- ~~Exactly how a lost Control/Breach duel translates into Heat gained~~
+  — done, session 9: base Heat cost by encounter tier, adjusted by
+  margin of loss; gatekeeper/boss losses (any layer) bypass Heat and end
+  the run outright instead, since a gatekeeper is the sole passage
+  forward anyway. Regular/elite losses permanently close that node,
+  giving a second, distinct run-ending condition (no route forward
+  remains) alongside Heat-maxing and gatekeeper/boss death.
 - ~~Subroutine acquisition flow + loadout size/slot limit~~ — done,
   session 7: combat rewards + shop (currency "Data") + events (probable,
   undesigned); reward pool scoped to class archetypes + universal
@@ -61,6 +66,10 @@ session before the implementation phases below can be fully scoped:
   Firewall, Trap) as a classification orthogonal to archetype, that
   in-run passive items can hook into to enhance tagged subroutines
   (e.g. "your Trap-tagged subroutines do X"). Noted session 3, deferred.
+- **Banked idea, not yet designed**: a future ability/class passive that
+  lets the player bypass a closed/lost node, turning a normally-permanent
+  failure into a recoverable one for specific builds. Noted session 9,
+  explicitly "idea space to explore."
 
 ## Phase 1 — Core Cribbage engine
 
@@ -80,7 +89,11 @@ loadout, chaining effects).
 
 Node-map rendering as an actual network diagram; layered breach structure
 (perimeter/DMZ → internal LAN → secured subnet → core) within one
-continuous map; per-layer gatekeeper/boss encounters.
+continuous map; per-layer gatekeeper/boss encounters. **Requirement from
+session 9**: map generation must guarantee enough redundant routing per
+layer that permanently losing one regular/elite fight can't easily
+soft-lock a run (the "no route forward remains" loss condition needs to
+stay a real-but-rare outcome, not a near-certainty).
 
 ## Phase 4 — Meta-progression
 

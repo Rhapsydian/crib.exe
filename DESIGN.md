@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-8 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-9 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -30,9 +30,19 @@ Two deliberately separate resources, not one shared health stat:
   from full to zero. This is what gives the run its StS-HP-equivalent
   branch-selection friction — rest vs. push forward, risk vs. reward map
   choices. Needs a player-facing note somewhere in the eventual UI/copy
-  explaining the "too much heat" idiom the name leans on. Exactly how a
-  lost Control/Breach duel (below) translates into Heat gained is still
-  open — see Open Questions.
+  explaining the "too much heat" idiom the name leans on. **Heat gained
+  on a lost duel** = a base amount set by encounter tier (regular/elite/
+  gatekeeper), adjusted by margin of loss — not literal overshoot past
+  the losing threshold (Control/Breach stops the instant it hits an end,
+  so there's nothing past it to measure), but how far the player managed
+  to push the meter toward their *own* win before the enemy dragged it
+  all the way back to theirs. A fight where the player got Control/Breach
+  to 80% in their favor before it swung costs noticeably less Heat than
+  one where the enemy dominated it from the first hand. Exact numbers
+  TBD/playtesting, same treatment as other unresolved tuning values. See
+  Map & Run Structure for what a lost duel means structurally, including
+  why gatekeeper/boss losses bypass Heat entirely and end the run
+  outright.
 - **Control/Breach** — an in-combat-only shared push/pull meter, a single
   bar rather than two separate HP pools, that resolves the outcome of one
   Cribbage duel. Exploit/Malware effects push it toward the opponent's
@@ -102,6 +112,40 @@ Acquisition, under Meta-Progression) — a deliberate git/version-control
 pun that fits the coding/hacking setting precisely — where held duplicate
 subroutine material gets spent to upgrade a base copy, creating real
 map-routing tension around detouring toward one.
+
+**Losing a fight has a spatial consequence, not just a resource cost.**
+Losing a regular or elite fight ejects the player from that node and
+permanently closes it for the rest of the run (closure has to be
+permanent, or the player could always eventually loop back and retry,
+which would make the loss condition below never actually trigger) — they
+have to route around it to keep progressing (see Resources for the Heat
+cost this also incurs). **Losing a gatekeeper/boss fight, in any layer,
+ends the run outright** — no Heat cost, straight to game over. This
+applies to every layer's gatekeeper, not only the deepest/final one, for
+two compounding reasons: it deliberately raises the stakes, and a
+gatekeeper is by definition the *sole* passage to the next layer, so
+losing one is already an unavoidable dead end — treating it as instant
+permadeath is just being direct about an outcome that would otherwise
+degenerate into the same result anyway, rather than making the player
+limp through an already-lost run.
+
+This gives the run **three distinct ways to end**: (1) Heat maxes out
+(getting caught/burned) — the slow, cumulative-pressure failure; (2) a
+gatekeeper/boss loss, any layer — instant, since a gatekeeper is the only
+passage forward at that point; (3) no route to further progress remains
+— accumulated permanent node closures from regular/elite losses leave no
+path deeper, a soft-lock distinct from both of the above.
+
+**Note for future map generation (Phase 3)**: this puts a soft
+requirement on the map-generation algorithm to guarantee enough redundant
+routing per layer that outcome (3) stays a real-but-rare possibility, not
+a near-certainty from a single early loss — not solved now, just flagged
+for whoever designs generation.
+
+**Banked idea, not designed yet**: a future ability or class passive
+could allow bypassing a closed/lost node, turning what's normally a
+permanent failure into a recoverable one for specific builds — "idea
+space to explore," not a commitment.
 
 ## Meta-Progression
 
@@ -390,10 +434,6 @@ the red/green proximity above, though that's not why it was raised).
 
 Deferred to future design/decision sessions, not resolved yet:
 
-- Exactly how a lost Control/Breach duel translates into Heat gained
-  (fixed amount? scaled to margin of loss? per-encounter modifiers?) —
-  raised and deliberately banked in session 3, to keep that session on
-  track.
 - Each class's starting loadout (specific subroutines) — needs concrete
   named subroutines to exist first, not just the abstract catalogs (see
   Classes, under Meta-Progression).
