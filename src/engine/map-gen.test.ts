@@ -59,7 +59,7 @@ describe('generateLayer', () => {
     const graph = generateLayer({
       rng: createRng(1),
       nodeCount: 8,
-      typeWeights: { regularFight: 0, safehouse: 0, shop: 0, event: 0, relay: 1 },
+      typeWeights: { regularFight: 0, eliteFight: 0, safehouse: 0, shop: 0, event: 0, relay: 1 },
     });
     const fillers = graph.nodes.filter((n) => n.id !== graph.entryNodeId && n.id !== graph.gatekeeperNodeId);
     expect(fillers.every((n) => n.type === 'relay')).toBe(true);

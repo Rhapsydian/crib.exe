@@ -13,9 +13,10 @@ import { createNode, isReachable, neighborsOf, type LayerGraph, type MapEdge, ty
 type FillerNodeType = Exclude<NodeType, 'gatekeeperFight'>;
 
 const DEFAULT_TYPE_WEIGHTS: Record<FillerNodeType, number> = {
-  regularFight: 0.5,
+  regularFight: 0.4,
+  eliteFight: 0.15, // rarer and tougher than a regular fight -- see heat.ts/encounters.ts
   safehouse: 0.15,
-  shop: 0.15,
+  shop: 0.1,
   event: 0.1,
   relay: 0.1,
 };

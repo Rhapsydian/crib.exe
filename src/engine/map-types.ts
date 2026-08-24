@@ -5,7 +5,7 @@
  * DESIGN.md's Map & Run Structure section.
  */
 
-export type NodeType = 'regularFight' | 'gatekeeperFight' | 'safehouse' | 'shop' | 'event' | 'relay';
+export type NodeType = 'regularFight' | 'eliteFight' | 'gatekeeperFight' | 'safehouse' | 'shop' | 'event' | 'relay';
 
 /**
  * `closed` (a lost regular/elite fight) is genuinely impassable, not

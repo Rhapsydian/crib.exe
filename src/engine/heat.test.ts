@@ -23,7 +23,7 @@ describe('addHeat', () => {
 describe('heatFromLoss', () => {
   it('charges the full tier base when the player made no progress at all', () => {
     expect(heatFromLoss('regular', 50)).toBe(15);
-    expect(heatFromLoss('elite', 50)).toBe(25);
+    expect(heatFromLoss('elite', 50)).toBe(30);
   });
 
   it('charges noticeably less the closer the player got to their own win', () => {
@@ -32,7 +32,7 @@ describe('heatFromLoss', () => {
     expect(closeCall).toBeLessThan(dominated);
   });
 
-  it('elite costs more than regular at the same margin', () => {
+  it('elite costs meaningfully more than regular at the same margin -- higher stakes for a harder, better-rewarded fight', () => {
     expect(heatFromLoss('elite', 70)).toBeGreaterThan(heatFromLoss('regular', 70));
   });
 
