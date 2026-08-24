@@ -9,13 +9,22 @@ export const playLowestLegal: PlayStrategy = (legalCards) =>
 
 export type PlayerIndex = 0 | 1;
 
+export interface PegScoreBreakdown {
+  fifteen: number;
+  pair: number;
+  run: number;
+  thirtyOne: number;
+  total: number;
+}
+
 export interface PegPlayEvent {
   type: 'play';
   player: PlayerIndex;
   card: Card;
   count: number;
-  /** Points scored by this specific play (15/pair/run/31, additive). */
+  /** Points scored by this specific play (15/pair/run/31, additive). Equal to breakdown.total. */
   score: number;
+  breakdown: PegScoreBreakdown;
 }
 
 export interface PegGoEvent {
@@ -49,10 +58,11 @@ interface SequenceCard {
  * distinct-rank requirement any run window ending at the same card would
  * need.
  */
-function scorePlay(sequence: SequenceCard[], count: number): number {
-  let score = 0;
-  if (count === 15) score += 2;
-  if (count === 31) score += 2;
+function scorePlay(sequence: SequenceCard[], count: number): PegScoreBreakdown {
+  let fifteen = 0;
+  let thirtyOne = 0;
+  if (count === 15) fifteen += 2;
+  if (count === 31) thirtyOne += 2;
 
   const ranks = sequence.map((s) => s.card.rank);
   const lastRank = ranks[ranks.length - 1];
@@ -60,10 +70,12 @@ function scorePlay(sequence: SequenceCard[], count: number): number {
   for (let i = ranks.length - 2; i >= 0 && ranks[i] === lastRank; i--) {
     pairRun++;
   }
-  if (pairRun === 2) score += 2;
-  else if (pairRun === 3) score += 6;
-  else if (pairRun >= 4) score += 12;
+  let pair = 0;
+  if (pairRun === 2) pair += 2;
+  else if (pairRun === 3) pair += 6;
+  else if (pairRun >= 4) pair += 12;
 
+  let run = 0;
   if (pairRun < 2) {
     for (let k = sequence.length; k >= 3; k--) {
       const window = ranks.slice(ranks.length - k);
@@ -72,14 +84,14 @@ function scorePlay(sequence: SequenceCard[], count: number): number {
         const min = Math.min(...window);
         const max = Math.max(...window);
         if (max - min === k - 1) {
-          score += k;
+          run += k;
           break;
         }
       }
     }
   }
 
-  return score;
+  return { fifteen, pair, run, thirtyOne, total: fifteen + pair + run + thirtyOne };
 }
 
 /**
@@ -111,9 +123,9 @@ export function playPegging(
       hands[player] = hands[player].filter((c) => !cardsEqual(c, card));
       count += cardValue(card);
       sequence.push({ card, player });
-      const playScore = scorePlay(sequence, count);
-      scores[player] += playScore;
-      events.push({ type: 'play', player, card, count, score: playScore });
+      const breakdown = scorePlay(sequence, count);
+      scores[player] += breakdown.total;
+      events.push({ type: 'play', player, card, count, score: breakdown.total, breakdown });
       lastPlayerToAct = player;
       passesInARow = 0;
 

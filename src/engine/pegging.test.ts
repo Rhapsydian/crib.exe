@@ -27,6 +27,7 @@ describe('playPegging — 15', () => {
     const { events } = playPegging(hand0, hand1, 0, scripted([...hand0, ...hand1]));
     expect(plays(events)[1].score).toBe(2);
     expect(plays(events)[1].count).toBe(15);
+    expect(plays(events)[1].breakdown).toEqual({ fifteen: 2, pair: 0, run: 0, thirtyOne: 0, total: 2 });
   });
 });
 
@@ -37,6 +38,7 @@ describe('playPegging — pairs', () => {
     const order = [hand0[0], hand1[0], hand0[1], hand1[1]];
     const { events } = playPegging(hand0, hand1, 0, scripted(order));
     expect(plays(events)[1].score).toBe(2);
+    expect(plays(events)[1].breakdown).toEqual({ fifteen: 0, pair: 2, run: 0, thirtyOne: 0, total: 2 });
   });
 
   it('scores 6 for pairs royal (three of a kind)', () => {
@@ -47,6 +49,7 @@ describe('playPegging — pairs', () => {
     const { events } = playPegging(hand0, hand1, 0, scripted(order));
     expect(plays(events)[2].score).toBe(8);
     expect(plays(events)[2].count).toBe(15);
+    expect(plays(events)[2].breakdown).toEqual({ fifteen: 2, pair: 6, run: 0, thirtyOne: 0, total: 8 });
   });
 
   it('scores 12 for double pairs royal (four of a kind)', () => {
@@ -55,6 +58,7 @@ describe('playPegging — pairs', () => {
     const order = [hand0[0], hand1[0], hand0[1], hand1[1]];
     const { events } = playPegging(hand0, hand1, 0, scripted(order));
     expect(plays(events)[3].score).toBe(12);
+    expect(plays(events)[3].breakdown).toEqual({ fifteen: 0, pair: 12, run: 0, thirtyOne: 0, total: 12 });
   });
 });
 
@@ -65,6 +69,7 @@ describe('playPegging — runs', () => {
     const order = [hand0[0], hand1[0], hand0[1]]; // played as 5, 3, 4
     const { events } = playPegging(hand0, hand1, 0, scripted(order));
     expect(plays(events)[2].score).toBe(3);
+    expect(plays(events)[2].breakdown).toEqual({ fifteen: 0, pair: 0, run: 3, thirtyOne: 0, total: 3 });
   });
 });
 
@@ -77,6 +82,7 @@ describe('playPegging — exact 31', () => {
     const finalPlay = plays(events)[3];
     expect(finalPlay.count).toBe(31);
     expect(finalPlay.score).toBe(2);
+    expect(finalPlay.breakdown).toEqual({ fifteen: 0, pair: 0, run: 0, thirtyOne: 2, total: 2 });
     expect(events.some((e) => e.type === 'go-point')).toBe(false);
   });
 });
