@@ -1,7 +1,7 @@
 # crib.exe — Backlog
 
 Phased roadmap. First pass, written at the end of session 1, updated end
-of sessions 2-15 — expect this to be revised as design and implementation
+of sessions 2-16 — expect this to be revised as design and implementation
 proceed. See `DESIGN.md` for the settled design and its own Open
 Questions section.
 
@@ -14,10 +14,12 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-Phase 1 now has a real spec (see below) — next up is actual
-implementation, the project's first non-decision-session (a real
-`/dev-session`, not `/decision-session`). Phase 0 is down to a single
-banked idea (node-bypass ability, session 9), not blocking.
+**Phase 1 is complete** (session 16, `/dev-session`) — a fully
+rules-correct, headless, tested 2-player Cribbage engine in
+`src/engine/`. Next up is scoping **Phase 2** (the combat wrapper: dual
+initiative gauges, subroutine enable-condition tracking, fire-on-turn
+resolution). Phase 0 is down to a single banked idea (node-bypass
+ability, session 9), not blocking.
 
 ## Phase 0 — Remaining design passes
 
@@ -88,9 +90,22 @@ session before the implementation phases below can be fully scoped:
   failure into a recoverable one for specific builds. Noted session 9,
   explicitly "idea space to explore."
 
-## Phase 1 — Core Cribbage engine
+## Phase 1 — Core Cribbage engine ✅ complete (session 16)
 
-**Rules scope**: standard-rules, 2-player Cribbage, no game theming at
+Implemented in `src/engine/`: `rng.ts` (seeded PRNG), `cards.ts`/
+`deck.ts` (generic card model, shuffle), `deal.ts` (deal, discard-to-
+crib, cut, his heels), `pegging.ts` (the full play phase — 15s, pairs
+through double-pairs-royal, runs incl. out-of-order, exact 31, go/last-
+card), `scoring.ts` (hand + crib counting — fifteens, pairs, runs incl.
+double/triple runs, flush with the hand-vs-crib distinction, his nobs),
+`game.ts` (`playHands()` — the full deal→peg→count→alternate-dealer
+loop). 49 tests passing, all 8 session-5 scoring categories + the
+consecutive-go and exact-31-vs-go edge cases covered, verified via
+`npm run check` (clean) throughout. Deliberately has no target-score/
+winner concept — that's Control/Breach's job (Phase 2+), not this
+engine's.
+
+**Rules scope (as originally spec'd)**: standard-rules, 2-player Cribbage, no game theming at
 all — no Heat, Control/Breach, subroutines, archetypes, classes, or map,
 that's Phase 2+. Deal 6 cards each, discard 2 to the crib, cut the
 starter (including **his heels** — dealer scores 2 if the starter is a
