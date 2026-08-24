@@ -1,17 +1,18 @@
 # crib.exe — Backlog
 
 Phased roadmap. First pass, written at the end of session 1, updated end
-of sessions 2-11 — expect this to be revised as design and implementation
+of sessions 2-12 — expect this to be revised as design and implementation
 proceed. See `DESIGN.md` for the settled design and its own Open
 Questions section.
 
 ## NEXT SESSION
 
 Phase 0, next item: pick which remaining design gap to tackle next
-(each class's starting loadout — needs concrete named subroutines first,
-class unlock order for the middle four, or the banked node-bypass idea)
+(class unlock order for the middle four, or the banked node-bypass idea)
 — own `/decision-session` per item, same live-one-at-a-time discipline as
-sessions 1-11 (see `.claude/dev-session.md`).
+sessions 1-12 (see `.claude/dev-session.md`). Phase 0 is nearly clear —
+worth considering whether to start scoping Phase 1 (core Cribbage engine)
+soon instead.
 
 ## Phase 0 — Remaining design passes
 
@@ -50,8 +51,14 @@ session before the implementation phases below can be fully scoped:
   — done, session 8: 6 classes designed (Breacher, Blackhat, Saboteur,
   Operator, Warden, Ghost), Breacher starting/Ghost last in unlock order.
   Starting loadouts remain a separate, still-open item below.
-- Each class's starting loadout — needs concrete named subroutines to
-  exist first, not just the abstract payload/trigger catalogs.
+- ~~Each class's starting loadout~~ — done, session 12: the first 18
+  concrete named subroutines in the game (3 per class — 1 per specialized
+  archetype + 1 thematic Cantrip). Structure revised mid-session from an
+  original 4-per-loadout (2 per archetype) draft after user pushback
+  that it left too few open slots; two onboarding/balance fixes applied
+  (Session Lock's trigger changed off a buildup-requiring one since
+  Breacher is the intro class; Low Profile given a Heat floor so a Ghost
+  player can't grind Heat pressure away entirely).
 - Class unlock order for the middle four (Blackhat, Saboteur, Operator,
   Warden) — not specified.
 - ~~Each class's mild starting passive~~ — done, session 11: Foothold

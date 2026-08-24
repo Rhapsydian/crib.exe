@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-11 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-12 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -236,9 +236,8 @@ Each class specializes in 2 of the 4 archetypes — its reward pool draws
 occasional access to one via the off-class/universal pool. All 6
 possible pairings are designed thematically now; not all need to ship as
 day-one classes — some can sequence in later as meta-progression unlocks
-(the same way StS added Watcher post-launch). Starting loadouts (the
-actual subroutines each class begins with) aren't designed yet — see
-Open Questions.
+(the same way StS added Watcher post-launch). Starting loadouts are
+below.
 
 | Class | Archetypes | Identity | Starting Passive |
 |---|---|---|---|
@@ -259,6 +258,91 @@ toolkit (pure defense) double as offense, directly answering the
 damage-access gap noted when Ghost was introduced above (defending so
 precisely that the attacker's own aggression backfires on them),
 complementary to the off-class reward-pool access Ghost already has.
+
+### Starting Loadouts
+
+Each class begins a run with 3 subroutines — 1 from each of its 2
+specialized archetypes, plus 1 thematic **Cantrip** (Always-triggered,
+see Subroutine Trigger Catalog) — not 2 per archetype as originally
+drafted. A denser starting kit was tried first and rejected: with a
+~6-slot installed-loadout cap (see Subroutine Acquisition), 4 starting
+pieces would leave only 2-3 open slots, meaning near-immediate forced
+swap-outs and little room for early-run acquisition to actually matter.
+3 per loadout leaves more breathing room. All 6 Cantrips below are
+tagged **Daemon**, consistent with session 10's own definition of the tag
+("Accumulator-triggered, DoT/HoT, Always/Cantrip subroutines") rather
+than reaching for tags arbitrarily.
+
+**Breacher** (Exploit + Encryption):
+- *Buffer Overflow* — Exploit, instant burst, Occurrence: Run.
+- *Session Lock* — Encryption, instant counter-push, Self-state: dealer
+  this hand.
+- *Steady Hand* (Cantrip) — Always; small guaranteed Control/Breach push
+  in your favor every turn. Tag: Daemon.
+
+**Blackhat** (Exploit + Malware):
+- *Payload Drop* — Exploit, risk/reward burst (costs Heat), Occurrence:
+  Fifteen. Ties directly to the "Zero Day" passive.
+- *Logic Bomb* — Malware, DoT (caster's-turn pulse), Accumulator:
+  point-cooldown. Tag: Daemon.
+- *Static Noise* (Cantrip) — Always; small guaranteed burst that also
+  generates a tiny amount of Heat each time. Tag: Daemon.
+
+**Saboteur** (Malware + Root):
+- *Silent Worm* — Malware, DoT (global pulse), Accumulator: point-
+  cooldown; also feeds a Root subroutine's condition each tick — embodies
+  "corrupt and manipulate" in one piece. Tag: Worm.
+- *Time Bomb* — Root, scheduled sabotage (resolves at next deal),
+  Enemy-state: enemy Control/Breach position. Tag: Trap.
+- *Background Process* (Cantrip) — Always; no direct effect, quietly
+  advances progress on another subroutine's condition each turn. Tag:
+  Daemon.
+
+**Operator** (Exploit + Root):
+- *Precision Strike* — Exploit, piercing burst, Occurrence: Pair. Tag:
+  Backdoor.
+- *Priority Override* — Root, instant manipulation, advances another
+  subroutine's condition, Enemy-state — the mechanical echo of the
+  "Primed" passive.
+- *Ping Sweep* (Cantrip) — Always; small guaranteed nudge to the enemy's
+  gauge or a reveal, every turn. Tag: Daemon.
+
+**Warden** (Malware + Encryption):
+- *Memory Leak* — Malware, DoT (global pulse), Accumulator:
+  point-cooldown. Tag: Daemon.
+- *Redundant Systems* — Encryption, HoT (caster's-turn pulse),
+  Self-state: Control/Breach in enemy's favor. Tag: Daemon.
+- *Routine Maintenance* (Cantrip) — Always; small guaranteed self-heal/
+  ward tick every turn. Tag: Daemon.
+
+**Ghost** (Encryption + Root):
+- *Null Session* — Encryption, instant counter-push, Self-state:
+  Control/Breach in enemy's favor — directly interacts with "Return to
+  Sender."
+- *Kill Switch* — Root, scheduled sabotage (resolves at next deal),
+  Enemy-state: enemy Control/Breach position. Tag: Trap.
+- *Low Profile* (Cantrip) — Always; small guaranteed Heat reduction
+  every turn, **with a floor** — cannot reduce Heat below some threshold
+  (exact value TBD/playtesting). Reinforces the stay-hidden identity and
+  gives Ghost a second structural tool alongside its passive (one fixes
+  damage-access, one manages Heat).
+
+**Three design notes worth keeping visible, not just the results:**
+
+- *Session Lock*'s trigger was originally "Heat above threshold," changed
+  to "dealer this hand" — a Self-state trigger that requires buildup is a
+  real problem specifically on the *introductory* class, where it would
+  leave one of only 3 starting pieces dead until Heat accumulated. Bad
+  onboarding. "Dealer this hand" is live from turn one.
+- *Redundant Systems* has the same buildup-delay shape Session Lock had,
+  but it was kept as-is — being behind and grinding back is Warden's
+  actual theme, and Warden isn't the class new players see first.
+- *Low Profile*'s Heat reduction needed a floor: unbounded, Ghost's own
+  identity (long, patient, grindy fights = many turns = many guaranteed
+  fires) means a Ghost player could eventually neutralize Heat pressure
+  entirely just by grinding — undermining the resource specifically for
+  the class most likely to rely on long fights. A floor keeps baseline
+  risk present no matter how long a fight runs.
 
 ### Subroutine payload catalog
 
@@ -474,8 +558,5 @@ the red/green proximity above, though that's not why it was raised).
 
 Deferred to future design/decision sessions, not resolved yet:
 
-- Each class's starting loadout (specific subroutines) — needs concrete
-  named subroutines to exist first, not just the abstract catalogs (see
-  Classes, under Meta-Progression).
 - Class unlock order for the middle four (Blackhat, Saboteur, Operator,
   Warden) — Breacher-first and Ghost-last are settled, the rest aren't.
