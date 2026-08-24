@@ -308,3 +308,19 @@ passive item pool.
 
 Additional subroutines/classes/enemy rosters/contract targets, balance
 pass, suit/subroutine art.
+
+**Balance-pass context from Phase 3's own sweep (session 20)**: a
+500-seed sweep of `playRun()` under default settings (`beelineToGatekeeper`,
+no exploring or resting) found only a 3.8% victory rate — 63.6%
+quarantined, 32.6% no route remains, averaging 0.75/4 layers cleared.
+Not a Phase 3 defect: Phase 3's player loadout is a small, static
+representative set that never improves across a run (no acquisition
+system exists yet), so surviving reduces to four independent, un-upgraded
+coin-flips against each layer's gatekeeper — exactly the compounding
+attrition you'd expect with zero character growth in between. It does
+mean a real balance pass can't happen until Phase 4's acquisition system
+(combat rewards, Merge, Shop) exists and the player's loadout can
+actually grow run-over-run. Re-run the same measurement (`playRun()`'s
+outcome distribution across many seeds) once Phase 4 lands, as a
+concrete, repeatable check rather than tuning purely by feel — a
+static-loadout sweep like this one won't reflect real play.
