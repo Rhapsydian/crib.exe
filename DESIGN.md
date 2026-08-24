@@ -239,6 +239,14 @@ Broad strokes, not yet detailed:
   below) can grow via a persistent, cross-run unlock, the same as
   everything else on this list.
 
+**Scope note (session 21)**: of this list, only Classes and Subroutine
+Acquisition are designed enough to build — see `BACKLOG.md` Phase 4.
+Ascension-style difficulty and the expanding in-run passive-item pool are
+still genuinely undesigned ("broad strokes" above is the whole design so
+far) and need their own future `/decision-session` before either is
+implementation-ready; they're deferred to Phase 5 alongside other
+undesigned content.
+
 ### Subroutine acquisition
 
 How subroutines are actually acquired and managed during a run:
@@ -251,6 +259,13 @@ not detailed here. Reward quality scales with encounter difficulty: a
 regular fight offers a standard choice, an elite/gatekeeper fight offers
 a better one (more options, better odds, or guaranteed rarity — exact
 tuning TBD).
+
+**Earning Data** (session 21): awarded automatically on every combat win,
+scaled by encounter tier — reuses Phase 3's `rewardTier` stub
+(`none`/`standard`/`better`) rather than introducing a second difficulty
+axis, the same tier-scaling shape Heat's loss formula already uses.
+Independent of the subroutine-reward choice, not a trade-off against it —
+a win grants both.
 
 **Reward pool scoping**: draws primarily from the player's class's 2
 specialized archetypes (see Meta-Progression above), plus a smaller pool
@@ -642,6 +657,19 @@ game with no downstream consumer, so a folder convention plus the fact
 that engine tests run in plain Node with zero browser context is enough
 to actually enforce the engine/UI separation above, without the extra
 tooling a workspace split would add for no real payoff here.
+
+**No cross-run persistence yet (session 21)**: everything through Phase 4
+is a single self-contained, seeded `playRun()` call — there's no save/
+profile layer remembering state between separate runs. This matters
+because Meta-Progression's designed class **unlock order** (session 13)
+and its general "persists across runs" unlocks (slot cap growth,
+subroutine pool growth) all assume one exists. Phase 4 deliberately
+doesn't build it: all 6 classes ship immediately selectable as a run-setup
+parameter, with unlock order recorded as intended future gating, not
+enforced. A save/profile system is a distinct, not-yet-scoped piece of
+infrastructure, orthogonal to combat/run mechanics — same treatment as
+stubbing a system this project isn't ready to build yet (Phase 3's Merge/
+Shop nodes, Phase 2's representative subroutine set).
 
 ## Theming
 

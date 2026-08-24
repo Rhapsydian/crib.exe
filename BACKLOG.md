@@ -14,18 +14,12 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Phase 3 is now implementation-complete** (session 20 — see below). No
-fixed pointer for next session — two reasonable directions, neither
-blocking the other: (1) start Phase 4 (meta-progression: classes,
-subroutine unlock pool, Ascension-style difficulty, in-run passives) via
-a `/decision-session` scoping pass, same shape as sessions 15/17/19; or
-(2) a content pass wiring the real 18 starting-loadout subroutines into
-Phase 2/3's infrastructure. Note Phase 4 is genuinely wanted soon either
-way — it's what Phase 3's own sweep (see Phase 3 and Phase 5 below) needs
-before a real balance pass is even possible. Phase 2 remains
-infrastructure-complete/content-partial (small representative subroutine
-set, not the real 18 from session 12). Phase 0 is down to a single
-banked idea (node-bypass ability, session 9), not blocking.
+**Phase 4 is now scoped** (session 21, `/decision-session` — see below).
+Next session should implement it via `/dev-session`, following the
+6-checkpoint spec below (this also finally wires the real 18
+starting-loadout subroutines from session 12 into the engine, folding in
+what used to be the separate "content pass" direction). Phase 0 is down
+to a single banked idea (node-bypass ability, session 9), not blocking.
 
 ## Phase 0 — Remaining design passes
 
@@ -319,15 +313,106 @@ not several at once, not a bug. A separate 500-seed sweep under default
 settings found only a 3.8% victory rate; see Phase 5 below for why that's
 expected (a static, un-upgradeable test loadout), not a Phase 3 defect.
 
-## Phase 4 — Meta-progression
+## Phase 4 — Meta-progression (classes + acquisition)
 
-Classes, subroutine unlock pool, Ascension-style difficulty, in-run
-passive item pool.
+Scoped session 21 (`/decision-session`, same engineering-scoping category
+as sessions 15/17/19). Of the four things the original one-line sketch
+bundled (classes, subroutine unlock pool, Ascension difficulty, in-run
+passive items), only **Classes** (sessions 8/11/12/13) and **Subroutine
+Acquisition** (session 7) are actually designed — Ascension and the
+expanding passive-item pool are still "broad strokes only" in
+`DESIGN.md` and need their own future `/decision-session` before they're
+buildable; both move to Phase 5 alongside other undesigned content, same
+treatment Phase 5 already gives additional subroutines/classes/rosters.
+
+Also finally gives Phase 3's stubbed **Merge** and **Shop** nodes real
+behavior — they were left inert specifically because this phase's
+systems didn't exist yet.
+
+**Two real gaps this session closed** (neither had ever been designed,
+not just left as implementation detail):
+- **Data's source** (`DESIGN.md` Subroutine Acquisition): awarded on
+  every combat win, scaled by encounter tier via Phase 3's `rewardTier`
+  stub — same tier-scaling shape as Heat's existing loss formula,
+  independent of the subroutine-reward choice.
+- **No cross-run persistence** (`DESIGN.md` Architecture): nothing
+  through Phase 4 remembers state between separate `playRun()` calls.
+  Classes' designed unlock order (session 13) is recorded as intended
+  future gating, not enforced — all 6 classes ship immediately
+  selectable as a run-setup parameter. A save/profile layer is distinct,
+  unscoped infrastructure, not this phase's job.
+
+**Reward-pool content**: reuses the real 18 starting-loadout subroutines
+from session 12 as-is (each archetype already has 3 distinct named
+subroutines across sibling classes, e.g. Breacher's pool can offer
+Blackhat's *Payload Drop* and Operator's *Precision Strike*, both
+Exploit) plus the 6 universal Cantrips — no new subroutine content this
+phase. A class's own already-owned pieces stay in its reward pool too
+(drawing one becomes Merge material, not a wasted offer — see
+Checkpoint E). A genuinely larger, purpose-authored subroutine pool is
+Phase 5 content work, not required to exercise this phase's machinery.
+
+**Starting passives**: the 6 (Foothold, Zero Day, Sleeper Cell, Primed,
+Feedback Loop, Return to Sender) are heterogeneous one-off effects, not
+instances of a shared pattern the way subroutine triggers/payloads are —
+hand-coded as discrete hooks into combat resolution, not a generic
+passive framework. Building generic passive-hook infrastructure now,
+before Phase 5's actual passive-item pool exists or is even designed,
+would be speculative — revisit genericizing if/when that pool is
+designed.
+
+- **Checkpoint A — Class type system & content**: `ClassId` union (6),
+  `ClassDefinition` (archetype pair, identity text, starting-passive id,
+  starting loadout), plus authoring all 18 real `SubroutineDefinition`s
+  from session 12 as actual data (currently only prose in `DESIGN.md` and
+  a small representative test set from Phase 2) — replaces/supplements
+  that representative set. `playRun()`/run-setup takes a `ClassId`
+  parameter; all 6 selectable with no unlock gating (per the persistence
+  note above).
+- **Checkpoint B — Starting passives**: the 6 bespoke hooks wired into
+  combat resolution at whichever point each needs (gauge-cross for
+  Foothold, Heat-cost waiver for Zero Day, debuff-application for Sleeper
+  Cell, Root-fire for Primed, HoT-tick for Feedback Loop, counter-push for
+  Return to Sender), each active only for its own class.
+- **Checkpoint C — Data & combat rewards**: Data awarded per win, tiered
+  via `rewardTier` (session 21 decision above); a subroutine-choice reward
+  (pick 1 of N — exact N TBD/playtesting, same treatment as other numeric
+  TBDs) drawn from the reward-pool scoping already in `DESIGN.md`
+  (primarily the class's 2 archetypes + universal, weighting exact TBD).
+- **Checkpoint D — Bench & installed loadout**: per-player `bench`
+  (owned, uninstalled) vs. `installed` (active, evaluated each fight,
+  capped) collections; between-fights install/uninstall/reorder (session
+  3 — mid-combat stays Togglable-only, unchanged); slot cap as a
+  run-setup parameter, exact number TBD/playtesting (6 floated as flavor
+  only, per session 7).
+- **Checkpoint E — Duplicate material & Merge**: acquiring an
+  already-owned subroutine becomes bench material instead of a second
+  installed-ineligible copy; Merge node (Phase 3 stub) becomes real —
+  spends material to improve magnitude/efficiency only (bigger payload,
+  lower threshold, higher Scaling cap), never payload sub-type or trigger
+  family; rank-capped, exact cap TBD.
+- **Checkpoint F — Shop wiring**: Shop node (Phase 3 stub) becomes real —
+  spend Data on a specific pick (not a random offer) from the same
+  reward-pool scoping as Checkpoint C.
+
+**Exit criteria**: a full 4-layer run resolves headlessly by script with
+any of the 6 classes selected — starting loadout and starting passive
+both functioning from turn one; combat wins grant tiered Data plus a
+subroutine reward choice; bench/installed loadout management works
+between fights; duplicate acquisitions become Merge material; Merge and
+Shop nodes resolve for real, no longer inert stubs; all covered by
+automated tests; zero UI; zero regression in Phase 1-3's existing test
+suites. Once this lands, re-run session 20's `playRun()` outcome-
+distribution sweep (see Phase 5 below) as the first real balance
+check — a static loadout no longer applies once acquisition exists.
 
 ## Phase 5 — Content & polish
 
 Additional subroutines/classes/enemy rosters/contract targets, balance
-pass, suit/subroutine art.
+pass, suit/subroutine art. Also now owns two systems deferred from Phase
+4 for being undesigned, not just unbuilt — **Ascension-style difficulty**
+and the **expanding in-run passive-item pool** — each needs its own
+`/decision-session` design pass before it's implementation-ready.
 
 **Balance-pass context from Phase 3's own sweep (session 20)**: a
 500-seed sweep of `playRun()` under default settings (`beelineToGatekeeper`,
