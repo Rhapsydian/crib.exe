@@ -1,5 +1,5 @@
 import type { PeggingEvent, PlayerIndex } from './pegging';
-import type { HandScoreBreakdown } from './scoring';
+import type { HandScoreEvent } from './scoring';
 import type {
   AlwaysTrigger,
   ChainedTrigger,
@@ -64,18 +64,29 @@ export function occurrencesFromPeggingEvent(event: PeggingEvent): ScoringOccurre
   return [];
 }
 
-/** Adapts a show/count-phase hand or crib breakdown into occurrences. */
-export function occurrencesFromHandBreakdown(
-  breakdown: HandScoreBreakdown,
-  player: PlayerIndex,
-): ScoringOccurrence[] {
-  const occurrences: ScoringOccurrence[] = [];
-  if (breakdown.fifteens > 0) occurrences.push({ category: 'fifteen', player, magnitude: breakdown.fifteens });
-  if (breakdown.pairs > 0) occurrences.push({ category: 'pair', player, magnitude: breakdown.pairs });
-  if (breakdown.runs > 0) occurrences.push({ category: 'run', player, magnitude: breakdown.runs });
-  if (breakdown.flush > 0) occurrences.push({ category: 'flush', player, magnitude: breakdown.flush });
-  if (breakdown.nobs > 0) occurrences.push({ category: 'hisNobs', player, magnitude: breakdown.nobs });
-  return occurrences;
+const HAND_EVENT_CATEGORY: Record<HandScoreEvent['category'], OccurrenceCategory> = {
+  fifteen: 'fifteen',
+  pair: 'pair',
+  run: 'run',
+  flush: 'flush',
+  nobs: 'hisNobs',
+};
+
+/**
+ * Adapts the show/count phase's discrete event list (scoring.ts's
+ * countHandEvents/countCribEvents) into occurrences, one-to-one — unlike
+ * a lumped breakdown, this correctly produces 2 separate 'fifteen'
+ * occurrences for 2 distinct 15-combinations in the same hand, or 2
+ * separate 'pair' occurrences for 2 different-rank pairs, while still
+ * keeping a pair royal as the single magnitude-variant event it already
+ * is at the scoring.ts level.
+ */
+export function occurrencesFromHandEvents(events: HandScoreEvent[], player: PlayerIndex): ScoringOccurrence[] {
+  return events.map((event) => ({
+    category: HAND_EVENT_CATEGORY[event.category],
+    player,
+    magnitude: event.points,
+  }));
 }
 
 /** His Heels scores at the cut, not from either breakdown — sourced

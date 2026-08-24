@@ -17,22 +17,29 @@ export function createInitiativeGauge(threshold: number): InitiativeGauge {
 
 export interface InitiativeGaugeUpdate {
   gauge: InitiativeGauge;
-  turnTriggered: boolean;
+  /** How many times the threshold was crossed by this one addition — 0
+   * for no turn, 1 for a normal crossing, 2+ when a single big scoring
+   * event (e.g. a large hand count) spans the threshold more than once. */
+  turnsTriggered: number;
 }
 
 /**
- * Feeds a side's own scored points into its gauge. Crossing the
- * threshold resets progress to 0 and flags a turn for that side — no
- * carry-over of overshoot, matching DESIGN.md's plain reset-on-cross
- * wording.
+ * Feeds a side's own scored points into its gauge. Overshoot past a
+ * crossing carries into the next cycle rather than being discarded, and
+ * a single addition large enough to cross the threshold more than once
+ * reports multiple triggered turns — a hand-count that dumps 24 points
+ * against a threshold of 12 is 2 full turns, not 1 turn plus 12 wasted
+ * points.
  */
 export function addPoints(gauge: InitiativeGauge, points: number): InitiativeGaugeUpdate {
-  if (points <= 0) return { gauge, turnTriggered: false };
-  const progress = gauge.progress + points;
-  if (progress >= gauge.threshold) {
-    return { gauge: { ...gauge, progress: 0 }, turnTriggered: true };
+  if (points <= 0) return { gauge, turnsTriggered: 0 };
+  let progress = gauge.progress + points;
+  let turnsTriggered = 0;
+  while (progress >= gauge.threshold) {
+    progress -= gauge.threshold;
+    turnsTriggered += 1;
   }
-  return { gauge: { ...gauge, progress }, turnTriggered: false };
+  return { gauge: { ...gauge, progress }, turnsTriggered };
 }
 
 /** Control/Breach is a single shared scalar, not two HP pools. 100 is

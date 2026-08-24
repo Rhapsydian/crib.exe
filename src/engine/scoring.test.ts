@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Card } from './cards';
-import { countHand, countCrib } from './scoring';
+import { countHand, countCrib, countHandEvents } from './scoring';
 
 describe('countHand — the maximum hand', () => {
   it('scores 29 for 5-5-5-J with a matching-suit 5 starter', () => {
@@ -167,6 +167,70 @@ describe('countHand/countCrib — his nobs', () => {
     ];
     const starter: Card = { rank: 3, suit: 2 };
     expect(countHand(hand, starter).nobs).toBe(0);
+  });
+});
+
+describe('countHandEvents — discrete events, not lumps', () => {
+  it('emits one event per distinct 15-combination rather than one summed lump', () => {
+    // Same hand as the "fifteens" lump test above: {10, 5} and {4, 6, 5}
+    // are two structurally distinct combinations, so this must be 2
+    // separate events, not one event worth 4.
+    const hand: Card[] = [
+      { rank: 10, suit: 0 },
+      { rank: 2, suit: 0 },
+      { rank: 4, suit: 0 },
+      { rank: 6, suit: 0 },
+    ];
+    const starter: Card = { rank: 5, suit: 1 };
+    const fifteens = countHandEvents(hand, starter).filter((e) => e.category === 'fifteen');
+    expect(fifteens).toEqual([
+      { category: 'fifteen', points: 2 },
+      { category: 'fifteen', points: 2 },
+    ]);
+  });
+
+  it('emits one event per distinct-rank pair, not one summed lump, when two different ranks each pair up', () => {
+    const hand: Card[] = [
+      { rank: 5, suit: 0 },
+      { rank: 5, suit: 1 },
+      { rank: 2, suit: 0 },
+      { rank: 2, suit: 1 },
+    ];
+    const starter: Card = { rank: 9, suit: 2 };
+    const pairs = countHandEvents(hand, starter).filter((e) => e.category === 'pair');
+    expect(pairs).toEqual([
+      { category: 'pair', points: 2 },
+      { category: 'pair', points: 2 },
+    ]);
+  });
+
+  it('keeps a pair royal as a single magnitude-variant event, not 3 separate pairs', () => {
+    const hand: Card[] = [
+      { rank: 5, suit: 0 },
+      { rank: 5, suit: 1 },
+      { rank: 5, suit: 2 },
+      { rank: 9, suit: 0 },
+    ];
+    const starter: Card = { rank: 2, suit: 1 };
+    const pairs = countHandEvents(hand, starter).filter((e) => e.category === 'pair');
+    expect(pairs).toEqual([{ category: 'pair', points: 6 }]);
+  });
+
+  it('orders events fifteens, then pairs, then runs, then flush, then nobs', () => {
+    const hand: Card[] = [
+      { rank: 5, suit: 0 },
+      { rank: 5, suit: 1 },
+      { rank: 5, suit: 2 },
+      { rank: 11, suit: 3 },
+    ];
+    const starter: Card = { rank: 5, suit: 3 };
+    const events = countHandEvents(hand, starter);
+    expect(events.map((e) => e.category)).toEqual([
+      'fifteen', 'fifteen', 'fifteen', 'fifteen', 'fifteen', 'fifteen', 'fifteen', 'fifteen',
+      'pair',
+      'nobs',
+    ]);
+    expect(events.reduce((sum, e) => sum + e.points, 0)).toBe(29);
   });
 });
 

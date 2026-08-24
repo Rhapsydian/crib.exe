@@ -12,29 +12,37 @@ import {
 describe('InitiativeGauge / addPoints', () => {
   it('accumulates points without triggering a turn while under threshold', () => {
     const gauge = createInitiativeGauge(10);
-    const { gauge: updated, turnTriggered } = addPoints(gauge, 6);
-    expect(turnTriggered).toBe(false);
+    const { gauge: updated, turnsTriggered } = addPoints(gauge, 6);
+    expect(turnsTriggered).toBe(0);
     expect(updated.progress).toBe(6);
   });
 
-  it('resets to 0 and triggers a turn the instant threshold is crossed', () => {
-    const gauge = createInitiativeGauge(10);
-    const { gauge: g1 } = addPoints(gauge, 6);
-    const { gauge: g2, turnTriggered } = addPoints(g1, 6);
-    expect(turnTriggered).toBe(true);
-    expect(g2.progress).toBe(0);
+  it('triggers a turn and carries the overshoot forward, rather than discarding it', () => {
+    const gauge = createInitiativeGauge(12);
+    const { gauge: g1 } = addPoints(gauge, 10);
+    const { gauge: g2, turnsTriggered } = addPoints(g1, 8); // 10 + 8 = 18
+    expect(turnsTriggered).toBe(1);
+    expect(g2.progress).toBe(6); // 18 - 12, not reset to 0
   });
 
   it('triggers on an exact threshold hit, not just overshoot', () => {
     const gauge = createInitiativeGauge(10);
-    const { turnTriggered } = addPoints(gauge, 10);
-    expect(turnTriggered).toBe(true);
+    const { turnsTriggered } = addPoints(gauge, 10);
+    expect(turnsTriggered).toBe(1);
+  });
+
+  it('triggers multiple turns when one addition spans the threshold more than once', () => {
+    const gauge = createInitiativeGauge(12);
+    const { gauge: g1 } = addPoints(gauge, 10);
+    const { gauge: g2, turnsTriggered } = addPoints(g1, 14); // 10 + 14 = 24 = 2x12 exactly
+    expect(turnsTriggered).toBe(2);
+    expect(g2.progress).toBe(0);
   });
 
   it('ignores non-positive point additions', () => {
     const gauge = createInitiativeGauge(10);
-    const { gauge: updated, turnTriggered } = addPoints(gauge, 0);
-    expect(turnTriggered).toBe(false);
+    const { gauge: updated, turnsTriggered } = addPoints(gauge, 0);
+    expect(turnsTriggered).toBe(0);
     expect(updated).toEqual(gauge);
   });
 });

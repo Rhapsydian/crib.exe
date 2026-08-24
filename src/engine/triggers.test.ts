@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import type { PegPlayEvent, PegGoEvent, PegGoPointEvent } from './pegging';
-import type { HandScoreBreakdown } from './scoring';
+import type { HandScoreEvent } from './scoring';
 import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
 import {
   createInitialState,
   resetAfterFire,
   updateSubroutineState,
   occurrencesFromPeggingEvent,
-  occurrencesFromHandBreakdown,
+  occurrencesFromHandEvents,
   occurrenceFromHisHeels,
   evaluateSelfState,
   evaluateEnemyState,
@@ -186,12 +186,21 @@ describe('occurrencesFromPeggingEvent', () => {
   });
 });
 
-describe('occurrencesFromHandBreakdown', () => {
-  it('produces one occurrence per non-zero scoring category', () => {
-    const breakdown: HandScoreBreakdown = { fifteens: 4, pairs: 2, runs: 0, flush: 4, nobs: 1, total: 11 };
-    const occurrences: ScoringOccurrence[] = occurrencesFromHandBreakdown(breakdown, 0);
-    expect(occurrences).toEqual([
-      { category: 'fifteen', player: 0, magnitude: 4 },
+describe('occurrencesFromHandEvents', () => {
+  it('maps each discrete scoring event to its own occurrence, 1:1', () => {
+    // Two distinct fifteens must stay 2 separate occurrences, not merge
+    // into one lump -- this is the whole point of the events-based
+    // adapter over a lumped-breakdown one.
+    const events: HandScoreEvent[] = [
+      { category: 'fifteen', points: 2 },
+      { category: 'fifteen', points: 2 },
+      { category: 'pair', points: 2 },
+      { category: 'flush', points: 4 },
+      { category: 'nobs', points: 1 },
+    ];
+    expect(occurrencesFromHandEvents(events, 0)).toEqual([
+      { category: 'fifteen', player: 0, magnitude: 2 },
+      { category: 'fifteen', player: 0, magnitude: 2 },
       { category: 'pair', player: 0, magnitude: 2 },
       { category: 'flush', player: 0, magnitude: 4 },
       { category: 'hisNobs', player: 0, magnitude: 1 },
