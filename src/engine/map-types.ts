@@ -47,3 +47,35 @@ export interface RunPosition {
 export function createNode(id: string, type: NodeType): MapNode {
   return { id, type, state: type === 'relay' ? 'inert' : 'unresolved' };
 }
+
+/** Pure topology query -- ignores node state. Callers that need
+ * state-aware reachability (e.g. excluding closed nodes) should filter
+ * `graph.edges` before calling this. */
+export function neighborsOf(graph: LayerGraph, nodeId: string): string[] {
+  const result: string[] = [];
+  for (const edge of graph.edges) {
+    if (edge.a === nodeId) result.push(edge.b);
+    else if (edge.b === nodeId) result.push(edge.a);
+  }
+  return result;
+}
+
+/** BFS reachability over `graph.edges`, ignoring node state -- shared by
+ * map-gen's generation-time resilience check (excluding one candidate
+ * node at a time) and the run orchestrator's live no-route-remains check
+ * (excluding all currently-closed nodes). */
+export function isReachable(graph: LayerGraph, fromId: string, toId: string): boolean {
+  if (fromId === toId) return true;
+  const visited = new Set<string>([fromId]);
+  const queue = [fromId];
+  while (queue.length > 0) {
+    const current = queue.shift() as string;
+    for (const neighbor of neighborsOf(graph, current)) {
+      if (visited.has(neighbor)) continue;
+      if (neighbor === toId) return true;
+      visited.add(neighbor);
+      queue.push(neighbor);
+    }
+  }
+  return false;
+}
