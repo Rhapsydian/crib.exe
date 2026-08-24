@@ -45,6 +45,13 @@ export interface CombatResult {
   winner: PlayerIndex;
   log: FireEvent[];
   hands: HandResult[];
+  /** The highest Breach/Containment value reached at any point in the
+   * match (session 9's "how far the player pushed the meter toward their
+   * own win before the enemy dragged it back" -- Breach/Containment stops
+   * dead at 0/100 with no overshoot, so the *final* value alone carries no
+   * margin-of-loss information; this running peak is what Phase 3's Heat
+   * formula needs instead). */
+  peakBreachContainment: number;
 }
 
 function replaceSideGauge(combatState: CombatState, side: PlayerIndex, gauge: InitiativeGauge): CombatState {
@@ -104,6 +111,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   let combatState = createCombatState(loadouts[0], loadouts[1], gaugeThreshold);
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
+  let peakBreachContainment = combatState.breachContainment;
 
   for (let i = 0; i < maxHands; i++) {
     const hand = playOneHand(dealer, scores, rng, discardStrategy, playStrategy);
@@ -122,9 +130,10 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
         });
         combatState = fired.combatState;
         log.push(...fired.events);
+        peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
 
         const winner = resolution(combatState);
-        if (winner !== null) return { winner, log, hands };
+        if (winner !== null) return { winner, log, hands, peakBreachContainment };
       }
     }
 
