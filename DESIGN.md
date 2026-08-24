@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-12 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-13 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -247,6 +247,23 @@ below.
 | **Operator** | Exploit + Root | Setup-and-strike: Root primes the field, Exploit cashes in. | **Primed** — the first time a Root subroutine fires each combat, reduce the next Exploit subroutine's trigger threshold. |
 | **Warden** | Malware + Encryption | Patient and grindy — wins by outlasting rather than outpacing. | **Feedback Loop** — Encryption HoT effects also apply a small Malware DoT tick to the enemy. |
 | **Ghost** | Encryption + Root | Pure control, no primary damage access — wins by locking the opponent down and opportunistically finishing with off-class picks. The last class unlocked; the most challenging to play. | **Return to Sender** — a portion of Control/Breach pushed back via Encryption's counter-push carries through past center into the enemy's territory. |
+
+**Unlock order**: Breacher → Blackhat → Warden → Saboteur → Operator →
+Ghost. A complexity ramp that also staggers when each archetype first
+appears. Blackhat (Exploit+Malware) is the simplest of the middle four —
+pure aggression, nothing indirect or delayed — and introduces Malware
+right after Breacher's Exploit+Encryption. Warden (Malware+Encryption)
+reuses two already-known archetypes, asking only for more patience, not
+new mechanics. Saboteur (Malware+Root) is where Root first appears — the
+most abstract archetype (delayed/scheduled effects, reading enemy state,
+indirect manipulation) — paired with the already-familiar Malware rather
+than two new things at once. Operator (Exploit+Root) is the most
+demanding of the four: Root's indirect tools plus precise sequencing to
+actually pay off (chain-finisher scaling, Priority Override). Putting
+both Root classes immediately before Ghost means a player has two full
+classes of Root practice before meeting Ghost — the hardest class, with
+zero direct-damage archetype — rather than meeting Root and Ghost's
+difficulty at the same time.
 
 All 6 are innate for the whole run once that class is picked, not
 something found mid-run — the same role StS's class-starting relics
@@ -556,7 +573,7 @@ the red/green proximity above, though that's not why it was raised).
 
 ## Open Questions
 
-Deferred to future design/decision sessions, not resolved yet:
-
-- Class unlock order for the middle four (Blackhat, Saboteur, Operator,
-  Warden) — Breacher-first and Ghost-last are settled, the rest aren't.
+None currently blocking — this section is clear as of session 13. One
+banked idea remains (a future ability to bypass a closed/lost map node,
+session 9), tracked in `BACKLOG.md` Phase 0 rather than here since it was
+never a required design gap, just a noted idea for later.

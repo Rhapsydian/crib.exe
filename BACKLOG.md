@@ -1,18 +1,17 @@
 # crib.exe — Backlog
 
 Phased roadmap. First pass, written at the end of session 1, updated end
-of sessions 2-12 — expect this to be revised as design and implementation
+of sessions 2-13 — expect this to be revised as design and implementation
 proceed. See `DESIGN.md` for the settled design and its own Open
 Questions section.
 
 ## NEXT SESSION
 
-Phase 0, next item: pick which remaining design gap to tackle next
-(class unlock order for the middle four, or the banked node-bypass idea)
-— own `/decision-session` per item, same live-one-at-a-time discipline as
-sessions 1-12 (see `.claude/dev-session.md`). Phase 0 is nearly clear —
-worth considering whether to start scoping Phase 1 (core Cribbage engine)
-soon instead.
+Phase 0 is down to a single banked idea (node-bypass ability, session 9)
+— not a required design gap, just noted for whenever it becomes
+relevant. Every actual Open Question is resolved. Strongly consider
+pivoting to scoping **Phase 1** (the core Cribbage engine) next, rather
+than continuing to look for Phase 0 work.
 
 ## Phase 0 — Remaining design passes
 
@@ -59,8 +58,10 @@ session before the implementation phases below can be fully scoped:
   (Session Lock's trigger changed off a buildup-requiring one since
   Breacher is the intro class; Low Profile given a Heat floor so a Ghost
   player can't grind Heat pressure away entirely).
-- Class unlock order for the middle four (Blackhat, Saboteur, Operator,
-  Warden) — not specified.
+- ~~Class unlock order for the middle four~~ — done, session 13:
+  Breacher → Blackhat → Warden → Saboteur → Operator → Ghost, a
+  complexity ramp that also staggers when each archetype first appears
+  (Root doesn't show up until Saboteur, the 4th class).
 - ~~Each class's mild starting passive~~ — done, session 11: Foothold
   (Breacher), Zero Day (Blackhat), Sleeper Cell (Saboteur), Primed
   (Operator), Feedback Loop (Warden), Return to Sender (Ghost — the one
