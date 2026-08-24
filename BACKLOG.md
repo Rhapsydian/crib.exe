@@ -14,14 +14,18 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Phase 3 is now fully scoped** (session 19, `/decision-session` — see
-below), ready for implementation: a `/dev-session` building its 6
-checkpoints (A-F), same shape as Phase 2's session 18. Phase 2 remains
-infrastructure-complete/content-partial (only a small representative
-subroutine set, not the real 18 from session 12) — that content pass is
-still available as a later alternative direction, not blocking Phase 3.
-Phase 0 is down to a single banked idea (node-bypass ability, session 9),
-not blocking.
+**Phase 3 is now implementation-complete** (session 20 — see below). No
+fixed pointer for next session — two reasonable directions, neither
+blocking the other: (1) start Phase 4 (meta-progression: classes,
+subroutine unlock pool, Ascension-style difficulty, in-run passives) via
+a `/decision-session` scoping pass, same shape as sessions 15/17/19; or
+(2) a content pass wiring the real 18 starting-loadout subroutines into
+Phase 2/3's infrastructure. Note Phase 4 is genuinely wanted soon either
+way — it's what Phase 3's own sweep (see Phase 3 and Phase 5 below) needs
+before a real balance pass is even possible. Phase 2 remains
+infrastructure-complete/content-partial (small representative subroutine
+set, not the real 18 from session 12). Phase 0 is down to a single
+banked idea (node-bypass ability, session 9), not blocking.
 
 ## Phase 0 — Remaining design passes
 
@@ -222,7 +226,7 @@ subroutines fire in loadout order with correct chaining, Breach/Containment
 correctly resolves the duel, all verified by automated tests, zero UI,
 zero regression in Phase 1's existing test suite.
 
-## Phase 3 — Network-map / run structure
+## Phase 3 — Network-map / run structure ✅ complete (session 20)
 
 Scoped session 19 (`/decision-session`, same engineering-scoping category
 as sessions 15 and 17). A headless, real-scale (4-layer), free-roam
@@ -298,6 +302,22 @@ closed nodes are genuinely impassable, gatekeeper crossings lock the prior
 layer, and all three run-ending conditions are independently reachable
 and covered by tests; zero UI; zero regression in Phase 1/2's existing
 test suites.
+
+**Implemented session 20** (`/dev-session`, all 6 checkpoints, 154 tests
+passing from 143). Mid-implementation, the user restored a 3rd fight
+tier — **eliteFight** — that session 19's node-type list had dropped
+despite `DESIGN.md`'s Heat formula always assuming one: tougher enemy
+loadout (empirically tuned to ~23% player win rate vs. ~60% for a
+regular fight, since Breach/Containment turned out to be a sharp
+positive-feedback race where even a small per-fire edge compounds hard),
+a higher Heat-on-loss base, and a `rewardTier` stub (`standard`/
+`better`/`none`) marking wins as reward-eligible for Phase 4. A 25-seed
+sweep with an aggressive "fight everything" strategy found `noRouteRemains`
+dominates (96%) rather than `heatMaxed` — a real, intended consequence of
+the resilience guarantee only promising safety against *one* closed node,
+not several at once, not a bug. A separate 500-seed sweep under default
+settings found only a 3.8% victory rate; see Phase 5 below for why that's
+expected (a static, un-upgradeable test loadout), not a Phase 3 defect.
 
 ## Phase 4 — Meta-progression
 
