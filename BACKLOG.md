@@ -207,7 +207,11 @@ continuous map; per-layer gatekeeper/boss encounters. **Requirement from
 session 9**: map generation must guarantee enough redundant routing per
 layer that permanently losing one regular/elite fight can't easily
 soft-lock a run (the "no route forward remains" loss condition needs to
-stay a real-but-rare outcome, not a near-certainty).
+stay a real-but-rare outcome, not a near-certainty). **Banked idea from
+session 18**: traversal will allow backtracking, so it needs a pressure
+valve — a minimum Heat gain per node hit, revisits included — or
+routing around a Containment loss becomes a free undo (see DESIGN.md
+Map & Run Structure).
 
 ## Phase 4 — Meta-progression
 

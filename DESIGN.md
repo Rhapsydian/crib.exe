@@ -162,6 +162,16 @@ could allow bypassing a closed/lost node, turning what's normally a
 permanent failure into a recoverable one for specific builds — "idea
 space to explore," not a commitment.
 
+**Banked idea, not designed yet**: map traversal will allow backtracking
+(revisiting nodes/edges already passed through), which needs its own
+pressure valve or backtracking to route around a closed/lost node (see
+above) becomes a free undo instead of a real trade-off. Leading
+candidate: a minimum amount of Heat gained per node hit, revisits
+included, not just on a lost duel — ties directly into Heat's existing
+"rest vs. push forward, risk vs. reward" framing (see Resources), so
+every node touched costs *something*. Exact amount TBD/playtesting, same
+treatment as other unresolved tuning values.
+
 ## Meta-Progression
 
 Broad strokes, not yet detailed:
