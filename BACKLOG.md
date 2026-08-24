@@ -1,7 +1,7 @@
 # crib.exe — Backlog
 
 Phased roadmap. First pass, written at the end of session 1, updated end
-of sessions 2-17 — expect this to be revised as design and implementation
+of sessions 2-18 — expect this to be revised as design and implementation
 proceed. See `DESIGN.md` for the settled design and its own Open
 Questions section.
 
@@ -14,10 +14,16 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Phase 2 now has a real spec** (session 17, six checkpoints — see
-below), same treatment session 15 gave Phase 1. Next up is actual
-implementation, a `/dev-session`. Phase 0 is down to a single banked
-idea (node-bypass ability, session 9), not blocking.
+**Phase 2 is now infrastructure-complete** (session 18, all six
+checkpoints — see below), content-partial: only a small representative
+subroutine set exists, not the real 18 starting-loadout subroutines from
+session 12. No fixed pointer for next session — two reasonable
+directions: (1) a `/decision-session` scoping Phase 3 (map/run
+structure), which now carries two banked ideas (backtracking Heat
+pressure, exclusive-branch junctions) to fold in; or (2) a content pass
+wiring the real 18 subroutines into Phase 2's infrastructure. Phase 0 is
+down to a single banked idea (node-bypass ability, session 9), not
+blocking.
 
 ## Phase 0 — Remaining design passes
 
@@ -133,7 +139,26 @@ Go) plus edge cases (consecutive "go"s, exact-31 vs. under-31 last-card
 scoring), playable end-to-end via two legal-move scripted players with
 zero UI involved.
 
-## Phase 2 — Combat wrapper
+## Phase 2 — Combat wrapper ✅ infrastructure complete, content-partial (session 18)
+
+Implemented across `src/engine/`: `pegging.ts` (Checkpoint A's
+categorized breakdown), `subroutine-types.ts` (Checkpoint B's full type
+system), `triggers.ts` (Checkpoint C's evaluation + runtime state, plus
+a mid-session revision reworking `scoring.ts` to expose discrete
+`countHandEvents`/`countCribEvents` instead of lumped totals),
+`gauges.ts` (Checkpoint D's initiative gauges + Breach/Containment, with
+the same revision adding overflow carry-over and multi-turn crossings),
+`resolve.ts` (Checkpoint E's payload dispatch + fire-on-turn
+resolution), and `combat.ts` (Checkpoint F's orchestrator, plus
+`game.ts`'s `playOneHand()` extraction). 101 tests passing (from 49),
+`npm run check` clean throughout. A full duel between two loadouts
+resolves via real Cribbage play with zero UI — every item in this
+section's exit criteria met, using the small representative subroutine
+set per the "infrastructure-complete, content-partial" scope below;
+wiring the real 18 starting-loadout subroutines is a later content pass.
+Also renamed Control/Breach to **Breach/Containment** throughout (see
+`DESIGN.md` Resources) and introduced **Quarantine** for gatekeeper/boss
+losses specifically.
 
 **Scope (session 17)**: builds the *full* generic trigger/payload type
 system matching `DESIGN.md`'s complete catalog — not the narrower
