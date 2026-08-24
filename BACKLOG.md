@@ -27,7 +27,7 @@ session before the implementation phases below can be fully scoped:
 - ~~The 4 subroutine archetypes~~ — done, session 2: Exploit, Malware,
   Encryption, Root.
 - ~~Subroutine effect design space + enable-condition catalog~~ — done,
-  session 3: 2 resources (Heat, Control/Breach), full payload catalog
+  session 3: 2 resources (Heat, Breach/Containment), full payload catalog
   per archetype, 6 trigger families + Togglable.
 - ~~Mid-combat vs. between-fights loadout reordering~~ — done, session 3:
   reordering is between-fights only, toggling subroutines on/off is the
@@ -40,7 +40,7 @@ session before the implementation phases below can be fully scoped:
   5: 8 categories (Fifteen, Pair, Run, Flush, His Nobs, His Heels,
   Thirty-One, Go), each with 3 firing variations (Instant/Threshold/
   Scaling).
-- ~~Exactly how a lost Control/Breach duel translates into Heat gained~~
+- ~~Exactly how a lost Breach/Containment duel translates into Heat gained~~
   — done, session 9: base Heat cost by encounter tier, adjusted by
   margin of loss; gatekeeper/boss losses (any layer) bypass Heat and end
   the run outright instead, since a gatekeeper is the sole passage
@@ -100,11 +100,11 @@ double/triple runs, flush with the hand-vs-crib distinction, his nobs),
 loop). 49 tests passing, all 8 session-5 scoring categories + the
 consecutive-go and exact-31-vs-go edge cases covered, verified via
 `npm run check` (clean) throughout. Deliberately has no target-score/
-winner concept — that's Control/Breach's job (Phase 2+), not this
+winner concept — that's Breach/Containment's job (Phase 2+), not this
 engine's.
 
 **Rules scope (as originally spec'd)**: standard-rules, 2-player Cribbage, no game theming at
-all — no Heat, Control/Breach, subroutines, archetypes, classes, or map,
+all — no Heat, Breach/Containment, subroutines, archetypes, classes, or map,
 that's Phase 2+. Deal 6 cards each, discard 2 to the crib, cut the
 starter (including **his heels** — dealer scores 2 if the starter is a
 Jack; easy to miss since it's not spelled out here, but session 5's
@@ -172,14 +172,14 @@ categorized scoring event and reporting readiness. A small representative
 set of test subroutines — one or two per trigger family, not all 18 —
 enough to exercise the evaluation logic without needing final content.
 
-**Checkpoint D — Initiative gauges + Control/Breach**: a per-side gauge
+**Checkpoint D — Initiative gauges + Breach/Containment**: a per-side gauge
 that accumulates from that side's own scoring and resets + flags a turn
-on crossing its threshold; the shared Control/Breach push/pull meter,
+on crossing its threshold; the shared Breach/Containment push/pull meter,
 detecting resolution at either extreme.
 
 **Checkpoint E — Fire-on-turn resolution**: on a side's turn, iterate
 their loadout top-to-bottom, fire every subroutine that's both ready and
-not toggled off, resolve payloads against Control/Breach or the opposing
+not toggled off, resolve payloads against Breach/Containment or the opposing
 side's state, respecting chaining between subroutines in sequence (one
 buffing the next, or feeding a later one's condition).
 
@@ -189,13 +189,13 @@ exact existing behavior and pass its existing tests unchanged, a real
 regression risk worth being careful about. New `combat.ts`'s
 `playCombat()` loops `playOneHand()`, feeding both sides' gauges and
 subroutine state, firing subroutines on turns, continuing until
-Control/Breach resolves (not a fixed hand count); returns the winner and
+Breach/Containment resolves (not a fixed hand count); returns the winner and
 a full event log.
 
 **Exit criteria**: a working combat duel — two loadouts (using the small
 representative subroutine set from Checkpoint C, not all 18) fight via
 real Cribbage play, initiative gauges correctly gate turns, ready
-subroutines fire in loadout order with correct chaining, Control/Breach
+subroutines fire in loadout order with correct chaining, Breach/Containment
 correctly resolves the duel, all verified by automated tests, zero UI,
 zero regression in Phase 1's existing test suite.
 

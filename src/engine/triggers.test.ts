@@ -28,7 +28,7 @@ function definitionWith(trigger: TriggerFamily): SubroutineDefinition {
 
 const emptyContext: TriggerContext = {
   self: { heat: 0, isDealer: false },
-  enemy: { controlBreach: 50, gaugeFillFraction: 0, activeDebuffIds: [] },
+  enemy: { breachContainment: 50, gaugeFillFraction: 0, activeDebuffIds: [] },
   firedSubroutineIdsThisTurn: new Set(),
 };
 
@@ -112,10 +112,10 @@ describe('contextual evaluators', () => {
     expect(evaluateSelfState({ kind: 'selfState', condition: 'isNonDealer' }, ctx)).toBe(false);
   });
 
-  it('evaluateEnemyState checks Control/Breach, gauge fill, and debuff presence', () => {
-    const ctx: EnemyStateContext = { controlBreach: 30, gaugeFillFraction: 0.8, activeDebuffIds: ['slowed'] };
-    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'controlBreachBelow', value: 50 }, ctx)).toBe(true);
-    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'controlBreachAbove', value: 50 }, ctx)).toBe(false);
+  it('evaluateEnemyState checks Breach/Containment, gauge fill, and debuff presence', () => {
+    const ctx: EnemyStateContext = { breachContainment: 30, gaugeFillFraction: 0.8, activeDebuffIds: ['slowed'] };
+    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'breachContainmentBelow', value: 50 }, ctx)).toBe(true);
+    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'breachContainmentAbove', value: 50 }, ctx)).toBe(false);
     expect(evaluateEnemyState({ kind: 'enemyState', condition: 'gaugeFillAbove', fraction: 0.5 }, ctx)).toBe(true);
     expect(evaluateEnemyState({ kind: 'enemyState', condition: 'hasDebuff', debuffId: 'slowed' }, ctx)).toBe(true);
     expect(evaluateEnemyState({ kind: 'enemyState', condition: 'hasDebuff', debuffId: 'stunned' }, ctx)).toBe(false);

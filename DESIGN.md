@@ -33,22 +33,30 @@ Two deliberately separate resources, not one shared health stat:
   explaining the "too much heat" idiom the name leans on. **Heat gained
   on a lost duel** = a base amount set by encounter tier (regular/elite/
   gatekeeper), adjusted by margin of loss — not literal overshoot past
-  the losing threshold (Control/Breach stops the instant it hits an end,
-  so there's nothing past it to measure), but how far the player managed
-  to push the meter toward their *own* win before the enemy dragged it
-  all the way back to theirs. A fight where the player got Control/Breach
-  to 80% in their favor before it swung costs noticeably less Heat than
-  one where the enemy dominated it from the first hand. Exact numbers
-  TBD/playtesting, same treatment as other unresolved tuning values. See
-  Map & Run Structure for what a lost duel means structurally, including
-  why gatekeeper/boss losses bypass Heat entirely and end the run
-  outright.
-- **Control/Breach** — an in-combat-only shared push/pull meter, a single
-  bar rather than two separate HP pools, that resolves the outcome of one
-  Cribbage duel. Exploit/Malware effects push it toward the opponent's
-  losing end; Encryption effects push it back toward center/your favor
-  (mitigation is an active counter-push, not a StS-style absorbing block
-  stat). Resets each combat.
+  the losing threshold (Breach/Containment stops the instant it hits an
+  end, so there's nothing past it to measure), but how far the player
+  managed to push the meter toward their *own* win before the enemy
+  dragged it all the way back to theirs. A fight where the player got
+  Breach/Containment to 80% in their favor before it swung costs
+  noticeably less Heat than one where the enemy dominated it from the
+  first hand. Exact numbers TBD/playtesting, same treatment as other
+  unresolved tuning values. See Map & Run Structure for what a lost duel
+  means structurally, including why gatekeeper/boss losses bypass Heat
+  entirely and end the run outright.
+- **Breach/Containment** — an in-combat-only shared push/pull meter, a
+  single bar rather than two separate HP pools, that resolves the outcome
+  of one Cribbage duel. **Breach** is the attacker's win: the vulnerability
+  gets successfully exploited and the node falls. **Containment** is the
+  defender's win: the target's security closes around the exploit before
+  it can be leveraged — the vulnerability gets patched/contained, and
+  that specific route into the node stops being viable (see Map & Run
+  Structure for what this means concretely — a closed node to route
+  around on a regular/elite loss, or full **Quarantine** — the player's
+  presence purged from the whole network — on a gatekeeper/boss loss).
+  Exploit/Malware effects push the meter toward Breach; Encryption
+  effects push it back toward Containment/center (mitigation is an
+  active counter-push, not a StS-style absorbing block stat). Resets
+  each combat.
 
 ## Combat System
 
@@ -79,8 +87,8 @@ Trigger Catalog) that accumulates across the whole match, separate from
 the initiative gauge. When a side's turn happens (initiative threshold
 crossed), *every* subroutine on that side whose condition is currently
 met fires — not just one — and its payload (see Subroutine Payload
-Catalog) resolves against Control/Breach or against the opposing side's
-state.
+Catalog) resolves against Breach/Containment or against the opposing
+side's state.
 
 Loadout order matters: when multiple subroutines fire on the same turn,
 they resolve top-to-bottom like a script. Subroutines can chain — one can
@@ -114,27 +122,34 @@ subroutine material gets spent to upgrade a base copy, creating real
 map-routing tension around detouring toward one.
 
 **Losing a fight has a spatial consequence, not just a resource cost.**
-Losing a regular or elite fight ejects the player from that node and
-permanently closes it for the rest of the run (closure has to be
-permanent, or the player could always eventually loop back and retry,
-which would make the loss condition below never actually trigger) — they
-have to route around it to keep progressing (see Resources for the Heat
-cost this also incurs). **Losing a gatekeeper/boss fight, in any layer,
-ends the run outright** — no Heat cost, straight to game over. This
-applies to every layer's gatekeeper, not only the deepest/final one, for
-two compounding reasons: it deliberately raises the stakes, and a
-gatekeeper is by definition the *sole* passage to the next layer, so
+Losing a regular or elite fight means the duel resolved to Containment
+(see Resources): the vulnerability the player was exploiting gets
+patched before they can leverage it, so that specific route into the
+node is gone. This ejects the player from that node and permanently
+closes it for the rest of the run (closure has to be permanent, or the
+player could always eventually loop back and retry, which would make the
+loss condition below never actually trigger) — they have to route around
+it to keep progressing (see Resources for the Heat cost this also
+incurs). **Losing a gatekeeper/boss fight, in any layer, ends the run
+outright** — call this **Quarantine** rather than mere Containment: it
+isn't one patched vulnerability to route around, it's the player's
+entire presence purged from the target network. A gatekeeper is by
+definition the *sole* passage forward, so there's nothing left on the
+other side of it to reach anyway — no Heat cost, straight to game over.
+This applies to every layer's gatekeeper, not only the deepest/final
+one, for two compounding reasons: it deliberately raises the stakes, and
 losing one is already an unavoidable dead end — treating it as instant
 permadeath is just being direct about an outcome that would otherwise
 degenerate into the same result anyway, rather than making the player
 limp through an already-lost run.
 
 This gives the run **three distinct ways to end**: (1) Heat maxes out
-(getting caught/burned) — the slow, cumulative-pressure failure; (2) a
-gatekeeper/boss loss, any layer — instant, since a gatekeeper is the only
-passage forward at that point; (3) no route to further progress remains
-— accumulated permanent node closures from regular/elite losses leave no
-path deeper, a soft-lock distinct from both of the above.
+(getting caught/burned) — the slow, cumulative-pressure failure; (2)
+Quarantine on a gatekeeper/boss loss, any layer — instant, since a
+gatekeeper is the only passage forward at that point; (3) no route to
+further progress remains — accumulated permanent node closures from
+regular/elite Containment losses leave no path deeper, a soft-lock
+distinct from both of the above.
 
 **Note for future map generation (Phase 3)**: this puts a soft
 requirement on the map-generation algorithm to guarantee enough redundant
@@ -241,12 +256,12 @@ below.
 
 | Class | Archetypes | Identity | Starting Passive |
 |---|---|---|---|
-| **Breacher** | Exploit + Encryption | Hit hard, then hold the position you just took. The starting/default class — balanced, good onboarding. | **Foothold** — the first time Control/Breach crosses to your favor each fight, gain a small extra push in your favor. |
+| **Breacher** | Exploit + Encryption | Hit hard, then hold the position you just took. The starting/default class — balanced, good onboarding. | **Foothold** — the first time Breach/Containment crosses to your favor each fight, gain a small extra push in your favor. |
 | **Blackhat** | Exploit + Malware | Pure offense, reckless, naturally Heat-hungry (Exploit's risk/reward payload leans right into this). | **Zero Day** — the first Heat-costing Exploit subroutine each combat costs no Heat. |
 | **Saboteur** | Malware + Root | Insidious — corrupts from within while manipulating the system around it. | **Sleeper Cell** — the first Malware debuff applied each combat also advances one Root subroutine's condition. |
 | **Operator** | Exploit + Root | Setup-and-strike: Root primes the field, Exploit cashes in. | **Primed** — the first time a Root subroutine fires each combat, reduce the next Exploit subroutine's trigger threshold. |
 | **Warden** | Malware + Encryption | Patient and grindy — wins by outlasting rather than outpacing. | **Feedback Loop** — Encryption HoT effects also apply a small Malware DoT tick to the enemy. |
-| **Ghost** | Encryption + Root | Pure control, no primary damage access — wins by locking the opponent down and opportunistically finishing with off-class picks. The last class unlocked; the most challenging to play. | **Return to Sender** — a portion of Control/Breach pushed back via Encryption's counter-push carries through past center into the enemy's territory. |
+| **Ghost** | Encryption + Root | Pure control, no primary damage access — wins by locking the opponent down and opportunistically finishing with off-class picks. The last class unlocked; the most challenging to play. | **Return to Sender** — a portion of Breach/Containment pushed back via Encryption's counter-push carries through past center into the enemy's territory. |
 
 **Unlock order**: Breacher → Blackhat → Warden → Saboteur → Operator →
 Ghost. A complexity ramp that also staggers when each archetype first
@@ -294,7 +309,7 @@ than reaching for tags arbitrarily.
 - *Buffer Overflow* — Exploit, instant burst, Occurrence: Run.
 - *Session Lock* — Encryption, instant counter-push, Self-state: dealer
   this hand.
-- *Steady Hand* (Cantrip) — Always; small guaranteed Control/Breach push
+- *Steady Hand* (Cantrip) — Always; small guaranteed Breach/Containment push
   in your favor every turn. Tag: Daemon.
 
 **Blackhat** (Exploit + Malware):
@@ -310,7 +325,7 @@ than reaching for tags arbitrarily.
   cooldown; also feeds a Root subroutine's condition each tick — embodies
   "corrupt and manipulate" in one piece. Tag: Worm.
 - *Time Bomb* — Root, scheduled sabotage (resolves at next deal),
-  Enemy-state: enemy Control/Breach position. Tag: Trap.
+  Enemy-state: enemy Breach/Containment position. Tag: Trap.
 - *Background Process* (Cantrip) — Always; no direct effect, quietly
   advances progress on another subroutine's condition each turn. Tag:
   Daemon.
@@ -328,16 +343,16 @@ than reaching for tags arbitrarily.
 - *Memory Leak* — Malware, DoT (global pulse), Accumulator:
   point-cooldown. Tag: Daemon.
 - *Redundant Systems* — Encryption, HoT (caster's-turn pulse),
-  Self-state: Control/Breach in enemy's favor. Tag: Daemon.
+  Self-state: Breach/Containment in enemy's favor. Tag: Daemon.
 - *Routine Maintenance* (Cantrip) — Always; small guaranteed self-heal/
   ward tick every turn. Tag: Daemon.
 
 **Ghost** (Encryption + Root):
 - *Null Session* — Encryption, instant counter-push, Self-state:
-  Control/Breach in enemy's favor — directly interacts with "Return to
+  Breach/Containment in enemy's favor — directly interacts with "Return to
   Sender."
 - *Kill Switch* — Root, scheduled sabotage (resolves at next deal),
-  Enemy-state: enemy Control/Breach position. Tag: Trap.
+  Enemy-state: enemy Breach/Containment position. Tag: Trap.
 - *Low Profile* (Cantrip) — Always; small guaranteed Heat reduction
   every turn, **with a floor** — cannot reduce Heat below some threshold
   (exact value TBD/playtesting). Reinforces the stay-hidden identity and
@@ -366,7 +381,7 @@ than reaching for tags arbitrarily.
 What a subroutine actually does when it fires. Each archetype has
 multiple sub-types rather than one move apiece:
 
-- **Exploit** (4): baseline **instant burst** (push Control/Breach toward
+- **Exploit** (4): baseline **instant burst** (push Breach/Containment toward
   the enemy's losing end); **piercing burst** (ignores Encryption's ward/
   counter-push entirely — true damage, unaffected by mitigation; Exploit's
   counter to defense-heavy builds); **chain-finisher scaling** (burst
@@ -375,16 +390,16 @@ multiple sub-types rather than one move apiece:
   "execute" mechanic); **risk/reward burst** (bigger push, but using the
   subroutine costs the player Heat directly — a second Heat-accumulation
   path alongside losing duels).
-- **Malware** (2): **DoT** (gradual Control/Breach push toward the
+- **Malware** (2): **DoT** (gradual Breach/Containment push toward the
   enemy's losing end over time — see tick cadence below) and **debuffs**
   (status effects that weaken the target's own functionality going
   forward, e.g. reduced subroutine effectiveness or slowed gauge fill —
   a status-effect stack applied *to a side*, distinct from Root's direct
   rewrites of values/flow).
-- **Encryption** (4): **instant counter-push** (Control/Breach back
+- **Encryption** (4): **instant counter-push** (Breach/Containment back
   toward center/your favor); **ward** (reactive negation — blocks a
   specific incoming effect the moment it would fire); **HoT** (gradual
-  Control/Breach push-back over time, mechanically symmetric to
+  Breach/Containment push-back over time, mechanically symmetric to
   Malware's DoT, same tick-cadence framework); **cleanse** (removes an
   existing debuff afflicting you).
 - **Root** (3): **instant manipulation** (directly alter a gauge/
@@ -453,7 +468,7 @@ archetype's subroutines can use — the same role Togglable already plays:
   firing, same as every subroutine's normal "fire, then reset and wait
   again" rule.
 - **Enemy-state triggers** — fire based on the opponent's condition:
-  their Control/Breach position, their initiative gauge fill %, or
+  their Breach/Containment position, their initiative gauge fill %, or
   whether they currently have one of your Malware debuffs active
   (cross-archetype combo potential). **Root's primary family** — Root's
   payloads are already enemy-directed (their gauge, tallies,

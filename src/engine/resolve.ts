@@ -7,14 +7,14 @@ import {
   type SubroutineRuntimeState,
   type TriggerContext,
 } from './triggers';
-import { createInitiativeGauge, createControlBreach, pushControlBreach, type InitiativeGauge } from './gauges';
+import { createInitiativeGauge, createBreachContainment, pushBreachContainment, type InitiativeGauge } from './gauges';
 
 /**
  * Fire-on-turn resolution (session 17 checkpoint E): given that a side's
  * turn has already been triggered (Checkpoint F's job, via the
  * initiative gauge), iterate that side's loadout top-to-bottom, fire
  * every subroutine that's ready and not toggled off, and resolve its
- * payload against Control/Breach or the opposing side's state.
+ * payload against Breach/Containment or the opposing side's state.
  */
 
 export interface ActiveDebuff {
@@ -57,7 +57,7 @@ export interface PendingSabotage {
 }
 
 export interface CombatState {
-  controlBreach: number;
+  breachContainment: number;
   sides: [CombatSideState, CombatSideState];
   pendingSabotage: PendingSabotage[];
 }
@@ -80,7 +80,7 @@ export function createCombatState(
   gaugeThreshold: number,
 ): CombatState {
   return {
-    controlBreach: createControlBreach(),
+    breachContainment: createBreachContainment(),
     sides: [createCombatSideState(playerLoadout, gaugeThreshold), createCombatSideState(enemyLoadout, gaugeThreshold)],
     pendingSabotage: [],
   };
@@ -100,11 +100,11 @@ function replaceSide(
   return copy;
 }
 
-/** Control/Breach's 0-100 scale is defined relative to side 0's favor
- * (100 = fully side 0's favor). A push "toward the caster" therefore
- * pushes up for side 0 and down for side 1. */
+/** Breach/Containment's 0-100 scale is defined relative to side 0's
+ * favor (100 = fully Breach, side 0's favor). A push "toward the caster"
+ * therefore pushes up for side 0 and down for side 1. */
 function pushTowardCaster(value: number, amount: number, caster: PlayerIndex) {
-  return pushControlBreach(value, amount, caster === 0);
+  return pushBreachContainment(value, amount, caster === 0);
 }
 
 function consumeWard(sideState: CombatSideState, archetype: Archetype): { sideState: CombatSideState; blocked: boolean } {
@@ -121,7 +121,7 @@ export interface ResolveContext {
   priorFireCountThisTurn: number;
 }
 
-/** Resolves one subroutine's payload against Control/Breach or the
+/** Resolves one subroutine's payload against Breach/Containment or the
  * opposing side's state. `archetype` comes from the firing subroutine's
  * definition (payloads themselves don't carry it) -- needed for ward
  * matching. */
@@ -139,24 +139,24 @@ export function resolvePayload(
       const { sideState, blocked } = consumeWard(combatState.sides[target], archetype);
       const sides = replaceSide(combatState.sides, target, sideState);
       if (blocked) return { ...combatState, sides };
-      const { value } = pushTowardCaster(combatState.controlBreach, payload.amount, caster);
-      return { ...combatState, controlBreach: value, sides };
+      const { value } = pushTowardCaster(combatState.breachContainment, payload.amount, caster);
+      return { ...combatState, breachContainment: value, sides };
     }
     case 'piercingBurst': {
       // Ignores wards entirely -- Exploit's counter to defense-heavy builds.
-      const { value } = pushTowardCaster(combatState.controlBreach, payload.amount, caster);
-      return { ...combatState, controlBreach: value };
+      const { value } = pushTowardCaster(combatState.breachContainment, payload.amount, caster);
+      return { ...combatState, breachContainment: value };
     }
     case 'chainFinisherScaling': {
       const amount = payload.baseAmount + payload.perPriorFire * context.priorFireCountThisTurn;
-      const { value } = pushTowardCaster(combatState.controlBreach, amount, caster);
-      return { ...combatState, controlBreach: value };
+      const { value } = pushTowardCaster(combatState.breachContainment, amount, caster);
+      return { ...combatState, breachContainment: value };
     }
     case 'riskRewardBurst': {
-      const { value } = pushTowardCaster(combatState.controlBreach, payload.amount, caster);
+      const { value } = pushTowardCaster(combatState.breachContainment, payload.amount, caster);
       const casterState = combatState.sides[caster];
       const sides = replaceSide(combatState.sides, caster, { ...casterState, heat: casterState.heat + payload.heatCost });
-      return { ...combatState, controlBreach: value, sides };
+      return { ...combatState, breachContainment: value, sides };
     }
     case 'dot': {
       const targetState = combatState.sides[target];
@@ -177,8 +177,8 @@ export function resolvePayload(
       return { ...combatState, sides };
     }
     case 'instantCounterPush': {
-      const { value } = pushTowardCaster(combatState.controlBreach, payload.amount, caster);
-      return { ...combatState, controlBreach: value };
+      const { value } = pushTowardCaster(combatState.breachContainment, payload.amount, caster);
+      return { ...combatState, breachContainment: value };
     }
     case 'ward': {
       const casterState = combatState.sides[caster];
@@ -249,13 +249,13 @@ function buildTriggerContext(
 ): TriggerContext {
   const own = combatState.sides[side];
   const enemy = combatState.sides[opponentOf(side)];
-  // Control/Breach is defined relative to side 0's favor; "the enemy's
-  // favor" flips depending on which side is asking.
-  const enemyControlBreachFavor = side === 0 ? 100 - combatState.controlBreach : combatState.controlBreach;
+  // Breach/Containment is defined relative to side 0's favor; "the
+  // enemy's favor" flips depending on which side is asking.
+  const enemyBreachContainmentFavor = side === 0 ? 100 - combatState.breachContainment : combatState.breachContainment;
   return {
     self: { heat: own.heat, isDealer },
     enemy: {
-      controlBreach: enemyControlBreachFavor,
+      breachContainment: enemyBreachContainmentFavor,
       gaugeFillFraction: enemy.gauge.progress / enemy.gauge.threshold,
       activeDebuffIds: enemy.debuffs.map((d) => d.debuffId),
     },

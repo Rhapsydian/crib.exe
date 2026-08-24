@@ -106,7 +106,7 @@ export function playOneHand(
  * Plays out `handCount` full hands, alternating dealer each time.
  * Deliberately has no target-score/winner concept — crib.exe doesn't use
  * race-to-121 as its win condition (see DESIGN.md Combat System,
- * Control/Breach), so that's not this engine's job to invent; this just
+ * Breach/Containment), so that's not this engine's job to invent; this just
  * plays the underlying card game correctly.
  */
 export function playHands(handCount: number, options: GameOptions): GameResult {

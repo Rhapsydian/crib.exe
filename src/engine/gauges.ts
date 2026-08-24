@@ -1,5 +1,5 @@
 /**
- * Per-side initiative gauge and the shared Control/Breach meter
+ * Per-side initiative gauge and the shared Breach/Containment meter
  * (session 17 checkpoint D). Combat orchestration (when to actually fire
  * subroutines on a triggered turn) is Checkpoint E/F's job — this file
  * only tracks the two numbers and detects the crossing/resolution
@@ -42,33 +42,40 @@ export function addPoints(gauge: InitiativeGauge, points: number): InitiativeGau
   return { gauge: { ...gauge, progress }, turnsTriggered };
 }
 
-/** Control/Breach is a single shared scalar, not two HP pools. 100 is
- * fully resolved in the player's favor, 0 fully in the enemy's; it
- * starts contested at the center and resets each combat. */
-export const CONTROL_BREACH_MIN = 0;
-export const CONTROL_BREACH_MAX = 100;
-export const CONTROL_BREACH_CENTER = 50;
+/** Breach/Containment is a single shared scalar, not two HP pools. 100
+ * is fully Breach (the attacker's win — the vulnerability gets
+ * exploited); 0 is fully Containment (the defender's win — the
+ * vulnerability gets patched before it can be leveraged). Starts
+ * contested at the center and resets each combat. */
+export const BREACH_CONTAINMENT_MIN = 0;
+export const BREACH_CONTAINMENT_MAX = 100;
+export const BREACH_CONTAINMENT_CENTER = 50;
 
-export function createControlBreach(): number {
-  return CONTROL_BREACH_CENTER;
+export function createBreachContainment(): number {
+  return BREACH_CONTAINMENT_CENTER;
 }
 
-export type ControlBreachResolution = 'player' | 'enemy' | null;
+export type BreachContainmentResolution = 'player' | 'enemy' | null;
 
-export interface ControlBreachPushResult {
+export interface BreachContainmentPushResult {
   value: number;
-  resolved: ControlBreachResolution;
+  resolved: BreachContainmentResolution;
 }
 
 /**
- * Pushes Control/Breach by `amount` (a non-negative magnitude) toward
- * the player's favor or the enemy's, clamping at the extremes and
- * reporting resolution the instant either extreme is reached.
+ * Pushes Breach/Containment by `amount` (a non-negative magnitude)
+ * toward the player's favor (Breach) or the enemy's (Containment),
+ * clamping at the extremes and reporting resolution the instant either
+ * extreme is reached.
  */
-export function pushControlBreach(value: number, amount: number, towardPlayer: boolean): ControlBreachPushResult {
+export function pushBreachContainment(
+  value: number,
+  amount: number,
+  towardPlayer: boolean,
+): BreachContainmentPushResult {
   const delta = towardPlayer ? amount : -amount;
-  const clamped = Math.min(CONTROL_BREACH_MAX, Math.max(CONTROL_BREACH_MIN, value + delta));
-  const resolved: ControlBreachResolution =
-    clamped >= CONTROL_BREACH_MAX ? 'player' : clamped <= CONTROL_BREACH_MIN ? 'enemy' : null;
+  const clamped = Math.min(BREACH_CONTAINMENT_MAX, Math.max(BREACH_CONTAINMENT_MIN, value + delta));
+  const resolved: BreachContainmentResolution =
+    clamped >= BREACH_CONTAINMENT_MAX ? 'player' : clamped <= BREACH_CONTAINMENT_MIN ? 'enemy' : null;
   return { value: clamped, resolved };
 }

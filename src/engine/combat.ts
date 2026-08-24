@@ -10,7 +10,7 @@ import {
   occurrenceFromHisHeels,
   type ScoringOccurrence,
 } from './triggers';
-import { addPoints, CONTROL_BREACH_MAX, CONTROL_BREACH_MIN, type InitiativeGauge } from './gauges';
+import { addPoints, BREACH_CONTAINMENT_MAX, BREACH_CONTAINMENT_MIN, type InitiativeGauge } from './gauges';
 import {
   createCombatState,
   fireReadySubroutines,
@@ -26,7 +26,7 @@ import {
  * order they happen: his heels at the cut, then pegging play-by-play,
  * then non-dealer hand / dealer hand / crib at the show), fires ready
  * subroutines the instant a side's gauge crosses its threshold, and
- * continues until Control/Breach resolves.
+ * continues until Breach/Containment resolves.
  */
 
 export interface CombatOptions {
@@ -68,8 +68,8 @@ function applyOccurrenceToState(combatState: CombatState, occurrence: ScoringOcc
 }
 
 function resolution(combatState: CombatState): PlayerIndex | null {
-  if (combatState.controlBreach >= CONTROL_BREACH_MAX) return 0;
-  if (combatState.controlBreach <= CONTROL_BREACH_MIN) return 1;
+  if (combatState.breachContainment >= BREACH_CONTAINMENT_MAX) return 0;
+  if (combatState.breachContainment <= BREACH_CONTAINMENT_MIN) return 1;
   return null;
 }
 

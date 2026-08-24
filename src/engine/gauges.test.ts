@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   createInitiativeGauge,
   addPoints,
-  createControlBreach,
-  pushControlBreach,
-  CONTROL_BREACH_MIN,
-  CONTROL_BREACH_MAX,
-  CONTROL_BREACH_CENTER,
+  createBreachContainment,
+  pushBreachContainment,
+  BREACH_CONTAINMENT_MIN,
+  BREACH_CONTAINMENT_MAX,
+  BREACH_CONTAINMENT_CENTER,
 } from './gauges';
 
 describe('InitiativeGauge / addPoints', () => {
@@ -47,36 +47,36 @@ describe('InitiativeGauge / addPoints', () => {
   });
 });
 
-describe('Control/Breach', () => {
+describe('Breach/Containment', () => {
   it('starts contested at the center', () => {
-    expect(createControlBreach()).toBe(CONTROL_BREACH_CENTER);
+    expect(createBreachContainment()).toBe(BREACH_CONTAINMENT_CENTER);
   });
 
   it('pushes toward the player favor and reports no resolution mid-range', () => {
-    const { value, resolved } = pushControlBreach(CONTROL_BREACH_CENTER, 10, true);
+    const { value, resolved } = pushBreachContainment(BREACH_CONTAINMENT_CENTER, 10, true);
     expect(value).toBe(60);
     expect(resolved).toBeNull();
   });
 
   it('pushes toward the enemy favor', () => {
-    const { value } = pushControlBreach(CONTROL_BREACH_CENTER, 10, false);
+    const { value } = pushBreachContainment(BREACH_CONTAINMENT_CENTER, 10, false);
     expect(value).toBe(40);
   });
 
   it('clamps at the max and resolves in the player favor', () => {
-    const { value, resolved } = pushControlBreach(90, 50, true);
-    expect(value).toBe(CONTROL_BREACH_MAX);
+    const { value, resolved } = pushBreachContainment(90, 50, true);
+    expect(value).toBe(BREACH_CONTAINMENT_MAX);
     expect(resolved).toBe('player');
   });
 
   it('clamps at the min and resolves in the enemy favor', () => {
-    const { value, resolved } = pushControlBreach(10, 50, false);
-    expect(value).toBe(CONTROL_BREACH_MIN);
+    const { value, resolved } = pushBreachContainment(10, 50, false);
+    expect(value).toBe(BREACH_CONTAINMENT_MIN);
     expect(resolved).toBe('enemy');
   });
 
   it('resolves exactly at the extremes, not just past them', () => {
-    expect(pushControlBreach(90, 10, true).resolved).toBe('player');
-    expect(pushControlBreach(10, 10, false).resolved).toBe('enemy');
+    expect(pushBreachContainment(90, 10, true).resolved).toBe('player');
+    expect(pushBreachContainment(10, 10, false).resolved).toBe('enemy');
   });
 });

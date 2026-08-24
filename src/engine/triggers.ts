@@ -142,7 +142,7 @@ export interface SelfStateContext {
 }
 
 export interface EnemyStateContext {
-  controlBreach: number;
+  breachContainment: number;
   gaugeFillFraction: number;
   activeDebuffIds: string[];
 }
@@ -162,10 +162,10 @@ export function evaluateSelfState(trigger: SelfStateTrigger, context: SelfStateC
 
 export function evaluateEnemyState(trigger: EnemyStateTrigger, context: EnemyStateContext): boolean {
   switch (trigger.condition) {
-    case 'controlBreachBelow':
-      return context.controlBreach < trigger.value;
-    case 'controlBreachAbove':
-      return context.controlBreach > trigger.value;
+    case 'breachContainmentBelow':
+      return context.breachContainment < trigger.value;
+    case 'breachContainmentAbove':
+      return context.breachContainment > trigger.value;
     case 'gaugeFillAbove':
       return context.gaugeFillFraction > trigger.fraction;
     case 'hasDebuff':

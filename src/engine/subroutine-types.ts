@@ -41,8 +41,8 @@ export type OccurrenceTrigger =
   | { kind: 'occurrence'; category: OccurrenceCategory; variation: 'scaling'; cap: number };
 
 export type EnemyStateTrigger =
-  | { kind: 'enemyState'; condition: 'controlBreachBelow'; value: number }
-  | { kind: 'enemyState'; condition: 'controlBreachAbove'; value: number }
+  | { kind: 'enemyState'; condition: 'breachContainmentBelow'; value: number }
+  | { kind: 'enemyState'; condition: 'breachContainmentAbove'; value: number }
   | { kind: 'enemyState'; condition: 'gaugeFillAbove'; fraction: number }
   | { kind: 'enemyState'; condition: 'hasDebuff'; debuffId: string };
 

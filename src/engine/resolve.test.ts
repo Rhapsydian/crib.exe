@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
 import { createCombatState, resolvePayload, fireReadySubroutines } from './resolve';
-import { CONTROL_BREACH_CENTER } from './gauges';
+import { BREACH_CONTAINMENT_CENTER } from './gauges';
 
 function definition(
   id: string,
@@ -23,14 +23,14 @@ function definition(
 const alwaysBurst = (id: string, amount = 5) =>
   definition(id, { kind: 'always' }, { kind: 'instantBurst', amount });
 
-describe('resolvePayload — Control/Breach pushes', () => {
+describe('resolvePayload — Breach/Containment pushes', () => {
   it('instantBurst pushes toward the caster (side 0 up, side 1 down)', () => {
     const state = createCombatState([], [], 12);
     const forPlayer = resolvePayload({ kind: 'instantBurst', amount: 10 }, 'exploit', state, 0);
-    expect(forPlayer.controlBreach).toBe(CONTROL_BREACH_CENTER + 10);
+    expect(forPlayer.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
 
     const forEnemy = resolvePayload({ kind: 'instantBurst', amount: 10 }, 'exploit', state, 1);
-    expect(forEnemy.controlBreach).toBe(CONTROL_BREACH_CENTER - 10);
+    expect(forEnemy.breachContainment).toBe(BREACH_CONTAINMENT_CENTER - 10);
   });
 
   it('a matching ward blocks and consumes exactly one instantBurst', () => {
@@ -39,18 +39,18 @@ describe('resolvePayload — Control/Breach pushes', () => {
     expect(state.sides[1].wards).toEqual(['exploit']);
 
     const blocked = resolvePayload({ kind: 'instantBurst', amount: 10 }, 'exploit', state, 0);
-    expect(blocked.controlBreach).toBe(CONTROL_BREACH_CENTER); // unaffected
+    expect(blocked.breachContainment).toBe(BREACH_CONTAINMENT_CENTER); // unaffected
     expect(blocked.sides[1].wards).toEqual([]); // consumed
 
     const nextHitLands = resolvePayload({ kind: 'instantBurst', amount: 10 }, 'exploit', blocked, 0);
-    expect(nextHitLands.controlBreach).toBe(CONTROL_BREACH_CENTER + 10);
+    expect(nextHitLands.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
   });
 
   it('piercingBurst ignores an active ward entirely', () => {
     let state = createCombatState([], [], 12);
     state = resolvePayload({ kind: 'ward', blocksArchetype: 'exploit' }, 'encryption', state, 1);
     const result = resolvePayload({ kind: 'piercingBurst', amount: 10 }, 'exploit', state, 0);
-    expect(result.controlBreach).toBe(CONTROL_BREACH_CENTER + 10);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
     expect(result.sides[1].wards).toEqual(['exploit']); // untouched
   });
 
@@ -58,15 +58,15 @@ describe('resolvePayload — Control/Breach pushes', () => {
     const state = createCombatState([], [], 12);
     const payload: PayloadEffect = { kind: 'chainFinisherScaling', baseAmount: 2, perPriorFire: 3 };
     const first = resolvePayload(payload, 'exploit', state, 0, { priorFireCountThisTurn: 0 });
-    expect(first.controlBreach).toBe(CONTROL_BREACH_CENTER + 2);
+    expect(first.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 2);
     const third = resolvePayload(payload, 'exploit', state, 0, { priorFireCountThisTurn: 2 });
-    expect(third.controlBreach).toBe(CONTROL_BREACH_CENTER + 8);
+    expect(third.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 8);
   });
 
-  it('riskRewardBurst pushes Control/Breach and costs the caster Heat', () => {
+  it('riskRewardBurst pushes Breach/Containment and costs the caster Heat', () => {
     const state = createCombatState([], [], 12);
     const result = resolvePayload({ kind: 'riskRewardBurst', amount: 6, heatCost: 3 }, 'exploit', state, 0);
-    expect(result.controlBreach).toBe(CONTROL_BREACH_CENTER + 6);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 6);
     expect(result.sides[0].heat).toBe(3);
   });
 });
@@ -110,7 +110,7 @@ describe('fireReadySubroutines', () => {
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events).toHaveLength(1);
     expect(events[0].subroutineId).toBe('a');
-    expect(combatState.controlBreach).toBe(CONTROL_BREACH_CENTER + 5);
+    expect(combatState.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 5);
     expect(combatState.sides[0].loadout[0].state.ready).toBe(false);
   });
 
@@ -119,7 +119,7 @@ describe('fireReadySubroutines', () => {
     const state = createCombatState([notReady], [], 12);
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events).toHaveLength(0);
-    expect(combatState.controlBreach).toBe(CONTROL_BREACH_CENTER);
+    expect(combatState.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
   });
 
   it('skips a ready subroutine that has been toggled off', () => {
@@ -127,7 +127,7 @@ describe('fireReadySubroutines', () => {
     state.sides[0].loadout[0].state = { ...state.sides[0].loadout[0].state, toggledOn: false };
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events).toHaveLength(0);
-    expect(combatState.controlBreach).toBe(CONTROL_BREACH_CENTER);
+    expect(combatState.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
   });
 
   it('a chained subroutine fed by an earlier fire becomes ready and fires in the same pass', () => {
@@ -136,7 +136,7 @@ describe('fireReadySubroutines', () => {
     const state = createCombatState([first, second], [], 12);
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events.map((e) => e.subroutineId)).toEqual(['a', 'b']);
-    expect(combatState.controlBreach).toBe(CONTROL_BREACH_CENTER + 4 + 7);
+    expect(combatState.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 4 + 7);
   });
 
   it('does not fire a chained subroutine that comes before the one it depends on', () => {
