@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-14 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-15 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -557,6 +557,18 @@ without that needing to be designed for specially. This generalizes what
 Phase 1 already implied on its own (`BACKLOG.md`: "should be testable as
 a standalone engine... before any combat-specific wrapping") into a rule
 for every phase, not just the first one.
+
+**Project structure (session 15)**: a single Vite/Svelte app, with the
+engine living as a plain-TypeScript `src/engine/` subdirectory rather
+than a separate npm-workspace package. This is deliberately *not*
+glyphrogue's `packages/core`/`packages/editor` monorepo split — that
+structure earns its overhead because glyphrogue is a general-purpose
+engine published for multiple downstream consumers (`create-glyphrogue-
+game`, glyphkeep as a real external game). crib.exe is one standalone
+game with no downstream consumer, so a folder convention plus the fact
+that engine tests run in plain Node with zero browser context is enough
+to actually enforce the engine/UI separation above, without the extra
+tooling a workspace split would add for no real payoff here.
 
 ## Theming
 
