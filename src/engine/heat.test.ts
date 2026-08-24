@@ -1,0 +1,43 @@
+import { describe, it, expect } from 'vitest';
+import { addHeat, heatFromLoss, HEAT_MAX } from './heat';
+
+describe('addHeat', () => {
+  it('adds normally within range', () => {
+    expect(addHeat(10, 5)).toEqual({ heat: 15, maxed: false });
+  });
+
+  it('clamps at HEAT_MAX and reports maxed', () => {
+    expect(addHeat(HEAT_MAX - 1, 10)).toEqual({ heat: HEAT_MAX, maxed: true });
+  });
+
+  it('floors at 0 for a negative amount (e.g. Rest)', () => {
+    expect(addHeat(3, -10)).toEqual({ heat: 0, maxed: false });
+  });
+
+  it('reports maxed exactly at the boundary, not just past it', () => {
+    expect(addHeat(HEAT_MAX, 0).maxed).toBe(true);
+    expect(addHeat(HEAT_MAX - 1, 0).maxed).toBe(false);
+  });
+});
+
+describe('heatFromLoss', () => {
+  it('charges the full tier base when the player made no progress at all', () => {
+    expect(heatFromLoss('regular', 50)).toBe(15);
+    expect(heatFromLoss('elite', 50)).toBe(25);
+  });
+
+  it('charges noticeably less the closer the player got to their own win', () => {
+    const dominated = heatFromLoss('regular', 50);
+    const closeCall = heatFromLoss('regular', 90);
+    expect(closeCall).toBeLessThan(dominated);
+  });
+
+  it('elite costs more than regular at the same margin', () => {
+    expect(heatFromLoss('elite', 70)).toBeGreaterThan(heatFromLoss('regular', 70));
+  });
+
+  it('clamps gracefully for out-of-domain peak values', () => {
+    expect(heatFromLoss('regular', 30)).toBe(15); // below center -- no negative margin
+    expect(heatFromLoss('regular', 100)).toBe(0); // at the far edge -- no heat left to charge
+  });
+});
