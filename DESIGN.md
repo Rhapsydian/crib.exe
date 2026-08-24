@@ -5,10 +5,12 @@ node-map run structure, permadeath, meta-progression between runs — where
 combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
-Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-15 (`/decision-session`, 2026-08-23).
-See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
-for the session-by-session history.
+Status: mid-implementation (Phases 1-2 complete, Phase 3 scoped). This
+doc is the source of truth for design decisions, settled across sessions
+1-15 (`/decision-session`, 2026-08-23), with Map & Run Structure revised
+in session 19 (`/decision-session`, 2026-08-24) to scope Phase 3. See
+`BACKLOG.md` for the implementation roadmap and `docs/session-logs/` for
+the session-by-session history.
 
 ## Concept
 
@@ -42,7 +44,10 @@ Two deliberately separate resources, not one shared health stat:
   first hand. Exact numbers TBD/playtesting, same treatment as other
   unresolved tuning values. See Map & Run Structure for what a lost duel
   means structurally, including why gatekeeper/boss losses bypass Heat
-  entirely and end the run outright.
+  entirely and end the run outright. **A second, independent
+  accumulation source (session 19)**: every map-node move costs a flat
+  amount of Heat (also TBD/playtesting), regardless of direction or
+  destination — see Map & Run Structure's free-roam movement model.
 - **Breach/Containment** — an in-combat-only shared push/pull meter, a
   single bar rather than two separate HP pools, that resolves the outcome
   of one Cribbage duel. **Breach** is the attacker's win: the vulnerability
@@ -114,23 +119,57 @@ rather than resetting to a new map. Different runs are reskinned as
 different named contract targets (a company, an agency, a rival hacker),
 which also gives meta-progression a natural "new contract types" hook.
 
-Node types aren't fully enumerated yet beyond gatekeeper/boss encounters
-and regular fights, but one is settled: a **Merge** node (see Subroutine
-Acquisition, under Meta-Progression) — a deliberate git/version-control
-pun that fits the coding/hacking setting precisely — where held duplicate
-subroutine material gets spent to upgrade a base copy, creating real
-map-routing tension around detouring toward one.
+**Movement is free-roam within a layer, one-way between layers** (session
+19) — a deliberate further deviation from StS, explicitly FTL-flavored:
+within a layer, the player has a position on a persistent node graph and
+can traverse any connected edge, in any direction, any number of times,
+including back into already-resolved territory. There's no separate
+"backtracking" mechanic — movement is just movement. **Every edge
+traversal costs a flat amount of Heat** (exact number TBD/playtesting,
+same treatment as other unresolved tuning values), regardless of
+direction or whether the destination is already resolved — this is what
+gives exploring a layer for value (fights, Rest, Shop, Event) its own
+FTL-style tension: gathering more before pushing on is always available,
+but never free. **Crossing a layer's gatekeeper is one-way** — the
+previous layer's graph becomes unreachable once the next one opens,
+mirroring FTL's own one-way-between/free-roam-within sector structure and
+keeping the run's state bounded across the 4 layers rather than growing
+into one unbounded graph.
+
+**Node types**: **regular fights** and **gatekeeper/boss fights**; a
+**Safehouse** node (working name, not final) combining Rest (reduce Heat)
+and **Merge** (see Subroutine Acquisition, under Meta-Progression — a
+deliberate git/version-control pun that fits the coding/hacking setting
+precisely; spends held duplicate subroutine material to upgrade a base
+copy) into a single either/or choice, StS-campfire-style; a **Shop** node
+(spend Data — see Subroutine Acquisition); an **Event** node (undesigned
+content, third acquisition channel). A node becomes **inert** after its
+first resolved encounter, regardless of type — this is what preserves
+Safehouse's rest-vs-merge trade-off even though the map allows
+backtracking: the tension comes from the node being spent, not from being
+unable to physically return to it. Finally, a **Relay** node: pure
+graph-topology filler with no encounter at all, always passable, existing
+only to let map generation add connectivity/redundancy without inflating
+fight/reward density, and to give the flat per-move Heat cost a pure
+form — "just moving" as a real, zero-risk-but-not-zero-cost choice
+distinct from moving into an encounter.
 
 **Losing a fight has a spatial consequence, not just a resource cost.**
 Losing a regular or elite fight means the duel resolved to Containment
 (see Resources): the vulnerability the player was exploiting gets
 patched before they can leverage it, so that specific route into the
 node is gone. This ejects the player from that node and permanently
-closes it for the rest of the run (closure has to be permanent, or the
-player could always eventually loop back and retry, which would make the
-loss condition below never actually trigger) — they have to route around
-it to keep progressing (see Resources for the Heat cost this also
-incurs). **Losing a gatekeeper/boss fight, in any layer, ends the run
+**closes** it for the rest of the run — a closed node is genuinely
+**impassable terrain**, not merely reward-free (closure has to be
+permanent and block movement, or the player could always eventually loop
+back through it, which would make the loss condition below never
+actually trigger) — they have to route around it to keep progressing
+(see Resources for the Heat cost this also incurs). This is distinct
+from a node going **inert**, which happens to every node type on a
+successful/resolved encounter (a won fight, or a Safehouse/Shop/Event
+after its one action) — inert nodes stay fully passable forever after, at
+the same flat per-move Heat cost as any other edge (see Movement, above).
+**Losing a gatekeeper/boss fight, in any layer, ends the run
 outright** — call this **Quarantine** rather than mere Containment: it
 isn't one patched vulnerability to route around, it's the player's
 entire presence purged from the target network. A gatekeeper is by
@@ -151,40 +190,35 @@ further progress remains — accumulated permanent node closures from
 regular/elite Containment losses leave no path deeper, a soft-lock
 distinct from both of the above.
 
-**Note for future map generation (Phase 3)**: this puts a soft
-requirement on the map-generation algorithm to guarantee enough redundant
-routing per layer that outcome (3) stays a real-but-rare possibility, not
-a near-certainty from a single early loss — not solved now, just flagged
-for whoever designs generation.
+**Resolved (session 19)**: with free-roam movement (see above), outcome
+(3) is no longer a branching-tree redundancy question ("does every node
+have ≥2 forward children") but a **graph-resilience** one — map
+generation must keep the layer's gatekeeper reachable from the player's
+current position as nodes close, verified by a generate-then-check
+approach rather than a hand-proved topology guarantee (see `BACKLOG.md`
+Phase 3, Checkpoint B). This also folds in what was previously a separate
+banked idea about a backtracking "pressure valve": since every move
+(forward, sideways, or back into already-resolved territory) costs a
+flat amount of Heat regardless of direction, routing around a closed
+node is never a free undo — the cost comes from the move economy itself,
+not a special-cased valve.
 
 **Banked idea, not designed yet**: a future ability or class passive
 could allow bypassing a closed/lost node, turning what's normally a
 permanent failure into a recoverable one for specific builds — "idea
 space to explore," not a commitment.
 
-**Banked idea, not designed yet**: map traversal will allow backtracking
-(revisiting nodes/edges already passed through), which needs its own
-pressure valve or backtracking to route around a closed/lost node (see
-above) becomes a free undo instead of a real trade-off. Leading
-candidate: a minimum amount of Heat gained per node hit, revisits
-included, not just on a lost duel — ties directly into Heat's existing
-"rest vs. push forward, risk vs. reward" framing (see Resources), so
-every node touched costs *something*. Exact amount TBD/playtesting, same
-treatment as other unresolved tuning values.
-
-**Banked idea, not designed yet**: some junction nodes could be genuinely
-branching — offering egress on only *x* of *y* available paths, so
-choosing one permanently locks out the others, not merely requiring a
-detour the way a Containment closure does. Adds map variety/friction
-that isn't purely win/loss-driven. Two interactions worth flagging for
-whoever designs this: (1) it needs to respect the same redundancy
-requirement as session 9's loss-driven closures above — stacking
-exclusive branches on top of Containment closures could compound into
-an unintended soft-lock, so generation would need to budget for both
-together, not treat them as independent risks; (2) it's a **local**
-exception to the backtracking idea directly above, not a contradiction
-of it — once past an exclusive junction, its other branches are gone
-for good even though backtracking elsewhere on the map is still allowed.
+**Banked idea, deferred to Phase 5**: some nodes could be genuinely
+exclusive-branching — offering egress on only *x* of *y* available paths,
+so choosing one permanently locks out the others. Adds map variety/
+friction that isn't purely win/loss-driven. Under free-roam movement
+(session 19) this is best framed as a future **edge-removal event**
+layered onto the graph, not a node property — and it's no longer
+load-bearing for the soft-lock problem the way it was originally flagged,
+since session 19's connectivity guarantee already handles that on its
+own. Still needs its own budgeting against that same guarantee if it
+ships later, so generation doesn't end up stacking two independent
+closure sources into an unintended soft-lock.
 
 ## Meta-Progression
 

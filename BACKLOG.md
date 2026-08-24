@@ -14,16 +14,14 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Phase 2 is now infrastructure-complete** (session 18, all six
-checkpoints — see below), content-partial: only a small representative
-subroutine set exists, not the real 18 starting-loadout subroutines from
-session 12. No fixed pointer for next session — two reasonable
-directions: (1) a `/decision-session` scoping Phase 3 (map/run
-structure), which now carries two banked ideas (backtracking Heat
-pressure, exclusive-branch junctions) to fold in; or (2) a content pass
-wiring the real 18 subroutines into Phase 2's infrastructure. Phase 0 is
-down to a single banked idea (node-bypass ability, session 9), not
-blocking.
+**Phase 3 is now fully scoped** (session 19, `/decision-session` — see
+below), ready for implementation: a `/dev-session` building its 6
+checkpoints (A-F), same shape as Phase 2's session 18. Phase 2 remains
+infrastructure-complete/content-partial (only a small representative
+subroutine set, not the real 18 from session 12) — that content pass is
+still available as a later alternative direction, not blocking Phase 3.
+Phase 0 is down to a single banked idea (node-bypass ability, session 9),
+not blocking.
 
 ## Phase 0 — Remaining design passes
 
@@ -226,22 +224,80 @@ zero regression in Phase 1's existing test suite.
 
 ## Phase 3 — Network-map / run structure
 
-Node-map rendering as an actual network diagram; layered breach structure
-(perimeter/DMZ → internal LAN → secured subnet → core) within one
-continuous map; per-layer gatekeeper/boss encounters. **Requirement from
-session 9**: map generation must guarantee enough redundant routing per
-layer that permanently losing one regular/elite fight can't easily
-soft-lock a run (the "no route forward remains" loss condition needs to
-stay a real-but-rare outcome, not a near-certainty). **Banked idea from
-session 18**: traversal will allow backtracking, so it needs a pressure
-valve — a minimum Heat gain per node hit, revisits included — or
-routing around a Containment loss becomes a free undo (see DESIGN.md
-Map & Run Structure). **Also banked from session 18**: exclusive-branch
-junction nodes (egress on only x of y paths, permanently locking out the
-rest) for variety/friction beyond win-loss-driven closures — needs to be
-budgeted against the session 9 redundancy requirement together, not as
-an independent risk, since stacking both could compound into an
-unintended soft-lock.
+Scoped session 19 (`/decision-session`, same engineering-scoping category
+as sessions 15 and 17). A headless, real-scale (4-layer), free-roam
+network-map/run-structure engine in `src/engine/`, wiring Phase 2's real
+`playCombat()` into fight nodes and implementing Heat for the first time.
+Out of scope: SVG/DOM rendering (a future UI phase — `DESIGN.md`'s "reads
+as an actual network diagram" goal is honored there, not here); Merge/
+Shop/Event's real payloads (need Phase 4's material/acquisition/Data
+systems — stub node types only); exclusive-branch junctions and other
+map-variety ideas (Phase 5); real AI (still Phase 2's legal-not-good
+scripted opponent).
+
+**Free-roam intra-layer movement, one-way between layers** (session 19,
+a deliberate further deviation from StS, FTL-flavored — see `DESIGN.md`
+Map & Run Structure): within a layer, the player has a position on a
+persistent node graph and can traverse any connected edge, any direction,
+any number of times, at a flat Heat cost per move. Crossing a layer's
+gatekeeper is one-way — the previous layer's graph becomes unreachable.
+This subsumes what were three separate open items as of session 18: it's
+what the banked backtracking-pressure-valve idea actually was; it
+reframes session 9's redundancy requirement from branching-tree
+redundancy into graph-resilience (the generator must keep the gatekeeper
+reachable from the player's position as nodes close); and there's no
+separate "backtracking" mechanic to design, since movement is just
+movement. Exclusive-branch junction nodes remain deferred to Phase 5,
+now reframed as a future edge-removal event rather than a node property,
+and no longer load-bearing for the soft-lock problem.
+
+- **Checkpoint A — Graph data model & node types**: node type union
+  (RegularFight, GatekeeperFight, Safehouse, Shop, Event, Relay), node
+  state (unresolved / inert / closed — Relay has no state, always
+  passable), edge list, per-layer graph shape, a cursor/position type
+  (naming TBD).
+- **Checkpoint B — Layer generation**: a generator parameterized for the
+  real 4 layers (perimeter/DMZ, internal LAN, secured subnet, core) and a
+  node count per layer (exact numbers TBD/playtesting), producing a
+  connected graph with a designated entry and gatekeeper exit, verified
+  via a generate-then-check-resilience approach (gatekeeper stays
+  reachable from any position after node closures up to a documented
+  threshold; regenerate/patch on failure, adding Relay nodes as cheap
+  extra connectivity rather than inflating encounter density) rather than
+  a hand-proved topology guarantee.
+- **Checkpoint C — Heat resource**: accumulation from two sources —
+  duel-loss margin (session 9's existing formula) and flat per-move cost
+  (session 19, new) — plus a max threshold triggering the Heat
+  run-ending condition.
+- **Checkpoint D — Traversal/movement**: legal moves = edges from the
+  current position to any still-connected (non-closed) node, any
+  direction, repeatable; applies Heat cost per move; marks nodes
+  inert/closed on resolution; detects a gatekeeper crossing and locks the
+  previous layer's graph (one-way).
+- **Checkpoint E — Node encounter resolution**: fight nodes call Phase
+  2's `playCombat()` (small representative subroutine set, not the real
+  18) and translate the outcome — win → inert; loss on a regular/elite
+  node → closed (impassable); loss on a gatekeeper → Quarantine, immediate
+  run end. Safehouse resolves Rest (real Heat reduction) or Merge (stub,
+  structurally offered but never selectable yet); Shop and Event resolve
+  as inert no-ops (stubs). Relay needs no resolution logic at all — it's
+  never anything but passable.
+- **Checkpoint F — Run orchestrator**: ties all 4 generated layers
+  together (generate → free-roam explore/fight → beat gatekeeper →
+  advance), detects and independently tests all three run-ending
+  conditions (Heat max; Quarantine; gatekeeper unreachable/no route
+  remains), full event log, playable end-to-end by script via a
+  legal-not-good scripted traversal decision function, mirroring Phase
+  1/2's scripted-player pattern.
+
+**Exit criteria**: a full 4-layer run resolves headlessly by script — the
+generator's resilience guarantee holds, the cursor moves freely within a
+layer at a flat Heat cost per move, fight nodes resolve via real Phase 2
+duels, Safehouse's Rest is real while Merge/Shop/Event are inert stubs,
+closed nodes are genuinely impassable, gatekeeper crossings lock the prior
+layer, and all three run-ending conditions are independently reachable
+and covered by tests; zero UI; zero regression in Phase 1/2's existing
+test suites.
 
 ## Phase 4 — Meta-progression
 
