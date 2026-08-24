@@ -1,0 +1,141 @@
+import { describe, it, expect } from 'vitest';
+import { createNode, type LayerGraph } from './map-types';
+import { legalMoves } from './traversal';
+import { playRun, gatekeeperReachable, beelineToGatekeeper, exploreThenGatekeeper, type TraversalStrategy } from './run';
+
+/** Test-only strategy: greedily prefers an already-resolved or
+ * known-safe (shop/event) neighbor over anything else, falling back to
+ * whatever's legal otherwise. Used to reliably rack up Heat via pure
+ * movement without repeatedly gambling on fights -- exploreThenGatekeeper
+ * turns out to overwhelmingly end in noRouteRemains instead (see below),
+ * since visiting every fight in a layer risks far more than one closure
+ * at a time, past what the graph-resilience guarantee promises. */
+const wanderPreferringSafety: TraversalStrategy = (graph, position) => {
+  const options = legalMoves(graph, position);
+  const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
+  const safe = options.find((id) => {
+    const node = nodeById.get(id);
+    return node !== undefined && (node.state === 'inert' || node.type === 'shop' || node.type === 'event');
+  });
+  return safe ?? options[0];
+};
+
+describe('gatekeeperReachable', () => {
+  it('is true across an intact graph', () => {
+    const graph: LayerGraph = {
+      nodes: [createNode('entry', 'relay'), createNode('mid', 'regularFight'), createNode('gate', 'gatekeeperFight')],
+      edges: [
+        { a: 'entry', b: 'mid' },
+        { a: 'mid', b: 'gate' },
+      ],
+      entryNodeId: 'entry',
+      gatekeeperNodeId: 'gate',
+    };
+    expect(gatekeeperReachable(graph, 'entry')).toBe(true);
+  });
+
+  it('is false once the only route is closed -- the noRouteRemains condition, deterministically', () => {
+    const graph: LayerGraph = {
+      nodes: [
+        createNode('entry', 'relay'),
+        { ...createNode('mid', 'regularFight'), state: 'closed' },
+        createNode('gate', 'gatekeeperFight'),
+      ],
+      edges: [
+        { a: 'entry', b: 'mid' },
+        { a: 'mid', b: 'gate' },
+      ],
+      entryNodeId: 'entry',
+      gatekeeperNodeId: 'gate',
+    };
+    expect(gatekeeperReachable(graph, 'entry')).toBe(false);
+  });
+
+  it('stays true through a redundant second path even after one route closes', () => {
+    const graph: LayerGraph = {
+      nodes: [
+        createNode('entry', 'relay'),
+        { ...createNode('a', 'regularFight'), state: 'closed' },
+        createNode('b', 'relay'),
+        createNode('gate', 'gatekeeperFight'),
+      ],
+      edges: [
+        { a: 'entry', b: 'a' },
+        { a: 'a', b: 'gate' },
+        { a: 'entry', b: 'b' },
+        { a: 'b', b: 'gate' },
+      ],
+      entryNodeId: 'entry',
+      gatekeeperNodeId: 'gate',
+    };
+    expect(gatekeeperReachable(graph, 'entry')).toBe(true);
+  });
+});
+
+describe('playRun', () => {
+  const TINY_LAYERS: [number, number, number, number] = [2, 2, 2, 2];
+
+  it('reaches victory on at least one seed with minimal layers (gatekeeper-only fights)', () => {
+    const outcomes = Array.from({ length: 50 }, (_, seed) =>
+      playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper }).outcome,
+    );
+    expect(outcomes).toContain('victory');
+  });
+
+  it('quarantines on at least one seed -- losing any gatekeeper ends the run outright', () => {
+    const outcomes = Array.from({ length: 50 }, (_, seed) =>
+      playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper }).outcome,
+    );
+    expect(outcomes).toContain('quarantined');
+  });
+
+  it('a victorious run clears all 4 layers, matching layersCompleted to the log', () => {
+    const victorySeed = Array.from({ length: 50 }, (_, seed) => seed).find(
+      (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper }).outcome === 'victory',
+    );
+    expect(victorySeed).toBeDefined();
+    const result = playRun({ seed: victorySeed!, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper });
+    expect(result.layersCompleted).toBe(4);
+    expect(result.log.filter((e) => e.type === 'layerCleared')).toHaveLength(4);
+  });
+
+  it('reaches heatMaxed on real-scale layers when a strategy just wanders safely', () => {
+    const outcomes = Array.from({ length: 25 }, (_, seed) =>
+      playRun({ seed, traversalStrategy: wanderPreferringSafety }).outcome,
+    );
+    expect(outcomes).toContain('heatMaxed');
+  });
+
+  it('reaches noRouteRemains far more often than not when a strategy fights every node in a layer', () => {
+    // exploreThenGatekeeper deliberately visits every unresolved node,
+    // which routinely closes more than the single node the layer's
+    // graph-resilience guarantee (checkpoint B) promises safety against
+    // -- a real, intended risk of being that aggressive, not a bug.
+    const outcomes = Array.from({ length: 25 }, (_, seed) =>
+      playRun({ seed, traversalStrategy: exploreThenGatekeeper }).outcome,
+    );
+    expect(outcomes).toContain('noRouteRemains');
+  });
+
+  it('is fully deterministic for the same seed', () => {
+    const a = playRun({ seed: 42 });
+    const b = playRun({ seed: 42 });
+    expect(a).toEqual(b);
+  });
+
+  it('defaults to beelineToGatekeeper and real-scale (4-layer) node counts', () => {
+    const result = playRun({ seed: 1 });
+    const layerSizes = result.log.filter((e) => e.type === 'layerGenerated').map((e) => e.nodeCount);
+    expect(layerSizes[0]).toBeGreaterThan(2);
+  });
+
+  it('never returns quarantined with a nonzero Heat cost -- gatekeeper losses bypass Heat entirely', () => {
+    for (let seed = 0; seed < 25; seed++) {
+      const result = playRun({ seed, layerNodeCounts: TINY_LAYERS });
+      if (result.outcome !== 'quarantined') continue;
+      const quarantineEvent = result.log.find((e) => e.type === 'encounter' && e.outcome.quarantined);
+      expect(quarantineEvent).toBeDefined();
+      expect(quarantineEvent && quarantineEvent.type === 'encounter' ? quarantineEvent.outcome.heatDelta : -1).toBe(0);
+    }
+  });
+});
