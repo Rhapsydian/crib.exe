@@ -6,7 +6,7 @@ combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
 Status: pre-implementation. This doc is the source of truth for design
-decisions, settled across sessions 1-13 (`/decision-session`, 2026-08-23).
+decisions, settled across sessions 1-14 (`/decision-session`, 2026-08-23).
 See `BACKLOG.md` for the implementation roadmap and `docs/session-logs/`
 for the session-by-session history.
 
@@ -533,6 +533,30 @@ game, not real-time action, so an engine would be overhead without
 payoff. Svelte was chosen for toolchain/pattern familiarity from
 glyphrogue/glyphkeep — not for any code reuse; glyphrogue's engine itself
 is built for ASCII dungeon-crawling and doesn't fit this genre.
+
+## Architecture
+
+**Engine/UI separation is a standing project-wide principle, not scoped
+to any one system.** Game data and logic must be completely separate
+from presentation. The entire game — Cribbage/combat, map navigation and
+run progression, subroutine/loadout management, meta-progression — should
+be simulable end-to-end headlessly (scripts, automated tests, AI-
+controlled players), with zero dependency on the UI layer. The Svelte UI
+is purely a thin interface onto the engine: it renders engine state and
+translates player input into engine calls, and never contains logic the
+engine doesn't already enforce itself.
+
+Why: it makes the whole game testable by script rather than only by
+clicking through a browser, which is both far faster iteration and the
+only practical way to test something with this much randomness and this
+many interacting systems; it's exactly what the enemy AI needs regardless
+(Combat System already specifies an AI-controlled opponent, which has to
+run against the engine with no UI in the loop); and it keeps the door
+open for things like AI-vs-AI simulation for balance testing later,
+without that needing to be designed for specially. This generalizes what
+Phase 1 already implied on its own (`BACKLOG.md`: "should be testable as
+a standalone engine... before any combat-specific wrapping") into a rule
+for every phase, not just the first one.
 
 ## Theming
 

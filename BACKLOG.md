@@ -1,9 +1,16 @@
 # crib.exe — Backlog
 
 Phased roadmap. First pass, written at the end of session 1, updated end
-of sessions 2-13 — expect this to be revised as design and implementation
+of sessions 2-14 — expect this to be revised as design and implementation
 proceed. See `DESIGN.md` for the settled design and its own Open
 Questions section.
+
+**Standing principle for every phase below (session 14, see `DESIGN.md`
+Architecture)**: game logic stays fully separate from the UI and must be
+simulable/testable headlessly — the UI is a thin interface onto the
+engine, never a load-bearing piece of it. Phase 1's own "testable as a
+standalone engine" note already implied this for itself; it's now a rule
+for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
