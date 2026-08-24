@@ -172,6 +172,20 @@ included, not just on a lost duel — ties directly into Heat's existing
 every node touched costs *something*. Exact amount TBD/playtesting, same
 treatment as other unresolved tuning values.
 
+**Banked idea, not designed yet**: some junction nodes could be genuinely
+branching — offering egress on only *x* of *y* available paths, so
+choosing one permanently locks out the others, not merely requiring a
+detour the way a Containment closure does. Adds map variety/friction
+that isn't purely win/loss-driven. Two interactions worth flagging for
+whoever designs this: (1) it needs to respect the same redundancy
+requirement as session 9's loss-driven closures above — stacking
+exclusive branches on top of Containment closures could compound into
+an unintended soft-lock, so generation would need to budget for both
+together, not treat them as independent risks; (2) it's a **local**
+exception to the backtracking idea directly above, not a contradiction
+of it — once past an exclusive junction, its other branches are gone
+for good even though backtracking elsewhere on the map is still allowed.
+
 ## Meta-Progression
 
 Broad strokes, not yet detailed:

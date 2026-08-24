@@ -211,7 +211,12 @@ stay a real-but-rare outcome, not a near-certainty). **Banked idea from
 session 18**: traversal will allow backtracking, so it needs a pressure
 valve — a minimum Heat gain per node hit, revisits included — or
 routing around a Containment loss becomes a free undo (see DESIGN.md
-Map & Run Structure).
+Map & Run Structure). **Also banked from session 18**: exclusive-branch
+junction nodes (egress on only x of y paths, permanently locking out the
+rest) for variety/friction beyond win-loss-driven closures — needs to be
+budgeted against the session 9 redundancy requirement together, not as
+an independent risk, since stacking both could compound into an
+unintended soft-lock.
 
 ## Phase 4 — Meta-progression
 
