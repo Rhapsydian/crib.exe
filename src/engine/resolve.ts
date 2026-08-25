@@ -65,10 +65,14 @@ export interface CombatSideState {
 }
 
 /** A Root scheduledSabotage payload fired now but resolves at a future
- * Cribbage-flow checkpoint (e.g. next deal) -- Checkpoint F's orchestrator
- * consumes and clears these once it has hand-boundary hooks to do so. */
+ * Cribbage-flow checkpoint (e.g. next deal) -- resolvePendingSabotage
+ * below, driven from combat.ts's hand-boundary hook, consumes and clears
+ * these. `archetype` is captured from the casting subroutine at
+ * registration time (needed for the wrapped effect's own ward-matching,
+ * same as any other resolvePayload call). */
 export interface PendingSabotage {
   casterSide: PlayerIndex;
+  archetype: Archetype;
   effect: PayloadEffect;
 }
 
@@ -293,7 +297,10 @@ export function resolvePayload(
       // combat.ts (checkpoint F) connects to game.ts's per-hand flow.
       return combatState;
     case 'scheduledSabotage':
-      return { ...combatState, pendingSabotage: [...combatState.pendingSabotage, { casterSide: caster, effect: payload.effect }] };
+      return {
+        ...combatState,
+        pendingSabotage: [...combatState.pendingSabotage, { casterSide: caster, archetype, effect: payload.effect }],
+      };
   }
 }
 
@@ -491,6 +498,25 @@ export function tickGlobalPulse(combatState: CombatState, points: number): Comba
   for (const storageSide of [0, 1] as PlayerIndex[]) {
     state = processTickList(state, storageSide, 'dots', tickOnce);
     state = processTickList(state, storageSide, 'hots', tickOnce);
+  }
+  return state;
+}
+
+/**
+ * Resolves and clears every pending Scheduled Sabotage effect -- call
+ * once at the start of each hand (the "next deal" after they were
+ * registered, per ScheduledSabotagePayload.resolvesAt). Each wrapped
+ * effect resolves through the normal resolvePayload path using the
+ * archetype/caster captured at registration time, so a wrapped effect
+ * that's itself a scheduledSabotage just re-schedules for a future deal
+ * rather than needing special-casing -- the fresh, empty
+ * pendingSabotage list this starts from only accumulates entries meant
+ * for a later resolution, never colliding with the batch being cleared.
+ */
+export function resolvePendingSabotage(combatState: CombatState): CombatState {
+  let state = { ...combatState, pendingSabotage: [] as PendingSabotage[] };
+  for (const pending of combatState.pendingSabotage) {
+    state = resolvePayload(pending.effect, pending.archetype, state, pending.casterSide);
   }
   return state;
 }

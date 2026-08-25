@@ -99,6 +99,24 @@ describe('playCombat', () => {
     expect(result.log.length).toBeGreaterThan(0);
   });
 
+  it('a scheduledSabotage payload resolves at a later deal, driving the match to resolution', () => {
+    const sabotageBurst: SubroutineDefinition = {
+      id: 'sabotage-burst',
+      name: 'sabotage-burst',
+      archetype: 'root',
+      trigger: { kind: 'always' },
+      payload: { kind: 'scheduledSabotage', resolvesAt: 'nextDeal', effect: { kind: 'directBurst', amount: 20 } },
+      tags: [],
+    };
+    // Side 1 has an empty loadout -- the only way breachContainment can
+    // ever move is through side 0's scheduled sabotage actually
+    // resolving on a later deal. If the resolution hook weren't wired
+    // up, pending entries would pile up forever and this would run out
+    // maxHands and throw instead of resolving.
+    const result = playCombat([[sabotageBurst], []], { seed: 1, gaugeThreshold: 5 });
+    expect(result.winner).toBe(0);
+  });
+
   it('a Reactive piece fires mid-hand, bypassing the turn-gate entirely', () => {
     const reactiveFifteen: SubroutineDefinition = {
       id: 'reactive-fifteen',

@@ -16,6 +16,7 @@ import {
   fireNewlyReadyReactiveSubroutines,
   fireReadySubroutines,
   refreshTriggerReadiness,
+  resolvePendingSabotage,
   tickCastersTurnPulse,
   tickGlobalPulse,
   type CombatState,
@@ -174,11 +175,13 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     hands.push(hand);
     scores = hand.scoresAfter;
 
-    // A new hand means a new (possibly flipped) dealer -- self-state's
-    // isDealer/isNonDealer needs a chance to latch even in the unlikely
-    // case nothing else in this hand touches Heat/Breach-Containment/
-    // gauges before this side's own turn.
-    let winner = step(advance(combatState, hand.dealer, log));
+    // Scheduled Sabotage "resolves at next deal" -- right here, before
+    // anything else in this new hand happens. advance() afterward also
+    // covers the new hand's dealer: self-state's isDealer/isNonDealer
+    // needs a chance to latch even in the unlikely case nothing else in
+    // this hand touches Heat/Breach-Containment/gauges before this
+    // side's own turn.
+    let winner = step(advance(resolvePendingSabotage(combatState), hand.dealer, log));
     if (winner !== null) return finish(winner);
 
     for (const occurrence of occurrencesForHand(hand)) {

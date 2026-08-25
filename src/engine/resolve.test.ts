@@ -8,6 +8,7 @@ import {
   fireNewlyReadyReactiveSubroutines,
   tickCastersTurnPulse,
   tickGlobalPulse,
+  resolvePendingSabotage,
 } from './resolve';
 import { BREACH_CONTAINMENT_CENTER } from './gauges';
 
@@ -465,5 +466,78 @@ describe('tickGlobalPulse', () => {
     const result = tickGlobalPulse(withDot, 35); // would cross 3 times, but only 2 duration
     expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
     expect(result.sides[1].dots).toEqual([]);
+  });
+});
+
+describe('scheduledSabotage / resolvePendingSabotage', () => {
+  it('registers a pending entry instead of resolving immediately', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload(
+      { kind: 'scheduledSabotage', resolvesAt: 'nextDeal', effect: { kind: 'directBurst', amount: 15 } },
+      'root',
+      state,
+      0,
+    );
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER); // not yet applied
+    expect(result.pendingSabotage).toEqual([
+      { casterSide: 0, archetype: 'root', effect: { kind: 'directBurst', amount: 15 } },
+    ]);
+  });
+
+  it('resolves and clears a pending effect', () => {
+    const state = createCombatState([], [], 12);
+    const scheduled = resolvePayload(
+      { kind: 'scheduledSabotage', resolvesAt: 'nextDeal', effect: { kind: 'directBurst', amount: 15 } },
+      'root',
+      state,
+      0,
+    );
+    const result = resolvePendingSabotage(scheduled);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 15);
+    expect(result.pendingSabotage).toEqual([]);
+  });
+
+  it('is a no-op on an empty list', () => {
+    const state = createCombatState([], [], 12);
+    expect(resolvePendingSabotage(state)).toEqual(state);
+  });
+
+  it('resolves multiple pending effects from both casters', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload(
+      { kind: 'scheduledSabotage', resolvesAt: 'nextDeal', effect: { kind: 'directBurst', amount: 10 } },
+      'root',
+      state,
+      0,
+    );
+    state = resolvePayload(
+      { kind: 'scheduledSabotage', resolvesAt: 'nextDeal', effect: { kind: 'directBurst', amount: 4 } },
+      'root',
+      state,
+      1,
+    );
+    const result = resolvePendingSabotage(state);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10 - 4);
+  });
+
+  it('a wrapped scheduledSabotage re-schedules for a future deal instead of resolving now', () => {
+    const state = createCombatState([], [], 12);
+    const scheduled = resolvePayload(
+      {
+        kind: 'scheduledSabotage',
+        resolvesAt: 'nextDeal',
+        effect: { kind: 'scheduledSabotage', resolvesAt: 'nextDeal', effect: { kind: 'directBurst', amount: 15 } },
+      },
+      'root',
+      state,
+      0,
+    );
+    const afterFirstDeal = resolvePendingSabotage(scheduled);
+    expect(afterFirstDeal.breachContainment).toBe(BREACH_CONTAINMENT_CENTER); // still not applied
+    expect(afterFirstDeal.pendingSabotage).toHaveLength(1); // rescheduled for the deal after
+
+    const afterSecondDeal = resolvePendingSabotage(afterFirstDeal);
+    expect(afterSecondDeal.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 15);
+    expect(afterSecondDeal.pendingSabotage).toEqual([]);
   });
 });
