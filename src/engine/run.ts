@@ -4,6 +4,8 @@ import { generateLayer } from './map-gen';
 import { move } from './traversal';
 import { resolveEncounter, type EncounterOutcome } from './encounters';
 import { addHeat } from './heat';
+import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
+import type { SubroutineDefinition } from './subroutine-types';
 
 /**
  * The run orchestrator (session 19/20 checkpoint F): ties layer
@@ -14,6 +16,21 @@ import { addHeat } from './heat';
  */
 
 const DEFAULT_LAYER_NODE_COUNTS: [number, number, number, number] = [10, 12, 12, 8]; // TBD/playtesting
+
+/** The player's own state for the run, threaded into every encounter
+ * (Phase 4 checkpoint A). Deliberately minimal for now -- just enough to
+ * make a real class's starting loadout drive real fights instead of
+ * encounters.ts's hardcoded placeholder. Bench/Data/slot-cap fields
+ * arrive with the acquisition checkpoints (C/D) that actually use them,
+ * not speculatively now. */
+export interface RunPlayerState {
+  classId: ClassId;
+  installedLoadout: SubroutineDefinition[];
+}
+
+export function createInitialPlayerState(classId: ClassId): RunPlayerState {
+  return { classId, installedLoadout: CLASS_DEFINITIONS[classId].startingLoadout };
+}
 
 export type RunOutcome = 'heatMaxed' | 'quarantined' | 'noRouteRemains' | 'victory';
 
@@ -29,6 +46,9 @@ export interface RunResult {
   layersCompleted: number;
   finalHeat: number;
   log: RunEvent[];
+  /** The player's state as of run end -- lets a caller/test confirm
+   * which class actually drove the run and inspect its loadout. */
+  playerState: RunPlayerState;
 }
 
 /** Decides the next node to move to, given the current layer graph,
@@ -61,17 +81,39 @@ export const exploreThenGatekeeper: TraversalStrategy = (graph, position, heat) 
 
 export interface RunOptions {
   seed: number;
+  /** Defaults to Breacher, the designed starting/onboarding class
+   * (session 8) -- see classes.ts's DEFAULT_CLASS_ID. */
+  classId?: ClassId;
   layerNodeCounts?: [number, number, number, number];
   traversalStrategy?: TraversalStrategy;
+  /** Test-only escape hatch: replaces the class's real starting loadout.
+   * A real class kit's Breach/Containment convergence time is sharply
+   * seed-sensitive (session 20/Phase 4 checkpoint A finding), which
+   * makes tests that need a *guaranteed* win or loss unable to rely on
+   * natural variance across classId-driven seeds -- same reasoning
+   * that led encounters.test.ts to a deliberately lopsided player
+   * construction instead of a seed sweep. Never used outside tests. */
+  installedLoadoutOverride?: SubroutineDefinition[];
 }
 
 export function playRun(options: RunOptions): RunResult {
-  const { seed, layerNodeCounts = DEFAULT_LAYER_NODE_COUNTS, traversalStrategy = beelineToGatekeeper } = options;
+  const {
+    seed,
+    classId = DEFAULT_CLASS_ID,
+    layerNodeCounts = DEFAULT_LAYER_NODE_COUNTS,
+    traversalStrategy = beelineToGatekeeper,
+    installedLoadoutOverride,
+  } = options;
 
   const rng = createRng(seed);
   const log: RunEvent[] = [];
   let heat = 0;
   let layersCompleted = 0;
+  const playerState = installedLoadoutOverride
+    ? { classId, installedLoadout: installedLoadoutOverride }
+    : createInitialPlayerState(classId);
+
+  const finish = (outcome: RunOutcome): RunResult => ({ outcome, layersCompleted, finalHeat: heat, log, playerState });
 
   for (let layerIndex = 0; layerIndex < layerNodeCounts.length; layerIndex++) {
     let graph = generateLayer({ rng, nodeCount: layerNodeCounts[layerIndex] });
@@ -82,7 +124,7 @@ export function playRun(options: RunOptions): RunResult {
     while (!layerCleared) {
       if (!gatekeeperReachable(graph, position.nodeId)) {
         log.push({ type: 'runEnded', outcome: 'noRouteRemains' });
-        return { outcome: 'noRouteRemains', layersCompleted, finalHeat: heat, log };
+        return finish('noRouteRemains');
       }
 
       const fromNodeId = position.nodeId;
@@ -95,14 +137,14 @@ export function playRun(options: RunOptions): RunResult {
       log.push({ type: 'move', layerIndex, from: fromNodeId, to: position.nodeId, heatCost: moveResult.heatCost, heatAfter: heat });
       if (afterMove.maxed) {
         log.push({ type: 'runEnded', outcome: 'heatMaxed' });
-        return { outcome: 'heatMaxed', layersCompleted, finalHeat: heat, log };
+        return finish('heatMaxed');
       }
 
       const node = graph.nodes.find((n) => n.id === position.nodeId);
       if (!node) throw new Error(`playRun: node "${position.nodeId}" is missing from its own layer graph`);
       if (node.state !== 'unresolved') continue; // already resolved -- just passing through
 
-      const outcome = resolveEncounter(node, rng);
+      const outcome = resolveEncounter(node, rng, playerState);
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
       const afterEncounter = addHeat(heat, outcome.heatDelta);
       heat = afterEncounter.heat;
@@ -110,11 +152,11 @@ export function playRun(options: RunOptions): RunResult {
 
       if (outcome.quarantined) {
         log.push({ type: 'runEnded', outcome: 'quarantined' });
-        return { outcome: 'quarantined', layersCompleted, finalHeat: heat, log };
+        return finish('quarantined');
       }
       if (afterEncounter.maxed) {
         log.push({ type: 'runEnded', outcome: 'heatMaxed' });
-        return { outcome: 'heatMaxed', layersCompleted, finalHeat: heat, log };
+        return finish('heatMaxed');
       }
       if (node.type === 'gatekeeperFight' && outcome.newState === 'inert') {
         layersCompleted++;
@@ -125,7 +167,7 @@ export function playRun(options: RunOptions): RunResult {
   }
 
   log.push({ type: 'runEnded', outcome: 'victory' });
-  return { outcome: 'victory', layersCompleted, finalHeat: heat, log };
+  return finish('victory');
 }
 
 function withoutClosedNodes(graph: LayerGraph): LayerGraph {

@@ -2,6 +2,31 @@ import { describe, it, expect } from 'vitest';
 import { createNode, type LayerGraph } from './map-types';
 import { legalMoves } from './traversal';
 import { playRun, gatekeeperReachable, beelineToGatekeeper, exploreThenGatekeeper, type TraversalStrategy } from './run';
+import type { SubroutineDefinition } from './subroutine-types';
+
+/** Same reasoning as encounters.test.ts's OVERWHELMING/NEGLIGIBLE_PLAYER:
+ * Breach/Containment's sharp positive-feedback dynamics mean a real
+ * class kit's win/loss outcome across a seed sweep is fat-tailed and
+ * seed-sensitive, not a reliable way to exercise a *guaranteed* outcome
+ * fast. A deliberately lopsided loadout (via installedLoadoutOverride)
+ * resolves fast and decisively regardless of direction, so tests that
+ * need to reliably observe a win (or a loss) use one of these instead
+ * of leaning on Breacher's real starting kit's natural variance. */
+function loadoutWithBurst(amount: number): SubroutineDefinition[] {
+  return [
+    {
+      id: 'test-run-burst',
+      name: 'test-run-burst',
+      archetype: 'exploit',
+      trigger: { kind: 'always' },
+      payload: { kind: 'directBurst', amount },
+      tags: [],
+    },
+  ];
+}
+
+const OVERWHELMING_LOADOUT = loadoutWithBurst(50);
+const NEGLIGIBLE_LOADOUT = loadoutWithBurst(0.1);
 
 /** Test-only strategy: greedily prefers an already-resolved or
  * known-safe (shop/event) neighbor over anything else, falling back to
@@ -72,19 +97,36 @@ describe('gatekeeperReachable', () => {
   });
 });
 
-describe('playRun', () => {
+// A real class kit's fights (Phase 4 checkpoint A) can take much longer
+// than the old symmetric test dummy's did -- see encounters.ts's own
+// comment on why. Several tests here run dozens of playRun() calls
+// against Breacher's real starting kit, each potentially several
+// thousand hands, so this needs real headroom over vitest's 5s default.
+// (The tests that need a *guaranteed* outcome use installedLoadoutOverride
+// instead, and resolve fast regardless of this timeout.)
+describe('playRun', { timeout: 30_000 }, () => {
   const TINY_LAYERS: [number, number, number, number] = [2, 2, 2, 2];
 
   it('reaches victory on at least one seed with minimal layers (gatekeeper-only fights)', () => {
-    const outcomes = Array.from({ length: 50 }, (_, seed) =>
-      playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper }).outcome,
+    const outcomes = Array.from({ length: 5 }, (_, seed) =>
+      playRun({
+        seed,
+        layerNodeCounts: TINY_LAYERS,
+        traversalStrategy: beelineToGatekeeper,
+        installedLoadoutOverride: OVERWHELMING_LOADOUT,
+      }).outcome,
     );
     expect(outcomes).toContain('victory');
   });
 
   it('quarantines on at least one seed -- losing any gatekeeper ends the run outright', () => {
-    const outcomes = Array.from({ length: 50 }, (_, seed) =>
-      playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper }).outcome,
+    const outcomes = Array.from({ length: 5 }, (_, seed) =>
+      playRun({
+        seed,
+        layerNodeCounts: TINY_LAYERS,
+        traversalStrategy: beelineToGatekeeper,
+        installedLoadoutOverride: NEGLIGIBLE_LOADOUT,
+      }).outcome,
     );
     expect(outcomes).toContain('quarantined');
   });
@@ -110,9 +152,12 @@ describe('playRun', () => {
     // exploreThenGatekeeper deliberately visits every unresolved node,
     // which routinely closes more than the single node the layer's
     // graph-resilience guarantee (checkpoint B) promises safety against
-    // -- a real, intended risk of being that aggressive, not a bug.
-    const outcomes = Array.from({ length: 25 }, (_, seed) =>
-      playRun({ seed, traversalStrategy: exploreThenGatekeeper }).outcome,
+    // -- a real, intended risk of being that aggressive, not a bug. A
+    // NEGLIGIBLE loadout makes losses (and so closures) reliable instead
+    // of depending on Breacher's real kit's natural win rate, which is
+    // high enough that closures -- and so noRouteRemains -- are rare.
+    const outcomes = Array.from({ length: 10 }, (_, seed) =>
+      playRun({ seed, traversalStrategy: exploreThenGatekeeper, installedLoadoutOverride: NEGLIGIBLE_LOADOUT }).outcome,
     );
     expect(outcomes).toContain('noRouteRemains');
   });
@@ -130,12 +175,18 @@ describe('playRun', () => {
   });
 
   it('never returns quarantined with a nonzero Heat cost -- gatekeeper losses bypass Heat entirely', () => {
-    for (let seed = 0; seed < 25; seed++) {
-      const result = playRun({ seed, layerNodeCounts: TINY_LAYERS });
+    // NEGLIGIBLE_LOADOUT makes quarantine the reliable outcome, so this
+    // actually exercises the assertion instead of vacuously passing when
+    // no seed happens to quarantine.
+    let sawQuarantine = false;
+    for (let seed = 0; seed < 10; seed++) {
+      const result = playRun({ seed, layerNodeCounts: TINY_LAYERS, installedLoadoutOverride: NEGLIGIBLE_LOADOUT });
       if (result.outcome !== 'quarantined') continue;
+      sawQuarantine = true;
       const quarantineEvent = result.log.find((e) => e.type === 'encounter' && e.outcome.quarantined);
       expect(quarantineEvent).toBeDefined();
       expect(quarantineEvent && quarantineEvent.type === 'encounter' ? quarantineEvent.outcome.heatDelta : -1).toBe(0);
     }
+    expect(sawQuarantine).toBe(true);
   });
 });
