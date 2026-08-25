@@ -1069,27 +1069,72 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
   });
 
-  describe('Sleeper Cell (Saboteur)', () => {
+  describe('Sleeper Cell (Saboteur, reworked session 25)', () => {
     const rootPiece = () =>
       definition('root-piece', { kind: 'always' }, { kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, { archetype: 'root' });
 
-    it('advances the first Root subroutine the first time a Malware debuff is applied', () => {
+    it('advances the first Root subroutine and credits win gauge when a Malware debuff is applied -- persistent, not gated by passiveTriggered', () => {
       const state = createCombatState([rootPiece()], [], 12, 'saboteur');
       const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 0);
       expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(3);
-      expect(result.passiveTriggered).toBe(true);
+      expect(result.sides[0].winGauge.progress).toBe(4); // SLEEPER_CELL_CREDIT_AMOUNT
+      expect(result.passiveTriggered).toBe(false); // no longer one-shot
+    });
+
+    it('fires again on a second qualifying debuff -- persistence, the actual fix for the old one-shot gate', () => {
+      let state = createCombatState([rootPiece()], [], 12, 'saboteur');
+      state = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 0);
+      state = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 0);
+      expect(state.sides[0].loadout[0].state.accumulatedProgress).toBe(6);
+      expect(state.sides[0].winGauge.progress).toBe(8);
+    });
+
+    it("fires from the caster's own Malware DoT tick -- the reachability fix (Silent Worm is a DoT, not a debuff, so this is what makes Sleeper Cell reachable turn one)", () => {
+      const dotPiece = definition(
+        'dot-piece',
+        { kind: 'always' },
+        { kind: 'dot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
+        { archetype: 'malware' },
+      );
+      let state = createCombatState([dotPiece, rootPiece()], [], 12, 'saboteur');
+      state = resolvePayload(dotPiece.payload, 'malware', state, 0);
+      const result = tickCastersTurnPulse(state, 0);
+      expect(result.sides[0].winGauge.progress).toBe(7); // 3 (the DoT itself) + 4 (Sleeper Cell credit)
+      expect(result.sides[0].loadout[1].state.accumulatedProgress).toBe(3); // the Root piece, index 1
+    });
+
+    it('does not fire from a HoT tick (Encryption, not Malware)', () => {
+      const hotPiece = definition(
+        'hot-piece',
+        { kind: 'always' },
+        { kind: 'hot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
+        { archetype: 'encryption' },
+      );
+      let state = createCombatState([hotPiece], [rootPiece()], 12, 'saboteur');
+      state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
+      const result = tickCastersTurnPulse(state, 0);
+      expect(result.sides[0].winGauge.progress).toBe(0); // HoT itself only reduces the opponent, credits nothing to the caster
     });
 
     it('does not trigger for a debuff cast by a non-Malware subroutine', () => {
       const state = createCombatState([rootPiece()], [], 12, 'saboteur');
       const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(0);
+      expect(result.sides[0].winGauge.progress).toBe(0);
     });
 
     it("does not trigger for the enemy's own debuff", () => {
       const state = createCombatState([], [rootPiece()], 12, 'saboteur');
       const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 1);
       expect(result.sides[1].loadout[0].state.accumulatedProgress).toBe(0);
+      expect(result.sides[1].winGauge.progress).toBe(0);
+    });
+
+    it('does not apply for a different class', () => {
+      const state = createCombatState([rootPiece()], [], 12, 'breacher');
+      const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 0);
+      expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(0);
+      expect(result.sides[0].winGauge.progress).toBe(0);
     });
   });
 

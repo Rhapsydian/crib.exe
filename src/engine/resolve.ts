@@ -311,9 +311,10 @@ export interface ResolveContext {
 
 const FOOTHOLD_BONUS_FRACTION = 0.1; // TBD/playtesting -- X% of threshold, applied to both gauges
 const SLEEPER_CELL_ADVANCE_AMOUNT = 3; // TBD/playtesting
+const SLEEPER_CELL_CREDIT_AMOUNT = 4; // TBD/playtesting -- direct win-gauge credit, session 25 rework
 const PRIMED_THRESHOLD_REDUCTION = 2; // TBD/playtesting
 const FEEDBACK_LOOP_DOT_AMOUNT = 2; // TBD/playtesting
-const RETURN_TO_SENDER_RATIO = 0.5; // TBD/playtesting -- portion of absorbed amount redirected to Ghost's own gauge
+const RETURN_TO_SENDER_RATIO = 0.5; // TBD/playtesting -- portion of absorbed/reduced amount redirected to Ghost's own gauge
 
 /** Breacher's Foothold: the first time the player's own gauge reaches
  * 50% of its threshold this combat, a one-time symmetric bonus -- X% of
@@ -386,6 +387,22 @@ function advanceFirstMatchingSubroutine(
   loadout[index] = { ...entry, state: { ...entry.state, accumulatedProgress: entry.state.accumulatedProgress + amount } };
   const sides = replaceSide(combatState.sides, side, { ...sideState, loadout });
   return { ...combatState, sides };
+}
+
+/** Saboteur's Sleeper Cell (reworked, session 25): every Malware DoT
+ * tick or debuff application the caster applies also credits a direct
+ * amount to Saboteur's own gauge, alongside the original effect
+ * (advancing the first Root subroutine's banked progress) --
+ * persistent, not gated by passiveTriggered like the original one-shot
+ * version. Broadened from "first Malware debuff only," which was
+ * unreachable from Saboteur's own starting kit (Silent Worm is a DoT,
+ * not a debuff) -- `isMalwareEffect` lets either call site (the
+ * 'debuff' case below, or applyTickPush's DoT branch) qualify. */
+function applySleeperCellPassive(combatState: CombatState, casterSide: PlayerIndex, isMalwareEffect: boolean): CombatState {
+  if (!isMalwareEffect || casterSide !== 0 || combatState.classId !== 'saboteur') return combatState;
+  const amount = SLEEPER_CELL_CREDIT_AMOUNT * corruptionMultiplier(combatState, casterSide);
+  const credited = creditWinGauge(combatState, casterSide, amount);
+  return advanceFirstMatchingSubroutine(credited, casterSide, (def) => def.archetype === 'root', SLEEPER_CELL_ADVANCE_AMOUNT);
 }
 
 /** Ghost's Return to Sender: whenever Ghost's own wardShield actually
@@ -494,14 +511,7 @@ function resolvePayloadCore(
           : targetState.gauge;
       const sides = replaceSide(combatState.sides, target, { ...targetState, debuffs, gauge });
       const withDebuff = { ...combatState, sides };
-      // Saboteur's Sleeper Cell: the first Malware debuff applied each
-      // combat also advances the first Root subroutine in the caster's
-      // own loadout, by array order (no fixed target the way Priority
-      // Override has one).
-      const sleeperCell = caster === 0 && archetype === 'malware' && combatState.classId === 'saboteur' && !combatState.passiveTriggered;
-      if (!sleeperCell) return withDebuff;
-      const advanced = advanceFirstMatchingSubroutine(withDebuff, 0, (def) => def.archetype === 'root', SLEEPER_CELL_ADVANCE_AMOUNT);
-      return { ...advanced, passiveTriggered: true };
+      return applySleeperCellPassive(withDebuff, caster, archetype === 'malware');
     }
     case 'instantCounterPush': {
       // Reduces the *opponent's* gauge directly -- Encryption's instant
@@ -822,7 +832,8 @@ function applyTickPush(combatState: CombatState, tick: ActiveTick, listKey: 'dot
   const amount = tick.amountPerTick * corruptionMultiplier(combatState, tick.casterSide);
   const state =
     listKey === 'hots' ? reduceWinGauge(combatState, opponentOf(tick.casterSide), amount) : creditWinGauge(combatState, tick.casterSide, amount);
-  return applyFeedbackLoopPassive(state, tick, listKey);
+  const withFeedbackLoop = applyFeedbackLoopPassive(state, tick, listKey);
+  return applySleeperCellPassive(withFeedbackLoop, tick.casterSide, listKey === 'dots');
 }
 
 /** Warden's Feedback Loop: every Encryption HoT tick also credits a
