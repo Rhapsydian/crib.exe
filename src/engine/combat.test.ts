@@ -9,6 +9,7 @@ import { createDeck, shuffle } from './deck';
 import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardStrategy } from './deal';
 import { playPegging, playLowestLegal, type PlayStrategy } from './pegging';
 import { countHandEvents, countCribEvents } from './scoring';
+import { pegSkillStrategy } from './ai';
 
 function alwaysBurst(id: string, amount: number): SubroutineDefinition {
   return {
@@ -361,6 +362,17 @@ describe('playCombat', () => {
     expect(result.hands.length).toBeGreaterThan(0);
     expect(sawKnownCrib).toBe(true);
     expect(sawKnownOpponentHand).toBe(true);
+  });
+
+  it('pegSkillStrategy plugs into real combat via per-side playStrategies without throwing (session 24 tunable-skill AI checkpoint B smoke test)', () => {
+    const burst = alwaysBurst('winner', 20);
+    const result = playCombat([[burst], [burst]], {
+      seed: 13,
+      gaugeThreshold: 5,
+      winThreshold: 30,
+      playStrategies: [pegSkillStrategy(1), pegSkillStrategy(0)],
+    });
+    expect([0, 1]).toContain(result.winner);
   });
 
   describe('escalation', () => {

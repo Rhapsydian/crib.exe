@@ -126,6 +126,23 @@ session before the implementation phases below can be fully scoped:
   same mechanic. Noted session 24, content-authoring work for a later
   pass, not a new engine capability (the underlying adversarial scoring
   already generalizes to picking a full pair).
+- **Banked architecture question, not yet designed**: real human-vs-AI
+  play needs the engine's orchestration itself to become resumable at
+  each individual decision point, not just a smarter decision-maker.
+  Every `DiscardStrategy`/`PlayStrategy` call today (`deal.ts`/
+  `pegging.ts`) is synchronous -- `playPegging`/`discardToCrib` call it
+  inline and expect a card back immediately, which works for AI-vs-AI
+  but has no way to represent "pause and wait for a human's click."
+  Session 24's per-side strategy threading (tunable-skill AI checkpoint
+  A) doesn't touch this -- both sides still have to answer instantly,
+  they just no longer have to be the *same* function. Solving it for
+  real means the loop currently inside `playPegging`, and `combat.ts`'s
+  hand-lifecycle sequence, need to become externally pausable/resumable
+  wherever a human is involved, not just `ai.ts`'s scoring getting
+  smarter -- a distinct UI/engine-boundary redesign, not an extension of
+  the current skill-dial work (whose scoring logic stays equally useful
+  either way, since it doesn't care who calls it or when). Raised
+  session 24 while mid-scoping the skill-dial AI's real-player use case.
 
 ## Phase 1 — Core Cribbage engine ✅ complete (session 16)
 

@@ -1,6 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import type { Card } from './cards';
-import { unseenCards, handExpectedValue, cribExpectedValue, scoreDiscard, bestCardToForce } from './ai';
+import {
+  unseenCards,
+  handExpectedValue,
+  cribExpectedValue,
+  scoreDiscard,
+  bestCardToForce,
+  interpolatePegWeights,
+  scorePegCandidate,
+  pegSkillStrategy,
+} from './ai';
 
 function card(rank: Card['rank'], suit: Card['suit'] = 0): Card {
   return { rank, suit };
@@ -81,5 +90,68 @@ describe('bestCardToForce', () => {
     expect(hand.some((c) => c.rank === forced.rank && c.suit === forced.suit)).toBe(true);
     expect(hand.some((c) => c.rank === companion.rank && c.suit === companion.suit)).toBe(true);
     expect(forced).not.toEqual(companion);
+  });
+});
+
+describe('interpolatePegWeights', () => {
+  it('returns the novice vector at skill=0 and the expert vector at skill=1', () => {
+    expect(interpolatePegWeights(0)).toEqual({ immediateScore: 1, defensiveRisk: 0, setupValue: 0 });
+    expect(interpolatePegWeights(1)).toEqual({ immediateScore: 1, defensiveRisk: 1, setupValue: 0.5 });
+  });
+
+  it('clamps out-of-range skill to [0, 1]', () => {
+    expect(interpolatePegWeights(-5)).toEqual(interpolatePegWeights(0));
+    expect(interpolatePegWeights(5)).toEqual(interpolatePegWeights(1));
+  });
+});
+
+describe('scorePegCandidate / pegSkillStrategy', () => {
+  // A card that both scores immediately (completes a pair with the
+  // sequence's last card) and leaves the count at a risky value (21 --
+  // any of the four 10-value ranks lets the opponent hit 31 next), vs.
+  // a card that scores nothing but leaves a safe count. Only these two
+  // are legal, so setupValue is 0 for both -- isolates the immediate-
+  // score-vs-risk tradeoff cleanly.
+  const sequence: Card[] = [card(1, 0), card(10, 0)]; // count so far: 11
+  const riskyPair = card(10, 1); // pairs the last-played 10; 11+10=21
+  const safe = card(2, 2); // no pair, no run, no fifteen; 11+2=13
+
+  it('at skill=0 (novice), picks the immediately-scoring but risky play', () => {
+    const strategy = pegSkillStrategy(0);
+    const chosen = strategy({ legalCards: [riskyPair, safe], count: 11, sequence });
+    expect(chosen).toEqual(riskyPair);
+  });
+
+  it('at skill=1 (expert), picks the safe play over the risky score', () => {
+    const strategy = pegSkillStrategy(1);
+    const chosen = strategy({ legalCards: [riskyPair, safe], count: 11, sequence });
+    expect(chosen).toEqual(safe);
+  });
+
+  it('scorePegCandidate: the risky pair scores higher than the safe card under novice weights', () => {
+    const novice = interpolatePegWeights(0);
+    const ctx = { legalCards: [riskyPair, safe], count: 11, sequence };
+    expect(scorePegCandidate(riskyPair, ctx, novice)).toBeGreaterThan(scorePegCandidate(safe, ctx, novice));
+  });
+
+  it('scorePegCandidate: the safe card scores higher than the risky pair under expert weights', () => {
+    const expert = interpolatePegWeights(1);
+    const ctx = { legalCards: [riskyPair, safe], count: 11, sequence };
+    expect(scorePegCandidate(safe, ctx, expert)).toBeGreaterThan(scorePegCandidate(riskyPair, ctx, expert));
+  });
+
+  it('setupValue rewards a candidate with an adjacent-rank companion among the other legal cards', () => {
+    const weights = { immediateScore: 0, defensiveRisk: 0, setupValue: 1 };
+    const withNeighbor = card(5, 0);
+    const noNeighbor = card(9, 0);
+    const ctx = { legalCards: [withNeighbor, card(6, 1), noNeighbor], count: 0, sequence: [] };
+    expect(scorePegCandidate(withNeighbor, ctx, weights)).toBeGreaterThan(scorePegCandidate(noNeighbor, ctx, weights));
+  });
+
+  it('pegSkillStrategy always returns one of the actual legal cards', () => {
+    const strategy = pegSkillStrategy(0.5);
+    const legalCards = [card(3, 0), card(8, 1), card(11, 2)];
+    const chosen = strategy({ legalCards, count: 4, sequence: [card(1, 0)] });
+    expect(legalCards).toContainEqual(chosen);
   });
 });

@@ -74,14 +74,20 @@ interface SequenceCard {
  * a pair requires the last 2 ranks to match, which always breaks the
  * distinct-rank requirement any run window ending at the same card would
  * need.
+ *
+ * Exported as `scoreCardPlay` (session 24 tunable-skill AI checkpoint B)
+ * for `ai.ts`'s pegging heuristic to reuse directly rather than
+ * reimplementing the same scoring rules a second time — takes the plain
+ * `Card[]` shape `PlayContext.sequence` already carries (who played each
+ * card was never actually used below).
  */
-function scorePlay(sequence: SequenceCard[], count: number): PegScoreBreakdown {
+export function scoreCardPlay(cardsSinceReset: Card[], count: number): PegScoreBreakdown {
   let fifteen = 0;
   let thirtyOne = 0;
   if (count === 15) fifteen += 2;
   if (count === 31) thirtyOne += 2;
 
-  const ranks = sequence.map((s) => s.card.rank);
+  const ranks = cardsSinceReset.map((c) => c.rank);
   const lastRank = ranks[ranks.length - 1];
   let pairRun = 1;
   for (let i = ranks.length - 2; i >= 0 && ranks[i] === lastRank; i--) {
@@ -94,7 +100,7 @@ function scorePlay(sequence: SequenceCard[], count: number): PegScoreBreakdown {
 
   let run = 0;
   if (pairRun < 2) {
-    for (let k = sequence.length; k >= 3; k--) {
+    for (let k = cardsSinceReset.length; k >= 3; k--) {
       const window = ranks.slice(ranks.length - k);
       const uniq = new Set(window);
       if (uniq.size === k) {
@@ -155,7 +161,7 @@ export function playPegging(
       hands[player] = hands[player].filter((c) => !cardsEqual(c, card));
       count += cardValue(card);
       sequence.push({ card, player });
-      const breakdown = scorePlay(sequence, count);
+      const breakdown = scoreCardPlay(sequence.map((s) => s.card), count);
       scores[player] += breakdown.total;
       events.push({ type: 'play', player, card, count, score: breakdown.total, breakdown });
       lastPlayerToAct = player;

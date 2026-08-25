@@ -2,6 +2,7 @@ import type { Card } from './cards';
 import { cardValue, cardsEqual } from './cards';
 import { createDeck } from './deck';
 import { countHand, countCrib } from './scoring';
+import { scoreCardPlay, type PlayContext, type PlayStrategy } from './pegging';
 
 /**
  * Shared weighted-scoring heuristic module (Root mechanical redesign,
@@ -119,4 +120,73 @@ export function bestCardToForce(hand: Card[], isOwnCrib: boolean): [Card, Card] 
   }
 
   return [bestForced, bestCompanion];
+}
+
+/**
+ * Tunable-skill pegging AI (checkpoint B). Three factors per candidate
+ * legal card, kept small per decision 2: immediate score (reuses
+ * pegging.ts's own scoring rules via scoreCardPlay); defensive risk (a
+ * flat penalty for leaving the running count at 5 or 21 -- the
+ * classic Cribbage risk, since the four 10-value ranks make either
+ * count exploitable regardless of what the opponent actually holds);
+ * setup value (a small bonus for candidates that keep same-rank/
+ * adjacent-rank potential alive among the caster's *other* currently-
+ * legal cards). All weights TBD/playtesting, same placeholder
+ * convention as everywhere else in this project.
+ */
+export interface PegWeights {
+  immediateScore: number;
+  defensiveRisk: number;
+  setupValue: number;
+}
+
+const PEG_NOVICE_WEIGHTS: PegWeights = { immediateScore: 1, defensiveRisk: 0, setupValue: 0 };
+const PEG_EXPERT_WEIGHTS: PegWeights = { immediateScore: 1, defensiveRisk: 1, setupValue: 0.5 };
+
+const RISKY_COUNTS = new Set([5, 21]);
+const DEFENSIVE_RISK_PENALTY = 3; // TBD/playtesting
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+/** Skill as a single continuous 0-1 knob (decision 2): linearly
+ * interpolates between the novice and expert weight vectors above,
+ * clamped to [0, 1]. */
+export function interpolatePegWeights(skill: number): PegWeights {
+  const t = Math.max(0, Math.min(1, skill));
+  return {
+    immediateScore: lerp(PEG_NOVICE_WEIGHTS.immediateScore, PEG_EXPERT_WEIGHTS.immediateScore, t),
+    defensiveRisk: lerp(PEG_NOVICE_WEIGHTS.defensiveRisk, PEG_EXPERT_WEIGHTS.defensiveRisk, t),
+    setupValue: lerp(PEG_NOVICE_WEIGHTS.setupValue, PEG_EXPERT_WEIGHTS.setupValue, t),
+  };
+}
+
+/** Weighted score for playing `card` from `ctx` -- exported so both the
+ * factory below and tests can evaluate a single candidate directly. */
+export function scorePegCandidate(card: Card, ctx: Pick<PlayContext, 'legalCards' | 'count' | 'sequence'>, weights: PegWeights): number {
+  const newCount = ctx.count + cardValue(card);
+  const immediateScore = scoreCardPlay([...ctx.sequence, card], newCount).total;
+  const defensiveRisk = RISKY_COUNTS.has(newCount) ? DEFENSIVE_RISK_PENALTY : 0;
+  const setupValue = ctx.legalCards.filter((c) => !cardsEqual(c, card) && Math.abs(c.rank - card.rank) <= 1).length;
+  return weights.immediateScore * immediateScore - weights.defensiveRisk * defensiveRisk + weights.setupValue * setupValue;
+}
+
+/** Factory: builds a PlayStrategy that picks the highest-scoring legal
+ * card at the given skill level (0-1), enumerating every legal
+ * candidate each turn. */
+export function pegSkillStrategy(skill: number): PlayStrategy {
+  const weights = interpolatePegWeights(skill);
+  return (ctx) => {
+    let best = ctx.legalCards[0];
+    let bestScore = -Infinity;
+    for (const card of ctx.legalCards) {
+      const score = scorePegCandidate(card, ctx, weights);
+      if (score > bestScore) {
+        bestScore = score;
+        best = card;
+      }
+    }
+    return best;
+  };
 }
