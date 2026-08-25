@@ -1,5 +1,3 @@
-import { BREACH_CONTAINMENT_CENTER, BREACH_CONTAINMENT_MAX } from './gauges';
-
 /**
  * The Heat resource (session 19/20 checkpoint C): a persistent,
  * run-spanning, *rising* danger meter -- accumulates toward getting
@@ -35,15 +33,14 @@ export function addHeat(current: number, amount: number): HeatUpdate {
 
 /**
  * Heat gained from losing a regular or elite fight, scaled by how close
- * the player got to their own win before being dragged back -- not
- * literal overshoot (Breach/Containment stops dead at 0/100), but the
- * peak value reached during the match (see
- * CombatResult.peakBreachContainment). Getting the meter to 80% in your
- * favor before it swung costs noticeably less than being dominated from
- * the first hand.
+ * the player got to their own win before the fight ended -- the peak
+ * fill-fraction their own win-gauge reached during the match (see
+ * CombatResult.peakFillFraction[0], session 22+'s two-gauge redesign;
+ * previously derived from the old shared scalar's peak value instead).
+ * Getting your own gauge to 80% full before losing costs noticeably less
+ * than being dominated from the first hand.
  */
-export function heatFromLoss(tier: 'regular' | 'elite', peakBreachContainment: number): number {
-  const span = BREACH_CONTAINMENT_MAX - BREACH_CONTAINMENT_CENTER;
-  const margin = Math.max(0, Math.min(1, (peakBreachContainment - BREACH_CONTAINMENT_CENTER) / span));
+export function heatFromLoss(tier: 'regular' | 'elite', peakFillFraction: number): number {
+  const margin = Math.max(0, Math.min(1, peakFillFraction));
   return Math.round(BASE_HEAT_BY_TIER[tier] * (1 - margin));
 }

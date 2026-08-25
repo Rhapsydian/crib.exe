@@ -1,13 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  createInitiativeGauge,
-  addPoints,
-  createBreachContainment,
-  pushBreachContainment,
-  BREACH_CONTAINMENT_MIN,
-  BREACH_CONTAINMENT_MAX,
-  BREACH_CONTAINMENT_CENTER,
-} from './gauges';
+import { createInitiativeGauge, addPoints, createDuelGauge, addDuelProgress, reduceDuelProgress } from './gauges';
 
 describe('InitiativeGauge / addPoints', () => {
   it('accumulates points without triggering a turn while under threshold', () => {
@@ -47,36 +39,55 @@ describe('InitiativeGauge / addPoints', () => {
   });
 });
 
-describe('Breach/Containment', () => {
-  it('starts contested at the center', () => {
-    expect(createBreachContainment()).toBe(BREACH_CONTAINMENT_CENTER);
+describe('DuelGauge / addDuelProgress', () => {
+  it('starts at zero progress', () => {
+    expect(createDuelGauge(20)).toEqual({ progress: 0, threshold: 20 });
   });
 
-  it('pushes toward the player favor and reports no resolution mid-range', () => {
-    const { value, resolved } = pushBreachContainment(BREACH_CONTAINMENT_CENTER, 10, true);
-    expect(value).toBe(60);
-    expect(resolved).toBeNull();
+  it('credits progress and reports not yet resolved while under threshold', () => {
+    const gauge = createDuelGauge(20);
+    const { gauge: updated, resolved } = addDuelProgress(gauge, 12);
+    expect(updated.progress).toBe(12);
+    expect(resolved).toBe(false);
   });
 
-  it('pushes toward the enemy favor', () => {
-    const { value } = pushBreachContainment(BREACH_CONTAINMENT_CENTER, 10, false);
-    expect(value).toBe(40);
+  it('resolves exactly on hitting the threshold, not just past it', () => {
+    const gauge = createDuelGauge(20);
+    const { resolved } = addDuelProgress(gauge, 20);
+    expect(resolved).toBe(true);
   });
 
-  it('clamps at the max and resolves in the player favor', () => {
-    const { value, resolved } = pushBreachContainment(90, 50, true);
-    expect(value).toBe(BREACH_CONTAINMENT_MAX);
-    expect(resolved).toBe('player');
+  it('resolves on overshoot past the threshold, and does not clamp progress', () => {
+    const gauge = createDuelGauge(20);
+    const { gauge: updated, resolved } = addDuelProgress(gauge, 35);
+    expect(updated.progress).toBe(35); // not clamped -- resolved is what matters
+    expect(resolved).toBe(true);
   });
 
-  it('clamps at the min and resolves in the enemy favor', () => {
-    const { value, resolved } = pushBreachContainment(10, 50, false);
-    expect(value).toBe(BREACH_CONTAINMENT_MIN);
-    expect(resolved).toBe('enemy');
+  it('ignores non-positive additions but still reports current resolution state', () => {
+    const gauge = createDuelGauge(20);
+    const { gauge: updated, resolved } = addDuelProgress(gauge, 0);
+    expect(updated).toEqual(gauge);
+    expect(resolved).toBe(false);
+
+    const alreadyThere = { progress: 20, threshold: 20 };
+    expect(addDuelProgress(alreadyThere, -5)).toEqual({ gauge: alreadyThere, resolved: true });
+  });
+});
+
+describe('reduceDuelProgress', () => {
+  it('subtracts progress', () => {
+    const gauge = { progress: 15, threshold: 20 };
+    expect(reduceDuelProgress(gauge, 5)).toEqual({ progress: 10, threshold: 20 });
   });
 
-  it('resolves exactly at the extremes, not just past them', () => {
-    expect(pushBreachContainment(90, 10, true).resolved).toBe('player');
-    expect(pushBreachContainment(10, 10, false).resolved).toBe('enemy');
+  it('floors at 0 rather than going negative', () => {
+    const gauge = { progress: 5, threshold: 20 };
+    expect(reduceDuelProgress(gauge, 50)).toEqual({ progress: 0, threshold: 20 });
+  });
+
+  it('ignores non-positive amounts', () => {
+    const gauge = { progress: 15, threshold: 20 };
+    expect(reduceDuelProgress(gauge, 0)).toEqual(gauge);
   });
 });

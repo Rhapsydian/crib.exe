@@ -80,11 +80,18 @@ describe('mergeSubroutine', () => {
     expect(result.installedLoadout[0].payload).toEqual({ kind: 'directBurst', amount: 8 });
   });
 
-  it('falls back to the trigger knob for a non-magnitude payload (Ward)', () => {
-    const ward = piece('w', { payload: { kind: 'ward', blocksArchetype: 'exploit' }, trigger: { kind: 'accumulator', metric: 'points', threshold: 6 } });
+  it("improves Ward's shield amount directly -- it's a real magnitude now (Breach/Containment redesign)", () => {
+    const ward = piece('w', { payload: { kind: 'ward', amount: 7 } });
     const state = playerState({ bench: [ward], material: { w: 1 } });
     const result = mergeSubroutine(state, 'w');
-    expect(result.bench[0].payload).toEqual({ kind: 'ward', blocksArchetype: 'exploit' }); // unchanged
+    expect(result.bench[0].payload).toEqual({ kind: 'ward', amount: 10 }); // +3 (MERGE_MAGNITUDE_BONUS)
+  });
+
+  it('falls back to the trigger knob for a non-magnitude payload (Cleanse)', () => {
+    const cleanse = piece('c', { payload: { kind: 'cleanse' }, trigger: { kind: 'accumulator', metric: 'points', threshold: 6 } });
+    const state = playerState({ bench: [cleanse], material: { c: 1 } });
+    const result = mergeSubroutine(state, 'c');
+    expect(result.bench[0].payload).toEqual({ kind: 'cleanse' }); // unchanged
     expect(result.bench[0].trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 4 }); // -2
   });
 

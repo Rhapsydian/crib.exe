@@ -21,23 +21,27 @@ describe('addHeat', () => {
 });
 
 describe('heatFromLoss', () => {
+  // Breach/Containment redesign (session 22+): heatFromLoss now takes the
+  // losing side's own peak win-gauge fill fraction (0-1) directly --
+  // CombatResult.peakFillFraction[0] -- rather than a 0-100 shared-scalar
+  // peak value measured against a center point.
   it('charges the full tier base when the player made no progress at all', () => {
-    expect(heatFromLoss('regular', 50)).toBe(15);
-    expect(heatFromLoss('elite', 50)).toBe(30);
+    expect(heatFromLoss('regular', 0)).toBe(15);
+    expect(heatFromLoss('elite', 0)).toBe(30);
   });
 
   it('charges noticeably less the closer the player got to their own win', () => {
-    const dominated = heatFromLoss('regular', 50);
-    const closeCall = heatFromLoss('regular', 90);
+    const dominated = heatFromLoss('regular', 0);
+    const closeCall = heatFromLoss('regular', 0.9);
     expect(closeCall).toBeLessThan(dominated);
   });
 
   it('elite costs meaningfully more than regular at the same margin -- higher stakes for a harder, better-rewarded fight', () => {
-    expect(heatFromLoss('elite', 70)).toBeGreaterThan(heatFromLoss('regular', 70));
+    expect(heatFromLoss('elite', 0.3)).toBeGreaterThan(heatFromLoss('regular', 0.3));
   });
 
-  it('clamps gracefully for out-of-domain peak values', () => {
-    expect(heatFromLoss('regular', 30)).toBe(15); // below center -- no negative margin
-    expect(heatFromLoss('regular', 100)).toBe(0); // at the far edge -- no heat left to charge
+  it('clamps gracefully for out-of-domain fraction values', () => {
+    expect(heatFromLoss('regular', -0.5)).toBe(15); // no negative margin
+    expect(heatFromLoss('regular', 1.5)).toBe(0); // no heat left to charge past full progress
   });
 });

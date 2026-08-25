@@ -66,6 +66,11 @@ const ENEMY_LOADOUT_REGULAR: SubroutineDefinition[] = [burstSubroutine('enemy-bu
 const ENEMY_LOADOUT_ELITE: SubroutineDefinition[] = [burstSubroutine('enemy-elite-burst', 2.55)];
 const ENEMY_LOADOUT_GATEKEEPER: SubroutineDefinition[] = [burstSubroutine('enemy-gatekeeper-burst', 2.8)];
 const GAUGE_THRESHOLD = 8;
+// Breach/Containment redesign (session 22+): these magnitudes and this
+// win-gauge threshold are placeholder values carried over from the old
+// shared-scalar model, not real balance against the new two-gauge one --
+// re-tuning both together, empirically, is Phase 5's job (BACKLOG.md).
+const WIN_THRESHOLD = 100;
 
 export interface EncounterOutcome {
   newState: NodeState;
@@ -119,6 +124,7 @@ function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): E
   const result = playCombat([playerState.installedLoadout, enemyLoadout], {
     seed,
     gaugeThreshold: GAUGE_THRESHOLD,
+    winThreshold: WIN_THRESHOLD,
     maxHands: FIGHT_MAX_HANDS,
     classId: playerState.classId,
   });
@@ -154,7 +160,7 @@ function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): E
   }
   return {
     newState: 'closed',
-    heatDelta: heatFromLoss(kind, result.peakBreachContainment) + result.playerHeatGenerated,
+    heatDelta: heatFromLoss(kind, result.peakFillFraction[0]) + result.playerHeatGenerated,
     quarantined: false,
     rewardTier: 'none',
     dataAwarded: 0,

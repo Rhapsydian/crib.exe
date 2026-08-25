@@ -13,20 +13,23 @@ import {
   type SubroutineRuntimeState,
   type TriggerContext,
 } from './triggers';
-import {
-  createInitiativeGauge,
-  createBreachContainment,
-  pushBreachContainment,
-  BREACH_CONTAINMENT_CENTER,
-  type InitiativeGauge,
-} from './gauges';
+import { createInitiativeGauge, createDuelGauge, addDuelProgress, reduceDuelProgress, type InitiativeGauge, type DuelGauge } from './gauges';
 
 /**
  * Fire-on-turn resolution (session 17 checkpoint E): given that a side's
  * turn has already been triggered (Checkpoint F's job, via the
  * initiative gauge), iterate that side's loadout top-to-bottom, fire
  * every subroutine that's ready and not toggled off, and resolve its
- * payload against Breach/Containment or the opposing side's state.
+ * payload against the acting side's or opposing side's state.
+ *
+ * Breach/Containment redesign (session 22+): each side races toward its
+ * own win independently (gauges.ts's DuelGauge) instead of both pushing
+ * one shared scalar -- see gauges.ts's own header for why. Offense
+ * credits the caster's own gauge; Encryption's mitigation (HoT,
+ * instantCounterPush) reduces the *opponent's* gauge directly instead of
+ * pushing a shared value back toward center, so "mitigation can't win
+ * alone" is now a free structural property rather than something needing
+ * an artificial cap.
  */
 
 export interface ActiveDebuff {
@@ -58,12 +61,22 @@ export interface LoadoutEntry {
 
 export interface CombatSideState {
   gauge: InitiativeGauge;
+  /** This side's own progress toward its own win -- see gauges.ts's
+   * DuelGauge. Only this side's own offense ever credits it; nothing
+   * else on this side reduces it (that would defeat the point of
+   * decoupling the two races) -- only the *opponent's* mitigation
+   * reduces it, applied to the opponent's CombatSideState.winGauge, not
+   * this one. */
+  winGauge: DuelGauge;
   heat: number;
   loadout: LoadoutEntry[];
   debuffs: ActiveDebuff[];
-  /** Archetypes currently warded against; consumed the moment a matching
-   * non-piercing payload would otherwise land. */
-  wards: Archetype[];
+  /** Accumulating shield (Ward payloads add to it) -- absorbs the
+   * opponent's future non-Piercing directBurst offense, denying the
+   * gauge-fill it would otherwise cause, until depleted. No longer
+   * archetype-scoped (session 22+ redesign) -- Piercing already
+   * supplies the one counter-play axis that matters. */
+  wardShield: number;
   dots: ActiveTick[];
   hots: ActiveTick[];
 }
@@ -92,7 +105,6 @@ export interface PendingCribbageManipulation {
 }
 
 export interface CombatState {
-  breachContainment: number;
   sides: [CombatSideState, CombatSideState];
   pendingSabotage: PendingSabotage[];
   pendingCribbageManipulation: PendingCribbageManipulation[];
@@ -113,13 +125,14 @@ export interface CombatState {
   passiveTriggered: boolean;
 }
 
-export function createCombatSideState(definitions: SubroutineDefinition[], gaugeThreshold: number): CombatSideState {
+export function createCombatSideState(definitions: SubroutineDefinition[], gaugeThreshold: number, winThreshold: number): CombatSideState {
   return {
     gauge: createInitiativeGauge(gaugeThreshold),
+    winGauge: createDuelGauge(winThreshold),
     heat: 0,
     loadout: definitions.map((definition) => ({ definition, state: createInitialState() })),
     debuffs: [],
-    wards: [],
+    wardShield: 0,
     dots: [],
     hots: [],
   };
@@ -130,10 +143,13 @@ export function createCombatState(
   enemyLoadout: SubroutineDefinition[],
   gaugeThreshold: number,
   classId?: ClassId,
+  winThreshold: number = 100,
 ): CombatState {
   return {
-    breachContainment: createBreachContainment(),
-    sides: [createCombatSideState(playerLoadout, gaugeThreshold), createCombatSideState(enemyLoadout, gaugeThreshold)],
+    sides: [
+      createCombatSideState(playerLoadout, gaugeThreshold, winThreshold),
+      createCombatSideState(enemyLoadout, gaugeThreshold, winThreshold),
+    ],
     pendingSabotage: [],
     pendingCribbageManipulation: [],
     classId,
@@ -155,32 +171,28 @@ function replaceSide(
   return copy;
 }
 
-/** Breach/Containment's 0-100 scale is defined relative to side 0's
- * favor (100 = fully Breach, side 0's favor). A push "toward the caster"
- * therefore pushes up for side 0 and down for side 1. */
-function pushTowardCaster(value: number, amount: number, caster: PlayerIndex) {
-  return pushBreachContainment(value, amount, caster === 0);
+/** Credits `side`'s own winGauge with `amount` progress toward its own
+ * win. The one and only way a gauge ever advances -- offense payloads,
+ * DoT ticks, and Foothold/Feedback Loop/Return to Sender's bonuses all
+ * route through this. */
+function creditWinGauge(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
+  if (amount <= 0) return combatState;
+  const sideState = combatState.sides[side];
+  const { gauge } = addDuelProgress(sideState.winGauge, amount);
+  const sides = replaceSide(combatState.sides, side, { ...sideState, winGauge: gauge });
+  return { ...combatState, sides };
 }
 
-/** Same as pushTowardCaster, but clamped at the midpoint (50) in the
- * caster's favor -- a push that would cross center only applies enough
- * to reach exactly center; already at/past center in the caster's favor
- * is a no-op. Default behavior for HoT ticks and instantCounterPush:
- * Encryption's kit can only ever stabilize the match, never win it
- * outright on its own -- the mechanical expression of "defense/
- * mitigation, not offense." Ghost's Return to Sender starting passive
- * (Phase 4 checkpoint B) is the one bypass -- applied automatically for
- * Ghost's own counter-push, directly in the 'instantCounterPush' case
- * below rather than through ResolveContext.bypassBreachContainmentCap
- * (which remains available as a manual override for anything else that
- * ever needs it). */
-function pushTowardCasterCapAtCenter(value: number, amount: number, caster: PlayerIndex): { value: number } {
-  const towardPlayer = caster === 0;
-  const alreadyAtOrPastCenter = towardPlayer ? value >= BREACH_CONTAINMENT_CENTER : value <= BREACH_CONTAINMENT_CENTER;
-  if (alreadyAtOrPastCenter) return { value };
-  const { value: pushed } = pushBreachContainment(value, amount, towardPlayer);
-  const capped = towardPlayer ? Math.min(pushed, BREACH_CONTAINMENT_CENTER) : Math.max(pushed, BREACH_CONTAINMENT_CENTER);
-  return { value: capped };
+/** Reduces `side`'s own winGauge by `amount` -- Encryption's mitigation
+ * tools (HoT, instantCounterPush) call this against the *opponent's*
+ * gauge, never their own. Floored at 0 by gauges.ts's reduceDuelProgress
+ * -- no upper cap needed the way the old shared scalar's midpoint was. */
+function reduceWinGauge(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
+  if (amount <= 0) return combatState;
+  const sideState = combatState.sides[side];
+  const gauge = reduceDuelProgress(sideState.winGauge, amount);
+  const sides = replaceSide(combatState.sides, side, { ...sideState, winGauge: gauge });
+  return { ...combatState, sides };
 }
 
 const CORRUPTED_MULTIPLIER = 0.5; // TBD/playtesting
@@ -213,28 +225,24 @@ export function applyThrottled(combatState: CombatState, side: PlayerIndex, poin
   return Math.min(points, Math.max(THROTTLED_FLOOR, points - THROTTLED_REDUCTION));
 }
 
-function consumeWard(sideState: CombatSideState, archetype: Archetype): { sideState: CombatSideState; blocked: boolean } {
-  const index = sideState.wards.indexOf(archetype);
-  if (index === -1) return { sideState, blocked: false };
-  const wards = sideState.wards.slice();
-  wards.splice(index, 1);
-  return { sideState: { ...sideState, wards }, blocked: true };
+/** Absorbs up to `amount` of incoming non-Piercing offense against
+ * `sideState`'s own wardShield, floored at 0 -- returns how much was
+ * absorbed and how much got through. */
+function absorbWithShield(sideState: CombatSideState, amount: number): { sideState: CombatSideState; absorbed: number; remaining: number } {
+  const absorbed = Math.min(sideState.wardShield, amount);
+  const remaining = amount - absorbed;
+  return { sideState: { ...sideState, wardShield: sideState.wardShield - absorbed }, absorbed, remaining };
 }
 
 export interface ResolveContext {
   /** How many other subroutines already fired earlier this same turn --
    * chainFinisherScaling's payoff for loadout sequencing. */
   priorFireCountThisTurn: number;
-  /** Bypasses the default midpoint cap on instantCounterPush (see
-   * pushTowardCasterCapAtCenter). Ghost's Return to Sender passive is
-   * applied automatically instead (directly in the 'instantCounterPush'
-   * case, keyed off CombatState.classId) -- this remains available as a
-   * manual override for anything else that ever needs it. */
-  bypassBreachContainmentCap?: boolean;
 }
 
 // ---------------------------------------------------------------------
-// Starting passives (Phase 4 checkpoint B) -- 6 bespoke hooks, not a
+// Starting passives (Phase 4 checkpoint B, retranslated for the
+// Breach/Containment redesign session 22+) -- 6 bespoke hooks, not a
 // generic framework (session 21's own reasoning: 6 heterogeneous
 // one-offs don't justify one). Foothold/Zero Day/Sleeper Cell/Primed are
 // one-shot ("the first time X"), gated by CombatState.passiveTriggered;
@@ -243,30 +251,32 @@ export interface ResolveContext {
 // apply to side 0 -- enemy loadouts have no class.
 // ---------------------------------------------------------------------
 
-const FOOTHOLD_BONUS = 5; // TBD/playtesting
+const FOOTHOLD_BONUS_FRACTION = 0.1; // TBD/playtesting -- X% of threshold, applied to both gauges
 const SLEEPER_CELL_ADVANCE_AMOUNT = 3; // TBD/playtesting
 const PRIMED_THRESHOLD_REDUCTION = 2; // TBD/playtesting
 const FEEDBACK_LOOP_DOT_AMOUNT = 2; // TBD/playtesting
+const RETURN_TO_SENDER_RATIO = 0.5; // TBD/playtesting -- portion of absorbed amount redirected to Ghost's own gauge
 
-/** Breacher's Foothold: the first time Breach/Containment crosses into
- * the player's favor (strictly past center) this combat, gives a small
- * extra push in the player's favor. Compares `before`/`after` around
- * every CombatState-changing step (combat.ts's step()) rather than
- * hooking one specific payload kind -- a crossing can come from a
- * burst, a counter-push, or a tick, and this needs to catch all of
- * them uniformly. Re-derives the winner after applying its own bonus
- * (exported for combat.ts to use), since the bonus itself can finish
- * the match. Known minor gap: a crossing caused by this same bonus push
- * doesn't get a fresh Enemy-state/Reactive readiness pass of its own --
- * the next natural refresh (very soon, given how often the combat loop
- * calls refreshTriggerReadiness) picks it up instead. */
-export function applyFootholdCrossing(before: CombatState, after: CombatState): CombatState {
-  if (after.classId !== 'breacher' || after.passiveTriggered) return after;
-  const wasInFavor = before.breachContainment > BREACH_CONTAINMENT_CENTER;
-  const nowInFavor = after.breachContainment > BREACH_CONTAINMENT_CENTER;
-  if (wasInFavor || !nowInFavor) return after;
-  const { value } = pushBreachContainment(after.breachContainment, FOOTHOLD_BONUS, true);
-  return { ...after, breachContainment: value, passiveTriggered: true };
+/** Breacher's Foothold: the first time the player's own gauge reaches
+ * 50% of its threshold this combat, a one-time symmetric bonus -- X% of
+ * threshold credited to the player's own gauge (Exploit side) *and* a
+ * matching reduction to the enemy's gauge (Encryption side). Not
+ * relative-lead (comparing against the enemy's own progress) -- a flat,
+ * standard, self-contained confirmation bonus, reading truer to "hit
+ * hard, then hold the position you just took" than a race-relative
+ * trigger would. Engages both of Breacher's archetypes in one trigger,
+ * same as Warden's Feedback Loop and Ghost's Return to Sender already
+ * do by nature. Exported for combat.ts's step() to call after every
+ * state-changing step, since a crossing can come from any payload kind
+ * or tick, not just one. */
+export function applyFootholdBonus(combatState: CombatState): CombatState {
+  if (combatState.classId !== 'breacher' || combatState.passiveTriggered) return combatState;
+  const playerGauge = combatState.sides[0].winGauge;
+  if (playerGauge.progress < playerGauge.threshold / 2) return combatState;
+  const bonus = playerGauge.threshold * FOOTHOLD_BONUS_FRACTION;
+  const boosted = creditWinGauge(combatState, 0, bonus);
+  const pushed = reduceWinGauge(boosted, 1, bonus);
+  return { ...pushed, passiveTriggered: true };
 }
 
 /** Operator's Primed: the first time a Root subroutine fires this
@@ -320,13 +330,27 @@ function advanceFirstMatchingSubroutine(
   return { ...combatState, sides };
 }
 
-/** Resolves one subroutine's payload against Breach/Containment or the
+/** Ghost's Return to Sender: whenever Ghost's own wardShield actually
+ * absorbs some of an incoming non-Piercing hit, a proportional portion
+ * of the absorbed amount also credits Ghost's own gauge -- continuous,
+ * per-absorb, not gated on the shield fully depleting (a full-break-only
+ * trigger would be unreliable, and DESIGN.md's original "a portion...
+ * carries through" phrasing already reads as ongoing). Persistent, not
+ * one-shot -- not gated by passiveTriggered, same treatment as Feedback
+ * Loop. `shieldOwnerSide` is whoever's wardShield just absorbed the hit
+ * (the defender in this exchange, not the attacker). */
+function applyReturnToSenderPassive(combatState: CombatState, shieldOwnerSide: PlayerIndex, absorbed: number): CombatState {
+  if (absorbed <= 0 || shieldOwnerSide !== 0 || combatState.classId !== 'ghost') return combatState;
+  return creditWinGauge(combatState, 0, absorbed * RETURN_TO_SENDER_RATIO);
+}
+
+/** Resolves one subroutine's payload against the acting side's or
  * opposing side's state. `archetype` comes from the firing subroutine's
- * definition (payloads themselves don't carry it) -- needed for ward
- * matching. Wraps resolvePayloadCore (the actual per-payload-kind
- * switch) with Primed, the one passive hook that applies generically by
- * archetype rather than by a specific payload kind -- see the passives
- * block above. */
+ * definition (payloads themselves don't carry it) -- needed for
+ * scheduledSabotage's wrapped-effect bookkeeping. Wraps
+ * resolvePayloadCore (the actual per-payload-kind switch) with Primed,
+ * the one passive hook that applies generically by archetype rather
+ * than by a specific payload kind -- see the passives block above. */
 export function resolvePayload(
   payload: PayloadEffect,
   archetype: Archetype,
@@ -349,35 +373,37 @@ function resolvePayloadCore(
 
   switch (payload.kind) {
     case 'directBurst': {
-      const { sideState, blocked } = consumeWard(combatState.sides[target], archetype);
-      const sides = replaceSide(combatState.sides, target, sideState);
-      if (blocked) return { ...combatState, sides };
+      // The only offense payload Ward's shield intercepts (matches its
+      // pre-redesign scope -- piercing/chainFinisherScaling/
+      // riskRewardBurst never checked wards either).
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
-      const { value } = pushTowardCaster(combatState.breachContainment, amount, caster);
-      return { ...combatState, breachContainment: value, sides };
+      const targetState = combatState.sides[target];
+      const { sideState, absorbed, remaining } = absorbWithShield(targetState, amount);
+      const sides = replaceSide(combatState.sides, target, sideState);
+      let state = { ...combatState, sides };
+      state = applyReturnToSenderPassive(state, target, absorbed);
+      return creditWinGauge(state, caster, remaining);
     }
     case 'piercing': {
       // Ignores wards entirely -- Exploit's counter to defense-heavy builds.
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
-      const { value } = pushTowardCaster(combatState.breachContainment, amount, caster);
-      return { ...combatState, breachContainment: value };
+      return creditWinGauge(combatState, caster, amount);
     }
     case 'chainFinisherScaling': {
       const base = payload.baseAmount + payload.perPriorFire * context.priorFireCountThisTurn;
       const amount = base * corruptionMultiplier(combatState, caster);
-      const { value } = pushTowardCaster(combatState.breachContainment, amount, caster);
-      return { ...combatState, breachContainment: value };
+      return creditWinGauge(combatState, caster, amount);
     }
     case 'riskRewardBurst': {
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
-      const { value } = pushTowardCaster(combatState.breachContainment, amount, caster);
       const casterState = combatState.sides[caster];
       // Blackhat's Zero Day: the first Heat-costing Exploit fire each
       // combat waives its Heat cost entirely.
       const zeroDay = caster === 0 && combatState.classId === 'blackhat' && !combatState.passiveTriggered && payload.heatCost > 0;
       const heat = zeroDay ? casterState.heat : casterState.heat + payload.heatCost;
       const sides = replaceSide(combatState.sides, caster, { ...casterState, heat });
-      return { ...combatState, breachContainment: value, sides, passiveTriggered: zeroDay || combatState.passiveTriggered };
+      const state = { ...combatState, sides, passiveTriggered: zeroDay || combatState.passiveTriggered };
+      return creditWinGauge(state, caster, amount);
     }
     case 'dot': {
       const targetState = combatState.sides[target];
@@ -420,19 +446,18 @@ function resolvePayloadCore(
       return { ...advanced, passiveTriggered: true };
     }
     case 'instantCounterPush': {
+      // Reduces the *opponent's* gauge directly -- Encryption's instant
+      // mitigation tool, the one-shot counterpart to HoT's gradual
+      // version. Not blockable by Ward: Ward protects against offense
+      // that would credit the attacker's own gauge, and this is a
+      // different kind of effect (direct suppression of the opponent's
+      // progress, not gauge-seeking offense on the caster's behalf).
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
-      // Ghost's Return to Sender: Ghost's own counter-push always
-      // bypasses the midpoint cap -- ResolveContext.bypassBreachContainmentCap
-      // remains available too, as a manual override for anything else.
-      const bypassCap = context.bypassBreachContainmentCap || (caster === 0 && combatState.classId === 'ghost');
-      const { value } = bypassCap
-        ? pushTowardCaster(combatState.breachContainment, amount, caster)
-        : pushTowardCasterCapAtCenter(combatState.breachContainment, amount, caster);
-      return { ...combatState, breachContainment: value };
+      return reduceWinGauge(combatState, target, amount);
     }
     case 'ward': {
       const casterState = combatState.sides[caster];
-      const sides = replaceSide(combatState.sides, caster, { ...casterState, wards: [...casterState.wards, payload.blocksArchetype] });
+      const sides = replaceSide(combatState.sides, caster, { ...casterState, wardShield: casterState.wardShield + payload.amount });
       return { ...combatState, sides };
     }
     case 'hot': {
@@ -556,13 +581,19 @@ export function buildTriggerContext(
 ): TriggerContext {
   const own = combatState.sides[side];
   const enemy = combatState.sides[opponentOf(side)];
-  // Breach/Containment is defined relative to side 0's favor; "the
-  // enemy's favor" flips depending on which side is asking.
-  const enemyBreachContainmentFavor = side === 0 ? 100 - combatState.breachContainment : combatState.breachContainment;
+  // The enemy's own progress toward *their* win, as a percentage of
+  // their own threshold -- the two-gauge redesign's replacement for the
+  // old shared-scalar "enemy's favor position" reading. "Enemy behind"
+  // (old: shared scalar tilted toward the caster) becomes "enemy's own
+  // fill percentage is low"; "enemy ahead" becomes "enemy's own fill
+  // percentage is high" -- both preserve the original intent (how close
+  // is the enemy to winning) without needing the old side-0-vs-side-1
+  // inversion, since this is now symmetric by construction.
+  const enemyFillPercent = (enemy.winGauge.progress / enemy.winGauge.threshold) * 100;
   return {
     self: { heat: own.heat, isDealer },
     enemy: {
-      breachContainment: enemyBreachContainmentFavor,
+      breachContainment: enemyFillPercent,
       gaugeFillFraction: enemy.gauge.progress / enemy.gauge.threshold,
       activeDebuffIds: enemy.debuffs.map((d) => d.debuffId),
     },
@@ -584,10 +615,10 @@ export function buildTriggerContext(
  * -- so re-latching on every pass would refire it constantly).
  *
  * Safe and cheap to call after any state change that could affect a
- * condition: a gauge update, a payload resolution (Heat/Breach-
- * Containment/debuffs), or a new hand's dealer becoming known.
- * firedSubroutineIdsThisTurn is irrelevant here (chained/always aren't
- * touched) so an empty set is passed to buildTriggerContext.
+ * condition: a gauge update, a payload resolution (Heat/win-gauge/
+ * debuffs), or a new hand's dealer becoming known. firedSubroutineIdsThisTurn
+ * is irrelevant here (chained/always aren't touched) so an empty set is
+ * passed to buildTriggerContext.
  */
 export function refreshTriggerReadiness(combatState: CombatState, handDealer: PlayerIndex): CombatState {
   let state = combatState;
@@ -664,31 +695,29 @@ function updateLoadoutEntryState(
   return { ...combatState, sides };
 }
 
-/** Applies one tick's push to Breach/Containment, in the tick's caster's
- * favor. DoT ticks (listKey === 'dots') are uncapped -- a DoT can win
- * the match outright, same as any other Malware payload. HoT ticks
- * (listKey === 'hots') are capped at the midpoint, same rule as
- * instantCounterPush. Corrupted is re-checked at every individual tick
- * (not frozen at registration), same as any other payload resolution. */
+/** Applies one tick's effect: DoT ticks (listKey === 'dots') credit the
+ * tick's caster's own gauge, uncapped -- a DoT can win the match
+ * outright, same as any other Malware payload. HoT ticks (listKey ===
+ * 'hots') reduce the *opponent's* gauge directly instead, Encryption's
+ * gradual mitigation tool -- no cap needed, reduceWinGauge already
+ * floors at 0. Corrupted is re-checked at every individual tick (not
+ * frozen at registration), same as any other payload resolution. */
 function applyTickPush(combatState: CombatState, tick: ActiveTick, listKey: 'dots' | 'hots'): CombatState {
   const amount = tick.amountPerTick * corruptionMultiplier(combatState, tick.casterSide);
-  const { value } =
-    listKey === 'hots'
-      ? pushTowardCasterCapAtCenter(combatState.breachContainment, amount, tick.casterSide)
-      : pushTowardCaster(combatState.breachContainment, amount, tick.casterSide);
-  return applyFeedbackLoopPassive({ ...combatState, breachContainment: value }, tick, listKey);
+  const state =
+    listKey === 'hots' ? reduceWinGauge(combatState, opponentOf(tick.casterSide), amount) : creditWinGauge(combatState, tick.casterSide, amount);
+  return applyFeedbackLoopPassive(state, tick, listKey);
 }
 
-/** Warden's Feedback Loop: every Encryption HoT tick also applies a
- * small, uncapped Malware-flavored DoT push to the enemy -- persistent,
- * unlike the 4 one-shot passives above, so not gated by
+/** Warden's Feedback Loop: every Encryption HoT tick also credits a
+ * small, uncapped Malware-flavored bonus to the caster's own gauge --
+ * persistent, unlike the 4 one-shot passives above, so not gated by
  * passiveTriggered. Only HoT ticks qualify; DoT ticks are already
  * uncapped Malware damage on their own, nothing to "add." */
 function applyFeedbackLoopPassive(combatState: CombatState, tick: ActiveTick, listKey: 'dots' | 'hots'): CombatState {
   if (listKey !== 'hots' || tick.casterSide !== 0 || combatState.classId !== 'warden') return combatState;
   const amount = FEEDBACK_LOOP_DOT_AMOUNT * corruptionMultiplier(combatState, tick.casterSide);
-  const { value } = pushTowardCaster(combatState.breachContainment, amount, tick.casterSide);
-  return { ...combatState, breachContainment: value };
+  return creditWinGauge(combatState, tick.casterSide, amount);
 }
 
 /** Shared by both tick drivers below: walks the tick list stored at

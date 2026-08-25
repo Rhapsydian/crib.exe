@@ -14,9 +14,9 @@ import {
   type ScoringOccurrence,
   type SuitPlayed,
 } from './triggers';
-import { addPoints, BREACH_CONTAINMENT_MAX, BREACH_CONTAINMENT_MIN, type InitiativeGauge } from './gauges';
+import { addPoints, type InitiativeGauge } from './gauges';
 import {
-  applyFootholdCrossing,
+  applyFootholdBonus,
   applyThrottled,
   consumePendingCribbageManipulation,
   createCombatState,
@@ -45,6 +45,12 @@ import {
 export interface CombatOptions {
   seed: number;
   gaugeThreshold: number;
+  /** Threshold for each side's own win-gauge (gauges.ts's DuelGauge) --
+   * symmetric at combat start (session 22+ redesign; see
+   * gauges.ts/resolve.ts's own headers). Defaults to 100, mirroring the
+   * old shared scalar's scale, though it's an independent TBD/playtesting
+   * number now, not tied to any 0-100 shared axis. */
+  winThreshold?: number;
   discardStrategy?: DiscardStrategy;
   playStrategy?: PlayStrategy;
   startingDealer?: PlayerIndex;
@@ -62,17 +68,19 @@ export interface CombatResult {
   winner: PlayerIndex;
   log: FireEvent[];
   hands: HandResult[];
-  /** The highest Breach/Containment value reached at any point in the
-   * match (session 9's "how far the player pushed the meter toward their
-   * own win before the enemy dragged it back" -- Breach/Containment stops
-   * dead at 0/100 with no overshoot, so the *final* value alone carries no
-   * margin-of-loss information; this running peak is what Phase 3's Heat
-   * formula needs instead). */
-  peakBreachContainment: number;
+  /** Each side's own highest win-gauge fill fraction (progress/threshold,
+   * 0-1) reached at any point in the match -- session 9's "how far the
+   * player pushed toward their own win before losing" idea, ported to the
+   * two-gauge redesign (session 22+). A side's gauge only ever increases
+   * via its own offense and never decreases on its own (unlike the old
+   * shared scalar, which could get dragged back), so this peak is really
+   * "how close did this side get before the match ended," used by Phase 3's
+   * Heat formula for margin-of-loss. Index 0 is the player's own peak. */
+  peakFillFraction: [number, number];
   /** Heat the player side (side 0) accumulated in-combat from
    * riskRewardBurst payloads -- CombatSideState.heat resets each combat,
    * so the outer run orchestrator needs this surfaced to fold it into
-   * persistent run Heat, same reason peakBreachContainment exists. */
+   * persistent run Heat, same reason peakFillFraction exists. */
   playerHeatGenerated: number;
 }
 
@@ -119,9 +127,15 @@ function suitsPlayedForHand(hand: HandResult): SuitPlayed[] {
   return hand.peggingEvents.map(suitPlayedFromPeggingEvent).filter((s): s is SuitPlayed => s !== null);
 }
 
+/** A side wins the instant its own win-gauge reaches its own threshold.
+ * If both sides somehow cross in the same step (including from an
+ * escalation-driven threshold shrink), side 0 resolves first --
+ * deterministic, matches the engine's existing fixed side-processing
+ * order elsewhere. */
 function resolution(combatState: CombatState): PlayerIndex | null {
-  if (combatState.breachContainment >= BREACH_CONTAINMENT_MAX) return 0;
-  if (combatState.breachContainment <= BREACH_CONTAINMENT_MIN) return 1;
+  const [side0, side1] = combatState.sides;
+  if (side0.winGauge.progress >= side0.winGauge.threshold) return 0;
+  if (side1.winGauge.progress >= side1.winGauge.threshold) return 1;
   return null;
 }
 
@@ -173,6 +187,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   const {
     seed,
     gaugeThreshold,
+    winThreshold = 100,
     discardStrategy = discardLowestTwo,
     playStrategy = playLowestLegal,
     startingDealer = 0,
@@ -183,31 +198,34 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   const rng = createRng(seed);
   let dealer: PlayerIndex = startingDealer;
   let scores: [number, number] = [0, 0];
-  let combatState = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId);
+  let combatState = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold);
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
-  let peakBreachContainment = combatState.breachContainment;
+  let peakFillFraction: [number, number] = [0, 0];
 
   const finish = (winner: PlayerIndex): CombatResult => ({
     winner,
     log,
     hands,
-    peakBreachContainment,
+    peakFillFraction,
     playerHeatGenerated: combatState.sides[0].heat,
   });
 
-  /** Applies one step's result, tracks the running Breach/Containment
-   * peak, and returns the winner if the step resolved the match --
-   * every state-changing step in this loop goes through this so peak
-   * tracking and resolution checks stay uniform. Also checks Breacher's
-   * Foothold passive (the one hook that needs to see every step
-   * uniformly, regardless of what caused it -- see applyFootholdCrossing's
-   * own doc comment) and re-derives the winner afterward, since
-   * Foothold's own bonus push can finish the match. */
+  /** Applies one step's result, tracks each side's running win-gauge
+   * fill-fraction peak, and returns the winner if the step resolved the
+   * match -- every state-changing step in this loop goes through this so
+   * peak tracking and resolution checks stay uniform. Also checks
+   * Breacher's Foothold passive (the one hook that needs to see every
+   * step uniformly, regardless of what caused it -- see
+   * applyFootholdBonus's own doc comment) and re-derives the winner
+   * afterward, since Foothold's own bonus can finish the match. */
   const step = (result: { combatState: CombatState; winner: PlayerIndex | null }): PlayerIndex | null => {
-    const before = combatState;
-    combatState = applyFootholdCrossing(before, result.combatState);
-    peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
+    combatState = applyFootholdBonus(result.combatState);
+    const [side0, side1] = combatState.sides;
+    peakFillFraction = [
+      Math.max(peakFillFraction[0], side0.winGauge.progress / side0.winGauge.threshold),
+      Math.max(peakFillFraction[1], side1.winGauge.progress / side1.winGauge.threshold),
+    ];
     return result.winner !== null ? result.winner : resolution(combatState);
   };
 

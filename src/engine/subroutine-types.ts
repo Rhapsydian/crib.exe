@@ -139,9 +139,15 @@ export interface InstantCounterPushPayload {
 }
 /** Blocks the next incoming payload of a given archetype the moment it
  * would fire — reactive negation. */
+/** Breach/Containment redesign (session 22+): builds an accumulating
+ * shield on the caster's own side, no longer archetype-scoped -- the
+ * shield absorbs the opponent's future non-Piercing directBurst offense
+ * (denying the gauge-fill it would otherwise cause) until depleted;
+ * Piercing always bypasses it. Archetype-scoping was dropped since
+ * Piercing already supplies the one counter-play axis that matters. */
 export interface WardPayload {
   kind: 'ward';
-  blocksArchetype: Archetype;
+  amount: number;
 }
 export interface HotPayload {
   kind: 'hot';

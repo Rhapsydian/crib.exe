@@ -1,9 +1,9 @@
 /**
- * Per-side initiative gauge and the shared Breach/Containment meter
- * (session 17 checkpoint D). Combat orchestration (when to actually fire
- * subroutines on a triggered turn) is Checkpoint E/F's job — this file
- * only tracks the two numbers and detects the crossing/resolution
- * moments.
+ * Per-side initiative gauge (session 17 checkpoint D) and per-side duel
+ * gauge (Breach/Containment redesign, session 22+). Combat orchestration
+ * (when to actually fire subroutines on a triggered turn) is Checkpoint
+ * E/F's job — this file only tracks the numbers and detects
+ * resolution moments.
  */
 
 export interface InitiativeGauge {
@@ -42,40 +42,54 @@ export function addPoints(gauge: InitiativeGauge, points: number): InitiativeGau
   return { gauge: { ...gauge, progress }, turnsTriggered };
 }
 
-/** Breach/Containment is a single shared scalar, not two HP pools. 100
- * is fully Breach (the attacker's win — the vulnerability gets
- * exploited); 0 is fully Containment (the defender's win — the
- * vulnerability gets patched before it can be leveraged). Starts
- * contested at the center and resets each combat. */
-export const BREACH_CONTAINMENT_MIN = 0;
-export const BREACH_CONTAINMENT_MAX = 100;
-export const BREACH_CONTAINMENT_CENTER = 50;
-
-export function createBreachContainment(): number {
-  return BREACH_CONTAINMENT_CENTER;
-}
-
-export type BreachContainmentResolution = 'player' | 'enemy' | null;
-
-export interface BreachContainmentPushResult {
-  value: number;
-  resolved: BreachContainmentResolution;
-}
-
 /**
- * Pushes Breach/Containment by `amount` (a non-negative magnitude)
- * toward the player's favor (Breach) or the enemy's (Containment),
- * clamping at the extremes and reporting resolution the instant either
- * extreme is reached.
+ * Breach/Containment redesign (session 22+): each side races toward its
+ * own win independently, instead of both pushing one shared 0-100
+ * scalar. Side 0's duel gauge is "Breach progress" (the attacker's
+ * win — the vulnerability gets exploited); side 1's is "Containment
+ * progress" (the defender's win — the vulnerability gets patched
+ * before it can be leveraged) — same flavor poles as before, just no
+ * longer two ends of one shared axis. Only a side's own offense adds to
+ * *its own* gauge; nothing subtracts from it either (that's what
+ * distinguishes this from a shared tug-of-war) — Encryption's
+ * mitigation works by reducing the *opponent's* gauge instead (see
+ * resolve.ts), which is also what makes "mitigation can't win alone" a
+ * free structural property now rather than something needing an
+ * artificial cap.
  */
-export function pushBreachContainment(
-  value: number,
-  amount: number,
-  towardPlayer: boolean,
-): BreachContainmentPushResult {
-  const delta = towardPlayer ? amount : -amount;
-  const clamped = Math.min(BREACH_CONTAINMENT_MAX, Math.max(BREACH_CONTAINMENT_MIN, value + delta));
-  const resolved: BreachContainmentResolution =
-    clamped >= BREACH_CONTAINMENT_MAX ? 'player' : clamped <= BREACH_CONTAINMENT_MIN ? 'enemy' : null;
-  return { value: clamped, resolved };
+export interface DuelGauge {
+  progress: number;
+  threshold: number;
+}
+
+export function createDuelGauge(threshold: number): DuelGauge {
+  return { progress: 0, threshold };
+}
+
+export interface DuelProgressUpdate {
+  gauge: DuelGauge;
+  /** True the instant progress reaches (or already was at) threshold —
+   * a side's win. */
+  resolved: boolean;
+}
+
+/** Credits a side's own gauge with `amount` progress toward its own
+ * win. Progress is intentionally allowed to sit above threshold rather
+ * than being clamped — `resolved` is what combat.ts actually checks,
+ * not the raw progress value. */
+export function addDuelProgress(gauge: DuelGauge, amount: number): DuelProgressUpdate {
+  if (amount <= 0) return { gauge, resolved: gauge.progress >= gauge.threshold };
+  const progress = gauge.progress + amount;
+  return { gauge: { ...gauge, progress }, resolved: progress >= gauge.threshold };
+}
+
+/** Reduces a side's own gauge by `amount` — Encryption's mitigation
+ * tools (HoT, instantCounterPush) call this against the *opponent's*
+ * gauge, never their own. Floored at 0; never itself resolves a win
+ * (only addDuelProgress does), and never needs an upper cap the way
+ * the old shared scalar's midpoint did. */
+export function reduceDuelProgress(gauge: DuelGauge, amount: number): DuelGauge {
+  if (amount <= 0) return gauge;
+  const progress = Math.max(0, gauge.progress - amount);
+  return { ...gauge, progress };
 }

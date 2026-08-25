@@ -12,9 +12,8 @@ import {
   applyThrottled,
   tickDebuffDurations,
   consumePendingCribbageManipulation,
-  applyFootholdCrossing,
+  applyFootholdBonus,
 } from './resolve';
-import { BREACH_CONTAINMENT_CENTER } from './gauges';
 
 function definition(
   id: string,
@@ -37,56 +36,68 @@ function definition(
 const alwaysBurst = (id: string, amount = 5) =>
   definition(id, { kind: 'always' }, { kind: 'directBurst', amount });
 
-describe('resolvePayload — Breach/Containment pushes', () => {
-  it('directBurst pushes toward the caster (side 0 up, side 1 down)', () => {
+describe("resolvePayload — offense credits the caster's own gauge", () => {
+  it("directBurst credits the caster's own winGauge (side 0 or side 1), never the opponent's", () => {
     const state = createCombatState([], [], 12);
     const forPlayer = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0);
-    expect(forPlayer.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
+    expect(forPlayer.sides[0].winGauge.progress).toBe(10);
+    expect(forPlayer.sides[1].winGauge.progress).toBe(0);
 
     const forEnemy = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 1);
-    expect(forEnemy.breachContainment).toBe(BREACH_CONTAINMENT_CENTER - 10);
+    expect(forEnemy.sides[1].winGauge.progress).toBe(10);
+    expect(forEnemy.sides[0].winGauge.progress).toBe(0);
   });
 
-  it('a matching ward blocks and consumes exactly one directBurst', () => {
+  it("a shield on the target absorbs a directBurst up to its amount, denying the caster's gauge credit for that portion", () => {
     let state = createCombatState([], [], 12);
-    state = resolvePayload({ kind: 'ward', blocksArchetype: 'exploit' }, 'encryption', state, 1);
-    expect(state.sides[1].wards).toEqual(['exploit']);
-
-    const blocked = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0);
-    expect(blocked.breachContainment).toBe(BREACH_CONTAINMENT_CENTER); // unaffected
-    expect(blocked.sides[1].wards).toEqual([]); // consumed
-
-    const nextHitLands = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', blocked, 0);
-    expect(nextHitLands.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
+    state = resolvePayload({ kind: 'ward', amount: 6 }, 'encryption', state, 1); // side 1 builds a shield
+    const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0); // side 0 attacks
+    expect(result.sides[1].wardShield).toBe(0); // fully consumed
+    expect(result.sides[0].winGauge.progress).toBe(4); // 10 - 6 absorbed gets through
   });
 
-  it('piercing ignores an active ward entirely', () => {
+  it('a shield larger than the incoming hit absorbs it all and denies all credit', () => {
     let state = createCombatState([], [], 12);
-    state = resolvePayload({ kind: 'ward', blocksArchetype: 'exploit' }, 'encryption', state, 1);
+    state = resolvePayload({ kind: 'ward', amount: 20 }, 'encryption', state, 1);
+    const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0);
+    expect(result.sides[1].wardShield).toBe(10); // 20 - 10
+    expect(result.sides[0].winGauge.progress).toBe(0);
+  });
+
+  it('piercing ignores an active shield entirely', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'ward', amount: 6 }, 'encryption', state, 1);
     const result = resolvePayload({ kind: 'piercing', amount: 10 }, 'exploit', state, 0);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
-    expect(result.sides[1].wards).toEqual(['exploit']); // untouched
+    expect(result.sides[0].winGauge.progress).toBe(10); // full amount, unabsorbed
+    expect(result.sides[1].wardShield).toBe(6); // untouched
   });
 
   it('chainFinisherScaling scales with how many subroutines already fired this turn', () => {
     const state = createCombatState([], [], 12);
     const payload: PayloadEffect = { kind: 'chainFinisherScaling', baseAmount: 2, perPriorFire: 3 };
     const first = resolvePayload(payload, 'exploit', state, 0, { priorFireCountThisTurn: 0 });
-    expect(first.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 2);
+    expect(first.sides[0].winGauge.progress).toBe(2);
     const third = resolvePayload(payload, 'exploit', state, 0, { priorFireCountThisTurn: 2 });
-    expect(third.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 8);
+    expect(third.sides[0].winGauge.progress).toBe(8);
   });
 
-  it('riskRewardBurst pushes Breach/Containment and costs the caster Heat', () => {
+  it("riskRewardBurst credits the caster's own gauge and costs Heat", () => {
     const state = createCombatState([], [], 12);
     const result = resolvePayload({ kind: 'riskRewardBurst', amount: 6, heatCost: 3 }, 'exploit', state, 0);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 6);
+    expect(result.sides[0].winGauge.progress).toBe(6);
     expect(result.sides[0].heat).toBe(3);
+  });
+
+  it('chainFinisherScaling/riskRewardBurst are not shield-checked (matches pre-redesign scope -- only directBurst ever was)', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'ward', amount: 999 }, 'encryption', state, 1);
+    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10, heatCost: 0 }, 'exploit', state, 0);
+    expect(result.sides[0].winGauge.progress).toBe(10); // shield never checked
   });
 });
 
 describe('selfHeatReduction', () => {
-  it('reduces the caster\'s own Heat, floored', () => {
+  it("reduces the caster's own Heat, floored", () => {
     let state = createCombatState([], [], 12);
     state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, heatCost: 5 }, 'exploit', state, 0);
     const result = resolvePayload({ kind: 'selfHeatReduction', amount: 3, floor: 1 }, 'root', state, 0);
@@ -135,7 +146,7 @@ describe('resolvePayload — status effects', () => {
     expect(result.sides[0].debuffs).toEqual([{ debuffId: 'corrupted', magnitude: 1, remainingDuration: 2 }]);
   });
 
-  it('cleanse removes a debuff from the caster\'s own side', () => {
+  it("cleanse removes a debuff from the caster's own side", () => {
     let state = createCombatState([], [], 12);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 2 }, 'malware', state, 1);
     expect(state.sides[0].debuffs).toHaveLength(1);
@@ -150,7 +161,7 @@ describe('fireReadySubroutines', () => {
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events).toHaveLength(1);
     expect(events[0].subroutineId).toBe('a');
-    expect(combatState.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 5);
+    expect(combatState.sides[0].winGauge.progress).toBe(5);
     expect(combatState.sides[0].loadout[0].state.ready).toBe(false);
   });
 
@@ -159,7 +170,7 @@ describe('fireReadySubroutines', () => {
     const state = createCombatState([notReady], [], 12);
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events).toHaveLength(0);
-    expect(combatState.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+    expect(combatState.sides[0].winGauge.progress).toBe(0);
   });
 
   it('skips a ready subroutine that has been toggled off', () => {
@@ -167,7 +178,7 @@ describe('fireReadySubroutines', () => {
     state.sides[0].loadout[0].state = { ...state.sides[0].loadout[0].state, toggledOn: false };
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events).toHaveLength(0);
-    expect(combatState.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+    expect(combatState.sides[0].winGauge.progress).toBe(0);
   });
 
   it('a chained subroutine fed by an earlier fire becomes ready and fires in the same pass', () => {
@@ -176,7 +187,7 @@ describe('fireReadySubroutines', () => {
     const state = createCombatState([first, second], [], 12);
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events.map((e) => e.subroutineId)).toEqual(['a', 'b']);
-    expect(combatState.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 4 + 7);
+    expect(combatState.sides[0].winGauge.progress).toBe(11);
   });
 
   it('does not fire a chained subroutine that comes before the one it depends on', () => {
@@ -222,7 +233,7 @@ describe('refreshTriggerReadiness', () => {
     expect(state.sides[0].loadout[0].state.ready).toBe(true);
   });
 
-  it('latches an enemyState condition against the *other* side\'s state', () => {
+  it("latches an enemyState condition against the *other* side's state", () => {
     let state = createCombatState([], [enemyGaugeFillAbove], 12);
     state = refreshTriggerReadiness(state, 0);
     expect(state.sides[1].loadout[0].state.ready).toBe(false);
@@ -319,7 +330,7 @@ describe('fireNewlyReadyReactiveSubroutines', () => {
     const { combatState, events } = fireNewlyReadyReactiveSubroutines(before, after);
     expect(events).toHaveLength(1);
     expect(events[0].subroutineId).toBe('r');
-    expect(combatState.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 4);
+    expect(combatState.sides[0].winGauge.progress).toBe(4);
     expect(combatState.sides[0].loadout[0].state.ready).toBe(false); // fired and reset
   });
 
@@ -346,38 +357,41 @@ describe('fireNewlyReadyReactiveSubroutines', () => {
   });
 });
 
-describe('instantCounterPush -- Breach/Containment midpoint cap', () => {
-  it('caps a push that would cross center at exactly center', () => {
-    const state = createCombatState([], [], 12);
-    const result = resolvePayload({ kind: 'instantCounterPush', amount: 999 }, 'encryption', state, 0);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
-  });
-
-  it('is a no-op once already at or past center in the caster\'s favor', () => {
+describe("instantCounterPush -- reduces the opponent's gauge directly", () => {
+  it("reduces the target's own winGauge progress, leaving the caster's own untouched", () => {
     let state = createCombatState([], [], 12);
-    state = { ...state, breachContainment: 80 }; // side 0 already well past center
-    const result = resolvePayload({ kind: 'instantCounterPush', amount: 10 }, 'encryption', state, 0);
-    expect(result.breachContainment).toBe(80);
+    state = resolvePayload({ kind: 'directBurst', amount: 30 }, 'exploit', state, 1); // enemy banks some progress
+    const result = resolvePayload({ kind: 'instantCounterPush', amount: 12 }, 'encryption', state, 0);
+    expect(result.sides[1].winGauge.progress).toBe(18); // 30 - 12
+    expect(result.sides[0].winGauge.progress).toBe(0);
   });
 
-  it('applies the plain uncapped push when bypassBreachContainmentCap is set', () => {
-    const state = createCombatState([], [], 12);
-    const result = resolvePayload({ kind: 'instantCounterPush', amount: 20 }, 'encryption', state, 0, {
-      priorFireCountThisTurn: 0,
-      bypassBreachContainmentCap: true,
-    });
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 20);
+  it('floors at 0 rather than going negative -- no more midpoint cap, just a floor', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'directBurst', amount: 5 }, 'exploit', state, 1);
+    const result = resolvePayload({ kind: 'instantCounterPush', amount: 999 }, 'encryption', state, 0);
+    expect(result.sides[1].winGauge.progress).toBe(0);
   });
 
-  it('caps correctly for side 1 too (favor is the low end)', () => {
-    const state = createCombatState([], [], 12);
-    const result = resolvePayload({ kind: 'instantCounterPush', amount: 999 }, 'encryption', state, 1);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+  it("is not blocked by the target's own wardShield -- Ward only intercepts gauge-seeking offense, not mitigation", () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'directBurst', amount: 30 }, 'exploit', state, 1);
+    state = resolvePayload({ kind: 'ward', amount: 999 }, 'encryption', state, 1); // enemy shields up
+    const result = resolvePayload({ kind: 'instantCounterPush', amount: 12 }, 'encryption', state, 0);
+    expect(result.sides[1].winGauge.progress).toBe(18); // shield didn't matter
+    expect(result.sides[1].wardShield).toBe(999); // untouched
+  });
+
+  it("reduces side 0's gauge when cast by side 1", () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'directBurst', amount: 30 }, 'exploit', state, 0);
+    const result = resolvePayload({ kind: 'instantCounterPush', amount: 12 }, 'encryption', state, 1);
+    expect(result.sides[0].winGauge.progress).toBe(18);
   });
 });
 
 describe('tickCastersTurnPulse', () => {
-  it('ticks a DoT (stored on the target) when its caster gets a turn, not the target', () => {
+  it("ticks a DoT (stored on the target) when its caster gets a turn, not the target -- credits the caster's own gauge", () => {
     const state = createCombatState([], [], 12);
     const withDot = resolvePayload(
       { kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 2 },
@@ -388,12 +402,12 @@ describe('tickCastersTurnPulse', () => {
 
     // Side 1 getting a turn should NOT tick side 0's DoT.
     const notCastersTurn = tickCastersTurnPulse(withDot, 1);
-    expect(notCastersTurn.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+    expect(notCastersTurn.sides[0].winGauge.progress).toBe(0);
     expect(notCastersTurn.sides[1].dots).toHaveLength(1);
 
-    // Side 0 (the caster) getting a turn ticks it.
+    // Side 0 (the caster) getting a turn ticks it -- credits side 0's own gauge.
     const castersTurn = tickCastersTurnPulse(withDot, 0);
-    expect(castersTurn.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 5);
+    expect(castersTurn.sides[0].winGauge.progress).toBe(5);
     expect(castersTurn.sides[1].dots).toEqual([expect.objectContaining({ remainingDuration: 1 })]);
   });
 
@@ -402,20 +416,17 @@ describe('tickCastersTurnPulse', () => {
     let withDot = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 2 }, 'malware', state, 0);
     withDot = tickCastersTurnPulse(withDot, 0);
     withDot = tickCastersTurnPulse(withDot, 0);
-    expect(withDot.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
+    expect(withDot.sides[0].winGauge.progress).toBe(10);
     expect(withDot.sides[1].dots).toEqual([]);
   });
 
-  it('caps a caster\'s-turn-pulse HoT at the midpoint, unlike an uncapped DoT', () => {
-    const state = createCombatState([], [], 12);
-    const withHot = resolvePayload(
-      { kind: 'hot', amountPerTick: 999, cadence: 'castersTurnPulse', duration: 1 },
-      'encryption',
-      state,
-      0,
-    );
+  it("a caster's-turn-pulse HoT tick reduces the opponent's gauge, uncapped -- no more midpoint cap", () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'directBurst', amount: 50 }, 'exploit', state, 1); // enemy banks 50
+    const withHot = resolvePayload({ kind: 'hot', amountPerTick: 999, cadence: 'castersTurnPulse', duration: 1 }, 'encryption', state, 0);
     const result = tickCastersTurnPulse(withHot, 0);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+    expect(result.sides[1].winGauge.progress).toBe(0); // floored at 0
+    expect(result.sides[0].winGauge.progress).toBe(0); // HoT alone doesn't credit the caster's own gauge
   });
 
   it('does not tick a globalPulse tick', () => {
@@ -427,7 +438,7 @@ describe('tickCastersTurnPulse', () => {
       0,
     );
     const result = tickCastersTurnPulse(withDot, 0);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+    expect(result.sides[0].winGauge.progress).toBe(0);
     expect(result.sides[1].dots).toHaveLength(1);
   });
 });
@@ -442,9 +453,9 @@ describe('tickGlobalPulse', () => {
       0,
     );
     const under = tickGlobalPulse(withDot, 6);
-    expect(under.breachContainment).toBe(BREACH_CONTAINMENT_CENTER); // 6 < 10, no tick yet
+    expect(under.sides[0].winGauge.progress).toBe(0); // 6 < 10, no tick yet
     const over = tickGlobalPulse(under, 5); // 6 + 5 = 11, crosses 10
-    expect(over.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 5);
+    expect(over.sides[0].winGauge.progress).toBe(5);
     expect(over.sides[1].dots).toEqual([expect.objectContaining({ remainingDuration: 2, accumulatedPoints: 1 })]);
   });
 
@@ -457,7 +468,7 @@ describe('tickGlobalPulse', () => {
       0,
     );
     const result = tickGlobalPulse(withDot, 25); // 2 full crossings, 5 left over
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
+    expect(result.sides[0].winGauge.progress).toBe(10);
     expect(result.sides[1].dots).toEqual([expect.objectContaining({ remainingDuration: 3, accumulatedPoints: 5 })]);
   });
 
@@ -471,7 +482,8 @@ describe('tickGlobalPulse', () => {
       1,
     );
     const result = tickGlobalPulse(withDot, 10);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER - 5); // pushed toward side 1's favor
+    expect(result.sides[1].winGauge.progress).toBe(5); // side 1 is the caster
+    expect(result.sides[0].winGauge.progress).toBe(0);
   });
 
   it('ignores a castersTurnPulse tick and one with no pointsPerTick', () => {
@@ -479,7 +491,7 @@ describe('tickGlobalPulse', () => {
     let withDots = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 1 }, 'malware', state, 0);
     withDots = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 1 }, 'malware', withDots, 0); // no pointsPerTick
     const result = tickGlobalPulse(withDots, 100);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+    expect(result.sides[0].winGauge.progress).toBe(0);
     expect(result.sides[1].dots).toHaveLength(2);
   });
 
@@ -492,7 +504,7 @@ describe('tickGlobalPulse', () => {
       0,
     );
     const result = tickGlobalPulse(withDot, 35); // would cross 3 times, but only 2 duration
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
+    expect(result.sides[0].winGauge.progress).toBe(10);
     expect(result.sides[1].dots).toEqual([]);
   });
 });
@@ -506,7 +518,7 @@ describe('scheduledSabotage / resolvePendingSabotage', () => {
       state,
       0,
     );
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER); // not yet applied
+    expect(result.sides[0].winGauge.progress).toBe(0); // not yet applied
     expect(result.pendingSabotage).toEqual([
       { casterSide: 0, archetype: 'root', effect: { kind: 'directBurst', amount: 15 } },
     ]);
@@ -521,7 +533,7 @@ describe('scheduledSabotage / resolvePendingSabotage', () => {
       0,
     );
     const result = resolvePendingSabotage(scheduled);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 15);
+    expect(result.sides[0].winGauge.progress).toBe(15);
     expect(result.pendingSabotage).toEqual([]);
   });
 
@@ -545,7 +557,8 @@ describe('scheduledSabotage / resolvePendingSabotage', () => {
       1,
     );
     const result = resolvePendingSabotage(state);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10 - 4);
+    expect(result.sides[0].winGauge.progress).toBe(10);
+    expect(result.sides[1].winGauge.progress).toBe(4);
   });
 
   it('a wrapped scheduledSabotage re-schedules for a future deal instead of resolving now', () => {
@@ -561,11 +574,11 @@ describe('scheduledSabotage / resolvePendingSabotage', () => {
       0,
     );
     const afterFirstDeal = resolvePendingSabotage(scheduled);
-    expect(afterFirstDeal.breachContainment).toBe(BREACH_CONTAINMENT_CENTER); // still not applied
+    expect(afterFirstDeal.sides[0].winGauge.progress).toBe(0); // still not applied
     expect(afterFirstDeal.pendingSabotage).toHaveLength(1); // rescheduled for the deal after
 
     const afterSecondDeal = resolvePendingSabotage(afterFirstDeal);
-    expect(afterSecondDeal.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 15);
+    expect(afterSecondDeal.sides[0].winGauge.progress).toBe(15);
     expect(afterSecondDeal.pendingSabotage).toEqual([]);
   });
 });
@@ -591,19 +604,19 @@ describe('applyThrottled', () => {
   });
 });
 
-describe('Corrupted -- reduces the debuffed side\'s own payload magnitude', () => {
+describe("Corrupted -- reduces the debuffed side's own payload magnitude", () => {
   it('halves a directBurst from a corrupted caster', () => {
     let state = createCombatState([], [], 12);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
     const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 5);
+    expect(result.sides[0].winGauge.progress).toBe(5);
   });
 
-  it('does not reduce riskRewardBurst\'s Heat cost, only its magnitude', () => {
+  it("does not reduce riskRewardBurst's Heat cost, only its magnitude", () => {
     let state = createCombatState([], [], 12);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1);
     const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10, heatCost: 6 }, 'exploit', state, 0);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 5);
+    expect(result.sides[0].winGauge.progress).toBe(5);
     expect(result.sides[0].heat).toBe(6); // unreduced
   });
 
@@ -612,19 +625,19 @@ describe('Corrupted -- reduces the debuffed side\'s own payload magnitude', () =
     const withDot = resolvePayload({ kind: 'dot', amountPerTick: 10, cadence: 'castersTurnPulse', duration: 1 }, 'malware', state, 0);
     const corrupted = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', withDot, 1); // applies to side 0, the dot's caster
     const result = tickCastersTurnPulse(corrupted, 0);
-    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 5);
+    expect(result.sides[0].winGauge.progress).toBe(5);
   });
 
   it('is not applied to ward, cleanse, or debuff-application', () => {
     let state = createCombatState([], [], 12);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
-    const withWard = resolvePayload({ kind: 'ward', blocksArchetype: 'exploit' }, 'encryption', state, 0);
-    expect(withWard.sides[0].wards).toEqual(['exploit']); // unaffected by corruption
+    const withWard = resolvePayload({ kind: 'ward', amount: 6 }, 'encryption', state, 0);
+    expect(withWard.sides[0].wardShield).toBe(6); // unaffected by corruption
   });
 });
 
-describe('Choked -- temporary gauge-threshold bump', () => {
-  it('raises the target\'s gauge threshold immediately on application', () => {
+describe("Choked -- temporary gauge-threshold bump", () => {
+  it("raises the target's gauge threshold immediately on application", () => {
     const state = createCombatState([], [], 12);
     const result = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 2 }, 'malware', state, 0);
     expect(result.sides[1].gauge.threshold).toBe(17);
@@ -669,7 +682,7 @@ describe('Choked -- temporary gauge-threshold bump', () => {
 });
 
 describe('instantManipulation -- enemyGaugeThreshold target', () => {
-  it('permanently raises the target\'s gauge threshold, no duration/expiry', () => {
+  it("permanently raises the target's gauge threshold, no duration/expiry", () => {
     const state = createCombatState([], [], 12);
     const result = resolvePayload(
       { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: 8 },
@@ -706,7 +719,7 @@ describe('tickDebuffDurations', () => {
 });
 
 describe('instantManipulation -- suitTally target', () => {
-  it('boosts every suitTally Accumulator on the caster\'s own side, regardless of watched suit', () => {
+  it("boosts every suitTally Accumulator on the caster's own side, regardless of watched suit", () => {
     const watchesSpades = definition('a', { kind: 'accumulator', metric: 'suitTally', suit: 0, threshold: 5 }, { kind: 'directBurst', amount: 1 });
     const watchesHearts = definition('b', { kind: 'accumulator', metric: 'suitTally', suit: 1, threshold: 5 }, { kind: 'directBurst', amount: 1 });
     const state = createCombatState([watchesSpades, watchesHearts], [], 12);
@@ -739,7 +752,7 @@ describe('cribbageLayerManipulation / consumePendingCribbageManipulation', () =>
     expect(result.pendingCribbageManipulation).toEqual([{ casterSide: 0, action: 'forceDiscard', suit: undefined }]);
   });
 
-  it('forceDiscard resolves to forcing the *target*, not the caster', () => {
+  it("forceDiscard resolves to forcing the *target*, not the caster", () => {
     let state = createCombatState([], [], 12);
     state = resolvePayload({ kind: 'cribbageLayerManipulation', action: 'forceDiscard' }, 'root', state, 0);
     const { forHand } = consumePendingCribbageManipulation(state, 0);
@@ -782,42 +795,43 @@ describe('cribbageLayerManipulation / consumePendingCribbageManipulation', () =>
   });
 });
 
-describe('starting passives (Phase 4 checkpoint B)', () => {
+describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/Containment redesign)', () => {
   describe('Foothold (Breacher)', () => {
-    it("adds a bonus push the first time Breach/Containment crosses into the player's favor", () => {
-      const before = createCombatState([], [], 12, 'breacher');
-      const after = { ...before, breachContainment: 52 };
-      const result = applyFootholdCrossing(before, after);
-      expect(result.breachContainment).toBe(52 + 5);
+    it("adds a symmetric bonus the first time the player's own gauge reaches 50% of its threshold", () => {
+      const before = createCombatState([], [], 12, 'breacher', 100);
+      const state = {
+        ...before,
+        sides: [
+          { ...before.sides[0], winGauge: { progress: 50, threshold: 100 } },
+          { ...before.sides[1], winGauge: { progress: 30, threshold: 100 } }, // enemy has some banked progress to reduce
+        ] as typeof before.sides,
+      };
+      const result = applyFootholdBonus(state);
+      expect(result.sides[0].winGauge.progress).toBe(60); // +10 (10% of threshold)
+      expect(result.sides[1].winGauge.progress).toBe(20); // enemy's gauge reduced by the same amount
       expect(result.passiveTriggered).toBe(true);
     });
 
-    it('does not re-trigger on a later crossing the same combat', () => {
-      const before = createCombatState([], [], 12, 'breacher');
-      const first = applyFootholdCrossing(before, { ...before, breachContainment: 52 });
-      const droppedBack = { ...first, breachContainment: 40 };
-      const crossedAgain = { ...first, breachContainment: 60 };
-      const second = applyFootholdCrossing(droppedBack, crossedAgain);
-      expect(second.breachContainment).toBe(60); // no bonus -- already consumed
+    it('does not trigger before reaching 50%', () => {
+      const before = createCombatState([], [], 12, 'breacher', 100);
+      const state = { ...before, sides: [{ ...before.sides[0], winGauge: { progress: 49, threshold: 100 } }, before.sides[1]] as typeof before.sides };
+      const result = applyFootholdBonus(state);
+      expect(result.sides[0].winGauge.progress).toBe(49);
+      expect(result.passiveTriggered).toBe(false);
+    });
+
+    it('does not re-trigger once already consumed', () => {
+      const before = createCombatState([], [], 12, 'breacher', 100);
+      const at50 = { ...before, sides: [{ ...before.sides[0], winGauge: { progress: 50, threshold: 100 } }, before.sides[1]] as typeof before.sides };
+      const first = applyFootholdBonus(at50);
+      const second = applyFootholdBonus(first);
+      expect(second).toEqual(first); // no further change
     });
 
     it('does not trigger for a class other than breacher', () => {
-      const before = createCombatState([], [], 12, 'blackhat');
-      const after = { ...before, breachContainment: 52 };
-      expect(applyFootholdCrossing(before, after).breachContainment).toBe(52);
-    });
-
-    it('does not trigger when the value was already in the player\'s favor', () => {
-      const before = createCombatState([], [], 12, 'breacher');
-      const already = { ...before, breachContainment: 55 };
-      const after = { ...already, breachContainment: 60 };
-      expect(applyFootholdCrossing(already, after).breachContainment).toBe(60);
-    });
-
-    it("does not trigger when crossing into the enemy's favor", () => {
-      const before = createCombatState([], [], 12, 'breacher');
-      const after = { ...before, breachContainment: 45 };
-      expect(applyFootholdCrossing(before, after).breachContainment).toBe(45);
+      const before = createCombatState([], [], 12, 'blackhat', 100);
+      const state = { ...before, sides: [{ ...before.sides[0], winGauge: { progress: 50, threshold: 100 } }, before.sides[1]] as typeof before.sides };
+      expect(applyFootholdBonus(state)).toEqual(state);
     });
   });
 
@@ -963,32 +977,34 @@ describe('starting passives (Phase 4 checkpoint B)', () => {
   });
 
   describe('Feedback Loop (Warden)', () => {
-    it('adds an uncapped bonus push on top of a capped HoT tick', () => {
+    it("reduces the opponent's gauge (HoT) and also credits the caster's own gauge (the bonus)", () => {
+      let state = createCombatState([], [], 12, 'warden');
+      state = resolvePayload({ kind: 'directBurst', amount: 50 }, 'exploit', state, 1); // enemy banks 50
       const hotPiece = definition(
         'hot-piece',
         { kind: 'always' },
         { kind: 'hot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
         { archetype: 'encryption' },
       );
-      let state = createCombatState([hotPiece], [], 12, 'warden');
-      state = { ...state, breachContainment: 40 };
       state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
       const result = tickCastersTurnPulse(state, 0);
-      expect(result.breachContainment).toBe(40 + 3 + 2);
+      expect(result.sides[1].winGauge.progress).toBe(47); // 50 - 3 (HoT)
+      expect(result.sides[0].winGauge.progress).toBe(2); // + FEEDBACK_LOOP_DOT_AMOUNT
     });
 
     it('does not add a bonus for a class other than Warden', () => {
+      let state = createCombatState([], [], 12);
+      state = resolvePayload({ kind: 'directBurst', amount: 50 }, 'exploit', state, 1);
       const hotPiece = definition(
         'hot-piece',
         { kind: 'always' },
         { kind: 'hot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
         { archetype: 'encryption' },
       );
-      let state = createCombatState([hotPiece], [], 12);
-      state = { ...state, breachContainment: 40 };
       state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
       const result = tickCastersTurnPulse(state, 0);
-      expect(result.breachContainment).toBe(43);
+      expect(result.sides[1].winGauge.progress).toBe(47);
+      expect(result.sides[0].winGauge.progress).toBe(0); // no bonus
     });
 
     it('does not add a bonus to DoT ticks even for Warden', () => {
@@ -1001,30 +1017,41 @@ describe('starting passives (Phase 4 checkpoint B)', () => {
       let state = createCombatState([dotPiece], [], 12, 'warden');
       state = resolvePayload(dotPiece.payload, 'malware', state, 0);
       const result = tickCastersTurnPulse(state, 0);
-      expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 3);
+      expect(result.sides[0].winGauge.progress).toBe(3); // just the DoT itself, no extra bonus stacking
     });
   });
 
   describe('Return to Sender (Ghost)', () => {
-    it("bypasses the midpoint cap on Ghost's own instantCounterPush", () => {
+    it("credits Ghost's own gauge proportionally whenever the shield absorbs a hit", () => {
       let state = createCombatState([], [], 12, 'ghost');
-      state = { ...state, breachContainment: 40 };
-      const result = resolvePayload({ kind: 'instantCounterPush', amount: 20 }, 'encryption', state, 0);
-      expect(result.breachContainment).toBe(60);
+      state = resolvePayload({ kind: 'ward', amount: 20 }, 'encryption', state, 0); // Ghost shields up
+      const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 1); // enemy attacks, fully absorbed
+      expect(result.sides[0].wardShield).toBe(10); // 20 - 10 absorbed
+      expect(result.sides[1].winGauge.progress).toBe(0); // attacker denied credit
+      expect(result.sides[0].winGauge.progress).toBe(5); // 10 absorbed * 0.5 ratio
     });
 
-    it('stays capped at the midpoint for a class other than Ghost', () => {
+    it('credits proportionally to partial absorption too, not just a full break', () => {
+      let state = createCombatState([], [], 12, 'ghost');
+      state = resolvePayload({ kind: 'ward', amount: 6 }, 'encryption', state, 0);
+      const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 1); // shield only partially covers it
+      expect(result.sides[0].wardShield).toBe(0); // fully consumed
+      expect(result.sides[1].winGauge.progress).toBe(4); // 10 - 6 got through
+      expect(result.sides[0].winGauge.progress).toBe(3); // 6 absorbed * 0.5
+    });
+
+    it('does not credit for a class other than Ghost', () => {
       let state = createCombatState([], [], 12);
-      state = { ...state, breachContainment: 40 };
-      const result = resolvePayload({ kind: 'instantCounterPush', amount: 20 }, 'encryption', state, 0);
-      expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+      state = resolvePayload({ kind: 'ward', amount: 20 }, 'encryption', state, 0);
+      const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 1);
+      expect(result.sides[0].winGauge.progress).toBe(0); // no bonus
     });
 
-    it('stays capped for the enemy side even when the player is Ghost', () => {
+    it("does not credit when Ghost's shield doesn't own the absorption (enemy's own shield absorbing Ghost's hit)", () => {
       let state = createCombatState([], [], 12, 'ghost');
-      state = { ...state, breachContainment: 60 };
-      const result = resolvePayload({ kind: 'instantCounterPush', amount: 20 }, 'encryption', state, 1);
-      expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+      state = resolvePayload({ kind: 'ward', amount: 20 }, 'encryption', state, 1); // enemy shields, not Ghost
+      const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0); // Ghost attacks into it
+      expect(result.sides[0].winGauge.progress).toBe(0); // Ghost's own hit got absorbed, no credit for Ghost
     });
   });
 });

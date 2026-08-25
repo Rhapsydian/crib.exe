@@ -79,6 +79,11 @@ function improvedPayloadMagnitude(payload: PayloadEffect, amount: number): Paylo
     case 'instantCounterPush':
     case 'instantManipulation':
     case 'selfHeatReduction':
+    case 'ward':
+      // Breach/Containment redesign (session 22+): Ward became an
+      // accumulating shield amount, no longer archetype-scoped -- now a
+      // genuine magnitude Merge can improve, same as any other payload
+      // with an `amount` field.
       return { ...payload, amount: payload.amount + amount };
     case 'chainFinisherScaling':
       return { ...payload, baseAmount: payload.baseAmount + amount };

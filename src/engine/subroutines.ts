@@ -48,10 +48,12 @@ const COMMON = { burst: 5, tick: 2, pointsPerTick: 8, threshold: 6, bankTarget: 
 const UNCOMMON = { burst: 8, tick: 3, pointsPerTick: 8, threshold: 8, bankTarget: 3, cap: 4, duration: 4, heat: 10, debuffMag: 4, debuffDur: 3 };
 const RARE = { burst: 13, tick: 5, pointsPerTick: 8, threshold: 10, bankTarget: 4, cap: 5, duration: 5, heat: 12, debuffMag: 6, debuffDur: 3 };
 
-/** HoT/Instant Counter-Push are capped at the Breach/Containment
- * midpoint (resolve.ts), so per session 21's "should generally be tuned
- * to noticeably higher magnitude" principle, they get their own,
- * larger tier. */
+/** HoT/Instant Counter-Push reduce the *opponent's* gauge directly
+ * (resolve.ts) rather than advancing the caster's own -- a fundamentally
+ * more defensive job than direct offense, so per session 21's "should
+ * generally be tuned to noticeably higher magnitude" principle, they get
+ * their own, larger tier. Ward's shield amount reuses this tier too
+ * (same "defensive numeric knob" shape). */
 const CAPPED = { common: 7, uncommon: 11, rare: 18 };
 
 const BREACH_CONTAINMENT_THRESHOLD = { low: 40, high: 60 };
@@ -558,7 +560,7 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     name: 'Sandboxing',
     archetype: 'encryption',
     trigger: { kind: 'occurrence', category: 'pair', variation: 'instant' },
-    payload: { kind: 'ward', blocksArchetype: 'exploit' },
+    payload: { kind: 'ward', amount: CAPPED.common },
     tags: [],
   },
   {
@@ -574,7 +576,7 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     name: 'Access Control',
     archetype: 'encryption',
     trigger: { kind: 'selfState', condition: 'isNonDealer' },
-    payload: { kind: 'ward', blocksArchetype: 'root' },
+    payload: { kind: 'ward', amount: CAPPED.common },
     tags: [],
   },
   {
@@ -601,7 +603,7 @@ export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
     name: 'Honeypot',
     archetype: 'encryption',
     trigger: { kind: 'enemyState', condition: 'gaugeFillAbove', fraction: GAUGE_FILL_FRACTION },
-    payload: { kind: 'ward', blocksArchetype: 'malware' },
+    payload: { kind: 'ward', amount: CAPPED.uncommon },
     tags: [],
   },
   {
@@ -625,7 +627,7 @@ export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
     name: 'Air Gap',
     archetype: 'encryption',
     trigger: { kind: 'selfState', condition: 'heatAbove', value: UNCOMMON.heat },
-    payload: { kind: 'ward', blocksArchetype: 'root' },
+    payload: { kind: 'ward', amount: CAPPED.common },
     tags: ['firewall'],
     reactive: true,
   },
