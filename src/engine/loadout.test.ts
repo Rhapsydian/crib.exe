@@ -7,8 +7,8 @@ function piece(id: string): SubroutineDefinition {
   return { id, name: id, archetype: 'exploit', trigger: { kind: 'always' }, payload: { kind: 'directBurst', amount: 1 }, tags: [] };
 }
 
-function playerState(installedLoadout: SubroutineDefinition[], bench: SubroutineDefinition[]): RunPlayerState {
-  return { classId: 'breacher', installedLoadout, data: 0, bench };
+function playerState(installedLoadout: SubroutineDefinition[], bench: SubroutineDefinition[], material: Record<string, number> = {}): RunPlayerState {
+  return { classId: 'breacher', installedLoadout, data: 0, bench, material, rank: {} };
 }
 
 describe('installSubroutine', () => {
@@ -84,6 +84,21 @@ describe('acquireSubroutine', () => {
     const result = acquireSubroutine(state, piece('new'));
     expect(result.installedLoadout).toHaveLength(INSTALLED_SLOT_CAP);
     expect(result.bench.map((p) => p.id)).toEqual(['new']);
+  });
+
+  it('acquiring an already-installed id banks Merge material instead of a second copy', () => {
+    const state = playerState([piece('a')], []);
+    const result = acquireSubroutine(state, piece('a'));
+    expect(result.installedLoadout.map((p) => p.id)).toEqual(['a']); // no duplicate
+    expect(result.bench).toEqual([]);
+    expect(result.material.a).toBe(1);
+  });
+
+  it('acquiring an already-benched id banks Merge material and stacks on repeat', () => {
+    const state = playerState([], [piece('a')], { a: 2 });
+    const result = acquireSubroutine(state, piece('a'));
+    expect(result.bench.map((p) => p.id)).toEqual(['a']); // no duplicate
+    expect(result.material.a).toBe(3);
   });
 });
 

@@ -69,6 +69,8 @@ function playerWithBurst(amount: number): RunPlayerState {
     ],
     data: 0,
     bench: [],
+    material: {},
+    rank: {},
   };
 }
 
@@ -77,6 +79,8 @@ const OVERWHELMING_PLAYER: RunPlayerState = {
   installedLoadout: overwhelmingBreacherLoadout(30),
   data: 0,
   bench: [],
+  material: {},
+  rank: {},
 };
 const NEGLIGIBLE_PLAYER = playerWithBurst(0.1);
 const SEEDS = [1, 2, 3];
@@ -159,7 +163,7 @@ describe('resolveEncounter -- gatekeeperFight', () => {
 });
 
 describe('resolveEncounter -- non-fight nodes', () => {
-  it('Safehouse Rest always reduces Heat and goes inert', () => {
+  it('Safehouse Rest reduces Heat and goes inert when there is no Merge material banked', () => {
     const outcome = resolveEncounter(createNode('n', 'safehouse'), createRng(1), OVERWHELMING_PLAYER);
     expect(outcome).toEqual({
       newState: 'inert',
@@ -168,6 +172,21 @@ describe('resolveEncounter -- non-fight nodes', () => {
       rewardTier: 'none',
       dataAwarded: 0,
       rewardOptions: [],
+      mergeTargetId: null,
+    });
+  });
+
+  it('Safehouse merges instead of resting when Merge material is banked -- costs 0 Heat', () => {
+    const playerWithMaterial: RunPlayerState = { ...OVERWHELMING_PLAYER, material: { 'buffer-overflow': 1 } };
+    const outcome = resolveEncounter(createNode('n', 'safehouse'), createRng(1), playerWithMaterial);
+    expect(outcome).toEqual({
+      newState: 'inert',
+      heatDelta: 0,
+      quarantined: false,
+      rewardTier: 'none',
+      dataAwarded: 0,
+      rewardOptions: [],
+      mergeTargetId: 'buffer-overflow',
     });
   });
 
@@ -181,6 +200,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
         rewardTier: 'none',
         dataAwarded: 0,
         rewardOptions: [],
+        mergeTargetId: null,
       });
     }
   });

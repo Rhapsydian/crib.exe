@@ -904,7 +904,7 @@ describe('starting passives (Phase 4 checkpoint B)', () => {
       });
     });
 
-    it('reduces cap for an Occurrence: scaling Exploit subroutine', () => {
+    it('does not touch cap for an Occurrence: scaling Exploit subroutine -- it already fires unconditionally, nothing to ease', () => {
       const exploitPiece = definition(
         'exploit-piece',
         { kind: 'occurrence', category: 'flush', variation: 'scaling', cap: 4 },
@@ -913,7 +913,32 @@ describe('starting passives (Phase 4 checkpoint B)', () => {
       );
       const state = createCombatState([exploitPiece], [], 12, 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
-      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'occurrence', category: 'flush', variation: 'scaling', cap: 2 });
+      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'occurrence', category: 'flush', variation: 'scaling', cap: 4 });
+      expect(result.passiveTriggered).toBe(true); // still consumes the one-shot use
+    });
+
+    it('eases a Self-state heatAbove Exploit subroutine (lowers the bar)', () => {
+      const exploitPiece = definition(
+        'exploit-piece',
+        { kind: 'selfState', condition: 'heatAbove', value: 10 },
+        { kind: 'directBurst', amount: 5 },
+        { archetype: 'exploit' },
+      );
+      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
+      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'selfState', condition: 'heatAbove', value: 8 });
+    });
+
+    it('eases a Self-state heatBelow Exploit subroutine (raises the bar)', () => {
+      const exploitPiece = definition(
+        'exploit-piece',
+        { kind: 'selfState', condition: 'heatBelow', value: 10 },
+        { kind: 'directBurst', amount: 5 },
+        { archetype: 'exploit' },
+      );
+      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
+      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'selfState', condition: 'heatBelow', value: 12 });
     });
 
     it('still consumes the one-shot use even when the Exploit piece has no reducible knob', () => {

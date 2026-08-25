@@ -6,6 +6,7 @@ import { playCombat } from './combat';
 import { heatFromLoss } from './heat';
 import { drawRewardOptions, type RewardTier } from './rewards';
 import { dataForTier } from './data';
+import { pickMergeTarget, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
 
 /**
  * Node encounter resolution (session 19/20 checkpoint E, player loadout
@@ -70,6 +71,12 @@ export interface EncounterOutcome {
    * Not yet installed/benched anywhere; Checkpoint D is what a script
    * does with an offer like this. */
   rewardOptions: SubroutineDefinition[];
+  /** The subroutine id a Safehouse Merge action spent material on, or
+   * null for a Rest visit (or any non-Safehouse node) -- checkpoint E.
+   * The actual mutation (merge.ts's mergeSubroutine) happens in
+   * playRun(), which owns RunPlayerState; this just records which id it
+   * should apply to. */
+  mergeTargetId: string | null;
 }
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
@@ -106,12 +113,13 @@ function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): E
       rewardTier,
       dataAwarded: dataForTier(rewardTier),
       rewardOptions: drawRewardOptions(playerState.classId, rewardTier, rng),
+      mergeTargetId: null,
     };
   }
   if (kind === 'gatekeeper') {
     // Quarantine ends the run outright -- no Heat cost, and the node's
     // state doesn't matter (there's no run left to route around it in).
-    return { newState: 'unresolved', heatDelta: 0, quarantined: true, rewardTier: 'none', dataAwarded: 0, rewardOptions: [] };
+    return { newState: 'unresolved', heatDelta: 0, quarantined: true, rewardTier: 'none', dataAwarded: 0, rewardOptions: [], mergeTargetId: null };
   }
   return {
     newState: 'closed',
@@ -120,10 +128,16 @@ function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): E
     rewardTier: 'none',
     dataAwarded: 0,
     rewardOptions: [],
+    mergeTargetId: null,
   };
 }
 
-export function resolveEncounter(node: MapNode, rng: Rng, playerState: RunPlayerState): EncounterOutcome {
+export function resolveEncounter(
+  node: MapNode,
+  rng: Rng,
+  playerState: RunPlayerState,
+  safehouseStrategy: SafehouseStrategy = preferMergeWhenAvailable,
+): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
       return resolveFight('regular', rng, playerState);
@@ -131,14 +145,29 @@ export function resolveEncounter(node: MapNode, rng: Rng, playerState: RunPlayer
       return resolveFight('elite', rng, playerState);
     case 'gatekeeperFight':
       return resolveFight('gatekeeper', rng, playerState);
-    case 'safehouse':
-      // Rest is real; Merge stays a stub -- structurally a node type, but
-      // not a selectable action until Phase 4's material/acquisition
-      // system exists.
-      return { newState: 'inert', heatDelta: -REST_HEAT_REDUCTION, quarantined: false, rewardTier: 'none', dataAwarded: 0, rewardOptions: [] };
+    case 'safehouse': {
+      // DESIGN.md's deliberate Rest-vs-Merge trade-off: one action per
+      // visit (the node goes inert either way). Falls back to Rest if
+      // the strategy chose 'merge' but nothing is actually banked to
+      // spend -- 'merge' with no material would otherwise waste the
+      // visit entirely.
+      const targetId = safehouseStrategy(playerState) === 'merge' ? pickMergeTarget(playerState) : null;
+      if (targetId) {
+        return { newState: 'inert', heatDelta: 0, quarantined: false, rewardTier: 'none', dataAwarded: 0, rewardOptions: [], mergeTargetId: targetId };
+      }
+      return {
+        newState: 'inert',
+        heatDelta: -REST_HEAT_REDUCTION,
+        quarantined: false,
+        rewardTier: 'none',
+        dataAwarded: 0,
+        rewardOptions: [],
+        mergeTargetId: null,
+      };
+    }
     case 'shop':
     case 'event':
-      return { newState: 'inert', heatDelta: 0, quarantined: false, rewardTier: 'none', dataAwarded: 0, rewardOptions: [] };
+      return { newState: 'inert', heatDelta: 0, quarantined: false, rewardTier: 'none', dataAwarded: 0, rewardOptions: [], mergeTargetId: null };
     case 'relay':
       throw new Error('resolveEncounter should never be called on a Relay node -- it has no encounter');
   }

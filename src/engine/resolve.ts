@@ -1,7 +1,8 @@
 import type { PlayerIndex } from './pegging';
 import type { Suit } from './cards';
-import type { Archetype, DebuffKind, PayloadEffect, SubroutineDefinition, TickCadence, TriggerFamily } from './subroutine-types';
+import type { Archetype, DebuffKind, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
 import type { ClassId } from './classes';
+import { easeTriggerCondition } from './merge';
 import {
   createInitialState,
   evaluateEnemyState,
@@ -268,34 +269,22 @@ export function applyFootholdCrossing(before: CombatState, after: CombatState): 
   return { ...after, breachContainment: value, passiveTriggered: true };
 }
 
-/** Reduces whichever numeric "how much banked progress needed" knob a
- * trigger carries, floored at 1 -- Operator's Primed passive reduces
- * the next Exploit subroutine's trigger threshold the first time a Root
- * subroutine fires. Occurrence's 'instant' variation and the non-
- * numeric trigger kinds (chained/always/selfState/enemyState) have no
- * such knob and are left untouched -- Primed still consumes its one-
- * shot use, it just has nothing to reduce against those shapes. Real
- * effect depends on which Exploit piece Operator's loadout actually
- * has -- same "infrastructure-complete, content-partial" scope as
- * Merge's own generalized magnitude/threshold rule. */
-function reducedTriggerThreshold(trigger: TriggerFamily, amount: number): TriggerFamily {
-  if (trigger.kind === 'accumulator') return { ...trigger, threshold: Math.max(1, trigger.threshold - amount) };
-  if (trigger.kind === 'occurrence' && trigger.variation === 'threshold') {
-    return { ...trigger, bankTarget: Math.max(1, trigger.bankTarget - amount) };
-  }
-  if (trigger.kind === 'occurrence' && trigger.variation === 'scaling') {
-    return { ...trigger, cap: Math.max(1, trigger.cap - amount) };
-  }
-  return trigger;
-}
-
 /** Operator's Primed: the first time a Root subroutine fires this
  * combat, reduce the next Exploit subroutine's trigger threshold --
  * "next" taken as the first Exploit-archetype entry in the caster's own
  * loadout, by array order (there's no other natural "next" to pick
  * against, since firing order isn't itself sequenced by archetype).
  * Applies generically after any Root payload resolves, not gated by
- * payload kind, since Root's payload catalog spans several kinds. */
+ * payload kind, since Root's payload catalog spans several kinds.
+ * Reuses merge.ts's easeTriggerCondition -- the same "make this
+ * condition easier to satisfy" rule Merge's own trigger-knob fallback
+ * uses (Accumulator's threshold, Occurrence: threshold's bankTarget,
+ * Self-state's heatAbove/Below value). Occurrence: scaling and the
+ * non-numeric trigger kinds have no such knob and are left untouched --
+ * Primed still consumes its one-shot use, it just has nothing to
+ * reduce against those shapes. Real effect depends on which Exploit
+ * piece Operator's loadout actually has -- "infrastructure-complete,
+ * content-partial," same as everywhere else this pattern shows up. */
 function applyPrimedPassive(combatState: CombatState, firedArchetype: Archetype, caster: PlayerIndex): CombatState {
   if (firedArchetype !== 'root' || caster !== 0 || combatState.classId !== 'operator' || combatState.passiveTriggered) {
     return combatState;
@@ -305,7 +294,7 @@ function applyPrimedPassive(combatState: CombatState, firedArchetype: Archetype,
   if (index === -1) return { ...combatState, passiveTriggered: true };
   const entry = sideState.loadout[index];
   const loadout = sideState.loadout.slice();
-  loadout[index] = { ...entry, definition: { ...entry.definition, trigger: reducedTriggerThreshold(entry.definition.trigger, PRIMED_THRESHOLD_REDUCTION) } };
+  loadout[index] = { ...entry, definition: { ...entry.definition, trigger: easeTriggerCondition(entry.definition.trigger, PRIMED_THRESHOLD_REDUCTION) } };
   const sides = replaceSide(combatState.sides, 0, { ...sideState, loadout });
   return { ...combatState, sides, passiveTriggered: true };
 }

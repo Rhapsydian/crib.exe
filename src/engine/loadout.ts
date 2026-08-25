@@ -61,14 +61,20 @@ export type AcquisitionStrategy = (options: SubroutineDefinition[], playerState:
  * play (no rarity/synergy judgment). */
 export const alwaysAcquireFirst: AcquisitionStrategy = (options) => options[0] ?? null;
 
-/** Adds `piece` to bench, then immediately tries to install it -- a
- * freshly-acquired piece defaults to "try to put it to use," falling
- * back to sitting on the bench once installedLoadout is full at
- * `slotCap`. Acquiring an id that's already owned isn't specially
- * handled here (no dedup, no Merge-material conversion) -- that's
- * Checkpoint E's job; a duplicate id simply becomes a second bench/
- * installed entry for now. */
+/** Acquires `piece`: if its id is already owned (installed or benched),
+ * it becomes banked Merge material instead of a second, slot-hungry
+ * copy (DESIGN.md's Duplicate Subroutines section; checkpoint E,
+ * merge.ts). Otherwise it's added to bench, then immediately tried for
+ * install -- a freshly-acquired new piece defaults to "try to put it to
+ * use," falling back to sitting on the bench once installedLoadout is
+ * full at `slotCap`. */
 export function acquireSubroutine(playerState: RunPlayerState, piece: SubroutineDefinition, slotCap: number = INSTALLED_SLOT_CAP): RunPlayerState {
+  const alreadyOwned =
+    playerState.installedLoadout.some((owned) => owned.id === piece.id) || playerState.bench.some((owned) => owned.id === piece.id);
+  if (alreadyOwned) {
+    const material = { ...playerState.material, [piece.id]: (playerState.material[piece.id] ?? 0) + 1 };
+    return { ...playerState, material };
+  }
   const withBench = { ...playerState, bench: [...playerState.bench, piece] };
   return installSubroutine(withBench, piece.id, slotCap);
 }
