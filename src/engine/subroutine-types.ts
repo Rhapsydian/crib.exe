@@ -168,11 +168,32 @@ export interface InstantManipulationPayload {
   /** Required when target is 'subroutineProgress'. */
   targetSubroutineId?: string;
 }
-/** Manipulates the underlying Cribbage layer itself, not combat state
- * directly — force a discard, peek the crib, skew the cut, mark a suit. */
+/**
+ * Manipulates the underlying Cribbage layer itself, not combat state
+ * directly. Always resolves at the next deal (like Scheduled Sabotage) —
+ * a fired subroutine can only ever act after this hand's deal/discard/
+ * cut have already happened, so there's nothing "instant" to apply to.
+ * - **forceDiscard**: forces the *target* (not the caster) to discard
+ *   their two highest-ranked cards next hand instead of their normal
+ *   strategy — a forced-bad-discard, not a literal specific-card
+ *   target (no hidden-information concept to target against here).
+ * - **peekCrib**: reveals the crib's contents. No mechanical effect in
+ *   this engine currently — nothing consumes "known" information (no
+ *   real AI/UI exists yet that could use it); a real gap only once one
+ *   does.
+ * - **skewCut**: biases next hand's cut toward a Jack if the caster is
+ *   that hand's dealer, away from one otherwise (His Heels only ever
+ *   credits the dealer, so the bias direction always favors the
+ *   caster).
+ * - **markSuit**: immediately credits the caster's own suitTally
+ *   Accumulator subroutines watching `suit` with one tally point, as if
+ *   a card of that suit had been played.
+ */
 export interface CribbageLayerManipulationPayload {
   kind: 'cribbageLayerManipulation';
   action: 'forceDiscard' | 'peekCrib' | 'skewCut' | 'markSuit';
+  /** Required when action is 'markSuit'. */
+  suit?: Suit;
 }
 /** Fires now, but the wrapped effect doesn't resolve until a future
  * Cribbage-flow checkpoint. */

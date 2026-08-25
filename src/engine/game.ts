@@ -1,7 +1,7 @@
 import type { Card } from './cards';
 import { createDeck, shuffle } from './deck';
 import { createRng, type Rng } from './rng';
-import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardStrategy } from './deal';
+import { deal, discardToCrib, discardLowestTwo, discardHighestTwo, cut, hisHeels, type DiscardStrategy, type CutStrategy } from './deal';
 import { playPegging, playLowestLegal, type PlayStrategy, type PeggingEvent } from './pegging';
 import { countHandEvents, countCribEvents, type HandScoreEvent } from './scoring';
 
@@ -47,6 +47,11 @@ export interface GameResult {
  * hand's points added on top — callers (playHands below, combat.ts's
  * playCombat) drive dealer alternation and cumulative-score threading
  * themselves.
+ *
+ * `cutStrategy` and `forcedDiscardSide` are injection points for Root's
+ * Cribbage-layer manipulation (skewCut / forceDiscard, resolved a hand
+ * ahead by combat.ts via resolve.ts's consumePendingCribbageManipulation)
+ * — both default to normal, unmanipulated play.
  */
 export function playOneHand(
   dealer: PlayerIndex,
@@ -54,6 +59,8 @@ export function playOneHand(
   rng: Rng,
   discardStrategy: DiscardStrategy = discardLowestTwo,
   playStrategy: PlayStrategy = playLowestLegal,
+  cutStrategy: CutStrategy = cut,
+  forcedDiscardSide?: PlayerIndex,
 ): HandResult {
   const nonDealer: PlayerIndex = (1 - dealer) as PlayerIndex;
   const scores: [number, number] = [...priorScores];
@@ -61,11 +68,11 @@ export function playOneHand(
   const shuffled = shuffle(createDeck(), rng);
   const { hands: dealtHands, stock } = deal(shuffled);
 
-  const d0 = discardToCrib(dealtHands[0], discardStrategy);
-  const d1 = discardToCrib(dealtHands[1], discardStrategy);
+  const d0 = discardToCrib(dealtHands[0], forcedDiscardSide === 0 ? discardHighestTwo : discardStrategy);
+  const d1 = discardToCrib(dealtHands[1], forcedDiscardSide === 1 ? discardHighestTwo : discardStrategy);
   const crib = [...d0.discarded, ...d1.discarded];
 
-  const { starter } = cut(stock, rng);
+  const { starter } = cutStrategy(stock, rng);
   const heelsPoints = hisHeels(starter);
   scores[dealer] += heelsPoints;
 

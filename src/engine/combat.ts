@@ -1,5 +1,5 @@
 import { createRng } from './rng';
-import { discardLowestTwo, type DiscardStrategy } from './deal';
+import { discardLowestTwo, cut, biasedCut, type DiscardStrategy, type CutStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
 import { playOneHand, type HandResult, type PlayerIndex } from './game';
 import type { SubroutineDefinition } from './subroutine-types';
@@ -16,6 +16,7 @@ import {
 import { addPoints, BREACH_CONTAINMENT_MAX, BREACH_CONTAINMENT_MIN, type InitiativeGauge } from './gauges';
 import {
   applyThrottled,
+  consumePendingCribbageManipulation,
   createCombatState,
   fireNewlyReadyReactiveSubroutines,
   fireReadySubroutines,
@@ -199,7 +200,20 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   };
 
   for (let i = 0; i < maxHands; i++) {
-    const hand = playOneHand(dealer, scores, rng, discardStrategy, playStrategy);
+    // Cribbage-layer manipulation (skewCut/forceDiscard/markSuit) has to
+    // be consumed BEFORE this hand is dealt, since it changes how this
+    // hand's own deal/discard/cut behaves -- unlike Scheduled Sabotage/
+    // debuff-duration ticking below, which only touch combat state and
+    // can happen any time within the "next deal" window. markSuit's
+    // suit-tally credit applies immediately, right here.
+    const beforeManipulation = combatState;
+    const manipulation = consumePendingCribbageManipulation(combatState, dealer);
+    combatState = manipulation.combatState;
+    let winner = step(checkReactive(beforeManipulation, combatState, log));
+    if (winner !== null) return finish(winner);
+
+    const cutStrategy: CutStrategy = manipulation.forHand.cutBias ? biasedCut(manipulation.forHand.cutBias) : cut;
+    const hand = playOneHand(dealer, scores, rng, discardStrategy, playStrategy, cutStrategy, manipulation.forHand.forcedDiscardSide);
     hands.push(hand);
     scores = hand.scoresAfter;
 
@@ -210,7 +224,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     // isDealer/isNonDealer needs a chance to latch even in the unlikely
     // case nothing else in this hand touches Heat/Breach-Containment/
     // gauges before this side's own turn.
-    let winner = step(advance(tickDebuffDurations(resolvePendingSabotage(combatState)), hand.dealer, log));
+    winner = step(advance(tickDebuffDurations(resolvePendingSabotage(combatState)), hand.dealer, log));
     if (winner !== null) return finish(winner);
 
     // Suit-tally Accumulators watch cards played, not scoring events --

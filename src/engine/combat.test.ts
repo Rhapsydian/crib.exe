@@ -81,6 +81,45 @@ describe('playCombat', () => {
     expect(result.playerHeatGenerated).toBe(0);
   });
 
+  it('cribbageLayerManipulation markSuit credits a suitTally Accumulator through the full pipeline', () => {
+    const suitMarker: SubroutineDefinition = {
+      id: 'suit-marker',
+      name: 'suit-marker',
+      archetype: 'root',
+      trigger: { kind: 'always' },
+      payload: { kind: 'cribbageLayerManipulation', action: 'markSuit', suit: 0 },
+      tags: [],
+    };
+    const suitPayoff: SubroutineDefinition = {
+      id: 'suit-payoff',
+      name: 'suit-payoff',
+      archetype: 'malware',
+      trigger: { kind: 'accumulator', metric: 'suitTally', suit: 0, threshold: 1 },
+      payload: { kind: 'directBurst', amount: 60 },
+      tags: [],
+      reactive: true,
+    };
+    // suit-marker fires on a normal turn, registering a pending markSuit
+    // -- consumed at the start of the *next* hand, immediately arming
+    // and firing the Reactive suit-payoff via the credit alone, with no
+    // card of that suit needing to actually be played.
+    const result = playCombat([[suitMarker, suitPayoff], []], { seed: 1, gaugeThreshold: 5 });
+    expect(result.winner).toBe(0);
+    expect(result.log.some((e) => e.subroutineId === 'suit-payoff')).toBe(true);
+  });
+
+  it('cribbageLayerManipulation forceDiscard resolves through a full match without throwing', () => {
+    const discardForcer: SubroutineDefinition = {
+      id: 'discard-forcer',
+      name: 'discard-forcer',
+      archetype: 'root',
+      trigger: { kind: 'always' },
+      payload: { kind: 'cribbageLayerManipulation', action: 'forceDiscard' },
+      tags: [],
+    };
+    expect(() => playCombat([[discardForcer, alwaysBurst('finisher', 20)], []], { seed: 3, gaugeThreshold: 5 })).not.toThrow();
+  });
+
   it('a suitTally Accumulator fires from cards played, not from scoring', () => {
     const suitWatcher: SubroutineDefinition = {
       id: 'suit-watcher',

@@ -11,6 +11,7 @@ import {
   resolvePendingSabotage,
   applyThrottled,
   tickDebuffDurations,
+  consumePendingCribbageManipulation,
 } from './resolve';
 import { BREACH_CONTAINMENT_CENTER } from './gauges';
 
@@ -676,5 +677,82 @@ describe('tickDebuffDurations', () => {
   it('is a no-op with no active debuffs', () => {
     const state = createCombatState([], [], 12);
     expect(tickDebuffDurations(state)).toEqual(state);
+  });
+});
+
+describe('instantManipulation -- suitTally target', () => {
+  it('boosts every suitTally Accumulator on the caster\'s own side, regardless of watched suit', () => {
+    const watchesSpades = definition('a', { kind: 'accumulator', metric: 'suitTally', suit: 0, threshold: 5 }, { kind: 'directBurst', amount: 1 });
+    const watchesHearts = definition('b', { kind: 'accumulator', metric: 'suitTally', suit: 1, threshold: 5 }, { kind: 'directBurst', amount: 1 });
+    const state = createCombatState([watchesSpades, watchesHearts], [], 12);
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'suitTally', amount: 3 }, 'root', state, 0);
+    expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(3);
+    expect(result.sides[0].loadout[1].state.accumulatedProgress).toBe(3);
+  });
+
+  it('does not touch a non-suitTally accumulator or the enemy side', () => {
+    const points = definition('a', { kind: 'accumulator', metric: 'points', threshold: 5 }, { kind: 'directBurst', amount: 1 });
+    const enemyWatcher = definition('b', { kind: 'accumulator', metric: 'suitTally', suit: 0, threshold: 5 }, { kind: 'directBurst', amount: 1 });
+    const state = createCombatState([points], [enemyWatcher], 12);
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'suitTally', amount: 3 }, 'root', state, 0);
+    expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(0);
+    expect(result.sides[1].loadout[0].state.accumulatedProgress).toBe(0);
+  });
+
+  it('marks the subroutine ready once the boost crosses the threshold', () => {
+    const watcher = definition('a', { kind: 'accumulator', metric: 'suitTally', suit: 0, threshold: 3 }, { kind: 'directBurst', amount: 1 });
+    const state = createCombatState([watcher], [], 12);
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'suitTally', amount: 3 }, 'root', state, 0);
+    expect(result.sides[0].loadout[0].state.ready).toBe(true);
+  });
+});
+
+describe('cribbageLayerManipulation / consumePendingCribbageManipulation', () => {
+  it('registers a pending entry instead of resolving immediately', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'cribbageLayerManipulation', action: 'forceDiscard' }, 'root', state, 0);
+    expect(result.pendingCribbageManipulation).toEqual([{ casterSide: 0, action: 'forceDiscard', suit: undefined }]);
+  });
+
+  it('forceDiscard resolves to forcing the *target*, not the caster', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'cribbageLayerManipulation', action: 'forceDiscard' }, 'root', state, 0);
+    const { forHand } = consumePendingCribbageManipulation(state, 0);
+    expect(forHand.forcedDiscardSide).toBe(1);
+  });
+
+  it('skewCut biases toward a Jack when the caster is dealing, away otherwise', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'cribbageLayerManipulation', action: 'skewCut' }, 'root', state, 0);
+    expect(consumePendingCribbageManipulation(state, 0).forHand.cutBias).toBe('towardJack');
+    expect(consumePendingCribbageManipulation(state, 1).forHand.cutBias).toBe('awayFromJack');
+  });
+
+  it('markSuit applies its tally credit immediately and clears the pending list', () => {
+    const watcher = definition('a', { kind: 'accumulator', metric: 'suitTally', suit: 2, threshold: 1 }, { kind: 'directBurst', amount: 1 });
+    let state = createCombatState([watcher], [], 12);
+    state = resolvePayload({ kind: 'cribbageLayerManipulation', action: 'markSuit', suit: 2 }, 'root', state, 0);
+    expect(state.pendingCribbageManipulation).toHaveLength(1);
+
+    const { combatState: result, forHand } = consumePendingCribbageManipulation(state, 0);
+    expect(result.sides[0].loadout[0].state.ready).toBe(true);
+    expect(result.pendingCribbageManipulation).toEqual([]);
+    expect(forHand.forcedDiscardSide).toBeUndefined();
+    expect(forHand.cutBias).toBeUndefined();
+  });
+
+  it('peekCrib is consumed with no effect on state or forHand', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'cribbageLayerManipulation', action: 'peekCrib' }, 'root', state, 0);
+    const { combatState: result, forHand } = consumePendingCribbageManipulation(state, 0);
+    expect(result.pendingCribbageManipulation).toEqual([]);
+    expect(forHand).toEqual({});
+  });
+
+  it('is a no-op with nothing pending', () => {
+    const state = createCombatState([], [], 12);
+    const { combatState: result, forHand } = consumePendingCribbageManipulation(state, 0);
+    expect(result).toEqual(state);
+    expect(forHand).toEqual({});
   });
 });

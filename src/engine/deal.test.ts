@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createDeck, shuffle } from './deck';
 import { createRng } from './rng';
-import { deal, discardToCrib, discardLowestTwo, cut, hisHeels } from './deal';
+import { deal, discardToCrib, discardLowestTwo, discardHighestTwo, cut, biasedCut, hisHeels } from './deal';
 import type { Card } from './cards';
 
 describe('deal', () => {
@@ -64,6 +64,24 @@ describe('discardToCrib', () => {
   });
 });
 
+describe('discardHighestTwo', () => {
+  it('discards the two highest-ranked cards', () => {
+    const hand: Card[] = [
+      { rank: 10, suit: 0 },
+      { rank: 2, suit: 1 },
+      { rank: 7, suit: 2 },
+      { rank: 1, suit: 3 },
+      { rank: 13, suit: 0 },
+      { rank: 4, suit: 1 },
+    ];
+    const [a, b] = discardHighestTwo(hand);
+    expect([a, b]).toEqual([
+      { rank: 13, suit: 0 },
+      { rank: 10, suit: 0 },
+    ]);
+  });
+});
+
 describe('cut', () => {
   it('removes the starter from the stock', () => {
     const deck = shuffle(createDeck(), createRng(4));
@@ -83,6 +101,58 @@ describe('cut', () => {
 
   it('throws when the stock is empty', () => {
     expect(() => cut([], createRng(1))).toThrow();
+  });
+});
+
+describe('biasedCut', () => {
+  it('always draws a Jack when biased toward one and at least one is present', () => {
+    const stockWithJack: Card[] = [
+      { rank: 3, suit: 0 },
+      { rank: 11, suit: 1 },
+      { rank: 7, suit: 2 },
+      { rank: 9, suit: 3 },
+    ];
+    for (let seed = 0; seed < 10; seed++) {
+      const { starter } = biasedCut('towardJack')(stockWithJack, createRng(seed));
+      expect(starter.rank).toBe(11);
+    }
+  });
+
+  it('never draws a Jack when biased away and non-Jacks are present', () => {
+    const stockWithJack: Card[] = [
+      { rank: 3, suit: 0 },
+      { rank: 11, suit: 1 },
+      { rank: 7, suit: 2 },
+      { rank: 9, suit: 3 },
+    ];
+    for (let seed = 0; seed < 10; seed++) {
+      const { starter } = biasedCut('awayFromJack')(stockWithJack, createRng(seed));
+      expect(starter.rank).not.toBe(11);
+    }
+  });
+
+  it('removes the drawn starter from the returned stock', () => {
+    const stockWithJack: Card[] = [
+      { rank: 3, suit: 0 },
+      { rank: 11, suit: 1 },
+    ];
+    const { starter, stock } = biasedCut('towardJack')(stockWithJack, createRng(1));
+    expect(stock).toHaveLength(1);
+    expect(stock.some((c) => c.rank === starter.rank && c.suit === starter.suit)).toBe(false);
+  });
+
+  it('falls back to a uniform cut over the whole stock when the bias can\'t be satisfied', () => {
+    const noJacks: Card[] = [
+      { rank: 3, suit: 0 },
+      { rank: 7, suit: 2 },
+    ];
+    const { starter, stock } = biasedCut('towardJack')(noJacks, createRng(1));
+    expect([3, 7]).toContain(starter.rank);
+    expect(stock).toHaveLength(1);
+  });
+
+  it('throws when the stock is empty', () => {
+    expect(() => biasedCut('towardJack')([], createRng(1))).toThrow();
   });
 });
 

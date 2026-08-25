@@ -1,4 +1,5 @@
 import type { PlayerIndex } from './pegging';
+import type { Suit } from './cards';
 import type { Archetype, DebuffKind, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
 import {
   createInitialState,
@@ -6,6 +7,7 @@ import {
   evaluateSelfState,
   isReady,
   resetAfterFire,
+  updateSuitTallyState,
   type SubroutineRuntimeState,
   type TriggerContext,
 } from './triggers';
@@ -76,10 +78,22 @@ export interface PendingSabotage {
   effect: PayloadEffect;
 }
 
+/** A Root cribbageLayerManipulation payload -- always resolves at the
+ * next deal (see CribbageLayerManipulationPayload's own doc comment for
+ * what each action does). consumePendingCribbageManipulation below,
+ * driven from combat.ts's hand-boundary hook, consumes and clears
+ * these. */
+export interface PendingCribbageManipulation {
+  casterSide: PlayerIndex;
+  action: 'forceDiscard' | 'peekCrib' | 'skewCut' | 'markSuit';
+  suit?: Suit;
+}
+
 export interface CombatState {
   breachContainment: number;
   sides: [CombatSideState, CombatSideState];
   pendingSabotage: PendingSabotage[];
+  pendingCribbageManipulation: PendingCribbageManipulation[];
 }
 
 export function createCombatSideState(definitions: SubroutineDefinition[], gaugeThreshold: number): CombatSideState {
@@ -103,6 +117,7 @@ export function createCombatState(
     breachContainment: createBreachContainment(),
     sides: [createCombatSideState(playerLoadout, gaugeThreshold), createCombatSideState(enemyLoadout, gaugeThreshold)],
     pendingSabotage: [],
+    pendingCribbageManipulation: [],
   };
 }
 
@@ -346,15 +361,38 @@ export function resolvePayload(
         const sides = replaceSide(combatState.sides, caster, { ...casterState, loadout });
         return { ...combatState, sides };
       }
-      // suitTally: no suit-tally state exists anywhere in CombatState yet
-      // -- same later-content-pass gap noted in triggers.ts.
+      if (payload.target === 'suitTally') {
+        // Generic, suit-agnostic boost to every one of the caster's own
+        // suitTally Accumulator subroutines, regardless of which suit
+        // each one watches -- deliberately distinct from
+        // cribbageLayerManipulation's markSuit (a specific single-suit
+        // +1 credit). Reuses `amount` rather than needing a new field.
+        const casterState = combatState.sides[caster];
+        const loadout = casterState.loadout.map((entry) => {
+          const trigger = entry.definition.trigger;
+          if (trigger.kind !== 'accumulator' || trigger.metric !== 'suitTally') return entry;
+          const accumulatedProgress = entry.state.accumulatedProgress + amount;
+          return {
+            ...entry,
+            state: { ...entry.state, accumulatedProgress, ready: entry.state.ready || accumulatedProgress >= trigger.threshold },
+          };
+        });
+        const sides = replaceSide(combatState.sides, caster, { ...casterState, loadout });
+        return { ...combatState, sides };
+      }
       return combatState;
     }
     case 'cribbageLayerManipulation':
-      // Needs hooks into the Cribbage deal/discard/cut flow that don't
-      // exist in this engine's data model -- real wiring waits until
-      // combat.ts (checkpoint F) connects to game.ts's per-hand flow.
-      return combatState;
+      // Always resolves at the next deal, same as scheduledSabotage --
+      // see consumePendingCribbageManipulation below and
+      // CribbageLayerManipulationPayload's own doc comment.
+      return {
+        ...combatState,
+        pendingCribbageManipulation: [
+          ...combatState.pendingCribbageManipulation,
+          { casterSide: caster, action: payload.action, suit: payload.suit },
+        ],
+      };
     case 'scheduledSabotage':
       return {
         ...combatState,
@@ -608,6 +646,68 @@ export function resolvePendingSabotage(combatState: CombatState): CombatState {
     state = resolvePayload(pending.effect, pending.archetype, state, pending.casterSide);
   }
   return state;
+}
+
+/** What this hand's discard/cut should do differently, derived from
+ * whichever Cribbage-layer manipulations were pending -- combat.ts uses
+ * this to construct the discardStrategy/cutStrategy it passes into
+ * playOneHand, since those can't be resolved as ordinary CombatState
+ * mutations (they influence game.ts's card-dealing mechanics instead).
+ * If more than one forceDiscard or skewCut somehow queued for the same
+ * hand, the last one processed wins -- stacking either in one deal is
+ * expected to be rare, and there's no meaningful way to "stack" a
+ * forced discard or cut bias further anyway. */
+export interface CribbageManipulationForHand {
+  forcedDiscardSide?: PlayerIndex;
+  cutBias?: 'towardJack' | 'awayFromJack';
+}
+
+/**
+ * Consumes and clears combatState.pendingCribbageManipulation. markSuit
+ * applies its suit-tally credit immediately, right here, same as any
+ * other instant CombatState effect. forceDiscard/skewCut can't apply to
+ * CombatState directly, so they're returned as data for combat.ts to
+ * build this hand's discard/cut strategies from. peekCrib has no
+ * mechanical effect in this engine (see
+ * CribbageLayerManipulationPayload's doc comment) and is simply
+ * dropped.
+ */
+export function consumePendingCribbageManipulation(
+  combatState: CombatState,
+  handDealer: PlayerIndex,
+): { combatState: CombatState; forHand: CribbageManipulationForHand } {
+  let state = { ...combatState, pendingCribbageManipulation: [] as PendingCribbageManipulation[] };
+  const forHand: CribbageManipulationForHand = {};
+  for (const pending of combatState.pendingCribbageManipulation) {
+    switch (pending.action) {
+      case 'forceDiscard':
+        forHand.forcedDiscardSide = opponentOf(pending.casterSide);
+        break;
+      case 'skewCut':
+        // His Heels only ever credits the dealer, so the bias always
+        // favors the caster: toward a Jack if they're dealing this
+        // hand, away from one otherwise.
+        forHand.cutBias = pending.casterSide === handDealer ? 'towardJack' : 'awayFromJack';
+        break;
+      case 'markSuit':
+        if (pending.suit !== undefined) {
+          state = applySuitTallyCredit(state, pending.casterSide, pending.suit);
+        }
+        break;
+      case 'peekCrib':
+        break;
+    }
+  }
+  return { combatState: state, forHand };
+}
+
+function applySuitTallyCredit(combatState: CombatState, side: PlayerIndex, suit: Suit): CombatState {
+  const sideState = combatState.sides[side];
+  const loadout = sideState.loadout.map((entry) => ({
+    ...entry,
+    state: updateSuitTallyState(entry.state, entry.definition, { suit, player: side }, side),
+  }));
+  return { ...combatState, sides: replaceSide(combatState.sides, side, { ...sideState, loadout }) };
 }
 
 export interface FireEvent {

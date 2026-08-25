@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { playHands } from './game';
+import { playHands, playOneHand } from './game';
+import { createRng } from './rng';
+import { discardLowestTwo, cut, biasedCut } from './deal';
+import { playLowestLegal } from './pegging';
 
 describe('playHands', () => {
   it('produces one HandResult per hand played', () => {
@@ -42,5 +45,34 @@ describe('playHands', () => {
 
   it('plays a long run end-to-end without throwing, with zero UI involved', () => {
     expect(() => playHands(50, { seed: 99 })).not.toThrow();
+  });
+});
+
+describe('playOneHand — Cribbage-layer manipulation injection points', () => {
+  it('forcedDiscardSide changes the outcome relative to the default strategy', () => {
+    const seed = 7;
+    const normal = playOneHand(0, [0, 0], createRng(seed), discardLowestTwo, playLowestLegal, cut);
+    const forced = playOneHand(0, [0, 0], createRng(seed), discardLowestTwo, playLowestLegal, cut, 0);
+    expect(forced).not.toEqual(normal);
+  });
+
+  it('leaves the outcome unchanged when forcedDiscardSide is omitted', () => {
+    const seed = 7;
+    const a = playOneHand(0, [0, 0], createRng(seed), discardLowestTwo, playLowestLegal, cut);
+    const b = playOneHand(0, [0, 0], createRng(seed));
+    expect(a).toEqual(b);
+  });
+
+  it('biasedCut("towardJack") noticeably raises the His Heels rate across many hands', () => {
+    const trials = 200;
+    let normalHeels = 0;
+    let biasedHeels = 0;
+    for (let seed = 0; seed < trials; seed++) {
+      const normal = playOneHand(0, [0, 0], createRng(seed));
+      if (normal.hisHeelsPoints > 0) normalHeels++;
+      const biased = playOneHand(0, [0, 0], createRng(seed), discardLowestTwo, playLowestLegal, biasedCut('towardJack'));
+      if (biased.hisHeelsPoints > 0) biasedHeels++;
+    }
+    expect(biasedHeels).toBeGreaterThan(normalHeels);
   });
 });
