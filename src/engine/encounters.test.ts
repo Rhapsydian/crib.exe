@@ -173,6 +173,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
       dataAwarded: 0,
       rewardOptions: [],
       mergeTargetId: null,
+      shopPurchase: null,
     });
   });
 
@@ -187,22 +188,45 @@ describe('resolveEncounter -- non-fight nodes', () => {
       dataAwarded: 0,
       rewardOptions: [],
       mergeTargetId: 'buffer-overflow',
+      shopPurchase: null,
     });
   });
 
-  it('Shop and Event are no-op stubs that go inert', () => {
-    for (const type of ['shop', 'event'] as const) {
-      const outcome = resolveEncounter(createNode('n', type), createRng(1), OVERWHELMING_PLAYER);
-      expect(outcome).toEqual({
-        newState: 'inert',
-        heatDelta: 0,
-        quarantined: false,
-        rewardTier: 'none',
-        dataAwarded: 0,
-        rewardOptions: [],
-        mergeTargetId: null,
-      });
-    }
+  it('Event is a no-op stub that goes inert', () => {
+    const outcome = resolveEncounter(createNode('n', 'event'), createRng(1), OVERWHELMING_PLAYER);
+    expect(outcome).toEqual({
+      newState: 'inert',
+      heatDelta: 0,
+      quarantined: false,
+      rewardTier: 'none',
+      dataAwarded: 0,
+      rewardOptions: [],
+      mergeTargetId: null,
+      shopPurchase: null,
+    });
+  });
+
+  it('Shop declines and goes inert when nothing is affordable', () => {
+    const brokePlayer: RunPlayerState = { ...OVERWHELMING_PLAYER, data: 0 };
+    const outcome = resolveEncounter(createNode('n', 'shop'), createRng(1), brokePlayer);
+    expect(outcome).toEqual({
+      newState: 'inert',
+      heatDelta: 0,
+      quarantined: false,
+      rewardTier: 'none',
+      dataAwarded: 0,
+      rewardOptions: [],
+      mergeTargetId: null,
+      shopPurchase: null,
+    });
+  });
+
+  it('Shop buys the cheapest affordable offering and goes inert', () => {
+    const richPlayer: RunPlayerState = { ...OVERWHELMING_PLAYER, data: 1000 };
+    const outcome = resolveEncounter(createNode('n', 'shop'), createRng(1), richPlayer);
+    expect(outcome.newState).toBe('inert');
+    expect(outcome.shopPurchase).not.toBeNull();
+    expect(outcome.shopPurchase!.cost).toBeLessThanOrEqual(1000);
   });
 
   it('throws for a Relay -- it has no encounter to resolve', () => {

@@ -8,6 +8,7 @@ import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
 import { acquireSubroutine, alwaysAcquireFirst, INSTALLED_SLOT_CAP, type AcquisitionStrategy } from './loadout';
 import { mergeSubroutine, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
+import { buyCheapestAffordable, type ShopStrategy } from './shop';
 
 /**
  * The run orchestrator (session 19/20 checkpoint F): ties layer
@@ -111,6 +112,9 @@ export interface RunOptions {
   /** Rest-vs-Merge choice at a Safehouse -- checkpoint E. Defaults to
    * preferMergeWhenAvailable (legal-not-good). */
   safehouseStrategy?: SafehouseStrategy;
+  /** What (if anything) a script buys at the Shop -- checkpoint F.
+   * Defaults to buyCheapestAffordable (legal-not-good). */
+  shopStrategy?: ShopStrategy;
 }
 
 export function playRun(options: RunOptions): RunResult {
@@ -123,6 +127,7 @@ export function playRun(options: RunOptions): RunResult {
     acquisitionStrategy = alwaysAcquireFirst,
     installedSlotCap = INSTALLED_SLOT_CAP,
     safehouseStrategy = preferMergeWhenAvailable,
+    shopStrategy = buyCheapestAffordable,
   } = options;
 
   const rng = createRng(seed);
@@ -164,7 +169,7 @@ export function playRun(options: RunOptions): RunResult {
       if (!node) throw new Error(`playRun: node "${position.nodeId}" is missing from its own layer graph`);
       if (node.state !== 'unresolved') continue; // already resolved -- just passing through
 
-      const outcome = resolveEncounter(node, rng, playerState, safehouseStrategy);
+      const outcome = resolveEncounter(node, rng, playerState, safehouseStrategy, shopStrategy);
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
       const afterEncounter = addHeat(heat, outcome.heatDelta);
       heat = afterEncounter.heat;
@@ -174,6 +179,10 @@ export function playRun(options: RunOptions): RunResult {
         if (picked) playerState = acquireSubroutine(playerState, picked, installedSlotCap);
       }
       if (outcome.mergeTargetId) playerState = mergeSubroutine(playerState, outcome.mergeTargetId);
+      if (outcome.shopPurchase) {
+        playerState = { ...playerState, data: playerState.data - outcome.shopPurchase.cost };
+        playerState = acquireSubroutine(playerState, outcome.shopPurchase.piece, installedSlotCap);
+      }
       log.push({ type: 'encounter', layerIndex, nodeId: node.id, nodeType: node.type, outcome, heatAfter: heat });
 
       if (outcome.quarantined) {

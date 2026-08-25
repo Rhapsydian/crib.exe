@@ -7,6 +7,7 @@ import { heatFromLoss } from './heat';
 import { drawRewardOptions, type RewardTier } from './rewards';
 import { dataForTier } from './data';
 import { pickMergeTarget, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
+import { shopOfferingsForClass, buyCheapestAffordable, type ShopOffering, type ShopStrategy } from './shop';
 
 /**
  * Node encounter resolution (session 19/20 checkpoint E, player loadout
@@ -77,6 +78,11 @@ export interface EncounterOutcome {
    * playRun(), which owns RunPlayerState; this just records which id it
    * should apply to. */
   mergeTargetId: string | null;
+  /** What a Shop visit bought, or null for a decline (or any non-Shop
+   * node) -- checkpoint F. Same split as mergeTargetId: this just
+   * records the pick; playRun() applies the actual Data spend and
+   * acquisition, since it's the one place holding RunPlayerState. */
+  shopPurchase: ShopOffering | null;
 }
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
@@ -114,12 +120,22 @@ function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): E
       dataAwarded: dataForTier(rewardTier),
       rewardOptions: drawRewardOptions(playerState.classId, rewardTier, rng),
       mergeTargetId: null,
+      shopPurchase: null,
     };
   }
   if (kind === 'gatekeeper') {
     // Quarantine ends the run outright -- no Heat cost, and the node's
     // state doesn't matter (there's no run left to route around it in).
-    return { newState: 'unresolved', heatDelta: 0, quarantined: true, rewardTier: 'none', dataAwarded: 0, rewardOptions: [], mergeTargetId: null };
+    return {
+      newState: 'unresolved',
+      heatDelta: 0,
+      quarantined: true,
+      rewardTier: 'none',
+      dataAwarded: 0,
+      rewardOptions: [],
+      mergeTargetId: null,
+      shopPurchase: null,
+    };
   }
   return {
     newState: 'closed',
@@ -129,6 +145,7 @@ function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): E
     dataAwarded: 0,
     rewardOptions: [],
     mergeTargetId: null,
+    shopPurchase: null,
   };
 }
 
@@ -137,6 +154,7 @@ export function resolveEncounter(
   rng: Rng,
   playerState: RunPlayerState,
   safehouseStrategy: SafehouseStrategy = preferMergeWhenAvailable,
+  shopStrategy: ShopStrategy = buyCheapestAffordable,
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
@@ -153,7 +171,16 @@ export function resolveEncounter(
       // visit entirely.
       const targetId = safehouseStrategy(playerState) === 'merge' ? pickMergeTarget(playerState) : null;
       if (targetId) {
-        return { newState: 'inert', heatDelta: 0, quarantined: false, rewardTier: 'none', dataAwarded: 0, rewardOptions: [], mergeTargetId: targetId };
+        return {
+          newState: 'inert',
+          heatDelta: 0,
+          quarantined: false,
+          rewardTier: 'none',
+          dataAwarded: 0,
+          rewardOptions: [],
+          mergeTargetId: targetId,
+          shopPurchase: null,
+        };
       }
       return {
         newState: 'inert',
@@ -163,11 +190,34 @@ export function resolveEncounter(
         dataAwarded: 0,
         rewardOptions: [],
         mergeTargetId: null,
+        shopPurchase: null,
       };
     }
-    case 'shop':
+    case 'shop': {
+      const offerings = shopOfferingsForClass(playerState.classId);
+      const shopPurchase = shopStrategy(offerings, playerState);
+      return {
+        newState: 'inert',
+        heatDelta: 0,
+        quarantined: false,
+        rewardTier: 'none',
+        dataAwarded: 0,
+        rewardOptions: [],
+        mergeTargetId: null,
+        shopPurchase,
+      };
+    }
     case 'event':
-      return { newState: 'inert', heatDelta: 0, quarantined: false, rewardTier: 'none', dataAwarded: 0, rewardOptions: [], mergeTargetId: null };
+      return {
+        newState: 'inert',
+        heatDelta: 0,
+        quarantined: false,
+        rewardTier: 'none',
+        dataAwarded: 0,
+        rewardOptions: [],
+        mergeTargetId: null,
+        shopPurchase: null,
+      };
     case 'relay':
       throw new Error('resolveEncounter should never be called on a Relay node -- it has no encounter');
   }
