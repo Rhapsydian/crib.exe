@@ -168,8 +168,11 @@ export interface InstantManipulationPayload {
   kind: 'instantManipulation';
   /** 'enemyGaugeThreshold' (session 21+) permanently raises the enemy's
    * gauge threshold, no duration — the persistent counterpart to
-   * Malware's temporary 'choked' debuff. */
-  target: 'enemyGauge' | 'suitTally' | 'subroutineProgress' | 'enemyGaugeThreshold';
+   * Malware's temporary 'choked' debuff. 'ownGauge'/'ownGaugeThreshold'
+   * (session 24, Root mechanical redesign) are haste, completing the
+   * slow/haste pair the enemy-facing targets already gave Root --
+   * see resolve.ts's instantManipulation case for the mechanics. */
+  target: 'enemyGauge' | 'suitTally' | 'subroutineProgress' | 'enemyGaugeThreshold' | 'ownGauge' | 'ownGaugeThreshold';
   amount: number;
   /** Required when target is 'subroutineProgress'. */
   targetSubroutineId?: string;
@@ -182,11 +185,16 @@ export interface InstantManipulationPayload {
  * - **forceDiscard**: forces the *target* (not the caster) to discard
  *   their two highest-ranked cards next hand instead of their normal
  *   strategy — a forced-bad-discard, not a literal specific-card
- *   target (no hidden-information concept to target against here).
- * - **peekCrib**: reveals the crib's contents. No mechanical effect in
- *   this engine currently — nothing consumes "known" information (no
- *   real AI/UI exists yet that could use it); a real gap only once one
- *   does.
+ *   target. Session 24 added a real specific-card version instead --
+ *   see ForceDiscardCardPayload, a `firesAt: 'onDealt'` payload that
+ *   resolves in the *same* hand rather than deferring to the next one.
+ * - **peekCrib**: reveals the crib's contents. Still a genuine no-op as
+ *   specified here (see resolve.ts's consumePendingCribbageManipulation)
+ *   -- by the time this deferred-to-next-hand action applies, the crib
+ *   it would reveal has already been fully scored. Session 24 added the
+ *   real, working version instead: RevealCribPayload, a
+ *   `firesAt: 'onCribSelected'` payload that resolves in the same hand,
+ *   before that crib is scored.
  * - **skewCut**: biases next hand's cut toward a Jack if the caster is
  *   that hand's dealer, away from one otherwise (His Heels only ever
  *   credits the dealer, so the bias direction always favors the

@@ -873,6 +873,41 @@ describe('instantManipulation -- enemyGaugeThreshold target', () => {
   });
 });
 
+describe('instantManipulation -- ownGauge/ownGaugeThreshold targets (haste, session 24)', () => {
+  it("ownGauge adds directly to the caster's own gauge progress, never the target's", () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGauge', amount: 5 }, 'root', state, 0);
+    expect(result.sides[0].gauge.progress).toBe(5);
+    expect(result.sides[1].gauge.progress).toBe(0);
+  });
+
+  it("ownGauge can push progress past threshold without clamping -- the overflow is left for the next natural addPoints to carry", () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGauge', amount: 20 }, 'root', state, 0);
+    expect(result.sides[0].gauge.progress).toBe(20); // uncapped, not wrapped/floored here
+  });
+
+  it("ownGaugeThreshold permanently lowers the caster's own gauge threshold", () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 5 }, 'root', state, 0);
+    expect(result.sides[0].gauge.threshold).toBe(7);
+    expect(result.sides[1].gauge.threshold).toBe(12); // untouched
+  });
+
+  it('ownGaugeThreshold is floored so it can never reach 0 or below', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 500 }, 'root', state, 0);
+    expect(result.sides[0].gauge.threshold).toBeGreaterThan(0);
+  });
+
+  it('both haste targets are reduced by Corrupted like any other instantManipulation amount', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGauge', amount: 8 }, 'root', state, 0);
+    expect(result.sides[0].gauge.progress).toBe(4); // 8 halved
+  });
+});
+
 describe('tickDebuffDurations', () => {
   it('decrements remainingDuration and removes expired debuffs', () => {
     let state = createCombatState([], [], 12);

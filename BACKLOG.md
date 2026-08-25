@@ -103,6 +103,14 @@ session before the implementation phases below can be fully scoped:
   lets the player bypass a closed/lost node, turning a normally-permanent
   failure into a recoverable one for specific builds. Noted session 9,
   explicitly "idea space to explore."
+- **Banked idea, not yet designed**: higher tiers of Root's
+  `forceDiscardCard` manipulation (session 24, Root mechanical redesign
+  checkpoint D -- see `ai.ts`'s `bestCardToForce`) could force the
+  selection of *both* discarded cards, not just one with the target's
+  own best companion left intact -- a stronger, rarer version of the
+  same mechanic. Noted session 24, content-authoring work for a later
+  pass, not a new engine capability (the underlying adversarial scoring
+  already generalizes to picking a full pair).
 
 ## Phase 1 — Core Cribbage engine ✅ complete (session 16)
 

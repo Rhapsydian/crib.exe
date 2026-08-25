@@ -250,6 +250,13 @@ function corruptionMultiplier(combatState: CombatState, side: PlayerIndex): numb
 const THROTTLED_REDUCTION = 4; // x -- TBD/playtesting
 const THROTTLED_FLOOR = 1; // y -- TBD/playtesting
 
+/** Floor for ownGaugeThreshold's reduction (session 24 haste) -- must
+ * stay above 0, since gauges.ts's addPoints loops "while progress >=
+ * threshold," and a threshold of exactly 0 would loop forever the next
+ * time any points at all are credited. TBD/playtesting beyond that hard
+ * floor. */
+const HASTE_MIN_INITIATIVE_THRESHOLD = 1;
+
 /** Throttled (a debuff kind) dents points about to be credited to a
  * side's gauge -- a flat reduction with a floor, clamped so it can
  * never exceed (inflate) the original value. No-op if `side` has no
@@ -562,6 +569,32 @@ function resolvePayloadCore(
         const targetState = combatState.sides[target];
         const gauge = { ...targetState.gauge, threshold: targetState.gauge.threshold + amount };
         const sides = replaceSide(combatState.sides, target, { ...targetState, gauge });
+        return { ...combatState, sides };
+      }
+      if (payload.target === 'ownGauge') {
+        // Haste (session 24): speeds up the caster's own initiative
+        // gauge -- the mirror of enemyGauge's slow. Direct addition, no
+        // upper clamp: an addition that pushes progress past threshold
+        // isn't lost or wasted -- gauges.ts's addPoints already carries
+        // overflow correctly (its while-loop doesn't assume progress
+        // starts below threshold), so the resulting turn(s) fire on the
+        // very next natural scoring event rather than this instant --
+        // a deliberate, documented simplification (this payload resolves
+        // from resolvePayload, which has no access to combat.ts's
+        // fire-and-check-winner loop to grant an immediate extra turn).
+        const casterState = combatState.sides[caster];
+        const progress = casterState.gauge.progress + amount;
+        const sides = replaceSide(combatState.sides, caster, { ...casterState, gauge: { ...casterState.gauge, progress } });
+        return { ...combatState, sides };
+      }
+      if (payload.target === 'ownGaugeThreshold') {
+        // Haste's other half -- the mirror of enemyGaugeThreshold's
+        // permanent raise, floored so it can never reach a threshold of
+        // 0 (see HASTE_MIN_INITIATIVE_THRESHOLD's own comment for why
+        // that specifically would be unsafe, not just undesirable).
+        const casterState = combatState.sides[caster];
+        const threshold = Math.max(HASTE_MIN_INITIATIVE_THRESHOLD, casterState.gauge.threshold - amount);
+        const sides = replaceSide(combatState.sides, caster, { ...casterState, gauge: { ...casterState.gauge, threshold } });
         return { ...combatState, sides };
       }
       if (payload.target === 'subroutineProgress' && payload.targetSubroutineId) {

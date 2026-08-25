@@ -297,6 +297,29 @@ describe('playCombat', () => {
     expect(totalDiscardCalls).toBe(result.hands.length);
   });
 
+  it('haste (ownGauge) banks initiative-gauge overflow that grants multiple turns on the next natural scoring event (session 24 checkpoint E end-to-end)', () => {
+    const haste: SubroutineDefinition = {
+      id: 'haste',
+      name: 'haste',
+      archetype: 'root',
+      trigger: { kind: 'always' },
+      payload: { kind: 'instantManipulation', target: 'ownGauge', amount: 15 },
+      tags: [],
+      firesAt: 'onDealt',
+    };
+    const burst = alwaysBurst('burst', 1);
+    // gaugeThreshold=5, haste dumps 15 progress at deal-time -- already
+    // 3 threshold-widths banked before any real Cribbage scoring even
+    // happens. The very first positive-magnitude occurrence this hand
+    // (His Heels, a peg play, or the show) should release all 3 banked
+    // turns at once via gauges.ts's addPoints overflow-carrying, each
+    // firing burst -- winThreshold=3 lets that single release resolve
+    // the match immediately, well within hand 1.
+    const result = playCombat([[haste, burst], []], { seed: 3, gaugeThreshold: 5, winThreshold: 3 });
+    expect(result.winner).toBe(0);
+    expect(result.log.filter((e) => e.subroutineId === 'burst').length).toBeGreaterThanOrEqual(3);
+  });
+
   describe('escalation', () => {
     // A tiny, always-firing burst against a winThreshold it could never
     // realistically reach through normal play within a sane hand count
