@@ -9,6 +9,8 @@ import {
   tickCastersTurnPulse,
   tickGlobalPulse,
   resolvePendingSabotage,
+  applyThrottled,
+  tickDebuffDurations,
 } from './resolve';
 import { BREACH_CONTAINMENT_CENTER } from './gauges';
 
@@ -99,19 +101,19 @@ describe('resolvePayload — status effects', () => {
   it('debuff applies to the opposing side', () => {
     const state = createCombatState([], [], 12);
     const result = resolvePayload(
-      { kind: 'debuff', debuffId: 'slowed', magnitude: 1, duration: 2 },
+      { kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 2 },
       'malware',
       state,
       1,
     );
-    expect(result.sides[0].debuffs).toEqual([{ debuffId: 'slowed', magnitude: 1, remainingDuration: 2 }]);
+    expect(result.sides[0].debuffs).toEqual([{ debuffId: 'corrupted', magnitude: 1, remainingDuration: 2 }]);
   });
 
   it('cleanse removes a debuff from the caster\'s own side', () => {
     let state = createCombatState([], [], 12);
-    state = resolvePayload({ kind: 'debuff', debuffId: 'slowed', magnitude: 1, duration: 2 }, 'malware', state, 1);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 2 }, 'malware', state, 1);
     expect(state.sides[0].debuffs).toHaveLength(1);
-    const cleansed = resolvePayload({ kind: 'cleanse', debuffId: 'slowed' }, 'encryption', state, 0);
+    const cleansed = resolvePayload({ kind: 'cleanse', debuffId: 'corrupted' }, 'encryption', state, 0);
     expect(cleansed.sides[0].debuffs).toEqual([]);
   });
 });
@@ -539,5 +541,140 @@ describe('scheduledSabotage / resolvePendingSabotage', () => {
     const afterSecondDeal = resolvePendingSabotage(afterFirstDeal);
     expect(afterSecondDeal.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 15);
     expect(afterSecondDeal.pendingSabotage).toEqual([]);
+  });
+});
+
+describe('applyThrottled', () => {
+  it('leaves points unchanged when the side has no active Throttled debuff', () => {
+    const state = createCombatState([], [], 12);
+    expect(applyThrottled(state, 0, 12)).toBe(12);
+  });
+
+  it('dents points by the flat reduction, floored, never exceeding the original', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
+    expect(applyThrottled(state, 0, 12)).toBe(8); // 12 - 4 (THROTTLED_REDUCTION)
+    expect(applyThrottled(state, 0, 2)).toBe(1); // 2 - 4 would be -2, floored at 1
+    expect(applyThrottled(state, 0, 0.5)).toBe(0.5); // already below the floor -- untouched, never inflated
+  });
+
+  it('does not affect the other side', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
+    expect(applyThrottled(state, 1, 12)).toBe(12);
+  });
+});
+
+describe('Corrupted -- reduces the debuffed side\'s own payload magnitude', () => {
+  it('halves a directBurst from a corrupted caster', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
+    const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 5);
+  });
+
+  it('does not reduce riskRewardBurst\'s Heat cost, only its magnitude', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1);
+    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10, heatCost: 6 }, 'exploit', state, 0);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 5);
+    expect(result.sides[0].heat).toBe(6); // unreduced
+  });
+
+  it('halves a dot tick from a corrupted caster, re-checked at tick time', () => {
+    let state = createCombatState([], [], 12);
+    const withDot = resolvePayload({ kind: 'dot', amountPerTick: 10, cadence: 'castersTurnPulse', duration: 1 }, 'malware', state, 0);
+    const corrupted = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', withDot, 1); // applies to side 0, the dot's caster
+    const result = tickCastersTurnPulse(corrupted, 0);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 5);
+  });
+
+  it('is not applied to ward, cleanse, or debuff-application', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
+    const withWard = resolvePayload({ kind: 'ward', blocksArchetype: 'exploit' }, 'encryption', state, 0);
+    expect(withWard.sides[0].wards).toEqual(['exploit']); // unaffected by corruption
+  });
+});
+
+describe('Choked -- temporary gauge-threshold bump', () => {
+  it('raises the target\'s gauge threshold immediately on application', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 2 }, 'malware', state, 0);
+    expect(result.sides[1].gauge.threshold).toBe(17);
+  });
+
+  it('does not touch the threshold for a non-choked debuff', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 5, duration: 2 }, 'malware', state, 0);
+    expect(result.sides[1].gauge.threshold).toBe(12);
+  });
+
+  it('reverts the bump when the debuff expires naturally (tickDebuffDurations)', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 2 }, 'malware', state, 0);
+    expect(state.sides[1].gauge.threshold).toBe(17);
+
+    state = tickDebuffDurations(state); // duration 2 -> 1, still active
+    expect(state.sides[1].gauge.threshold).toBe(17);
+    expect(state.sides[1].debuffs).toHaveLength(1);
+
+    state = tickDebuffDurations(state); // duration 1 -> 0, expires and reverts
+    expect(state.sides[1].gauge.threshold).toBe(12);
+    expect(state.sides[1].debuffs).toEqual([]);
+  });
+
+  it('reverts the bump when cleansed early, before natural expiry', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 10 }, 'malware', state, 0);
+    expect(state.sides[1].gauge.threshold).toBe(17);
+
+    const cleansed = resolvePayload({ kind: 'cleanse', debuffId: 'choked' }, 'encryption', state, 1);
+    expect(cleansed.sides[1].gauge.threshold).toBe(12);
+    expect(cleansed.sides[1].debuffs).toEqual([]);
+  });
+
+  it('cleansing a non-choked debuff does not touch the threshold', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 5, duration: 10 }, 'malware', state, 0);
+    const cleansed = resolvePayload({ kind: 'cleanse', debuffId: 'corrupted' }, 'encryption', state, 1);
+    expect(cleansed.sides[1].gauge.threshold).toBe(12);
+  });
+});
+
+describe('instantManipulation -- enemyGaugeThreshold target', () => {
+  it('permanently raises the target\'s gauge threshold, no duration/expiry', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload(
+      { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: 8 },
+      'root',
+      state,
+      0,
+    );
+    expect(result.sides[1].gauge.threshold).toBe(20);
+    expect(result.sides[1].debuffs).toEqual([]); // not a debuff -- nothing to expire or cleanse
+  });
+
+  it('is reduced by Corrupted like any other instantManipulation amount', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: 8 }, 'root', state, 0);
+    expect(result.sides[1].gauge.threshold).toBe(16); // 12 + 4 (halved)
+  });
+});
+
+describe('tickDebuffDurations', () => {
+  it('decrements remainingDuration and removes expired debuffs', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 2 }, 'malware', state, 0);
+    state = tickDebuffDurations(state);
+    expect(state.sides[1].debuffs).toEqual([{ debuffId: 'corrupted', magnitude: 1, remainingDuration: 1 }]);
+    state = tickDebuffDurations(state);
+    expect(state.sides[1].debuffs).toEqual([]);
+  });
+
+  it('is a no-op with no active debuffs', () => {
+    const state = createCombatState([], [], 12);
+    expect(tickDebuffDurations(state)).toEqual(state);
   });
 });

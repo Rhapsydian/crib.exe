@@ -12,12 +12,14 @@ import {
 } from './triggers';
 import { addPoints, BREACH_CONTAINMENT_MAX, BREACH_CONTAINMENT_MIN, type InitiativeGauge } from './gauges';
 import {
+  applyThrottled,
   createCombatState,
   fireNewlyReadyReactiveSubroutines,
   fireReadySubroutines,
   refreshTriggerReadiness,
   resolvePendingSabotage,
   tickCastersTurnPulse,
+  tickDebuffDurations,
   tickGlobalPulse,
   type CombatState,
   type CombatSideState,
@@ -175,13 +177,14 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     hands.push(hand);
     scores = hand.scoresAfter;
 
-    // Scheduled Sabotage "resolves at next deal" -- right here, before
-    // anything else in this new hand happens. advance() afterward also
-    // covers the new hand's dealer: self-state's isDealer/isNonDealer
-    // needs a chance to latch even in the unlikely case nothing else in
-    // this hand touches Heat/Breach-Containment/gauges before this
-    // side's own turn.
-    let winner = step(advance(resolvePendingSabotage(combatState), hand.dealer, log));
+    // Scheduled Sabotage "resolves at next deal," and debuff durations
+    // (measured in hands, unlike DoT/HoT ticks) count down -- both right
+    // here, before anything else in this new hand happens. advance()
+    // afterward also covers the new hand's dealer: self-state's
+    // isDealer/isNonDealer needs a chance to latch even in the unlikely
+    // case nothing else in this hand touches Heat/Breach-Containment/
+    // gauges before this side's own turn.
+    let winner = step(advance(tickDebuffDurations(resolvePendingSabotage(combatState)), hand.dealer, log));
     if (winner !== null) return finish(winner);
 
     for (const occurrence of occurrencesForHand(hand)) {
@@ -195,7 +198,11 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
       winner = step(advance(tickGlobalPulse(combatState, occurrence.magnitude), hand.dealer, log));
       if (winner !== null) return finish(winner);
 
-      const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrence.magnitude);
+      // Throttled dents points right as they're credited to the gauge --
+      // not applied to tickGlobalPulse above, which is a separate
+      // mechanic Throttled doesn't touch.
+      const throttledMagnitude = applyThrottled(combatState, occurrence.player, occurrence.magnitude);
+      const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, throttledMagnitude);
       // The gauge that just moved is watched by the *other* side's
       // gauge-fill-above enemy-state pieces -- refresh now, not just at
       // fire time.

@@ -114,9 +114,20 @@ export interface DotPayload {
    * Ignored for 'castersTurnPulse'. */
   pointsPerTick?: number;
 }
+/**
+ * The 3 canonical debuff kinds (session 21+ content pass) — reused
+ * across pieces rather than each subroutine inventing its own:
+ * **throttled** dents the target's own scoring as it's credited to
+ * their gauge; **corrupted** reduces the magnitude of the target's own
+ * fired payloads; **choked** temporarily raises the target's gauge
+ * threshold (Root's `enemyGaugeThreshold` manipulation target is the
+ * permanent, non-expiring counterpart).
+ */
+export type DebuffKind = 'throttled' | 'corrupted' | 'choked';
+
 export interface DebuffPayload {
   kind: 'debuff';
-  debuffId: string;
+  debuffId: DebuffKind;
   magnitude: number;
   duration: number;
 }
@@ -143,13 +154,16 @@ export interface HotPayload {
 export interface CleansePayload {
   kind: 'cleanse';
   /** Omit to cleanse any one active debuff, or target a specific one. */
-  debuffId?: string;
+  debuffId?: DebuffKind;
 }
 
 // --- Root (3) ---
 export interface InstantManipulationPayload {
   kind: 'instantManipulation';
-  target: 'enemyGauge' | 'suitTally' | 'subroutineProgress';
+  /** 'enemyGaugeThreshold' (session 21+) permanently raises the enemy's
+   * gauge threshold, no duration — the persistent counterpart to
+   * Malware's temporary 'choked' debuff. */
+  target: 'enemyGauge' | 'suitTally' | 'subroutineProgress' | 'enemyGaugeThreshold';
   amount: number;
   /** Required when target is 'subroutineProgress'. */
   targetSubroutineId?: string;

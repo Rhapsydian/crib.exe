@@ -1,5 +1,5 @@
 import type { PlayerIndex } from './pegging';
-import type { Archetype, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
+import type { Archetype, DebuffKind, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
 import {
   createInitialState,
   evaluateEnemyState,
@@ -26,7 +26,7 @@ import {
  */
 
 export interface ActiveDebuff {
-  debuffId: string;
+  debuffId: DebuffKind;
   magnitude: number;
   remainingDuration: number;
 }
@@ -147,6 +147,36 @@ function pushTowardCasterCapAtCenter(value: number, amount: number, caster: Play
   return { value: capped };
 }
 
+const CORRUPTED_MULTIPLIER = 0.5; // TBD/playtesting
+
+/** Corrupted (a debuff kind) reduces the magnitude of the debuffed
+ * side's own fired payloads -- checked dynamically at the moment each
+ * payload resolves (or each tick fires), not frozen at cast time, so
+ * gaining or losing the debuff mid-match immediately affects what's
+ * already active. Scoped to payloads with a genuine "how hard do I hit"
+ * magnitude (bursts, ticks, instant manipulation) -- not applied to
+ * Ward/Cleanse/debuff-application, which aren't that kind of output. */
+function corruptionMultiplier(combatState: CombatState, side: PlayerIndex): number {
+  return combatState.sides[side].debuffs.some((d) => d.debuffId === 'corrupted') ? CORRUPTED_MULTIPLIER : 1;
+}
+
+const THROTTLED_REDUCTION = 4; // x -- TBD/playtesting
+const THROTTLED_FLOOR = 1; // y -- TBD/playtesting
+
+/** Throttled (a debuff kind) dents points about to be credited to a
+ * side's gauge -- a flat reduction with a floor, clamped so it can
+ * never exceed (inflate) the original value. No-op if `side` has no
+ * active Throttled debuff. Deliberately separate from Corrupted: this
+ * targets tempo (denying gauge fill), not power. Call right before
+ * feeding points into gauges.ts's addPoints -- not applied to
+ * tickGlobalPulse's combined-points accumulation, which is a different
+ * mechanic Throttled doesn't touch. */
+export function applyThrottled(combatState: CombatState, side: PlayerIndex, points: number): number {
+  const throttled = combatState.sides[side].debuffs.some((d) => d.debuffId === 'throttled');
+  if (!throttled) return points;
+  return Math.min(points, Math.max(THROTTLED_FLOOR, points - THROTTLED_REDUCTION));
+}
+
 function consumeWard(sideState: CombatSideState, archetype: Archetype): { sideState: CombatSideState; blocked: boolean } {
   const index = sideState.wards.indexOf(archetype);
   if (index === -1) return { sideState, blocked: false };
@@ -183,21 +213,25 @@ export function resolvePayload(
       const { sideState, blocked } = consumeWard(combatState.sides[target], archetype);
       const sides = replaceSide(combatState.sides, target, sideState);
       if (blocked) return { ...combatState, sides };
-      const { value } = pushTowardCaster(combatState.breachContainment, payload.amount, caster);
+      const amount = payload.amount * corruptionMultiplier(combatState, caster);
+      const { value } = pushTowardCaster(combatState.breachContainment, amount, caster);
       return { ...combatState, breachContainment: value, sides };
     }
     case 'piercing': {
       // Ignores wards entirely -- Exploit's counter to defense-heavy builds.
-      const { value } = pushTowardCaster(combatState.breachContainment, payload.amount, caster);
+      const amount = payload.amount * corruptionMultiplier(combatState, caster);
+      const { value } = pushTowardCaster(combatState.breachContainment, amount, caster);
       return { ...combatState, breachContainment: value };
     }
     case 'chainFinisherScaling': {
-      const amount = payload.baseAmount + payload.perPriorFire * context.priorFireCountThisTurn;
+      const base = payload.baseAmount + payload.perPriorFire * context.priorFireCountThisTurn;
+      const amount = base * corruptionMultiplier(combatState, caster);
       const { value } = pushTowardCaster(combatState.breachContainment, amount, caster);
       return { ...combatState, breachContainment: value };
     }
     case 'riskRewardBurst': {
-      const { value } = pushTowardCaster(combatState.breachContainment, payload.amount, caster);
+      const amount = payload.amount * corruptionMultiplier(combatState, caster);
+      const { value } = pushTowardCaster(combatState.breachContainment, amount, caster);
       const casterState = combatState.sides[caster];
       const sides = replaceSide(combatState.sides, caster, { ...casterState, heat: casterState.heat + payload.heatCost });
       return { ...combatState, breachContainment: value, sides };
@@ -224,13 +258,21 @@ export function resolvePayload(
         ...targetState.debuffs,
         { debuffId: payload.debuffId, magnitude: payload.magnitude, remainingDuration: payload.duration },
       ];
-      const sides = replaceSide(combatState.sides, target, { ...targetState, debuffs });
+      // Choked's threshold bump applies immediately, alongside the
+      // debuff record -- tickDebuffDurations reverts it on natural
+      // expiry, 'cleanse' below reverts it on early removal.
+      const gauge =
+        payload.debuffId === 'choked'
+          ? { ...targetState.gauge, threshold: targetState.gauge.threshold + payload.magnitude }
+          : targetState.gauge;
+      const sides = replaceSide(combatState.sides, target, { ...targetState, debuffs, gauge });
       return { ...combatState, sides };
     }
     case 'instantCounterPush': {
+      const amount = payload.amount * corruptionMultiplier(combatState, caster);
       const { value } = context.bypassBreachContainmentCap
-        ? pushTowardCaster(combatState.breachContainment, payload.amount, caster)
-        : pushTowardCasterCapAtCenter(combatState.breachContainment, payload.amount, caster);
+        ? pushTowardCaster(combatState.breachContainment, amount, caster)
+        : pushTowardCasterCapAtCenter(combatState.breachContainment, amount, caster);
       return { ...combatState, breachContainment: value };
     }
     case 'ward': {
@@ -262,16 +304,33 @@ export function resolvePayload(
           ? 0
           : -1;
       if (index === -1) return combatState;
+      const removed = casterState.debuffs[index];
       const debuffs = casterState.debuffs.slice();
       debuffs.splice(index, 1);
-      const sides = replaceSide(combatState.sides, caster, { ...casterState, debuffs });
+      // Cleansing a Choked debuff early must revert its threshold bump
+      // too, same as natural expiry does (tickDebuffDurations) -- it
+      // shouldn't outlive the debuff record that caused it.
+      const gauge =
+        removed.debuffId === 'choked'
+          ? { ...casterState.gauge, threshold: casterState.gauge.threshold - removed.magnitude }
+          : casterState.gauge;
+      const sides = replaceSide(combatState.sides, caster, { ...casterState, debuffs, gauge });
       return { ...combatState, sides };
     }
     case 'instantManipulation': {
+      const amount = payload.amount * corruptionMultiplier(combatState, caster);
       if (payload.target === 'enemyGauge') {
         const targetState = combatState.sides[target];
-        const progress = Math.max(0, targetState.gauge.progress - payload.amount);
+        const progress = Math.max(0, targetState.gauge.progress - amount);
         const sides = replaceSide(combatState.sides, target, { ...targetState, gauge: { ...targetState.gauge, progress } });
+        return { ...combatState, sides };
+      }
+      if (payload.target === 'enemyGaugeThreshold') {
+        // Permanent, non-expiring -- the counterpart to Malware's
+        // temporary 'choked' debuff (see the 'debuff' case above).
+        const targetState = combatState.sides[target];
+        const gauge = { ...targetState.gauge, threshold: targetState.gauge.threshold + amount };
+        const sides = replaceSide(combatState.sides, target, { ...targetState, gauge });
         return { ...combatState, sides };
       }
       if (payload.target === 'subroutineProgress' && payload.targetSubroutineId) {
@@ -282,7 +341,7 @@ export function resolvePayload(
         const loadout = casterState.loadout.slice();
         loadout[index] = {
           ...entry,
-          state: { ...entry.state, accumulatedProgress: entry.state.accumulatedProgress + payload.amount },
+          state: { ...entry.state, accumulatedProgress: entry.state.accumulatedProgress + amount },
         };
         const sides = replaceSide(combatState.sides, caster, { ...casterState, loadout });
         return { ...combatState, sides };
@@ -424,12 +483,14 @@ function updateLoadoutEntryState(
  * favor. DoT ticks (listKey === 'dots') are uncapped -- a DoT can win
  * the match outright, same as any other Malware payload. HoT ticks
  * (listKey === 'hots') are capped at the midpoint, same rule as
- * instantCounterPush. */
+ * instantCounterPush. Corrupted is re-checked at every individual tick
+ * (not frozen at registration), same as any other payload resolution. */
 function applyTickPush(combatState: CombatState, tick: ActiveTick, listKey: 'dots' | 'hots'): CombatState {
+  const amount = tick.amountPerTick * corruptionMultiplier(combatState, tick.casterSide);
   const { value } =
     listKey === 'hots'
-      ? pushTowardCasterCapAtCenter(combatState.breachContainment, tick.amountPerTick, tick.casterSide)
-      : pushTowardCaster(combatState.breachContainment, tick.amountPerTick, tick.casterSide);
+      ? pushTowardCasterCapAtCenter(combatState.breachContainment, amount, tick.casterSide)
+      : pushTowardCaster(combatState.breachContainment, amount, tick.casterSide);
   return { ...combatState, breachContainment: value };
 }
 
@@ -498,6 +559,34 @@ export function tickGlobalPulse(combatState: CombatState, points: number): Comba
   for (const storageSide of [0, 1] as PlayerIndex[]) {
     state = processTickList(state, storageSide, 'dots', tickOnce);
     state = processTickList(state, storageSide, 'hots', tickOnce);
+  }
+  return state;
+}
+
+/**
+ * Decrements every active debuff's remainingDuration by 1 -- debuff
+ * duration is measured in hands (unlike DoT/HoT ticks, which are
+ * measured in actual applications), so call once per hand alongside
+ * resolvePendingSabotage. Removes any debuff that expires; a Choked
+ * debuff expiring reverts the gauge-threshold bump it applied when cast
+ * (see the 'debuff' case in resolvePayload) -- it's temporary, unlike
+ * Root's permanent enemyGaugeThreshold manipulation.
+ */
+export function tickDebuffDurations(combatState: CombatState): CombatState {
+  let state = combatState;
+  for (const side of [0, 1] as PlayerIndex[]) {
+    const sideState = state.sides[side];
+    const remaining: ActiveDebuff[] = [];
+    let gauge = sideState.gauge;
+    for (const debuff of sideState.debuffs) {
+      const remainingDuration = debuff.remainingDuration - 1;
+      if (remainingDuration > 0) {
+        remaining.push({ ...debuff, remainingDuration });
+      } else if (debuff.debuffId === 'choked') {
+        gauge = { ...gauge, threshold: gauge.threshold - debuff.magnitude };
+      }
+    }
+    state = { ...state, sides: replaceSide(state.sides, side, { ...sideState, debuffs: remaining, gauge }) };
   }
   return state;
 }
