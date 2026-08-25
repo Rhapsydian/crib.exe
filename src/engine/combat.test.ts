@@ -5,7 +5,7 @@ import type { SubroutineDefinition } from './subroutine-types';
 import { playCombat } from './combat';
 import { createRng } from './rng';
 import { createDeck, shuffle } from './deck';
-import { deal, discardToCrib, discardLowestTwo, cut, hisHeels } from './deal';
+import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardStrategy } from './deal';
 import { playPegging, playLowestLegal } from './pegging';
 import { countHandEvents, countCribEvents } from './scoring';
 
@@ -236,6 +236,37 @@ describe('playCombat', () => {
       }
     },
   );
+
+  it("recon's revealOpponentHand plumbs the real opponent hand through to the discard strategy's DiscardContext (session 24 checkpoint C end-to-end)", () => {
+    const recon: SubroutineDefinition = {
+      id: 'recon',
+      name: 'recon',
+      archetype: 'root',
+      trigger: { kind: 'always' },
+      payload: { kind: 'revealOpponentHand' },
+      tags: [],
+      firesAt: 'onDealt',
+    };
+    const seenKnownHands: (Card[] | undefined)[] = [];
+    const spyDiscardStrategy: DiscardStrategy = (ctx) => {
+      seenKnownHands.push(ctx.knownOpponentHand);
+      const sorted = ctx.hand.slice().sort((a, b) => a.rank - b.rank);
+      return [sorted[0], sorted[1]];
+    };
+    const result = playCombat([[recon, alwaysBurst('winner', 1000)], []], {
+      seed: 5,
+      gaugeThreshold: 1,
+      discardStrategy: spyDiscardStrategy,
+    });
+    expect(result.hands.length).toBeGreaterThan(0);
+    // Side 0 discards first each hand (combat.ts's fixed order) and has
+    // the recon piece -- its DiscardContext should carry side 1's real,
+    // full 6-card dealt hand. Side 1 has no recon piece of its own, so
+    // its call sees nothing.
+    expect(seenKnownHands[0]).toBeDefined();
+    expect(seenKnownHands[0]).toHaveLength(6);
+    expect(seenKnownHands[1]).toBeUndefined();
+  });
 
   describe('escalation', () => {
     // A tiny, always-firing burst against a winThreshold it could never

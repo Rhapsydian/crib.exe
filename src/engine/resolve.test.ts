@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import type { Card } from './cards';
 import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
 import {
   createCombatState,
   resolvePayload,
   fireReadySubroutines,
   fireHandLifecycleSubroutines,
+  clearHandKnowledge,
   refreshTriggerReadiness,
   fireNewlyReadyReactiveSubroutines,
   tickCastersTurnPulse,
@@ -247,6 +249,76 @@ describe('fireHandLifecycleSubroutines', () => {
     state.sides[0].loadout[0].state = { ...state.sides[0].loadout[0].state, toggledOn: false };
     const { events } = fireHandLifecycleSubroutines(state, 0, 'onDealt', { isDealer: false });
     expect(events).toHaveLength(0);
+  });
+
+  it('threads revealedCards through to a revealOpponentHand payload, storing it as knownOpponentHand', () => {
+    const piece = definition('a', { kind: 'always' }, { kind: 'revealOpponentHand' }, { firesAt: 'onDealt' });
+    const state = createCombatState([piece], [], 12);
+    const opponentHand: Card[] = [{ rank: 7, suit: 0 }, { rank: 9, suit: 1 }];
+    const { combatState } = fireHandLifecycleSubroutines(state, 0, 'onDealt', { isDealer: false }, opponentHand);
+    expect(combatState.sides[0].knownOpponentHand).toEqual(opponentHand);
+  });
+});
+
+describe('recon payloads (session 24 checkpoint C)', () => {
+  const opponentHand: Card[] = [{ rank: 3, suit: 0 }, { rank: 8, suit: 2 }];
+  const crib: Card[] = [{ rank: 5, suit: 1 }, { rank: 5, suit: 3 }, { rank: 10, suit: 0 }, { rank: 2, suit: 2 }];
+
+  it('revealOpponentHand stores revealedCards as the caster\'s own knownOpponentHand', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'revealOpponentHand' }, 'root', state, 0, {
+      priorFireCountThisTurn: 0,
+      revealedCards: opponentHand,
+    });
+    expect(result.sides[0].knownOpponentHand).toEqual(opponentHand);
+    expect(result.sides[1].knownOpponentHand).toBeUndefined();
+  });
+
+  it('revealOpponentKeptHand also stores into knownOpponentHand -- the later, smaller reveal supersedes the earlier one', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'revealOpponentHand' }, 'root', state, 0, {
+      priorFireCountThisTurn: 0,
+      revealedCards: [...opponentHand, { rank: 11, suit: 3 }],
+    });
+    const keptHand = opponentHand; // the 2 remaining after their discard
+    state = resolvePayload({ kind: 'revealOpponentKeptHand' }, 'root', state, 0, {
+      priorFireCountThisTurn: 0,
+      revealedCards: keptHand,
+    });
+    expect(state.sides[0].knownOpponentHand).toEqual(keptHand);
+  });
+
+  it('revealCrib stores revealedCards as knownCrib', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'revealCrib' }, 'root', state, 1, {
+      priorFireCountThisTurn: 0,
+      revealedCards: crib,
+    });
+    expect(result.sides[1].knownCrib).toEqual(crib);
+    expect(result.sides[0].knownCrib).toBeUndefined();
+  });
+
+  it('is a no-op when no revealedCards were supplied (defensive fallback)', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'revealOpponentHand' }, 'root', state, 0);
+    expect(result.sides[0].knownOpponentHand).toBeUndefined();
+  });
+});
+
+describe('clearHandKnowledge', () => {
+  it('clears both sides\' knownOpponentHand/knownCrib', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'revealOpponentHand' }, 'root', state, 0, {
+      priorFireCountThisTurn: 0,
+      revealedCards: [{ rank: 4, suit: 0 }],
+    });
+    state = resolvePayload({ kind: 'revealCrib' }, 'root', state, 1, {
+      priorFireCountThisTurn: 0,
+      revealedCards: [{ rank: 6, suit: 1 }],
+    });
+    const cleared = clearHandKnowledge(state);
+    expect(cleared.sides[0].knownOpponentHand).toBeUndefined();
+    expect(cleared.sides[1].knownCrib).toBeUndefined();
   });
 });
 

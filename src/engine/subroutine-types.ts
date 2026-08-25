@@ -226,6 +226,33 @@ export interface SelfHeatReductionPayload {
   floor: number;
 }
 
+/**
+ * Root recon (session 24, Root mechanical redesign): three
+ * `firesAt`-only payloads, one per hand-lifecycle moment, each
+ * revealing a different, real piece of intel to the caster. No fields
+ * of their own -- the actual revealed cards are supplied at fire time
+ * by combat.ts (resolve.ts's resolvePayload `revealedCards` option),
+ * not baked into content authoring, since which cards are "the
+ * opponent's hand" or "the crib" only exists as combat.ts's own local
+ * state during a hand, never persisted into CombatState itself.
+ * Reveals *data*, not decisions -- the caster's own discard/pegging
+ * strategy still has to do something with it (see deal.ts's
+ * DiscardContext.knownOpponentHand, pegging.ts's PlayContext.
+ * knownCrib/knownOpponentHand); a no-op with the current baseline
+ * strategies, which don't consume those fields yet.
+ */
+export interface RevealOpponentHandPayload {
+  kind: 'revealOpponentHand';
+}
+
+export interface RevealCribPayload {
+  kind: 'revealCrib';
+}
+
+export interface RevealOpponentKeptHandPayload {
+  kind: 'revealOpponentKeptHand';
+}
+
 export type PayloadEffect =
   | DirectBurstPayload
   | PiercingPayload
@@ -240,7 +267,10 @@ export type PayloadEffect =
   | InstantManipulationPayload
   | CribbageLayerManipulationPayload
   | ScheduledSabotagePayload
-  | SelfHeatReductionPayload;
+  | SelfHeatReductionPayload
+  | RevealOpponentHandPayload
+  | RevealCribPayload
+  | RevealOpponentKeptHandPayload;
 
 export interface SubroutineDefinition {
   id: string;

@@ -1,5 +1,5 @@
 import type { PlayerIndex } from './pegging';
-import type { Suit } from './cards';
+import type { Card, Suit } from './cards';
 import type { Archetype, DebuffKind, HandLifecycleMoment, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
 import type { ClassId } from './classes';
 import { easeTriggerCondition } from './merge';
@@ -79,6 +79,19 @@ export interface CombatSideState {
   wardShield: number;
   dots: ActiveTick[];
   hots: ActiveTick[];
+  /** Recon-revealed intel, valid for the current hand only (session 24
+   * checkpoint C) -- cleared at the start of every hand (clearHandKnowledge
+   * below) since a new deal makes stale intel meaningless. `knownOpponentHand`
+   * is written by both revealOpponentHand (the opponent's full 6-card
+   * dealt hand, deal-time) and revealOpponentKeptHand (their 4-card kept
+   * hand, play-phase-start) -- the same field deliberately, since the
+   * later, smaller reveal naturally supersedes the earlier one exactly
+   * when it becomes the relevant one (pegging cares about their kept
+   * hand, not their original 6 cards). `knownCrib` is written by
+   * revealCrib -- one shared crib, not opponent-specific, so both sides'
+   * copies would agree if both happened to reveal it. */
+  knownOpponentHand?: Card[];
+  knownCrib?: Card[];
 }
 
 /** A Root scheduledSabotage payload fired now but resolves at a future
@@ -135,7 +148,22 @@ export function createCombatSideState(definitions: SubroutineDefinition[], gauge
     wardShield: 0,
     dots: [],
     hots: [],
+    knownOpponentHand: undefined,
+    knownCrib: undefined,
   };
+}
+
+/** Clears both sides' recon-revealed intel -- called once per hand,
+ * before that hand's onDealt gap fires, so a side whose recon didn't
+ * fire this hand (toggled off, conditional trigger not met, etc.)
+ * doesn't keep using stale intel from a previous hand. */
+export function clearHandKnowledge(combatState: CombatState): CombatState {
+  const sides = combatState.sides.map((sideState) => ({
+    ...sideState,
+    knownOpponentHand: undefined,
+    knownCrib: undefined,
+  })) as [CombatSideState, CombatSideState];
+  return { ...combatState, sides };
 }
 
 export function createCombatState(
@@ -238,6 +266,13 @@ export interface ResolveContext {
   /** How many other subroutines already fired earlier this same turn --
    * chainFinisherScaling's payoff for loadout sequencing. */
   priorFireCountThisTurn: number;
+  /** The cards a revealOpponentHand/revealCrib/revealOpponentKeptHand
+   * payload should store (session 24) -- supplied by combat.ts's
+   * fireHandLifecycleSubroutines call, since which cards are "the
+   * opponent's hand" or "the crib" only exists as combat.ts's own local
+   * state during a hand, never persisted into CombatState. Irrelevant
+   * to every other payload kind. */
+  revealedCards?: Card[];
 }
 
 // ---------------------------------------------------------------------
@@ -568,6 +603,24 @@ function resolvePayloadCore(
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
       const heat = Math.max(payload.floor, casterState.heat - amount);
       const sides = replaceSide(combatState.sides, caster, { ...casterState, heat });
+      return { ...combatState, sides };
+    }
+    // Recon (session 24 checkpoint C): firesAt-only, no-op unless
+    // combat.ts supplied revealedCards for this exact fire (it always
+    // does when these fire through fireHandLifecycleSubroutines at
+    // their matching moment -- the guard is defensive, not expected to
+    // bind in practice).
+    case 'revealOpponentHand':
+    case 'revealOpponentKeptHand': {
+      if (!context.revealedCards) return combatState;
+      const casterState = combatState.sides[caster];
+      const sides = replaceSide(combatState.sides, caster, { ...casterState, knownOpponentHand: context.revealedCards });
+      return { ...combatState, sides };
+    }
+    case 'revealCrib': {
+      if (!context.revealedCards) return combatState;
+      const casterState = combatState.sides[caster];
+      const sides = replaceSide(combatState.sides, caster, { ...casterState, knownCrib: context.revealedCards });
       return { ...combatState, sides };
     }
   }
@@ -963,6 +1016,7 @@ export function fireHandLifecycleSubroutines(
   side: PlayerIndex,
   moment: HandLifecycleMoment,
   selfContext: { isDealer: boolean },
+  revealedCards?: Card[],
 ): { combatState: CombatState; events: FireEvent[] } {
   let state = combatState;
   const events: FireEvent[] = [];
@@ -977,6 +1031,7 @@ export function fireHandLifecycleSubroutines(
 
     state = resolvePayload(entry.definition.payload, entry.definition.archetype, state, side, {
       priorFireCountThisTurn: events.length,
+      revealedCards,
     });
     events.push({ subroutineId: entry.definition.id, side, payload: entry.definition.payload });
     state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state));

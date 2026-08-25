@@ -21,6 +21,7 @@ import { addPoints, shrinkDuelThreshold, type InitiativeGauge } from './gauges';
 import {
   applyFootholdBonus,
   applyThrottled,
+  clearHandKnowledge,
   consumePendingCribbageManipulation,
   createCombatState,
   fireHandLifecycleSubroutines,
@@ -261,9 +262,9 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
    * fire through step() so peak-tracking/resolution stays uniform.
    * Returns the winner the instant either side's fire resolves the
    * match, same early-exit contract step() already has. */
-  const fireLifecycleGap = (moment: HandLifecycleMoment): PlayerIndex | null => {
+  const fireLifecycleGap = (moment: HandLifecycleMoment, revealedCardsForSide: (side: PlayerIndex) => Card[] | undefined): PlayerIndex | null => {
     for (const side of [0, 1] as PlayerIndex[]) {
-      const fired = fireHandLifecycleSubroutines(combatState, side, moment, { isDealer: side === dealer });
+      const fired = fireHandLifecycleSubroutines(combatState, side, moment, { isDealer: side === dealer }, revealedCardsForSide(side));
       log.push(...fired.events);
       const winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
       if (winner !== null) return winner;
@@ -308,34 +309,56 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     // playHands still uses playOneHand unchanged; nothing there needs
     // these hooks.
     const nonDealer: PlayerIndex = (1 - dealer) as PlayerIndex;
+    // Clear last hand's recon intel before this hand's own onDealt gap
+    // can repopulate it -- a side whose recon didn't fire this hand
+    // (toggled off, conditional trigger unmet) must not keep seeing
+    // stale intel from a previous hand.
+    combatState = clearHandKnowledge(combatState);
     const shuffled = shuffle(createDeck(), rng);
     const { hands: dealtHands, stock } = deal(shuffled);
 
-    winner = fireLifecycleGap('onDealt');
+    winner = fireLifecycleGap('onDealt', (side) => dealtHands[(1 - side) as PlayerIndex]);
     if (winner !== null) return finish(winner);
 
     const d0 = discardToCrib(
-      { hand: dealtHands[0], isOwnCrib: dealer === 0 },
+      { hand: dealtHands[0], isOwnCrib: dealer === 0, knownOpponentHand: combatState.sides[0].knownOpponentHand },
       manipulation.forHand.forcedDiscardSide === 0 ? discardHighestTwo : discardStrategy,
     );
     const d1 = discardToCrib(
-      { hand: dealtHands[1], isOwnCrib: dealer === 1 },
+      { hand: dealtHands[1], isOwnCrib: dealer === 1, knownOpponentHand: combatState.sides[1].knownOpponentHand },
       manipulation.forHand.forcedDiscardSide === 1 ? discardHighestTwo : discardStrategy,
     );
     const crib = [...d0.discarded, ...d1.discarded];
 
-    winner = fireLifecycleGap('onCribSelected');
+    winner = fireLifecycleGap('onCribSelected', () => crib);
     if (winner !== null) return finish(winner);
 
     const { starter } = cutStrategy(stock, rng);
     const heelsPoints = hisHeels(starter);
     scores[dealer] += heelsPoints;
 
-    winner = fireLifecycleGap('onPlayPhaseStart');
+    const keptForSide: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
+    winner = fireLifecycleGap('onPlayPhaseStart', (side) => keptForSide[(1 - side) as PlayerIndex]);
     if (winner !== null) return finish(winner);
 
     const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
-    const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, playStrategy);
+    // playStrategy is a single function shared by both sides (pegging's
+    // pre-existing design, unlike discard which is called once per side
+    // with its own context) -- there's no per-side context to split
+    // knownCrib/knownOpponentHand across here, so this deliberately
+    // uses side 0's (the player's) own recon, same "side 0 is the
+    // privileged side" convention this file already uses for
+    // playerHeatGenerated. Genuine per-side pegging context is the
+    // follow-on skill-dial session's job (decision 4), once playStrategy
+    // itself becomes per-side.
+    const { scores: peggingScores, events: peggingEvents } = playPegging(
+      kept[0],
+      kept[1],
+      nonDealer,
+      playStrategy,
+      combatState.sides[0].knownCrib,
+      combatState.sides[0].knownOpponentHand,
+    );
     scores[0] += peggingScores[0];
     scores[1] += peggingScores[1];
 
