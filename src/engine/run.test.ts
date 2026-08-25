@@ -4,6 +4,7 @@ import { legalMoves } from './traversal';
 import { playRun, gatekeeperReachable, beelineToGatekeeper, exploreThenGatekeeper, type TraversalStrategy } from './run';
 import type { SubroutineDefinition } from './subroutine-types';
 import { BREACHER_LOADOUT } from './subroutines';
+import { INSTALLED_SLOT_CAP } from './loadout';
 
 /** Same reasoning as encounters.test.ts's OVERWHELMING/NEGLIGIBLE_PLAYER:
  * Breach/Containment's sharp positive-feedback dynamics mean a real
@@ -170,6 +171,13 @@ describe('playRun', { timeout: 30_000 }, () => {
     // actually accumulates on RunPlayerState across a real run, not just
     // in a single resolveEncounter() call (encounters.test.ts).
     expect(result.playerState.data).toBeGreaterThan(0);
+    // Checkpoint D: the default acquisitionStrategy takes a reward from
+    // each of those 4 wins, growing the loadout beyond Breacher's
+    // starting 3-piece kit -- exactly what makes session 20's original
+    // static-loadout sweep no longer representative (see BACKLOG.md).
+    const totalOwned = result.playerState.installedLoadout.length + result.playerState.bench.length;
+    expect(totalOwned).toBeGreaterThan(3);
+    expect(result.playerState.installedLoadout.length).toBeLessThanOrEqual(INSTALLED_SLOT_CAP);
   });
 
   it('reaches heatMaxed on real-scale layers when a strategy just wanders safely', () => {

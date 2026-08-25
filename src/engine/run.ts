@@ -6,6 +6,7 @@ import { resolveEncounter, type EncounterOutcome } from './encounters';
 import { addHeat } from './heat';
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
+import { acquireSubroutine, alwaysAcquireFirst, INSTALLED_SLOT_CAP, type AcquisitionStrategy } from './loadout';
 
 /**
  * The run orchestrator (session 19/20 checkpoint F): ties layer
@@ -19,17 +20,18 @@ const DEFAULT_LAYER_NODE_COUNTS: [number, number, number, number] = [10, 12, 12,
 
 /** The player's own state for the run, threaded into every encounter
  * (Phase 4 checkpoint A). `data` (checkpoint C) accumulates Data awarded
- * from combat wins (encounters.ts). Bench/slot-cap fields arrive with
- * checkpoint D, which is what actually does something with a won
- * reward offer or spent Data -- not speculatively now. */
+ * from combat wins. `bench` (checkpoint D, loadout.ts) holds owned-but-
+ * uninstalled pieces -- only `installedLoadout` is evaluated each
+ * fight. */
 export interface RunPlayerState {
   classId: ClassId;
   installedLoadout: SubroutineDefinition[];
   data: number;
+  bench: SubroutineDefinition[];
 }
 
 export function createInitialPlayerState(classId: ClassId): RunPlayerState {
-  return { classId, installedLoadout: CLASS_DEFINITIONS[classId].startingLoadout, data: 0 };
+  return { classId, installedLoadout: CLASS_DEFINITIONS[classId].startingLoadout, data: 0, bench: [] };
 }
 
 export type RunOutcome = 'heatMaxed' | 'quarantined' | 'noRouteRemains' | 'victory';
@@ -94,6 +96,12 @@ export interface RunOptions {
    * that led encounters.test.ts to a deliberately lopsided player
    * construction instead of a seed sweep. Never used outside tests. */
   installedLoadoutOverride?: SubroutineDefinition[];
+  /** Which (if any) of a won fight's reward options a script acquires --
+   * checkpoint D. Defaults to alwaysAcquireFirst (legal-not-good, no
+   * rarity/synergy judgment). */
+  acquisitionStrategy?: AcquisitionStrategy;
+  /** Slot cap for installedLoadout -- checkpoint D. */
+  installedSlotCap?: number;
 }
 
 export function playRun(options: RunOptions): RunResult {
@@ -103,6 +111,8 @@ export function playRun(options: RunOptions): RunResult {
     layerNodeCounts = DEFAULT_LAYER_NODE_COUNTS,
     traversalStrategy = beelineToGatekeeper,
     installedLoadoutOverride,
+    acquisitionStrategy = alwaysAcquireFirst,
+    installedSlotCap = INSTALLED_SLOT_CAP,
   } = options;
 
   const rng = createRng(seed);
@@ -110,7 +120,7 @@ export function playRun(options: RunOptions): RunResult {
   let heat = 0;
   let layersCompleted = 0;
   let playerState = installedLoadoutOverride
-    ? { classId, installedLoadout: installedLoadoutOverride, data: 0 }
+    ? { classId, installedLoadout: installedLoadoutOverride, data: 0, bench: [] }
     : createInitialPlayerState(classId);
 
   const finish = (outcome: RunOutcome): RunResult => ({ outcome, layersCompleted, finalHeat: heat, log, playerState });
@@ -149,6 +159,10 @@ export function playRun(options: RunOptions): RunResult {
       const afterEncounter = addHeat(heat, outcome.heatDelta);
       heat = afterEncounter.heat;
       if (outcome.dataAwarded > 0) playerState = { ...playerState, data: playerState.data + outcome.dataAwarded };
+      if (outcome.rewardOptions.length > 0) {
+        const picked = acquisitionStrategy(outcome.rewardOptions, playerState);
+        if (picked) playerState = acquireSubroutine(playerState, picked, installedSlotCap);
+      }
       log.push({ type: 'encounter', layerIndex, nodeId: node.id, nodeType: node.type, outcome, heatAfter: heat });
 
       if (outcome.quarantined) {

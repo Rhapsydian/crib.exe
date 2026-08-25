@@ -68,10 +68,16 @@ function playerWithBurst(amount: number): RunPlayerState {
       } satisfies SubroutineDefinition,
     ],
     data: 0,
+    bench: [],
   };
 }
 
-const OVERWHELMING_PLAYER: RunPlayerState = { classId: 'breacher', installedLoadout: overwhelmingBreacherLoadout(30), data: 0 };
+const OVERWHELMING_PLAYER: RunPlayerState = {
+  classId: 'breacher',
+  installedLoadout: overwhelmingBreacherLoadout(30),
+  data: 0,
+  bench: [],
+};
 const NEGLIGIBLE_PLAYER = playerWithBurst(0.1);
 const SEEDS = [1, 2, 3];
 
