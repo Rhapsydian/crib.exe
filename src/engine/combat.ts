@@ -14,7 +14,7 @@ import {
   type ScoringOccurrence,
   type SuitPlayed,
 } from './triggers';
-import { addPoints, type InitiativeGauge } from './gauges';
+import { addPoints, shrinkDuelThreshold, type InitiativeGauge } from './gauges';
 import {
   applyFootholdBonus,
   applyThrottled,
@@ -168,6 +168,28 @@ function advance(
   return checkReactive(combatState, refreshTriggerReadiness(combatState, handDealer), log);
 }
 
+// Escalation (session 22+): a match still resolves faster once it's
+// gone on long enough that "genuinely competitive" tuning can afford
+// to be patient early on -- see BACKLOG.md for the sharp positive-
+// feedback/stalemate risk this exists to bound. All TBD/playtesting,
+// same placeholder convention as everywhere else in this project.
+const ESCALATION_START_HAND = 100;
+const ESCALATION_SHRINK_PER_HAND = 1;
+const ESCALATION_MIN_THRESHOLD = 10;
+
+/** Shrinks both sides' own win-gauge thresholds by ESCALATION_SHRINK_PER_HAND,
+ * floored at ESCALATION_MIN_THRESHOLD -- never touches progress. Called
+ * once per hand once the match has run at least ESCALATION_START_HAND
+ * hands, so even a slow trickle of progress eventually crosses the
+ * (shrinking) bar. */
+function applyEscalation(combatState: CombatState): CombatState {
+  const sides = combatState.sides.map((sideState) => ({
+    ...sideState,
+    winGauge: shrinkDuelThreshold(sideState.winGauge, ESCALATION_SHRINK_PER_HAND, ESCALATION_MIN_THRESHOLD),
+  })) as [CombatSideState, CombatSideState];
+  return { ...combatState, sides };
+}
+
 /** The ordered sequence of scoring occurrences for one hand, in the
  * order they actually happen at the table: cut (his heels), pegging
  * play-by-play, then the show (non-dealer hand, dealer hand, crib). */
@@ -230,6 +252,19 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   };
 
   for (let i = 0; i < maxHands; i++) {
+    let winner: PlayerIndex | null = null;
+
+    // Escalation: once the match has run long enough, both sides' own
+    // win-gauge thresholds start shrinking each hand -- a shrink can
+    // itself resolve the match if banked progress already exceeds the
+    // new, lower threshold, and can also newly arm an enemyState
+    // breachContainmentBelow/Above trigger purely from the changed fill
+    // percentage (advance() re-checks readiness, not just resolution).
+    if (i >= ESCALATION_START_HAND) {
+      winner = step(advance(applyEscalation(combatState), dealer, log));
+      if (winner !== null) return finish(winner);
+    }
+
     // Cribbage-layer manipulation (skewCut/forceDiscard/markSuit) has to
     // be consumed BEFORE this hand is dealt, since it changes how this
     // hand's own deal/discard/cut behaves -- unlike Scheduled Sabotage/
@@ -239,7 +274,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     const beforeManipulation = combatState;
     const manipulation = consumePendingCribbageManipulation(combatState, dealer);
     combatState = manipulation.combatState;
-    let winner = step(checkReactive(beforeManipulation, combatState, log));
+    winner = step(checkReactive(beforeManipulation, combatState, log));
     if (winner !== null) return finish(winner);
 
     const cutStrategy: CutStrategy = manipulation.forHand.cutBias ? biasedCut(manipulation.forHand.cutBias) : cut;

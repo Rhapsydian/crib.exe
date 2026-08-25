@@ -93,3 +93,16 @@ export function reduceDuelProgress(gauge: DuelGauge, amount: number): DuelGauge 
   const progress = Math.max(0, gauge.progress - amount);
   return { ...gauge, progress };
 }
+
+/** Escalation (session 22+): shrinks a gauge's threshold by `amount`,
+ * floored at `minThreshold` -- combat.ts calls this on both sides' own
+ * gauges once a match has run long enough, so even a slow trickle of
+ * progress eventually crosses the (shrinking) bar. Never touches
+ * progress -- a shrink can itself resolve a match if banked progress
+ * already exceeds the new, lower threshold, which combat.ts checks for
+ * right after applying this. */
+export function shrinkDuelThreshold(gauge: DuelGauge, amount: number, minThreshold: number): DuelGauge {
+  if (amount <= 0) return gauge;
+  const threshold = Math.max(minThreshold, gauge.threshold - amount);
+  return { ...gauge, threshold };
+}

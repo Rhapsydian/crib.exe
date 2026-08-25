@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createInitiativeGauge, addPoints, createDuelGauge, addDuelProgress, reduceDuelProgress } from './gauges';
+import { createInitiativeGauge, addPoints, createDuelGauge, addDuelProgress, reduceDuelProgress, shrinkDuelThreshold } from './gauges';
 
 describe('InitiativeGauge / addPoints', () => {
   it('accumulates points without triggering a turn while under threshold', () => {
@@ -89,5 +89,22 @@ describe('reduceDuelProgress', () => {
   it('ignores non-positive amounts', () => {
     const gauge = { progress: 15, threshold: 20 };
     expect(reduceDuelProgress(gauge, 0)).toEqual(gauge);
+  });
+});
+
+describe('shrinkDuelThreshold', () => {
+  it('subtracts from the threshold, leaving progress untouched', () => {
+    const gauge = { progress: 15, threshold: 100 };
+    expect(shrinkDuelThreshold(gauge, 10, 5)).toEqual({ progress: 15, threshold: 90 });
+  });
+
+  it('floors at minThreshold rather than shrinking to 0 or negative', () => {
+    const gauge = { progress: 15, threshold: 12 };
+    expect(shrinkDuelThreshold(gauge, 50, 10)).toEqual({ progress: 15, threshold: 10 });
+  });
+
+  it('ignores non-positive amounts', () => {
+    const gauge = { progress: 15, threshold: 20 };
+    expect(shrinkDuelThreshold(gauge, 0, 5)).toEqual(gauge);
   });
 });

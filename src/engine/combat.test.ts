@@ -196,4 +196,36 @@ describe('playCombat', () => {
     expect(result.log.length).toBeGreaterThan(0);
     expect(result.log.every((e) => e.side === 0 && e.subroutineId === 'reactive-fifteen')).toBe(true);
   });
+
+  describe('escalation', () => {
+    // A tiny, always-firing burst against a winThreshold it could never
+    // realistically reach through normal play within a sane hand count
+    // -- only escalation's shrinking threshold (starts at hand 100,
+    // floors at 10) brings the bar down to something this weak enough
+    // to actually cross. Confirmed empirically to resolve consistently
+    // at hand 261 for this exact setup.
+    const weakBurst = (id: string): SubroutineDefinition => ({
+      id,
+      name: id,
+      archetype: 'exploit',
+      trigger: { kind: 'always' },
+      payload: { kind: 'directBurst', amount: 0.01 },
+      tags: [],
+    });
+
+    it('does not resolve before escalation starts (hand 100)', () => {
+      expect(() => playCombat([[weakBurst('a')], []], { seed: 1, gaugeThreshold: 3, winThreshold: 15, maxHands: 90 })).toThrow(
+        /did not resolve/,
+      );
+    });
+
+    it('rescues a match that would otherwise never reach its own winThreshold, correctly attributing the win', () => {
+      // Side 1 fires nothing at all -- if escalation ever incorrectly
+      // resolved in side 1's favor (e.g. a floor/shrink bug), this would
+      // catch it immediately.
+      const result = playCombat([[weakBurst('a')], []], { seed: 1, gaugeThreshold: 3, winThreshold: 15, maxHands: 300 });
+      expect(result.winner).toBe(0);
+      expect(result.hands.length).toBeGreaterThan(100); // genuinely resolved via escalation, not a fluke early win
+    });
+  });
 });

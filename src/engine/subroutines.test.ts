@@ -104,16 +104,17 @@ describe('subroutine content — real combat smoke tests', () => {
   }
 
   // A modest, always-firing opponent -- not empty and not a mirror.
-  // Needed because Encryption's kit is capped at the Breach/Containment
-  // midpoint (Checkpoint 4) and Root's kit never pushes
-  // Breach/Containment at all (pure denial/tempo, by design -- see
-  // DESIGN.md's archetype descriptions) -- both are meant to be paired
-  // with a real damage archetype, never expected to close out a fight
-  // solo. An empty or mirrored opponent would leave Encryption-only,
+  // Needed because Encryption's kit only ever reduces the *opponent's*
+  // gauge (session 22+ redesign) and Root's kit never touches either
+  // gauge at all (pure denial/tempo, by design -- see DESIGN.md's
+  // archetype descriptions) -- both are meant to be paired with a real
+  // damage archetype, never expected to advance their own gauge solo.
+  // An empty or mirrored opponent would leave Encryption-only,
   // Root-only, or Ghost's own starting kit (Encryption+Root, zero direct
-  // damage access until Phase 4's Return to Sender passive exists) in a
-  // genuine, correctly-modeled stalemate -- not a bug, but not what this
-  // smoke test is trying to verify either.
+  // damage access until Phase 4's Return to Sender passive exists) with
+  // nothing to actually verify -- see the dedicated test below instead,
+  // which checks the real invariant (their own gauge never advances)
+  // directly rather than via a timeout.
   const genericOpponent: SubroutineDefinition[] = [
     { id: 'test-opponent', name: 'Test Opponent', archetype: 'exploit', trigger: { kind: 'always' }, payload: { kind: 'directBurst', amount: 4 }, tags: [] },
   ];
@@ -154,18 +155,45 @@ describe('subroutine content — real combat smoke tests', () => {
     }
   });
 
-  it('Ghost\'s starting kit and a solo Encryption pool genuinely cannot close out a fight alone -- confirms the midpoint cap, not a bug', () => {
-    // Both are capped-at-center (Encryption) or entirely non-pushing
-    // (Root, Ghost's other archetype) -- neither can ever win Breach/
-    // Containment outright without Phase 4's Return to Sender passive
-    // (Ghost) or a paired damage archetype (Encryption). Asserting the
-    // documented maxHands safety valve fires, not a real crash.
-    expect(() => playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: 2000 })).toThrow(
-      /did not resolve/,
-    );
+  it("Ghost's starting kit genuinely cannot advance its own gauge -- confirms the redesign's structural 'mitigation can't win alone' property, not a bug", () => {
+    // Encryption+Root, zero direct damage access -- never credits its
+    // own win gauge without Phase 4's Return to Sender passive. Under
+    // the pre-redesign shared scalar this meant the match hung forever
+    // (asserted via a maxHands timeout); under the two-gauge model
+    // escalation (checkpoint B) still resolves the match once the
+    // opponent's own shrinking threshold becomes reachable (Ghost's 3
+    // starting pieces cast no Ward at all, so the opponent's hits go
+    // through freely), so a timeout is no longer the right signal here
+    // -- the real invariant is that Ghost's own gauge progress never
+    // advances at all, checked directly.
+    const result = playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS });
+    expect(result.winner).toBe(1); // Ghost never wins
+    expect(result.peakFillFraction[0]).toBe(0); // Ghost's own gauge never moves
+  });
+
+  it('a solo Encryption pool genuinely stalemates against a weak opponent -- a real escalation gap, not a bug in this test', () => {
+    // Unlike Ghost's minimal kit, the FULL Encryption pool includes 4
+    // dedicated Ward-casters (Sandboxing, Access Control, Honeypot, Air
+    // Gap) -- stacked together they build an ever-growing shield that
+    // outpaces this weak opponent's single small burst indefinitely, so
+    // the opponent's hits never land either. Both sides' progress stays
+    // at exactly 0 forever, and escalation (checkpoint B) only shrinks
+    // *thresholds* -- it can't rescue a genuine zero-progress deadlock.
+    // This is real confirmation of the plan's own anticipated gap
+    // ("if shrinking thresholds alone turns out not to be enough,"
+    // BACKLOG.md/plan doc's escalation decision) -- flagged there for
+    // whether a sudden-death fallback is worth building now or later,
+    // not silently worked around here. A 15-piece pool thrown at one
+    // weak opponent is also a more extreme matchup than real installed
+    // loadouts (capped at 6 -- checkpoint D) ever produce, so this
+    // specific case may be more test-construction artifact than a
+    // realistic in-game risk -- still asserting the documented maxHands
+    // safety valve fires, not a real crash.
     const encryptionPool = ARCHETYPE_POOLS.encryption;
     const encryptionLoadout = [...encryptionPool.commons, ...encryptionPool.uncommons, ...encryptionPool.rares];
-    expect(() => playCombat([encryptionLoadout, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: 2000 })).toThrow(/did not resolve/);
+    expect(() => playCombat([encryptionLoadout, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS })).toThrow(
+      /did not resolve/,
+    );
   });
 
   it('the full 78-subroutine set on one side resolves against an empty enemy without throwing', () => {
