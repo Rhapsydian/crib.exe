@@ -49,10 +49,15 @@ Going from novice to expert barely moves those numbers further --
 almost all the damage comes from the enemy simply playing *competent*
 Cribbage at all (exact hand-value/immediate-score optimization),
 independent of the secondary crib-awareness/defensive/setup
-refinements. And Saboteur/Operator/Ghost sit at exactly 0.0% at every
-skill level tested (0, 0.5, 1.0) -- direct confirmation that their
-weakness is a real, structural class-kit gap (Root never touches the
-win gauge), not an artifact of a fair fight against a strawman.
+refinements. Saboteur/Operator/Ghost sit at exactly 0.0% at every enemy
+skill level tested (0, 0.5, 1.0) with the player still on the old dumb
+baseline -- and a same-day follow-up giving the *player* side expert
+play too confirms it conclusively: Warden/Blackhat/Breacher recover
+substantially (Warden back to ~85%), but Operator/Ghost stay at exactly
+0.0% and Saboteur barely clears 0% regardless of which side is smart.
+Root's weakness is a real, structural class-kit gap (Root never touches
+the win gauge), not an artifact of a fair fight against a strawman on
+either side.
 
 **The actionable takeaway for next session**: every enemy-magnitude
 number tuned so far (checkpoint E of the Breach/Containment redesign,
@@ -836,3 +841,31 @@ target enemy skill level and retune magnitudes *together* against it,
 not magnitude alone against the old dumb baseline. Deliberately not
 done here (decision 3) -- this sweep is the data that decision needs,
 not the decision itself.
+
+**Follow-up: does player skill also matter, not just enemy skill?**
+The sweep above held the *player* side at the old dumb baseline the
+whole time -- a natural follow-up question is whether Saboteur/
+Operator/Ghost's 0.0% is itself an artifact of *that*, not of Root.
+Re-ran the same grid with the player also at expert (skill=1):
+
+| class     | enemy 0 | enemy 0.5 | enemy 1 |
+|-----------|---------|-----------|---------|
+| warden    | 85.6%   | 84.4%     | 85.6%   |
+| blackhat  | 39.8%   | 36.8%     | 34.2%   |
+| breacher  | 19.2%   | 17.2%     | 16.6%   |
+| saboteur  | 0.4%    | 0.2%      | 0.4%    |
+| operator  | 0.0%    | 0.0%      | 0.0%    |
+| ghost     | 0.0%    | 0.0%      | 0.0%    |
+
+A competent player dramatically rescues the gauge-touching classes --
+Warden climbs back to nearly its original 88.4% (session 23) baseline,
+Blackhat and Breacher recover substantially from checkpoint E's
+near-zero numbers. Operator and Ghost stay at **exactly 0.0%** no
+matter which side is smart; Saboteur barely clears 0% (0.2-0.4%). This
+closes the question conclusively: it was never an opponent-difficulty
+artifact *or* a player-skill artifact -- better play on either side
+can't manufacture wins these classes' kits don't have the raw magnitude
+to reach. Better card selection improves the odds of a good board
+state; it doesn't create more magnitude, and magnitude (or some other
+mechanical reach for Root, e.g. genuinely stronger recon/manipulation
+content) is what these three classes are actually missing.
