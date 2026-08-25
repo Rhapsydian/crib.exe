@@ -17,7 +17,7 @@ export const SUIT_ARCHETYPES: Record<Suit, Archetype> = {
   3: 'root',
 };
 
-export type Tag = 'trap' | 'backdoor' | 'firewall' | 'worm' | 'daemon';
+export type Tag = 'trap' | 'piercing' | 'firewall' | 'worm' | 'daemon';
 
 /** The 8 session-5 occurrence categories, unified across the pegging
  * play phase and the show/count phase. */
@@ -83,12 +83,12 @@ export type TriggerFamily =
 export type TickCadence = 'globalPulse' | 'castersTurnPulse';
 
 // --- Exploit (4) ---
-export interface InstantBurstPayload {
-  kind: 'instantBurst';
+export interface DirectBurstPayload {
+  kind: 'directBurst';
   amount: number;
 }
-export interface PiercingBurstPayload {
-  kind: 'piercingBurst';
+export interface PiercingPayload {
+  kind: 'piercing';
   amount: number;
 }
 export interface ChainFinisherScalingPayload {
@@ -162,8 +162,8 @@ export interface ScheduledSabotagePayload {
 }
 
 export type PayloadEffect =
-  | InstantBurstPayload
-  | PiercingBurstPayload
+  | DirectBurstPayload
+  | PiercingPayload
   | ChainFinisherScalingPayload
   | RiskRewardBurstPayload
   | DotPayload

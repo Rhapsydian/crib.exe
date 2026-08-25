@@ -52,6 +52,11 @@ export interface CombatResult {
    * margin-of-loss information; this running peak is what Phase 3's Heat
    * formula needs instead). */
   peakBreachContainment: number;
+  /** Heat the player side (side 0) accumulated in-combat from
+   * riskRewardBurst payloads -- CombatSideState.heat resets each combat,
+   * so the outer run orchestrator needs this surfaced to fold it into
+   * persistent run Heat, same reason peakBreachContainment exists. */
+  playerHeatGenerated: number;
 }
 
 function replaceSideGauge(combatState: CombatState, side: PlayerIndex, gauge: InitiativeGauge): CombatState {
@@ -133,7 +138,9 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
         peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
 
         const winner = resolution(combatState);
-        if (winner !== null) return { winner, log, hands, peakBreachContainment };
+        if (winner !== null) {
+          return { winner, log, hands, peakBreachContainment, playerHeatGenerated: combatState.sides[0].heat };
+        }
       }
     }
 

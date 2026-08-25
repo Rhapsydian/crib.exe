@@ -26,7 +26,7 @@ function burstSubroutine(id: string, amount: number): SubroutineDefinition {
     name: id,
     archetype: 'exploit',
     trigger: { kind: 'always' },
-    payload: { kind: 'instantBurst', amount },
+    payload: { kind: 'directBurst', amount },
     tags: [],
   };
 }
@@ -68,7 +68,7 @@ function resolveFight(kind: FightKind, rng: Rng): EncounterOutcome {
 
   if (result.winner === 0) {
     const rewardTier: RewardTier = kind === 'regular' ? 'standard' : 'better';
-    return { newState: 'inert', heatDelta: 0, quarantined: false, rewardTier };
+    return { newState: 'inert', heatDelta: result.playerHeatGenerated, quarantined: false, rewardTier };
   }
   if (kind === 'gatekeeper') {
     // Quarantine ends the run outright -- no Heat cost, and the node's
@@ -77,7 +77,7 @@ function resolveFight(kind: FightKind, rng: Rng): EncounterOutcome {
   }
   return {
     newState: 'closed',
-    heatDelta: heatFromLoss(kind, result.peakBreachContainment),
+    heatDelta: heatFromLoss(kind, result.peakBreachContainment) + result.playerHeatGenerated,
     quarantined: false,
     rewardTier: 'none',
   };

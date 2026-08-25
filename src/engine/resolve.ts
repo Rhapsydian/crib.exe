@@ -135,14 +135,14 @@ export function resolvePayload(
   const target = opponentOf(caster);
 
   switch (payload.kind) {
-    case 'instantBurst': {
+    case 'directBurst': {
       const { sideState, blocked } = consumeWard(combatState.sides[target], archetype);
       const sides = replaceSide(combatState.sides, target, sideState);
       if (blocked) return { ...combatState, sides };
       const { value } = pushTowardCaster(combatState.breachContainment, payload.amount, caster);
       return { ...combatState, breachContainment: value, sides };
     }
-    case 'piercingBurst': {
+    case 'piercing': {
       // Ignores wards entirely -- Exploit's counter to defense-heavy builds.
       const { value } = pushTowardCaster(combatState.breachContainment, payload.amount, caster);
       return { ...combatState, breachContainment: value };

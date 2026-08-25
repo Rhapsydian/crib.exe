@@ -20,7 +20,7 @@ import {
   type TriggerContext,
 } from './triggers';
 
-const dummyPayload: PayloadEffect = { kind: 'instantBurst', amount: 5 };
+const dummyPayload: PayloadEffect = { kind: 'directBurst', amount: 5 };
 
 function definitionWith(trigger: TriggerFamily): SubroutineDefinition {
   return { id: 'sub-1', name: 'Test Subroutine', archetype: 'exploit', trigger, payload: dummyPayload, tags: [] };
