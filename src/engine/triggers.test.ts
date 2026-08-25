@@ -141,15 +141,19 @@ describe('isReady dispatcher', () => {
     expect(isReady(def, ready, emptyContext)).toBe(true);
   });
 
-  it('evaluates always/selfState/enemyState/chained live from context, ignoring stored state', () => {
+  it('reads banked state for selfState/enemyState too -- latched via refreshTriggerReadiness (resolve.ts), not live context here', () => {
+    const selfDef = definitionWith({ kind: 'selfState', condition: 'isDealer' });
+    const notReady = createInitialState();
+    const latched = { ...notReady, ready: true };
+    // Passing a context where the condition is true no longer matters --
+    // isReady only reads the banked flag for this family now.
+    expect(isReady(selfDef, notReady, { ...emptyContext, self: { heat: 0, isDealer: true } })).toBe(false);
+    expect(isReady(selfDef, latched, emptyContext)).toBe(true);
+  });
+
+  it('evaluates always/chained live from context -- no banked state to latch for either', () => {
     const alwaysDef = definitionWith({ kind: 'always' });
     expect(isReady(alwaysDef, createInitialState(), emptyContext)).toBe(true);
-
-    const selfDef = definitionWith({ kind: 'selfState', condition: 'isDealer' });
-    expect(isReady(selfDef, createInitialState(), emptyContext)).toBe(false);
-    expect(
-      isReady(selfDef, createInitialState(), { ...emptyContext, self: { heat: 0, isDealer: true } }),
-    ).toBe(true);
 
     const chainedDef = definitionWith({ kind: 'chained', afterSubroutineId: 'other-sub' });
     expect(isReady(chainedDef, createInitialState(), emptyContext)).toBe(false);

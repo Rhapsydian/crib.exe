@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
-import { createCombatState, resolvePayload, fireReadySubroutines } from './resolve';
+import { createCombatState, resolvePayload, fireReadySubroutines, refreshTriggerReadiness } from './resolve';
 import { BREACH_CONTAINMENT_CENTER } from './gauges';
 
 function definition(
@@ -147,5 +147,65 @@ describe('fireReadySubroutines', () => {
     const state = createCombatState([second, first], [], 12);
     const { events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events.map((e) => e.subroutineId)).toEqual(['a']);
+  });
+});
+
+describe('refreshTriggerReadiness', () => {
+  const selfHeatAbove = definition('self', { kind: 'selfState', condition: 'heatAbove', value: 5 }, { kind: 'directBurst', amount: 1 });
+  const enemyGaugeFillAbove = definition(
+    'enemy',
+    { kind: 'enemyState', condition: 'gaugeFillAbove', fraction: 0.5 },
+    { kind: 'directBurst', amount: 1 },
+  );
+  const selfIsDealer = definition('dealer', { kind: 'selfState', condition: 'isDealer' }, { kind: 'directBurst', amount: 1 });
+
+  it('latches ready the moment a selfState condition becomes true', () => {
+    let state = createCombatState([selfHeatAbove], [], 12);
+    state = refreshTriggerReadiness(state, 0);
+    expect(state.sides[0].loadout[0].state.ready).toBe(false);
+
+    state = { ...state, sides: [{ ...state.sides[0], heat: 10 }, state.sides[1]] as typeof state.sides };
+    state = refreshTriggerReadiness(state, 0);
+    expect(state.sides[0].loadout[0].state.ready).toBe(true);
+  });
+
+  it('stays latched even after the underlying condition reverts to false (the actual bug fix)', () => {
+    let state = createCombatState([selfHeatAbove], [], 12);
+    state = { ...state, sides: [{ ...state.sides[0], heat: 10 }, state.sides[1]] as typeof state.sides };
+    state = refreshTriggerReadiness(state, 0);
+    expect(state.sides[0].loadout[0].state.ready).toBe(true);
+
+    // Heat drops back below the threshold -- a live re-check would say
+    // "not ready" again, but the latch must survive.
+    state = { ...state, sides: [{ ...state.sides[0], heat: 0 }, state.sides[1]] as typeof state.sides };
+    state = refreshTriggerReadiness(state, 0);
+    expect(state.sides[0].loadout[0].state.ready).toBe(true);
+  });
+
+  it('latches an enemyState condition against the *other* side\'s state', () => {
+    let state = createCombatState([], [enemyGaugeFillAbove], 12);
+    state = refreshTriggerReadiness(state, 0);
+    expect(state.sides[1].loadout[0].state.ready).toBe(false);
+
+    // Side 0's gauge (the enemy, from side 1's perspective) fills past 50%.
+    const gauge = { ...state.sides[0].gauge, progress: 7 };
+    state = { ...state, sides: [{ ...state.sides[0], gauge }, state.sides[1]] as typeof state.sides };
+    state = refreshTriggerReadiness(state, 0);
+    expect(state.sides[1].loadout[0].state.ready).toBe(true);
+  });
+
+  it('respects handDealer for isDealer/isNonDealer', () => {
+    const notDealer = refreshTriggerReadiness(createCombatState([selfIsDealer], [], 12), 1);
+    expect(notDealer.sides[0].loadout[0].state.ready).toBe(false);
+
+    const isDealer = refreshTriggerReadiness(createCombatState([selfIsDealer], [], 12), 0);
+    expect(isDealer.sides[0].loadout[0].state.ready).toBe(true);
+  });
+
+  it('does not touch accumulator/occurrence/chained/always subroutines', () => {
+    const occurrenceDef = definition('occ', { kind: 'occurrence', category: 'go', variation: 'instant' }, { kind: 'directBurst', amount: 1 });
+    const state = refreshTriggerReadiness(createCombatState([occurrenceDef, alwaysBurst('always')], [], 12), 0);
+    expect(state.sides[0].loadout[0].state.ready).toBe(false); // occurrence untouched, no matching occurrence fed in
+    expect(state.sides[0].loadout[1].state.ready).toBe(false); // always is evaluated live at fire time, not latched here
   });
 });

@@ -14,6 +14,7 @@ import { addPoints, BREACH_CONTAINMENT_MAX, BREACH_CONTAINMENT_MIN, type Initiat
 import {
   createCombatState,
   fireReadySubroutines,
+  refreshTriggerReadiness,
   type CombatState,
   type CombatSideState,
   type FireEvent,
@@ -123,11 +124,21 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     hands.push(hand);
     scores = hand.scoresAfter;
 
+    // A new hand means a new (possibly flipped) dealer -- self-state's
+    // isDealer/isNonDealer needs a chance to latch even in the unlikely
+    // case nothing else in this hand touches Heat/Breach-Containment/
+    // gauges before this side's own turn.
+    combatState = refreshTriggerReadiness(combatState, hand.dealer);
+
     for (const occurrence of occurrencesForHand(hand)) {
       combatState = applyOccurrenceToState(combatState, occurrence);
 
       const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrence.magnitude);
       combatState = replaceSideGauge(combatState, occurrence.player, gauge);
+      // The gauge that just moved is watched by the *other* side's
+      // gauge-fill-above enemy-state pieces -- refresh now, not just at
+      // fire time.
+      combatState = refreshTriggerReadiness(combatState, hand.dealer);
 
       for (let turn = 0; turn < turnsTriggered; turn++) {
         const fired = fireReadySubroutines(combatState, occurrence.player, {
@@ -135,6 +146,10 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
         });
         combatState = fired.combatState;
         log.push(...fired.events);
+        // Payload resolution can change Heat, Breach/Containment, or
+        // debuffs -- refresh again so self/enemy-state pieces latch
+        // against the post-fire state, not just the pre-fire one.
+        combatState = refreshTriggerReadiness(combatState, hand.dealer);
         peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
 
         const winner = resolution(combatState);

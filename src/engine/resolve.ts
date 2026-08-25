@@ -2,6 +2,8 @@ import type { PlayerIndex } from './pegging';
 import type { Archetype, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
 import {
   createInitialState,
+  evaluateEnemyState,
+  evaluateSelfState,
   isReady,
   resetAfterFire,
   type SubroutineRuntimeState,
@@ -241,7 +243,7 @@ export function resolvePayload(
   }
 }
 
-function buildTriggerContext(
+export function buildTriggerContext(
   combatState: CombatState,
   side: PlayerIndex,
   firedSubroutineIdsThisTurn: ReadonlySet<string>,
@@ -262,6 +264,41 @@ function buildTriggerContext(
     firedSubroutineIdsThisTurn,
   };
 }
+
+/**
+ * Latches `ready` for every selfState/enemyState-triggered subroutine on
+ * both sides whose live condition is currently true -- the sticky-latch
+ * fix isReady() above now depends on. Never unsets an already-ready
+ * flag (matches accumulator/occurrence's existing "banked, not
+ * re-checked" behavior) and skips subroutines that are already ready, so
+ * it's cheap and safe to call after any state change that could affect
+ * a condition: a gauge update, a payload resolution (Heat/Breach-
+ * Containment/debuffs), or a new hand's dealer becoming known.
+ * firedSubroutineIdsThisTurn is irrelevant here (chained/always aren't
+ * touched) so an empty set is passed to buildTriggerContext.
+ */
+export function refreshTriggerReadiness(combatState: CombatState, handDealer: PlayerIndex): CombatState {
+  let state = combatState;
+  for (const side of [0, 1] as PlayerIndex[]) {
+    const sideState = state.sides[side];
+    const context = buildTriggerContext(state, side, EMPTY_FIRED_SET, side === handDealer);
+    const loadout = sideState.loadout.map((entry) => {
+      if (entry.state.ready) return entry;
+      const trigger = entry.definition.trigger;
+      if (trigger.kind === 'selfState' && evaluateSelfState(trigger, context.self)) {
+        return { ...entry, state: { ...entry.state, ready: true } };
+      }
+      if (trigger.kind === 'enemyState' && evaluateEnemyState(trigger, context.enemy)) {
+        return { ...entry, state: { ...entry.state, ready: true } };
+      }
+      return entry;
+    });
+    state = { ...state, sides: replaceSide(state.sides, side, { ...sideState, loadout }) };
+  }
+  return state;
+}
+
+const EMPTY_FIRED_SET: ReadonlySet<string> = new Set();
 
 function updateLoadoutEntryState(
   combatState: CombatState,

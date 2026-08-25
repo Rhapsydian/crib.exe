@@ -191,7 +191,21 @@ export interface TriggerContext {
 
 /** The single entry point turn-resolution logic (Checkpoint E) uses to
  * decide whether a subroutine fires: banked state for accumulator/
- * occurrence families, live context evaluation for the other four. */
+ * occurrence/self-state/enemy-state (all four now latch `ready` via
+ * banked progress or refreshTriggerReadiness below, rather than being
+ * live-checked here), live context evaluation only for chained/always
+ * (no banked state to latch -- a chain reference or "always" is
+ * meaningless to cache).
+ *
+ * Self-state/enemy-state used to be live-checked right here, only at
+ * fire time -- which missed real cases: a condition (e.g. the enemy's
+ * gauge sitting above some fraction) could be true for a genuine
+ * stretch of game-time and revert before this side's own turn ever came
+ * up to check it, silently losing the opportunity even though the
+ * condition really was true at some point. refreshTriggerReadiness
+ * fixes this by latching `ready` the moment the condition is ever true
+ * -- the same "banked, not re-checked" semantics accumulator/occurrence
+ * already had. */
 export function isReady(
   definition: SubroutineDefinition,
   state: SubroutineRuntimeState,
@@ -201,11 +215,9 @@ export function isReady(
   switch (trigger.kind) {
     case 'accumulator':
     case 'occurrence':
-      return state.ready;
     case 'selfState':
-      return evaluateSelfState(trigger, context.self);
     case 'enemyState':
-      return evaluateEnemyState(trigger, context.enemy);
+      return state.ready;
     case 'chained':
       return evaluateChained(trigger, context.firedSubroutineIdsThisTurn);
     case 'always':
