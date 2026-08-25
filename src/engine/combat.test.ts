@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import type { Card } from './cards';
+import { cardValue } from './cards';
 import type { PlayerIndex } from './game';
 import type { SubroutineDefinition } from './subroutine-types';
 import { playCombat } from './combat';
 import { createRng } from './rng';
 import { createDeck, shuffle } from './deck';
 import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardStrategy } from './deal';
-import { playPegging, playLowestLegal } from './pegging';
+import { playPegging, playLowestLegal, type PlayStrategy } from './pegging';
 import { countHandEvents, countCribEvents } from './scoring';
 
 function alwaysBurst(id: string, amount: number): SubroutineDefinition {
@@ -318,6 +319,48 @@ describe('playCombat', () => {
     const result = playCombat([[haste, burst], []], { seed: 3, gaugeThreshold: 5, winThreshold: 3 });
     expect(result.winner).toBe(0);
     expect(result.log.filter((e) => e.subroutineId === 'burst').length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("recon's revealCrib and revealOpponentKeptHand plumb real crib/kept-hand data through to the pegging strategy's PlayContext (session 24 checkpoint G end-to-end)", () => {
+    const cribRecon: SubroutineDefinition = {
+      id: 'crib-recon',
+      name: 'crib-recon',
+      archetype: 'root',
+      trigger: { kind: 'always' },
+      payload: { kind: 'revealCrib' },
+      tags: [],
+      firesAt: 'onCribSelected',
+    };
+    const handRecon: SubroutineDefinition = {
+      id: 'hand-recon',
+      name: 'hand-recon',
+      archetype: 'root',
+      trigger: { kind: 'always' },
+      payload: { kind: 'revealOpponentKeptHand' },
+      tags: [],
+      firesAt: 'onPlayPhaseStart',
+    };
+    const burst = alwaysBurst('winner', 1000);
+    let sawKnownCrib = false;
+    let sawKnownOpponentHand = false;
+    const spyPlayStrategy: PlayStrategy = (ctx) => {
+      if (ctx.knownCrib) sawKnownCrib = true;
+      if (ctx.knownOpponentHand) sawKnownOpponentHand = true;
+      return ctx.legalCards.slice().sort((a, b) => cardValue(a) - cardValue(b))[0];
+    };
+    // Pegging always plays out in full before any occurrence (and so any
+    // win) can be processed (combat.ts builds occurrencesForHand from
+    // the already-complete HandResult) -- both flags should already be
+    // set by the time this returns, regardless of exactly which hand
+    // the match resolves in.
+    const result = playCombat([[cribRecon, handRecon, burst], []], {
+      seed: 11,
+      gaugeThreshold: 1,
+      playStrategy: spyPlayStrategy,
+    });
+    expect(result.hands.length).toBeGreaterThan(0);
+    expect(sawKnownCrib).toBe(true);
+    expect(sawKnownOpponentHand).toBe(true);
   });
 
   describe('escalation', () => {
