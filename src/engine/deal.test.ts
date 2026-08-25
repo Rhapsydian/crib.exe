@@ -26,7 +26,7 @@ describe('discardToCrib', () => {
   it('keeps 4 cards and discards 2', () => {
     const deck = shuffle(createDeck(), createRng(3));
     const { hands } = deal(deck);
-    const { keptHand, discarded } = discardToCrib(hands[0], discardLowestTwo);
+    const { keptHand, discarded } = discardToCrib({ hand: hands[0], isOwnCrib: true }, discardLowestTwo);
     expect(keptHand).toHaveLength(4);
     expect(discarded).toHaveLength(2);
   });
@@ -40,7 +40,7 @@ describe('discardToCrib', () => {
       { rank: 13, suit: 0 },
       { rank: 5, suit: 1 },
     ];
-    const { discarded, keptHand } = discardToCrib(hand, discardLowestTwo);
+    const { discarded, keptHand } = discardToCrib({ hand, isOwnCrib: true }, discardLowestTwo);
     const discardedRanks = discarded.map((c) => c.rank).sort((a, b) => a - b);
     expect(discardedRanks).toEqual([1, 2]);
     expect(keptHand).toHaveLength(4);
@@ -56,7 +56,7 @@ describe('discardToCrib', () => {
       { rank: 6, suit: 0 },
     ];
     expect(() =>
-      discardToCrib(hand, () => [
+      discardToCrib({ hand, isOwnCrib: true }, () => [
         { rank: 9, suit: 3 },
         { rank: 10, suit: 3 },
       ]),
@@ -74,7 +74,7 @@ describe('discardHighestTwo', () => {
       { rank: 13, suit: 0 },
       { rank: 4, suit: 1 },
     ];
-    const [a, b] = discardHighestTwo(hand);
+    const [a, b] = discardHighestTwo({ hand, isOwnCrib: true });
     expect([a, b]).toEqual([
       { rank: 13, suit: 0 },
       { rank: 10, suit: 0 },

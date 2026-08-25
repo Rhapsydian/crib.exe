@@ -14,13 +14,30 @@ export function deal(shuffledDeck: Card[]): DealResult {
   return { hands, stock };
 }
 
-export type DiscardStrategy = (hand: Card[]) => [Card, Card];
+/**
+ * Root mechanical redesign (session 24): context object rather than a
+ * growing positional parameter list -- a new intel source becomes a
+ * new optional field here, not a new positional param threaded through
+ * every strategy signature and call site again. `isOwnCrib` is real
+ * strategic information (whether this hand's crib is the discarder's
+ * own or the opponent's) that was previously unavailable to any
+ * strategy at all. `knownOpponentHand`, when set, is the opponent's
+ * full dealt hand revealed by a deal-time recon payload (resolve.ts) --
+ * absent whenever no such recon fired this hand.
+ */
+export interface DiscardContext {
+  hand: Card[];
+  isOwnCrib: boolean;
+  knownOpponentHand?: Card[];
+}
+
+export type DiscardStrategy = (ctx: DiscardContext) => [Card, Card];
 
 /**
  * Legal-not-good: discards the two lowest-ranked cards. Good enough for
  * Phase 1 engine testing — real strategic discarding is a later concern.
  */
-export const discardLowestTwo: DiscardStrategy = (hand) => {
+export const discardLowestTwo: DiscardStrategy = ({ hand }) => {
   const sorted = hand.slice().sort((a, b) => a.rank - b.rank);
   return [sorted[0], sorted[1]];
 };
@@ -28,10 +45,11 @@ export const discardLowestTwo: DiscardStrategy = (hand) => {
 /** Discards the two highest-ranked cards -- deliberately the worst
  * legal-but-bad choice. Implements Root's forceDiscard Cribbage-layer
  * manipulation: a forced-bad-discard effect on the target, not a
- * literal "pick this exact card" mechanic (this is a fully-simulated
- * engine with no hidden-information concept to target a specific card
- * against). */
-export const discardHighestTwo: DiscardStrategy = (hand) => {
+ * literal "pick this exact card" mechanic (the specific-card version of
+ * this manipulation is a separate payload -- see resolve.ts, session 24
+ * checkpoint D -- built once recon can supply the opponent's hand to
+ * target against). */
+export const discardHighestTwo: DiscardStrategy = ({ hand }) => {
   const sorted = hand.slice().sort((a, b) => b.rank - a.rank);
   return [sorted[0], sorted[1]];
 };
@@ -41,11 +59,11 @@ export interface DiscardResult {
   discarded: [Card, Card];
 }
 
-export function discardToCrib(hand: Card[], strategy: DiscardStrategy): DiscardResult {
-  const discarded = strategy(hand);
+export function discardToCrib(ctx: DiscardContext, strategy: DiscardStrategy): DiscardResult {
+  const discarded = strategy(ctx);
   const discardedKeys = new Set(discarded.map((c) => `${c.rank}-${c.suit}`));
-  const keptHand = hand.filter((c) => !discardedKeys.has(`${c.rank}-${c.suit}`));
-  if (keptHand.length !== hand.length - 2) {
+  const keptHand = ctx.hand.filter((c) => !discardedKeys.has(`${c.rank}-${c.suit}`));
+  if (keptHand.length !== ctx.hand.length - 2) {
     throw new Error('discard strategy must return 2 cards actually present in the hand');
   }
   return { keptHand, discarded };

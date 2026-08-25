@@ -1,6 +1,6 @@
 import type { PlayerIndex } from './pegging';
 import type { Suit } from './cards';
-import type { Archetype, DebuffKind, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
+import type { Archetype, DebuffKind, HandLifecycleMoment, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
 import type { ClassId } from './classes';
 import { easeTriggerCondition } from './merge';
 import {
@@ -670,6 +670,9 @@ export function fireNewlyReadyReactiveSubroutines(
     for (let i = 0; i < loadoutLength; i++) {
       const entry = state.sides[side].loadout[i];
       const justBecameReady = !beforeLoadout[i].state.ready && entry.state.ready;
+      // firesAt-tagged entries only ever fire via fireHandLifecycleSubroutines
+      // below, never via the normal turn-gate or the reactive path.
+      if (entry.definition.firesAt) continue;
       if (!justBecameReady || !entry.definition.reactive) continue;
 
       state = resolvePayload(entry.definition.payload, entry.definition.archetype, state, side, {
@@ -923,6 +926,9 @@ export function fireReadySubroutines(
 
   for (let i = 0; i < loadoutLength; i++) {
     const entry = state.sides[side].loadout[i];
+    // firesAt-tagged entries only ever fire via fireHandLifecycleSubroutines
+    // below, never via the normal turn-gate.
+    if (entry.definition.firesAt) continue;
     const triggerContext = buildTriggerContext(state, side, firedIds, selfContext.isDealer);
     if (!isReady(entry.definition, entry.state, triggerContext)) continue;
     if (!entry.state.toggledOn) continue;
@@ -932,6 +938,47 @@ export function fireReadySubroutines(
     });
     events.push({ subroutineId: entry.definition.id, side, payload: entry.definition.payload });
     firedIds.add(entry.definition.id);
+    state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state));
+  }
+
+  return { combatState: state, events };
+}
+
+/**
+ * Fires every ready, not-toggled-off subroutine on `side` whose
+ * `firesAt` matches `moment` -- the Root mechanical redesign's engine
+ * seam (session 24 checkpoint B), driven from combat.ts at the three
+ * real Cribbage lifecycle points (deal, crib selection, play-phase
+ * start) rather than the normal turn-gate. Readiness (via the normal
+ * trigger-family evaluation) still governs whether an entry is *armed*
+ * -- most `firesAt` content is expected to use `{ kind: 'always' }` so
+ * it's simply always armed, but nothing stops a more conditional
+ * trigger from gating one. Mirrors fireReadySubroutines' shape closely,
+ * minus per-pass chained-trigger bookkeeping (EMPTY_FIRED_SET) -- a
+ * hand-lifecycle moment isn't "anyone's turn," so chaining within the
+ * same pass isn't a concept that applies here yet.
+ */
+export function fireHandLifecycleSubroutines(
+  combatState: CombatState,
+  side: PlayerIndex,
+  moment: HandLifecycleMoment,
+  selfContext: { isDealer: boolean },
+): { combatState: CombatState; events: FireEvent[] } {
+  let state = combatState;
+  const events: FireEvent[] = [];
+  const loadoutLength = state.sides[side].loadout.length;
+
+  for (let i = 0; i < loadoutLength; i++) {
+    const entry = state.sides[side].loadout[i];
+    if (entry.definition.firesAt !== moment) continue;
+    const triggerContext = buildTriggerContext(state, side, EMPTY_FIRED_SET, selfContext.isDealer);
+    if (!isReady(entry.definition, entry.state, triggerContext)) continue;
+    if (!entry.state.toggledOn) continue;
+
+    state = resolvePayload(entry.definition.payload, entry.definition.archetype, state, side, {
+      priorFireCountThisTurn: events.length,
+    });
+    events.push({ subroutineId: entry.definition.id, side, payload: entry.definition.payload });
     state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state));
   }
 

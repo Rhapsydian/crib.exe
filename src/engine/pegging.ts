@@ -1,10 +1,27 @@
 import type { Card } from './cards';
 import { cardValue, cardsEqual } from './cards';
 
-export type PlayStrategy = (legalCards: Card[], count: number) => Card;
+/**
+ * Root mechanical redesign (session 24): context object, same reasoning
+ * as deal.ts's DiscardContext. `sequence` is the cards played since the
+ * count was last reset (what scorePlay already builds internally, now
+ * also handed to the strategy). `knownCrib`/`knownOpponentHand`, when
+ * set, are revealed by crib-selection-time / play-phase-start recon
+ * payloads (resolve.ts) -- absent whenever no such recon fired this
+ * hand.
+ */
+export interface PlayContext {
+  legalCards: Card[];
+  count: number;
+  sequence: Card[];
+  knownCrib?: Card[];
+  knownOpponentHand?: Card[];
+}
+
+export type PlayStrategy = (ctx: PlayContext) => Card;
 
 /** Legal-not-good: always plays the lowest-value legal card. */
-export const playLowestLegal: PlayStrategy = (legalCards) =>
+export const playLowestLegal: PlayStrategy = ({ legalCards }) =>
   legalCards.slice().sort((a, b) => cardValue(a) - cardValue(b))[0];
 
 export type PlayerIndex = 0 | 1;
@@ -98,12 +115,17 @@ function scorePlay(sequence: SequenceCard[], count: number): PegScoreBreakdown {
  * Plays out the pegging phase for two already-discarded (4-card) hands.
  * `firstToAct` is a parameter rather than a hardcoded convention — the
  * caller (the real rule is "non-dealer plays first") decides.
+ * `knownCrib`/`knownOpponentHand` (session 24) are static for the whole
+ * phase once set (recon fires before pegging starts, not during it) --
+ * passed through unchanged into every PlayContext built below.
  */
 export function playPegging(
   hand0: Card[],
   hand1: Card[],
   firstToAct: PlayerIndex,
   chooseCard: PlayStrategy = playLowestLegal,
+  knownCrib?: Card[],
+  knownOpponentHand?: Card[],
 ): PeggingResult {
   const hands: [Card[], Card[]] = [hand0.slice(), hand1.slice()];
   let count = 0;
@@ -119,7 +141,7 @@ export function playPegging(
     const legal = hands[player].filter((c) => count + cardValue(c) <= 31);
 
     if (legal.length > 0) {
-      const card = chooseCard(legal, count);
+      const card = chooseCard({ legalCards: legal, count, sequence: sequence.map((s) => s.card), knownCrib, knownOpponentHand });
       hands[player] = hands[player].filter((c) => !cardsEqual(c, card));
       count += cardValue(card);
       sequence.push({ card, player });

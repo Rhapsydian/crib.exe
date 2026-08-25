@@ -9,8 +9,8 @@ import { playPegging, type PlayStrategy, type PegPlayEvent } from './pegging';
  * fighting the "lowest legal value" default strategy's greediness. */
 function scripted(order: Card[]): PlayStrategy {
   const remaining = order.slice();
-  return (legal) => {
-    const idx = remaining.findIndex((c) => legal.some((l) => cardsEqual(l, c)));
+  return ({ legalCards }) => {
+    const idx = remaining.findIndex((c) => legalCards.some((l) => cardsEqual(l, c)));
     const [card] = remaining.splice(idx, 1);
     return card;
   };

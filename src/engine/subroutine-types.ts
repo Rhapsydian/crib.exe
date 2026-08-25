@@ -264,4 +264,22 @@ export interface SubroutineDefinition {
    * Occurrence-triggered Reactive needs no such debounce — those are
    * already discrete crossing events, not a continuously-true level. */
   reactive?: boolean;
+  /** Fires at a fixed Cribbage hand-lifecycle moment instead of the
+   * normal turn-gate -- Root mechanical redesign (session 24), the
+   * engine seam recon/manipulation payloads need. Orthogonal to
+   * `reactive`, same relationship: a `firesAt` subroutine bypasses
+   * fireReadySubroutines'/fireNewlyReadyReactiveSubroutines' normal
+   * paths entirely (resolve.ts's fireHandLifecycleSubroutines is the
+   * only thing that ever fires it) and is expected never to also be
+   * `reactive` -- readiness (via `trigger`) still governs whether it's
+   * *armed*, `firesAt` only says *when* an armed one actually fires. */
+  firesAt?: HandLifecycleMoment;
 }
+
+/** The three real Cribbage lifecycle moments a `firesAt` subroutine can
+ * hook -- see SubroutineDefinition.firesAt and resolve.ts's
+ * fireHandLifecycleSubroutines. 'onDealt': right after this hand's
+ * cards are dealt, before either side discards. 'onCribSelected':
+ * after both sides have discarded (the crib now exists), before the
+ * cut. 'onPlayPhaseStart': after the cut, before the first peg play. */
+export type HandLifecycleMoment = 'onDealt' | 'onCribSelected' | 'onPlayPhaseStart';

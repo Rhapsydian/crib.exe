@@ -68,8 +68,8 @@ export function playOneHand(
   const shuffled = shuffle(createDeck(), rng);
   const { hands: dealtHands, stock } = deal(shuffled);
 
-  const d0 = discardToCrib(dealtHands[0], forcedDiscardSide === 0 ? discardHighestTwo : discardStrategy);
-  const d1 = discardToCrib(dealtHands[1], forcedDiscardSide === 1 ? discardHighestTwo : discardStrategy);
+  const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: dealer === 0 }, forcedDiscardSide === 0 ? discardHighestTwo : discardStrategy);
+  const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: dealer === 1 }, forcedDiscardSide === 1 ? discardHighestTwo : discardStrategy);
   const crib = [...d0.discarded, ...d1.discarded];
 
   const { starter } = cutStrategy(stock, rng);

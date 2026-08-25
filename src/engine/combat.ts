@@ -1,8 +1,11 @@
 import { createRng } from './rng';
-import { discardLowestTwo, cut, biasedCut, type DiscardStrategy, type CutStrategy } from './deal';
-import { playLowestLegal, type PlayStrategy } from './pegging';
-import { playOneHand, type HandResult, type PlayerIndex } from './game';
-import type { SubroutineDefinition } from './subroutine-types';
+import type { Card } from './cards';
+import { createDeck, shuffle } from './deck';
+import { deal, discardToCrib, discardLowestTwo, discardHighestTwo, cut, biasedCut, hisHeels, type DiscardStrategy, type CutStrategy } from './deal';
+import { playPegging, playLowestLegal, type PlayStrategy } from './pegging';
+import { countHandEvents, countCribEvents } from './scoring';
+import type { HandResult, PlayerIndex } from './game';
+import type { SubroutineDefinition, HandLifecycleMoment } from './subroutine-types';
 import type { ClassId } from './classes';
 import {
   updateSubroutineState,
@@ -20,6 +23,7 @@ import {
   applyThrottled,
   consumePendingCribbageManipulation,
   createCombatState,
+  fireHandLifecycleSubroutines,
   fireNewlyReadyReactiveSubroutines,
   fireReadySubroutines,
   refreshTriggerReadiness,
@@ -251,6 +255,22 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     return result.winner !== null ? result.winner : resolution(combatState);
   };
 
+  /** Fires every side's `firesAt`-tagged subroutines for one hand-
+   * lifecycle moment (session 24 checkpoint B), side 0 then side 1 --
+   * same deterministic order as everywhere else -- routing each side's
+   * fire through step() so peak-tracking/resolution stays uniform.
+   * Returns the winner the instant either side's fire resolves the
+   * match, same early-exit contract step() already has. */
+  const fireLifecycleGap = (moment: HandLifecycleMoment): PlayerIndex | null => {
+    for (const side of [0, 1] as PlayerIndex[]) {
+      const fired = fireHandLifecycleSubroutines(combatState, side, moment, { isDealer: side === dealer });
+      log.push(...fired.events);
+      const winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
+      if (winner !== null) return winner;
+    }
+    return null;
+  };
+
   for (let i = 0; i < maxHands; i++) {
     let winner: PlayerIndex | null = null;
 
@@ -278,9 +298,74 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     if (winner !== null) return finish(winner);
 
     const cutStrategy: CutStrategy = manipulation.forHand.cutBias ? biasedCut(manipulation.forHand.cutBias) : cut;
-    const hand = playOneHand(dealer, scores, rng, discardStrategy, playStrategy, cutStrategy, manipulation.forHand.forcedDiscardSide);
+
+    // Hand-lifecycle decomposition (session 24 checkpoint B): combat.ts
+    // now orchestrates game.ts's granular pieces directly instead of
+    // calling playOneHand as one opaque step, so Root's recon/
+    // manipulation subroutines can fire in the gaps between them (see
+    // the decision session's plan for why this shape was chosen over
+    // injecting callbacks into playOneHand itself). Phase 1's
+    // playHands still uses playOneHand unchanged; nothing there needs
+    // these hooks.
+    const nonDealer: PlayerIndex = (1 - dealer) as PlayerIndex;
+    const shuffled = shuffle(createDeck(), rng);
+    const { hands: dealtHands, stock } = deal(shuffled);
+
+    winner = fireLifecycleGap('onDealt');
+    if (winner !== null) return finish(winner);
+
+    const d0 = discardToCrib(
+      { hand: dealtHands[0], isOwnCrib: dealer === 0 },
+      manipulation.forHand.forcedDiscardSide === 0 ? discardHighestTwo : discardStrategy,
+    );
+    const d1 = discardToCrib(
+      { hand: dealtHands[1], isOwnCrib: dealer === 1 },
+      manipulation.forHand.forcedDiscardSide === 1 ? discardHighestTwo : discardStrategy,
+    );
+    const crib = [...d0.discarded, ...d1.discarded];
+
+    winner = fireLifecycleGap('onCribSelected');
+    if (winner !== null) return finish(winner);
+
+    const { starter } = cutStrategy(stock, rng);
+    const heelsPoints = hisHeels(starter);
+    scores[dealer] += heelsPoints;
+
+    winner = fireLifecycleGap('onPlayPhaseStart');
+    if (winner !== null) return finish(winner);
+
+    const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
+    const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, playStrategy);
+    scores[0] += peggingScores[0];
+    scores[1] += peggingScores[1];
+
+    const nonDealerHandEvents = countHandEvents(kept[nonDealer], starter);
+    const nonDealerHandScore = nonDealerHandEvents.reduce((sum, e) => sum + e.points, 0);
+    scores[nonDealer] += nonDealerHandScore;
+
+    const dealerHandEvents = countHandEvents(kept[dealer], starter);
+    const dealerHandScore = dealerHandEvents.reduce((sum, e) => sum + e.points, 0);
+    scores[dealer] += dealerHandScore;
+
+    const cribEvents = countCribEvents(crib, starter);
+    const cribScore = cribEvents.reduce((sum, e) => sum + e.points, 0);
+    scores[dealer] += cribScore;
+
+    const hand: HandResult = {
+      dealer,
+      starter,
+      hisHeelsPoints: heelsPoints,
+      peggingScores,
+      nonDealerHandScore,
+      dealerHandScore,
+      cribScore,
+      scoresAfter: scores,
+      peggingEvents,
+      nonDealerHandEvents,
+      dealerHandEvents,
+      cribEvents,
+    };
     hands.push(hand);
-    scores = hand.scoresAfter;
 
     // Scheduled Sabotage "resolves at next deal," and debuff durations
     // (measured in hands, unlike DoT/HoT ticks) count down -- both right

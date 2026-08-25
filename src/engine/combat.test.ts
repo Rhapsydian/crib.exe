@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import type { Card } from './cards';
+import type { PlayerIndex } from './game';
 import type { SubroutineDefinition } from './subroutine-types';
 import { playCombat } from './combat';
+import { createRng } from './rng';
+import { createDeck, shuffle } from './deck';
+import { deal, discardToCrib, discardLowestTwo, cut, hisHeels } from './deal';
+import { playPegging, playLowestLegal } from './pegging';
+import { countHandEvents, countCribEvents } from './scoring';
 
 function alwaysBurst(id: string, amount: number): SubroutineDefinition {
   return {
@@ -196,6 +203,39 @@ describe('playCombat', () => {
     expect(result.log.length).toBeGreaterThan(0);
     expect(result.log.every((e) => e.side === 0 && e.subroutineId === 'reactive-fifteen')).toBe(true);
   });
+
+  it(
+    "the hand-lifecycle decomposition produces byte-for-byte identical HandResults to a direct game.ts replay for the same seed " +
+      '(session 24 checkpoint B regression check)',
+    () => {
+      const result = playCombat([[alwaysBurst('winner', 1000)], []], { seed: 42, gaugeThreshold: 1 });
+      expect(result.hands.length).toBeGreaterThan(0);
+
+      // Independently replay the exact same rng sequence through game.ts's
+      // granular pieces, in the same order combat.ts's decomposition calls
+      // them, with the same default strategies -- if these two diverged, it
+      // would mean the decomposition changed real game behavior.
+      const rng = createRng(42);
+      for (const hand of result.hands) {
+        const shuffled = shuffle(createDeck(), rng);
+        const { hands: dealtHands, stock } = deal(shuffled);
+        const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: hand.dealer === 0 }, discardLowestTwo);
+        const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: hand.dealer === 1 }, discardLowestTwo);
+        const { starter } = cut(stock, rng);
+        expect(starter).toEqual(hand.starter);
+        expect(hisHeels(starter)).toBe(hand.hisHeelsPoints);
+
+        const nonDealer = (1 - hand.dealer) as PlayerIndex;
+        const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
+        const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, playLowestLegal);
+        expect(peggingScores).toEqual(hand.peggingScores);
+        expect(peggingEvents).toEqual(hand.peggingEvents);
+        expect(countHandEvents(kept[nonDealer], starter)).toEqual(hand.nonDealerHandEvents);
+        expect(countHandEvents(kept[hand.dealer], starter)).toEqual(hand.dealerHandEvents);
+        expect(countCribEvents([...d0.discarded, ...d1.discarded], starter)).toEqual(hand.cribEvents);
+      }
+    },
+  );
 
   describe('escalation', () => {
     // A tiny, always-firing burst against a winThreshold it could never

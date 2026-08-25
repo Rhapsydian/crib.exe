@@ -4,6 +4,7 @@ import {
   createCombatState,
   resolvePayload,
   fireReadySubroutines,
+  fireHandLifecycleSubroutines,
   refreshTriggerReadiness,
   fireNewlyReadyReactiveSubroutines,
   tickCastersTurnPulse,
@@ -19,7 +20,7 @@ function definition(
   id: string,
   trigger: TriggerFamily,
   payload: PayloadEffect,
-  overrides: Partial<Pick<SubroutineDefinition, 'archetype' | 'togglable' | 'reactive'>> = {},
+  overrides: Partial<Pick<SubroutineDefinition, 'archetype' | 'togglable' | 'reactive' | 'firesAt'>> = {},
 ): SubroutineDefinition {
   return {
     id,
@@ -30,6 +31,7 @@ function definition(
     tags: [],
     togglable: overrides.togglable,
     reactive: overrides.reactive,
+    firesAt: overrides.firesAt,
   };
 }
 
@@ -198,6 +200,53 @@ describe('fireReadySubroutines', () => {
     const state = createCombatState([second, first], [], 12);
     const { events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events.map((e) => e.subroutineId)).toEqual(['a']);
+  });
+
+  it('skips a firesAt-tagged entry even when otherwise ready -- it only ever fires via fireHandLifecycleSubroutines', () => {
+    const piece = definition('a', { kind: 'always' }, { kind: 'directBurst', amount: 5 }, { firesAt: 'onDealt' });
+    const state = createCombatState([piece], [], 12);
+    const { events } = fireReadySubroutines(state, 0, { isDealer: false });
+    expect(events).toHaveLength(0);
+  });
+});
+
+describe('fireHandLifecycleSubroutines', () => {
+  it('fires a ready subroutine tagged for the matching moment', () => {
+    const piece = definition('a', { kind: 'always' }, { kind: 'directBurst', amount: 5 }, { firesAt: 'onDealt' });
+    const state = createCombatState([piece], [], 12);
+    const { combatState, events } = fireHandLifecycleSubroutines(state, 0, 'onDealt', { isDealer: false });
+    expect(events).toHaveLength(1);
+    expect(events[0].subroutineId).toBe('a');
+    expect(combatState.sides[0].winGauge.progress).toBe(5);
+    expect(combatState.sides[0].loadout[0].state.ready).toBe(false);
+  });
+
+  it('does not fire a subroutine tagged for a different moment', () => {
+    const piece = definition('a', { kind: 'always' }, { kind: 'directBurst', amount: 5 }, { firesAt: 'onCribSelected' });
+    const state = createCombatState([piece], [], 12);
+    const { combatState, events } = fireHandLifecycleSubroutines(state, 0, 'onDealt', { isDealer: false });
+    expect(events).toHaveLength(0);
+    expect(combatState.sides[0].winGauge.progress).toBe(0);
+  });
+
+  it('does not fire a firesAt subroutine whose trigger condition is not met', () => {
+    const piece = definition(
+      'a',
+      { kind: 'occurrence', category: 'run', variation: 'instant' },
+      { kind: 'directBurst', amount: 5 },
+      { firesAt: 'onDealt' },
+    );
+    const state = createCombatState([piece], [], 12);
+    const { events } = fireHandLifecycleSubroutines(state, 0, 'onDealt', { isDealer: false });
+    expect(events).toHaveLength(0);
+  });
+
+  it('skips a firesAt subroutine that has been toggled off', () => {
+    const piece = definition('a', { kind: 'always' }, { kind: 'directBurst', amount: 5 }, { firesAt: 'onDealt' });
+    const state = createCombatState([piece], [], 12);
+    state.sides[0].loadout[0].state = { ...state.sides[0].loadout[0].state, toggledOn: false };
+    const { events } = fireHandLifecycleSubroutines(state, 0, 'onDealt', { isDealer: false });
+    expect(events).toHaveLength(0);
   });
 });
 
