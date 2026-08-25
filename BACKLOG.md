@@ -14,12 +14,15 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Phase 4 is now scoped** (session 21, `/decision-session` — see below).
-Next session should implement it via `/dev-session`, following the
-6-checkpoint spec below (this also finally wires the real 18
-starting-loadout subroutines from session 12 into the engine, folding in
-what used to be the separate "content pass" direction). Phase 0 is down
-to a single banked idea (node-bypass ability, session 9), not blocking.
+**Phase 4 is now complete** (session 22, all 6 checkpoints — see below).
+All 78 subroutines are real data, all 6 classes are selectable with real
+starting kits/passives, and the full acquisition loop (combat rewards,
+bench/install, Merge, Shop) resolves for real. Next session should
+re-run session 20's `playRun()` outcome-distribution sweep (Phase 5's
+own note below) as the first real balance check now that a static
+loadout no longer applies -- a quick empirical temperature check before
+committing to any real Phase 5 tuning work. Phase 0 is down to a single
+banked idea (node-bypass ability, session 9), not blocking.
 
 ## Phase 0 — Remaining design passes
 
@@ -313,7 +316,7 @@ not several at once, not a bug. A separate 500-seed sweep under default
 settings found only a 3.8% victory rate; see Phase 5 below for why that's
 expected (a static, un-upgradeable test loadout), not a Phase 3 defect.
 
-## Phase 4 — Meta-progression (classes + acquisition)
+## Phase 4 — Meta-progression (classes + acquisition) ✅ complete (session 22)
 
 Scoped session 21 (`/decision-session`, same engineering-scoping category
 as sessions 15/17/19). Of the four things the original one-line sketch
