@@ -9,7 +9,7 @@ import { createDeck, shuffle } from './deck';
 import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardStrategy } from './deal';
 import { playPegging, playLowestLegal, type PlayStrategy } from './pegging';
 import { countHandEvents, countCribEvents } from './scoring';
-import { pegSkillStrategy } from './ai';
+import { pegSkillStrategy, discardSkillStrategy } from './ai';
 
 function alwaysBurst(id: string, amount: number): SubroutineDefinition {
   return {
@@ -371,6 +371,17 @@ describe('playCombat', () => {
       gaugeThreshold: 5,
       winThreshold: 30,
       playStrategies: [pegSkillStrategy(1), pegSkillStrategy(0)],
+    });
+    expect([0, 1]).toContain(result.winner);
+  });
+
+  it('discardSkillStrategy plugs into real combat via per-side discardStrategies without throwing (session 24 tunable-skill AI checkpoint C smoke test)', () => {
+    const burst = alwaysBurst('winner', 20);
+    const result = playCombat([[burst], [burst]], {
+      seed: 17,
+      gaugeThreshold: 5,
+      winThreshold: 30,
+      discardStrategies: [discardSkillStrategy(1), discardSkillStrategy(0)],
     });
     expect([0, 1]).toContain(result.winner);
   });

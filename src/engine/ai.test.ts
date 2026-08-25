@@ -9,7 +9,20 @@ import {
   interpolatePegWeights,
   scorePegCandidate,
   pegSkillStrategy,
+  interpolateDiscardWeights,
+  predictBestDiscard,
+  discardSkillStrategy,
 } from './ai';
+
+function allPairsOf(hand: Card[]): [Card, Card][] {
+  const pairs: [Card, Card][] = [];
+  for (let i = 0; i < hand.length; i++) {
+    for (let j = i + 1; j < hand.length; j++) {
+      pairs.push([hand[i], hand[j]]);
+    }
+  }
+  return pairs;
+}
 
 function card(rank: Card['rank'], suit: Card['suit'] = 0): Card {
   return { rank, suit };
@@ -153,5 +166,76 @@ describe('scorePegCandidate / pegSkillStrategy', () => {
     const legalCards = [card(3, 0), card(8, 1), card(11, 2)];
     const chosen = strategy({ legalCards, count: 4, sequence: [card(1, 0)] });
     expect(legalCards).toContainEqual(chosen);
+  });
+});
+
+describe('interpolateDiscardWeights', () => {
+  it('returns the novice vector at skill=0 and the expert vector (matching the old fixed CRIB_WEIGHT=1 behavior) at skill=1', () => {
+    expect(interpolateDiscardWeights(0)).toEqual({ handValue: 1, cribValue: 0 });
+    expect(interpolateDiscardWeights(1)).toEqual({ handValue: 1, cribValue: 1 });
+  });
+
+  it('clamps out-of-range skill to [0, 1]', () => {
+    expect(interpolateDiscardWeights(-5)).toEqual(interpolateDiscardWeights(0));
+    expect(interpolateDiscardWeights(5)).toEqual(interpolateDiscardWeights(1));
+  });
+});
+
+describe('predictBestDiscard', () => {
+  it("predicts keeping a guaranteed pair rather than discarding it -- doesn't recommend breaking obvious hand strength", () => {
+    const hand: Card[] = [card(7, 0), card(7, 1), card(2, 2), card(9, 3), card(12, 0), card(1, 1)];
+    const [a, b] = predictBestDiscard(hand, true);
+    expect(a.rank).not.toBe(7);
+    expect(b.rank).not.toBe(7);
+  });
+
+  it('is deterministic for the same hand', () => {
+    const hand: Card[] = [card(4, 0), card(6, 1), card(9, 2), card(12, 3), card(1, 0), card(5, 1)];
+    expect(predictBestDiscard(hand, false)).toEqual(predictBestDiscard(hand, false));
+  });
+});
+
+describe('discardSkillStrategy', () => {
+  const hand: Card[] = [card(5, 0), card(5, 1), card(2, 2), card(9, 3), card(12, 0), card(1, 1)];
+
+  it('always picks the argmax-scoring pair under scoreDiscard for the matching skill/isOwnCrib', () => {
+    for (const skill of [0, 0.5, 1]) {
+      for (const isOwnCrib of [true, false]) {
+        const weights = interpolateDiscardWeights(skill);
+        const chosen = discardSkillStrategy(skill)({ hand, isOwnCrib });
+        const chosenScore = scoreDiscard(hand, chosen, isOwnCrib, undefined, weights);
+        for (const pair of allPairsOf(hand)) {
+          expect(scoreDiscard(hand, pair, isOwnCrib, undefined, weights)).toBeLessThanOrEqual(chosenScore + 1e-9);
+        }
+      }
+    }
+  });
+
+  it('at skill=0, isOwnCrib has no effect on the chosen pair (crib weight is 0)', () => {
+    const ownCrib = discardSkillStrategy(0)({ hand, isOwnCrib: true });
+    const enemyCrib = discardSkillStrategy(0)({ hand, isOwnCrib: false });
+    expect(ownCrib).toEqual(enemyCrib);
+  });
+
+  it("uses a real prediction of the opponent's discard (not the blind proxy) when knownOpponentHand is present", () => {
+    const opponentHand: Card[] = [card(6, 0), card(6, 1), card(3, 2), card(10, 3), card(8, 0), card(4, 1)];
+    const chosen = discardSkillStrategy(1)({ hand, isOwnCrib: true, knownOpponentHand: opponentHand });
+    const predicted = predictBestDiscard(opponentHand, false); // it's OUR crib (isOwnCrib: true), so it's not theirs
+    const expertWeights = interpolateDiscardWeights(1);
+    const chosenScoreWithKnownCrib = scoreDiscard(hand, chosen, true, predicted, expertWeights);
+    // If knownOpponentHand were being ignored (still using the blind
+    // proxy), the strategy's own choice wouldn't necessarily be optimal
+    // once scored against the *real* predicted crib -- this would catch
+    // that regression.
+    for (const pair of allPairsOf(hand)) {
+      expect(scoreDiscard(hand, pair, true, predicted, expertWeights)).toBeLessThanOrEqual(chosenScoreWithKnownCrib + 1e-9);
+    }
+  });
+
+  it('returns a pair of real, distinct cards from the hand', () => {
+    const [a, b] = discardSkillStrategy(0.5)({ hand, isOwnCrib: true });
+    expect(hand.some((c) => c.rank === a.rank && c.suit === a.suit)).toBe(true);
+    expect(hand.some((c) => c.rank === b.rank && c.suit === b.suit)).toBe(true);
+    expect(a).not.toEqual(b);
   });
 });

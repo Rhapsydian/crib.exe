@@ -3,6 +3,7 @@ import { cardValue, cardsEqual } from './cards';
 import { createDeck } from './deck';
 import { countHand, countCrib } from './scoring';
 import { scoreCardPlay, type PlayContext, type PlayStrategy } from './pegging';
+import type { DiscardStrategy } from './deal';
 
 /**
  * Shared weighted-scoring heuristic module (Root mechanical redesign,
@@ -58,30 +59,56 @@ function partialCribValue(pair: [Card, Card]): number {
   return value;
 }
 
-/** The crib-value factor's weight relative to hand value -- TBD/
- * playtesting, same placeholder convention as everywhere else. */
-const CRIB_WEIGHT = 1;
+/**
+ * Relative weight of hand-value vs. crib-value in scoreDiscard below --
+ * TBD/playtesting, same placeholder convention as everywhere else.
+ * `DISCARD_EXPERT_WEIGHTS` matches this module's original fixed
+ * `CRIB_WEIGHT = 1` behavior exactly, preserved as scoreDiscard's
+ * default so Root's checkpoint-D targeting (which always wants the
+ * fully-informed evaluation, not a skill-diluted one) is unaffected by
+ * checkpoint C's skill dial below.
+ */
+export interface DiscardWeights {
+  handValue: number;
+  cribValue: number;
+}
+
+const DISCARD_NOVICE_WEIGHTS: DiscardWeights = { handValue: 1, cribValue: 0 };
+const DISCARD_EXPERT_WEIGHTS: DiscardWeights = { handValue: 1, cribValue: 1 };
+
+/** Skill as a single continuous 0-1 knob (decision 2), same shape as
+ * interpolatePegWeights. */
+export function interpolateDiscardWeights(skill: number): DiscardWeights {
+  const t = Math.max(0, Math.min(1, skill));
+  return {
+    handValue: lerp(DISCARD_NOVICE_WEIGHTS.handValue, DISCARD_EXPERT_WEIGHTS.handValue, t),
+    cribValue: lerp(DISCARD_NOVICE_WEIGHTS.cribValue, DISCARD_EXPERT_WEIGHTS.cribValue, t),
+  };
+}
 
 /**
  * Combines hand-EV and signed crib-EV into one weighted score for a
  * candidate discard pair from `fullHand` -- positive crib weight when
  * it's the caster's own crib, negative when it's the opponent's
  * (decision 3a: helping your own crib is positive value, feeding the
- * opponent's is negative). This is the one function both a discard
- * decision and Root's adversarial targeting (checkpoint D, scoring the
- * *opponent's* hand) call into.
+ * opponent's is negative). This is the one function both the discard
+ * AI below and Root's adversarial targeting (checkpoint D, scoring the
+ * *opponent's* hand) call into. `weights` defaults to the fully-
+ * informed expert vector, matching every existing call site's behavior
+ * (bestCardToForce never passes it explicitly).
  */
 export function scoreDiscard(
   fullHand: Card[],
   discardPair: [Card, Card],
   isOwnCrib: boolean,
   knownOtherCribCards?: [Card, Card],
+  weights: DiscardWeights = DISCARD_EXPERT_WEIGHTS,
 ): number {
   const keptHand = fullHand.filter((card) => !discardPair.some((discarded) => cardsEqual(discarded, card)));
   const unseen = unseenCards(fullHand);
   const handEV = handExpectedValue(keptHand, unseen);
   const cribEV = cribExpectedValue(discardPair, unseen, knownOtherCribCards);
-  return handEV + (isOwnCrib ? CRIB_WEIGHT : -CRIB_WEIGHT) * cribEV;
+  return weights.handValue * handEV + (isOwnCrib ? weights.cribValue : -weights.cribValue) * cribEV;
 }
 
 /**
@@ -120,6 +147,67 @@ export function bestCardToForce(hand: Card[], isOwnCrib: boolean): [Card, Card] 
   }
 
   return [bestForced, bestCompanion];
+}
+
+function allDiscardPairs(hand: Card[]): [Card, Card][] {
+  const pairs: [Card, Card][] = [];
+  for (let i = 0; i < hand.length; i++) {
+    for (let j = i + 1; j < hand.length; j++) {
+      pairs.push([hand[i], hand[j]]);
+    }
+  }
+  return pairs;
+}
+
+/** The single best-scoring discard pair from `hand` by the caster's own
+ * (fully-informed) scoreDiscard -- used to predict what a rational
+ * opponent would likely discard, given their revealed hand (checkpoint
+ * C), so the crib-EV estimate for the caster's *own* discard can use a
+ * real prediction instead of the blind partial proxy. Not adversarial
+ * like bestCardToForce -- this assumes the opponent plays well *for
+ * themselves*, not that they're trying to hurt anyone. */
+export function predictBestDiscard(hand: Card[], isOwnCrib: boolean): [Card, Card] {
+  let best: [Card, Card] = [hand[0], hand[1]];
+  let bestScore = -Infinity;
+  for (const pair of allDiscardPairs(hand)) {
+    const score = scoreDiscard(hand, pair, isOwnCrib);
+    if (score > bestScore) {
+      bestScore = score;
+      best = pair;
+    }
+  }
+  return best;
+}
+
+/**
+ * Tunable-skill discard AI (checkpoint C). Enumerates all 15 candidate
+ * discard pairs and picks the highest-scoring one under the skill-
+ * interpolated weights. When the opponent's hand is known
+ * (`knownOpponentHand`, checkpoint C's recon), predicts their likely
+ * discard via predictBestDiscard and feeds it into scoreDiscard as the
+ * crib's known other half -- turning the crib-EV term from an estimate
+ * into a real prediction, gated naturally by the skill dial itself
+ * (at skill=0, cribValue weight is 0, so even a perfect prediction
+ * contributes nothing -- no separate gating needed).
+ */
+export function discardSkillStrategy(skill: number): DiscardStrategy {
+  const weights = interpolateDiscardWeights(skill);
+  return (ctx) => {
+    const predictedOpponentDiscard = ctx.knownOpponentHand
+      ? predictBestDiscard(ctx.knownOpponentHand, !ctx.isOwnCrib)
+      : undefined;
+    const candidates = allDiscardPairs(ctx.hand);
+    let best = candidates[0];
+    let bestScore = -Infinity;
+    for (const pair of candidates) {
+      const score = scoreDiscard(ctx.hand, pair, ctx.isOwnCrib, predictedOpponentDiscard, weights);
+      if (score > bestScore) {
+        bestScore = score;
+        best = pair;
+      }
+    }
+    return best;
+  };
 }
 
 /**
