@@ -17,11 +17,15 @@ for Phases 2-5 too, not just Phase 1.
 **Phase 4 is now complete** (session 22, all 6 checkpoints — see below).
 All 78 subroutines are real data, all 6 classes are selectable with real
 starting kits/passives, and the full acquisition loop (combat rewards,
-bench/install, Merge, Shop) resolves for real. Next session should
-re-run session 20's `playRun()` outcome-distribution sweep (Phase 5's
-own note below) as the first real balance check now that a static
-loadout no longer applies -- a quick empirical temperature check before
-committing to any real Phase 5 tuning work. Phase 0 is down to a single
+bench/install, Merge, Shop) resolves for real. The balance sweep is also
+now done (session 22, see Phase 5 below): 500/500 victories under
+default settings, and a control sweep proved this isn't acquisition —
+it's checkpoint A's enemy-magnitude retune (done for test-suite speed,
+not real balance) leaving even a static starting kit unbeatable. Next
+session should start real enemy tuning (own numbers, not "resolves in
+the test suite's time budget") plus a per-layer difficulty ramp — see
+Phase 5's fuller writeup for what a re-sweep after any retune needs to
+watch for. Phase 0 is down to a single
 banked idea (node-bypass ability, session 9), not blocking.
 
 ## Phase 0 — Remaining design passes
@@ -452,3 +456,44 @@ mechanism TBD) to guarantee a match resolves in bounded time. Needs its
 own design pass — it changes actual combat feel, not just tuning
 numbers — so it's a Phase 5 balance-pass item, not something to bolt on
 mid-Phase-4.
+
+**Phase 4 balance sweep (session 22)** — re-running session 20's
+measurement now that acquisition is real: 500 seeds, default settings
+(Breacher, `beelineToGatekeeper`), **100% victory** (was 3.8%), 4.00/4
+layers cleared every time, averaging ~172 final Data and ~7.7 pieces
+owned by run's end.
+
+The obvious read — "acquisition fixed it" — is wrong. A control sweep
+with `acquisitionStrategy: () => null` (declines every reward, so the
+loadout never grows past the starting 3 pieces, matching session 20's
+own static-loadout conditions exactly) *also* scored 100%/500, 4.00/4
+layers. Acquisition isn't the driver here at all — something already
+made a bare starting kit unbeatable, independent of growth.
+
+The real cause: checkpoint A's enemy-magnitude retune. Session 20's
+3.8% baseline used the pre-Phase-4 enemy tuning (regular=5, elite=5.3,
+gatekeeper reusing regular); checkpoint A lowered this to 2.5/2.55/2.8
+specifically because that old tuning left a *real* class kit on a
+near-guaranteed loss against Breach/Containment's sharp positive-
+feedback dynamics (see that checkpoint's own commit message). That
+retune fixed winnability but was never a real balance pass — it was
+done to get the test suite itself resolving in reasonable time, and
+BACKLOG.md flagged exactly this at checkpoint A: "making Regular
+genuinely competitive, not just winnable, is Phase 5's job." This
+sweep is the first measurement confirming how far off that landed —
+not close to competitive, essentially free.
+
+Two real, separable problems for Phase 5, not one: (1) enemy magnitudes
+need genuine per-fight tuning distinct from "resolves in the test
+suite's time budget," almost certainly needing to be substantially
+higher than the current 2.5/2.55/2.8 given a bare starting kit already
+clears them 100% of the time; (2) there's still no per-layer difficulty
+ramp at all (`ENEMY_LOADOUT_GATEKEEPER` is one flat constant regardless
+of layer), so even after (1), a run that lets the loadout grow across 4
+layers needs the back half to actually ask more of the player than the
+front half. Re-sweep after any retuning attempt, same as this one —
+the chaotic convergence-time behavior already on record here means
+tuning by feel alone won't reliably land in a genuinely competitive
+zone. Only Breacher was swept (the default class); the other 5,
+especially Ghost ("the most challenging to play," per DESIGN.md), are
+still unmeasured and may tell a different story.
