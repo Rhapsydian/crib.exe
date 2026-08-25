@@ -44,9 +44,17 @@ function overwhelmingBreacherLoadout(burstAmount: number): SubroutineDefinition[
   );
 }
 
+// classId: 'ghost' here, deliberately NOT 'breacher' -- Phase 4
+// checkpoint B wired starting passives in, and Foothold (Breacher's)
+// hooks into every Breach/Containment crossing regardless of payload
+// kind, which could inject an unwanted bonus push into this single-
+// piece dummy's own trajectory. Ghost's Return to Sender only touches
+// instantCounterPush payloads, which this dummy never fires -- inert,
+// same as every other class's passive would be against a lone
+// directBurst piece.
 function playerWithBurst(amount: number): RunPlayerState {
   return {
-    classId: 'breacher',
+    classId: 'ghost',
     installedLoadout: [
       {
         id: 'test-player-burst',

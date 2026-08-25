@@ -12,6 +12,7 @@ import {
   applyThrottled,
   tickDebuffDurations,
   consumePendingCribbageManipulation,
+  applyFootholdCrossing,
 } from './resolve';
 import { BREACH_CONTAINMENT_CENTER } from './gauges';
 
@@ -778,5 +779,227 @@ describe('cribbageLayerManipulation / consumePendingCribbageManipulation', () =>
     const { combatState: result, forHand } = consumePendingCribbageManipulation(state, 0);
     expect(result).toEqual(state);
     expect(forHand).toEqual({});
+  });
+});
+
+describe('starting passives (Phase 4 checkpoint B)', () => {
+  describe('Foothold (Breacher)', () => {
+    it("adds a bonus push the first time Breach/Containment crosses into the player's favor", () => {
+      const before = createCombatState([], [], 12, 'breacher');
+      const after = { ...before, breachContainment: 52 };
+      const result = applyFootholdCrossing(before, after);
+      expect(result.breachContainment).toBe(52 + 5);
+      expect(result.passiveTriggered).toBe(true);
+    });
+
+    it('does not re-trigger on a later crossing the same combat', () => {
+      const before = createCombatState([], [], 12, 'breacher');
+      const first = applyFootholdCrossing(before, { ...before, breachContainment: 52 });
+      const droppedBack = { ...first, breachContainment: 40 };
+      const crossedAgain = { ...first, breachContainment: 60 };
+      const second = applyFootholdCrossing(droppedBack, crossedAgain);
+      expect(second.breachContainment).toBe(60); // no bonus -- already consumed
+    });
+
+    it('does not trigger for a class other than breacher', () => {
+      const before = createCombatState([], [], 12, 'blackhat');
+      const after = { ...before, breachContainment: 52 };
+      expect(applyFootholdCrossing(before, after).breachContainment).toBe(52);
+    });
+
+    it('does not trigger when the value was already in the player\'s favor', () => {
+      const before = createCombatState([], [], 12, 'breacher');
+      const already = { ...before, breachContainment: 55 };
+      const after = { ...already, breachContainment: 60 };
+      expect(applyFootholdCrossing(already, after).breachContainment).toBe(60);
+    });
+
+    it("does not trigger when crossing into the enemy's favor", () => {
+      const before = createCombatState([], [], 12, 'breacher');
+      const after = { ...before, breachContainment: 45 };
+      expect(applyFootholdCrossing(before, after).breachContainment).toBe(45);
+    });
+  });
+
+  describe('Zero Day (Blackhat)', () => {
+    it('waives Heat cost for the first Heat-costing Exploit fire', () => {
+      const state = createCombatState([], [], 12, 'blackhat');
+      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 4 }, 'exploit', state, 0);
+      expect(result.sides[0].heat).toBe(0);
+      expect(result.passiveTriggered).toBe(true);
+    });
+
+    it('costs Heat normally on the second Heat-costing Exploit fire', () => {
+      let state = createCombatState([], [], 12, 'blackhat');
+      state = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 4 }, 'exploit', state, 0);
+      state = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 4 }, 'exploit', state, 0);
+      expect(state.sides[0].heat).toBe(4);
+    });
+
+    it('does not consume the passive on a zero-cost fire', () => {
+      const state = createCombatState([], [], 12, 'blackhat');
+      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 0 }, 'exploit', state, 0);
+      expect(result.passiveTriggered).toBe(false);
+    });
+
+    it('does not apply for a different class', () => {
+      const state = createCombatState([], [], 12, 'breacher');
+      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 4 }, 'exploit', state, 0);
+      expect(result.sides[0].heat).toBe(4);
+    });
+  });
+
+  describe('Sleeper Cell (Saboteur)', () => {
+    const rootPiece = () =>
+      definition('root-piece', { kind: 'always' }, { kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, { archetype: 'root' });
+
+    it('advances the first Root subroutine the first time a Malware debuff is applied', () => {
+      const state = createCombatState([rootPiece()], [], 12, 'saboteur');
+      const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 0);
+      expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(3);
+      expect(result.passiveTriggered).toBe(true);
+    });
+
+    it('does not trigger for a debuff cast by a non-Malware subroutine', () => {
+      const state = createCombatState([rootPiece()], [], 12, 'saboteur');
+      const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'root', state, 0);
+      expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(0);
+    });
+
+    it("does not trigger for the enemy's own debuff", () => {
+      const state = createCombatState([], [rootPiece()], 12, 'saboteur');
+      const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 1);
+      expect(result.sides[1].loadout[0].state.accumulatedProgress).toBe(0);
+    });
+  });
+
+  describe('Primed (Operator)', () => {
+    it("reduces an Accumulator-triggered Exploit subroutine's threshold the first time a Root subroutine fires", () => {
+      const exploitPiece = definition(
+        'exploit-piece',
+        { kind: 'accumulator', metric: 'points', threshold: 10 },
+        { kind: 'directBurst', amount: 5 },
+        { archetype: 'exploit' },
+      );
+      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
+      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 8 });
+      expect(result.passiveTriggered).toBe(true);
+    });
+
+    it('reduces bankTarget for an Occurrence: threshold Exploit subroutine', () => {
+      const exploitPiece = definition(
+        'exploit-piece',
+        { kind: 'occurrence', category: 'pair', variation: 'threshold', bankTarget: 5 },
+        { kind: 'directBurst', amount: 5 },
+        { archetype: 'exploit' },
+      );
+      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
+      expect(result.sides[0].loadout[0].definition.trigger).toEqual({
+        kind: 'occurrence',
+        category: 'pair',
+        variation: 'threshold',
+        bankTarget: 3,
+      });
+    });
+
+    it('reduces cap for an Occurrence: scaling Exploit subroutine', () => {
+      const exploitPiece = definition(
+        'exploit-piece',
+        { kind: 'occurrence', category: 'flush', variation: 'scaling', cap: 4 },
+        { kind: 'directBurst', amount: 5 },
+        { archetype: 'exploit' },
+      );
+      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
+      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'occurrence', category: 'flush', variation: 'scaling', cap: 2 });
+    });
+
+    it('still consumes the one-shot use even when the Exploit piece has no reducible knob', () => {
+      const exploitPiece = definition('exploit-piece', { kind: 'always' }, { kind: 'directBurst', amount: 5 }, { archetype: 'exploit' });
+      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
+      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'always' });
+      expect(result.passiveTriggered).toBe(true);
+    });
+
+    it('does not trigger for a non-Root archetype fire', () => {
+      const exploitPiece = definition(
+        'exploit-piece',
+        { kind: 'accumulator', metric: 'points', threshold: 10 },
+        { kind: 'directBurst', amount: 5 },
+        { archetype: 'exploit' },
+      );
+      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const result = resolvePayload({ kind: 'directBurst', amount: 3 }, 'exploit', state, 0);
+      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 10 });
+    });
+  });
+
+  describe('Feedback Loop (Warden)', () => {
+    it('adds an uncapped bonus push on top of a capped HoT tick', () => {
+      const hotPiece = definition(
+        'hot-piece',
+        { kind: 'always' },
+        { kind: 'hot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
+        { archetype: 'encryption' },
+      );
+      let state = createCombatState([hotPiece], [], 12, 'warden');
+      state = { ...state, breachContainment: 40 };
+      state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
+      const result = tickCastersTurnPulse(state, 0);
+      expect(result.breachContainment).toBe(40 + 3 + 2);
+    });
+
+    it('does not add a bonus for a class other than Warden', () => {
+      const hotPiece = definition(
+        'hot-piece',
+        { kind: 'always' },
+        { kind: 'hot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
+        { archetype: 'encryption' },
+      );
+      let state = createCombatState([hotPiece], [], 12);
+      state = { ...state, breachContainment: 40 };
+      state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
+      const result = tickCastersTurnPulse(state, 0);
+      expect(result.breachContainment).toBe(43);
+    });
+
+    it('does not add a bonus to DoT ticks even for Warden', () => {
+      const dotPiece = definition(
+        'dot-piece',
+        { kind: 'always' },
+        { kind: 'dot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
+        { archetype: 'malware' },
+      );
+      let state = createCombatState([dotPiece], [], 12, 'warden');
+      state = resolvePayload(dotPiece.payload, 'malware', state, 0);
+      const result = tickCastersTurnPulse(state, 0);
+      expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 3);
+    });
+  });
+
+  describe('Return to Sender (Ghost)', () => {
+    it("bypasses the midpoint cap on Ghost's own instantCounterPush", () => {
+      let state = createCombatState([], [], 12, 'ghost');
+      state = { ...state, breachContainment: 40 };
+      const result = resolvePayload({ kind: 'instantCounterPush', amount: 20 }, 'encryption', state, 0);
+      expect(result.breachContainment).toBe(60);
+    });
+
+    it('stays capped at the midpoint for a class other than Ghost', () => {
+      let state = createCombatState([], [], 12);
+      state = { ...state, breachContainment: 40 };
+      const result = resolvePayload({ kind: 'instantCounterPush', amount: 20 }, 'encryption', state, 0);
+      expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+    });
+
+    it('stays capped for the enemy side even when the player is Ghost', () => {
+      let state = createCombatState([], [], 12, 'ghost');
+      state = { ...state, breachContainment: 60 };
+      const result = resolvePayload({ kind: 'instantCounterPush', amount: 20 }, 'encryption', state, 1);
+      expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+    });
   });
 });

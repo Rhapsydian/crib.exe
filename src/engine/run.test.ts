@@ -23,7 +23,14 @@ import { BREACHER_LOADOUT } from './subroutines';
  * makes a loss resolve within tens of thousands of hands against the
  * current (placeholder) enemy tuning -- see encounters.test.ts's fuller
  * note on why that's a Phase 5 tuning question, not a test-construction
- * one. */
+ * one.
+ *
+ * Every playRun() call using NEGLIGIBLE_LOADOUT passes classId: 'ghost'
+ * explicitly, not the default ('breacher') -- Phase 4 checkpoint B wired
+ * Foothold in to hook every Breach/Containment crossing regardless of
+ * payload kind, which could inject an unwanted bonus into this single-
+ * piece dummy's trajectory. Ghost's own passive only touches
+ * instantCounterPush payloads, which this dummy never fires -- inert. */
 function overwhelmingBreacherLoadout(burstAmount: number): SubroutineDefinition[] {
   return BREACHER_LOADOUT.map((piece) =>
     piece.id === 'buffer-overflow' ? { ...piece, payload: { ...piece.payload, amount: burstAmount } } : piece,
@@ -132,6 +139,7 @@ describe('playRun', { timeout: 30_000 }, () => {
         layerNodeCounts: TINY_LAYERS,
         traversalStrategy: beelineToGatekeeper,
         installedLoadoutOverride: OVERWHELMING_LOADOUT,
+        classId: 'breacher',
       }).outcome,
     );
     expect(outcomes).toContain('victory');
@@ -144,6 +152,7 @@ describe('playRun', { timeout: 30_000 }, () => {
         layerNodeCounts: TINY_LAYERS,
         traversalStrategy: beelineToGatekeeper,
         installedLoadoutOverride: NEGLIGIBLE_LOADOUT,
+        classId: 'ghost',
       }).outcome,
     );
     expect(outcomes).toContain('quarantined');
@@ -175,7 +184,7 @@ describe('playRun', { timeout: 30_000 }, () => {
     // of depending on Breacher's real kit's natural win rate, which is
     // high enough that closures -- and so noRouteRemains -- are rare.
     const outcomes = Array.from({ length: 10 }, (_, seed) =>
-      playRun({ seed, traversalStrategy: exploreThenGatekeeper, installedLoadoutOverride: NEGLIGIBLE_LOADOUT }).outcome,
+      playRun({ seed, traversalStrategy: exploreThenGatekeeper, installedLoadoutOverride: NEGLIGIBLE_LOADOUT, classId: 'ghost' }).outcome,
     );
     expect(outcomes).toContain('noRouteRemains');
   });
@@ -198,7 +207,7 @@ describe('playRun', { timeout: 30_000 }, () => {
     // no seed happens to quarantine.
     let sawQuarantine = false;
     for (let seed = 0; seed < 10; seed++) {
-      const result = playRun({ seed, layerNodeCounts: TINY_LAYERS, installedLoadoutOverride: NEGLIGIBLE_LOADOUT });
+      const result = playRun({ seed, layerNodeCounts: TINY_LAYERS, installedLoadoutOverride: NEGLIGIBLE_LOADOUT, classId: 'ghost' });
       if (result.outcome !== 'quarantined') continue;
       sawQuarantine = true;
       const quarantineEvent = result.log.find((e) => e.type === 'encounter' && e.outcome.quarantined);

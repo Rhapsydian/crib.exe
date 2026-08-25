@@ -1,6 +1,7 @@
 import type { PlayerIndex } from './pegging';
 import type { Suit } from './cards';
-import type { Archetype, DebuffKind, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
+import type { Archetype, DebuffKind, PayloadEffect, SubroutineDefinition, TickCadence, TriggerFamily } from './subroutine-types';
+import type { ClassId } from './classes';
 import {
   createInitialState,
   evaluateEnemyState,
@@ -94,6 +95,21 @@ export interface CombatState {
   sides: [CombatSideState, CombatSideState];
   pendingSabotage: PendingSabotage[];
   pendingCribbageManipulation: PendingCribbageManipulation[];
+  /** The player's class, if any -- drives the 6 starting-passive hooks
+   * (Phase 4 checkpoint B), scattered through this file and combat.ts's
+   * step(). Always side 0; enemy loadouts are plain data with no class
+   * of their own. Absent for any fight/test that doesn't care about
+   * passives -- every hook below guards on this matching the specific
+   * class it belongs to, so an unset classId is just "no passives
+   * active," no separate branch needed anywhere. */
+  classId?: ClassId;
+  /** Whether this combat's one-shot starting passive has already fired
+   * -- Foothold, Zero Day, Sleeper Cell, and Primed are each "the first
+   * time X happens," so a single flag suffices (only one class's
+   * passive is ever active in a given combat). Feedback Loop and Return
+   * to Sender are persistent modifiers instead, checked directly against
+   * classId at their own hook points -- not gated by this flag. */
+  passiveTriggered: boolean;
 }
 
 export function createCombatSideState(definitions: SubroutineDefinition[], gaugeThreshold: number): CombatSideState {
@@ -112,12 +128,15 @@ export function createCombatState(
   playerLoadout: SubroutineDefinition[],
   enemyLoadout: SubroutineDefinition[],
   gaugeThreshold: number,
+  classId?: ClassId,
 ): CombatState {
   return {
     breachContainment: createBreachContainment(),
     sides: [createCombatSideState(playerLoadout, gaugeThreshold), createCombatSideState(enemyLoadout, gaugeThreshold)],
     pendingSabotage: [],
     pendingCribbageManipulation: [],
+    classId,
+    passiveTriggered: false,
   };
 }
 
@@ -148,11 +167,12 @@ function pushTowardCaster(value: number, amount: number, caster: PlayerIndex) {
  * is a no-op. Default behavior for HoT ticks and instantCounterPush:
  * Encryption's kit can only ever stabilize the match, never win it
  * outright on its own -- the mechanical expression of "defense/
- * mitigation, not offense." Ghost's Return to Sender starting passive is
- * the one documented bypass (ResolveContext.bypassBreachContainmentCap),
- * specific to Ghost's own counter-push -- not yet wired to an actual
- * passive since classes/starting passives don't exist in the engine yet
- * (Phase 4). */
+ * mitigation, not offense." Ghost's Return to Sender starting passive
+ * (Phase 4 checkpoint B) is the one bypass -- applied automatically for
+ * Ghost's own counter-push, directly in the 'instantCounterPush' case
+ * below rather than through ResolveContext.bypassBreachContainmentCap
+ * (which remains available as a manual override for anything else that
+ * ever needs it). */
 function pushTowardCasterCapAtCenter(value: number, amount: number, caster: PlayerIndex): { value: number } {
   const towardPlayer = caster === 0;
   const alreadyAtOrPastCenter = towardPlayer ? value >= BREACH_CONTAINMENT_CENTER : value <= BREACH_CONTAINMENT_CENTER;
@@ -205,21 +225,136 @@ export interface ResolveContext {
    * chainFinisherScaling's payoff for loadout sequencing. */
   priorFireCountThisTurn: number;
   /** Bypasses the default midpoint cap on instantCounterPush (see
-   * pushTowardCasterCapAtCenter). Only known real use: Ghost's Return to
-   * Sender passive, for Ghost's own counter-push. */
+   * pushTowardCasterCapAtCenter). Ghost's Return to Sender passive is
+   * applied automatically instead (directly in the 'instantCounterPush'
+   * case, keyed off CombatState.classId) -- this remains available as a
+   * manual override for anything else that ever needs it. */
   bypassBreachContainmentCap?: boolean;
+}
+
+// ---------------------------------------------------------------------
+// Starting passives (Phase 4 checkpoint B) -- 6 bespoke hooks, not a
+// generic framework (session 21's own reasoning: 6 heterogeneous
+// one-offs don't justify one). Foothold/Zero Day/Sleeper Cell/Primed are
+// one-shot ("the first time X"), gated by CombatState.passiveTriggered;
+// Feedback Loop and Return to Sender are persistent modifiers checked
+// directly against classId at their own hook points. All 6 only ever
+// apply to side 0 -- enemy loadouts have no class.
+// ---------------------------------------------------------------------
+
+const FOOTHOLD_BONUS = 5; // TBD/playtesting
+const SLEEPER_CELL_ADVANCE_AMOUNT = 3; // TBD/playtesting
+const PRIMED_THRESHOLD_REDUCTION = 2; // TBD/playtesting
+const FEEDBACK_LOOP_DOT_AMOUNT = 2; // TBD/playtesting
+
+/** Breacher's Foothold: the first time Breach/Containment crosses into
+ * the player's favor (strictly past center) this combat, gives a small
+ * extra push in the player's favor. Compares `before`/`after` around
+ * every CombatState-changing step (combat.ts's step()) rather than
+ * hooking one specific payload kind -- a crossing can come from a
+ * burst, a counter-push, or a tick, and this needs to catch all of
+ * them uniformly. Re-derives the winner after applying its own bonus
+ * (exported for combat.ts to use), since the bonus itself can finish
+ * the match. Known minor gap: a crossing caused by this same bonus push
+ * doesn't get a fresh Enemy-state/Reactive readiness pass of its own --
+ * the next natural refresh (very soon, given how often the combat loop
+ * calls refreshTriggerReadiness) picks it up instead. */
+export function applyFootholdCrossing(before: CombatState, after: CombatState): CombatState {
+  if (after.classId !== 'breacher' || after.passiveTriggered) return after;
+  const wasInFavor = before.breachContainment > BREACH_CONTAINMENT_CENTER;
+  const nowInFavor = after.breachContainment > BREACH_CONTAINMENT_CENTER;
+  if (wasInFavor || !nowInFavor) return after;
+  const { value } = pushBreachContainment(after.breachContainment, FOOTHOLD_BONUS, true);
+  return { ...after, breachContainment: value, passiveTriggered: true };
+}
+
+/** Reduces whichever numeric "how much banked progress needed" knob a
+ * trigger carries, floored at 1 -- Operator's Primed passive reduces
+ * the next Exploit subroutine's trigger threshold the first time a Root
+ * subroutine fires. Occurrence's 'instant' variation and the non-
+ * numeric trigger kinds (chained/always/selfState/enemyState) have no
+ * such knob and are left untouched -- Primed still consumes its one-
+ * shot use, it just has nothing to reduce against those shapes. Real
+ * effect depends on which Exploit piece Operator's loadout actually
+ * has -- same "infrastructure-complete, content-partial" scope as
+ * Merge's own generalized magnitude/threshold rule. */
+function reducedTriggerThreshold(trigger: TriggerFamily, amount: number): TriggerFamily {
+  if (trigger.kind === 'accumulator') return { ...trigger, threshold: Math.max(1, trigger.threshold - amount) };
+  if (trigger.kind === 'occurrence' && trigger.variation === 'threshold') {
+    return { ...trigger, bankTarget: Math.max(1, trigger.bankTarget - amount) };
+  }
+  if (trigger.kind === 'occurrence' && trigger.variation === 'scaling') {
+    return { ...trigger, cap: Math.max(1, trigger.cap - amount) };
+  }
+  return trigger;
+}
+
+/** Operator's Primed: the first time a Root subroutine fires this
+ * combat, reduce the next Exploit subroutine's trigger threshold --
+ * "next" taken as the first Exploit-archetype entry in the caster's own
+ * loadout, by array order (there's no other natural "next" to pick
+ * against, since firing order isn't itself sequenced by archetype).
+ * Applies generically after any Root payload resolves, not gated by
+ * payload kind, since Root's payload catalog spans several kinds. */
+function applyPrimedPassive(combatState: CombatState, firedArchetype: Archetype, caster: PlayerIndex): CombatState {
+  if (firedArchetype !== 'root' || caster !== 0 || combatState.classId !== 'operator' || combatState.passiveTriggered) {
+    return combatState;
+  }
+  const sideState = combatState.sides[0];
+  const index = sideState.loadout.findIndex((entry) => entry.definition.archetype === 'exploit');
+  if (index === -1) return { ...combatState, passiveTriggered: true };
+  const entry = sideState.loadout[index];
+  const loadout = sideState.loadout.slice();
+  loadout[index] = { ...entry, definition: { ...entry.definition, trigger: reducedTriggerThreshold(entry.definition.trigger, PRIMED_THRESHOLD_REDUCTION) } };
+  const sides = replaceSide(combatState.sides, 0, { ...sideState, loadout });
+  return { ...combatState, sides, passiveTriggered: true };
+}
+
+/** Advances the first loadout entry matching `matches`'s banked
+ * progress by `amount` -- shared shape with instantManipulation's
+ * subroutineProgress target (resolvePayload below), but keyed by a
+ * predicate instead of a fixed id, since Sleeper Cell has no single
+ * fixed target the way Priority Override does. */
+function advanceFirstMatchingSubroutine(
+  combatState: CombatState,
+  side: PlayerIndex,
+  matches: (definition: SubroutineDefinition) => boolean,
+  amount: number,
+): CombatState {
+  const sideState = combatState.sides[side];
+  const index = sideState.loadout.findIndex((entry) => matches(entry.definition));
+  if (index === -1) return combatState;
+  const entry = sideState.loadout[index];
+  const loadout = sideState.loadout.slice();
+  loadout[index] = { ...entry, state: { ...entry.state, accumulatedProgress: entry.state.accumulatedProgress + amount } };
+  const sides = replaceSide(combatState.sides, side, { ...sideState, loadout });
+  return { ...combatState, sides };
 }
 
 /** Resolves one subroutine's payload against Breach/Containment or the
  * opposing side's state. `archetype` comes from the firing subroutine's
  * definition (payloads themselves don't carry it) -- needed for ward
- * matching. */
+ * matching. Wraps resolvePayloadCore (the actual per-payload-kind
+ * switch) with Primed, the one passive hook that applies generically by
+ * archetype rather than by a specific payload kind -- see the passives
+ * block above. */
 export function resolvePayload(
   payload: PayloadEffect,
   archetype: Archetype,
   combatState: CombatState,
   caster: PlayerIndex,
   context: ResolveContext = { priorFireCountThisTurn: 0 },
+): CombatState {
+  const base = resolvePayloadCore(payload, archetype, combatState, caster, context);
+  return applyPrimedPassive(base, archetype, caster);
+}
+
+function resolvePayloadCore(
+  payload: PayloadEffect,
+  archetype: Archetype,
+  combatState: CombatState,
+  caster: PlayerIndex,
+  context: ResolveContext,
 ): CombatState {
   const target = opponentOf(caster);
 
@@ -248,8 +383,12 @@ export function resolvePayload(
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
       const { value } = pushTowardCaster(combatState.breachContainment, amount, caster);
       const casterState = combatState.sides[caster];
-      const sides = replaceSide(combatState.sides, caster, { ...casterState, heat: casterState.heat + payload.heatCost });
-      return { ...combatState, breachContainment: value, sides };
+      // Blackhat's Zero Day: the first Heat-costing Exploit fire each
+      // combat waives its Heat cost entirely.
+      const zeroDay = caster === 0 && combatState.classId === 'blackhat' && !combatState.passiveTriggered && payload.heatCost > 0;
+      const heat = zeroDay ? casterState.heat : casterState.heat + payload.heatCost;
+      const sides = replaceSide(combatState.sides, caster, { ...casterState, heat });
+      return { ...combatState, breachContainment: value, sides, passiveTriggered: zeroDay || combatState.passiveTriggered };
     }
     case 'dot': {
       const targetState = combatState.sides[target];
@@ -281,11 +420,23 @@ export function resolvePayload(
           ? { ...targetState.gauge, threshold: targetState.gauge.threshold + payload.magnitude }
           : targetState.gauge;
       const sides = replaceSide(combatState.sides, target, { ...targetState, debuffs, gauge });
-      return { ...combatState, sides };
+      const withDebuff = { ...combatState, sides };
+      // Saboteur's Sleeper Cell: the first Malware debuff applied each
+      // combat also advances the first Root subroutine in the caster's
+      // own loadout, by array order (no fixed target the way Priority
+      // Override has one).
+      const sleeperCell = caster === 0 && archetype === 'malware' && combatState.classId === 'saboteur' && !combatState.passiveTriggered;
+      if (!sleeperCell) return withDebuff;
+      const advanced = advanceFirstMatchingSubroutine(withDebuff, 0, (def) => def.archetype === 'root', SLEEPER_CELL_ADVANCE_AMOUNT);
+      return { ...advanced, passiveTriggered: true };
     }
     case 'instantCounterPush': {
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
-      const { value } = context.bypassBreachContainmentCap
+      // Ghost's Return to Sender: Ghost's own counter-push always
+      // bypasses the midpoint cap -- ResolveContext.bypassBreachContainmentCap
+      // remains available too, as a manual override for anything else.
+      const bypassCap = context.bypassBreachContainmentCap || (caster === 0 && combatState.classId === 'ghost');
+      const { value } = bypassCap
         ? pushTowardCaster(combatState.breachContainment, amount, caster)
         : pushTowardCasterCapAtCenter(combatState.breachContainment, amount, caster);
       return { ...combatState, breachContainment: value };
@@ -536,6 +687,18 @@ function applyTickPush(combatState: CombatState, tick: ActiveTick, listKey: 'dot
     listKey === 'hots'
       ? pushTowardCasterCapAtCenter(combatState.breachContainment, amount, tick.casterSide)
       : pushTowardCaster(combatState.breachContainment, amount, tick.casterSide);
+  return applyFeedbackLoopPassive({ ...combatState, breachContainment: value }, tick, listKey);
+}
+
+/** Warden's Feedback Loop: every Encryption HoT tick also applies a
+ * small, uncapped Malware-flavored DoT push to the enemy -- persistent,
+ * unlike the 4 one-shot passives above, so not gated by
+ * passiveTriggered. Only HoT ticks qualify; DoT ticks are already
+ * uncapped Malware damage on their own, nothing to "add." */
+function applyFeedbackLoopPassive(combatState: CombatState, tick: ActiveTick, listKey: 'dots' | 'hots'): CombatState {
+  if (listKey !== 'hots' || tick.casterSide !== 0 || combatState.classId !== 'warden') return combatState;
+  const amount = FEEDBACK_LOOP_DOT_AMOUNT * corruptionMultiplier(combatState, tick.casterSide);
+  const { value } = pushTowardCaster(combatState.breachContainment, amount, tick.casterSide);
   return { ...combatState, breachContainment: value };
 }
 

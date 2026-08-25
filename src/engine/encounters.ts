@@ -94,6 +94,7 @@ function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): E
     seed,
     gaugeThreshold: GAUGE_THRESHOLD,
     maxHands: FIGHT_MAX_HANDS,
+    classId: playerState.classId,
   });
 
   if (result.winner === 0) {

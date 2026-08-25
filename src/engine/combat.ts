@@ -3,6 +3,7 @@ import { discardLowestTwo, cut, biasedCut, type DiscardStrategy, type CutStrateg
 import { playLowestLegal, type PlayStrategy } from './pegging';
 import { playOneHand, type HandResult, type PlayerIndex } from './game';
 import type { SubroutineDefinition } from './subroutine-types';
+import type { ClassId } from './classes';
 import {
   updateSubroutineState,
   updateSuitTallyState,
@@ -15,6 +16,7 @@ import {
 } from './triggers';
 import { addPoints, BREACH_CONTAINMENT_MAX, BREACH_CONTAINMENT_MIN, type InitiativeGauge } from './gauges';
 import {
+  applyFootholdCrossing,
   applyThrottled,
   consumePendingCribbageManipulation,
   createCombatState,
@@ -50,6 +52,10 @@ export interface CombatOptions {
    * loadout whose gauge can never trigger a turn) -- real content always
    * scores *something* each hand, so this should never bind in practice. */
   maxHands?: number;
+  /** Which starting passive (if any) to check at its hook points --
+   * Phase 4 checkpoint B. Only side 0 (the player) ever has a class;
+   * enemy loadouts remain plain data with no passive of their own. */
+  classId?: ClassId;
 }
 
 export interface CombatResult {
@@ -171,12 +177,13 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     playStrategy = playLowestLegal,
     startingDealer = 0,
     maxHands = 500,
+    classId,
   } = options;
 
   const rng = createRng(seed);
   let dealer: PlayerIndex = startingDealer;
   let scores: [number, number] = [0, 0];
-  let combatState = createCombatState(loadouts[0], loadouts[1], gaugeThreshold);
+  let combatState = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId);
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
   let peakBreachContainment = combatState.breachContainment;
@@ -192,11 +199,16 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   /** Applies one step's result, tracks the running Breach/Containment
    * peak, and returns the winner if the step resolved the match --
    * every state-changing step in this loop goes through this so peak
-   * tracking and resolution checks stay uniform. */
+   * tracking and resolution checks stay uniform. Also checks Breacher's
+   * Foothold passive (the one hook that needs to see every step
+   * uniformly, regardless of what caused it -- see applyFootholdCrossing's
+   * own doc comment) and re-derives the winner afterward, since
+   * Foothold's own bonus push can finish the match. */
   const step = (result: { combatState: CombatState; winner: PlayerIndex | null }): PlayerIndex | null => {
-    combatState = result.combatState;
+    const before = combatState;
+    combatState = applyFootholdCrossing(before, result.combatState);
     peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
-    return result.winner;
+    return result.winner !== null ? result.winner : resolution(combatState);
   };
 
   for (let i = 0; i < maxHands; i++) {
