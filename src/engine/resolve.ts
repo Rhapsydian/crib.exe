@@ -268,11 +268,18 @@ export function buildTriggerContext(
 /**
  * Latches `ready` for every selfState/enemyState-triggered subroutine on
  * both sides whose live condition is currently true -- the sticky-latch
- * fix isReady() above now depends on. Never unsets an already-ready
- * flag (matches accumulator/occurrence's existing "banked, not
- * re-checked" behavior) and skips subroutines that are already ready, so
- * it's cheap and safe to call after any state change that could affect
- * a condition: a gauge update, a payload resolution (Heat/Breach-
+ * fix isReady() above now depends on. Non-Reactive subroutines never
+ * have `ready` unset once latched (matches accumulator/occurrence's
+ * existing "banked, not re-checked" behavior). Reactive subroutines on
+ * these two families arm edge-triggered instead: `lastConditionTrue` is
+ * tracked every pass regardless of whether it's already ready, so a
+ * Reactive piece only latches on an actual false→true transition, not
+ * on every call while the condition stays continuously true (it fires
+ * immediately once armed -- see fireNewlyReadyReactiveSubroutines below
+ * -- so re-latching on every pass would refire it constantly).
+ *
+ * Safe and cheap to call after any state change that could affect a
+ * condition: a gauge update, a payload resolution (Heat/Breach-
  * Containment/debuffs), or a new hand's dealer becoming known.
  * firedSubroutineIdsThisTurn is irrelevant here (chained/always aren't
  * touched) so an empty set is passed to buildTriggerContext.
@@ -283,15 +290,17 @@ export function refreshTriggerReadiness(combatState: CombatState, handDealer: Pl
     const sideState = state.sides[side];
     const context = buildTriggerContext(state, side, EMPTY_FIRED_SET, side === handDealer);
     const loadout = sideState.loadout.map((entry) => {
-      if (entry.state.ready) return entry;
       const trigger = entry.definition.trigger;
-      if (trigger.kind === 'selfState' && evaluateSelfState(trigger, context.self)) {
-        return { ...entry, state: { ...entry.state, ready: true } };
-      }
-      if (trigger.kind === 'enemyState' && evaluateEnemyState(trigger, context.enemy)) {
-        return { ...entry, state: { ...entry.state, ready: true } };
-      }
-      return entry;
+      if (trigger.kind !== 'selfState' && trigger.kind !== 'enemyState') return entry;
+
+      const conditionTrue =
+        trigger.kind === 'selfState' ? evaluateSelfState(trigger, context.self) : evaluateEnemyState(trigger, context.enemy);
+      const justArmed = entry.definition.reactive ? conditionTrue && !entry.state.lastConditionTrue : conditionTrue;
+
+      return {
+        ...entry,
+        state: { ...entry.state, ready: entry.state.ready || justArmed, lastConditionTrue: conditionTrue },
+      };
     });
     state = { ...state, sides: replaceSide(state.sides, side, { ...sideState, loadout }) };
   }
@@ -299,6 +308,43 @@ export function refreshTriggerReadiness(combatState: CombatState, handDealer: Pl
 }
 
 const EMPTY_FIRED_SET: ReadonlySet<string> = new Set();
+
+/**
+ * Fires every subroutine whose `ready` flag just flipped false→true
+ * between `before` and `after` (comparing loadout entries index-by-
+ * index, both sides) and is Reactive -- bypassing the normal turn-gate
+ * entirely. Call right after any step that can change readiness
+ * (applying an occurrence, or refreshTriggerReadiness) so Reactive
+ * pieces fire the instant they arm rather than waiting for the owning
+ * side's next turn. Processes side 0 then side 1, loadout order within
+ * each side, the same deterministic order fireReadySubroutines uses.
+ * priorFireCountThisTurn is always 0 here -- chain-finisher scaling's
+ * "how many fired earlier this turn" concept doesn't apply to a fire
+ * that isn't happening on anyone's turn.
+ */
+export function fireNewlyReadyReactiveSubroutines(
+  before: CombatState,
+  after: CombatState,
+): { combatState: CombatState; events: FireEvent[] } {
+  let state = after;
+  const events: FireEvent[] = [];
+  for (const side of [0, 1] as PlayerIndex[]) {
+    const beforeLoadout = before.sides[side].loadout;
+    const loadoutLength = state.sides[side].loadout.length;
+    for (let i = 0; i < loadoutLength; i++) {
+      const entry = state.sides[side].loadout[i];
+      const justBecameReady = !beforeLoadout[i].state.ready && entry.state.ready;
+      if (!justBecameReady || !entry.definition.reactive) continue;
+
+      state = resolvePayload(entry.definition.payload, entry.definition.archetype, state, side, {
+        priorFireCountThisTurn: 0,
+      });
+      events.push({ subroutineId: entry.definition.id, side, payload: entry.definition.payload });
+      state = updateLoadoutEntryState(state, side, i, resetAfterFire(state.sides[side].loadout[i].state));
+    }
+  }
+  return { combatState: state, events };
+}
 
 function updateLoadoutEntryState(
   combatState: CombatState,

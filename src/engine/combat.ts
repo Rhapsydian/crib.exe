@@ -13,6 +13,7 @@ import {
 import { addPoints, BREACH_CONTAINMENT_MAX, BREACH_CONTAINMENT_MIN, type InitiativeGauge } from './gauges';
 import {
   createCombatState,
+  fireNewlyReadyReactiveSubroutines,
   fireReadySubroutines,
   refreshTriggerReadiness,
   type CombatState,
@@ -86,6 +87,22 @@ function resolution(combatState: CombatState): PlayerIndex | null {
   return null;
 }
 
+/** Fires any Reactive subroutine that just became ready between `before`
+ * and `combatState` (comparing via fireNewlyReadyReactiveSubroutines),
+ * appends its events to `log`, and reports whether the match resolved as
+ * a result -- Reactive fires push Breach/Containment just like a normal
+ * fire, so they can end the match too. Call after every step that can
+ * change readiness (applying an occurrence, or refreshTriggerReadiness). */
+function applyReactiveFires(
+  before: CombatState,
+  combatState: CombatState,
+  log: FireEvent[],
+): { combatState: CombatState; winner: PlayerIndex | null } {
+  const reactive = fireNewlyReadyReactiveSubroutines(before, combatState);
+  log.push(...reactive.events);
+  return { combatState: reactive.combatState, winner: resolution(reactive.combatState) };
+}
+
 /** The ordered sequence of scoring occurrences for one hand, in the
  * order they actually happen at the table: cut (his heels), pegging
  * play-by-play, then the show (non-dealer hand, dealer hand, crib). */
@@ -119,6 +136,14 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   const log: FireEvent[] = [];
   let peakBreachContainment = combatState.breachContainment;
 
+  const finish = (winner: PlayerIndex): CombatResult => ({
+    winner,
+    log,
+    hands,
+    peakBreachContainment,
+    playerHeatGenerated: combatState.sides[0].heat,
+  });
+
   for (let i = 0; i < maxHands; i++) {
     const hand = playOneHand(dealer, scores, rng, discardStrategy, playStrategy);
     hands.push(hand);
@@ -128,17 +153,32 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     // isDealer/isNonDealer needs a chance to latch even in the unlikely
     // case nothing else in this hand touches Heat/Breach-Containment/
     // gauges before this side's own turn.
+    let before = combatState;
     combatState = refreshTriggerReadiness(combatState, hand.dealer);
+    let reactive = applyReactiveFires(before, combatState, log);
+    combatState = reactive.combatState;
+    peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
+    if (reactive.winner !== null) return finish(reactive.winner);
 
     for (const occurrence of occurrencesForHand(hand)) {
+      before = combatState;
       combatState = applyOccurrenceToState(combatState, occurrence);
+      reactive = applyReactiveFires(before, combatState, log);
+      combatState = reactive.combatState;
+      peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
+      if (reactive.winner !== null) return finish(reactive.winner);
 
       const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrence.magnitude);
       combatState = replaceSideGauge(combatState, occurrence.player, gauge);
       // The gauge that just moved is watched by the *other* side's
       // gauge-fill-above enemy-state pieces -- refresh now, not just at
       // fire time.
+      before = combatState;
       combatState = refreshTriggerReadiness(combatState, hand.dealer);
+      reactive = applyReactiveFires(before, combatState, log);
+      combatState = reactive.combatState;
+      peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
+      if (reactive.winner !== null) return finish(reactive.winner);
 
       for (let turn = 0; turn < turnsTriggered; turn++) {
         const fired = fireReadySubroutines(combatState, occurrence.player, {
@@ -146,16 +186,20 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
         });
         combatState = fired.combatState;
         log.push(...fired.events);
+        peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
+
+        const normalFireWinner = resolution(combatState);
+        if (normalFireWinner !== null) return finish(normalFireWinner);
+
         // Payload resolution can change Heat, Breach/Containment, or
         // debuffs -- refresh again so self/enemy-state pieces latch
         // against the post-fire state, not just the pre-fire one.
+        before = combatState;
         combatState = refreshTriggerReadiness(combatState, hand.dealer);
+        reactive = applyReactiveFires(before, combatState, log);
+        combatState = reactive.combatState;
         peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
-
-        const winner = resolution(combatState);
-        if (winner !== null) {
-          return { winner, log, hands, peakBreachContainment, playerHeatGenerated: combatState.sides[0].heat };
-        }
+        if (reactive.winner !== null) return finish(reactive.winner);
       }
     }
 

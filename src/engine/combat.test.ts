@@ -80,4 +80,25 @@ describe('playCombat', () => {
     const result = playCombat([[alwaysBurst('a', 20)], []], { seed: 1, gaugeThreshold: 5 });
     expect(result.playerHeatGenerated).toBe(0);
   });
+
+  it('a Reactive piece fires mid-hand, bypassing the turn-gate entirely', () => {
+    const reactiveFifteen: SubroutineDefinition = {
+      id: 'reactive-fifteen',
+      name: 'reactive-fifteen',
+      archetype: 'exploit',
+      trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
+      payload: { kind: 'directBurst', amount: 20 },
+      tags: [],
+      reactive: true,
+    };
+    // gaugeThreshold is deliberately unreachable within the hands this
+    // takes to resolve -- side 0's own gauge should never cross via a
+    // normal turn, so any side-0 fire in the log can only be the
+    // Reactive path. Side 1 has an empty loadout, so it can never fire
+    // even if it somehow got a turn.
+    const result = playCombat([[reactiveFifteen], []], { seed: 1, gaugeThreshold: 100_000 });
+    expect(result.winner).toBe(0);
+    expect(result.log.length).toBeGreaterThan(0);
+    expect(result.log.every((e) => e.side === 0 && e.subroutineId === 'reactive-fifteen')).toBe(true);
+  });
 });

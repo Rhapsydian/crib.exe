@@ -1,13 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
-import { createCombatState, resolvePayload, fireReadySubroutines, refreshTriggerReadiness } from './resolve';
+import {
+  createCombatState,
+  resolvePayload,
+  fireReadySubroutines,
+  refreshTriggerReadiness,
+  fireNewlyReadyReactiveSubroutines,
+} from './resolve';
 import { BREACH_CONTAINMENT_CENTER } from './gauges';
 
 function definition(
   id: string,
   trigger: TriggerFamily,
   payload: PayloadEffect,
-  overrides: Partial<Pick<SubroutineDefinition, 'archetype' | 'togglable'>> = {},
+  overrides: Partial<Pick<SubroutineDefinition, 'archetype' | 'togglable' | 'reactive'>> = {},
 ): SubroutineDefinition {
   return {
     id,
@@ -17,6 +23,7 @@ function definition(
     payload,
     tags: [],
     togglable: overrides.togglable,
+    reactive: overrides.reactive,
   };
 }
 
@@ -207,5 +214,101 @@ describe('refreshTriggerReadiness', () => {
     const state = refreshTriggerReadiness(createCombatState([occurrenceDef, alwaysBurst('always')], [], 12), 0);
     expect(state.sides[0].loadout[0].state.ready).toBe(false); // occurrence untouched, no matching occurrence fed in
     expect(state.sides[0].loadout[1].state.ready).toBe(false); // always is evaluated live at fire time, not latched here
+  });
+
+  describe('Reactive edge-triggering', () => {
+    const reactiveHeatAbove = definition(
+      'reactive-self',
+      { kind: 'selfState', condition: 'heatAbove', value: 5 },
+      { kind: 'directBurst', amount: 3 },
+      { reactive: true },
+    );
+
+    function withHeat(state: ReturnType<typeof createCombatState>, side: 0 | 1, heat: number) {
+      const sides = state.sides.slice() as typeof state.sides;
+      sides[side] = { ...sides[side], heat };
+      return { ...state, sides };
+    }
+
+    it('arms on the false-to-true transition and stays armed on repeated true checks (no accidental re-debounce)', () => {
+      let state = createCombatState([reactiveHeatAbove], [], 12);
+      state = withHeat(state, 0, 10); // condition true from the start
+      state = refreshTriggerReadiness(state, 0);
+      expect(state.sides[0].loadout[0].state.ready).toBe(true); // first observation is a rising edge from the initial false
+    });
+
+    it('does not re-arm on a second check while the condition stays continuously true', () => {
+      let state = createCombatState([reactiveHeatAbove], [], 12);
+      state = withHeat(state, 0, 10);
+      state = refreshTriggerReadiness(state, 0); // arms: ready=true, lastConditionTrue=true
+
+      // Simulate the orchestrator firing it immediately, the way combat.ts
+      // actually does -- compare against a not-ready baseline so the fire
+      // helper sees the false->true transition and consumes it.
+      const notReadyBaseline = {
+        ...state,
+        sides: [
+          { ...state.sides[0], loadout: [{ ...state.sides[0].loadout[0], state: { ...state.sides[0].loadout[0].state, ready: false } }] },
+          state.sides[1],
+        ] as typeof state.sides,
+      };
+      const { combatState: afterFire } = fireNewlyReadyReactiveSubroutines(notReadyBaseline, state);
+      state = afterFire;
+      expect(state.sides[0].loadout[0].state.ready).toBe(false); // consumed
+
+      // Heat is still above threshold -- a second refresh should NOT re-arm
+      // it, since lastConditionTrue was already true (no rising edge).
+      state = refreshTriggerReadiness(state, 0);
+      expect(state.sides[0].loadout[0].state.ready).toBe(false);
+    });
+
+    it('re-arms after the condition genuinely goes false and comes back true', () => {
+      let state = createCombatState([reactiveHeatAbove], [], 12);
+      state = withHeat(state, 0, 10);
+      state = refreshTriggerReadiness(state, 0); // arms
+      state = withHeat(state, 0, 0); // condition reverts to false
+      state = refreshTriggerReadiness(state, 0);
+      expect(state.sides[0].loadout[0].state.lastConditionTrue).toBe(false);
+
+      state = withHeat(state, 0, 10); // true again -- a real rising edge this time
+      state = refreshTriggerReadiness(state, 0);
+      expect(state.sides[0].loadout[0].state.ready).toBe(true);
+    });
+  });
+});
+
+describe('fireNewlyReadyReactiveSubroutines', () => {
+  it('fires a subroutine whose readiness just flipped true and is reactive', () => {
+    const def = definition('r', { kind: 'always' }, { kind: 'directBurst', amount: 4 }, { reactive: true });
+    const before = createCombatState([def], [], 12);
+    const after = { ...before, sides: [{ ...before.sides[0], loadout: [{ ...before.sides[0].loadout[0], state: { ...before.sides[0].loadout[0].state, ready: true } }] }, before.sides[1]] as typeof before.sides };
+
+    const { combatState, events } = fireNewlyReadyReactiveSubroutines(before, after);
+    expect(events).toHaveLength(1);
+    expect(events[0].subroutineId).toBe('r');
+    expect(combatState.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 4);
+    expect(combatState.sides[0].loadout[0].state.ready).toBe(false); // fired and reset
+  });
+
+  it('does not fire a subroutine that was already ready before (only newly-ready transitions count)', () => {
+    const def = definition('r', { kind: 'always' }, { kind: 'directBurst', amount: 4 }, { reactive: true });
+    const withReady = (s: ReturnType<typeof createCombatState>) => ({
+      ...s,
+      sides: [{ ...s.sides[0], loadout: [{ ...s.sides[0].loadout[0], state: { ...s.sides[0].loadout[0].state, ready: true } }] }, s.sides[1]] as typeof s.sides,
+    });
+    const before = withReady(createCombatState([def], [], 12));
+    const after = withReady(createCombatState([def], [], 12));
+
+    const { events } = fireNewlyReadyReactiveSubroutines(before, after);
+    expect(events).toHaveLength(0);
+  });
+
+  it('does not fire a newly-ready subroutine that is not reactive', () => {
+    const def = definition('r', { kind: 'always' }, { kind: 'directBurst', amount: 4 });
+    const before = createCombatState([def], [], 12);
+    const after = { ...before, sides: [{ ...before.sides[0], loadout: [{ ...before.sides[0].loadout[0], state: { ...before.sides[0].loadout[0].state, ready: true } }] }, before.sides[1]] as typeof before.sides };
+
+    const { events } = fireNewlyReadyReactiveSubroutines(before, after);
+    expect(events).toHaveLength(0);
   });
 });

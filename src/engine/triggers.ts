@@ -20,16 +20,26 @@ export interface SubroutineRuntimeState {
   bankedOccurrences: number;
   ready: boolean;
   toggledOn: boolean;
+  /** Last-known live truth value of a selfState/enemyState condition —
+   * only meaningful for Reactive subroutines on those two trigger
+   * families, used to arm edge-triggered (rising-edge only) instead of
+   * refiring on every continuous-evaluation pass while the condition
+   * stays true. Ignored by every other trigger family and by
+   * non-Reactive subroutines. */
+  lastConditionTrue: boolean;
 }
 
 export function createInitialState(): SubroutineRuntimeState {
-  return { accumulatedProgress: 0, bankedOccurrences: 0, ready: false, toggledOn: true };
+  return { accumulatedProgress: 0, bankedOccurrences: 0, ready: false, toggledOn: true, lastConditionTrue: false };
 }
 
 /** Clears banked/accumulated progress and the ready flag after an actual
  * fire — DESIGN.md's universal "fire, then reset and wait again" rule,
  * shared by every trigger family that banks anything. Does not touch
- * `toggledOn`, which is a separate manual switch. */
+ * `toggledOn`, a separate manual switch, or `lastConditionTrue`, which
+ * must survive the fire/reset boundary for edge-detection to keep
+ * working correctly (resetting it would look like a false→true
+ * transition on the very next check if the condition is still true). */
 export function resetAfterFire(state: SubroutineRuntimeState): SubroutineRuntimeState {
   return { ...state, accumulatedProgress: 0, bankedOccurrences: 0, ready: false };
 }

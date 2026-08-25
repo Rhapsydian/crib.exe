@@ -188,4 +188,14 @@ export interface SubroutineDefinition {
    * runtime, not definition, data — see SubroutineRuntimeState.toggledOn
    * in triggers.ts. */
   togglable?: boolean;
+  /** Fires the instant it becomes ready, bypassing the normal turn-gate
+   * (fireReadySubroutines only runs on the owning side's own triggered
+   * turn). On selfState/enemyState (level-triggered) conditions, arms
+   * edge-triggered by default — see
+   * SubroutineRuntimeState.lastConditionTrue — so it fires once per
+   * false→true transition rather than refiring on every continuous-
+   * evaluation pass while the condition stays true. Accumulator/
+   * Occurrence-triggered Reactive needs no such debounce — those are
+   * already discrete crossing events, not a continuously-true level. */
+  reactive?: boolean;
 }

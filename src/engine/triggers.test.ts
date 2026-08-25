@@ -92,13 +92,14 @@ describe('updateSubroutineState — occurrence: scaling', () => {
 });
 
 describe('resetAfterFire', () => {
-  it('clears banked/accumulated progress and ready, but leaves toggledOn alone', () => {
-    const fired = { accumulatedProgress: 7, bankedOccurrences: 2, ready: true, toggledOn: false };
+  it('clears banked/accumulated progress and ready, but leaves toggledOn and lastConditionTrue alone', () => {
+    const fired = { accumulatedProgress: 7, bankedOccurrences: 2, ready: true, toggledOn: false, lastConditionTrue: true };
     expect(resetAfterFire(fired)).toEqual({
       accumulatedProgress: 0,
       bankedOccurrences: 0,
       ready: false,
       toggledOn: false,
+      lastConditionTrue: true,
     });
   });
 });
