@@ -322,11 +322,15 @@ Theming):
 - **Encryption** — defense/mitigation. Damage reduction, countering
   enemy subroutines, hardening your own session.
 - **Root** — systems-control utility/tempo. Deliberately broader than
-  recon/information-gathering: manipulates the Cribbage layer itself
-  (forcing an opponent's discard, peeking the crib, skewing the cut,
-  marking suits) *and* combat-meta state (the player's or enemy's
-  initiative gauge/threshold, or other enable-condition counters) —
-  "root access" to any piece of the system.
+  recon/information-gathering, though recon is now a real, working part
+  of it (session 24 redesign — see Subroutine payload catalog):
+  manipulates the Cribbage layer itself (forcing a discard — bluntly or,
+  now, surgically against one specific card — revealing the opponent's
+  hand or the crib, skewing the cut, marking suits) *and* combat-meta
+  state (the player's *or* enemy's initiative gauge/threshold — slow
+  denies the enemy's, haste speeds up the caster's own — or other
+  enable-condition counters) — "root access" to any piece of the
+  system.
 
 ### Classes
 
@@ -491,13 +495,32 @@ multiple sub-types rather than one move apiece:
   gauge over time, mechanically symmetric to Malware's DoT's tick-
   cadence framework, just aimed at suppression instead of credit);
   **cleanse** (removes an existing debuff afflicting you).
-- **Root** (3): **instant manipulation** (directly alter a gauge/
-  threshold, a suit tally, or another subroutine's enable-condition
-  progress); **Cribbage-layer manipulation** (force a discard, peek the
-  crib, skew the cut, mark a suit); **scheduled sabotage** (fires now,
-  but its effect doesn't resolve until a specific *future* Cribbage-flow
-  checkpoint — e.g. "at the next deal, force the opponent to send a
-  specific card to the crib" — rather than resolving immediately).
+- **Root** (5, session 24 redesign — see below): **instant manipulation**
+  (directly alter a gauge/threshold, a suit tally, or another
+  subroutine's enable-condition progress — slow, denying/delaying the
+  *opponent's* initiative gauge, or haste, accelerating the *caster's
+  own*, both live here as the same payload pointed at either side);
+  **Cribbage-layer manipulation** (a blunt whole-pair forced discard,
+  skew the cut, mark a suit — peekCrib itself is a permanent documented
+  no-op, see below); **scheduled sabotage** (fires now, but its effect
+  doesn't resolve until a specific *future* Cribbage-flow checkpoint,
+  e.g. skewing next hand's cut); **recon** (reveals real, otherwise-
+  hidden data — the opponent's dealt hand, the crib's contents, or their
+  kept hand — that the caster's *own* future discard/pegging decisions
+  can use); **surgical manipulation** (forces one specific card out of
+  the opponent's hand, chosen adversarially against their own best
+  interest, rather than dictating their whole discard pair).
+
+  **Hand-lifecycle firing (session 24)**: recon and surgical manipulation
+  don't wait for a turn or defer to the next hand — they fire at one of
+  three real Cribbage moments *within the current hand*: right after
+  it's dealt, right after crib cards are selected, or right as the play
+  phase begins. This is what makes recon actually work: a subroutine
+  that revealed the crib only once it was already fully scored (the old
+  peekCrib, and Cribbage-layer manipulation's forceDiscard/skewCut/
+  markSuit generally) is too late to matter for anything; firing within
+  the same hand, before the moment it describes has passed, is what
+  gives revealed information somewhere real to go.
 
 **DoT/HoT tick cadence** is a per-subroutine property, not a universal
 rule — different Malware/Encryption subroutines can use different

@@ -26,14 +26,29 @@ competitive 28.2% victory rate for Breacher (was 100%, and before that
 (session 23, see Phase 5 below) found that competitiveness is nowhere
 near even across classes: Warden 88.4% down to Operator/Ghost 0.0%,
 splitting cleanly along "two gauge-touching archetypes" vs. "one
-offense archetype + Root" starting kits. Next session should pick up
-what's still open: a real per-class/per-archetype tuning pass informed
-by that new data (not just the per-layer difficulty ramp, which is
-still just one flat enemy tier regardless of layer), and keeping an eye
-on whether the zero-progress-deadlock gap found in
-`subroutines.test.ts` (stacked Ward shields vs. a weak opponent) ever
-needs the deferred sudden-death fallback. Phase 0 is down to a single
-banked idea (node-bypass ability, session 9), not blocking.
+offense archetype + Root" starting kits.
+
+**Session 24 investigated the Root half of that gap directly** (see
+Phase 5 below for the full writeup): Root's payloads turned out to have
+zero decision-making surface at all (every target/action was fixed at
+authoring time), and `peekCrib` was a genuinely broken no-op independent
+of any AI. Root got a real mechanical redesign -- recon (reveals real
+data at the right Cribbage lifecycle moment), surgical manipulation
+(adversarially forces a specific card), and haste (completing the
+slow/haste pair) -- built on a new `firesAt` hand-lifecycle firing
+mechanism and a shared `ai.ts` weighted-scoring module. This closes the
+mechanical gap, but **does not yet show up in any balance sweep**: the
+baseline scripted strategies don't consume any of the new context
+fields recon populates, so Root's actual value is still unmeasured.
+Next session should pick up the discard/pegging skill-dial AI (paused
+mid-scoping when this Root gap surfaced) -- it reuses `ai.ts` directly
+and is the thing that will finally let Root's value be measured fairly,
+after which the per-class/per-archetype tuning pass from session 23's
+finding can happen with real data. The per-layer difficulty ramp (still
+one flat enemy tier regardless of layer) and the zero-progress-deadlock/
+sudden-death question remain open too, unchanged by this session. Phase
+0 is down to a single banked idea (node-bypass ability, session 9), not
+blocking.
 
 ## Phase 0 — Remaining design passes
 
@@ -601,3 +616,97 @@ Not fixed here — this is the measurement Phase 5 asked for, landing
 before any of Phase 5's tuning work rather than during it, so the tuning
 pass has real per-class numbers instead of Breacher's alone to work
 from.
+
+---
+
+**Root mechanical redesign (session 24).** Before concluding Root
+itself needs a magnitude buff for the session 23 finding above, the user
+asked whether a tunable-skill Cribbage AI (originally scoped as its own
+`/decision-session`) should come first, since every fight so far --
+including every sweep in this file -- is played against a fixed,
+unskilled scripted opponent. That AI-scoping session surfaced a deeper
+problem before it got very far: **Root's payloads have zero decision-
+making surface at all** -- every target/action is fixed at authoring
+time (`subroutines.ts`), so a "skilled" vs. "unskilled" caster produces
+identical Root outcomes today. No AI-skill work could make Root's value
+measurable without Root first having real choices to make. Separately,
+`peekCrib` turned out to be a genuinely broken no-op independent of any
+AI: it resolves via the same "queued this hand, applied next hand"
+pathway as `forceDiscard`/`skewCut`, but by the time it applies, the
+only crib that exists (the previous hand's) has already been fully
+scored -- there was never any information left to reveal.
+
+The session pivoted into redesigning Root directly, in 8 checkpoints
+(commits `54ef978` through `2c3babf`, plan tracked live via
+`/decision-session`):
+
+- **A** -- `src/engine/ai.ts`, a shared weighted-scoring heuristic
+  module: exact hand-EV over all unseen starters, plus a crib-EV factor
+  (exact once the crib's other half is known, else a simple proxy)
+  signed by whose crib it is. Built to be reused both by a future
+  discard AI and by Root's own adversarial targeting below -- same
+  math, pointed at either side.
+- **B** -- the big regression-risk checkpoint: `combat.ts` stopped
+  calling `game.ts`'s `playOneHand` as one opaque step and now
+  orchestrates `deal`/`discardToCrib`/`cut`/`playPegging`/
+  `countHandEvents`/`countCribEvents` directly, opening three real
+  firing gaps within a hand (post-deal, post-crib-selection, post-cut)
+  where a new orthogonal `SubroutineDefinition.firesAt` field lets a
+  subroutine fire outside the normal turn-gate, at one of three real
+  Cribbage lifecycle moments. `DiscardStrategy`/`PlayStrategy` moved
+  from positional params to context objects
+  (`DiscardContext`/`PlayContext`) so new intel sources become new
+  optional fields, not more positional params. Verified via a dedicated
+  byte-for-byte replay test proving the decomposition changed nothing
+  when no `firesAt` content exists (which was true until checkpoint F).
+- **C** -- three recon payloads (`revealOpponentHand`,
+  `revealCrib`, `revealOpponentKeptHand`), one per lifecycle moment,
+  each revealing genuinely different intel (the earlier/bigger the
+  moment, the more is visible) into the caster's own future
+  discard/pegging context.
+- **D** -- `forceDiscardCard`, a surgical manipulation payload. Its
+  targeting (`ai.ts`'s `bestCardToForce`) is a real adversarial
+  minimax-lite: for each candidate forced card, assumes the opponent
+  picks their own best companion discard, then picks whichever forced
+  card minimizes that best-achievable outcome -- the card whose loss
+  hurts them most even under their own optimal counter-play, not just
+  their single highest-value card in isolation. Needs no recon
+  prerequisite: payload resolution is engine code with full state
+  access already, unlike a strategy function.
+- **E** -- haste (`instantManipulation` targets `ownGauge`/
+  `ownGaugeThreshold`), completing the slow/haste pair the existing
+  `enemyGauge`/`enemyGaugeThreshold` targets only half-covered.
+- **F** -- retrofitted 6 existing Root pool pieces onto the new
+  mechanics (Idle Scan/Directory Traversal/Backchannel to recon,
+  Packet Sniffer/DNS Poisoning to haste, Zero-Knowledge Exploit to
+  `forceDiscardCard`), each keeping its original trigger as the
+  `firesAt` readiness gate. Full System Compromise deliberately kept
+  the old blunt `forceDiscard` -- its chained-after-cron-job trigger
+  doesn't work as a `firesAt` gate (hand-lifecycle moments aren't
+  "anyone's turn," so within-turn chaining doesn't apply there), and
+  the blunt/surgical split is real content variety, not redundancy.
+  Starting loadouts (the 18 class-specific pieces) were deliberately
+  left untouched -- lower risk, and the pool was enough to prove the
+  mechanics work with real content.
+- **G/H** -- closed the last verification gap (recon reaching real
+  `PlayContext` for all three moments, not just deal-time) and this
+  writeup.
+
+**What this does and doesn't prove.** Every new mechanic is
+correctness-verified at the unit and end-to-end level (388 tests, up
+from 351 at session 23's start) -- recon payloads correctly populate
+context fields at the right hook, `bestCardToForce` correctly
+identifies and forces the opponent's most valuable card, haste
+correctly banks and releases initiative-gauge overflow. What it
+deliberately does **not** do is show up in a balance sweep: the
+baseline scripted strategies (`discardLowestTwo`/`playLowestLegal`)
+don't read any of the new context fields at all, so Root's real value
+is still unmeasured by every sweep in this file, including session 23's
+above. That measurement needs the discard/pegging skill-dial AI
+(paused mid-scoping when this gap surfaced) to actually exist first --
+it reuses `ai.ts` directly rather than building its own scoring, so
+this session's work is a direct prerequisite, not a detour. A banked
+content idea surfaced mid-session: higher tiers of `forceDiscardCard`
+could force the selection of both discarded cards, not just one with
+the opponent's best companion left intact -- noted in Phase 0's
+banked-idea list, not built.
