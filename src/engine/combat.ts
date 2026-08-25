@@ -262,9 +262,20 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
    * fire through step() so peak-tracking/resolution stays uniform.
    * Returns the winner the instant either side's fire resolves the
    * match, same early-exit contract step() already has. */
-  const fireLifecycleGap = (moment: HandLifecycleMoment, revealedCardsForSide: (side: PlayerIndex) => Card[] | undefined): PlayerIndex | null => {
+  const fireLifecycleGap = (
+    moment: HandLifecycleMoment,
+    revealedCardsForSide: (side: PlayerIndex) => Card[] | undefined,
+    targetIsOwnCribForSide?: (side: PlayerIndex) => boolean,
+  ): PlayerIndex | null => {
     for (const side of [0, 1] as PlayerIndex[]) {
-      const fired = fireHandLifecycleSubroutines(combatState, side, moment, { isDealer: side === dealer }, revealedCardsForSide(side));
+      const fired = fireHandLifecycleSubroutines(
+        combatState,
+        side,
+        moment,
+        { isDealer: side === dealer },
+        revealedCardsForSide(side),
+        targetIsOwnCribForSide?.(side),
+      );
       log.push(...fired.events);
       const winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
       if (winner !== null) return winner;
@@ -317,17 +328,30 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     const shuffled = shuffle(createDeck(), rng);
     const { hands: dealtHands, stock } = deal(shuffled);
 
-    winner = fireLifecycleGap('onDealt', (side) => dealtHands[(1 - side) as PlayerIndex]);
+    winner = fireLifecycleGap(
+      'onDealt',
+      (side) => dealtHands[(1 - side) as PlayerIndex],
+      (side) => dealer === ((1 - side) as PlayerIndex),
+    );
     if (winner !== null) return finish(winner);
 
-    const d0 = discardToCrib(
-      { hand: dealtHands[0], isOwnCrib: dealer === 0, knownOpponentHand: combatState.sides[0].knownOpponentHand },
-      manipulation.forHand.forcedDiscardSide === 0 ? discardHighestTwo : discardStrategy,
-    );
-    const d1 = discardToCrib(
-      { hand: dealtHands[1], isOwnCrib: dealer === 1, knownOpponentHand: combatState.sides[1].knownOpponentHand },
-      manipulation.forHand.forcedDiscardSide === 1 ? discardHighestTwo : discardStrategy,
-    );
+    // forcedDiscardPair (checkpoint D's "force a specific card") takes
+    // precedence over the older, blunter forcedDiscardSide (whole-pair
+    // discardHighestTwo override) -- more specific manipulation wins if
+    // both were somehow active on the same hand, though real content is
+    // never expected to stack them.
+    const strategy0: DiscardStrategy = combatState.sides[0].forcedDiscardPair
+      ? () => combatState.sides[0].forcedDiscardPair as [Card, Card]
+      : manipulation.forHand.forcedDiscardSide === 0
+        ? discardHighestTwo
+        : discardStrategy;
+    const strategy1: DiscardStrategy = combatState.sides[1].forcedDiscardPair
+      ? () => combatState.sides[1].forcedDiscardPair as [Card, Card]
+      : manipulation.forHand.forcedDiscardSide === 1
+        ? discardHighestTwo
+        : discardStrategy;
+    const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: dealer === 0, knownOpponentHand: combatState.sides[0].knownOpponentHand }, strategy0);
+    const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: dealer === 1, knownOpponentHand: combatState.sides[1].knownOpponentHand }, strategy1);
     const crib = [...d0.discarded, ...d1.discarded];
 
     winner = fireLifecycleGap('onCribSelected', () => crib);

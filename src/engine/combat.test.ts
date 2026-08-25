@@ -268,6 +268,35 @@ describe('playCombat', () => {
     expect(seenKnownHands[1]).toBeUndefined();
   });
 
+  it("Root's forceDiscardCard manipulation bypasses the target's own discard strategy entirely (session 24 checkpoint D end-to-end)", () => {
+    const manipulator: SubroutineDefinition = {
+      id: 'manipulator',
+      name: 'manipulator',
+      archetype: 'root',
+      trigger: { kind: 'always' },
+      payload: { kind: 'forceDiscardCard' },
+      tags: [],
+      firesAt: 'onDealt',
+    };
+    let totalDiscardCalls = 0;
+    const spyDiscardStrategy: DiscardStrategy = (ctx) => {
+      totalDiscardCalls++;
+      const sorted = ctx.hand.slice().sort((a, b) => a.rank - b.rank);
+      return [sorted[0], sorted[1]];
+    };
+    const result = playCombat([[manipulator, alwaysBurst('winner', 1000)], []], {
+      seed: 7,
+      gaugeThreshold: 1,
+      discardStrategy: spyDiscardStrategy,
+    });
+    expect(result.hands.length).toBeGreaterThan(0);
+    // Shared discardStrategy is normally called once per side per hand
+    // (2 calls/hand). Side 1 (the manipulation target) should never
+    // actually reach it -- forcedDiscardPair overrides its call
+    // entirely, so only side 0's own unmanipulated call goes through.
+    expect(totalDiscardCalls).toBe(result.hands.length);
+  });
+
   describe('escalation', () => {
     // A tiny, always-firing burst against a winThreshold it could never
     // realistically reach through normal play within a sane hand count

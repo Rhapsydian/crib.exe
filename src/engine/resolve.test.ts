@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Card } from './cards';
+import { bestCardToForce } from './ai';
 import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
 import {
   createCombatState,
@@ -319,6 +320,55 @@ describe('clearHandKnowledge', () => {
     const cleared = clearHandKnowledge(state);
     expect(cleared.sides[0].knownOpponentHand).toBeUndefined();
     expect(cleared.sides[1].knownCrib).toBeUndefined();
+  });
+
+  it('also clears any forcedDiscardPair', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'forceDiscardCard' }, 'root', state, 0, {
+      priorFireCountThisTurn: 0,
+      revealedCards: [{ rank: 3, suit: 0 }, { rank: 3, suit: 1 }, { rank: 8, suit: 2 }, { rank: 9, suit: 3 }, { rank: 1, suit: 0 }, { rank: 12, suit: 1 }],
+      targetIsOwnCrib: false,
+    });
+    expect(state.sides[1].forcedDiscardPair).toBeDefined(); // side 0 cast it, side 1 (the target) is manipulated
+    expect(clearHandKnowledge(state).sides[1].forcedDiscardPair).toBeUndefined();
+  });
+});
+
+describe('forceDiscardCard payload (session 24 checkpoint D)', () => {
+  const targetHand: Card[] = [
+    { rank: 7, suit: 0 },
+    { rank: 7, suit: 1 },
+    { rank: 2, suit: 2 },
+    { rank: 9, suit: 3 },
+    { rank: 12, suit: 0 },
+    { rank: 1, suit: 1 },
+  ];
+
+  it('sets forcedDiscardPair on the target side (opponent of the caster), not the caster', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'forceDiscardCard' }, 'root', state, 0, {
+      priorFireCountThisTurn: 0,
+      revealedCards: targetHand,
+      targetIsOwnCrib: true,
+    });
+    expect(result.sides[1].forcedDiscardPair).toBeDefined();
+    expect(result.sides[0].forcedDiscardPair).toBeUndefined();
+  });
+
+  it('the forced pair matches ai.ts\'s bestCardToForce for the same hand', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'forceDiscardCard' }, 'root', state, 1, {
+      priorFireCountThisTurn: 0,
+      revealedCards: targetHand,
+      targetIsOwnCrib: false,
+    });
+    expect(result.sides[0].forcedDiscardPair).toEqual(bestCardToForce(targetHand, false));
+  });
+
+  it('is a no-op when no revealedCards were supplied (defensive fallback)', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'forceDiscardCard' }, 'root', state, 0);
+    expect(result.sides[1].forcedDiscardPair).toBeUndefined();
   });
 });
 

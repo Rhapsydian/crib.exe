@@ -82,3 +82,41 @@ export function scoreDiscard(
   const cribEV = cribExpectedValue(discardPair, unseen, knownOtherCribCards);
   return handEV + (isOwnCrib ? CRIB_WEIGHT : -CRIB_WEIGHT) * cribEV;
 }
+
+/**
+ * Root's "force a specific card" manipulation (checkpoint D): an
+ * adversarial minimax-lite over the opponent's own dealt hand. For each
+ * candidate forced card, assumes the opponent still picks their own
+ * best available companion discard (maximizing their scoreDiscard);
+ * picks whichever forced card minimizes that best-achievable outcome --
+ * the card whose loss hurts them most even under their own optimal
+ * counter-play, not just their single highest-value card in isolation.
+ * `isOwnCrib` is from the *target's* own perspective (whether this
+ * hand's crib is theirs), since scoreDiscard needs it signed correctly
+ * for the side actually being evaluated.
+ */
+export function bestCardToForce(hand: Card[], isOwnCrib: boolean): [Card, Card] {
+  let bestForced = hand[0];
+  let bestCompanion = hand[1];
+  let bestOfTheirBestScore = Infinity;
+
+  for (const forced of hand) {
+    const rest = hand.filter((c) => !cardsEqual(c, forced));
+    let theirBestScore = -Infinity;
+    let theirBestCompanion = rest[0];
+    for (const companion of rest) {
+      const score = scoreDiscard(hand, [forced, companion], isOwnCrib);
+      if (score > theirBestScore) {
+        theirBestScore = score;
+        theirBestCompanion = companion;
+      }
+    }
+    if (theirBestScore < bestOfTheirBestScore) {
+      bestOfTheirBestScore = theirBestScore;
+      bestForced = forced;
+      bestCompanion = theirBestCompanion;
+    }
+  }
+
+  return [bestForced, bestCompanion];
+}

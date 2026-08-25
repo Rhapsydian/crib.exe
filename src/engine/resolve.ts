@@ -14,6 +14,7 @@ import {
   type TriggerContext,
 } from './triggers';
 import { createInitiativeGauge, createDuelGauge, addDuelProgress, reduceDuelProgress, type InitiativeGauge, type DuelGauge } from './gauges';
+import { bestCardToForce } from './ai';
 
 /**
  * Fire-on-turn resolution (session 17 checkpoint E): given that a side's
@@ -92,6 +93,13 @@ export interface CombatSideState {
    * copies would agree if both happened to reveal it. */
   knownOpponentHand?: Card[];
   knownCrib?: Card[];
+  /** A forced discard pair for this hand only (session 24 checkpoint D
+   * -- Root's "force a specific card" manipulation), set on the
+   * *target* side (whoever got manipulated), consumed by combat.ts when
+   * constructing that side's discard for this hand -- same hand-scoped
+   * lifecycle as knownOpponentHand/knownCrib above, cleared by
+   * clearHandKnowledge. */
+  forcedDiscardPair?: [Card, Card];
 }
 
 /** A Root scheduledSabotage payload fired now but resolves at a future
@@ -150,18 +158,21 @@ export function createCombatSideState(definitions: SubroutineDefinition[], gauge
     hots: [],
     knownOpponentHand: undefined,
     knownCrib: undefined,
+    forcedDiscardPair: undefined,
   };
 }
 
-/** Clears both sides' recon-revealed intel -- called once per hand,
- * before that hand's onDealt gap fires, so a side whose recon didn't
- * fire this hand (toggled off, conditional trigger not met, etc.)
- * doesn't keep using stale intel from a previous hand. */
+/** Clears both sides' recon-revealed intel and any forced-discard
+ * override -- called once per hand, before that hand's onDealt gap
+ * fires, so a side whose recon/manipulation didn't fire this hand
+ * (toggled off, conditional trigger not met, etc.) doesn't keep using
+ * stale data from a previous hand. */
 export function clearHandKnowledge(combatState: CombatState): CombatState {
   const sides = combatState.sides.map((sideState) => ({
     ...sideState,
     knownOpponentHand: undefined,
     knownCrib: undefined,
+    forcedDiscardPair: undefined,
   })) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
 }
@@ -266,13 +277,18 @@ export interface ResolveContext {
   /** How many other subroutines already fired earlier this same turn --
    * chainFinisherScaling's payoff for loadout sequencing. */
   priorFireCountThisTurn: number;
-  /** The cards a revealOpponentHand/revealCrib/revealOpponentKeptHand
-   * payload should store (session 24) -- supplied by combat.ts's
-   * fireHandLifecycleSubroutines call, since which cards are "the
-   * opponent's hand" or "the crib" only exists as combat.ts's own local
-   * state during a hand, never persisted into CombatState. Irrelevant
-   * to every other payload kind. */
+  /** The cards a revealOpponentHand/revealCrib/revealOpponentKeptHand/
+   * forceDiscardCard payload should read (session 24) -- supplied by
+   * combat.ts's fireHandLifecycleSubroutines call, since which cards
+   * are "the opponent's hand" or "the crib" only exists as combat.ts's
+   * own local state during a hand, never persisted into CombatState.
+   * Irrelevant to every other payload kind. */
   revealedCards?: Card[];
+  /** Whether the *target's* own crib is this hand's crib -- only
+   * meaningful to forceDiscardCard (checkpoint D), which needs
+   * scoreDiscard signed from the target's own perspective, not the
+   * caster's. */
+  targetIsOwnCrib?: boolean;
 }
 
 // ---------------------------------------------------------------------
@@ -621,6 +637,17 @@ function resolvePayloadCore(
       if (!context.revealedCards) return combatState;
       const casterState = combatState.sides[caster];
       const sides = replaceSide(combatState.sides, caster, { ...casterState, knownCrib: context.revealedCards });
+      return { ...combatState, sides };
+    }
+    case 'forceDiscardCard': {
+      // context.revealedCards is the target's own dealt hand here (the
+      // same data recon's revealOpponentHand would use) -- no recon
+      // prerequisite needed (decision 3): payload resolution already
+      // has full state access to compute this adversarially.
+      if (!context.revealedCards) return combatState;
+      const forcedPair = bestCardToForce(context.revealedCards, context.targetIsOwnCrib ?? false);
+      const targetState = combatState.sides[target];
+      const sides = replaceSide(combatState.sides, target, { ...targetState, forcedDiscardPair: forcedPair });
       return { ...combatState, sides };
     }
   }
@@ -1017,6 +1044,7 @@ export function fireHandLifecycleSubroutines(
   moment: HandLifecycleMoment,
   selfContext: { isDealer: boolean },
   revealedCards?: Card[],
+  targetIsOwnCrib?: boolean,
 ): { combatState: CombatState; events: FireEvent[] } {
   let state = combatState;
   const events: FireEvent[] = [];
@@ -1032,6 +1060,7 @@ export function fireHandLifecycleSubroutines(
     state = resolvePayload(entry.definition.payload, entry.definition.archetype, state, side, {
       priorFireCountThisTurn: events.length,
       revealedCards,
+      targetIsOwnCrib,
     });
     events.push({ subroutineId: entry.definition.id, side, payload: entry.definition.payload });
     state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state));

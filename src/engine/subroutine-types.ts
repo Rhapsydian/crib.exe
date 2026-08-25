@@ -253,6 +253,22 @@ export interface RevealOpponentKeptHandPayload {
   kind: 'revealOpponentKeptHand';
 }
 
+/**
+ * Root manipulation (session 24 checkpoint D): forces a specific card
+ * out of the opponent's hand and into this hand's crib -- a surgical
+ * upgrade on cribbageLayerManipulation's forceDiscard (which dictates
+ * *both* discarded cards via discardHighestTwo). `firesAt: 'onDealt'`
+ * only. No fields of its own, same reasoning as the recon payloads --
+ * resolve.ts's ai.ts-backed targeting (bestCardToForce) picks the
+ * specific card *and* its best companion from combat.ts's supplied
+ * revealedCards (the opponent's dealt hand), needing no recon
+ * prerequisite (decision 3: payload resolution already has full state
+ * access, unlike a strategy function).
+ */
+export interface ForceDiscardCardPayload {
+  kind: 'forceDiscardCard';
+}
+
 export type PayloadEffect =
   | DirectBurstPayload
   | PiercingPayload
@@ -270,7 +286,8 @@ export type PayloadEffect =
   | SelfHeatReductionPayload
   | RevealOpponentHandPayload
   | RevealCribPayload
-  | RevealOpponentKeptHandPayload;
+  | RevealOpponentKeptHandPayload
+  | ForceDiscardCardPayload;
 
 export interface SubroutineDefinition {
   id: string;

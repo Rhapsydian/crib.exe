@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Card } from './cards';
-import { unseenCards, handExpectedValue, cribExpectedValue, scoreDiscard } from './ai';
+import { unseenCards, handExpectedValue, cribExpectedValue, scoreDiscard, bestCardToForce } from './ai';
 
 function card(rank: Card['rank'], suit: Card['suit'] = 0): Card {
   return { rank, suit };
@@ -60,5 +60,26 @@ describe('scoreDiscard', () => {
     const ownCrib = scoreDiscard(fullHand, discardPair, true);
     const enemyCrib = scoreDiscard(fullHand, discardPair, false);
     expect(ownCrib).toBeGreaterThan(enemyCrib);
+  });
+});
+
+describe('bestCardToForce', () => {
+  it("forces away the card most valuable for the opponent to keep -- one half of their only pair", () => {
+    const hand: Card[] = [card(7, 0), card(7, 1), card(2, 2), card(9, 3), card(12, 0), card(1, 1)];
+    const [forced] = bestCardToForce(hand, true);
+    expect(forced.rank).toBe(7);
+  });
+
+  it('is deterministic for the same hand', () => {
+    const hand: Card[] = [card(7, 0), card(7, 1), card(2, 2), card(9, 3), card(12, 0), card(1, 1)];
+    expect(bestCardToForce(hand, true)).toEqual(bestCardToForce(hand, true));
+  });
+
+  it('the forced card and its companion are both real, distinct cards from the hand', () => {
+    const hand: Card[] = [card(3, 0), card(6, 1), card(9, 2), card(12, 3), card(1, 0), card(5, 1)];
+    const [forced, companion] = bestCardToForce(hand, false);
+    expect(hand.some((c) => c.rank === forced.rank && c.suit === forced.suit)).toBe(true);
+    expect(hand.some((c) => c.rank === companion.rank && c.suit === companion.suit)).toBe(true);
+    expect(forced).not.toEqual(companion);
   });
 });
