@@ -9,7 +9,13 @@ import {
   type SubroutineRuntimeState,
   type TriggerContext,
 } from './triggers';
-import { createInitiativeGauge, createBreachContainment, pushBreachContainment, type InitiativeGauge } from './gauges';
+import {
+  createInitiativeGauge,
+  createBreachContainment,
+  pushBreachContainment,
+  BREACH_CONTAINMENT_CENTER,
+  type InitiativeGauge,
+} from './gauges';
 
 /**
  * Fire-on-turn resolution (session 17 checkpoint E): given that a side's
@@ -25,12 +31,20 @@ export interface ActiveDebuff {
   remainingDuration: number;
 }
 
-/** A registered DoT/HoT tick, still awaiting Checkpoint F's per-hand
- * orchestrator to actually resolve ticks on the right cadence. */
+/** A registered DoT/HoT tick. Ticked by tickCastersTurnPulse/
+ * tickGlobalPulse below, driven from combat.ts's orchestration loop. */
 export interface ActiveTick {
   amountPerTick: number;
   cadence: TickCadence;
   remainingDuration: number;
+  /** Whose subroutine this is -- caster's-turn-pulse ticks fire when
+   * THIS side gets a turn, regardless of whether the tick itself is
+   * stored under dots (the target's array) or hots (the caster's own). */
+  casterSide: PlayerIndex;
+  /** globalPulse only: how many combined points (either side) trigger
+   * the next tick, and how many have accumulated since the last one. */
+  pointsPerTick?: number;
+  accumulatedPoints?: number;
 }
 
 export interface LoadoutEntry {
@@ -109,6 +123,26 @@ function pushTowardCaster(value: number, amount: number, caster: PlayerIndex) {
   return pushBreachContainment(value, amount, caster === 0);
 }
 
+/** Same as pushTowardCaster, but clamped at the midpoint (50) in the
+ * caster's favor -- a push that would cross center only applies enough
+ * to reach exactly center; already at/past center in the caster's favor
+ * is a no-op. Default behavior for HoT ticks and instantCounterPush:
+ * Encryption's kit can only ever stabilize the match, never win it
+ * outright on its own -- the mechanical expression of "defense/
+ * mitigation, not offense." Ghost's Return to Sender starting passive is
+ * the one documented bypass (ResolveContext.bypassBreachContainmentCap),
+ * specific to Ghost's own counter-push -- not yet wired to an actual
+ * passive since classes/starting passives don't exist in the engine yet
+ * (Phase 4). */
+function pushTowardCasterCapAtCenter(value: number, amount: number, caster: PlayerIndex): { value: number } {
+  const towardPlayer = caster === 0;
+  const alreadyAtOrPastCenter = towardPlayer ? value >= BREACH_CONTAINMENT_CENTER : value <= BREACH_CONTAINMENT_CENTER;
+  if (alreadyAtOrPastCenter) return { value };
+  const { value: pushed } = pushBreachContainment(value, amount, towardPlayer);
+  const capped = towardPlayer ? Math.min(pushed, BREACH_CONTAINMENT_CENTER) : Math.max(pushed, BREACH_CONTAINMENT_CENTER);
+  return { value: capped };
+}
+
 function consumeWard(sideState: CombatSideState, archetype: Archetype): { sideState: CombatSideState; blocked: boolean } {
   const index = sideState.wards.indexOf(archetype);
   if (index === -1) return { sideState, blocked: false };
@@ -121,6 +155,10 @@ export interface ResolveContext {
   /** How many other subroutines already fired earlier this same turn --
    * chainFinisherScaling's payoff for loadout sequencing. */
   priorFireCountThisTurn: number;
+  /** Bypasses the default midpoint cap on instantCounterPush (see
+   * pushTowardCasterCapAtCenter). Only known real use: Ghost's Return to
+   * Sender passive, for Ghost's own counter-push. */
+  bypassBreachContainmentCap?: boolean;
 }
 
 /** Resolves one subroutine's payload against Breach/Containment or the
@@ -164,7 +202,14 @@ export function resolvePayload(
       const targetState = combatState.sides[target];
       const dots = [
         ...targetState.dots,
-        { amountPerTick: payload.amountPerTick, cadence: payload.cadence, remainingDuration: payload.duration },
+        {
+          amountPerTick: payload.amountPerTick,
+          cadence: payload.cadence,
+          remainingDuration: payload.duration,
+          casterSide: caster,
+          pointsPerTick: payload.pointsPerTick,
+          accumulatedPoints: 0,
+        },
       ];
       const sides = replaceSide(combatState.sides, target, { ...targetState, dots });
       return { ...combatState, sides };
@@ -179,7 +224,9 @@ export function resolvePayload(
       return { ...combatState, sides };
     }
     case 'instantCounterPush': {
-      const { value } = pushTowardCaster(combatState.breachContainment, payload.amount, caster);
+      const { value } = context.bypassBreachContainmentCap
+        ? pushTowardCaster(combatState.breachContainment, payload.amount, caster)
+        : pushTowardCasterCapAtCenter(combatState.breachContainment, payload.amount, caster);
       return { ...combatState, breachContainment: value };
     }
     case 'ward': {
@@ -191,7 +238,14 @@ export function resolvePayload(
       const casterState = combatState.sides[caster];
       const hots = [
         ...casterState.hots,
-        { amountPerTick: payload.amountPerTick, cadence: payload.cadence, remainingDuration: payload.duration },
+        {
+          amountPerTick: payload.amountPerTick,
+          cadence: payload.cadence,
+          remainingDuration: payload.duration,
+          casterSide: caster,
+          pointsPerTick: payload.pointsPerTick,
+          accumulatedPoints: 0,
+        },
       ];
       const sides = replaceSide(combatState.sides, caster, { ...casterState, hots });
       return { ...combatState, sides };
@@ -357,6 +411,88 @@ function updateLoadoutEntryState(
   loadout[index] = { ...loadout[index], state: newState };
   const sides = replaceSide(combatState.sides, side, { ...sideState, loadout });
   return { ...combatState, sides };
+}
+
+/** Applies one tick's push to Breach/Containment, in the tick's caster's
+ * favor. DoT ticks (listKey === 'dots') are uncapped -- a DoT can win
+ * the match outright, same as any other Malware payload. HoT ticks
+ * (listKey === 'hots') are capped at the midpoint, same rule as
+ * instantCounterPush. */
+function applyTickPush(combatState: CombatState, tick: ActiveTick, listKey: 'dots' | 'hots'): CombatState {
+  const { value } =
+    listKey === 'hots'
+      ? pushTowardCasterCapAtCenter(combatState.breachContainment, tick.amountPerTick, tick.casterSide)
+      : pushTowardCaster(combatState.breachContainment, tick.amountPerTick, tick.casterSide);
+  return { ...combatState, breachContainment: value };
+}
+
+/** Shared by both tick drivers below: walks the tick list stored at
+ * `combatState.sides[storageSide][listKey]`, applying `tickOnce` to
+ * decide how many times (0 or more) each tick fires this pass, pushing
+ * once per fire and decrementing remainingDuration, dropping any tick
+ * whose duration is exhausted. */
+function processTickList(
+  combatState: CombatState,
+  storageSide: PlayerIndex,
+  listKey: 'dots' | 'hots',
+  tickOnce: (tick: ActiveTick) => { fires: number; updated: ActiveTick },
+): CombatState {
+  let state = combatState;
+  const remaining: ActiveTick[] = [];
+  for (const tick of state.sides[storageSide][listKey]) {
+    const { fires, updated } = tickOnce(tick);
+    let remainingDuration = updated.remainingDuration;
+    for (let n = 0; n < fires && remainingDuration > 0; n++) {
+      state = applyTickPush(state, tick, listKey);
+      remainingDuration -= 1;
+    }
+    if (remainingDuration > 0) remaining.push({ ...updated, remainingDuration });
+  }
+  const sideState = state.sides[storageSide];
+  state = { ...state, sides: replaceSide(state.sides, storageSide, { ...sideState, [listKey]: remaining }) };
+  return state;
+}
+
+/**
+ * Ticks every active caster's-turn-pulse dot/hot whose caster is `side`
+ * -- call whenever `side` gets a turn, alongside fireReadySubroutines.
+ * Dots this side applied to the opponent live on the opponent's `dots`
+ * array; hots this side applied to themself live on their own `hots`.
+ */
+export function tickCastersTurnPulse(combatState: CombatState, side: PlayerIndex): CombatState {
+  const tickOnce = (tick: ActiveTick) => ({
+    fires: tick.cadence === 'castersTurnPulse' && tick.casterSide === side ? 1 : 0,
+    updated: tick,
+  });
+  let state = combatState;
+  state = processTickList(state, opponentOf(side), 'dots', tickOnce);
+  state = processTickList(state, side, 'hots', tickOnce);
+  return state;
+}
+
+/**
+ * Feeds `points` (one scoring occurrence's magnitude, "combined points
+ * scored by either side" per DESIGN.md) into every active globalPulse
+ * dot/hot on both sides, ticking however many times the accumulated
+ * total crosses `pointsPerTick` -- a single large occurrence can trigger
+ * more than one tick, mirroring gauges.ts's addPoints overflow-carry
+ * pattern. Call once per occurrence, regardless of which side scored it.
+ */
+export function tickGlobalPulse(combatState: CombatState, points: number): CombatState {
+  if (points <= 0) return combatState;
+  const tickOnce = (tick: ActiveTick) => {
+    if (tick.cadence !== 'globalPulse' || !tick.pointsPerTick) return { fires: 0, updated: tick };
+    const total = (tick.accumulatedPoints ?? 0) + points;
+    const fires = Math.floor(total / tick.pointsPerTick);
+    const accumulatedPoints = total - fires * tick.pointsPerTick;
+    return { fires, updated: { ...tick, accumulatedPoints } };
+  };
+  let state = combatState;
+  for (const storageSide of [0, 1] as PlayerIndex[]) {
+    state = processTickList(state, storageSide, 'dots', tickOnce);
+    state = processTickList(state, storageSide, 'hots', tickOnce);
+  }
+  return state;
 }
 
 export interface FireEvent {

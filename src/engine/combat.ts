@@ -16,6 +16,8 @@ import {
   fireNewlyReadyReactiveSubroutines,
   fireReadySubroutines,
   refreshTriggerReadiness,
+  tickCastersTurnPulse,
+  tickGlobalPulse,
   type CombatState,
   type CombatSideState,
   type FireEvent,
@@ -92,8 +94,9 @@ function resolution(combatState: CombatState): PlayerIndex | null {
  * appends its events to `log`, and reports whether the match resolved as
  * a result -- Reactive fires push Breach/Containment just like a normal
  * fire, so they can end the match too. Call after every step that can
- * change readiness (applying an occurrence, or refreshTriggerReadiness). */
-function applyReactiveFires(
+ * change readiness directly (applying an occurrence -- accumulator/
+ * occurrence -- or ticking). */
+function checkReactive(
   before: CombatState,
   combatState: CombatState,
   log: FireEvent[],
@@ -101,6 +104,18 @@ function applyReactiveFires(
   const reactive = fireNewlyReadyReactiveSubroutines(before, combatState);
   log.push(...reactive.events);
   return { combatState: reactive.combatState, winner: resolution(reactive.combatState) };
+}
+
+/** Refreshes self/enemy-state readiness against `combatState`, then
+ * checkReactive against the refreshed result. Call after anything that
+ * could change Heat, Breach/Containment, a gauge, or a debuff -- which
+ * is virtually every step in this loop. */
+function advance(
+  combatState: CombatState,
+  handDealer: PlayerIndex,
+  log: FireEvent[],
+): { combatState: CombatState; winner: PlayerIndex | null } {
+  return checkReactive(combatState, refreshTriggerReadiness(combatState, handDealer), log);
 }
 
 /** The ordered sequence of scoring occurrences for one hand, in the
@@ -144,6 +159,16 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     playerHeatGenerated: combatState.sides[0].heat,
   });
 
+  /** Applies one step's result, tracks the running Breach/Containment
+   * peak, and returns the winner if the step resolved the match --
+   * every state-changing step in this loop goes through this so peak
+   * tracking and resolution checks stay uniform. */
+  const step = (result: { combatState: CombatState; winner: PlayerIndex | null }): PlayerIndex | null => {
+    combatState = result.combatState;
+    peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
+    return result.winner;
+  };
+
   for (let i = 0; i < maxHands; i++) {
     const hand = playOneHand(dealer, scores, rng, discardStrategy, playStrategy);
     hands.push(hand);
@@ -153,53 +178,39 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     // isDealer/isNonDealer needs a chance to latch even in the unlikely
     // case nothing else in this hand touches Heat/Breach-Containment/
     // gauges before this side's own turn.
-    let before = combatState;
-    combatState = refreshTriggerReadiness(combatState, hand.dealer);
-    let reactive = applyReactiveFires(before, combatState, log);
-    combatState = reactive.combatState;
-    peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
-    if (reactive.winner !== null) return finish(reactive.winner);
+    let winner = step(advance(combatState, hand.dealer, log));
+    if (winner !== null) return finish(winner);
 
     for (const occurrence of occurrencesForHand(hand)) {
-      before = combatState;
-      combatState = applyOccurrenceToState(combatState, occurrence);
-      reactive = applyReactiveFires(before, combatState, log);
-      combatState = reactive.combatState;
-      peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
-      if (reactive.winner !== null) return finish(reactive.winner);
+      const beforeOccurrence = combatState;
+      winner = step(checkReactive(beforeOccurrence, applyOccurrenceToState(combatState, occurrence), log));
+      if (winner !== null) return finish(winner);
+
+      // Global-pulse DoT/HoT ticks watch combined scoring from either
+      // side, independent of whose turn it is -- feed this occurrence's
+      // magnitude in regardless of which side scored it.
+      winner = step(advance(tickGlobalPulse(combatState, occurrence.magnitude), hand.dealer, log));
+      if (winner !== null) return finish(winner);
 
       const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrence.magnitude);
-      combatState = replaceSideGauge(combatState, occurrence.player, gauge);
       // The gauge that just moved is watched by the *other* side's
       // gauge-fill-above enemy-state pieces -- refresh now, not just at
       // fire time.
-      before = combatState;
-      combatState = refreshTriggerReadiness(combatState, hand.dealer);
-      reactive = applyReactiveFires(before, combatState, log);
-      combatState = reactive.combatState;
-      peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
-      if (reactive.winner !== null) return finish(reactive.winner);
+      winner = step(advance(replaceSideGauge(combatState, occurrence.player, gauge), hand.dealer, log));
+      if (winner !== null) return finish(winner);
 
       for (let turn = 0; turn < turnsTriggered; turn++) {
         const fired = fireReadySubroutines(combatState, occurrence.player, {
           isDealer: occurrence.player === hand.dealer,
         });
-        combatState = fired.combatState;
         log.push(...fired.events);
-        peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
+        winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
+        if (winner !== null) return finish(winner);
 
-        const normalFireWinner = resolution(combatState);
-        if (normalFireWinner !== null) return finish(normalFireWinner);
-
-        // Payload resolution can change Heat, Breach/Containment, or
-        // debuffs -- refresh again so self/enemy-state pieces latch
-        // against the post-fire state, not just the pre-fire one.
-        before = combatState;
-        combatState = refreshTriggerReadiness(combatState, hand.dealer);
-        reactive = applyReactiveFires(before, combatState, log);
-        combatState = reactive.combatState;
-        peakBreachContainment = Math.max(peakBreachContainment, combatState.breachContainment);
-        if (reactive.winner !== null) return finish(reactive.winner);
+        // Caster's-turn-pulse ticks fire whenever their caster gets a
+        // turn, gated exactly like a normal subroutine fire.
+        winner = step(advance(tickCastersTurnPulse(combatState, occurrence.player), hand.dealer, log));
+        if (winner !== null) return finish(winner);
       }
     }
 

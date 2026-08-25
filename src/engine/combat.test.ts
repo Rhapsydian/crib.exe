@@ -81,6 +81,24 @@ describe('playCombat', () => {
     expect(result.playerHeatGenerated).toBe(0);
   });
 
+  it('a global-pulse DoT ticks from combined scoring, independent of whose turn it is', () => {
+    const globalDot: SubroutineDefinition = {
+      id: 'global-dot',
+      name: 'global-dot',
+      archetype: 'malware',
+      trigger: { kind: 'always' },
+      payload: { kind: 'dot', amountPerTick: 30, cadence: 'globalPulse', duration: 5, pointsPerTick: 5 },
+      tags: [],
+    };
+    // A low gaugeThreshold gets the dot registered on side 0's first
+    // turn; after that, side 1 has an empty loadout (can never push
+    // back), so any further movement toward side 0's win can only come
+    // from global-pulse ticking off combined scoring, not from turns.
+    const result = playCombat([[globalDot], []], { seed: 1, gaugeThreshold: 3 });
+    expect(result.winner).toBe(0);
+    expect(result.log.length).toBeGreaterThan(0);
+  });
+
   it('a Reactive piece fires mid-hand, bypassing the turn-gate entirely', () => {
     const reactiveFifteen: SubroutineDefinition = {
       id: 'reactive-fifteen',

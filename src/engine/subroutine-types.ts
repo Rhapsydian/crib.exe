@@ -108,6 +108,11 @@ export interface DotPayload {
   amountPerTick: number;
   cadence: TickCadence;
   duration: number;
+  /** Only meaningful when cadence is 'globalPulse': how many combined
+   * points (scored by either side) trigger the next tick, per
+   * DESIGN.md's "ticks every X combined points scored by either side."
+   * Ignored for 'castersTurnPulse'. */
+  pointsPerTick?: number;
 }
 export interface DebuffPayload {
   kind: 'debuff';
@@ -132,6 +137,8 @@ export interface HotPayload {
   amountPerTick: number;
   cadence: TickCadence;
   duration: number;
+  /** See DotPayload.pointsPerTick — same meaning, only for 'globalPulse'. */
+  pointsPerTick?: number;
 }
 export interface CleansePayload {
   kind: 'cleanse';

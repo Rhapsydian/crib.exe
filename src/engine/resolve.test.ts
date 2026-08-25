@@ -6,6 +6,8 @@ import {
   fireReadySubroutines,
   refreshTriggerReadiness,
   fireNewlyReadyReactiveSubroutines,
+  tickCastersTurnPulse,
+  tickGlobalPulse,
 } from './resolve';
 import { BREACH_CONTAINMENT_CENTER } from './gauges';
 
@@ -87,7 +89,9 @@ describe('resolvePayload — status effects', () => {
       state,
       0,
     );
-    expect(result.sides[1].dots).toEqual([{ amountPerTick: 2, cadence: 'globalPulse', remainingDuration: 3 }]);
+    expect(result.sides[1].dots).toEqual([
+      { amountPerTick: 2, cadence: 'globalPulse', remainingDuration: 3, casterSide: 0, pointsPerTick: undefined, accumulatedPoints: 0 },
+    ]);
     expect(result.sides[0].dots).toEqual([]);
   });
 
@@ -310,5 +314,156 @@ describe('fireNewlyReadyReactiveSubroutines', () => {
 
     const { events } = fireNewlyReadyReactiveSubroutines(before, after);
     expect(events).toHaveLength(0);
+  });
+});
+
+describe('instantCounterPush -- Breach/Containment midpoint cap', () => {
+  it('caps a push that would cross center at exactly center', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'instantCounterPush', amount: 999 }, 'encryption', state, 0);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+  });
+
+  it('is a no-op once already at or past center in the caster\'s favor', () => {
+    let state = createCombatState([], [], 12);
+    state = { ...state, breachContainment: 80 }; // side 0 already well past center
+    const result = resolvePayload({ kind: 'instantCounterPush', amount: 10 }, 'encryption', state, 0);
+    expect(result.breachContainment).toBe(80);
+  });
+
+  it('applies the plain uncapped push when bypassBreachContainmentCap is set', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'instantCounterPush', amount: 20 }, 'encryption', state, 0, {
+      priorFireCountThisTurn: 0,
+      bypassBreachContainmentCap: true,
+    });
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 20);
+  });
+
+  it('caps correctly for side 1 too (favor is the low end)', () => {
+    const state = createCombatState([], [], 12);
+    const result = resolvePayload({ kind: 'instantCounterPush', amount: 999 }, 'encryption', state, 1);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+  });
+});
+
+describe('tickCastersTurnPulse', () => {
+  it('ticks a DoT (stored on the target) when its caster gets a turn, not the target', () => {
+    const state = createCombatState([], [], 12);
+    const withDot = resolvePayload(
+      { kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 2 },
+      'malware',
+      state,
+      0, // side 0 casts a DoT onto side 1
+    );
+
+    // Side 1 getting a turn should NOT tick side 0's DoT.
+    const notCastersTurn = tickCastersTurnPulse(withDot, 1);
+    expect(notCastersTurn.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+    expect(notCastersTurn.sides[1].dots).toHaveLength(1);
+
+    // Side 0 (the caster) getting a turn ticks it.
+    const castersTurn = tickCastersTurnPulse(withDot, 0);
+    expect(castersTurn.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 5);
+    expect(castersTurn.sides[1].dots).toEqual([expect.objectContaining({ remainingDuration: 1 })]);
+  });
+
+  it('removes the tick once its duration is exhausted', () => {
+    const state = createCombatState([], [], 12);
+    let withDot = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 2 }, 'malware', state, 0);
+    withDot = tickCastersTurnPulse(withDot, 0);
+    withDot = tickCastersTurnPulse(withDot, 0);
+    expect(withDot.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
+    expect(withDot.sides[1].dots).toEqual([]);
+  });
+
+  it('caps a caster\'s-turn-pulse HoT at the midpoint, unlike an uncapped DoT', () => {
+    const state = createCombatState([], [], 12);
+    const withHot = resolvePayload(
+      { kind: 'hot', amountPerTick: 999, cadence: 'castersTurnPulse', duration: 1 },
+      'encryption',
+      state,
+      0,
+    );
+    const result = tickCastersTurnPulse(withHot, 0);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+  });
+
+  it('does not tick a globalPulse tick', () => {
+    const state = createCombatState([], [], 12);
+    const withDot = resolvePayload(
+      { kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 2, pointsPerTick: 10 },
+      'malware',
+      state,
+      0,
+    );
+    const result = tickCastersTurnPulse(withDot, 0);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+    expect(result.sides[1].dots).toHaveLength(1);
+  });
+});
+
+describe('tickGlobalPulse', () => {
+  it('ticks once combined points cross pointsPerTick', () => {
+    const state = createCombatState([], [], 12);
+    const withDot = resolvePayload(
+      { kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 3, pointsPerTick: 10 },
+      'malware',
+      state,
+      0,
+    );
+    const under = tickGlobalPulse(withDot, 6);
+    expect(under.breachContainment).toBe(BREACH_CONTAINMENT_CENTER); // 6 < 10, no tick yet
+    const over = tickGlobalPulse(under, 5); // 6 + 5 = 11, crosses 10
+    expect(over.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 5);
+    expect(over.sides[1].dots).toEqual([expect.objectContaining({ remainingDuration: 2, accumulatedPoints: 1 })]);
+  });
+
+  it('fires multiple times from a single large occurrence, carrying overshoot', () => {
+    const state = createCombatState([], [], 12);
+    const withDot = resolvePayload(
+      { kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 5, pointsPerTick: 10 },
+      'malware',
+      state,
+      0,
+    );
+    const result = tickGlobalPulse(withDot, 25); // 2 full crossings, 5 left over
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
+    expect(result.sides[1].dots).toEqual([expect.objectContaining({ remainingDuration: 3, accumulatedPoints: 5 })]);
+  });
+
+  it('is combined across both sides -- points scored by either side count', () => {
+    const state = createCombatState([], [], 12);
+    // Side 1 casts the dot (onto side 0), but side 0's own scoring should still feed it.
+    const withDot = resolvePayload(
+      { kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 1, pointsPerTick: 10 },
+      'malware',
+      state,
+      1,
+    );
+    const result = tickGlobalPulse(withDot, 10);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER - 5); // pushed toward side 1's favor
+  });
+
+  it('ignores a castersTurnPulse tick and one with no pointsPerTick', () => {
+    const state = createCombatState([], [], 12);
+    let withDots = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 1 }, 'malware', state, 0);
+    withDots = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 1 }, 'malware', withDots, 0); // no pointsPerTick
+    const result = tickGlobalPulse(withDots, 100);
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER);
+    expect(result.sides[1].dots).toHaveLength(2);
+  });
+
+  it('removes the tick once duration is exhausted mid-batch', () => {
+    const state = createCombatState([], [], 12);
+    const withDot = resolvePayload(
+      { kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 2, pointsPerTick: 10 },
+      'malware',
+      state,
+      0,
+    );
+    const result = tickGlobalPulse(withDot, 35); // would cross 3 times, but only 2 duration
+    expect(result.breachContainment).toBe(BREACH_CONTAINMENT_CENTER + 10);
+    expect(result.sides[1].dots).toEqual([]);
   });
 });
