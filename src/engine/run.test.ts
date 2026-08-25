@@ -166,6 +166,10 @@ describe('playRun', { timeout: 30_000 }, () => {
     const result = playRun({ seed: victorySeed!, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper });
     expect(result.layersCompleted).toBe(4);
     expect(result.log.filter((e) => e.type === 'layerCleared')).toHaveLength(4);
+    // 4 gatekeeper wins (checkpoint C) each award Data -- confirms it
+    // actually accumulates on RunPlayerState across a real run, not just
+    // in a single resolveEncounter() call (encounters.test.ts).
+    expect(result.playerState.data).toBeGreaterThan(0);
   });
 
   it('reaches heatMaxed on real-scale layers when a strategy just wanders safely', () => {

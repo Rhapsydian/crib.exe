@@ -5,6 +5,8 @@ import { resolveEncounter } from './encounters';
 import type { RunPlayerState } from './run';
 import type { SubroutineDefinition } from './subroutine-types';
 import { BREACHER_LOADOUT } from './subroutines';
+import { REWARD_OPTIONS_COUNT } from './rewards';
+import { dataForTier } from './data';
 
 /**
  * Breach/Containment is a sharp positive-feedback race (session 20's own
@@ -65,10 +67,11 @@ function playerWithBurst(amount: number): RunPlayerState {
         tags: [],
       } satisfies SubroutineDefinition,
     ],
+    data: 0,
   };
 }
 
-const OVERWHELMING_PLAYER: RunPlayerState = { classId: 'breacher', installedLoadout: overwhelmingBreacherLoadout(30) };
+const OVERWHELMING_PLAYER: RunPlayerState = { classId: 'breacher', installedLoadout: overwhelmingBreacherLoadout(30), data: 0 };
 const NEGLIGIBLE_PLAYER = playerWithBurst(0.1);
 const SEEDS = [1, 2, 3];
 
@@ -83,48 +86,58 @@ function lossOutcomes(nodeType: 'regularFight' | 'eliteFight' | 'gatekeeperFight
 }
 
 describe('resolveEncounter -- regularFight', () => {
-  it('a win goes inert, never quarantines, costs 0 Heat, grants a standard reward', () => {
+  it('a win goes inert, never quarantines, costs 0 Heat, grants a standard reward with Data and options', () => {
     for (const outcome of winOutcomes('regularFight')) {
       expect(outcome.newState).toBe('inert');
       expect(outcome.quarantined).toBe(false);
       expect(outcome.heatDelta).toBe(0);
       expect(outcome.rewardTier).toBe('standard');
+      expect(outcome.dataAwarded).toBeGreaterThan(0);
+      expect(outcome.rewardOptions).toHaveLength(REWARD_OPTIONS_COUNT);
     }
   });
 
-  it('a loss closes the node, costs Heat, grants no reward', () => {
+  it('a loss closes the node, costs Heat, grants no reward, Data, or options', () => {
     for (const outcome of lossOutcomes('regularFight')) {
       expect(outcome.newState).toBe('closed');
       expect(outcome.quarantined).toBe(false);
       expect(outcome.heatDelta).toBeGreaterThan(0);
       expect(outcome.rewardTier).toBe('none');
+      expect(outcome.dataAwarded).toBe(0);
+      expect(outcome.rewardOptions).toEqual([]);
     }
   });
 });
 
 describe('resolveEncounter -- eliteFight', () => {
-  it('a win goes inert and grants a better reward', () => {
+  it('a win goes inert and grants a better reward with more Data than a regular win', () => {
     for (const outcome of winOutcomes('eliteFight')) {
       expect(outcome.newState).toBe('inert');
       expect(outcome.rewardTier).toBe('better');
+      expect(outcome.dataAwarded).toBeGreaterThan(dataForTier('standard'));
+      expect(outcome.rewardOptions).toHaveLength(REWARD_OPTIONS_COUNT);
     }
   });
 
-  it('a loss closes the node, costs Heat, grants no reward', () => {
+  it('a loss closes the node, costs Heat, grants no reward, Data, or options', () => {
     for (const outcome of lossOutcomes('eliteFight')) {
       expect(outcome.newState).toBe('closed');
       expect(outcome.heatDelta).toBeGreaterThan(0);
       expect(outcome.rewardTier).toBe('none');
+      expect(outcome.dataAwarded).toBe(0);
+      expect(outcome.rewardOptions).toEqual([]);
     }
   });
 });
 
 describe('resolveEncounter -- gatekeeperFight', () => {
-  it('quarantines on a loss with zero Heat cost, regardless of margin', () => {
+  it('quarantines on a loss with zero Heat cost, regardless of margin, and grants no reward or Data', () => {
     for (const outcome of lossOutcomes('gatekeeperFight')) {
       expect(outcome.quarantined).toBe(true);
       expect(outcome.heatDelta).toBe(0);
       expect(outcome.rewardTier).toBe('none');
+      expect(outcome.dataAwarded).toBe(0);
+      expect(outcome.rewardOptions).toEqual([]);
     }
   });
 
@@ -133,6 +146,8 @@ describe('resolveEncounter -- gatekeeperFight', () => {
       expect(outcome.newState).toBe('inert');
       expect(outcome.quarantined).toBe(false);
       expect(outcome.rewardTier).toBe('better');
+      expect(outcome.dataAwarded).toBeGreaterThan(0);
+      expect(outcome.rewardOptions).toHaveLength(REWARD_OPTIONS_COUNT);
     }
   });
 });
@@ -140,13 +155,27 @@ describe('resolveEncounter -- gatekeeperFight', () => {
 describe('resolveEncounter -- non-fight nodes', () => {
   it('Safehouse Rest always reduces Heat and goes inert', () => {
     const outcome = resolveEncounter(createNode('n', 'safehouse'), createRng(1), OVERWHELMING_PLAYER);
-    expect(outcome).toEqual({ newState: 'inert', heatDelta: -20, quarantined: false, rewardTier: 'none' });
+    expect(outcome).toEqual({
+      newState: 'inert',
+      heatDelta: -20,
+      quarantined: false,
+      rewardTier: 'none',
+      dataAwarded: 0,
+      rewardOptions: [],
+    });
   });
 
   it('Shop and Event are no-op stubs that go inert', () => {
     for (const type of ['shop', 'event'] as const) {
       const outcome = resolveEncounter(createNode('n', type), createRng(1), OVERWHELMING_PLAYER);
-      expect(outcome).toEqual({ newState: 'inert', heatDelta: 0, quarantined: false, rewardTier: 'none' });
+      expect(outcome).toEqual({
+        newState: 'inert',
+        heatDelta: 0,
+        quarantined: false,
+        rewardTier: 'none',
+        dataAwarded: 0,
+        rewardOptions: [],
+      });
     }
   });
 

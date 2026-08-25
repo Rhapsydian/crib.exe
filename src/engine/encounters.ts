@@ -4,6 +4,8 @@ import type { SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
 import { playCombat } from './combat';
 import { heatFromLoss } from './heat';
+import { drawRewardOptions, type RewardTier } from './rewards';
+import { dataForTier } from './data';
 
 /**
  * Node encounter resolution (session 19/20 checkpoint E, player loadout
@@ -55,21 +57,19 @@ const ENEMY_LOADOUT_ELITE: SubroutineDefinition[] = [burstSubroutine('enemy-elit
 const ENEMY_LOADOUT_GATEKEEPER: SubroutineDefinition[] = [burstSubroutine('enemy-gatekeeper-burst', 2.8)];
 const GAUGE_THRESHOLD = 8;
 
-/**
- * What tier of reward a won fight would grant once Phase 4's
- * acquisition system exists -- structurally recorded now (same "stub,
- * wired in later" treatment as Safehouse's Merge option), not actually
- * granting anything yet. Mirrors DESIGN.md's own reward-scoping
- * language: a regular fight offers a standard choice, an elite or
- * gatekeeper fight offers a better one.
- */
-export type RewardTier = 'none' | 'standard' | 'better';
-
 export interface EncounterOutcome {
   newState: NodeState;
   heatDelta: number;
   quarantined: boolean;
   rewardTier: RewardTier;
+  /** Data awarded, tiered via rewardTier (data.ts) -- 0 for any non-win
+   * outcome. */
+  dataAwarded: number;
+  /** The subroutine-choice reward actually offered (rewards.ts),
+   * rarity-weighted by rewardTier -- empty for any non-win outcome.
+   * Not yet installed/benched anywhere; Checkpoint D is what a script
+   * does with an offer like this. */
+  rewardOptions: SubroutineDefinition[];
 }
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
@@ -99,18 +99,27 @@ function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): E
 
   if (result.winner === 0) {
     const rewardTier: RewardTier = kind === 'regular' ? 'standard' : 'better';
-    return { newState: 'inert', heatDelta: result.playerHeatGenerated, quarantined: false, rewardTier };
+    return {
+      newState: 'inert',
+      heatDelta: result.playerHeatGenerated,
+      quarantined: false,
+      rewardTier,
+      dataAwarded: dataForTier(rewardTier),
+      rewardOptions: drawRewardOptions(playerState.classId, rewardTier, rng),
+    };
   }
   if (kind === 'gatekeeper') {
     // Quarantine ends the run outright -- no Heat cost, and the node's
     // state doesn't matter (there's no run left to route around it in).
-    return { newState: 'unresolved', heatDelta: 0, quarantined: true, rewardTier: 'none' };
+    return { newState: 'unresolved', heatDelta: 0, quarantined: true, rewardTier: 'none', dataAwarded: 0, rewardOptions: [] };
   }
   return {
     newState: 'closed',
     heatDelta: heatFromLoss(kind, result.peakBreachContainment) + result.playerHeatGenerated,
     quarantined: false,
     rewardTier: 'none',
+    dataAwarded: 0,
+    rewardOptions: [],
   };
 }
 
@@ -126,10 +135,10 @@ export function resolveEncounter(node: MapNode, rng: Rng, playerState: RunPlayer
       // Rest is real; Merge stays a stub -- structurally a node type, but
       // not a selectable action until Phase 4's material/acquisition
       // system exists.
-      return { newState: 'inert', heatDelta: -REST_HEAT_REDUCTION, quarantined: false, rewardTier: 'none' };
+      return { newState: 'inert', heatDelta: -REST_HEAT_REDUCTION, quarantined: false, rewardTier: 'none', dataAwarded: 0, rewardOptions: [] };
     case 'shop':
     case 'event':
-      return { newState: 'inert', heatDelta: 0, quarantined: false, rewardTier: 'none' };
+      return { newState: 'inert', heatDelta: 0, quarantined: false, rewardTier: 'none', dataAwarded: 0, rewardOptions: [] };
     case 'relay':
       throw new Error('resolveEncounter should never be called on a Relay node -- it has no encounter');
   }

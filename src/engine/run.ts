@@ -18,18 +18,18 @@ import type { SubroutineDefinition } from './subroutine-types';
 const DEFAULT_LAYER_NODE_COUNTS: [number, number, number, number] = [10, 12, 12, 8]; // TBD/playtesting
 
 /** The player's own state for the run, threaded into every encounter
- * (Phase 4 checkpoint A). Deliberately minimal for now -- just enough to
- * make a real class's starting loadout drive real fights instead of
- * encounters.ts's hardcoded placeholder. Bench/Data/slot-cap fields
- * arrive with the acquisition checkpoints (C/D) that actually use them,
- * not speculatively now. */
+ * (Phase 4 checkpoint A). `data` (checkpoint C) accumulates Data awarded
+ * from combat wins (encounters.ts). Bench/slot-cap fields arrive with
+ * checkpoint D, which is what actually does something with a won
+ * reward offer or spent Data -- not speculatively now. */
 export interface RunPlayerState {
   classId: ClassId;
   installedLoadout: SubroutineDefinition[];
+  data: number;
 }
 
 export function createInitialPlayerState(classId: ClassId): RunPlayerState {
-  return { classId, installedLoadout: CLASS_DEFINITIONS[classId].startingLoadout };
+  return { classId, installedLoadout: CLASS_DEFINITIONS[classId].startingLoadout, data: 0 };
 }
 
 export type RunOutcome = 'heatMaxed' | 'quarantined' | 'noRouteRemains' | 'victory';
@@ -109,8 +109,8 @@ export function playRun(options: RunOptions): RunResult {
   const log: RunEvent[] = [];
   let heat = 0;
   let layersCompleted = 0;
-  const playerState = installedLoadoutOverride
-    ? { classId, installedLoadout: installedLoadoutOverride }
+  let playerState = installedLoadoutOverride
+    ? { classId, installedLoadout: installedLoadoutOverride, data: 0 }
     : createInitialPlayerState(classId);
 
   const finish = (outcome: RunOutcome): RunResult => ({ outcome, layersCompleted, finalHeat: heat, log, playerState });
@@ -148,6 +148,7 @@ export function playRun(options: RunOptions): RunResult {
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
       const afterEncounter = addHeat(heat, outcome.heatDelta);
       heat = afterEncounter.heat;
+      if (outcome.dataAwarded > 0) playerState = { ...playerState, data: playerState.data + outcome.dataAwarded };
       log.push({ type: 'encounter', layerIndex, nodeId: node.id, nodeType: node.type, outcome, heatAfter: heat });
 
       if (outcome.quarantined) {
