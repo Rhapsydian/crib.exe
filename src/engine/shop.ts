@@ -1,13 +1,14 @@
 import type { SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
 import type { ClassId } from './classes';
+import type { Rng } from './rng';
 import { rarityOf, rewardPoolForClass, type Rarity } from './rewards';
 
 /**
  * Shop wiring (Phase 4 checkpoint F): spends Data on a specific pick,
- * not a random offer -- the same reward-pool scoping Checkpoint C's
- * combat rewards use (rewards.ts's rewardPoolForClass), but every piece
- * offered at once rather than a rarity-weighted N-of-pool draw. Any
+ * not a random N-of-pool combat-reward-style draw -- the player sees
+ * (and picks from) a fixed slate up front, same reward-pool scoping as
+ * Checkpoint C's combat rewards (rewards.ts's rewardPoolForClass). Any
  * rarity is purchasable; the session's resolved open question gates
  * access by a steeply-scaling Data cost per tier instead of an
  * availability restriction, keeping the Shop mechanically simple and
@@ -32,10 +33,47 @@ export interface ShopOffering {
   cost: number;
 }
 
-/** The Shop's full offering for a class -- every piece in its reward
- * pool, each tagged with its Data cost. */
-export function shopOfferingsForClass(classId: ClassId): ShopOffering[] {
-  return rewardPoolForClass(classId).map((piece) => ({ piece, cost: shopCostOf(piece.id) }));
+const SHOP_COMMON_SLOTS = 3;
+
+function poolByRarity(classId: ClassId): Record<Rarity, SubroutineDefinition[]> {
+  const pool = rewardPoolForClass(classId);
+  return {
+    common: pool.filter((piece) => rarityOf(piece.id) === 'common'),
+    uncommon: pool.filter((piece) => rarityOf(piece.id) === 'uncommon'),
+    rare: pool.filter((piece) => rarityOf(piece.id) === 'rare'),
+  };
+}
+
+/** Uniform sampling without replacement -- unlike rewards.ts's combat-
+ * reward draw, the Shop's slate isn't rarity-weighted (each slot here
+ * already pins its own rarity), just a random pick within that tier. */
+function sampleDistinct<T>(items: T[], count: number, rng: Rng): T[] {
+  const pool = items.slice();
+  const picked: T[] = [];
+  for (let i = 0; i < count && pool.length > 0; i++) {
+    const index = rng.nextInt(pool.length);
+    picked.push(pool[index]);
+    pool.splice(index, 1);
+  }
+  return picked;
+}
+
+/** The Shop's slate for one visit: 3 commons, 1 uncommon, and one more
+ * slot that's a coin flip between another uncommon or a rare -- a
+ * fixed-size random subset of the class's reward pool, not the whole
+ * thing (that would make Data a non-choice once a player could afford
+ * everything). Re-rolled fresh from `rng` each visit. */
+export function shopOfferingsForClass(classId: ClassId, rng: Rng): ShopOffering[] {
+  const byRarity = poolByRarity(classId);
+  const commons = sampleDistinct(byRarity.common, SHOP_COMMON_SLOTS, rng);
+  const uncommon = sampleDistinct(byRarity.uncommon, 1, rng);
+
+  const wildcardTier: Rarity = rng.next() < 0.5 ? 'uncommon' : 'rare';
+  const wildcardPool =
+    wildcardTier === 'uncommon' ? byRarity.uncommon.filter((piece) => !uncommon.some((picked) => picked.id === piece.id)) : byRarity.rare;
+  const wildcard = sampleDistinct(wildcardPool, 1, rng);
+
+  return [...commons, ...uncommon, ...wildcard].map((piece) => ({ piece, cost: shopCostOf(piece.id) }));
 }
 
 /** Decides which (if any) Shop offering a script buys. Returns null to
@@ -50,4 +88,24 @@ export const buyCheapestAffordable: ShopStrategy = (offerings, playerState) => {
   const affordable = offerings.filter((offering) => offering.cost <= playerState.data);
   if (affordable.length === 0) return null;
   return affordable.reduce((cheapest, offering) => (offering.cost < cheapest.cost ? offering : cheapest));
+};
+
+// Marginal -- well under even a common's cost (20), so it's a cheap
+// hedge against a bad roll, not a real purchase in its own right.
+// TBD/playtesting.
+export const REROLL_COST = 10;
+
+/** Decides whether to spend REROLL_COST to reroll the current slate
+ * once before buying -- resolveEncounter enforces the "once" itself (it
+ * only ever asks this against the first slate, never the rerolled
+ * one), so this only has to answer yes/no for a single offered slate. */
+export type ShopRerollStrategy = (offerings: ShopOffering[], playerState: RunPlayerState) => boolean;
+
+/** Legal-not-good default: reroll only when the current slate has
+ * nothing affordable at all and the reroll itself is affordable --
+ * a hedge against a wasted visit, not a search for a better deal. */
+export const rerollIfNothingAffordable: ShopRerollStrategy = (offerings, playerState) => {
+  const canAffordReroll = playerState.data >= REROLL_COST;
+  const canAffordSomething = offerings.some((offering) => offering.cost <= playerState.data);
+  return canAffordReroll && !canAffordSomething;
 };

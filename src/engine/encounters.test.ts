@@ -7,6 +7,8 @@ import type { SubroutineDefinition } from './subroutine-types';
 import { BREACHER_LOADOUT } from './subroutines';
 import { REWARD_OPTIONS_COUNT } from './rewards';
 import { dataForTier } from './data';
+import { REROLL_COST, buyCheapestAffordable, type ShopRerollStrategy } from './shop';
+import { preferMergeWhenAvailable } from './merge';
 
 /**
  * Breach/Containment is a sharp positive-feedback race (session 20's own
@@ -174,6 +176,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
       rewardOptions: [],
       mergeTargetId: null,
       shopPurchase: null,
+      rerollCost: 0,
     });
   });
 
@@ -189,6 +192,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
       rewardOptions: [],
       mergeTargetId: 'buffer-overflow',
       shopPurchase: null,
+      rerollCost: 0,
     });
   });
 
@@ -203,6 +207,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
       rewardOptions: [],
       mergeTargetId: null,
       shopPurchase: null,
+      rerollCost: 0,
     });
   });
 
@@ -218,6 +223,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
       rewardOptions: [],
       mergeTargetId: null,
       shopPurchase: null,
+      rerollCost: 0,
     });
   });
 
@@ -227,6 +233,38 @@ describe('resolveEncounter -- non-fight nodes', () => {
     expect(outcome.newState).toBe('inert');
     expect(outcome.shopPurchase).not.toBeNull();
     expect(outcome.shopPurchase!.cost).toBeLessThanOrEqual(1000);
+  });
+
+  it('rerolls once when the first slate has nothing affordable but the reroll itself is', () => {
+    // Exactly REROLL_COST and nothing else -- can afford the reroll but
+    // not even a common (20) either before or after it.
+    const player: RunPlayerState = { ...OVERWHELMING_PLAYER, data: REROLL_COST };
+    const outcome = resolveEncounter(createNode('n', 'shop'), createRng(1), player);
+    expect(outcome.rerollCost).toBe(REROLL_COST);
+    expect(outcome.shopPurchase).toBeNull();
+  });
+
+  it("the post-reroll purchase decision correctly declines when only the pre-reroll balance would have afforded something", () => {
+    const alwaysReroll: ShopRerollStrategy = () => true;
+    // 25 Data: enough to look "affordable" against a common's 20-cost
+    // measured against the pre-reroll balance, but not against what's
+    // actually left after paying REROLL_COST (25 - 10 = 15 < 20). If the
+    // purchase decision were (incorrectly) given the pre-reroll balance,
+    // this would buy a common it can no longer actually afford.
+    const player: RunPlayerState = { ...OVERWHELMING_PLAYER, data: REROLL_COST + 15 };
+    const outcome = resolveEncounter(createNode('n', 'shop'), createRng(1), player, preferMergeWhenAvailable, buyCheapestAffordable, alwaysReroll);
+    expect(outcome.rerollCost).toBe(REROLL_COST);
+    expect(outcome.shopPurchase).toBeNull();
+  });
+
+  it('the post-reroll purchase decision still succeeds when genuinely affordable after the reroll cost', () => {
+    const alwaysReroll: ShopRerollStrategy = () => true;
+    // REROLL_COST (10) + one common's cost (20) exactly.
+    const player: RunPlayerState = { ...OVERWHELMING_PLAYER, data: REROLL_COST + 20 };
+    const outcome = resolveEncounter(createNode('n', 'shop'), createRng(1), player, preferMergeWhenAvailable, buyCheapestAffordable, alwaysReroll);
+    expect(outcome.rerollCost).toBe(REROLL_COST);
+    expect(outcome.shopPurchase).not.toBeNull();
+    expect(outcome.shopPurchase!.cost).toBeLessThanOrEqual(20);
   });
 
   it('throws for a Relay -- it has no encounter to resolve', () => {

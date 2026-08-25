@@ -395,8 +395,12 @@ designed.
   lower threshold, higher Scaling cap), never payload sub-type or trigger
   family; rank-capped, exact cap TBD.
 - **Checkpoint F — Shop wiring**: Shop node (Phase 3 stub) becomes real —
-  spend Data on a specific pick (not a random offer) from the same
-  reward-pool scoping as Checkpoint C.
+  spend Data on a specific pick from a randomized slate (3 commons, 1
+  uncommon, 1 uncommon-or-rare wildcard) drawn from the same reward-pool
+  scoping as Checkpoint C, not the whole pool at once (revised after the
+  checkpoint landed -- offering everything up front made Data a
+  non-choice once a player could afford anything). One reroll per visit
+  for a marginal Data cost (REROLL_COST), for a shot at a better slate.
 
 **Exit criteria**: a full 4-layer run resolves headlessly by script with
 any of the 6 classes selected — starting loadout and starting passive

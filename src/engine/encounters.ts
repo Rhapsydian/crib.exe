@@ -7,7 +7,15 @@ import { heatFromLoss } from './heat';
 import { drawRewardOptions, type RewardTier } from './rewards';
 import { dataForTier } from './data';
 import { pickMergeTarget, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
-import { shopOfferingsForClass, buyCheapestAffordable, type ShopOffering, type ShopStrategy } from './shop';
+import {
+  shopOfferingsForClass,
+  buyCheapestAffordable,
+  rerollIfNothingAffordable,
+  REROLL_COST,
+  type ShopOffering,
+  type ShopStrategy,
+  type ShopRerollStrategy,
+} from './shop';
 
 /**
  * Node encounter resolution (session 19/20 checkpoint E, player loadout
@@ -83,6 +91,11 @@ export interface EncounterOutcome {
    * records the pick; playRun() applies the actual Data spend and
    * acquisition, since it's the one place holding RunPlayerState. */
   shopPurchase: ShopOffering | null;
+  /** REROLL_COST if a Shop visit spent Data to reroll its slate once,
+   * else 0 -- checkpoint F follow-up. Same split as the other
+   * playerState-affecting fields: this just records the cost incurred;
+   * playRun() applies it. */
+  rerollCost: number;
 }
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
@@ -121,6 +134,7 @@ function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): E
       rewardOptions: drawRewardOptions(playerState.classId, rewardTier, rng),
       mergeTargetId: null,
       shopPurchase: null,
+      rerollCost: 0,
     };
   }
   if (kind === 'gatekeeper') {
@@ -135,6 +149,7 @@ function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): E
       rewardOptions: [],
       mergeTargetId: null,
       shopPurchase: null,
+      rerollCost: 0,
     };
   }
   return {
@@ -146,6 +161,7 @@ function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): E
     rewardOptions: [],
     mergeTargetId: null,
     shopPurchase: null,
+    rerollCost: 0,
   };
 }
 
@@ -155,6 +171,7 @@ export function resolveEncounter(
   playerState: RunPlayerState,
   safehouseStrategy: SafehouseStrategy = preferMergeWhenAvailable,
   shopStrategy: ShopStrategy = buyCheapestAffordable,
+  shopRerollStrategy: ShopRerollStrategy = rerollIfNothingAffordable,
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
@@ -180,6 +197,7 @@ export function resolveEncounter(
           rewardOptions: [],
           mergeTargetId: targetId,
           shopPurchase: null,
+          rerollCost: 0,
         };
       }
       return {
@@ -191,11 +209,21 @@ export function resolveEncounter(
         rewardOptions: [],
         mergeTargetId: null,
         shopPurchase: null,
+        rerollCost: 0,
       };
     }
     case 'shop': {
-      const offerings = shopOfferingsForClass(playerState.classId);
-      const shopPurchase = shopStrategy(offerings, playerState);
+      const firstSlate = shopOfferingsForClass(playerState.classId, rng);
+      // "Once": the reroll strategy is only ever asked against the
+      // first slate, never against a slate it already produced.
+      const rerolled = playerState.data >= REROLL_COST && shopRerollStrategy(firstSlate, playerState);
+      const offerings = rerolled ? shopOfferingsForClass(playerState.classId, rng) : firstSlate;
+      const rerollCost = rerolled ? REROLL_COST : 0;
+      // The purchase decision needs to see the post-reroll Data balance
+      // -- otherwise a strategy could "spend" the reroll cost and then
+      // still buy up to the full pre-reroll balance, overspending.
+      const stateAfterReroll = rerollCost > 0 ? { ...playerState, data: playerState.data - rerollCost } : playerState;
+      const shopPurchase = shopStrategy(offerings, stateAfterReroll);
       return {
         newState: 'inert',
         heatDelta: 0,
@@ -205,6 +233,7 @@ export function resolveEncounter(
         rewardOptions: [],
         mergeTargetId: null,
         shopPurchase,
+        rerollCost,
       };
     }
     case 'event':
@@ -217,6 +246,7 @@ export function resolveEncounter(
         rewardOptions: [],
         mergeTargetId: null,
         shopPurchase: null,
+        rerollCost: 0,
       };
     case 'relay':
       throw new Error('resolveEncounter should never be called on a Relay node -- it has no encounter');

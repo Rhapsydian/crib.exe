@@ -8,7 +8,7 @@ import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
 import { acquireSubroutine, alwaysAcquireFirst, INSTALLED_SLOT_CAP, type AcquisitionStrategy } from './loadout';
 import { mergeSubroutine, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
-import { buyCheapestAffordable, type ShopStrategy } from './shop';
+import { buyCheapestAffordable, rerollIfNothingAffordable, type ShopStrategy, type ShopRerollStrategy } from './shop';
 
 /**
  * The run orchestrator (session 19/20 checkpoint F): ties layer
@@ -115,6 +115,10 @@ export interface RunOptions {
   /** What (if anything) a script buys at the Shop -- checkpoint F.
    * Defaults to buyCheapestAffordable (legal-not-good). */
   shopStrategy?: ShopStrategy;
+  /** Whether a script spends Data to reroll the Shop's slate once
+   * before buying -- checkpoint F follow-up. Defaults to
+   * rerollIfNothingAffordable (legal-not-good). */
+  shopRerollStrategy?: ShopRerollStrategy;
 }
 
 export function playRun(options: RunOptions): RunResult {
@@ -128,6 +132,7 @@ export function playRun(options: RunOptions): RunResult {
     installedSlotCap = INSTALLED_SLOT_CAP,
     safehouseStrategy = preferMergeWhenAvailable,
     shopStrategy = buyCheapestAffordable,
+    shopRerollStrategy = rerollIfNothingAffordable,
   } = options;
 
   const rng = createRng(seed);
@@ -169,7 +174,7 @@ export function playRun(options: RunOptions): RunResult {
       if (!node) throw new Error(`playRun: node "${position.nodeId}" is missing from its own layer graph`);
       if (node.state !== 'unresolved') continue; // already resolved -- just passing through
 
-      const outcome = resolveEncounter(node, rng, playerState, safehouseStrategy, shopStrategy);
+      const outcome = resolveEncounter(node, rng, playerState, safehouseStrategy, shopStrategy, shopRerollStrategy);
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
       const afterEncounter = addHeat(heat, outcome.heatDelta);
       heat = afterEncounter.heat;
@@ -179,6 +184,7 @@ export function playRun(options: RunOptions): RunResult {
         if (picked) playerState = acquireSubroutine(playerState, picked, installedSlotCap);
       }
       if (outcome.mergeTargetId) playerState = mergeSubroutine(playerState, outcome.mergeTargetId);
+      if (outcome.rerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.rerollCost };
       if (outcome.shopPurchase) {
         playerState = { ...playerState, data: playerState.data - outcome.shopPurchase.cost };
         playerState = acquireSubroutine(playerState, outcome.shopPurchase.piece, installedSlotCap);

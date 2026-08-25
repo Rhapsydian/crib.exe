@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest';
+import { createRng } from './rng';
 import type { RunPlayerState } from './run';
-import { shopCostOf, shopOfferingsForClass, buyCheapestAffordable, type ShopOffering } from './shop';
-import { rarityOf, rewardPoolForClass } from './rewards';
+import {
+  shopCostOf,
+  shopOfferingsForClass,
+  buyCheapestAffordable,
+  rerollIfNothingAffordable,
+  REROLL_COST,
+  type ShopOffering,
+} from './shop';
+import { rarityOf } from './rewards';
 
 function playerState(data: number): RunPlayerState {
   return { classId: 'breacher', installedLoadout: [], bench: [], data, material: {}, rank: {} };
@@ -26,19 +34,59 @@ describe('shopCostOf', () => {
 });
 
 describe('shopOfferingsForClass', () => {
-  it("offers every piece in the class's reward pool, each with a cost", () => {
-    const offerings = shopOfferingsForClass('breacher');
-    const pool = rewardPoolForClass('breacher');
-    expect(offerings).toHaveLength(pool.length);
-    for (const offering of offerings) {
-      expect(offering.cost).toBe(shopCostOf(offering.piece.id));
+  it('offers 3 commons, 1 uncommon, and one uncommon-or-rare wildcard -- 5 slots total, each costed', () => {
+    const offerings = shopOfferingsForClass('breacher', createRng(1));
+    expect(offerings).toHaveLength(5);
+    const rarities = offerings.map((o) => rarityOf(o.piece.id));
+    expect(rarities.filter((r) => r === 'common')).toHaveLength(3);
+    const nonCommon = rarities.filter((r) => r !== 'common');
+    expect(nonCommon).toHaveLength(2);
+    expect(nonCommon).toContain('uncommon'); // the guaranteed uncommon slot
+    for (const offering of offerings) expect(offering.cost).toBe(shopCostOf(offering.piece.id));
+  });
+
+  it('never offers the same piece twice in one slate', () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const offerings = shopOfferingsForClass('breacher', createRng(seed));
+      const ids = offerings.map((o) => o.piece.id);
+      expect(new Set(ids).size).toBe(ids.length);
     }
   });
 
-  it('includes at least one of each rarity for a class with a full archetype pool', () => {
-    const offerings = shopOfferingsForClass('breacher');
-    const rarities = new Set(offerings.map((o) => rarityOf(o.piece.id)));
-    expect(rarities).toEqual(new Set(['common', 'uncommon', 'rare']));
+  it('is deterministic for the same seed', () => {
+    const a = shopOfferingsForClass('breacher', createRng(5)).map((o) => o.piece.id);
+    const b = shopOfferingsForClass('breacher', createRng(5)).map((o) => o.piece.id);
+    expect(a).toEqual(b);
+  });
+
+  it('gives the wildcard slot a real shot at rare across seeds (not always uncommon)', () => {
+    const sawRare = Array.from({ length: 30 }, (_, seed) => shopOfferingsForClass('breacher', createRng(seed))).some((offerings) =>
+      offerings.some((o) => rarityOf(o.piece.id) === 'rare'),
+    );
+    expect(sawRare).toBe(true);
+  });
+
+  it('re-rolls to a different slate when called again against a continuing rng', () => {
+    const rng = createRng(1);
+    const first = shopOfferingsForClass('breacher', rng).map((o) => o.piece.id);
+    const second = shopOfferingsForClass('breacher', rng).map((o) => o.piece.id);
+    expect(second).not.toEqual(first);
+  });
+});
+
+describe('rerollIfNothingAffordable', () => {
+  const offerings: ShopOffering[] = [{ piece: { id: 'a', name: 'a', archetype: 'exploit', trigger: { kind: 'always' }, payload: { kind: 'directBurst', amount: 1 }, tags: [] }, cost: 20 }];
+
+  it('rerolls when nothing in the slate is affordable but the reroll itself is', () => {
+    expect(rerollIfNothingAffordable(offerings, playerState(REROLL_COST))).toBe(true);
+  });
+
+  it('does not reroll when something is already affordable', () => {
+    expect(rerollIfNothingAffordable(offerings, playerState(20))).toBe(false);
+  });
+
+  it('does not reroll when even the reroll itself is unaffordable', () => {
+    expect(rerollIfNothingAffordable(offerings, playerState(REROLL_COST - 1))).toBe(false);
   });
 });
 
