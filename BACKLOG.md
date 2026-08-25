@@ -40,15 +40,32 @@ mechanism and a shared `ai.ts` weighted-scoring module. This closes the
 mechanical gap, but **does not yet show up in any balance sweep**: the
 baseline scripted strategies don't consume any of the new context
 fields recon populates, so Root's actual value is still unmeasured.
-Next session should pick up the discard/pegging skill-dial AI (paused
-mid-scoping when this Root gap surfaced) -- it reuses `ai.ts` directly
-and is the thing that will finally let Root's value be measured fairly,
-after which the per-class/per-archetype tuning pass from session 23's
-finding can happen with real data. The per-layer difficulty ramp (still
-one flat enemy tier regardless of layer) and the zero-progress-deadlock/
-sudden-death question remain open too, unchanged by this session. Phase
-0 is down to a single banked idea (node-bypass ability, session 9), not
-blocking.
+**Session 24 also finished the skill-dial AI and re-swept** (see Phase 5
+below for the full writeup) -- and the result reframes the whole
+balance picture, not just Root's. Even the AI's weakest ("novice")
+setting collapses win rates that looked healthy under the old dumb
+baseline: Warden 88.4%→46.4%, Breacher 28.2%→0.2%, Blackhat 51.2%→8.4%.
+Going from novice to expert barely moves those numbers further --
+almost all the damage comes from the enemy simply playing *competent*
+Cribbage at all (exact hand-value/immediate-score optimization),
+independent of the secondary crib-awareness/defensive/setup
+refinements. And Saboteur/Operator/Ghost sit at exactly 0.0% at every
+skill level tested (0, 0.5, 1.0) -- direct confirmation that their
+weakness is a real, structural class-kit gap (Root never touches the
+win gauge), not an artifact of a fair fight against a strawman.
+
+**The actionable takeaway for next session**: every enemy-magnitude
+number tuned so far (checkpoint E of the Breach/Containment redesign,
+session 22+) was calibrated against a Cribbage-incompetent opponent --
+Cribbage-play quality turns out to matter as much as or more than
+loadout magnitude. A real balance/tuning pass now needs to pick a
+target enemy skill level *and* retune magnitudes together, not
+magnitude alone -- picking that skill level per enemy tier was always
+flagged as a separate follow-up decision (decision 3, session 24), and
+this sweep is the data that decision needs. The per-layer difficulty
+ramp (still one flat enemy tier regardless of layer), the zero-
+progress-deadlock/sudden-death question, and the human-vs-AI
+architecture question (banked, Phase 0) all remain open too.
 
 ## Phase 0 — Remaining design passes
 
@@ -727,3 +744,95 @@ content idea surfaced mid-session: higher tiers of `forceDiscardCard`
 could force the selection of both discarded cards, not just one with
 the opponent's best companion left intact -- noted in Phase 0's
 banked-idea list, not built.
+
+---
+
+**Tunable-skill AI + enemy-skill balance sweep (session 24,
+continued).** Resumed right after the Root redesign above, since a real
+chunk of the original plan (the `ai.ts` scoring primitives, the
+`DiscardContext`/`PlayContext` shape) had already landed as a side
+effect. Five more checkpoints (commits `1455338` through the sweep
+writeup below):
+
+- **A** -- `CombatOptions`/`RunOptions` gained `discardStrategies`/
+  `playStrategies` as `[X, X]` tuples instead of one shared value,
+  threaded from `combat.ts` through `run.ts` and `encounters.ts` (test-
+  only escape hatch, same treatment as `installedLoadoutOverride`) down
+  to `pegging.ts`'s `playPegging`, which now dispatches to
+  `playStrategies[currentPlayer]` with that side's own recon context
+  instead of always side 0's.
+- **B** -- a real pegging AI: `ai.ts` gained immediate-score (reusing
+  `pegging.ts`'s scoring rules, exported as `scoreCardPlay`), defensive-
+  risk (a flat penalty for leaving the count at 5 or 21), and setup-
+  value factors, skill-interpolated between novice/expert weight
+  vectors. `pegSkillStrategy(skill)`.
+- **C** -- a real discard AI: `scoreDiscard`'s fixed crib weight became
+  a skill-interpolated pair (defaulting to the old fixed behavior, so
+  Root's `bestCardToForce` is unaffected). When the opponent's hand is
+  known (recon), a new `predictBestDiscard` predicts their likely
+  discard and feeds it into the crib-EV calculation as a real
+  prediction instead of the blind proxy -- naturally gated by the skill
+  dial itself (crib weight is 0 at skill=0, so even a perfect
+  prediction contributes nothing). `discardSkillStrategy(skill)`.
+- **D** -- the sweep this was all built for.
+
+**Sweep results** -- same `playRun()` methodology as every prior sweep
+(500 seeds, `beelineToGatekeeper`, default settings), player side held
+at the existing baseline (`discardLowestTwo`/`playLowestLegal`), enemy
+side swept across 3 skill levels:
+
+| class     | skill 0 | skill 0.5 | skill 1 | (session 23, skill n/a) |
+|-----------|---------|-----------|---------|--------------------------|
+| warden    | 46.4%   | 41.8%     | 44.0%   | 88.4%                    |
+| blackhat  | 8.4%    | 5.4%      | 6.0%    | 51.2%                    |
+| breacher  | 0.2%    | 0.8%      | 0.2%    | 28.2%                    |
+| saboteur  | 0.0%    | 0.0%      | 0.0%    | 1.0%                     |
+| operator  | 0.0%    | 0.0%      | 0.0%    | 0.0%                     |
+| ghost     | 0.0%    | 0.0%      | 0.0%    | 0.0%                     |
+
+Two findings, and the first was genuinely unexpected:
+
+**1. "Novice" is much stronger than intended, and skill barely matters
+on top of it.** The novice weight vector (hand-value/immediate-score
+only, no crib-awareness/defense/setup) was meant to represent weak
+play. Instead, because it still computes *exact* hand-EV and *exact*
+immediate pegging scores over every candidate, it already crushes the
+old baseline (`discardLowestTwo` sorts by rank; `playLowestLegal` sorts
+by value -- neither optimizes for points at all). Going from novice to
+expert then barely moves the numbers further (Warden: 46.4%→41.8%→
+44.0%; Breacher: 0.2%→0.8%→0.2%, noise-level). The real cliff is
+"optimizes for points at all" vs. "doesn't" -- the secondary
+refinements this session added (crib-awareness, defensive risk, setup
+value) matter far less than getting baseline competence right. Not
+fixed here (decision 3 explicitly deferred picking real skill values to
+a later tuning pass) -- flagged because it means the novice/expert
+*weight values themselves*, not just which skill level ships, are a
+real open tuning question, and a true "plays randomly badly" floor
+would need a different mechanism entirely (mistake-injection or a
+literal `discardLowestTwo`-style tier) if a softer difficulty floor
+turns out to be wanted.
+
+**2. Root-paired classes' weakness is confirmed structural, not a
+measurement artifact.** Saboteur/Operator/Ghost sit at exactly 0.0%
+victory at *every* tested skill level, novice through expert. This is
+the direct answer to the question that started this whole investigation
+(is Root's value being measured fairly): yes, now that it can be
+measured at all (the mechanical redesign) and against a real range of
+opponent competence (this sweep) -- and the answer is these three
+classes' problem isn't about the opponent, it's that a single offense
+archetype's 3-piece starting kit paired with Root (which never touches
+the win gauge) doesn't have enough magnitude to close out a race against
+*any* competent opponent. That's real information for the eventual
+per-class tuning pass: more Root magnitude/mechanical reach, not
+"wait for a weaker enemy," is what these classes need.
+
+**What this means for enemy tuning going forward**: every magnitude
+number tuned so far (checkpoint E of the Breach/Containment redesign)
+was calibrated against Cribbage-incompetent play. This sweep shows
+Cribbage-play quality moves the needle as much as or more than loadout
+magnitude does -- Warden alone survives competent play reasonably
+intact; everyone else collapses. A real balance pass needs to pick a
+target enemy skill level and retune magnitudes *together* against it,
+not magnitude alone against the old dumb baseline. Deliberately not
+done here (decision 3) -- this sweep is the data that decision needs,
+not the decision itself.
