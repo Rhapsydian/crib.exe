@@ -70,8 +70,11 @@ function improveTriggerKnob(trigger: TriggerFamily): TriggerFamily {
  * shape -- its wrapped inner effect isn't recursed into, a deliberate
  * simplification). Generic by field name rather than a per-payload-kind
  * table beyond that dispatch, per the plan's own "resolved generically"
- * decision. */
-function improvedPayloadMagnitude(payload: PayloadEffect, amount: number): PayloadEffect | null {
+ * decision. Exported (session 25) for Operator's reworked Primed
+ * passive (`resolve.ts`) to reuse -- the same generic magnitude bump,
+ * applied to the caster's next Exploit fire instead of a permanent
+ * Merge upgrade. */
+export function improvedPayloadMagnitude(payload: PayloadEffect, amount: number): PayloadEffect | null {
   switch (payload.kind) {
     case 'directBurst':
     case 'piercing':

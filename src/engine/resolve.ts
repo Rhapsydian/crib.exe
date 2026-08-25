@@ -2,7 +2,7 @@ import type { PlayerIndex } from './pegging';
 import type { Card, Suit } from './cards';
 import type { Archetype, DebuffKind, HandLifecycleMoment, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
 import type { ClassId } from './classes';
-import { easeTriggerCondition } from './merge';
+import { easeTriggerCondition, improvedPayloadMagnitude } from './merge';
 import {
   createInitialState,
   evaluateEnemyState,
@@ -313,6 +313,7 @@ const FOOTHOLD_BONUS_FRACTION = 0.1; // TBD/playtesting -- X% of threshold, appl
 const SLEEPER_CELL_ADVANCE_AMOUNT = 3; // TBD/playtesting
 const SLEEPER_CELL_CREDIT_AMOUNT = 4; // TBD/playtesting -- direct win-gauge credit, session 25 rework
 const PRIMED_THRESHOLD_REDUCTION = 2; // TBD/playtesting
+const PRIMED_MAGNITUDE_BONUS = 3; // TBD/playtesting -- payload magnitude bump, session 25 rework
 const FEEDBACK_LOOP_DOT_AMOUNT = 2; // TBD/playtesting
 const RETURN_TO_SENDER_RATIO = 0.5; // TBD/playtesting -- portion of absorbed/reduced amount redirected to Ghost's own gauge
 
@@ -338,34 +339,39 @@ export function applyFootholdBonus(combatState: CombatState): CombatState {
   return { ...pushed, passiveTriggered: true };
 }
 
-/** Operator's Primed: the first time a Root subroutine fires this
- * combat, reduce the next Exploit subroutine's trigger threshold --
- * "next" taken as the first Exploit-archetype entry in the caster's own
- * loadout, by array order (there's no other natural "next" to pick
- * against, since firing order isn't itself sequenced by archetype).
- * Applies generically after any Root payload resolves, not gated by
- * payload kind, since Root's payload catalog spans several kinds.
- * Reuses merge.ts's easeTriggerCondition -- the same "make this
- * condition easier to satisfy" rule Merge's own trigger-knob fallback
- * uses (Accumulator's threshold, Occurrence: threshold's bankTarget,
- * Self-state's heatAbove/Below value). Occurrence: scaling and the
- * non-numeric trigger kinds have no such knob and are left untouched --
- * Primed still consumes its one-shot use, it just has nothing to
- * reduce against those shapes. Real effect depends on which Exploit
- * piece Operator's loadout actually has -- "infrastructure-complete,
- * content-partial," same as everywhere else this pattern shows up. */
+/** Operator's Primed (reworked, session 25): every time a Root
+ * subroutine fires this combat, both eases the caster's next Exploit
+ * subroutine's trigger condition (the original one-shot effect) *and*
+ * boosts that Exploit subroutine's payload magnitude (new) -- "next"
+ * taken as the first Exploit-archetype entry in the caster's own
+ * loadout, by array order, same targeting as before. No longer gated
+ * by passiveTriggered: "Root primes the field, Exploit cashes in"
+ * reads most literally as making the eventual strike land *bigger*,
+ * not just sooner, and readiness alone was proven to produce zero
+ * marginal win-rate value (session 24 sweep). Applies generically
+ * after any Root payload resolves, not gated by payload kind, since
+ * Root's payload catalog spans several kinds. Reuses merge.ts's
+ * easeTriggerCondition and (newly exported for this)
+ * improvedPayloadMagnitude -- the same generic per-payload-kind bump
+ * Merge itself uses for permanent upgrades, applied here to the next
+ * fire instead. improvedPayloadMagnitude returns null for a payload
+ * with no magnitude field (Ward/Cleanse/etc.) -- the trigger-ease
+ * still applies in that case, same "has nothing to boost against some
+ * shapes" behavior the original had. */
 function applyPrimedPassive(combatState: CombatState, firedArchetype: Archetype, caster: PlayerIndex): CombatState {
-  if (firedArchetype !== 'root' || caster !== 0 || combatState.classId !== 'operator' || combatState.passiveTriggered) {
+  if (firedArchetype !== 'root' || caster !== 0 || combatState.classId !== 'operator') {
     return combatState;
   }
   const sideState = combatState.sides[0];
   const index = sideState.loadout.findIndex((entry) => entry.definition.archetype === 'exploit');
-  if (index === -1) return { ...combatState, passiveTriggered: true };
+  if (index === -1) return combatState;
   const entry = sideState.loadout[index];
+  const easedTrigger = easeTriggerCondition(entry.definition.trigger, PRIMED_THRESHOLD_REDUCTION);
+  const boostedPayload = improvedPayloadMagnitude(entry.definition.payload, PRIMED_MAGNITUDE_BONUS) ?? entry.definition.payload;
   const loadout = sideState.loadout.slice();
-  loadout[index] = { ...entry, definition: { ...entry.definition, trigger: easeTriggerCondition(entry.definition.trigger, PRIMED_THRESHOLD_REDUCTION) } };
+  loadout[index] = { ...entry, definition: { ...entry.definition, trigger: easedTrigger, payload: boostedPayload } };
   const sides = replaceSide(combatState.sides, 0, { ...sideState, loadout });
-  return { ...combatState, sides, passiveTriggered: true };
+  return { ...combatState, sides };
 }
 
 /** Advances the first loadout entry matching `matches`'s banked

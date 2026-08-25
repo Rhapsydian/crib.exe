@@ -1138,8 +1138,8 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
   });
 
-  describe('Primed (Operator)', () => {
-    it("reduces an Accumulator-triggered Exploit subroutine's threshold the first time a Root subroutine fires", () => {
+  describe('Primed (Operator, reworked session 25)', () => {
+    it("eases an Accumulator-triggered Exploit subroutine's threshold and boosts its payload magnitude every time a Root subroutine fires -- no longer one-shot", () => {
       const exploitPiece = definition(
         'exploit-piece',
         { kind: 'accumulator', metric: 'points', threshold: 10 },
@@ -1149,7 +1149,22 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       const state = createCombatState([exploitPiece], [], 12, 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 8 });
-      expect(result.passiveTriggered).toBe(true);
+      expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 8 }); // + PRIMED_MAGNITUDE_BONUS
+      expect(result.passiveTriggered).toBe(false); // no longer one-shot
+    });
+
+    it('fires again on a second Root subroutine -- persistence, stacking further ease and magnitude', () => {
+      const exploitPiece = definition(
+        'exploit-piece',
+        { kind: 'accumulator', metric: 'points', threshold: 10 },
+        { kind: 'directBurst', amount: 5 },
+        { archetype: 'exploit' },
+      );
+      let state = createCombatState([exploitPiece], [], 12, 'operator');
+      state = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
+      state = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
+      expect(state.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 6 });
+      expect(state.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 11 });
     });
 
     it('reduces bankTarget for an Occurrence: threshold Exploit subroutine', () => {
@@ -1169,7 +1184,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       });
     });
 
-    it('does not touch cap for an Occurrence: scaling Exploit subroutine -- it already fires unconditionally, nothing to ease', () => {
+    it('does not touch cap for an Occurrence: scaling Exploit subroutine -- it already fires unconditionally, nothing to ease -- but still boosts magnitude', () => {
       const exploitPiece = definition(
         'exploit-piece',
         { kind: 'occurrence', category: 'flush', variation: 'scaling', cap: 4 },
@@ -1179,7 +1194,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       const state = createCombatState([exploitPiece], [], 12, 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'occurrence', category: 'flush', variation: 'scaling', cap: 4 });
-      expect(result.passiveTriggered).toBe(true); // still consumes the one-shot use
+      expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 8 });
     });
 
     it('eases a Self-state heatAbove Exploit subroutine (lowers the bar)', () => {
@@ -1206,12 +1221,25 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'selfState', condition: 'heatBelow', value: 12 });
     });
 
-    it('still consumes the one-shot use even when the Exploit piece has no reducible knob', () => {
+    it('still boosts payload magnitude even when the trigger has no reducible knob', () => {
       const exploitPiece = definition('exploit-piece', { kind: 'always' }, { kind: 'directBurst', amount: 5 }, { archetype: 'exploit' });
       const state = createCombatState([exploitPiece], [], 12, 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'always' });
-      expect(result.passiveTriggered).toBe(true);
+      expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 8 });
+    });
+
+    it('leaves the payload untouched when it has no magnitude field to boost (trigger-ease still applies)', () => {
+      const exploitPiece = definition(
+        'exploit-piece',
+        { kind: 'accumulator', metric: 'points', threshold: 10 },
+        { kind: 'cleanse' },
+        { archetype: 'exploit' },
+      );
+      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
+      expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'cleanse' });
+      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 8 });
     });
 
     it('does not trigger for a non-Root archetype fire', () => {
@@ -1224,6 +1252,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       const state = createCombatState([exploitPiece], [], 12, 'operator');
       const result = resolvePayload({ kind: 'directBurst', amount: 3 }, 'exploit', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 10 });
+      expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 5 });
     });
   });
 
