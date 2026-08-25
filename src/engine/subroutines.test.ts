@@ -181,20 +181,52 @@ describe('subroutine content — real combat smoke tests', () => {
     }
   });
 
-  it("Ghost's starting kit genuinely cannot advance its own gauge -- confirms the redesign's structural 'mitigation can't win alone' property, not a bug", () => {
-    // Encryption+Root, zero direct damage access -- never credits its
-    // own win gauge without Phase 4's Return to Sender passive. Under
-    // the pre-redesign shared scalar this meant the match hung forever
-    // (asserted via a maxHands timeout); under the two-gauge model
-    // escalation (checkpoint B) still resolves the match once the
-    // opponent's own shrinking threshold becomes reachable (Ghost's 3
-    // starting pieces cast no Ward at all, so the opponent's hits go
-    // through freely), so a timeout is no longer the right signal here
-    // -- the real invariant is that Ghost's own gauge progress never
-    // advances at all, checked directly.
+  it("Ghost's bare starting kit, without its class passive, genuinely cannot advance its own gauge -- confirms the redesign's structural 'mitigation can't win alone' property, not a bug", () => {
+    // Encryption+Root, zero direct damage access -- deliberately omits
+    // classId here to isolate the kit's own three pieces from Return to
+    // Sender (see the dedicated test right below for the passive's real,
+    // reworked effect). Under the pre-redesign shared scalar this meant
+    // the match hung forever (asserted via a maxHands timeout); under the
+    // two-gauge model escalation (checkpoint B) still resolves the match
+    // once the opponent's own shrinking threshold becomes reachable
+    // (Ghost's 3 starting pieces cast no Ward at all, so the opponent's
+    // hits go through freely), so a timeout is no longer the right signal
+    // here -- the real invariant is that Ghost's own gauge progress never
+    // advances at all without the passive, checked directly.
     const result = playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS });
     expect(result.winner).toBe(1); // Ghost never wins
     expect(result.peakFillFraction[0]).toBe(0); // Ghost's own gauge never moves
+  });
+
+  it("Ghost's real starting kit, with the reworked Return to Sender active, now wins outright -- session 25's core validation claim, directly contrasting the bare-kit test above", () => {
+    // Same exact scenario as the test above, classId added -- Return to
+    // Sender's new instantCounterPush hook (session 25) gives Null
+    // Session's counter-pushes a way to credit Ghost's own gauge for the
+    // first time ever, closing a gap that was previously *impossible* to
+    // close with this kit alone, not merely slow.
+    const result = playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], {
+      seed: 1,
+      gaugeThreshold: 12,
+      maxHands: GENEROUS_MAX_HANDS,
+      classId: 'ghost',
+    });
+    expect(result.winner).toBe(0);
+    expect(result.peakFillFraction[0]).toBeGreaterThan(0);
+  });
+
+  it('Saboteur and Operator win measurably faster against an empty enemy with their reworked passives active than without', () => {
+    // Unlike Ghost, both already had *some* win-gauge access without
+    // their passive (Silent Worm's DoT, Precision Strike's piercing) --
+    // the claim here is "meaningfully harder-hitting," not "impossible
+    // before," matching how these two reworks (checkpoints A/B) actually
+    // differ from Ghost's (checkpoint C).
+    for (const classId of ['saboteur', 'operator'] as const) {
+      const withPassive = playCombat([CLASS_STARTING_LOADOUTS[classId], []], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS, classId });
+      const withoutPassive = playCombat([CLASS_STARTING_LOADOUTS[classId], []], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS });
+      expect(withPassive.winner).toBe(0);
+      expect(withoutPassive.winner).toBe(0);
+      expect(withPassive.hands.length).toBeLessThan(withoutPassive.hands.length);
+    }
   });
 
   it('a solo Encryption pool genuinely stalemates against a weak opponent -- a real escalation gap, not a bug in this test', () => {
