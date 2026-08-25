@@ -429,3 +429,19 @@ actually grow run-over-run. Re-run the same measurement (`playRun()`'s
 outcome distribution across many seeds) once Phase 4 lands, as a
 concrete, repeatable check rather than tuning purely by feel — a
 static-loadout sweep like this one won't reflect real play.
+
+**Open finding from Phase 4 checkpoint A — Breach/Containment can
+stalemate indefinitely, not just in tests**: wiring in a real class kit
+confirmed session 20's sharp-positive-feedback finding cuts both ways —
+a defense-heavy kit (Breacher's capped Session Lock/Steady Hand pair)
+against a mild enemy doesn't just converge slowly, it can fail to
+resolve at all within tens of thousands of hands, regardless of the
+player's own offensive magnitude. This is a real engine gap, not only a
+test-construction inconvenience (which was worked around separately —
+see encounters.test.ts/run.test.ts). Candidate fix, suggested during
+checkpoint A: an escalation effect that kicks in after some number of
+turns/hands (a tiebreak push, a shrinking cap, rising stakes — exact
+mechanism TBD) to guarantee a match resolves in bounded time. Needs its
+own design pass — it changes actual combat feel, not just tuning
+numbers — so it's a Phase 5 balance-pass item, not something to bolt on
+mid-Phase-4.
