@@ -21,14 +21,18 @@ independent per-side gauges, plus escalation (shrinking win-gauge
 thresholds after 100 hands) and a real empirical enemy-magnitude retune
 against the new model. Result: the test suite runs in under a second
 (was several minutes), and the balance sweep now shows a genuinely
-competitive 28.2% victory rate (was 100%, and before that 3.8% under
-the pre-Phase-4 baseline). Next session should pick up what's still
-open: a per-layer difficulty ramp (still just one flat enemy tier
-regardless of layer), sweeping the other 5 classes (only Breacher is
-measured), and keeping an eye on whether the zero-progress-deadlock gap
-found in `subroutines.test.ts` (stacked Ward shields vs. a weak
-opponent) ever needs the deferred sudden-death fallback. Phase 0 is
-down to a single
+competitive 28.2% victory rate for Breacher (was 100%, and before that
+3.8% under the pre-Phase-4 baseline). A follow-up all-6-class sweep
+(session 23, see Phase 5 below) found that competitiveness is nowhere
+near even across classes: Warden 88.4% down to Operator/Ghost 0.0%,
+splitting cleanly along "two gauge-touching archetypes" vs. "one
+offense archetype + Root" starting kits. Next session should pick up
+what's still open: a real per-class/per-archetype tuning pass informed
+by that new data (not just the per-layer difficulty ramp, which is
+still just one flat enemy tier regardless of layer), and keeping an eye
+on whether the zero-progress-deadlock gap found in
+`subroutines.test.ts` (stacked Ward shields vs. a weak opponent) ever
+needs the deferred sudden-death fallback. Phase 0 is down to a single
 banked idea (node-bypass ability, session 9), not blocking.
 
 ## Phase 0 — Remaining design passes
@@ -547,3 +551,45 @@ revisiting now that a single-layer baseline is actually competitive,
 since a real ramp would need each successive layer to ask more than a
 flat 76%/38%/20% split provides. Only Breacher was swept; the other 5
 classes, especially Ghost, remain unmeasured.
+
+**All-6-class balance sweep (session 23)** — same `playRun()`
+methodology (500 seeds, `beelineToGatekeeper`, default settings), one
+sweep per class against the checkpoint-E enemy tuning (which was only
+ever calibrated against Breacher's kit):
+
+| class     | victory | quarantined | noRouteRemains | heatMaxed | avg layers |
+|-----------|---------|-------------|-----------------|-----------|------------|
+| warden    | 88.4%   | 10.4%       | 1.2%            | 0.0%      | 3.66       |
+| blackhat  | 51.2%   | 37.6%       | 7.4%            | 3.8%      | 2.55       |
+| breacher  | 28.2%   | 61.4%       | 10.4%           | 0.0%      | 1.33       |
+| saboteur  | 1.0%    | 69.0%       | 30.0%           | 0.0%      | 0.09       |
+| operator  | 0.0%    | 67.8%       | 32.2%           | 0.0%      | 0.00       |
+| ghost     | 0.0%    | 67.8%       | 32.2%           | 0.0%      | 0.00       |
+
+A much bigger spread than expected — not just "Ghost is hardest" (the
+one outcome DESIGN.md actually predicted), but a near-total split: the
+three classes pairing *two* gauge-crediting/suppressing archetypes
+together (Warden = malware+encryption, further reinforced by Feedback
+Loop's own passive; Blackhat = exploit+malware, two direct-offense
+archetypes stacked; Breacher = exploit+encryption, offense +
+suppression) all clear at least one layer routinely, while the three
+pairing a single offense archetype with Root (which by design never
+touches either gauge — pure denial/tempo) are barely functional at
+all: Operator (exploit+root) and Ghost (encryption+root, the known
+zero-direct-damage case) never won a single run in 500 seeds and
+average essentially zero layers cleared, and Saboteur (malware+root)
+is only marginally better. This reads as a real, class-structural
+finding, not a seed artifact or noise — likely because the checkpoint-E
+enemy retune (regular=9/elite=10/gatekeeper=11) was swept and tuned
+against Breacher specifically, and a lone offense archetype's 3-piece
+starting kit isn't enough magnitude against those numbers on its own,
+with Root's pieces contributing nothing toward closing out the gauge
+race. Root's own value proposition (denial/tempo/enemy-directed
+effects) may be real in a longer run with a grown loadout, just not
+from a bare 3-piece starting kit against a fixed enemy tier — worth
+distinguishing "Root needs its own magnitude tuning" from "Root-paired
+classes need a different early-game answer" before touching numbers.
+Not fixed here — this is the measurement Phase 5 asked for, landing
+before any of Phase 5's tuning work rather than during it, so the tuning
+pass has real per-class numbers instead of Breacher's alone to work
+from.
