@@ -203,6 +203,23 @@ export interface ScheduledSabotagePayload {
   effect: PayloadEffect;
 }
 
+/**
+ * Reduces the caster's own in-combat Heat (CombatSideState.heat -- the
+ * risk/reward-burst accumulator surfaced via CombatResult.
+ * playerHeatGenerated), floored so it can't go below a set point.
+ * Session 21+ content pass: no archetype's documented payload catalog
+ * includes a heat-reduction effect (Exploit's risk/reward burst only
+ * *costs* Heat), but Ghost's *Low Profile* starting Cantrip needs one --
+ * reusing an Exploit-flavored payload would be thematically wrong for a
+ * class with zero Exploit access. Filed under Root (Ghost's other
+ * archetype), matching Root's own "any piece of the system" framing.
+ */
+export interface SelfHeatReductionPayload {
+  kind: 'selfHeatReduction';
+  amount: number;
+  floor: number;
+}
+
 export type PayloadEffect =
   | DirectBurstPayload
   | PiercingPayload
@@ -216,7 +233,8 @@ export type PayloadEffect =
   | CleansePayload
   | InstantManipulationPayload
   | CribbageLayerManipulationPayload
-  | ScheduledSabotagePayload;
+  | ScheduledSabotagePayload
+  | SelfHeatReductionPayload;
 
 export interface SubroutineDefinition {
   id: string;

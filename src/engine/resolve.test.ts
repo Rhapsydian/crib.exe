@@ -84,6 +84,30 @@ describe('resolvePayload — Breach/Containment pushes', () => {
   });
 });
 
+describe('selfHeatReduction', () => {
+  it('reduces the caster\'s own Heat, floored', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, heatCost: 5 }, 'exploit', state, 0);
+    const result = resolvePayload({ kind: 'selfHeatReduction', amount: 3, floor: 1 }, 'root', state, 0);
+    expect(result.sides[0].heat).toBe(2);
+  });
+
+  it('never reduces Heat below the floor', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, heatCost: 2 }, 'exploit', state, 0);
+    const result = resolvePayload({ kind: 'selfHeatReduction', amount: 10, floor: 1 }, 'root', state, 0);
+    expect(result.sides[0].heat).toBe(1);
+  });
+
+  it('is halved by Corrupted like any other magnitude', () => {
+    let state = createCombatState([], [], 12);
+    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, heatCost: 10 }, 'exploit', state, 0);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
+    const result = resolvePayload({ kind: 'selfHeatReduction', amount: 4, floor: 0 }, 'root', state, 0);
+    expect(result.sides[0].heat).toBe(8); // 10 - (4 * 0.5)
+  });
+});
+
 describe('resolvePayload — status effects', () => {
   it('dot applies to the opposing side', () => {
     const state = createCombatState([], [], 12);

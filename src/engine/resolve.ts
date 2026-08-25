@@ -398,6 +398,13 @@ export function resolvePayload(
         ...combatState,
         pendingSabotage: [...combatState.pendingSabotage, { casterSide: caster, archetype, effect: payload.effect }],
       };
+    case 'selfHeatReduction': {
+      const casterState = combatState.sides[caster];
+      const amount = payload.amount * corruptionMultiplier(combatState, caster);
+      const heat = Math.max(payload.floor, casterState.heat - amount);
+      const sides = replaceSide(combatState.sides, caster, { ...casterState, heat });
+      return { ...combatState, sides };
+    }
   }
 }
 
