@@ -14,18 +14,21 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Phase 4 is now complete** (session 22, all 6 checkpoints — see below).
-All 78 subroutines are real data, all 6 classes are selectable with real
-starting kits/passives, and the full acquisition loop (combat rewards,
-bench/install, Merge, Shop) resolves for real. The balance sweep is also
-now done (session 22, see Phase 5 below): 500/500 victories under
-default settings, and a control sweep proved this isn't acquisition —
-it's checkpoint A's enemy-magnitude retune (done for test-suite speed,
-not real balance) leaving even a static starting kit unbeatable. Next
-session should start real enemy tuning (own numbers, not "resolves in
-the test suite's time budget") plus a per-layer difficulty ramp — see
-Phase 5's fuller writeup for what a re-sweep after any retune needs to
-watch for. Phase 0 is down to a single
+**Phase 4 is complete** (session 22, all 6 checkpoints), and the
+Breach/Containment combat model has since been redesigned (session 22+,
+see Phase 5 below) — a single shared zero-sum scalar replaced with two
+independent per-side gauges, plus escalation (shrinking win-gauge
+thresholds after 100 hands) and a real empirical enemy-magnitude retune
+against the new model. Result: the test suite runs in under a second
+(was several minutes), and the balance sweep now shows a genuinely
+competitive 28.2% victory rate (was 100%, and before that 3.8% under
+the pre-Phase-4 baseline). Next session should pick up what's still
+open: a per-layer difficulty ramp (still just one flat enemy tier
+regardless of layer), sweeping the other 5 classes (only Breacher is
+measured), and keeping an eye on whether the zero-progress-deadlock gap
+found in `subroutines.test.ts` (stacked Ward shields vs. a weak
+opponent) ever needs the deferred sudden-death fallback. Phase 0 is
+down to a single
 banked idea (node-bypass ability, session 9), not blocking.
 
 ## Phase 0 — Remaining design passes
@@ -497,3 +500,50 @@ tuning by feel alone won't reliably land in a genuinely competitive
 zone. Only Breacher was swept (the default class); the other 5,
 especially Ghost ("the most challenging to play," per DESIGN.md), are
 still unmeasured and may tell a different story.
+
+---
+
+**Superseded by the Breach/Containment redesign (session 22+).** Both
+open findings above (the escalation-effect suggestion, and "enemy
+magnitudes need real tuning distinct from the test suite's time
+budget") led to a structural redesign rather than incremental tuning:
+Breach/Containment moved from one shared, zero-sum scalar to two
+independent per-side gauges (each side races toward its own win, filled
+only by its own offense) — see the engine's own `gauges.ts`/`resolve.ts`
+headers for the full mechanical shape. This is what the sharp
+positive-feedback chaos and stalemate risk actually traced back to, not
+just untuned numbers.
+
+**Checkpoint A/B result**: the full 351-test suite now runs in under a
+second (previously several minutes, dominated by `run.test.ts`'s real-
+class-kit integration tests). An empirical enemy-magnitude sweep against
+Breacher's real starting kit (checkpoint E) found a wide, *smoothly
+monotonic* competitive zone — win rate falls from 100% to 0% gradually
+across amount 6-13 — a sharp contrast to the old model's narrow, chaotic
+band. Escalation (shrinking win-gauge thresholds after 100 hands) is
+built and did its job in testing, but also surfaced a real remaining
+gap: a defense-heavy loadout (many stacked Ward shields) can still
+produce a genuine *zero-progress* deadlock that pure threshold-shrinking
+can't rescue (confirmed via the full Encryption archetype pool vs. a
+weak opponent in `subroutines.test.ts`) — the plan's own anticipated
+"if shrinking thresholds alone isn't enough, add sudden-death"
+contingency is a live possibility, though not urgent yet (that specific
+case is a more extreme matchup — 15 pieces vs. one weak opponent — than
+any real installed loadout, capped at 6, would produce).
+
+**Checkpoint E balance sweep**: re-ran the same `playRun()` 500-seed
+measurement with the retuned magnitudes (regular=9/elite=10/
+gatekeeper=11 directBurst, winThreshold=50) — **28.2% victory**, 61.4%
+quarantined, 10.4% no route remains, averaging 1.33/4 layers cleared.
+Genuinely competitive: real risk at every stage, real chance of full
+victory, nothing like the prior 100% or the original 3.8%. Sweep runtime
+also worth noting on its own: 623ms for 500 seeds, versus tens of
+minutes under the old model.
+
+**What's still open, unchanged by this redesign**: no per-layer
+difficulty ramp exists yet (`ENEMY_LOADOUT_GATEKEEPER` is one flat
+constant regardless of which of the 4 layers you're on) — worth
+revisiting now that a single-layer baseline is actually competitive,
+since a real ramp would need each successive layer to ask more than a
+flat 76%/38%/20% split provides. Only Breacher was swept; the other 5
+classes, especially Ghost, remain unmeasured.
