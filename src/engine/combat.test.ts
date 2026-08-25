@@ -81,6 +81,26 @@ describe('playCombat', () => {
     expect(result.playerHeatGenerated).toBe(0);
   });
 
+  it('a suitTally Accumulator fires from cards played, not from scoring', () => {
+    const suitWatcher: SubroutineDefinition = {
+      id: 'suit-watcher',
+      name: 'suit-watcher',
+      archetype: 'malware',
+      trigger: { kind: 'accumulator', metric: 'suitTally', suit: 0, threshold: 2 },
+      payload: { kind: 'directBurst', amount: 30 },
+      tags: [],
+      reactive: true,
+    };
+    // gaugeThreshold is deliberately unreachable within the hands this
+    // takes to resolve, and side 1 is empty -- the only way
+    // breachContainment can move is the suit-watcher actually firing
+    // from real cards played during pegging.
+    const result = playCombat([[suitWatcher], []], { seed: 1, gaugeThreshold: 100_000 });
+    expect(result.winner).toBe(0);
+    expect(result.log.length).toBeGreaterThan(0);
+    expect(result.log.every((e) => e.side === 0 && e.subroutineId === 'suit-watcher')).toBe(true);
+  });
+
   it('a global-pulse DoT ticks from combined scoring, independent of whose turn it is', () => {
     const globalDot: SubroutineDefinition = {
       id: 'global-dot',

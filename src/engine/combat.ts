@@ -5,10 +5,13 @@ import { playOneHand, type HandResult, type PlayerIndex } from './game';
 import type { SubroutineDefinition } from './subroutine-types';
 import {
   updateSubroutineState,
+  updateSuitTallyState,
   occurrencesFromPeggingEvent,
   occurrencesFromHandEvents,
   occurrenceFromHisHeels,
+  suitPlayedFromPeggingEvent,
   type ScoringOccurrence,
+  type SuitPlayed,
 } from './triggers';
 import { addPoints, BREACH_CONTAINMENT_MAX, BREACH_CONTAINMENT_MIN, type InitiativeGauge } from './gauges';
 import {
@@ -84,6 +87,29 @@ function applyOccurrenceToState(combatState: CombatState, occurrence: ScoringOcc
     })),
   })) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
+}
+
+/** Advances every suitTally Accumulator subroutine on both sides against
+ * one card played -- parallel to applyOccurrenceToState above, updating
+ * a different, non-scoring signal. */
+function applySuitPlayedToState(combatState: CombatState, suitPlayed: SuitPlayed): CombatState {
+  const sides = combatState.sides.map((sideState, side) => ({
+    ...sideState,
+    loadout: sideState.loadout.map((entry) => ({
+      ...entry,
+      state: updateSuitTallyState(entry.state, entry.definition, suitPlayed, side as PlayerIndex),
+    })),
+  })) as [CombatSideState, CombatSideState];
+  return { ...combatState, sides };
+}
+
+/** Every card played during this hand's pegging phase, suit-tagged --
+ * processed as its own pass (see the loop in playCombat) rather than
+ * interleaved into occurrencesForHand's combined stream, since a
+ * non-scoring play produces no ScoringOccurrence at all but still
+ * counts toward a suit tally. */
+function suitsPlayedForHand(hand: HandResult): SuitPlayed[] {
+  return hand.peggingEvents.map(suitPlayedFromPeggingEvent).filter((s): s is SuitPlayed => s !== null);
 }
 
 function resolution(combatState: CombatState): PlayerIndex | null {
@@ -186,6 +212,18 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     // gauges before this side's own turn.
     let winner = step(advance(tickDebuffDurations(resolvePendingSabotage(combatState)), hand.dealer, log));
     if (winner !== null) return finish(winner);
+
+    // Suit-tally Accumulators watch cards played, not scoring events --
+    // processed as its own pass since a non-scoring play produces no
+    // ScoringOccurrence at all. Runs ahead of this hand's occurrence
+    // loop below (pegging always precedes the show phase anyway); the
+    // two mechanics don't otherwise interact, so no finer interleaving
+    // is needed.
+    for (const suitPlayed of suitsPlayedForHand(hand)) {
+      const beforeSuitPlayed = combatState;
+      winner = step(checkReactive(beforeSuitPlayed, applySuitPlayedToState(combatState, suitPlayed), log));
+      if (winner !== null) return finish(winner);
+    }
 
     for (const occurrence of occurrencesForHand(hand)) {
       const beforeOccurrence = combatState;

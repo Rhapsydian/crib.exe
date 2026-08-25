@@ -6,9 +6,11 @@ import {
   createInitialState,
   resetAfterFire,
   updateSubroutineState,
+  updateSuitTallyState,
   occurrencesFromPeggingEvent,
   occurrencesFromHandEvents,
   occurrenceFromHisHeels,
+  suitPlayedFromPeggingEvent,
   evaluateSelfState,
   evaluateEnemyState,
   evaluateChained,
@@ -220,5 +222,60 @@ describe('occurrenceFromHisHeels', () => {
 
   it('credits the dealer when the starter is a Jack', () => {
     expect(occurrenceFromHisHeels(2, 1)).toEqual({ category: 'hisHeels', player: 1, magnitude: 2 });
+  });
+});
+
+describe('suitPlayedFromPeggingEvent', () => {
+  it('extracts suit and player from a play event, regardless of score', () => {
+    const scoreless: PegPlayEvent = {
+      type: 'play',
+      player: 1,
+      card: { rank: 9, suit: 2 },
+      count: 20,
+      score: 0,
+      breakdown: { fifteen: 0, pair: 0, run: 0, thirtyOne: 0, total: 0 },
+    };
+    expect(suitPlayedFromPeggingEvent(scoreless)).toEqual({ suit: 2, player: 1 });
+  });
+
+  it('returns null for go and go-point events', () => {
+    expect(suitPlayedFromPeggingEvent({ type: 'go', player: 0 })).toBeNull();
+    expect(suitPlayedFromPeggingEvent({ type: 'go-point', player: 0 })).toBeNull();
+  });
+});
+
+describe('updateSuitTallyState', () => {
+  const def = definitionWith({ kind: 'accumulator', metric: 'suitTally', suit: 1, threshold: 3 });
+
+  it('accumulates one per matching card played by the owning side', () => {
+    let state = createInitialState();
+    state = updateSuitTallyState(state, def, { suit: 1, player: 0 }, 0);
+    expect(state.accumulatedProgress).toBe(1);
+    expect(state.ready).toBe(false);
+    state = updateSuitTallyState(state, def, { suit: 1, player: 0 }, 0);
+    state = updateSuitTallyState(state, def, { suit: 1, player: 0 }, 0);
+    expect(state.accumulatedProgress).toBe(3);
+    expect(state.ready).toBe(true);
+  });
+
+  it('ignores a card of a different suit', () => {
+    let state = createInitialState();
+    state = updateSuitTallyState(state, def, { suit: 0, player: 0 }, 0);
+    expect(state.accumulatedProgress).toBe(0);
+  });
+
+  it('ignores a play belonging to the other side', () => {
+    let state = createInitialState();
+    state = updateSuitTallyState(state, def, { suit: 1, player: 1 }, 0);
+    expect(state.accumulatedProgress).toBe(0);
+  });
+
+  it('no-ops for a non-suitTally accumulator or any other trigger family', () => {
+    const pointsDef = definitionWith({ kind: 'accumulator', metric: 'points', threshold: 3 });
+    const alwaysDef = definitionWith({ kind: 'always' });
+    let state = createInitialState();
+    state = updateSuitTallyState(state, pointsDef, { suit: 1, player: 0 }, 0);
+    state = updateSuitTallyState(state, alwaysDef, { suit: 1, player: 0 }, 0);
+    expect(state.accumulatedProgress).toBe(0);
   });
 });

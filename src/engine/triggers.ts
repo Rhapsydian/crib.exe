@@ -1,5 +1,6 @@
 import type { PeggingEvent, PlayerIndex } from './pegging';
 import type { HandScoreEvent } from './scoring';
+import type { Suit } from './cards';
 import type {
   AlwaysTrigger,
   ChainedTrigger,
@@ -105,6 +106,51 @@ export function occurrenceFromHisHeels(heelsPoints: number, dealer: PlayerIndex)
   return heelsPoints > 0 ? { category: 'hisHeels', player: dealer, magnitude: heelsPoints } : null;
 }
 
+/** A card of a given suit being played during pegging — the signal
+ * suit-tally Accumulators watch. Deliberately separate from
+ * ScoringOccurrence: a play that scores nothing still counts toward a
+ * suit tally, but produces no ScoringOccurrence at all (see
+ * occurrencesFromPeggingEvent above), so suit-tally can't be threaded
+ * through that stream. Scoped to pegging plays only, not the show/count
+ * phase's hand/crib cards -- extracting per-card suit info from
+ * scoring.ts's combinatorial fifteen/pair/run event generation would be
+ * a much larger rework of already-tested Phase 1 code for a currently
+ * unused, untuned mechanic; a real gap if the show phase turns out to
+ * matter later, not this checkpoint's job. */
+export interface SuitPlayed {
+  suit: Suit;
+  player: PlayerIndex;
+}
+
+/** Adapts a pegging event into a suit-played signal, independent of
+ * whether the play scored anything. Null for non-play pegging events
+ * (go/go-point) and implicitly for the show phase (no adapter exists
+ * for it -- see SuitPlayed's own doc comment). */
+export function suitPlayedFromPeggingEvent(event: PeggingEvent): SuitPlayed | null {
+  return event.type === 'play' ? { suit: event.card.suit, player: event.player } : null;
+}
+
+/**
+ * Advances a suitTally Accumulator subroutine's banked progress from one
+ * card played of a given suit -- parallel to updateSubroutineState
+ * below, which only handles points-based Accumulator/Occurrence progress
+ * from scoring events. No-op for every other trigger kind/metric, a
+ * suitTally trigger watching a different suit, or a play belonging to
+ * the other side.
+ */
+export function updateSuitTallyState(
+  state: SubroutineRuntimeState,
+  definition: SubroutineDefinition,
+  suitPlayed: SuitPlayed,
+  side: PlayerIndex,
+): SubroutineRuntimeState {
+  if (suitPlayed.player !== side) return state;
+  const trigger = definition.trigger;
+  if (trigger.kind !== 'accumulator' || trigger.metric !== 'suitTally' || trigger.suit !== suitPlayed.suit) return state;
+  const accumulatedProgress = state.accumulatedProgress + 1;
+  return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold };
+}
+
 /**
  * Advances an Accumulator or Occurrence subroutine's banked progress
  * from one incoming occurrence. Occurrences belonging to the other side
@@ -123,8 +169,8 @@ export function updateSubroutineState(
   const trigger = definition.trigger;
 
   if (trigger.kind === 'accumulator') {
-    // Suit-tally wiring needs suit-level scoring info no adapter above
-    // produces yet — a later content pass, not this checkpoint's job.
+    // suitTally is handled by the separate updateSuitTallyState above,
+    // fed from actual card plays rather than scoring occurrences.
     if (trigger.metric !== 'points') return state;
     const accumulatedProgress = state.accumulatedProgress + occurrence.magnitude;
     return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold };
