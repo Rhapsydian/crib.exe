@@ -685,6 +685,25 @@ Phase 1 already implied on its own (`BACKLOG.md`: "should be testable as
 a standalone engine... before any combat-specific wrapping") into a rule
 for every phase, not just the first one.
 
+**Tunable-skill Cribbage AI (session 24)**: that door opened for real.
+`src/engine/ai.ts` provides real discard/pegging decision-making, not
+just the legal-not-good scripted defaults Phase 1 shipped with --
+`discardSkillStrategy(skill)` and `pegSkillStrategy(skill)`, each a
+weighted evaluation function (exact hand-EV, crib-EV, immediate pegging
+score, defensive risk, setup value) blended by a single continuous 0-1
+skill knob interpolating between fixed "novice" and "expert" weight
+vectors, rather than randomly-injected mistakes -- chosen because this
+AI is meant to eventually be the opponent real players face, and a
+weighted personality reads as a coherent, legible skill level in a way
+random noise doesn't. `CombatOptions`/`RunOptions` accept these
+per-side (`discardStrategies`/`playStrategies`, each `[side0, side1]`)
+rather than one shared strategy for both, so a run can pit any
+combination of skill levels (or a human, once the engine's orchestration
+supports pausing for one -- an open architecture question, see
+`BACKLOG.md`) against any other. Not yet wired into real encounters as
+shipped enemy behavior -- picking a skill level per enemy tier is
+content-tuning work, not an engine question, and is still open.
+
 **Project structure (session 15)**: a single Vite/Svelte app, with the
 engine living as a plain-TypeScript `src/engine/` subdirectory rather
 than a separate npm-workspace package. This is deliberately *not*
