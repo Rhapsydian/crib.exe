@@ -1301,7 +1301,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
   });
 
-  describe('Return to Sender (Ghost)', () => {
+  describe('Return to Sender (Ghost, reworked session 25)', () => {
     it("credits Ghost's own gauge proportionally whenever the shield absorbs a hit", () => {
       let state = createCombatState([], [], 12, 'ghost');
       state = resolvePayload({ kind: 'ward', amount: 20 }, 'encryption', state, 0); // Ghost shields up
@@ -1332,6 +1332,47 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       state = resolvePayload({ kind: 'ward', amount: 20 }, 'encryption', state, 1); // enemy shields, not Ghost
       const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0); // Ghost attacks into it
       expect(result.sides[0].winGauge.progress).toBe(0); // Ghost's own hit got absorbed, no credit for Ghost
+    });
+
+    it("credits Ghost's own gauge from instantCounterPush alone, with zero Ward activity -- the reachability fix (Null Session, Ghost's actual starting piece, is instantCounterPush, not Ward)", () => {
+      const state = createCombatState([], [], 12, 'ghost');
+      const result = resolvePayload({ kind: 'instantCounterPush', amount: 10 }, 'encryption', state, 0);
+      expect(result.sides[1].winGauge.progress).toBe(0); // enemy's gauge reduced
+      expect(result.sides[0].wardShield).toBe(0); // confirms no Ward involvement at all
+      expect(result.sides[0].winGauge.progress).toBe(5); // 10 * 0.5 ratio, credited to Ghost
+    });
+
+    it('does not credit instantCounterPush for a class other than Ghost', () => {
+      const state = createCombatState([], [], 12);
+      const result = resolvePayload({ kind: 'instantCounterPush', amount: 10 }, 'encryption', state, 0);
+      expect(result.sides[0].winGauge.progress).toBe(0);
+    });
+
+    it("credits Ghost's own gauge from a HoT tick -- Ghost's own kit has no HoT piece today, but this is what makes one pay off once acquired", () => {
+      const hotPiece = definition(
+        'hot-piece',
+        { kind: 'always' },
+        { kind: 'hot', amountPerTick: 4, cadence: 'castersTurnPulse', duration: 5 },
+        { archetype: 'encryption' },
+      );
+      let state = createCombatState([hotPiece], [], 12, 'ghost');
+      state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
+      const result = tickCastersTurnPulse(state, 0);
+      expect(result.sides[1].winGauge.progress).toBe(0); // enemy's gauge reduced by the HoT
+      expect(result.sides[0].winGauge.progress).toBe(2); // 4 * 0.5 ratio
+    });
+
+    it('does not credit a DoT tick (Malware, not the HoT this hook targets)', () => {
+      const dotPiece = definition(
+        'dot-piece',
+        { kind: 'always' },
+        { kind: 'dot', amountPerTick: 4, cadence: 'castersTurnPulse', duration: 5 },
+        { archetype: 'malware' },
+      );
+      let state = createCombatState([dotPiece], [], 12, 'ghost');
+      state = resolvePayload(dotPiece.payload, 'malware', state, 0);
+      const result = tickCastersTurnPulse(state, 0);
+      expect(result.sides[0].winGauge.progress).toBe(4); // just the DoT itself, no extra Return to Sender credit
     });
   });
 });

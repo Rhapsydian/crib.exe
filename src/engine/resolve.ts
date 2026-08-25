@@ -425,6 +425,31 @@ function applyReturnToSenderPassive(combatState: CombatState, shieldOwnerSide: P
   return creditWinGauge(combatState, 0, absorbed * RETURN_TO_SENDER_RATIO);
 }
 
+/** Return to Sender, reworked (session 25): the Ward-absorb hook above
+ * was Ghost's only trigger, but none of Ghost's own 3 starting pieces
+ * ever casts Ward -- it was completely inert until a Ward piece got
+ * acquired mid-run. Adds two more reachable triggers, same ratio/
+ * identity ("whatever Ghost does to hold the enemy back, some of that
+ * effort redirects to Ghost's own progress"): every instantCounterPush
+ * that reduces the enemy's gauge also credits a portion back --
+ * reachable turn one via Null Session. */
+function applyReturnToSenderCounterPushPassive(combatState: CombatState, casterSide: PlayerIndex, amount: number): CombatState {
+  if (casterSide !== 0 || combatState.classId !== 'ghost') return combatState;
+  return creditWinGauge(combatState, 0, amount * RETURN_TO_SENDER_RATIO);
+}
+
+/** Return to Sender's third trigger (session 25): every HoT tick that
+ * reduces the enemy's gauge also credits a portion back to Ghost's own
+ * gauge. Ghost's own starting kit has no HoT piece, but HoT is
+ * Encryption -- Ghost's own archetype -- so this pays off naturally
+ * once one is acquired. Called from applyTickPush alongside Feedback
+ * Loop's own hook -- both gated on their own distinct classId, so they
+ * coexist with no conflict (only one classId is ever active). */
+function applyReturnToSenderTickPassive(combatState: CombatState, tick: ActiveTick, listKey: 'dots' | 'hots', amount: number): CombatState {
+  if (listKey !== 'hots' || tick.casterSide !== 0 || combatState.classId !== 'ghost') return combatState;
+  return creditWinGauge(combatState, 0, amount * RETURN_TO_SENDER_RATIO);
+}
+
 /** Resolves one subroutine's payload against the acting side's or
  * opposing side's state. `archetype` comes from the firing subroutine's
  * definition (payloads themselves don't carry it) -- needed for
@@ -527,7 +552,8 @@ function resolvePayloadCore(
       // different kind of effect (direct suppression of the opponent's
       // progress, not gauge-seeking offense on the caster's behalf).
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
-      return reduceWinGauge(combatState, target, amount);
+      const pushed = reduceWinGauge(combatState, target, amount);
+      return applyReturnToSenderCounterPushPassive(pushed, caster, amount);
     }
     case 'ward': {
       const casterState = combatState.sides[caster];
@@ -839,7 +865,8 @@ function applyTickPush(combatState: CombatState, tick: ActiveTick, listKey: 'dot
   const state =
     listKey === 'hots' ? reduceWinGauge(combatState, opponentOf(tick.casterSide), amount) : creditWinGauge(combatState, tick.casterSide, amount);
   const withFeedbackLoop = applyFeedbackLoopPassive(state, tick, listKey);
-  return applySleeperCellPassive(withFeedbackLoop, tick.casterSide, listKey === 'dots');
+  const withReturnToSender = applyReturnToSenderTickPassive(withFeedbackLoop, tick, listKey, amount);
+  return applySleeperCellPassive(withReturnToSender, tick.casterSide, listKey === 'dots');
 }
 
 /** Warden's Feedback Loop: every Encryption HoT tick also credits a
