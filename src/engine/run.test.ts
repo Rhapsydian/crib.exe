@@ -3,6 +3,7 @@ import { createNode, type LayerGraph } from './map-types';
 import { legalMoves } from './traversal';
 import { playRun, gatekeeperReachable, beelineToGatekeeper, exploreThenGatekeeper, type TraversalStrategy } from './run';
 import type { SubroutineDefinition } from './subroutine-types';
+import { BREACHER_LOADOUT } from './subroutines';
 
 /** Same reasoning as encounters.test.ts's OVERWHELMING/NEGLIGIBLE_PLAYER:
  * Breach/Containment's sharp positive-feedback dynamics mean a real
@@ -11,7 +12,24 @@ import type { SubroutineDefinition } from './subroutine-types';
  * fast. A deliberately lopsided loadout (via installedLoadoutOverride)
  * resolves fast and decisively regardless of direction, so tests that
  * need to reliably observe a win (or a loss) use one of these instead
- * of leaning on Breacher's real starting kit's natural variance. */
+ * of leaning on Breacher's real starting kit's natural variance.
+ *
+ * The overwhelming loadout keeps Breacher's real 3-piece kit (Session
+ * Lock/Steady Hand at real values) and only scales Buffer Overflow's
+ * burst up -- still exercises real trigger timing and the real capped-
+ * defense mechanic, confirmed empirically to still resolve in single-
+ * digit hands. The negligible loadout stays a synthetic single-piece
+ * dummy: with the real defensive pieces left in, no burst magnitude
+ * makes a loss resolve within tens of thousands of hands against the
+ * current (placeholder) enemy tuning -- see encounters.test.ts's fuller
+ * note on why that's a Phase 5 tuning question, not a test-construction
+ * one. */
+function overwhelmingBreacherLoadout(burstAmount: number): SubroutineDefinition[] {
+  return BREACHER_LOADOUT.map((piece) =>
+    piece.id === 'buffer-overflow' ? { ...piece, payload: { ...piece.payload, amount: burstAmount } } : piece,
+  );
+}
+
 function loadoutWithBurst(amount: number): SubroutineDefinition[] {
   return [
     {
@@ -25,7 +43,7 @@ function loadoutWithBurst(amount: number): SubroutineDefinition[] {
   ];
 }
 
-const OVERWHELMING_LOADOUT = loadoutWithBurst(50);
+const OVERWHELMING_LOADOUT = overwhelmingBreacherLoadout(30);
 const NEGLIGIBLE_LOADOUT = loadoutWithBurst(0.1);
 
 /** Test-only strategy: greedily prefers an already-resolved or
