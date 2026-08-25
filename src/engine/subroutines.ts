@@ -681,8 +681,11 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     id: 'packet-sniffer',
     name: 'Packet Sniffer',
     archetype: 'root',
+    // Haste (session 24): "catch-up" identity -- when the enemy is
+    // pulling ahead on tempo, accelerate the caster's own initiative
+    // gauge instead of denying theirs.
     trigger: { kind: 'enemyState', condition: 'gaugeFillAbove', fraction: GAUGE_FILL_FRACTION },
-    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: COMMON.burst },
+    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
     tags: [],
   },
   {
@@ -718,17 +721,24 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     id: 'directory-traversal',
     name: 'Directory Traversal',
     archetype: 'root',
+    // Recon (session 24): reveals the opponent's kept hand at the start
+    // of the play phase -- gated on being this hand's dealer, tying
+    // recon quality to real Cribbage's own dealer-advantage flavor.
     trigger: { kind: 'selfState', condition: 'isDealer' },
-    payload: { kind: 'instantManipulation', target: 'suitTally', amount: 2 },
+    payload: { kind: 'revealOpponentKeptHand' },
     tags: [],
+    firesAt: 'onPlayPhaseStart',
   },
   {
     id: 'idle-scan',
     name: 'Idle Scan',
     archetype: 'root',
+    // Recon (session 24): reveals the opponent's full dealt hand every
+    // hand -- a lightweight, always-on scan.
     trigger: { kind: 'always' },
-    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: 1 },
+    payload: { kind: 'revealOpponentHand' },
     tags: ['daemon'],
+    firesAt: 'onDealt',
   },
 ];
 
@@ -737,8 +747,11 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     id: 'dns-poisoning',
     name: 'DNS Poisoning',
     archetype: 'root',
+    // Haste (session 24): "come from behind" identity -- the instant the
+    // enemy pulls significantly ahead, permanently speed up the
+    // caster's own initiative gauge instead of denying theirs.
     trigger: { kind: 'enemyState', condition: 'breachContainmentAbove', value: BREACH_CONTAINMENT_THRESHOLD.high },
-    payload: { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: UNCOMMON.burst },
+    payload: { kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: UNCOMMON.burst },
     tags: [],
     reactive: true,
   },
@@ -777,9 +790,16 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     id: 'backchannel',
     name: 'Backchannel',
     archetype: 'root',
+    // Recon (session 24): the real, working version of what peekCrib
+    // was always meant to be -- see subroutine-types.ts's
+    // InstantManipulationPayload doc comment for why peekCrib itself
+    // stays a documented no-op. Reveals the crib right after it's
+    // selected, before it's scored, while the caster's own Heat is
+    // running hot.
     trigger: { kind: 'selfState', condition: 'heatAbove', value: UNCOMMON.heat },
-    payload: { kind: 'cribbageLayerManipulation', action: 'peekCrib' },
+    payload: { kind: 'revealCrib' },
     tags: [],
+    firesAt: 'onCribSelected',
   },
 ];
 
@@ -798,14 +818,27 @@ export const ROOT_RARES: SubroutineDefinition[] = [
     id: 'zero-knowledge-exploit',
     name: 'Zero-Knowledge Exploit',
     archetype: 'root',
+    // Manipulation (session 24): a rare, surgical payoff for a Corrupted
+    // enemy -- forces away whichever specific card their own hand-value
+    // heuristic would most want to keep (ai.ts's bestCardToForce), not
+    // just a blunt whole-pair discardHighestTwo. `firesAt` supersedes
+    // the old `reactive` bypass here -- it's a more specific "when" than
+    // "the instant armed."
     trigger: { kind: 'enemyState', condition: 'hasDebuff', debuffId: 'corrupted' },
-    payload: { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: RARE.burst },
+    payload: { kind: 'forceDiscardCard' },
     tags: [],
-    reactive: true,
+    firesAt: 'onDealt',
   },
   {
     id: 'full-system-compromise',
     name: 'Full System Compromise',
+    // Unchanged (session 24): its chained-after-cron-job identity
+    // doesn't map onto firesAt timing (hand-lifecycle gaps aren't
+    // "anyone's turn," so within-turn chaining doesn't apply there --
+    // see resolve.ts's fireHandLifecycleSubroutines) -- the blunt
+    // whole-pair forceDiscard remains a real, distinct tool alongside
+    // zero-knowledge-exploit's surgical forceDiscardCard, not redundant
+    // with it.
     archetype: 'root',
     trigger: { kind: 'chained', afterSubroutineId: 'cron-job' },
     payload: { kind: 'cribbageLayerManipulation', action: 'forceDiscard' },

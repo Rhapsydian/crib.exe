@@ -10,6 +10,32 @@ import { createCombatState, resolvePayload } from './resolve';
 import { playCombat } from './combat';
 import type { SubroutineDefinition } from './subroutine-types';
 
+describe('subroutine content — Root mechanical redesign (session 24 checkpoint F)', () => {
+  it('real content exercises every new Root payload kind, not just engine capability', () => {
+    const kinds = new Set(ALL_SUBROUTINES.map((s) => s.payload.kind));
+    expect(kinds.has('revealOpponentHand')).toBe(true);
+    expect(kinds.has('revealCrib')).toBe(true);
+    expect(kinds.has('revealOpponentKeptHand')).toBe(true);
+    expect(kinds.has('forceDiscardCard')).toBe(true);
+  });
+
+  it('real content exercises both haste targets (ownGauge/ownGaugeThreshold)', () => {
+    const targets = ALL_SUBROUTINES.filter((s) => s.payload.kind === 'instantManipulation').map((s) =>
+      s.payload.kind === 'instantManipulation' ? s.payload.target : null,
+    );
+    expect(targets).toContain('ownGauge');
+    expect(targets).toContain('ownGaugeThreshold');
+  });
+
+  it('every firesAt-tagged subroutine uses one of the three real hand-lifecycle moments and is never also reactive', () => {
+    for (const sub of ALL_SUBROUTINES) {
+      if (!sub.firesAt) continue;
+      expect(['onDealt', 'onCribSelected', 'onPlayPhaseStart']).toContain(sub.firesAt);
+      expect(sub.reactive).toBeFalsy();
+    }
+  });
+});
+
 describe('subroutine content — structural integrity', () => {
   it('has exactly 78 subroutines: 18 starting-loadout + 60 pool', () => {
     expect(ALL_STARTING_LOADOUT_SUBROUTINES).toHaveLength(18);
