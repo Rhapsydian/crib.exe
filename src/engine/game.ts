@@ -77,7 +77,7 @@ export function playOneHand(
   scores[dealer] += heelsPoints;
 
   const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
-  const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, playStrategy);
+  const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, [playStrategy, playStrategy]);
   scores[0] += peggingScores[0];
   scores[1] += peggingScores[1];
 

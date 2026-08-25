@@ -228,7 +228,7 @@ describe('playCombat', () => {
 
         const nonDealer = (1 - hand.dealer) as PlayerIndex;
         const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
-        const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, playLowestLegal);
+        const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, [playLowestLegal, playLowestLegal]);
         expect(peggingScores).toEqual(hand.peggingScores);
         expect(peggingEvents).toEqual(hand.peggingEvents);
         expect(countHandEvents(kept[nonDealer], starter)).toEqual(hand.nonDealerHandEvents);
@@ -257,7 +257,7 @@ describe('playCombat', () => {
     const result = playCombat([[recon, alwaysBurst('winner', 1000)], []], {
       seed: 5,
       gaugeThreshold: 1,
-      discardStrategy: spyDiscardStrategy,
+      discardStrategies: [spyDiscardStrategy, spyDiscardStrategy],
     });
     expect(result.hands.length).toBeGreaterThan(0);
     // Side 0 discards first each hand (combat.ts's fixed order) and has
@@ -288,7 +288,7 @@ describe('playCombat', () => {
     const result = playCombat([[manipulator, alwaysBurst('winner', 1000)], []], {
       seed: 7,
       gaugeThreshold: 1,
-      discardStrategy: spyDiscardStrategy,
+      discardStrategies: [spyDiscardStrategy, spyDiscardStrategy],
     });
     expect(result.hands.length).toBeGreaterThan(0);
     // Shared discardStrategy is normally called once per side per hand
@@ -356,7 +356,7 @@ describe('playCombat', () => {
     const result = playCombat([[cribRecon, handRecon, burst], []], {
       seed: 11,
       gaugeThreshold: 1,
-      playStrategy: spyPlayStrategy,
+      playStrategies: [spyPlayStrategy, spyPlayStrategy],
     });
     expect(result.hands.length).toBeGreaterThan(0);
     expect(sawKnownCrib).toBe(true);

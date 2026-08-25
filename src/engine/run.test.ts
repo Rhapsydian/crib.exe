@@ -5,6 +5,8 @@ import { playRun, gatekeeperReachable, beelineToGatekeeper, exploreThenGatekeepe
 import type { SubroutineDefinition } from './subroutine-types';
 import { BREACHER_LOADOUT } from './subroutines';
 import { INSTALLED_SLOT_CAP } from './loadout';
+import type { DiscardStrategy } from './deal';
+import type { PlayStrategy } from './pegging';
 
 /** Same reasoning as encounters.test.ts's OVERWHELMING/NEGLIGIBLE_PLAYER:
  * Breach/Containment's sharp positive-feedback dynamics mean a real
@@ -144,6 +146,31 @@ describe('playRun', { timeout: 30_000 }, () => {
       }).outcome,
     );
     expect(outcomes).toContain('victory');
+  });
+
+  it('threads discardStrategies/playStrategies through resolveEncounter into real fights (session 24 tunable-skill AI checkpoint A)', () => {
+    let discardCalls = 0;
+    let playCalls = 0;
+    const spyDiscard: DiscardStrategy = (ctx) => {
+      discardCalls++;
+      const sorted = ctx.hand.slice().sort((a, b) => a.rank - b.rank);
+      return [sorted[0], sorted[1]];
+    };
+    const spyPlay: PlayStrategy = (ctx) => {
+      playCalls++;
+      return ctx.legalCards[0];
+    };
+    playRun({
+      seed: 1,
+      layerNodeCounts: TINY_LAYERS,
+      traversalStrategy: beelineToGatekeeper,
+      installedLoadoutOverride: OVERWHELMING_LOADOUT,
+      classId: 'breacher',
+      discardStrategies: [spyDiscard, spyDiscard],
+      playStrategies: [spyPlay, spyPlay],
+    });
+    expect(discardCalls).toBeGreaterThan(0);
+    expect(playCalls).toBeGreaterThan(0);
   });
 
   it('quarantines on at least one seed -- losing any gatekeeper ends the run outright', () => {

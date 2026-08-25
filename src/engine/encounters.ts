@@ -3,6 +3,8 @@ import type { Rng } from './rng';
 import type { SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
 import { playCombat } from './combat';
+import type { DiscardStrategy } from './deal';
+import type { PlayStrategy } from './pegging';
 import { heatFromLoss } from './heat';
 import { drawRewardOptions, type RewardTier } from './rewards';
 import { dataForTier } from './data';
@@ -118,7 +120,13 @@ const ENEMY_LOADOUTS: Record<FightKind, SubroutineDefinition[]> = {
   gatekeeper: ENEMY_LOADOUT_GATEKEEPER,
 };
 
-function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): EncounterOutcome {
+function resolveFight(
+  kind: FightKind,
+  rng: Rng,
+  playerState: RunPlayerState,
+  discardStrategies?: [DiscardStrategy, DiscardStrategy],
+  playStrategies?: [PlayStrategy, PlayStrategy],
+): EncounterOutcome {
   const enemyLoadout = ENEMY_LOADOUTS[kind];
   const seed = rng.nextInt(2 ** 31);
   const result = playCombat([playerState.installedLoadout, enemyLoadout], {
@@ -127,6 +135,8 @@ function resolveFight(kind: FightKind, rng: Rng, playerState: RunPlayerState): E
     winThreshold: WIN_THRESHOLD,
     maxHands: FIGHT_MAX_HANDS,
     classId: playerState.classId,
+    discardStrategies,
+    playStrategies,
   });
 
   if (result.winner === 0) {
@@ -178,14 +188,21 @@ export function resolveEncounter(
   safehouseStrategy: SafehouseStrategy = preferMergeWhenAvailable,
   shopStrategy: ShopStrategy = buyCheapestAffordable,
   shopRerollStrategy: ShopRerollStrategy = rerollIfNothingAffordable,
+  /** Test-only escape hatch (session 24, tunable-skill AI checkpoint A),
+   * same treatment as run.ts's installedLoadoutOverride -- lets a sweep
+   * exercise a skilled *enemy* in real fights. Real per-tier enemy
+   * skill selection remains a separate, later decision; undefined here
+   * falls all the way through to playCombat's own baseline defaults. */
+  discardStrategies?: [DiscardStrategy, DiscardStrategy],
+  playStrategies?: [PlayStrategy, PlayStrategy],
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
-      return resolveFight('regular', rng, playerState);
+      return resolveFight('regular', rng, playerState, discardStrategies, playStrategies);
     case 'eliteFight':
-      return resolveFight('elite', rng, playerState);
+      return resolveFight('elite', rng, playerState, discardStrategies, playStrategies);
     case 'gatekeeperFight':
-      return resolveFight('gatekeeper', rng, playerState);
+      return resolveFight('gatekeeper', rng, playerState, discardStrategies, playStrategies);
     case 'safehouse': {
       // DESIGN.md's deliberate Rest-vs-Merge trade-off: one action per
       // visit (the node goes inert either way). Falls back to Rest if

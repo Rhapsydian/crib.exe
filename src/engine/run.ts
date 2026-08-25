@@ -9,6 +9,8 @@ import type { SubroutineDefinition } from './subroutine-types';
 import { acquireSubroutine, alwaysAcquireFirst, INSTALLED_SLOT_CAP, type AcquisitionStrategy } from './loadout';
 import { mergeSubroutine, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
 import { buyCheapestAffordable, rerollIfNothingAffordable, type ShopStrategy, type ShopRerollStrategy } from './shop';
+import type { DiscardStrategy } from './deal';
+import type { PlayStrategy } from './pegging';
 
 /**
  * The run orchestrator (session 19/20 checkpoint F): ties layer
@@ -119,6 +121,15 @@ export interface RunOptions {
    * before buying -- checkpoint F follow-up. Defaults to
    * rerollIfNothingAffordable (legal-not-good). */
   shopRerollStrategy?: ShopRerollStrategy;
+  /** Test-only escape hatch (session 24, tunable-skill AI checkpoint A),
+   * same treatment as installedLoadoutOverride above -- lets a sweep
+   * exercise a skilled opponent (either side) in real fights via
+   * resolveEncounter/resolveFight. Real per-tier enemy skill selection
+   * for shipped content remains a separate, later decision; undefined
+   * here falls all the way through to playCombat's own baseline
+   * defaults. */
+  discardStrategies?: [DiscardStrategy, DiscardStrategy];
+  playStrategies?: [PlayStrategy, PlayStrategy];
 }
 
 export function playRun(options: RunOptions): RunResult {
@@ -133,6 +144,8 @@ export function playRun(options: RunOptions): RunResult {
     safehouseStrategy = preferMergeWhenAvailable,
     shopStrategy = buyCheapestAffordable,
     shopRerollStrategy = rerollIfNothingAffordable,
+    discardStrategies,
+    playStrategies,
   } = options;
 
   const rng = createRng(seed);
@@ -174,7 +187,7 @@ export function playRun(options: RunOptions): RunResult {
       if (!node) throw new Error(`playRun: node "${position.nodeId}" is missing from its own layer graph`);
       if (node.state !== 'unresolved') continue; // already resolved -- just passing through
 
-      const outcome = resolveEncounter(node, rng, playerState, safehouseStrategy, shopStrategy, shopRerollStrategy);
+      const outcome = resolveEncounter(node, rng, playerState, safehouseStrategy, shopStrategy, shopRerollStrategy, discardStrategies, playStrategies);
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
       const afterEncounter = addHeat(heat, outcome.heatDelta);
       heat = afterEncounter.heat;

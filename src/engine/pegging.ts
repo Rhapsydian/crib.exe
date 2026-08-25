@@ -115,17 +115,21 @@ function scorePlay(sequence: SequenceCard[], count: number): PegScoreBreakdown {
  * Plays out the pegging phase for two already-discarded (4-card) hands.
  * `firstToAct` is a parameter rather than a hardcoded convention — the
  * caller (the real rule is "non-dealer plays first") decides.
- * `knownCrib`/`knownOpponentHand` (session 24) are static for the whole
- * phase once set (recon fires before pegging starts, not during it) --
- * passed through unchanged into every PlayContext built below.
+ * `chooseCard` is per-side (session 24 tunable-skill AI checkpoint A) --
+ * each side's own strategy is called only when it's that side's turn to
+ * play, receiving that side's own `knownCrib`/`knownOpponentHand` (also
+ * per-side now, since recon is per-side too) rather than one shared pair
+ * for both. Both default to `[playLowestLegal, playLowestLegal]`.
+ * `knownCrib`/`knownOpponentHand` are static for the whole phase once
+ * set (recon fires before pegging starts, not during it).
  */
 export function playPegging(
   hand0: Card[],
   hand1: Card[],
   firstToAct: PlayerIndex,
-  chooseCard: PlayStrategy = playLowestLegal,
-  knownCrib?: Card[],
-  knownOpponentHand?: Card[],
+  chooseCard: [PlayStrategy, PlayStrategy] = [playLowestLegal, playLowestLegal],
+  knownCrib?: [Card[] | undefined, Card[] | undefined],
+  knownOpponentHand?: [Card[] | undefined, Card[] | undefined],
 ): PeggingResult {
   const hands: [Card[], Card[]] = [hand0.slice(), hand1.slice()];
   let count = 0;
@@ -141,7 +145,13 @@ export function playPegging(
     const legal = hands[player].filter((c) => count + cardValue(c) <= 31);
 
     if (legal.length > 0) {
-      const card = chooseCard({ legalCards: legal, count, sequence: sequence.map((s) => s.card), knownCrib, knownOpponentHand });
+      const card = chooseCard[player]({
+        legalCards: legal,
+        count,
+        sequence: sequence.map((s) => s.card),
+        knownCrib: knownCrib?.[player],
+        knownOpponentHand: knownOpponentHand?.[player],
+      });
       hands[player] = hands[player].filter((c) => !cardsEqual(c, card));
       count += cardValue(card);
       sequence.push({ card, player });

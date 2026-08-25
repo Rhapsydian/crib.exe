@@ -56,8 +56,13 @@ export interface CombatOptions {
    * old shared scalar's scale, though it's an independent TBD/playtesting
    * number now, not tied to any 0-100 shared axis. */
   winThreshold?: number;
-  discardStrategy?: DiscardStrategy;
-  playStrategy?: PlayStrategy;
+  /** Per-side discard/play strategies (session 24, tunable-skill AI
+   * checkpoint A) -- each side gets its own, rather than one shared
+   * function used for both. Both default to `[discardLowestTwo,
+   * discardLowestTwo]` / `[playLowestLegal, playLowestLegal]`,
+   * preserving every existing call site's behavior exactly. */
+  discardStrategies?: [DiscardStrategy, DiscardStrategy];
+  playStrategies?: [PlayStrategy, PlayStrategy];
   startingDealer?: PlayerIndex;
   /** Safety cap against a combat that never resolves (e.g. an empty
    * loadout whose gauge can never trigger a turn) -- real content always
@@ -215,8 +220,8 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     seed,
     gaugeThreshold,
     winThreshold = 100,
-    discardStrategy = discardLowestTwo,
-    playStrategy = playLowestLegal,
+    discardStrategies = [discardLowestTwo, discardLowestTwo],
+    playStrategies = [playLowestLegal, playLowestLegal],
     startingDealer = 0,
     maxHands = 500,
     classId,
@@ -344,12 +349,12 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
       ? () => combatState.sides[0].forcedDiscardPair as [Card, Card]
       : manipulation.forHand.forcedDiscardSide === 0
         ? discardHighestTwo
-        : discardStrategy;
+        : discardStrategies[0];
     const strategy1: DiscardStrategy = combatState.sides[1].forcedDiscardPair
       ? () => combatState.sides[1].forcedDiscardPair as [Card, Card]
       : manipulation.forHand.forcedDiscardSide === 1
         ? discardHighestTwo
-        : discardStrategy;
+        : discardStrategies[1];
     const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: dealer === 0, knownOpponentHand: combatState.sides[0].knownOpponentHand }, strategy0);
     const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: dealer === 1, knownOpponentHand: combatState.sides[1].knownOpponentHand }, strategy1);
     const crib = [...d0.discarded, ...d1.discarded];
@@ -366,22 +371,16 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     if (winner !== null) return finish(winner);
 
     const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
-    // playStrategy is a single function shared by both sides (pegging's
-    // pre-existing design, unlike discard which is called once per side
-    // with its own context) -- there's no per-side context to split
-    // knownCrib/knownOpponentHand across here, so this deliberately
-    // uses side 0's (the player's) own recon, same "side 0 is the
-    // privileged side" convention this file already uses for
-    // playerHeatGenerated. Genuine per-side pegging context is the
-    // follow-on skill-dial session's job (decision 4), once playStrategy
-    // itself becomes per-side.
+    // Genuinely per-side now (session 24 tunable-skill AI checkpoint A)
+    // -- each side's own strategy sees only its own recon, not the
+    // other side's.
     const { scores: peggingScores, events: peggingEvents } = playPegging(
       kept[0],
       kept[1],
       nonDealer,
-      playStrategy,
-      combatState.sides[0].knownCrib,
-      combatState.sides[0].knownOpponentHand,
+      playStrategies,
+      [combatState.sides[0].knownCrib, combatState.sides[1].knownCrib],
+      [combatState.sides[0].knownOpponentHand, combatState.sides[1].knownOpponentHand],
     );
     scores[0] += peggingScores[0];
     scores[1] += peggingScores[1];
