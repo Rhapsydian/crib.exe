@@ -44,33 +44,32 @@ function burstSubroutine(id: string, amount: number): SubroutineDefinition {
   };
 }
 
-// Retuned at Phase 4 checkpoint A: these were originally balanced
-// against a symmetric single-piece dummy player loadout, amount-for-
-// amount. Now that a real class's starting kit (3 pieces, including
-// capped-at-midpoint defensive pieces alongside sparser uncapped
-// damage) drives fights instead, that old 5-vs-5 matchup left the
-// player on a near-guaranteed loss, and Breach/Containment's sharp
-// positive-feedback dynamics (a small per-fire edge compounds hard --
-// see session 20's own finding) meant there was no wide "sometimes
-// wins, sometimes loses, resolves quickly" zone to find by further
-// tuning alone -- empirically it's a narrow band between "wins almost
-// always" and "loses almost always, and takes drastically longer to
-// resolve either way." Gatekeeper now gets its own tier, harder than
-// Elite: reusing Regular (the pre-Phase-4 behavior) left it winnable
-// too reliably to ever exercise quarantine at all once a real loadout
-// replaced the old dummy. Real balance (including making Regular
-// genuinely competitive, not just winnable) is Phase 5's job -- re-run
-// session 20's playRun() sweep once Phase 4's acquisition system lets
-// the loadout actually grow across a run.
-const ENEMY_LOADOUT_REGULAR: SubroutineDefinition[] = [burstSubroutine('enemy-burst', 2.5)];
-const ENEMY_LOADOUT_ELITE: SubroutineDefinition[] = [burstSubroutine('enemy-elite-burst', 2.55)];
-const ENEMY_LOADOUT_GATEKEEPER: SubroutineDefinition[] = [burstSubroutine('enemy-gatekeeper-burst', 2.8)];
+// Retuned at Phase 4 checkpoint E, empirically, against the
+// Breach/Containment redesign's two-gauge model (session 22+) and
+// Breacher's real starting kit -- swept enemy magnitude 2-16 at
+// winThreshold=50 across 50 seeds each: win rate falls off smoothly and
+// monotonically from 100% (amount<=6) to 0% (amount>=13), a wide,
+// genuinely tunable competitive zone, unlike the old shared-scalar
+// model's narrow, chaotic band between "always wins" and "always loses,
+// and takes far longer either way" (session 20/Phase 4 checkpoint A's
+// own finding). Regular/elite/gatekeeper land at roughly 76%/38%/20% win
+// rate for a bare starting kit -- a real difficulty gradient, with room
+// for the growing loadout (Phase 4's acquisition system) to matter
+// across a run rather than static per-fight odds telling the whole
+// story. Convergence at every one of these magnitudes is fast and
+// tightly bounded (avg ~10-17 hands, max ~25) -- see FIGHT_MAX_HANDS
+// below.
+const ENEMY_LOADOUT_REGULAR: SubroutineDefinition[] = [burstSubroutine('enemy-burst', 9)];
+const ENEMY_LOADOUT_ELITE: SubroutineDefinition[] = [burstSubroutine('enemy-elite-burst', 10)];
+const ENEMY_LOADOUT_GATEKEEPER: SubroutineDefinition[] = [burstSubroutine('enemy-gatekeeper-burst', 11)];
 const GAUGE_THRESHOLD = 8;
-// Breach/Containment redesign (session 22+): these magnitudes and this
-// win-gauge threshold are placeholder values carried over from the old
-// shared-scalar model, not real balance against the new two-gauge one --
-// re-tuning both together, empirically, is Phase 5's job (BACKLOG.md).
-const WIN_THRESHOLD = 100;
+// Same empirical sweep as above -- 50 gave fast (~10-25 hand),
+// consistent convergence across the whole competitive magnitude range
+// while still leaving enough resolution for the amount-differences
+// between tiers to matter. TBD/playtesting, same as every numeric
+// constant in this project, but now grounded in the new model's actual
+// behavior rather than carried over from the old one.
+const WIN_THRESHOLD = 50;
 
 export interface EncounterOutcome {
   newState: NodeState;
@@ -105,12 +104,13 @@ export interface EncounterOutcome {
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
 
-// A real class kit still converges slower than combat.ts's own
-// conservative default (500, tuned for small test loadouts) -- typical
-// fights at the retuned magnitudes above land in the low thousands of
-// hands, with rare outliers into the tens of thousands (Gatekeeper's
-// tighter margin especially). Generous headroom over that.
-const FIGHT_MAX_HANDS = 80_000;
+// The two-gauge redesign's race-to-threshold dynamics converge fast and
+// consistently (empirically ~10-25 hands at the magnitudes above, even
+// at the extremes of the swept range) -- a generous but no longer
+// enormous margin over that. Escalation (checkpoint B) starts at hand
+// 100 as a backstop for any matchup this placeholder tuning didn't
+// anticipate (e.g. a heavily-grown late-run loadout), well under this.
+const FIGHT_MAX_HANDS = 5_000;
 
 const ENEMY_LOADOUTS: Record<FightKind, SubroutineDefinition[]> = {
   regular: ENEMY_LOADOUT_REGULAR,
