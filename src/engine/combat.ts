@@ -181,9 +181,15 @@ function advance(
 // Escalation (session 22+): a match still resolves faster once it's
 // gone on long enough that "genuinely competitive" tuning can afford
 // to be patient early on -- see BACKLOG.md for the sharp positive-
-// feedback/stalemate risk this exists to bound. All TBD/playtesting,
-// same placeholder convention as everywhere else in this project.
-const ESCALATION_START_HAND = 100;
+// feedback/stalemate risk this exists to bound. ESCALATION_START_HAND
+// was moved from 100 down to 20 (session 26) -- past this project's own
+// empirical finding that normal, healthy fights converge in ~10-25
+// hands on their own (itself close to a real Cribbage game's typical
+// 9-12 hands), so this remains mostly a stalemate rescue rather than a
+// broad tempo pacer, while still catching fights running toward the
+// long end of that natural range. All TBD/playtesting, same
+// placeholder convention as everywhere else in this project.
+const ESCALATION_START_HAND = 20;
 const ESCALATION_SHRINK_PER_HAND = 1;
 const ESCALATION_MIN_THRESHOLD = 10;
 
