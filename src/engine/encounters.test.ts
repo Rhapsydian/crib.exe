@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import { createNode } from './map-types';
 import { resolveEncounter } from './encounters';
+import type { EnemyId } from './enemies';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
 import type { RunPlayerState } from './run';
@@ -89,20 +90,30 @@ const OVERWHELMING_PLAYER: RunPlayerState = {
 const NEGLIGIBLE_PLAYER = playerWithBurst(0.1);
 const SEEDS = [1, 2, 3];
 
-// Phase 5 checkpoint C: layerIndex 4 keeps every placeholder enemy
-// (minLayer 1-4) eligible regardless of tier, and fightNumber past the
-// opener window (enemies.ts's OPENER_FIGHT_WINDOW) so an eliteFight/
-// gatekeeperFight test node actually exercises its own tier instead of
-// being downgraded to an easy Regular opener. Gatekeeper nodes need a
-// real assignedEnemyId too -- createNode alone doesn't set one (that's
-// normally map-gen's job via assignGatekeeperEnemy). Every checkpoint-C
-// placeholder enemy is a simple always-firing burst (see enemies.ts's
-// alwaysBurst) specifically so outcomes here are a predictable function
-// of magnitude/skill, not real kit balance -- that's checkpoint D+E's
-// job, once real thematic (sometimes deliberately solo-weak, mirroring
-// the player-side Ghost class) content replaces these placeholders.
+// Phase 5 checkpoint D: layerIndex/fightNumber only matter for the
+// skill-dial cosmetic and for the real random tier/layer pick, which
+// these tests bypass entirely via enemyIdOverride below -- real content
+// includes several kits that, by design, mirror the player-side Ghost
+// class's "never wins outright alone" property (little or no
+// win-gauge-crediting offense against a sufficiently weak/passive
+// opponent -- Encryption-only mitigation kits, Root-only denial/recon
+// kits), so "any randomly-picked enemy of this tier reliably wins/loses"
+// is no longer a valid universal assumption to test against. Each
+// override below was picked for having real, frequent win-gauge-
+// crediting offense (occurrence:pair/thirtyOne/fifteen triggers are
+// common in real Cribbage play) so these wiring tests stay deterministic
+// regardless of which enemy real selection would have produced.
 const TEST_LAYER = 4;
 const TEST_FIGHT_NUMBER = 10;
+const RELIABLE_ENEMY_ID: Record<'regularFight' | 'eliteFight' | 'gatekeeperFight', EnemyId> = {
+  regularFight: 'drive-by-kit', // off-by-one (thirtyOne) + ransomware (accumulator DoT)
+  eliteFight: 'zero-day-broker', // zero-day-chain fires on any Pair
+  // total-compromise's rare fires reactively whenever the *player's*
+  // fill is low -- true almost the whole match against NEGLIGIBLE_PLAYER,
+  // false almost immediately against OVERWHELMING_PLAYER's rush, which
+  // is exactly the behavior both win/loss scenarios below need.
+  gatekeeperFight: 'total-compromise',
+};
 // Both sides pinned to the dumb baseline explicitly -- an explicit
 // override always wins outright over checkpoint C's computed skill-dial
 // default (see encounters.ts's strategiesForFight), so this restores
@@ -113,22 +124,41 @@ const TEST_FIGHT_NUMBER = 10;
 const BASELINE_STRATEGIES: [DiscardStrategy, DiscardStrategy] = [discardLowestTwo, discardLowestTwo];
 const BASELINE_PLAY_STRATEGIES: [PlayStrategy, PlayStrategy] = [playLowestLegal, playLowestLegal];
 
-function nodeFor(nodeType: 'regularFight' | 'eliteFight' | 'gatekeeperFight') {
-  const node = createNode('n', nodeType);
-  return nodeType === 'gatekeeperFight' ? { ...node, assignedEnemyId: 'null-session' } : node;
-}
-
 function winOutcomes(nodeType: 'regularFight' | 'eliteFight' | 'gatekeeperFight') {
-  const node = nodeFor(nodeType);
+  const node = createNode('n', nodeType);
   return SEEDS.map((seed) =>
-    resolveEncounter(node, createRng(seed), OVERWHELMING_PLAYER, undefined, undefined, undefined, BASELINE_STRATEGIES, BASELINE_PLAY_STRATEGIES, TEST_LAYER, TEST_FIGHT_NUMBER),
+    resolveEncounter(
+      node,
+      createRng(seed),
+      OVERWHELMING_PLAYER,
+      undefined,
+      undefined,
+      undefined,
+      BASELINE_STRATEGIES,
+      BASELINE_PLAY_STRATEGIES,
+      TEST_LAYER,
+      TEST_FIGHT_NUMBER,
+      RELIABLE_ENEMY_ID[nodeType],
+    ),
   );
 }
 
 function lossOutcomes(nodeType: 'regularFight' | 'eliteFight' | 'gatekeeperFight') {
-  const node = nodeFor(nodeType);
+  const node = createNode('n', nodeType);
   return SEEDS.map((seed) =>
-    resolveEncounter(node, createRng(seed), NEGLIGIBLE_PLAYER, undefined, undefined, undefined, BASELINE_STRATEGIES, BASELINE_PLAY_STRATEGIES, TEST_LAYER, TEST_FIGHT_NUMBER),
+    resolveEncounter(
+      node,
+      createRng(seed),
+      NEGLIGIBLE_PLAYER,
+      undefined,
+      undefined,
+      undefined,
+      BASELINE_STRATEGIES,
+      BASELINE_PLAY_STRATEGIES,
+      TEST_LAYER,
+      TEST_FIGHT_NUMBER,
+      RELIABLE_ENEMY_ID[nodeType],
+    ),
   );
 }
 

@@ -156,40 +156,59 @@ export function pool(id: string): SubroutineDefinition {
  * it's the exact layer that enemy's stable belongs to (one stable per
  * layer, not a floor).
  */
-/** Placeholder-only always-firing burst, deliberately NOT drawn from the
- * pool catalog -- every real pool piece uses a conditional trigger
- * (occurrence/accumulator/self-state/enemy-state/chained), so none of
- * them fire reliably enough, on their own, to make a placeholder
- * roster's win/loss outcome a predictable function of magnitude alone
- * (checkpoint C's actual concern: proving selection/eligibility/
- * gatekeeper-assignment/skill-dial wiring, not real kit balance -- that
- * needs the real thematic content, which is checkpoint D's job, plus a
- * real rebalancing sweep in checkpoint E). Mirrors the pre-checkpoint-C
- * `burstSubroutine` this file's predecessor used in encounters.ts. */
-function alwaysBurst(id: string, amount: number, archetype: Archetype = 'exploit'): SubroutineDefinition {
-  return { id, name: id, archetype, trigger: { kind: 'always' }, payload: { kind: 'directBurst', amount }, tags: [] };
-}
-
+/**
+ * The full 32-enemy roster (Phase 5 checkpoint D), transcribed from
+ * DESIGN.md's "The Roster" -- every subroutine drawn from the shared
+ * pool catalog via pool() above (no bespoke subroutine content in this
+ * roster), every passive id wired to its real hook logic in resolve.ts
+ * (checkpoint B). Both real technical issues DESIGN.md documents were
+ * already designed around: no included subroutine's `chained` trigger
+ * is missing its pool-legal prerequisite from the same kit, and no
+ * enemy includes `zero-knowledge-exploit` (which needs a Corrupted-
+ * applier partner it would otherwise lack).
+ */
 export const ENEMY_ROSTER: EnemyDefinition[] = [
-  // Placeholder regular/elite/gatekeeper entries -- checkpoint D replaces
-  // these loadouts with the real thematic kits from DESIGN.md's "The
-  // Roster" (real ids/names/tiers/archetypes/passiveIds are already
-  // final; only the always-firing placeholder loadout itself changes).
-  { id: 'script-kiddie', name: 'Script Kiddie', tier: 'regular', archetypes: ['exploit'], minLayer: 1, loadout: [alwaysBurst('placeholder-script-kiddie', 5)], passiveIds: ['lucky-guess'] },
-  { id: 'legacy-firewall', name: 'Legacy Firewall', tier: 'regular', archetypes: ['encryption'], minLayer: 1, loadout: [alwaysBurst('placeholder-legacy-firewall', 5, 'encryption')], passiveIds: ['stubborn-default'] },
-  { id: 'hardened-workstation', name: 'Hardened Workstation', tier: 'regular', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [alwaysBurst('placeholder-hardened-workstation', 6, 'malware')], passiveIds: ['grinds-you-down'] },
-  { id: 'zero-day-broker', name: 'Zero-Day Broker', tier: 'elite', archetypes: ['exploit'], minLayer: 2, loadout: [alwaysBurst('placeholder-zero-day-broker', 10)], passiveIds: ['fresh-exploit'] },
-  { id: 'backchannel-handler', name: 'Backchannel Handler', tier: 'elite', archetypes: ['root'], minLayer: 3, loadout: [alwaysBurst('placeholder-backchannel-handler', 10, 'root')], passiveIds: ['dead-drop-protocol', 'off-the-grid'] },
-  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'encryption'], minLayer: 1, loadout: [alwaysBurst('placeholder-the-concierge', 11)], passiveIds: ['reception-protocol'] },
-  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['encryption'], minLayer: 1, loadout: [alwaysBurst('placeholder-firewall-prime', 11, 'encryption')], passiveIds: ['no-way-in'] },
-  { id: 'ghost-process', name: 'Ghost Process', tier: 'gatekeeper', archetypes: ['root'], minLayer: 1, loadout: [alwaysBurst('placeholder-ghost-process', 11, 'root')], passiveIds: ['digital-ghost'] },
-  { id: 'incident-response', name: 'Incident Response', tier: 'gatekeeper', archetypes: ['exploit'], minLayer: 2, loadout: [alwaysBurst('placeholder-incident-response', 11)], passiveIds: ['highest-bidder'] },
-  // Placeholder layer 3/4 gatekeepers -- checkpoint D adds the real 2-4
-  // per layer; one each keeps run.ts's full 4-layer traversal exercisable
-  // until then (gatekeeper eligibility is an exact per-layer match, not
-  // a floor, unlike regular/elite).
-  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['malware'], minLayer: 3, loadout: [alwaysBurst('placeholder-total-compromise', 11, 'malware')], passiveIds: ['cascading-failure'] },
-  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [alwaysBurst('placeholder-null-session', 11, 'root')], passiveIds: ['null-session-passive'] },
+  // --- Regular (12) -- commons only, no Root ---
+  { id: 'script-kiddie', name: 'Script Kiddie', tier: 'regular', archetypes: ['exploit'], minLayer: 1, loadout: [pool('script-kiddie'), pool('port-scan')], passiveIds: ['lucky-guess'] },
+  { id: 'fuzzer-bot', name: 'Fuzzer Bot', tier: 'regular', archetypes: ['exploit'], minLayer: 2, loadout: [pool('fuzzer'), pool('race-condition')], passiveIds: ['trial-and-error'] },
+  { id: 'botnet-node', name: 'Botnet Node', tier: 'regular', archetypes: ['malware'], minLayer: 1, loadout: [pool('botnet'), pool('adware')], passiveIds: ['still-spreading'] },
+  { id: 'keylogger-process', name: 'Keylogger Process', tier: 'regular', archetypes: ['malware'], minLayer: 2, loadout: [pool('keylogger'), pool('corrupted-cache')], passiveIds: ['long-runtime'] },
+  { id: 'legacy-firewall', name: 'Legacy Firewall', tier: 'regular', archetypes: ['encryption'], minLayer: 1, loadout: [pool('basic-auth'), pool('checksum')], passiveIds: ['stubborn-default'] },
+  { id: 'access-gate', name: 'Access Gate', tier: 'regular', archetypes: ['encryption'], minLayer: 2, loadout: [pool('two-factor'), pool('sandboxing')], passiveIds: ['locked-down'] },
+  { id: 'drive-by-kit', name: 'Drive-By Kit', tier: 'regular', archetypes: ['exploit', 'malware'], minLayer: 1, loadout: [pool('off-by-one'), pool('ransomware')], passiveIds: ['smash-and-grab'] },
+  { id: 'rogue-endpoint', name: 'Rogue Endpoint', tier: 'regular', archetypes: ['exploit', 'malware'], minLayer: 2, loadout: [pool('credential-stuffing'), pool('trojan'), pool('race-condition')], passiveIds: ['opportunist'] },
+  { id: 'patch-runner', name: 'Patch Runner', tier: 'regular', archetypes: ['exploit', 'encryption'], minLayer: 1, loadout: [pool('port-scan'), pool('patch')], passiveIds: ['cover-your-tracks'] },
+  { id: 'perimeter-sentry', name: 'Perimeter Sentry', tier: 'regular', archetypes: ['exploit', 'encryption'], minLayer: 2, loadout: [pool('privilege-escalation'), pool('access-control')], passiveIds: ['hold-the-line'] },
+  { id: 'quarantine-daemon', name: 'Quarantine Daemon', tier: 'regular', archetypes: ['malware', 'encryption'], minLayer: 1, loadout: [pool('patch-notes'), pool('adware')], passiveIds: ['steady-state'] },
+  { id: 'hardened-workstation', name: 'Hardened Workstation', tier: 'regular', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [pool('sandboxing'), pool('two-factor'), pool('slowloris')], passiveIds: ['grinds-you-down'] },
+
+  // --- Elite (8) -- 3+ subroutines, mostly uncommons ---
+  { id: 'zero-day-broker', name: 'Zero-Day Broker', tier: 'elite', archetypes: ['exploit'], minLayer: 2, loadout: [pool('zero-day-chain'), pool('buffer-overrun'), pool('payload-multiplier')], passiveIds: ['fresh-exploit'] },
+  { id: 'ransomware-deployment', name: 'Ransomware Deployment', tier: 'elite', archetypes: ['malware'], minLayer: 2, loadout: [pool('fork-bomb'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['escalating-demand'] },
+  { id: 'zero-trust-node', name: 'Zero Trust Node', tier: 'elite', archetypes: ['encryption'], minLayer: 2, loadout: [pool('rate-limiting'), pool('honeypot'), pool('redundant-backup')], passiveIds: ['no-exceptions'] },
+  { id: 'compromised-ad-server', name: 'Compromised Ad Server', tier: 'elite', archetypes: ['exploit', 'malware'], minLayer: 2, loadout: [pool('watering-hole'), pool('polymorphic-worm'), pool('off-by-one')], passiveIds: ['infection-vector'] },
+  { id: 'hardened-perimeter', name: 'Hardened Perimeter', tier: 'elite', archetypes: ['exploit', 'encryption'], minLayer: 2, loadout: [pool('watering-hole'), pool('air-gap'), pool('privilege-escalation')], passiveIds: ['foothold-reinforced'] },
+  { id: 'blackout-cell', name: 'Blackout Cell', tier: 'elite', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [pool('persistent-threat'), pool('redundant-backup'), pool('slowloris')], passiveIds: ['attrition', 'held-together'] },
+  { id: 'backchannel-handler', name: 'Backchannel Handler', tier: 'elite', archetypes: ['root'], minLayer: 3, loadout: [pool('backchannel'), pool('dns-poisoning'), pool('dead-drop')], passiveIds: ['dead-drop-protocol', 'off-the-grid'] },
+  { id: 'compromised-dependency', name: 'Compromised Dependency', tier: 'elite', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('supply-route'), pool('polymorphic-worm'), pool('fork-bomb')], passiveIds: ['sleeper-network'] },
+
+  // --- Gatekeeper (12) -- fully bespoke, one stable per layer ---
+  // Layer 1 -- perimeter/DMZ
+  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'encryption'], minLayer: 1, loadout: [pool('total-pwnage'), pool('patch'), pool('full-rollback'), pool('privilege-escalation')], passiveIds: ['reception-protocol'] },
+  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['encryption'], minLayer: 1, loadout: [pool('zero-trust'), pool('air-gap'), pool('redundant-backup')], passiveIds: ['no-way-in'] },
+  { id: 'ghost-process', name: 'Ghost Process', tier: 'gatekeeper', archetypes: ['root'], minLayer: 1, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('dns-poisoning')], passiveIds: ['digital-ghost'] },
+  // Layer 2 -- internal LAN
+  { id: 'incident-response', name: 'Incident Response', tier: 'gatekeeper', archetypes: ['exploit'], minLayer: 2, loadout: [pool('supply-chain-compromise'), pool('vulnerability-scan'), pool('zero-day-chain')], passiveIds: ['highest-bidder'] },
+  { id: 'the-quarantine-ward', name: 'The Quarantine Ward', tier: 'gatekeeper', archetypes: ['malware', 'encryption'], minLayer: 2, loadout: [pool('epidemic'), pool('cold-storage'), pool('slowloris')], passiveIds: ['total-quarantine'] },
+  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['root', 'exploit'], minLayer: 2, loadout: [pool('supply-route'), pool('dead-drop'), pool('total-pwnage')], passiveIds: ['primed-to-strike'] },
+  // Layer 3 -- secured subnet
+  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['malware'], minLayer: 3, loadout: [pool('fork-bomb'), pool('ransomware-cascade'), pool('total-compromise')], passiveIds: ['cascading-failure'] },
+  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['exploit', 'malware'], minLayer: 3, loadout: [pool('vulnerability-scan'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['adaptive-defense'] },
+  { id: 'silent-corruption', name: 'Silent Corruption', tier: 'gatekeeper', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('rootkit-deployment'), pool('epidemic'), pool('supply-route')], passiveIds: ['total-corruption'] },
+  // Layer 4 -- core
+  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('air-gap')], passiveIds: ['null-session-passive'] },
+  { id: 'kernel-panic', name: 'Kernel Panic', tier: 'gatekeeper', archetypes: ['exploit', 'malware', 'encryption'], minLayer: 4, loadout: [pool('total-pwnage'), pool('epidemic'), pool('cold-storage')], passiveIds: ['redundant-kernel'] },
+  { id: 'ghost-in-the-machine', name: 'Ghost in the Machine', tier: 'gatekeeper', archetypes: ['root'], minLayer: 4, loadout: [pool('dns-poisoning'), pool('dead-drop'), pool('backchannel')], passiveIds: ['total-access'] },
 ];
 
 /** Every enemy eligible for `tier` at `layerIndex` -- a floor for

@@ -10,7 +10,7 @@ import { heatFromLoss } from './heat';
 import { drawRewardOptions, type RewardTier } from './rewards';
 import { dataForTier } from './data';
 import { pickMergeTarget, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
-import { pickRegularOrEliteEnemy, gatekeeperEnemyForNode, enemySkill, type EnemyDefinition } from './enemies';
+import { pickRegularOrEliteEnemy, gatekeeperEnemyForNode, enemySkill, ENEMY_ROSTER, type EnemyDefinition, type EnemyId } from './enemies';
 import {
   shopOfferingsForClass,
   buyCheapestAffordable,
@@ -90,8 +90,19 @@ const FIGHT_MAX_HANDS = 5_000;
 /** Picks the real named enemy for this fight (enemies.ts, checkpoint C):
  * gatekeeper reads the identity map-gen already fixed onto the node;
  * regular/elite pick randomly from the eligible tier+layer pool
- * (or the opener-window override), every time. */
-function enemyForFight(kind: FightKind, node: MapNode, layerIndex: number, fightNumber: number, rng: Rng): EnemyDefinition {
+ * (or the opener-window override), every time. `enemyIdOverride` is a
+ * test-only escape hatch (same treatment as run.ts's
+ * installedLoadoutOverride/this file's discardStrategies) -- real
+ * content varies enough in solo offense (some kits, by design, mirror
+ * the player-side Ghost class's "never wins outright alone" property)
+ * that a test needing a *specific*, reliably-offensive or reliably-weak
+ * matchup can't depend on the random tier/layer pick landing on one. */
+function enemyForFight(kind: FightKind, node: MapNode, layerIndex: number, fightNumber: number, rng: Rng, enemyIdOverride?: EnemyId): EnemyDefinition {
+  if (enemyIdOverride) {
+    const found = ENEMY_ROSTER.find((e) => e.id === enemyIdOverride);
+    if (!found) throw new Error(`encounters.ts: no enemy with id "${enemyIdOverride}"`);
+    return found;
+  }
   return kind === 'gatekeeper' ? gatekeeperEnemyForNode(node) : pickRegularOrEliteEnemy(kind, layerIndex, fightNumber, rng);
 }
 
@@ -127,8 +138,9 @@ function resolveFight(
   playerState: RunPlayerState,
   discardStrategies?: [DiscardStrategy, DiscardStrategy],
   playStrategies?: [PlayStrategy, PlayStrategy],
+  enemyIdOverride?: EnemyId,
 ): EncounterOutcome {
-  const enemy = enemyForFight(kind, node, layerIndex, fightNumber, rng);
+  const enemy = enemyForFight(kind, node, layerIndex, fightNumber, rng, enemyIdOverride);
   const strategies = strategiesForFight(kind, layerIndex, fightNumber, discardStrategies, playStrategies);
   const seed = rng.nextInt(2 ** 31);
   const result = playCombat([playerState.installedLoadout, enemy.loadout], {
@@ -206,14 +218,19 @@ export function resolveEncounter(
    * C's opener-window fight counter) -- 0 means this is the very first
    * fight of the run. */
   fightNumber: number = 0,
+  /** Test-only escape hatch (checkpoint D) -- forces a specific named
+   * enemy instead of the real tier/layer selection, for tests that need
+   * a matchup guaranteed to be reliably offensive (or reliably weak),
+   * not whichever real enemy the random pick happens to land on. */
+  enemyIdOverride?: EnemyId,
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
-      return resolveFight('regular', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies);
+      return resolveFight('regular', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride);
     case 'eliteFight':
-      return resolveFight('elite', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies);
+      return resolveFight('elite', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride);
     case 'gatekeeperFight':
-      return resolveFight('gatekeeper', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies);
+      return resolveFight('gatekeeper', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride);
     case 'safehouse': {
       // DESIGN.md's deliberate Rest-vs-Merge trade-off: one action per
       // visit (the node goes inert either way). Falls back to Rest if
