@@ -59,6 +59,21 @@ Root's weakness is a real, structural class-kit gap (Root never touches
 the win gauge), not an artifact of a fair fight against a strawman on
 either side.
 
+**Session 25 closed the Root-class half of that gap** (see Phase 5
+below for the full writeup): Sleeper Cell, Primed, and Return to
+Sender were reworked -- two of the three (Sleeper Cell, Return to
+Sender) had trigger conditions unreachable from their own class's
+starting kit, and none of the three touched the win gauge with real,
+repeated force. Re-swept with the tunable-skill AI immediately after:
+Saboteur went from a hard 0.0% to ~30% (baseline player) / ~74-78%
+(expert player); Ghost went from 0.0% to ~28-33% / ~55-61%; Operator
+moved off zero but only to ~4.7% / ~25-27%, the smallest gain of the
+three and worth a closer look. Warden/Blackhat/Breacher are unchanged,
+as expected. A new, real side finding: with a genuinely competent Ghost
+now contesting instead of never progressing at all, a small fraction of
+fights (4-6%) take long enough to exceed the fixed 5000-hand cap --
+never happened before, since one-sided attrition always resolved fast.
+
 **The actionable takeaway for next session**: every enemy-magnitude
 number tuned so far (checkpoint E of the Breach/Containment redesign,
 session 22+) was calibrated against a Cribbage-incompetent opponent --
@@ -67,10 +82,13 @@ loadout magnitude. A real balance/tuning pass now needs to pick a
 target enemy skill level *and* retune magnitudes together, not
 magnitude alone -- picking that skill level per enemy tier was always
 flagged as a separate follow-up decision (decision 3, session 24), and
-this sweep is the data that decision needs. The per-layer difficulty
-ramp (still one flat enemy tier regardless of layer), the zero-
-progress-deadlock/sudden-death question, and the human-vs-AI
-architecture question (banked, Phase 0) all remain open too.
+this sweep is the data that decision needs. Operator's still-weak
+number after its own rework suggests it may need more than the current
+TBD/playtesting placeholder magnitude. The per-layer difficulty ramp
+(still one flat enemy tier regardless of layer), the new occasional-
+non-resolution finding above, the zero-progress-deadlock/sudden-death
+question, and the human-vs-AI architecture question (banked, Phase 0)
+all remain open too.
 
 ## Phase 0 — Remaining design passes
 
@@ -165,6 +183,23 @@ session before the implementation phases below can be fully scoped:
   the current skill-dial work (whose scoring logic stays equally useful
   either way, since it doesn't care who calls it or when). Raised
   session 24 while mid-scoping the skill-dial AI's real-player use case.
+- **Banked for a balancing pass, not yet implemented**: Feedback Loop
+  (Warden) may be too strong -- two ideas raised session 25 while
+  reworking the three Root-paired classes' passives, neither
+  implemented:
+  - Gate it to only trigger while the caster is this hand's dealer.
+  - A different mechanism entirely, raised after noticing the reworked
+    Return to Sender (session 25) now also hooks HoT ticks, overlapping
+    conceptually with Feedback Loop: instead of HoT ticks directly
+    crediting a flat bonus to Warden's own gauge, make HoT and
+    Malware's DoT reciprocally amplify each other's *magnitude* --
+    every HoT tick increases the magnitude of the caster's next DoT
+    tick, and every DoT tick increases the magnitude of the caster's
+    next HoT tick. Self-reinforcing, but requires actually sustaining
+    both archetypes' ticking to keep the loop going, rather than a flat
+    per-tick bonus regardless of anything else -- likely a genuine
+    power-level difference, not just a re-flavoring, so it'd need its
+    own empirical sweep check, same as the Root-class rework got.
 
 ## Phase 1 — Core Cribbage engine ✅ complete (session 16)
 
@@ -869,3 +904,97 @@ to reach. Better card selection improves the odds of a good board
 state; it doesn't create more magnitude, and magnitude (or some other
 mechanical reach for Root, e.g. genuinely stronger recon/manipulation
 content) is what these three classes are actually missing.
+
+---
+
+**Root-class starting passives rework + re-sweep (session 25).** Direct
+follow-up to the conclusion above: the user likes Root's design as-is
+and wanted the fix to land at the starting-passive layer specifically --
+rework Saboteur/Operator/Ghost's passives to hit harder than the other
+three classes' and to better enable each class's build theme, resolved
+live via `/decision-session` (commits `3f2c078` through the docs
+commit closing this session).
+
+**A reachability finding surfaced before any magnitude work started**:
+checking each Root-paired passive's trigger against its own class's
+actual 3-piece starting kit found two of the three were structurally
+unreachable, not just weak. Sleeper Cell needed "first Malware
+*debuff*," but Saboteur's only starting Malware piece (Silent Worm) is
+a DoT, not a debuff. Return to Sender needed a Ward shield to absorb
+something, but none of Ghost's 3 starting pieces (Null Session, Kill
+Switch, Low Profile) ever casts Ward -- completely inert until a Ward
+piece was acquired mid-run, the most severe gap of the three. Only
+Primed (Operator) was actually reachable turn one already (Ping Sweep
+is `always`-triggered Root).
+
+**The rework, one checkpoint per class** (all persistent now, none
+one-shot):
+- **Sleeper Cell** (Saboteur): broadened to fire from either a Malware
+  debuff *or* a Malware DoT tick (fixes the reachability gap), and now
+  credits win gauge directly alongside the existing Root-progress-
+  advance effect.
+- **Primed** (Operator): every Root fire now boosts the caster's next
+  Exploit fire's *magnitude* (via `merge.ts`'s `improvedPayloadMagnitude`,
+  exported and reused rather than reimplemented) in addition to the
+  existing trigger-ease -- "Root primes the field" now means the strike
+  lands bigger, not just sooner.
+- **Return to Sender** (Ghost): kept the Ward-absorb hook, added two
+  more reachable ones sharing the same ratio -- `instantCounterPush`
+  (reachable turn one via Null Session) and HoT ticks (Ghost has none
+  today, but HoT is Encryption -- Ghost's own archetype -- so it pays
+  off once one is acquired).
+
+Validated against each class's real starting kit (not synthetic test
+fixtures): Ghost's kit, with the reworked passive active, now wins
+outright in the *exact same scenario* an existing test had already
+proven was structurally impossible before (own gauge stuck at exactly
+0, forever) -- the cleanest before/after contrast of the three, since
+Ghost had zero win-gauge access at all without it. Saboteur/Operator
+already had some access (Silent Worm's DoT, Precision Strike's
+piercing) and win measurably faster with their passives active, rather
+than going from impossible to possible.
+
+**Re-swept immediately after** with the tunable-skill AI from session
+24 (same methodology, `playRun()`, `beelineToGatekeeper`; reduced to
+150 seeds from 500 after a naive first attempt at 500 exhausted the
+Node heap -- non-resolving seeds each retain a full 5000-hand array
+until GC, and enough of them back-to-back added up):
+
+| class | session 24 (enemy 0/.5/1, player baseline) | session 25 post-rework | session 24 (player expert, enemy 0/.5/1) | session 25 post-rework |
+|---|---|---|---|---|
+| warden | 46.4/41.8/44.0% | 47.3/44.7/48.0% (unchanged) | 85.6/84.4/85.6% | 83.3/80.0/83.3% (unchanged) |
+| blackhat | 8.4/5.4/6.0% | 10.7/6.0/6.0% (unchanged) | 39.8/36.8/34.2% | 38.0/36.7/36.0% (unchanged) |
+| breacher | 0.2/0.8/0.2% | 0.7/0.7/0.0% (unchanged) | 19.2/17.2/16.6% | 19.3/19.3/17.3% (unchanged) |
+| **saboteur** | **0.0/0.0/0.0%** | **30.7/29.3/30.0%** | **0.4/0.2/0.4%** | **78.0/73.3/74.0%** |
+| **operator** | **0.0/0.0/0.0%** | **4.7/4.7/4.7%** | **0.0/0.0/0.0%** | **27.3/24.7/24.7%** |
+| **ghost** | **0.0/0.0/0.0%** | **31.3/28.0/32.7%** | **0.0/0.0/0.0%** | **54.7/57.3/60.7%** |
+
+Saboteur and Ghost went from a hard, unconditional 0% to genuinely
+competitive -- Saboteur with a skilled player is now among the
+strongest classes in the roster, on par with Warden/Blackhat. Ghost
+lands solidly mid-pack. **Operator moved off zero but by far the
+smallest margin of the three** (4.7% baseline, ~25-27% with a skilled
+player, still clearly the weakest class) -- worth a closer look before
+assuming its rework is proportionate to the other two; the magnitude
+bonus on a single Exploit piece's *next* fire may just need to be
+bigger, or Operator may need a second look at its build theme
+("setup-and-strike") entirely.
+
+**A new, real side finding, not a bug**: in the player-expert grid,
+Ghost now shows a small `didNotResolve` rate (4-6%) that didn't exist
+in session 24's sweeps. This is the flip side of Ghost finally being
+able to contest -- some fraction of fights are now genuinely close,
+slow-converging races instead of one-sided attrition where the outcome
+was never in doubt, and occasionally exceed the fixed 5000-hand cap
+(`FIGHT_MAX_HANDS`, `encounters.ts`). Worth revisiting alongside
+Operator's still-weak number in the next tuning pass -- either the cap
+needs to grow now that fights can be genuinely close, or this is exactly
+the kind of case the deferred sudden-death fallback (Breach/Containment
+redesign, session 22+) was meant for.
+
+Not a magnitude/balance pass -- every new constant introduced this
+session (`SLEEPER_CELL_CREDIT_AMOUNT`, `PRIMED_MAGNITUDE_BONUS`, and
+the existing `RETURN_TO_SENDER_RATIO` reused for two new triggers) is a
+TBD/playtesting placeholder, same discipline as every other numeric
+constant in this project. This sweep is the empirical grounding the
+next tuning pass needs, not the tuning pass itself.

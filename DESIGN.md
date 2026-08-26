@@ -347,10 +347,10 @@ below.
 |---|---|---|---|
 | **Breacher** | Exploit + Encryption | Hit hard, then hold the position you just took. The starting/default class — balanced, good onboarding. | **Foothold** — the first time your own gauge reaches 50% of its threshold each fight, a one-time symmetric bonus: a small push added to your own gauge *and* a matching amount taken off the enemy's. |
 | **Blackhat** | Exploit + Malware | Pure offense, reckless, naturally Heat-hungry (Exploit's risk/reward payload leans right into this). | **Zero Day** — the first Heat-costing Exploit subroutine each combat costs no Heat. |
-| **Saboteur** | Malware + Root | Insidious — corrupts from within while manipulating the system around it. | **Sleeper Cell** — the first Malware debuff applied each combat also advances one Root subroutine's condition. |
-| **Operator** | Exploit + Root | Setup-and-strike: Root primes the field, Exploit cashes in. | **Primed** — the first time a Root subroutine fires each combat, reduce the next Exploit subroutine's trigger threshold. |
+| **Saboteur** | Malware + Root | Insidious — corrupts from within while manipulating the system around it. | **Sleeper Cell** (reworked session 25) — every Malware DoT tick or debuff you apply credits your own gauge directly *and* advances a Root subroutine's progress. Persistent, not one-shot. |
+| **Operator** | Exploit + Root | Setup-and-strike: Root primes the field, Exploit cashes in. | **Primed** (reworked session 25) — every time a Root subroutine fires, your next Exploit fire both comes sooner (trigger eased) *and* hits harder (magnitude boosted). Persistent, not one-shot. |
 | **Warden** | Malware + Encryption | Patient and grindy — wins by outlasting rather than outpacing. | **Feedback Loop** — Encryption HoT effects also apply a small Malware DoT tick to the enemy. |
-| **Ghost** | Encryption + Root | Pure control, no primary damage access — wins by locking the opponent down and opportunistically finishing with off-class picks. The last class unlocked; the most challenging to play. | **Return to Sender** — whenever your Ward shield actually absorbs an incoming hit, a portion of what it absorbed carries through into your own gauge too. |
+| **Ghost** | Encryption + Root | Pure control, no primary damage access — wins by locking the opponent down and opportunistically finishing with off-class picks. The last class unlocked; the most challenging to play. | **Return to Sender** (reworked session 25) — whenever you absorb a hit with Ward, land an instant counter-push, or land a HoT tick, a portion of the amount carries through into your own gauge too. Reachable from Ghost's own starting kit now (Null Session's counter-push), not just an acquired Ward piece. |
 
 **Unlock order**: Breacher → Blackhat → Warden → Saboteur → Operator →
 Ghost. A complexity ramp that also staggers when each archetype first
@@ -371,14 +371,24 @@ difficulty at the same time.
 
 All 6 are innate for the whole run once that class is picked, not
 something found mid-run — the same role StS's class-starting relics
-(Burning Blood, Ring of the Snake, etc.) play. Five of the six are mild
-tempo/consistency nudges reinforcing a class's identity; **Ghost's is
-doing real structural work, not just flavor** — rather than granting
-off-class access to Exploit/Malware, "Return to Sender" makes Ghost's own
-toolkit (pure defense) double as offense, directly answering the
-damage-access gap noted when Ghost was introduced above (defending so
-precisely that the attacker's own aggression backfires on them),
-complementary to the off-class reward-pool access Ghost already has.
+(Burning Blood, Ring of the Snake, etc.) play. Most now do real,
+repeated work over a fight rather than a single mild nudge: Feedback
+Loop always has; Sleeper Cell, Primed, and Return to Sender were
+reworked (session 25) into the same shape after balance sweeps proved
+their original one-shot, gauge-inert versions produced zero marginal
+win-rate value for the three Root-paired classes — Root's own archetype
+identity (denial/tempo/manipulation) never touches the win gauge
+directly, so a passive that only sped up an already-inert effect could
+never translate into an actual win. Foothold remains a single
+confirmation bonus, and Zero Day stays pure Heat economy, not
+gauge-related at all — those two didn't have the same structural gap to
+close. **Ghost's is still the deepest of the three** — rather than
+granting off-class access to Exploit/Malware, "Return to Sender" makes
+Ghost's own toolkit (pure defense) double as offense, directly
+answering the damage-access gap noted when Ghost was introduced above
+(defending so precisely that the attacker's own aggression backfires on
+them), complementary to the off-class reward-pool access Ghost already
+has.
 
 ### Starting Loadouts
 
