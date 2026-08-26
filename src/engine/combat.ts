@@ -7,6 +7,7 @@ import { countHandEvents, countCribEvents } from './scoring';
 import type { HandResult, PlayerIndex } from './game';
 import type { SubroutineDefinition, HandLifecycleMoment } from './subroutine-types';
 import type { ClassId } from './classes';
+import type { EnemyPassiveId } from './enemies';
 import {
   updateSubroutineState,
   updateSuitTallyState,
@@ -19,6 +20,7 @@ import {
 } from './triggers';
 import { addPoints, shrinkDuelThreshold, type InitiativeGauge } from './gauges';
 import {
+  applyEnemyGaugeCross50Passives,
   applyFootholdBonus,
   applyThrottled,
   clearHandKnowledge,
@@ -69,9 +71,12 @@ export interface CombatOptions {
    * scores *something* each hand, so this should never bind in practice. */
   maxHands?: number;
   /** Which starting passive (if any) to check at its hook points --
-   * Phase 4 checkpoint B. Only side 0 (the player) ever has a class;
-   * enemy loadouts remain plain data with no passive of their own. */
+   * Phase 4 checkpoint B. Only side 0 (the player) ever has a class. */
   classId?: ClassId;
+  /** Which passive(s) side 1 (the enemy) carries this combat -- Phase 5
+   * checkpoint B. Defaults to none, same "absent = no passives active"
+   * treatment classId already gets. */
+  enemyPassiveIds?: EnemyPassiveId[];
 }
 
 export interface CombatResult {
@@ -273,6 +278,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     startingDealer = 0,
     maxHands = 500,
     classId,
+    enemyPassiveIds = [],
   } = options;
 
   const rng = createRng(seed);
@@ -284,7 +290,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   const aiRng = createRng(deriveAiNoiseSeed(seed));
   let dealer: PlayerIndex = startingDealer;
   let scores: [number, number] = [0, 0];
-  let combatState = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold);
+  let combatState = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds);
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
   let peakFillFraction: [number, number] = [0, 0];
@@ -306,7 +312,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
    * applyFootholdBonus's own doc comment) and re-derives the winner
    * afterward, since Foothold's own bonus can finish the match. */
   const step = (result: { combatState: CombatState; winner: PlayerIndex | null }): PlayerIndex | null => {
-    combatState = applyFootholdBonus(result.combatState);
+    combatState = applyEnemyGaugeCross50Passives(applyFootholdBonus(result.combatState));
     const [side0, side1] = combatState.sides;
     peakFillFraction = [
       Math.max(peakFillFraction[0], side0.winGauge.progress / side0.winGauge.threshold),

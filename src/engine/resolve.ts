@@ -2,6 +2,7 @@ import type { PlayerIndex } from './pegging';
 import type { Card, Suit } from './cards';
 import type { Archetype, DebuffKind, HandLifecycleMoment, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
 import type { ClassId } from './classes';
+import type { EnemyPassiveId } from './enemies';
 import { easeTriggerCondition, improvedPayloadMagnitude } from './merge';
 import {
   createInitialState,
@@ -100,6 +101,17 @@ export interface CombatSideState {
    * lifecycle as knownOpponentHand/knownCrib above, cleared by
    * clearHandKnowledge. */
   forcedDiscardPair?: [Card, Card];
+  /** Generic per-side scratch bookkeeping for enemy passives (Phase 5
+   * checkpoint B) -- one-shot flags (0/1), stack counters, banked
+   * amounts, keyed by whatever string each passive implementation
+   * chooses (by convention `${passiveId}:${field}`). Deliberately
+   * untyped-per-passive, unlike the 6 player class passives' dedicated
+   * fields (passiveTriggered, etc.) -- 34 passives don't each get a
+   * bespoke CombatState field the way 6 did (session 21's own
+   * reasoning for why 6 stayed hand-coded doesn't scale to this many).
+   * Always empty for side 0 in practice (player passives keep using
+   * classId/passiveTriggered, untouched by this). */
+  passiveState: Record<string, number>;
 }
 
 /** A Root scheduledSabotage payload fired now but resolves at a future
@@ -144,6 +156,12 @@ export interface CombatState {
    * to Sender are persistent modifiers instead, checked directly against
    * classId at their own hook points -- not gated by this flag. */
   passiveTriggered: boolean;
+  /** Which passive(s) side 1 (the enemy) carries this combat -- Phase 5
+   * checkpoint B. Always empty for any fight/test that doesn't care
+   * about enemy passives. Mirrors classId's implicit "side 0 only"
+   * convention: this is implicitly "side 1 only," so no separate side
+   * tag is needed. */
+  enemyPassiveIds: EnemyPassiveId[];
 }
 
 export function createCombatSideState(definitions: SubroutineDefinition[], gaugeThreshold: number, winThreshold: number): CombatSideState {
@@ -159,6 +177,7 @@ export function createCombatSideState(definitions: SubroutineDefinition[], gauge
     knownOpponentHand: undefined,
     knownCrib: undefined,
     forcedDiscardPair: undefined,
+    passiveState: {},
   };
 }
 
@@ -183,6 +202,7 @@ export function createCombatState(
   gaugeThreshold: number,
   classId?: ClassId,
   winThreshold: number = 100,
+  enemyPassiveIds: EnemyPassiveId[] = [],
 ): CombatState {
   return {
     sides: [
@@ -193,6 +213,7 @@ export function createCombatState(
     pendingCribbageManipulation: [],
     classId,
     passiveTriggered: false,
+    enemyPassiveIds,
   };
 }
 
@@ -213,8 +234,10 @@ function replaceSide(
 /** Credits `side`'s own winGauge with `amount` progress toward its own
  * win. The one and only way a gauge ever advances -- offense payloads,
  * DoT ticks, and Foothold/Feedback Loop/Return to Sender's bonuses all
- * route through this. */
-function creditWinGauge(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
+ * route through this. Exported for the enemy-passive implementations
+ * below (Phase 5 checkpoint B), same reuse as every player passive
+ * already gets by living in this file. */
+export function creditWinGauge(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
   if (amount <= 0) return combatState;
   const sideState = combatState.sides[side];
   const { gauge } = addDuelProgress(sideState.winGauge, amount);
@@ -225,8 +248,9 @@ function creditWinGauge(combatState: CombatState, side: PlayerIndex, amount: num
 /** Reduces `side`'s own winGauge by `amount` -- Encryption's mitigation
  * tools (HoT, instantCounterPush) call this against the *opponent's*
  * gauge, never their own. Floored at 0 by gauges.ts's reduceDuelProgress
- * -- no upper cap needed the way the old shared scalar's midpoint was. */
-function reduceWinGauge(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
+ * -- no upper cap needed the way the old shared scalar's midpoint was.
+ * Exported for the enemy-passive implementations below. */
+export function reduceWinGauge(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
   if (amount <= 0) return combatState;
   const sideState = combatState.sides[side];
   const gauge = reduceDuelProgress(sideState.winGauge, amount);
@@ -450,6 +474,383 @@ function applyReturnToSenderTickPassive(combatState: CombatState, tick: ActiveTi
   return creditWinGauge(combatState, 0, amount * RETURN_TO_SENDER_RATIO);
 }
 
+// ---------------------------------------------------------------------
+// Enemy passives (Phase 5 checkpoint B, session 27's roster design) --
+// 34 named passives across the 32-enemy roster (DESIGN.md's "The
+// Roster"). Unlike the 6 player class passives above (hand-coded,
+// gated by classId, one bespoke CombatState field each), these are
+// dispatched generically off CombatState.enemyPassiveIds -- a light
+// registry, not a full generic DSL: each passive's actual logic is
+// still hand-written below, many sharing a small set of parameterized
+// shapes (first-fire bonus, tick magnitude bonus, gauge-cross push/
+// pull, Root-fire gauge drain, tick-expiry resist) reused across
+// several enemies by calling with different ids/amounts, same reuse
+// discipline the 6 player passives get by living in this file. Always
+// side-1-only, mirroring classId's implicit "side 0 only" convention --
+// no separate side tag needed since enemyPassiveIds is simply empty for
+// any fight that doesn't care about them.
+//
+// A few mechanics were corrected from their original DESIGN.md phrasing
+// once checked against the real payload semantics: Cleanse only ever
+// removes the *caster's own* debuff (never an opponent's, and never a
+// DoT/HoT tick -- those only end via natural expiry), so "resists a
+// cleanse" (Held Together, Redundant Kernel) became "resists natural
+// expiry" instead, and "punishes the player's cleanse" (Adaptive
+// Defense) triggers off the player cleansing their *own* debuff, the
+// only real Cleanse target. Ward-amount boosts (Locked Down, part of No
+// Way In/No Exceptions) are just bigger numbers in the enemy's own Ward
+// subroutine data (checkpoint D), not passive logic -- only "refreshes"
+// is real behavior here.
+// ---------------------------------------------------------------------
+
+function hasEnemyPassive(combatState: CombatState, id: EnemyPassiveId): boolean {
+  return combatState.enemyPassiveIds.includes(id);
+}
+
+function passiveStat(combatState: CombatState, side: PlayerIndex, key: string): number {
+  return combatState.sides[side].passiveState[key] ?? 0;
+}
+
+function setPassiveStat(combatState: CombatState, side: PlayerIndex, key: string, value: number): CombatState {
+  const sideState = combatState.sides[side];
+  const passiveState = { ...sideState.passiveState, [key]: value };
+  return { ...combatState, sides: replaceSide(combatState.sides, side, { ...sideState, passiveState }) };
+}
+
+/** Reduces `side`'s own initiative gauge progress by `amount`, floored
+ * at 0 -- same shape as instantManipulation's 'enemyGauge' target
+ * inline in resolvePayloadCore, factored out for the Root-fire-drain
+ * family of enemy passives below (Digital Ghost, Dead Drop Protocol,
+ * Total Access). */
+function reduceInitiativeGaugeProgress(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
+  const sideState = combatState.sides[side];
+  const progress = Math.max(0, sideState.gauge.progress - amount);
+  return { ...combatState, sides: replaceSide(combatState.sides, side, { ...sideState, gauge: { ...sideState.gauge, progress } }) };
+}
+
+// All TBD/playtesting, same placeholder convention as every other
+// numeric constant in this project -- untuned until checkpoint E's
+// sweep exists.
+const EP_SMALL = 2;
+const EP_MEDIUM = 4;
+const EP_LARGE = 7;
+const EP_GROW_CAP = 5;
+const EP_GAUGE_CROSS_FRACTION = 0.5;
+
+/** Shape 1: first fire matching `wantArchetype` this combat gets a flat
+ * bonus credited on top of whatever the fire already did. Used by Lucky
+ * Guess (Script Kiddie) and Fresh Exploit (Zero-Day Broker). */
+function firstFireBonus(
+  combatState: CombatState,
+  id: EnemyPassiveId,
+  archetype: Archetype,
+  caster: PlayerIndex,
+  wantArchetype: Archetype,
+  amount: number,
+): CombatState {
+  if (caster !== 1 || archetype !== wantArchetype || !hasEnemyPassive(combatState, id)) return combatState;
+  if (passiveStat(combatState, 1, `${id}:fired`) > 0) return combatState;
+  return creditWinGauge(setPassiveStat(combatState, 1, `${id}:fired`, 1), 1, amount);
+}
+
+/** Shape: every fire matching `wantArchetype` this combat gets a flat
+ * bonus, capped at EP_GROW_CAP occurrences -- Infection Vector's
+ * "every Exploit fire also progresses its Malware DoT," simplified to a
+ * direct capped credit rather than needing a live DoT tick to boost. */
+function everyFireBonusCapped(combatState: CombatState, id: EnemyPassiveId, archetype: Archetype, caster: PlayerIndex, wantArchetype: Archetype, amount: number): CombatState {
+  if (caster !== 1 || archetype !== wantArchetype || !hasEnemyPassive(combatState, id)) return combatState;
+  const count = passiveStat(combatState, 1, `${id}:count`);
+  if (count >= EP_GROW_CAP) return combatState;
+  return creditWinGauge(setPassiveStat(combatState, 1, `${id}:count`, count + 1), 1, amount);
+}
+
+/** Shape: a pending one-shot-per-arming bonus, armed by some condition
+ * and consumed by the *next* side-1 fire (any kind). Used by Opportunist
+ * (armed when the player's own gauge crosses 50%), Hold the Line (armed
+ * when this enemy's own gauge crosses 50%), and Total Access (armed
+ * right after a Root fire -- "guaranteed free" reinterpreted as "next
+ * fire gets a bonus," since enemies have no Heat cost to waive). */
+function armPendingBonus(combatState: CombatState, id: EnemyPassiveId): CombatState {
+  return setPassiveStat(combatState, 1, `${id}:pending`, 1);
+}
+function consumePendingBonus(combatState: CombatState, id: EnemyPassiveId, caster: PlayerIndex, amount: number): CombatState {
+  if (caster !== 1 || !hasEnemyPassive(combatState, id)) return combatState;
+  if (passiveStat(combatState, 1, `${id}:pending`) <= 0) return combatState;
+  return creditWinGauge(setPassiveStat(combatState, 1, `${id}:pending`, 0), 1, amount);
+}
+
+/** Shape 2: DoT/HoT tick magnitude bonus, optionally growing per-tick
+ * (capped) and/or nudging the caster's own initiative gauge (a flavor
+ * tempo nudge, same "overshoot carries to the next natural check"
+ * simplification instantManipulation's 'ownGauge' target already
+ * documents). Used by Still Spreading through Total Quarantine below. */
+function tickBonus(
+  combatState: CombatState,
+  id: EnemyPassiveId,
+  tick: ActiveTick,
+  listKey: 'dots' | 'hots',
+  amount: number,
+  opts?: { grow?: boolean; nudgeInitiative?: boolean },
+): CombatState {
+  if (tick.casterSide !== 1 || !hasEnemyPassive(combatState, id)) return combatState;
+  let state = combatState;
+  let magnitude = amount;
+  if (opts?.grow) {
+    const stacks = Math.min(passiveStat(state, 1, `${id}:stacks`) + 1, EP_GROW_CAP);
+    state = setPassiveStat(state, 1, `${id}:stacks`, stacks);
+    magnitude = amount * stacks;
+  }
+  state = listKey === 'hots' ? reduceWinGauge(state, 0, magnitude) : creditWinGauge(state, 1, magnitude);
+  if (opts?.nudgeInitiative) {
+    const sideState = state.sides[1];
+    state = { ...state, sides: replaceSide(state.sides, 1, { ...sideState, gauge: { ...sideState.gauge, progress: sideState.gauge.progress + EP_SMALL } }) };
+  }
+  return state;
+}
+
+/** Shape: this enemy's own tick would naturally expire (only removal
+ * path ticks have -- Cleanse never touches dots/hots, see the section
+ * header above) -- extend it by one more use instead, once per combat.
+ * Used by Still Spreading, Held Together, and Redundant Kernel. */
+function tickExpiryExtendOnce(combatState: CombatState, id: EnemyPassiveId, tick: ActiveTick): { combatState: CombatState; extend: boolean } {
+  if (tick.casterSide !== 1 || !hasEnemyPassive(combatState, id)) return { combatState, extend: false };
+  if (passiveStat(combatState, 1, `${id}:used`) > 0) return { combatState, extend: false };
+  return { combatState: setPassiveStat(combatState, 1, `${id}:used`, 1), extend: true };
+}
+
+/** Shape 3 (the ward half): re-casts a just-fired Ward payload
+ * `extraCasts` more times this combat -- the bigger base amount for
+ * Locked Down/No Way In/No Exceptions lives in the enemy's own Ward
+ * subroutine data instead (checkpoint D), not here. */
+function wardRefresh(combatState: CombatState, id: EnemyPassiveId, payload: PayloadEffect, archetype: Archetype, caster: PlayerIndex, extraCasts: number): CombatState {
+  if (caster !== 1 || payload.kind !== 'ward' || !hasEnemyPassive(combatState, id)) return combatState;
+  const used = passiveStat(combatState, 1, `${id}:used`);
+  if (used >= extraCasts) return combatState;
+  const state = setPassiveStat(combatState, 1, `${id}:used`, used + 1);
+  return resolvePayloadCore(payload, archetype, state, caster, { priorFireCountThisTurn: 0 });
+}
+
+/** Shape 4: the Foothold shape itself, parameterized -- a one-shot
+ * push+pull the first time `side`'s own win-gauge crosses
+ * EP_GAUGE_CROSS_FRACTION of its threshold. `pushSide`/`pullSide` let
+ * Null Session invert it (watching the *player's* gauge, crediting
+ * *this enemy's* own progress) while Cover Your Tracks/Hold the
+ * Line/Foothold Reinforced/Reception Protocol use it the normal way
+ * (watching their own gauge). */
+function gaugeCross50PushPull(combatState: CombatState, id: EnemyPassiveId, watchSide: PlayerIndex, pushSide: PlayerIndex, pullSide: PlayerIndex, amount: number): CombatState {
+  if (!hasEnemyPassive(combatState, id)) return combatState;
+  if (passiveStat(combatState, 1, `${id}:fired`) > 0) return combatState;
+  const gauge = combatState.sides[watchSide].winGauge;
+  if (gauge.progress < gauge.threshold * EP_GAUGE_CROSS_FRACTION) return combatState;
+  const marked = setPassiveStat(combatState, 1, `${id}:fired`, 1);
+  const pushed = creditWinGauge(marked, pushSide, amount);
+  return reduceWinGauge(pushed, pullSide, amount);
+}
+
+/** Dispatches every registered onFire passive -- called from
+ * resolvePayload's wrapper, after any payload resolves (mirrors
+ * applyPrimedPassive's own call site/shape). `payload`/`archetype` are
+ * the just-fired subroutine's own; `caster` is whoever fired it (a
+ * passive only ever activates when caster === 1, checked inside each
+ * shape/case below). */
+function applyEnemyOnFirePassives(combatState: CombatState, payload: PayloadEffect, archetype: Archetype, caster: PlayerIndex): CombatState {
+  let state = combatState;
+  state = firstFireBonus(state, 'lucky-guess', archetype, caster, 'exploit', EP_SMALL);
+  state = firstFireBonus(state, 'fresh-exploit', archetype, caster, 'exploit', EP_MEDIUM);
+  state = firstFireBonus(state, 'smash-and-grab', archetype, caster, 'exploit', EP_SMALL);
+  state = firstFireBonus(state, 'long-runtime', archetype, caster, 'malware', EP_SMALL);
+  state = everyFireBonusCapped(state, 'trial-and-error', archetype, caster, 'exploit', EP_SMALL);
+  state = everyFireBonusCapped(state, 'infection-vector', archetype, caster, 'exploit', EP_SMALL);
+
+  // Opportunist/Hold the Line/Total Access arm a pending bonus elsewhere
+  // (gauge-cross or a Root fire below); this is where any of the three
+  // gets consumed, on the very next side-1 fire of any kind.
+  state = consumePendingBonus(state, 'opportunist', caster, EP_SMALL);
+  state = consumePendingBonus(state, 'hold-the-line', caster, EP_SMALL);
+  state = consumePendingBonus(state, 'total-access', caster, EP_MEDIUM);
+  state = consumePendingBonus(state, 'adaptive-defense', caster, EP_SMALL);
+
+  if (archetype === 'root' && caster === 1) {
+    if (hasEnemyPassive(state, 'digital-ghost')) state = reduceInitiativeGaugeProgress(state, 0, EP_SMALL);
+    if (hasEnemyPassive(state, 'dead-drop-protocol')) state = reduceInitiativeGaugeProgress(state, 0, EP_SMALL);
+    if (hasEnemyPassive(state, 'off-the-grid')) {
+      const sideState = state.sides[1];
+      state = { ...state, sides: replaceSide(state.sides, 1, { ...sideState, wardShield: sideState.wardShield + EP_SMALL }) };
+    }
+    if (hasEnemyPassive(state, 'sleeper-network')) state = creditWinGauge(state, 1, EP_SMALL);
+    if (hasEnemyPassive(state, 'total-access')) {
+      state = reduceInitiativeGaugeProgress(state, 0, EP_LARGE);
+      state = armPendingBonus(state, 'total-access');
+    }
+    if (hasEnemyPassive(state, 'primed-to-strike')) state = applyPrimedForSide1(state);
+  }
+
+  if (payload.kind === 'ward') {
+    state = wardRefresh(state, 'no-way-in', payload, archetype, caster, 1);
+    state = wardRefresh(state, 'no-exceptions', payload, archetype, caster, 1);
+  }
+
+  if (payload.kind === 'cleanse' && caster === 0 && hasEnemyPassive(state, 'adaptive-defense')) {
+    state = armPendingBonus(state, 'adaptive-defense');
+  }
+
+  if (payload.kind === 'chainFinisherScaling' && caster === 1 && hasEnemyPassive(state, 'highest-bidder')) {
+    const count = passiveStat(state, 1, 'highest-bidder:count');
+    state = creditWinGauge(state, 1, count * EP_SMALL);
+  }
+  if (archetype === 'exploit' && caster === 1 && hasEnemyPassive(state, 'highest-bidder')) {
+    state = setPassiveStat(state, 1, 'highest-bidder:count', passiveStat(state, 1, 'highest-bidder:count') + 1);
+  }
+
+  if (caster === 1 && hasEnemyPassive(state, 'total-corruption')) {
+    state = crossFeedProgress(state, 'rootkit-deployment', 'epidemic', payload);
+    state = crossFeedProgress(state, 'epidemic', 'rootkit-deployment', payload);
+  }
+
+  return state;
+}
+
+/** Total Corruption (Silent Corruption): the first time one of its two
+ * named rare pieces fires, the other's banked progress gets a one-time
+ * boost -- reinterpreted from DESIGN.md's "accumulates 50% faster"
+ * (which would need touching triggers.ts's suit-tally credit path) into
+ * a reachable, self-contained "the two feed each other" mechanic, same
+ * family as Sleeper Cell/Sleeper Network. `sourceId` is checked against
+ * `payload` indirectly via a companion firedId flag set by the caller's
+ * two symmetric calls -- simplified here to just always attempt both
+ * directions once each, gated by their own one-shot flags. */
+function crossFeedProgress(combatState: CombatState, _sourceId: string, targetId: string, _payload: PayloadEffect): CombatState {
+  const key = `total-corruption:${targetId}:boosted`;
+  if (passiveStat(combatState, 1, key) > 0) return combatState;
+  const sideState = combatState.sides[1];
+  const index = sideState.loadout.findIndex((entry) => entry.definition.id === targetId);
+  if (index === -1) return combatState;
+  const entry = sideState.loadout[index];
+  const loadout = sideState.loadout.slice();
+  loadout[index] = { ...entry, state: { ...entry.state, accumulatedProgress: entry.state.accumulatedProgress + EP_MEDIUM } };
+  const state = { ...combatState, sides: replaceSide(combatState.sides, 1, { ...sideState, loadout }) };
+  return setPassiveStat(state, 1, key, 1);
+}
+
+/** Primed to Strike (Zero-Sum), reusing applyPrimedPassive's exact
+ * mechanism (ease + boost the caster's own next Exploit entry) against
+ * side 1's own loadout instead of side 0's classId-gated version. */
+function applyPrimedForSide1(combatState: CombatState): CombatState {
+  const sideState = combatState.sides[1];
+  const index = sideState.loadout.findIndex((entry) => entry.definition.archetype === 'exploit');
+  if (index === -1) return combatState;
+  const entry = sideState.loadout[index];
+  const easedTrigger = easeTriggerCondition(entry.definition.trigger, PRIMED_THRESHOLD_REDUCTION);
+  const boostedPayload = improvedPayloadMagnitude(entry.definition.payload, PRIMED_MAGNITUDE_BONUS) ?? entry.definition.payload;
+  const loadout = sideState.loadout.slice();
+  loadout[index] = { ...entry, definition: { ...entry.definition, trigger: easedTrigger, payload: boostedPayload } };
+  return { ...combatState, sides: replaceSide(combatState.sides, 1, { ...sideState, loadout }) };
+}
+
+/** Dispatches every registered onTick passive -- called from
+ * applyTickPush, after any DoT/HoT tick resolves. */
+function applyEnemyOnTickPassives(combatState: CombatState, tick: ActiveTick, listKey: 'dots' | 'hots', _amount: number): CombatState {
+  let state = combatState;
+  if (listKey === 'dots') state = tickBonus(state, 'grinds-you-down', tick, listKey, EP_SMALL);
+  if (listKey === 'hots') state = tickBonus(state, 'grinds-you-down', tick, listKey, EP_SMALL);
+  if (listKey === 'hots') state = tickBonus(state, 'steady-state', tick, listKey, EP_SMALL);
+  state = tickBonus(state, 'attrition', tick, listKey, EP_SMALL);
+  state = tickBonus(state, 'escalating-demand', tick, listKey, EP_SMALL, { grow: true });
+  state = tickBonus(state, 'total-quarantine', tick, listKey, EP_SMALL, { nudgeInitiative: true });
+
+  if (listKey === 'dots' && tick.casterSide === 1) {
+    const cascadeCount = passiveStat(state, 1, 'cascading-failure:ticks') + (hasEnemyPassive(state, 'cascading-failure') ? 1 : 0);
+    if (hasEnemyPassive(state, 'cascading-failure')) {
+      state = setPassiveStat(state, 1, 'cascading-failure:ticks', cascadeCount);
+      if (cascadeCount >= 3 && passiveStat(state, 1, 'cascading-failure:boosted') === 0) {
+        state = setPassiveStat(state, 1, 'cascading-failure:boosted', 1);
+        const targetState = state.sides[0];
+        const dots = targetState.dots.map((d) => (d.casterSide === 1 ? { ...d, amountPerTick: d.amountPerTick + EP_SMALL } : d));
+        state = { ...state, sides: replaceSide(state.sides, 0, { ...targetState, dots }) };
+      }
+    }
+  }
+  return state;
+}
+
+/** Dispatches Stubborn Default -- the only onIncomingDirectBurst
+ * passive in the roster, mitigating a flat amount off the first hit
+ * `target` (side 1) takes each combat, checked before shield absorption
+ * so it applies regardless of whether a Ward is also up. Returns both
+ * the (possibly reduced) amount and the updated state, since the
+ * one-shot flag has to be recorded regardless of whether this resolves
+ * through the normal state-threading the rest of resolvePayloadCore
+ * uses. */
+function applyEnemyIncomingDirectBurstPassives(
+  combatState: CombatState,
+  target: PlayerIndex,
+  amount: number,
+): { combatState: CombatState; amount: number } {
+  if (target !== 1 || !hasEnemyPassive(combatState, 'stubborn-default')) return { combatState, amount };
+  if (passiveStat(combatState, 1, 'stubborn-default:used') > 0) return { combatState, amount };
+  const state = setPassiveStat(combatState, 1, 'stubborn-default:used', 1);
+  return { combatState: state, amount: Math.max(0, amount - EP_SMALL) };
+}
+
+/** Dispatches every registered onTickExpiring passive -- called from
+ * processTickList right where a tick's remainingDuration would hit 0. */
+function applyEnemyOnTickExpiringPassives(combatState: CombatState, tick: ActiveTick, _listKey: 'dots' | 'hots'): { combatState: CombatState; extend: boolean } {
+  const stillSpreading = tickExpiryExtendOnce(combatState, 'still-spreading', tick);
+  if (stillSpreading.extend) return stillSpreading;
+  const heldTogether = tickExpiryExtendOnce(stillSpreading.combatState, 'held-together', tick);
+  if (heldTogether.extend) return heldTogether;
+  return tickExpiryExtendOnce(heldTogether.combatState, 'redundant-kernel', tick);
+}
+
+/** Dispatches every registered onGaugeCross50 passive -- called from
+ * combat.ts's step() alongside applyFootholdBonus, checked after every
+ * state-changing step regardless of what caused it (same reasoning
+ * Foothold's own doc comment gives). */
+export function applyEnemyGaugeCross50Passives(combatState: CombatState): CombatState {
+  let state = combatState;
+  state = gaugeCross50PushPull(state, 'cover-your-tracks', 1, 1, 0, EP_SMALL);
+  state = gaugeCross50PushPull(state, 'foothold-reinforced', 1, 1, 0, EP_MEDIUM);
+  state = gaugeCross50PushPull(state, 'reception-protocol', 1, 1, 0, EP_LARGE);
+  if (hasEnemyPassive(state, 'reception-protocol') && passiveStat(state, 1, 'reception-protocol:cleansed') === 0) {
+    const gauge = state.sides[1].winGauge;
+    if (gauge.progress >= gauge.threshold * EP_GAUGE_CROSS_FRACTION) {
+      const sideState = state.sides[1];
+      if (sideState.debuffs.length > 0) {
+        const debuffs = sideState.debuffs.slice(1);
+        state = { ...state, sides: replaceSide(state.sides, 1, { ...sideState, debuffs }) };
+      }
+      state = setPassiveStat(state, 1, 'reception-protocol:cleansed', 1);
+    }
+  }
+
+  // Null Session watches the *player's* gauge, crediting this enemy's
+  // own progress -- Return to Sender's exact shape, inverted.
+  if (hasEnemyPassive(state, 'null-session-passive') && passiveStat(state, 1, 'null-session-passive:fired') === 0) {
+    const gauge = state.sides[0].winGauge;
+    if (gauge.progress >= gauge.threshold * EP_GAUGE_CROSS_FRACTION) {
+      state = creditWinGauge(setPassiveStat(state, 1, 'null-session-passive:fired', 1), 1, EP_LARGE);
+    }
+  }
+
+  // Opportunist/Hold the Line arm here (own or the player's gauge
+  // crossing 50%), consumed by the next side-1 fire in
+  // applyEnemyOnFirePassives above.
+  if (hasEnemyPassive(state, 'opportunist') && passiveStat(state, 1, 'opportunist:armed') === 0) {
+    const gauge = state.sides[0].gauge; // the PLAYER's own initiative gauge
+    if (gauge.progress >= gauge.threshold * EP_GAUGE_CROSS_FRACTION) {
+      state = armPendingBonus(setPassiveStat(state, 1, 'opportunist:armed', 1), 'opportunist');
+    }
+  }
+  if (hasEnemyPassive(state, 'hold-the-line') && passiveStat(state, 1, 'hold-the-line:armed') === 0) {
+    const gauge = state.sides[1].winGauge;
+    if (gauge.progress >= gauge.threshold * EP_GAUGE_CROSS_FRACTION) {
+      state = armPendingBonus(setPassiveStat(state, 1, 'hold-the-line:armed', 1), 'hold-the-line');
+    }
+  }
+
+  return state;
+}
+
 /** Resolves one subroutine's payload against the acting side's or
  * opposing side's state. `archetype` comes from the firing subroutine's
  * definition (payloads themselves don't carry it) -- needed for
@@ -465,7 +866,8 @@ export function resolvePayload(
   context: ResolveContext = { priorFireCountThisTurn: 0 },
 ): CombatState {
   const base = resolvePayloadCore(payload, archetype, combatState, caster, context);
-  return applyPrimedPassive(base, archetype, caster);
+  const withPrimed = applyPrimedPassive(base, archetype, caster);
+  return applyEnemyOnFirePassives(withPrimed, payload, archetype, caster);
 }
 
 function resolvePayloadCore(
@@ -482,11 +884,13 @@ function resolvePayloadCore(
       // The only offense payload Ward's shield intercepts (matches its
       // pre-redesign scope -- piercing/chainFinisherScaling/
       // riskRewardBurst never checked wards either).
-      const amount = payload.amount * corruptionMultiplier(combatState, caster);
-      const targetState = combatState.sides[target];
+      const rawAmount = payload.amount * corruptionMultiplier(combatState, caster);
+      const incoming = applyEnemyIncomingDirectBurstPassives(combatState, target, rawAmount);
+      const amount = incoming.amount;
+      const targetState = incoming.combatState.sides[target];
       const { sideState, absorbed, remaining } = absorbWithShield(targetState, amount);
-      const sides = replaceSide(combatState.sides, target, sideState);
-      let state = { ...combatState, sides };
+      const sides = replaceSide(incoming.combatState.sides, target, sideState);
+      let state = { ...incoming.combatState, sides };
       state = applyReturnToSenderPassive(state, target, absorbed);
       return creditWinGauge(state, caster, remaining);
     }
@@ -866,7 +1270,8 @@ function applyTickPush(combatState: CombatState, tick: ActiveTick, listKey: 'dot
     listKey === 'hots' ? reduceWinGauge(combatState, opponentOf(tick.casterSide), amount) : creditWinGauge(combatState, tick.casterSide, amount);
   const withFeedbackLoop = applyFeedbackLoopPassive(state, tick, listKey);
   const withReturnToSender = applyReturnToSenderTickPassive(withFeedbackLoop, tick, listKey, amount);
-  return applySleeperCellPassive(withReturnToSender, tick.casterSide, listKey === 'dots');
+  const withSleeperCell = applySleeperCellPassive(withReturnToSender, tick.casterSide, listKey === 'dots');
+  return applyEnemyOnTickPassives(withSleeperCell, tick, listKey, amount);
 }
 
 /** Warden's Feedback Loop: every Encryption HoT tick also credits a
@@ -900,7 +1305,13 @@ function processTickList(
       state = applyTickPush(state, tick, listKey);
       remainingDuration -= 1;
     }
-    if (remainingDuration > 0) remaining.push({ ...updated, remainingDuration });
+    if (remainingDuration > 0) {
+      remaining.push({ ...updated, remainingDuration });
+    } else {
+      const extended = applyEnemyOnTickExpiringPassives(state, tick, listKey);
+      state = extended.combatState;
+      if (extended.extend) remaining.push({ ...updated, remainingDuration: 1 });
+    }
   }
   const sideState = state.sides[storageSide];
   state = { ...state, sides: replaceSide(state.sides, storageSide, { ...sideState, [listKey]: remaining }) };
