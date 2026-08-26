@@ -1281,3 +1281,53 @@ classes' now demonstrably do.
 Small residual `dnr` counts (1/500) reappeared for Ghost at a few of
 the tougher cells -- same flavor as the earlier hard-resolution
 writeup's finding, not yet investigated further.
+
+---
+
+**Ghost starting-kit redesign (session 26, continued) -- direct
+follow-up to the skill-blindness finding above.** User's call, live:
+keep Return to Sender (the passive) exactly as it is -- redesign
+Ghost's 3 starting skills instead, so the kit gives the passive real,
+player-driven triggers to work with. Both `enemyState`-gated pieces
+replaced in `GHOST_LOADOUT` (`subroutines.ts`): Steganography (was
+Null Session) triggers off the caster's own accumulated points and
+casts Ward, reaching Return to Sender's absorb hook for the first time
+from the starting kit itself; Tripwire (was Kill Switch) keeps the
+same denial payload and tag, re-triggered off an instant pair instead
+of enemy gauge state. Low Profile unchanged. Verified: seed 1 (the
+checkpoint-D test's scenario) now wins outright within the hard
+20-hand window; a 10-seed sample shows 9/10 wins with the passive
+active, versus 0/100 for the old kit under the identical matchup.
+
+Re-swept Ghost's row of the 4x4 grid against the redesigned kit (500
+seeds/cell):
+
+| player skill | enemy 0.0 | enemy 0.3 | enemy 0.6 | enemy 0.9 |
+|---|---|---|---|---|
+| 0.0 | 57.4% | 55.8% | 49.0% | 41.2% (dnr=1) |
+| 0.3 | 58.0% | 56.4% | 49.4% | 46.4% |
+| 0.6 | 57.0% | 55.4% | 53.2% | 49.6% |
+| 0.9 | 49.0% | 52.4% | 51.8% | 50.0% |
+
+Win rate roughly tripled overall (16-28% -> 41-58%) -- Ghost is now
+comparable to Warden/Saboteur territory instead of the weakest class
+in the roster. **Note for the eventual full per-class magnitude/
+balance analysis pass (Phase 5's own still-open item -- every prior
+sweep this project has run, session 20 through this one, has been
+building toward exactly that, one measurement at a time, per the
+"tuning pass needs real per-class numbers... to work from" refrain
+running through this whole section):** the skill-sensitivity picture
+here is mixed, not uniformly fixed. Against a tough enemy (right
+column) player skill matters clearly (41.2%->50.0%) -- the redesign
+worked as intended there. Against a weak enemy (left column) it's flat
+to slightly *negative* with player skill (57.4%->58.0%->57.0%->49.0%),
+likely a saturation effect (Ghost already wins often enough there that
+remaining losses are probably more about draw variance than anything
+skill can fix) rather than a real regression. This redesign was
+explicitly scoped as a trigger-mechanism fix, not a magnitude pass --
+Steganography's Ward amount and Tripwire's threshold were both carried
+over unchanged from the pieces they replaced. When the eventual
+per-class pass gets to Ghost specifically, this saturation pattern (and
+whether the carried-over magnitudes are now too generous given how much
+more often the new triggers arm compared to the old enemyState-gated
+ones) is the concrete thing to check first.
