@@ -19,6 +19,13 @@ export interface MapNode {
   id: string;
   type: NodeType;
   state: NodeState;
+  /** Which named enemy (enemies.ts's EnemyId) this node resolves to when
+   * fought -- only ever set for gatekeeperFight nodes, assigned once at
+   * layer-generation time (enemies.ts's assignGatekeeperEnemy) so a
+   * layer's boss identity is fixed for the run. Regular/eliteFight nodes
+   * pick randomly at resolveFight time instead (encounters.ts) -- no
+   * persisted assignment needed. */
+  assignedEnemyId?: string;
 }
 
 /** Undirected -- movement is free-roam in either direction. */
