@@ -662,6 +662,208 @@ it, regardless of archetype — e.g. "your Trap-tagged subroutines do X."
 Specific passive designs aren't written yet; this section defines the
 hook they'd use.
 
+## Enemy Design
+
+**Session 27** replaced the placeholder enemy model with a real design,
+closing the two banked `BACKLOG.md` items from session 26 (enemy loadout
+variation, and the fight-kind-vs-layer skill-scaling question). Through
+Phase 4, every fight drew from exactly one flat, always-firing
+`directBurst` subroutine per tier (`ENEMY_LOADOUT_REGULAR`/`_ELITE`/
+`_GATEKEEPER`, `encounters.ts`), differentiated only by magnitude — every
+balance number tuned against that shape (the Root passive rework,
+escalation timing, the hard resolution deadline) has so far only ever
+been validated against it, never against real variety.
+
+**Enemies are a real roster with identity, structurally close to player
+classes** rather than tuned procedural generation — reusing the existing
+archetype-pairing intuition (see Meta-Progression's Classes) rather than
+inventing a parallel design language. Each named enemy is real authored
+data: an archetype set, a loadout of real subroutines, and (for
+elite/gatekeeper) a bespoke passive.
+
+**Authoring investment scales down by tier**, deliberately — regular and
+elite fights recur many times across a run and don't each need bespoke
+design; gatekeepers are the memorable set pieces and get the deepest
+investment:
+
+- **Regular**: 1-3 subroutines, a simple bespoke passive. A handful of
+  named identities, each tagged with which layer(s)/difficulty band it's
+  eligible for, rather than a fully separate roster authored per layer.
+- **Elite**: minimum 3 solid subroutines, 1-2 real passives — meant to
+  present a genuine challenge. A moderate bespoke pool (not per-layer
+  separated), each identity tagged with its eligible layer(s) the same
+  way regular identities are, so deeper layers draw from a
+  harder-skewing subset without needing 4x the authoring.
+- **Gatekeeper**: fully bespoke, one stable of **2-4 designed opponents
+  per layer**, each "truly designed" and meant to be very challenging for
+  the layer it's presented at. This is the tier that earns full
+  per-layer separation — there's exactly one gatekeeper node per layer,
+  so a dedicated stable per layer is natural, not overbuilt.
+
+**Opening punching bags**: the first **1-3 combats of the run**, full
+stop — a run-order counter, not a layer-position or node-position rule.
+Layer 1 is free-roam internally (see Map & Run Structure), so "the first
+node encountered" isn't well-defined by position; counting resolved
+fights instead sidesteps that cleanly and guarantees new players get an
+easy on-ramp regardless of which node they happen to visit first. These
+opening fights override the normal tier/layer selection — forced to the
+easiest available regular identity and the skill floor — while it's
+active.
+
+**Archetype composition**: 2-archetype pairing (mirroring classes) is the
+*default*, not a hard lock — a single-archetype enemy is fine, and a
+bespoke gatekeeper (or an occasional heavily-thematic elite) can draw on
+more archetypes than that when the identity calls for it. Subroutines can
+be drawn straight from the player's own catalog (`subroutines.ts`) or be
+fully bespoke to one enemy, especially for a heavily thematic identity.
+**Root is deliberately rare on regular enemies, more common on
+elite/gatekeeper** — it's the most abstract archetype (manipulation,
+denial, the Cribbage layer itself), and reads better as "you're facing
+something sophisticated" than as an early punching-bag's toolkit.
+Whatever Root content enemies get needs real passive support behind it,
+the same lesson session 25's player-side Root rework already
+demonstrated — a bare Root payload kit under-delivers without it.
+
+**Selection**: differs by tier, matching where repetition vs. uniqueness
+matters. **Gatekeepers are fixed at map-generation time** — each layer
+has exactly one gatekeeper node, so its specific identity (drawn from
+that layer's stable) is assigned once when the graph is generated, stable
+for the run, and could later be telegraphed to the player before the
+fight happens. **Regular and elite are chosen randomly at encounter
+time** from the eligible tier+layer pool — many nodes share these tiers,
+there's no natural single assignment point, and re-rolled variety across
+a run is desirable rather than something to pin down.
+
+**Skill-dial axis (resolves the session 26 banked question)**: **tier is
+the primary axis, layer is a secondary modifier** — not layer-primary as
+originally leaned toward. Loadout complexity already carries most of the
+"harder enemy" signal across tiers (1-3 pieces vs. 3+ with real passives
+vs. fully bespoke), so `pegSkillStrategy`/`discardSkillStrategy` (session
+24) scale primarily by tier — roughly regular 0.1-0.2, elite 0.4-0.6,
+gatekeeper 0.7+ — climbing modestly within each tier from layer 1 to
+layer 4 (deeper is sharper, but tier stays the dominant, legible signal).
+The opening punching-bag fights pin skill at the floor regardless of this
+formula, same as their loadout override.
+
+**Passives need a light registry, not pure hand-coding.** The 6 player
+class passives (session 11) are each a bespoke function gated by
+`combatState.classId`, hand-coded directly into `resolve.ts`'s hook
+sites — a deliberate choice at the time (session 21: "6 is too few to
+justify generic infrastructure"). Enemies blow past that: even the low
+end of this roster (a handful of regular passives, a handful of elite,
+2-4 gatekeepers × up to 4 layers) is a dozen-plus passives as concrete
+near-term work, not a hypothetical future pool. A **light registry** —
+each hook site does a generic lookup by passive id instead of a growing
+per-class `if` chain — removes that friction and, more importantly,
+unblocks enemies from carrying a passive at all (`combat.ts`'s
+`CombatOptions` currently documents that "enemy loadouts remain plain
+data with no passive of their own"). This is a dispatch mechanism, not a
+declarative passive-authoring DSL — each passive's actual logic is still
+hand-written, the same way the existing 6 are (which vary enough
+internally — one-shot vs. persistent, gated vs. not — that forcing them
+into one generic shape isn't warranted yet). The existing 6 class
+passives are not required to migrate onto the registry as part of this
+work; they can stay on their current path.
+
+### The Roster (session 27, continued)
+
+32 named enemies, drafted live and checked for two real issues along the
+way: several pool uncommons/rares use a `chained` trigger keyed to a
+*specific* subroutine id, and three of those prerequisites
+(`precision-strike`, `priority-override`, `silent-worm`) are Operator/
+Saboteur-exclusive starting pieces, not generic pool subroutines — an
+enemy kit including the chained piece without its named prerequisite
+would ship a dead subroutine that can never fire. Every kit below either
+avoids those four chains or pairs a chained piece with a pool-only
+prerequisite it's legal to include (`fork-bomb`→`ransomware-cascade`,
+`patch`→`full-rollback`, `cron-job`→`full-system-compromise`). Also
+caught: `zero-knowledge-exploit` requires the player to already carry the
+Corrupted debuff, so it only appears paired with a Corrupted-applier in
+the same kit (or not at all). Second issue, tonal: an early Exploit/
+Malware-heavy naming pass drifted toward "external criminal
+organization" flavor (Cartel/Ring/Cell/Auction), which implies a rival
+faction the fiction doesn't support — **every enemy in this game is the
+target network's own defenses**, even the offense-flavored kits (read as
+that network's security team or automated countermeasures hacking back),
+not a separate group. Renamed on catch: Zero Day Auction → Incident
+Response, Ransomware Cartel → Ransomware Deployment, Malvertising Ring →
+Compromised Ad Server, Supply Chain Cell → Compromised Dependency.
+Network-specific external-actor flavor (e.g. a contract that's literally
+breaching a criminal organization) is real future idea space, explicitly
+not designed here.
+
+**Regular** (12 — commons only, no Root, 2 per archetype
+singleton/pairing per the earlier "2-3 of each" instruction, layer
+eligibility is a `minLayer` a name stays in the pool from):
+
+| Name | Archetype(s) | Layers | Subroutines | Passive |
+|---|---|---|---|---|
+| Script Kiddie | Exploit | 1+ | `script-kiddie`, `port-scan` | *Lucky Guess* — first Exploit fire each combat gets a small flat bonus |
+| Fuzzer Bot | Exploit | 2+ | `fuzzer`, `race-condition` | *Trial and Error* — each repeat fire this combat gets a small stacking bonus (capped) |
+| Botnet Node | Malware | 1+ | `botnet`, `adware` | *Still Spreading* — its DoT ticks once extra before expiring |
+| Keylogger Process | Malware | 2+ | `keylogger`, `corrupted-cache` | *Long Runtime* — its first DoT this combat starts with one tick already banked |
+| Legacy Firewall | Encryption | 1+ | `basic-auth`, `checksum` | *Stubborn Default* — mitigates a small flat amount off the first hit it takes each combat |
+| Access Gate | Encryption | 2+ | `two-factor`, `sandboxing` | *Locked Down* — its Ward/mitigation absorbs a slightly higher flat amount |
+| Drive-By Kit | Exploit + Malware | 1+ | `off-by-one`, `ransomware` | *Smash and Grab* — its first Exploit fire each combat also ticks its own Malware DoT once immediately |
+| Rogue Endpoint | Exploit + Malware | 2+ | `credential-stuffing`, `trojan`, `race-condition` | *Opportunist* — its next fire after the enemy's gauge crosses 50% gets a small bonus |
+| Patch Runner | Exploit + Encryption | 1+ | `port-scan`, `patch` | *Cover Your Tracks* — a small symmetric push+pull the first time its own gauge crosses 50% of threshold |
+| Perimeter Sentry | Exploit + Encryption | 2+ | `privilege-escalation`, `access-control` | *Hold the Line* — after the shared meter crosses a threshold in its favor, its next fire gets a small bonus |
+| Quarantine Daemon | Malware + Encryption | 1+ | `patch-notes`, `adware` | *Steady State* — small flat bonus to its own HoT tick magnitude |
+| Hardened Workstation | Malware + Encryption | 3+ | `sandboxing`, `two-factor`, `slowloris` | *Grinds You Down* — HoT and DoT ticks both get a small flat bonus (Warden-echo) |
+
+**Elite** (8 — 3+ subroutines each, mostly uncommons, 1-2 real
+passives; 6 non-Root groups + 2 Root-flavored, deliberately holding
+Root+Exploit and Root+Encryption back for Gatekeeper):
+
+| Name | Archetype(s) | Layers | Subroutines | Passive(s) |
+|---|---|---|---|---|
+| Zero-Day Broker | Exploit | 2+ | `zero-day-chain`, `buffer-overrun`, `payload-multiplier` | *Fresh Exploit* — first fire each combat gets a real bonus |
+| Ransomware Deployment | Malware | 2+ | `fork-bomb`, `polymorphic-worm`, `spyware` (worm's Corrupted arms spyware) | *Escalating Demand* — DoT magnitude grows a little each tick, capped |
+| Zero Trust Node | Encryption | 2+ | `rate-limiting`, `honeypot`, `redundant-backup` | *No Exceptions* — Ward refreshes once per combat instead of one-shot |
+| Compromised Ad Server | Exploit + Malware | 2+ | `watering-hole`, `polymorphic-worm`, `off-by-one` | *Infection Vector* — each Exploit fire also progresses its Malware DoT |
+| Hardened Perimeter | Exploit + Encryption | 2+ | `watering-hole`, `air-gap`, `privilege-escalation` | *Foothold, Reinforced* — push+pull at 50% gauge, plus a small denial on the player's next fire |
+| Blackout Cell | Malware + Encryption | 3+ | `persistent-threat`, `redundant-backup`, `slowloris` | *Attrition* — HoT/DoT tick bonus; *Held Together* — first cleanse against it each combat fails |
+| Backchannel Handler | Root | 3+ | `backchannel`, `dns-poisoning`, `dead-drop` | *Dead Drop Protocol* — each Root fire also drains a little of the player's gauge; *Off the Grid* — small self-mitigation each turn |
+| Compromised Dependency | Root + Malware | 3+ | `supply-route`, `polymorphic-worm`, `fork-bomb` | *Sleeper Network* — its Root fire also boosts its Malware DoT |
+
+**Gatekeeper** (12 — 2-4 per layer, fully bespoke, 4-ish subroutines
+leaning on rares, deliberately chaining pool-legal combos. Root+Encryption
+(the Ghost-echo) is deliberately held back until Layer 4 to land as the
+run's real final-boss pairing, matching Ghost's own "hardest class"
+status):
+
+**Layer 1 — perimeter/DMZ:**
+
+| Name | Archetype(s) | Subroutines | Passive |
+|---|---|---|---|
+| The Concierge | Exploit + Encryption | `total-pwnage` (rare), `patch`→`full-rollback` (chain), `privilege-escalation` | *Reception Protocol* — a strong push+pull the first time the shared meter tips its way; auto-cleanses itself once per combat |
+| Firewall Prime | Encryption | `zero-trust` (rare — punishes overextension), `air-gap`, `redundant-backup` | *No Way In* — boosted Ward amount, refreshes twice per combat |
+| Ghost Process | Root | `cron-job`→`full-system-compromise` (chain), `dns-poisoning` | *Digital Ghost* — every Root fire drains a flat amount off the player's gauge |
+
+**Layer 2 — internal LAN:**
+
+| Name | Archetype(s) | Subroutines | Passive |
+|---|---|---|---|
+| Incident Response | Exploit | `supply-chain-compromise` (rare, togglable), `vulnerability-scan` (rare, reactive), `zero-day-chain` | *Highest Bidder* — chain-finisher pieces get a bonus per Exploit subroutine already fired this combat |
+| The Quarantine Ward | Malware + Encryption | `epidemic` (rare, suit-tally, togglable), `cold-storage` (rare, suit-tally), `slowloris` | *Total Quarantine* — every tick, DoT or HoT, nudges its own gauge forward |
+| Zero-Sum | Root + Exploit | `supply-route`, `dead-drop`, `total-pwnage` (rare) | *Primed to Strike* — each Root fire lowers the cost/threshold of its own next Exploit fire this combat |
+
+**Layer 3 — secured subnet:**
+
+| Name | Archetype(s) | Subroutines | Passive |
+|---|---|---|---|
+| Total Compromise | Malware | `fork-bomb`→`ransomware-cascade` (chain), `total-compromise` (rare, reactive) | *Cascading Failure* — once its DoTs have ticked 3 times combined this combat, all gain a permanent tick-magnitude boost |
+| Adaptive Threat | Exploit + Malware | `vulnerability-scan` (rare, reactive), `polymorphic-worm`, `spyware` | *Adaptive Defense* — every player cleanse against it buffs its next fire (any archetype) |
+| Silent Corruption | Root + Malware | `rootkit-deployment` (rare, suit-tally), `epidemic` (rare, suit-tally), `supply-route` | *Total Corruption* — both rares' suit-accumulation progresses 50% faster; either refires once automatically the first time it would expire |
+
+**Layer 4 — core:**
+
+| Name | Archetype(s) | Subroutines | Passive |
+|---|---|---|---|
+| Null Session | Root + Encryption | `cron-job`→`full-system-compromise` (chain), `zero-trust` (rare), `air-gap` | *Null Session* — the first time the **player's own** gauge crosses 50% of threshold, absorbs a flat amount into its own gauge progress (mirror-punish of Ghost's Return to Sender) |
+| Kernel Panic | Exploit + Malware + Encryption | `total-pwnage` (rare), `epidemic` (rare, suit-tally), `cold-storage` (rare, different suit) | *Redundant Kernel* — the first time a ticking effect on it would be cleansed/expire this combat, it gets one free re-arm instead |
+| Ghost in the Machine | Root | `dns-poisoning`, `dead-drop`, `backchannel` | *Total Access* — every Root fire drains more off the player's gauge than any other enemy; its next fire immediately after is guaranteed free, once per combat (Zero Day's one-shot-gate shape, mirrored) |
+
 ## Tech Stack
 
 Svelte + Vite, rendering everything (cards, loadout, the network map) as

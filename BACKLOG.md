@@ -200,34 +200,11 @@ session before the implementation phases below can be fully scoped:
     per-tick bonus regardless of anything else -- likely a genuine
     power-level difference, not just a re-flavoring, so it'd need its
     own empirical sweep check, same as the Root-class rework got.
-- **Banked idea, not yet designed**: enemy loadout variation. Every
-  real fight in a run (`resolveFight`, `encounters.ts`) currently draws
-  from exactly one flat, single-piece loadout per fight kind --
-  `ENEMY_LOADOUT_REGULAR`/`_ELITE`/`_GATEKEEPER`, each just one
-  always-firing `directBurst` scaled by amount (9/10/11). Noted session
-  26 while explaining the balance-sweep methodology: every sweep this
-  project has run (session 24's tunable-skill AI grid onward) measures
-  a player class against this same flat burst shape at every layer and
-  tier, varying only Cribbage-play skill and raw amount, never
-  archetype mix, tag interactions, or behavioral shape (Root-style
-  denial, Encryption-style stalling, multi-piece combos). Real content
-  variety on the enemy side -- different archetype pools per tier/
-  layer, multi-piece enemy kits, maybe even enemy "mini-classes" that
-  reuse the player's own archetype-affinity system -- is a distinct
-  content-authoring pass from anything tuned so far, and every existing
-  balance number (Root passive rework, escalation timing, the hard
-  resolution deadline) has so far only ever been validated against this
-  one flat shape.
-- **Banked open question, user's current lean noted**: whether enemy
-  Cribbage-play skill should scale by fight *kind*
-  (regular/elite/gatekeeper -- the existing `ENEMY_LOADOUT_*` tiering)
-  or by *layer* (deeper layers get sharper opponents regardless of
-  fight kind). Raised session 26 while discussing what skill-dial
-  benchmarks to sweep classes against, now that the dial has real range
-  (see the race-to-121 finding above). User isn't committed to tying
-  skill level to the regular/elite/gatekeeper split -- current lean is
-  toward layer-based scaling instead. Explicitly deferred to its own
-  decision session, not resolved here.
+- **Resolved session 27** (`/decision-session`, full writeup in
+  `DESIGN.md`'s new "Enemy Design" section): both banked items above --
+  enemy loadout variation and the fight-kind-vs-layer skill-scaling
+  question -- are now a real spec. See Phase 5's "Enemy Library" spec
+  below for the checkpointed implementation plan.
 
 ## Phase 1 — Core Cribbage engine ✅ complete (session 16)
 
@@ -1331,3 +1308,65 @@ per-class pass gets to Ghost specifically, this saturation pattern (and
 whether the carried-over magnitudes are now too generous given how much
 more often the new triggers arm compared to the old enemyState-gated
 ones) is the concrete thing to check first.
+
+---
+
+**Enemy Library (session 27, `/decision-session`) -- checkpointed
+implementation spec.** Replaces the flat single-`directBurst`-per-tier
+enemy model with a real, authored roster, structurally close to player
+classes. Full design reasoning lives in `DESIGN.md`'s new "Enemy Design"
+section; this is the build breakdown for a future `/dev-session`.
+
+- **Checkpoint A -- Enemy type system & fight counter.** A new
+  `enemies.ts`: `EnemyId`, `EnemyTier` (`'regular' | 'elite' |
+  'gatekeeper'`), `EnemyDefinition` (id, name, tier, `archetypes:
+  Archetype[]` -- length 1+, not locked to exactly 2, layer-eligibility
+  tag(s), `loadout: SubroutineDefinition[]`, optional `passiveId`),
+  mirroring `classes.ts`'s `ClassDefinition` shape. Also: a run-order
+  fight counter (threaded through `resolveFight`/`playRun`, not
+  node/layer position) so the first 1-3 combats of a run can be
+  overridden to the easiest regular identity and skill floor regardless
+  of which node the player visits first.
+- **Checkpoint B -- Passive registry.** A light `{id, hookPoint, fn}`
+  lookup replacing the pattern of each `resolve.ts` hook site checking
+  `combatState.classId` directly -- generic enough for either side to
+  carry a passive. Extend `CombatState`/`CombatOptions` so the enemy
+  side can carry a `passiveId` (`combat.ts`'s "enemy loadouts remain
+  plain data with no passive of their own" note goes away). The
+  existing 6 class passives are not required to migrate onto the
+  registry in this checkpoint -- they can stay on their current
+  hand-coded path; only new enemy passives need to go through it.
+- **Checkpoint C -- Selection & skill-dial wiring.** Gatekeeper identity
+  assigned once per layer at `map-gen.ts` time, from that layer's
+  stable (2-4 members) -- stable for the run. Regular/elite identity
+  resolved randomly at `resolveFight` time from the eligible tier+layer
+  pool. Skill-dial formula (tier-primary base, layer-secondary
+  modifier -- see `DESIGN.md` for the rough bands) computed at
+  `resolveFight` time and passed through as `discardStrategies`/
+  `playStrategies`, same plumbing session 24 already built.
+- **Checkpoint D -- Roster authoring.** ✅ **Designed (session 27)** --
+  the full 32-enemy roster (12 Regular, 8 Elite, 12 Gatekeeper across 4
+  layers) is drafted and written up in `DESIGN.md`'s new "The Roster"
+  subsection, including exact subroutine ids per enemy and every bespoke
+  passive concept. What's left for this checkpoint is pure implementation
+  -- authoring it as real `EnemyDefinition` data in `enemies.ts` and
+  wiring the bespoke passives through Checkpoint B's registry, not
+  further design work. Two real technical traps were caught and worked
+  around during design (see `DESIGN.md`): the `chained`-trigger
+  prerequisite issue (some pool uncommons/rares are dead without a
+  specific, sometimes class-exclusive, prerequisite also present) and an
+  early tonal drift toward "external criminal org" naming that got
+  corrected back to "target network's own defenses" (4 renames applied).
+- **Checkpoint E -- Verification & rebalance.** Every existing balance
+  number in this project (Root passive rework, escalation timing, the
+  hard resolution deadline, every skill-dial sweep) was only ever
+  validated against the old flat single-burst dummy. Re-run the
+  `playRun()`/`resolveFight` sweep methodology (same shape as every
+  prior sweep in this section) against the real roster once it exists --
+  expect real retuning, not just a confirmation pass, since this is
+  genuinely new content the engine has never been exercised against.
+
+Exit criteria: all 6 checkpoints implemented and tested; a fresh
+`playRun()` sweep exists against the real roster (numbers, not vibes,
+matching this project's own stated discipline); `DESIGN.md`'s Enemy
+Design section and this spec agree with what actually shipped.
