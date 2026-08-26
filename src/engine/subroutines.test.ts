@@ -198,32 +198,41 @@ describe('subroutine content — real combat smoke tests', () => {
     expect(result.peakFillFraction[0]).toBe(0); // Ghost's own gauge never moves
   });
 
-  it("Ghost's real starting kit, with the reworked Return to Sender active, now wins outright -- session 25's core validation claim, directly contrasting the bare-kit test above", () => {
-    // Same scenario as the test above, classId added -- Return to
-    // Sender's new instantCounterPush hook (session 25) gives Null
-    // Session's counter-pushes a way to credit Ghost's own gauge for the
-    // first time ever, closing a gap that was previously *impossible* to
-    // close with this kit alone, not merely slow.
+  it("Ghost's real starting kit, with the reworked Return to Sender active, still can't touch its own gauge within the new hard-resolution window -- a real, structural consequence of the hard deadline, not a regression in the passive itself", () => {
+    // Session 25's original claim here was "wins outright" (189 hands,
+    // pre-hard-resolution) -- Null Session's instantCounterPush gave
+    // Ghost a real, previously-impossible way to credit its own gauge.
+    // That mechanism is still real; it just can't be demonstrated
+    // inside a 20-hand cap in *this specific* matchup. Null Session's
+    // trigger (`enemyState: breachContainmentAbove, value: high` --
+    // subroutines.ts) is a late-game "counter-punch as they're about to
+    // win" design: it only arms once the *enemy's own* fill percentage
+    // is already high. Against genericOpponent's slow, flat
+    // accumulation (amount 4/turn, no escalation-driven acceleration of
+    // its own), the enemy's fill percentage never gets there within 20
+    // hands -- confirmed empirically across 100 sampled seeds, none of
+    // which showed Ghost's fill fraction rising above 0 even with the
+    // passive active. So both with and without the passive, Ghost's own
+    // gauge stays at exactly 0 here, and the hard-resolution tiebreak's
+    // defender-wins-ties rule decides it in the enemy's favor either
+    // way -- same mechanism, same outcome, as the bare-kit test above.
     //
-    // seed 2, not seed 1: session 26's much faster escalation curve
-    // (starts hand 10, floors by hand 20 -- "effectively sudden death")
-    // makes the *outcome* of an already-close fight noticeably more
-    // seed-sensitive than before, since whoever's ahead when the
-    // threshold collapses locks in an advantage rather than the slower
-    // side getting many more hands to catch up -- a real, expected
-    // consequence of sudden death, not a sign the rework stopped
-    // working. Seed 1 now happens to land on the enemy's side (Ghost
-    // still wins 6/10 across a quick seed sample); seed 2 reliably
-    // lands on Ghost's, which is all this test needs to prove: the
-    // mechanism genuinely can win, not that it always will on any seed.
-    const result = playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], {
-      seed: 2,
+    // Real, worth flagging for the next tuning pass: a starting passive
+    // whose only reachable trigger is inherently late-firing doesn't
+    // get a fair chance to prove itself under a hard 20-hand deadline.
+    // Either Return to Sender needs an earlier-arming hook, or Ghost's
+    // matchups need to reach meaningful enemy fill percentage faster,
+    // for this class to actually benefit from its own rework in
+    // practice now that "sudden death by hand 20" is a hard rule, not
+    // just a soft aspiration.
+    const withPassive = playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], {
+      seed: 1,
       gaugeThreshold: 12,
       maxHands: GENEROUS_MAX_HANDS,
       classId: 'ghost',
     });
-    expect(result.winner).toBe(0);
-    expect(result.peakFillFraction[0]).toBeGreaterThan(0);
+    expect(withPassive.winner).toBe(1);
+    expect(withPassive.peakFillFraction[0]).toBe(0);
   });
 
   it('Saboteur and Operator win measurably faster against an empty enemy with their reworked passives active than without', () => {
@@ -241,29 +250,33 @@ describe('subroutine content — real combat smoke tests', () => {
     }
   });
 
-  it('a solo Encryption pool genuinely stalemates against a weak opponent -- a real escalation gap, not a bug in this test', () => {
+  it('a solo Encryption pool genuinely deadlocks against a weak opponent -- the hard-resolution tiebreak (session 26) now resolves it in the defender\'s favor rather than letting it run forever', () => {
     // Unlike Ghost's minimal kit, the FULL Encryption pool includes 4
     // dedicated Ward-casters (Sandboxing, Access Control, Honeypot, Air
     // Gap) -- stacked together they build an ever-growing shield that
     // outpaces this weak opponent's single small burst indefinitely, so
     // the opponent's hits never land either. Both sides' progress stays
     // at exactly 0 forever, and escalation (checkpoint B) only shrinks
-    // *thresholds* -- it can't rescue a genuine zero-progress deadlock.
-    // This is real confirmation of the plan's own anticipated gap
-    // ("if shrinking thresholds alone turns out not to be enough,"
-    // BACKLOG.md/plan doc's escalation decision) -- flagged there for
-    // whether a sudden-death fallback is worth building now or later,
-    // not silently worked around here. A 15-piece pool thrown at one
-    // weak opponent is also a more extreme matchup than real installed
-    // loadouts (capped at 6 -- checkpoint D) ever produce, so this
-    // specific case may be more test-construction artifact than a
-    // realistic in-game risk -- still asserting the documented maxHands
-    // safety valve fires, not a real crash.
+    // *thresholds* -- it can't force either gauge upward, so it can't
+    // rescue a genuine zero-progress deadlock on its own.
+    //
+    // This used to throw ("did not resolve") after running out
+    // GENEROUS_MAX_HANDS -- flagged at the time as a real gap the plan
+    // anticipated. Session 26's hard resolution deadline closes it: at
+    // the end of hand 20, both sides are still tied at exactly 0
+    // progress, so the tiebreak's defender-wins-ties rule ("if you
+    // can't breach in time, you're getting contained") decides it --
+    // exactly the scenario that rule exists for. A 15-piece pool thrown
+    // at one weak opponent is also a more extreme matchup than real
+    // installed loadouts (capped at 6 -- checkpoint D) ever produce, so
+    // this specific case is more test-construction artifact than a
+    // realistic in-game risk.
     const encryptionPool = ARCHETYPE_POOLS.encryption;
     const encryptionLoadout = [...encryptionPool.commons, ...encryptionPool.uncommons, ...encryptionPool.rares];
-    expect(() => playCombat([encryptionLoadout, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS })).toThrow(
-      /did not resolve/,
-    );
+    const result = playCombat([encryptionLoadout, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS });
+    expect(result.winner).toBe(1);
+    expect(result.hands.length).toBe(20);
+    expect(result.peakFillFraction).toEqual([0, 0]);
   });
 
   it('the full 78-subroutine set on one side resolves against an empty enemy without throwing', () => {

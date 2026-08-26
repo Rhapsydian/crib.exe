@@ -193,9 +193,11 @@ function advance(
 // of escalation = 4. Since a side's own banked progress never resets
 // when its threshold shrinks, reaching the floor while either side
 // already has meaningful progress banked resolves the match almost
-// immediately -- that's what makes hand 20 feel like sudden death,
-// not the floor value alone. All TBD/playtesting, same placeholder
-// convention as everywhere else in this project.
+// immediately -- that's what makes hand 20 feel like sudden death for
+// most fights. It's not a guarantee on its own, though -- see
+// HARD_RESOLUTION_HAND below for the actual backstop that makes hand
+// 20 a true, unconditional deadline. All TBD/playtesting, same
+// placeholder convention as everywhere else in this project.
 const ESCALATION_START_HAND = 10;
 const ESCALATION_SHRINK_PER_HAND = 4;
 const ESCALATION_MIN_THRESHOLD = 10;
@@ -211,6 +213,39 @@ function applyEscalation(combatState: CombatState): CombatState {
     winGauge: shrinkDuelThreshold(sideState.winGauge, ESCALATION_SHRINK_PER_HAND, ESCALATION_MIN_THRESHOLD),
   })) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
+}
+
+// Hard resolution deadline (session 26, continued): escalation alone
+// only makes hand 20 *feel* like sudden death -- it lowers the bar,
+// but can't force either gauge upward, so a genuinely mutual
+// stalemate (both sides suppressing each other's progress as fast as
+// it accumulates, or a kit that can never land a hit at all -- see
+// subroutines.test.ts's solo-Encryption-pool case) can still run past
+// FIGHT_MAX_HANDS (encounters.ts) without ever crossing either
+// threshold, throwing instead of returning a result. Found as a real,
+// if rare, occurrence in this session's own 500-seed re-sweep (Ghost,
+// once its passive rework let it genuinely contest). The user's call:
+// no fight should ever fail to resolve, full stop -- so at the end of
+// hand 20 (the same hand escalation's own shrink schedule already
+// reaches its floor by), force a real winner regardless of whether
+// either threshold was actually crossed. This makes FIGHT_MAX_HANDS
+// effectively unreachable for any real fight going forward; left in
+// place as a defensive outer bound rather than removed.
+const HARD_RESOLUTION_HAND = 20;
+
+/** Forces a winner at the hard resolution deadline: whichever side has
+ * the higher *current* win-gauge fill fraction (progress/threshold) --
+ * not peakFillFraction, which can be stale for a side that surged
+ * earlier and got pushed back since. An exact tie (including the
+ * genuine zero-progress-on-both-sides deadlock) goes to the defender,
+ * side 1 -- "if you can't breach in time, you're getting contained,"
+ * the Breach/Containment theme applied literally as the tiebreak
+ * itself, not just flavor text. */
+function resolveHardTiebreak(combatState: CombatState): PlayerIndex {
+  const [side0, side1] = combatState.sides;
+  const fraction0 = side0.winGauge.progress / side0.winGauge.threshold;
+  const fraction1 = side1.winGauge.progress / side1.winGauge.threshold;
+  return fraction0 > fraction1 ? 0 : 1;
 }
 
 /** The ordered sequence of scoring occurrences for one hand, in the
@@ -486,6 +521,8 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     }
 
     dealer = (1 - dealer) as PlayerIndex;
+
+    if (i + 1 >= HARD_RESOLUTION_HAND) return finish(resolveHardTiebreak(combatState));
   }
 
   throw new Error(`playCombat did not resolve within ${maxHands} hands`);

@@ -200,6 +200,24 @@ session before the implementation phases below can be fully scoped:
     per-tick bonus regardless of anything else -- likely a genuine
     power-level difference, not just a re-flavoring, so it'd need its
     own empirical sweep check, same as the Root-class rework got.
+- **Banked idea, not yet designed**: enemy loadout variation. Every
+  real fight in a run (`resolveFight`, `encounters.ts`) currently draws
+  from exactly one flat, single-piece loadout per fight kind --
+  `ENEMY_LOADOUT_REGULAR`/`_ELITE`/`_GATEKEEPER`, each just one
+  always-firing `directBurst` scaled by amount (9/10/11). Noted session
+  26 while explaining the balance-sweep methodology: every sweep this
+  project has run (session 24's tunable-skill AI grid onward) measures
+  a player class against this same flat burst shape at every layer and
+  tier, varying only Cribbage-play skill and raw amount, never
+  archetype mix, tag interactions, or behavioral shape (Root-style
+  denial, Encryption-style stalling, multi-piece combos). Real content
+  variety on the enemy side -- different archetype pools per tier/
+  layer, multi-piece enemy kits, maybe even enemy "mini-classes" that
+  reuse the player's own archetype-affinity system -- is a distinct
+  content-authoring pass from anything tuned so far, and every existing
+  balance number (Root passive rework, escalation timing, the hard
+  resolution deadline) has so far only ever been validated against this
+  one flat shape.
 
 ## Phase 1 — Core Cribbage engine ✅ complete (session 16)
 
@@ -998,3 +1016,96 @@ the existing `RETURN_TO_SENDER_RATIO` reused for two new triggers) is a
 TBD/playtesting placeholder, same discipline as every other numeric
 constant in this project. This sweep is the empirical grounding the
 next tuning pass needs, not the tuning pass itself.
+
+---
+
+**Race-to-121 AI-skill cross-matrix (session 26): confirms and
+quantifies session 24's "novice is much stronger than intended" finding
+directly, with the combat/win-gauge layer removed entirely.** Session
+24's original sweep held enemy skill fixed while sweeping 0/0.5/1 and
+found the numbers barely moved (Warden 46.4%->41.8%->44.0%, etc.),
+flagging that the *weight values themselves*, not just which skill
+level ships, were an open question -- but that measurement still ran
+through the whole win-gauge/escalation apparatus, leaving room to
+wonder whether some of the flatness was a combat-layer artifact rather
+than a real property of the AI itself. This session isolated the
+question: a scratch driver (`game.ts`'s primitives -- `deal`,
+`discardToCrib`, `cut`, `playPegging` -- plus `triggers.ts`'s
+`occurrenceFromHisHeels`/`occurrencesFromPeggingEvent`/
+`occurrencesFromHandEvents` for real mid-hand stop-the-instant-someone-
+hits-121 semantics, since neither `game.ts`'s `playHands` nor
+`combat.ts` had ever built a real race-to-121 driver before) played
+every pairing of {the old `discardLowestTwo`/`playLowestLegal`
+baseline, skill 0, skill 0.5, skill 1} against every other, 500 seeds
+each, straight Cribbage with no Breach/Containment involved at all:
+
+| (row = side 0) | baseline | skill 0 | skill 0.5 | skill 1 |
+|---|---|---|---|---|
+| baseline | 57.6% | 6.0% | 4.8% | 4.8% |
+| skill 0 | 97.8% | 55.6% | 48.8% | 49.8% |
+| skill 0.5 | 98.4% | 59.6% | 54.4% | 54.8% |
+| skill 1 | 98.4% | 60.0% | 53.6% | 53.4% |
+
+The diagonal (identical strategy vs. itself) sits at a plausible
+53-58% for side 0, who deals the first hand -- consistent with
+Cribbage's small, well-known first-dealer edge, confirming the driver
+itself is sound (an earlier, buggy version that summed a whole hand
+before checking for 121, instead of stopping the instant a score is
+reached mid-hand as real rules require, produced an implausible 66/34
+split here and was caught and fixed before trusting any of this).
+
+Two findings, and the second is the sharper, cleaner version of session
+24's own: **(1)** any point on the skill dial beats the old baseline
+94-95% of the time -- a real, enormous effect, confirming "optimizes
+for points at all" is genuinely powerful. **(2)** skill 0 vs. skill 1
+is 49.8% -- a coin flip -- and every cell in the skill-vs-skill 3x3
+block sits in the same 48-60% noise band as the identical-strategy
+diagonal. Novice and expert are not meaningfully different opponents in
+real head-to-head play once you're past the baseline cliff. This is
+because of *how* the dial works, not a tuning-value accident: looking
+at `ai.ts`'s weight vectors directly, `DISCARD_NOVICE_WEIGHTS.handValue`
+and `DISCARD_EXPERT_WEIGHTS.handValue` are both 1 (never interpolated),
+and likewise `PEG_NOVICE_WEIGHTS.immediateScore` /
+`PEG_EXPERT_WEIGHTS.immediateScore` are both 1 -- the skill dial only
+ever interpolates the *secondary* refinement terms (crib-awareness,
+defensive risk, setup value). The *dominant* term -- exact hand-EV over
+every unseen starter, exact immediate pegging score -- runs at full,
+uncompromised strength at every skill level, including 0. That's
+exactly why "novice" already crushes the baseline (it's still a
+near-perfect card-value optimizer) and why novice-to-expert barely
+separates (the only thing skill ever touches is a small bonus layered
+on top of an already-optimal pick).
+
+**Recommendation for real range**: don't keep tuning the secondary
+weights harder -- that band is provably narrow regardless of their
+exact values, since the primary term dominates the ranking at every
+skill level. Two changes, complementary rather than either-or:
+
+1. **Interpolate the primary weight too** (`handValue`/
+   `immediateScore` down from 1 at skill 0, not fixed at 1 for both
+   ends) -- cheap, surgical, no architecture change, and would
+   immediately open some real separation. On its own this likely just
+   reproduces something closer to the existing dumb baseline at
+   skill=0, which may or may not be the intent.
+2. **Real mistake-injection**, the mechanism this project's own
+   session-24 write-up already anticipated needing ("a true 'plays
+   randomly badly' floor would need a different mechanism entirely").
+   Concretely: instead of always picking the argmax candidate, sample
+   from a softmax/Boltzmann distribution over candidate scores with a
+   temperature that's high (near-random pick among all legal
+   candidates/discard pairs) at skill 0 and near-zero (today's
+   deterministic argmax) at skill 1. This is the standard way game AI
+   research handles a skill dial (weakening the *decision procedure*,
+   not just which factors it considers) and would produce a smooth,
+   wide curve instead of the current narrow band. The real cost: today
+   `DiscardStrategy`/`PlayStrategy` are pure functions with no RNG
+   access (`deal.ts`/`pegging.ts`), so this needs a seeded RNG threaded
+   into both signatures -- a real, moderate change, not a weight tweak,
+   and the same underlying gap the banked "human-vs-AI resumability"
+   architecture note (Phase 0) already flagged about these strategies'
+   synchronous, context-only shape.
+
+Not implemented -- this sweep is the empirical case for *why* the next
+AI-tuning pass needs to change the mechanism, not just the numbers,
+same "grounding, not the tuning pass itself" discipline as every other
+sweep this project has run.
