@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Card } from './cards';
+import { createRng } from './rng';
 import {
   unseenCards,
   handExpectedValue,
@@ -170,6 +171,36 @@ describe('scorePegCandidate / pegSkillStrategy', () => {
     const legalCards = [card(3, 0), card(8, 1), card(11, 2)];
     const chosen = strategy({ legalCards, count: 4, sequence: [card(1, 0)] });
     expect(legalCards).toContainEqual(chosen);
+  });
+
+  describe('softmax mistake-injection (session 26)', () => {
+    it('without ctx.rng, matches today\'s exact argmax at every skill level -- non-breaking by construction', () => {
+      const strategy = pegSkillStrategy(0);
+      const chosen = strategy({ legalCards: [riskyPair, safe], count: 11, sequence });
+      expect(chosen).toEqual(riskyPair); // same as the bare argmax test above
+    });
+
+    it('with a seeded ctx.rng, skill 0 sometimes picks the worse-scoring legal card across many draws -- real mistake-injection, not just weight dilution', () => {
+      const strategy = pegSkillStrategy(0);
+      const rng = createRng(1);
+      const picks = new Set<string>();
+      for (let i = 0; i < 200; i++) {
+        const chosen = strategy({ legalCards: [riskyPair, safe], count: 11, sequence, rng });
+        picks.add(`${chosen.rank}-${chosen.suit}`);
+      }
+      // Both candidates should show up -- if softmax degenerated back to
+      // argmax, only riskyPair's key would ever appear.
+      expect(picks.size).toBe(2);
+    });
+
+    it('skill 1 stays deterministic argmax even with ctx.rng supplied -- temperature is 0 at skill 1 regardless', () => {
+      const strategy = pegSkillStrategy(1);
+      const rng = createRng(1);
+      for (let i = 0; i < 50; i++) {
+        const chosen = strategy({ legalCards: [riskyPair, safe], count: 11, sequence, rng });
+        expect(chosen).toEqual(safe); // same as the bare argmax test above, every time
+      }
+    });
   });
 });
 

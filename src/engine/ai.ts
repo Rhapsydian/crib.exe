@@ -4,6 +4,7 @@ import { createDeck } from './deck';
 import { countHand, countCrib } from './scoring';
 import { scoreCardPlay, type PlayContext, type PlayStrategy } from './pegging';
 import type { DiscardStrategy } from './deal';
+import type { Rng } from './rng';
 
 /**
  * Shared weighted-scoring heuristic module (Root mechanical redesign,
@@ -250,8 +251,61 @@ const PEG_EXPERT_WEIGHTS: PegWeights = { immediateScore: 1, defensiveRisk: 1, se
 const RISKY_COUNTS = new Set([5, 21]);
 const DEFENSIVE_RISK_PENALTY = 3; // TBD/playtesting
 
+/** Session 26: real mistake-injection for pegging -- see softmaxPick's
+ * doc comment. Separate from DISCARD_MAX_TEMPERATURE below because
+ * pegging-candidate scores and discard hand-EV scores are on very
+ * different numeric scales (same reason PegWeights/DiscardWeights are
+ * already two independent constant sets). TBD/playtesting, retuned in
+ * the checkpoint E recalibration sweep. */
+const PEG_MAX_TEMPERATURE = 3;
+
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
+}
+
+/** Below this, softmax sampling is indistinguishable from argmax (and
+ * risks a divide-near-zero in the exponent) -- treat as "deterministic"
+ * and skip sampling entirely. */
+const TEMPERATURE_EPSILON = 1e-6;
+
+/** Linear temperature schedule (session 26, real mistake-injection):
+ * `maxTemperature` at skill 0 down to 0 at skill 1. At temperature 0,
+ * softmaxPick below degenerates to exact argmax -- skill=1 is
+ * byte-for-byte identical to pre-session-26 behavior regardless of
+ * whether a caller supplies ctx.rng. */
+function temperatureForSkill(maxTemperature: number, skill: number): number {
+  const t = Math.max(0, Math.min(1, skill));
+  return maxTemperature * (1 - t);
+}
+
+/** Samples one candidate from a Boltzmann/softmax distribution over
+ * `scores` (same index order as `candidates`) at the given
+ * temperature: P(i) ~ exp(score_i / temperature). At temperature <=
+ * TEMPERATURE_EPSILON, falls back to exact argmax (first-highest-wins,
+ * matching every existing deterministic strategy's tie-breaking). This
+ * is the real mistake-injection mechanism session 24's own writeup
+ * flagged as eventually necessary -- unlike scaling a weight (which
+ * argmax is provably invariant to), temperature genuinely changes
+ * which candidate gets picked, because it reshapes a whole probability
+ * distribution, not just a single scalar ranking. */
+function softmaxPick<T>(candidates: T[], scores: number[], temperature: number, rng: Rng): T {
+  if (temperature <= TEMPERATURE_EPSILON) {
+    let bestIndex = 0;
+    for (let i = 1; i < scores.length; i++) {
+      if (scores[i] > scores[bestIndex]) bestIndex = i;
+    }
+    return candidates[bestIndex];
+  }
+
+  const maxScore = Math.max(...scores);
+  const weights = scores.map((s) => Math.exp((s - maxScore) / temperature));
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  let draw = rng.next() * total;
+  for (let i = 0; i < weights.length; i++) {
+    draw -= weights[i];
+    if (draw <= 0) return candidates[i];
+  }
+  return candidates[candidates.length - 1]; // floating-point rounding fallback
 }
 
 /** Skill as a single continuous 0-1 knob (decision 2): linearly
@@ -276,19 +330,27 @@ export function scorePegCandidate(card: Card, ctx: Pick<PlayContext, 'legalCards
   return weights.immediateScore * immediateScore - weights.defensiveRisk * defensiveRisk + weights.setupValue * setupValue;
 }
 
-/** Factory: builds a PlayStrategy that picks the highest-scoring legal
- * card at the given skill level (0-1), enumerating every legal
- * candidate each turn. */
+/** Factory: builds a PlayStrategy that picks a legal card at the given
+ * skill level (0-1), enumerating every legal candidate each turn. When
+ * `ctx.rng` is supplied (session 26), samples via softmaxPick at a
+ * skill-interpolated temperature -- real mistake-injection, not just
+ * weight dilution. Without `ctx.rng` (every caller before session 26,
+ * and any caller that still doesn't opt in), falls back to the exact
+ * argmax this function has always used. */
 export function pegSkillStrategy(skill: number): PlayStrategy {
   const weights = interpolatePegWeights(skill);
+  const temperature = temperatureForSkill(PEG_MAX_TEMPERATURE, skill);
   return (ctx) => {
+    const scores = ctx.legalCards.map((card) => scorePegCandidate(card, ctx, weights));
+    if (ctx.rng && temperature > TEMPERATURE_EPSILON) {
+      return softmaxPick(ctx.legalCards, scores, temperature, ctx.rng);
+    }
     let best = ctx.legalCards[0];
     let bestScore = -Infinity;
-    for (const card of ctx.legalCards) {
-      const score = scorePegCandidate(card, ctx, weights);
-      if (score > bestScore) {
-        bestScore = score;
-        best = card;
+    for (let i = 0; i < ctx.legalCards.length; i++) {
+      if (scores[i] > bestScore) {
+        bestScore = scores[i];
+        best = ctx.legalCards[i];
       }
     }
     return best;
