@@ -1109,3 +1109,84 @@ Not implemented -- this sweep is the empirical case for *why* the next
 AI-tuning pass needs to change the mechanism, not just the numbers,
 same "grounding, not the tuning pass itself" discipline as every other
 sweep this project has run.
+
+---
+
+**AI skill-dial range expansion, implemented (session 26 continued).**
+Both recommendations above, built per a live-scoped plan (5 checkpoints,
+commits `68415dd` through the sweep re-run below).
+
+- **A** -- interpolated the primary weight term too
+  (`DISCARD_NOVICE_WEIGHTS.handValue`/`PEG_NOVICE_WEIGHTS.immediateScore`,
+  both 1->0.4). Verified via the race-to-121 harness to be a pure
+  no-op *on its own*: argmax is provably invariant to uniform positive
+  rescaling of a single nonzero term, and novice's other weights are
+  still 0, so this constant change can't move anything until it has a
+  temperature to interact with. Not wasted -- kept for checkpoint C/D
+  to build on (`P(i) ~ exp(score_i / T)` is *not* scale-invariant, so
+  a smaller primary weight flattens the resulting distribution, acting
+  like a larger effective temperature).
+- **B** -- RNG-threading plumbing, `rng.ts`'s new `deriveAiNoiseSeed`
+  gives AI-decision noise its own stream, fully decorrelated from the
+  one driving shuffles/cuts (sharing one stream would mean any future
+  change to how often the AI "rolls dice" shifts every subsequent
+  deal/starter draw, breaking fixed-seed test assertions elsewhere).
+  `DiscardContext`/`PlayContext` gained an optional `rng?: Rng` field,
+  matching their own established "new intel source, new optional
+  field" extension pattern rather than a new factory parameter --
+  keeps every pre-session-26 caller (including tests that build bare
+  context objects with no `rng` field) byte-identical by construction.
+  Verified: full suite passes unchanged.
+- **C/D** -- real mistake-injection via `softmaxPick` (`ai.ts`):
+  Boltzmann sampling over candidate scores at a skill-interpolated
+  temperature (`PEG_MAX_TEMPERATURE=3`, `DISCARD_MAX_TEMPERATURE=4`,
+  separate constants -- pegging-candidate and discard hand-EV scores
+  are on different numeric scales), degenerating to exact argmax at
+  temperature 0 (skill 1, or whenever `ctx.rng` is absent). Verified:
+  with a seeded `ctx.rng`, skill 0 picks a demonstrably non-optimal
+  candidate at least sometimes across 200 draws; skill 1 stays
+  deterministic regardless of whether `ctx.rng` is supplied.
+- **E** -- re-ran the exact race-to-121 cross-matrix from the finding
+  above, now with the driver actually threading an `aiRng` through
+  (the harness itself needed updating -- without a real `ctx.rng`
+  supplied, the new mechanism never activates and everything looks
+  unchanged, which is worth remembering for any future measurement
+  that reuses `discardSkillStrategy`/`pegSkillStrategy`):
+
+| (row = side 0) | baseline | skill 0 | skill 0.5 | skill 1 |
+|---|---|---|---|---|
+| baseline | 57.6% | 57.8% | 32.0% | 4.8% |
+| skill 0 | 53.0% | 58.8% | 28.6% | 3.6% |
+| skill 0.5 | 79.8% | 83.0% | 57.0% | 14.0% |
+| skill 1 | 98.4% | 98.6% | 92.2% | 53.4% |
+
+Skill 1 vs. skill 0 is now 98.6% (was a 49.8% coin flip). Skill 1 vs.
+skill 0.5 is 92.2%. The diagonal (identical strategy vs. itself) stays
+tightly clustered at 53-59% across every level -- the same first-dealer
+edge regardless of skill, confirming the temperature schedule doesn't
+introduce a self-play bias. Real, wide, monotonic separation now
+exists across the whole dial, which is what this whole investigation
+was for.
+
+**A real, worth-flagging side effect, not yet resolved**: skill 0
+collapsed to roughly baseline-level performance (53-58% against the
+old dumb baseline, down from crushing it ~95% of the time before). At
+full temperature (`skill=0` -> `temperature=MAX`), skill 0 is now
+close to genuinely random play among legal candidates, not "weak but
+trying" -- which is exactly the "true 'plays randomly badly' floor"
+the original banked idea called for, but it's a large, visible shift
+in what "novice" represents in-game. `PEG_MAX_TEMPERATURE`/
+`DISCARD_MAX_TEMPERATURE` are both TBD/playtesting placeholders picked
+without calibrating specifically for this -- if a gentler novice floor
+(still weak, not pure noise) turns out to be the actual design intent,
+lowering these two constants is the lever, same discipline as every
+other numeric placeholder in this project.
+
+Not done here, explicitly out of scope for this plan: the real
+combat-sweep grids (`playRun`, player/enemy skill x class) haven't
+been re-run against this new mechanism yet -- offered, not yet
+requested. The actual "play standard Cribbage to 121" game mode the
+user wants eventually also isn't built here -- this work was
+deliberately designed (per-context `rng?` field, not a
+`combat.ts`-only hack) so `game.ts` already benefits from the same
+plumbing when that mode gets built.
