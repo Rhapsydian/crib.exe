@@ -3,12 +3,14 @@ import type { Rng } from './rng';
 import type { SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
 import { playCombat } from './combat';
-import type { DiscardStrategy } from './deal';
-import type { PlayStrategy } from './pegging';
+import { discardSkillStrategy, pegSkillStrategy } from './ai';
+import { discardLowestTwo, type DiscardStrategy } from './deal';
+import { playLowestLegal, type PlayStrategy } from './pegging';
 import { heatFromLoss } from './heat';
 import { drawRewardOptions, type RewardTier } from './rewards';
 import { dataForTier } from './data';
 import { pickMergeTarget, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
+import { pickRegularOrEliteEnemy, gatekeeperEnemyForNode, enemySkill, type EnemyDefinition } from './enemies';
 import {
   shopOfferingsForClass,
   buyCheapestAffordable,
@@ -21,49 +23,20 @@ import {
 
 /**
  * Node encounter resolution (session 19/20 checkpoint E, player loadout
- * wired in at Phase 4 checkpoint A): the point where Phase 3 calls Phase
- * 2's real playCombat() rather than an injected win/loss stub. The
- * enemy side is still a small representative loadout -- tuning real
- * per-node enemy difficulty is later content work (Phase 5), same
- * "infrastructure-complete, content-partial" scope Phase 2 itself
- * shipped enemies with.
+ * wired in at Phase 4 checkpoint A; real enemy selection/skill-dial
+ * wired in at Phase 5 checkpoint C): the point where Phase 3 calls Phase
+ * 2's real playCombat() rather than an injected win/loss stub, against a
+ * real named enemy (enemies.ts) instead of the old flat single-piece
+ * dummy loadouts.
  */
 
 const REST_HEAT_REDUCTION = 20; // TBD/playtesting
 
-// Small representative enemy loadouts (same alwaysBurst-style pattern as
-// combat.test.ts) -- symmetric for a regular fight, so the outcome
-// genuinely rides on the Cribbage play; the elite enemy loadout is
-// deliberately heavier, for a fight that's actually harder to win.
-function burstSubroutine(id: string, amount: number): SubroutineDefinition {
-  return {
-    id,
-    name: id,
-    archetype: 'exploit',
-    trigger: { kind: 'always' },
-    payload: { kind: 'directBurst', amount },
-    tags: [],
-  };
-}
-
-// Retuned at Phase 4 checkpoint E, empirically, against the
-// Breach/Containment redesign's two-gauge model (session 22+) and
-// Breacher's real starting kit -- swept enemy magnitude 2-16 at
-// winThreshold=50 across 50 seeds each: win rate falls off smoothly and
-// monotonically from 100% (amount<=6) to 0% (amount>=13), a wide,
-// genuinely tunable competitive zone, unlike the old shared-scalar
-// model's narrow, chaotic band between "always wins" and "always loses,
-// and takes far longer either way" (session 20/Phase 4 checkpoint A's
-// own finding). Regular/elite/gatekeeper land at roughly 76%/38%/20% win
-// rate for a bare starting kit -- a real difficulty gradient, with room
-// for the growing loadout (Phase 4's acquisition system) to matter
-// across a run rather than static per-fight odds telling the whole
-// story. Convergence at every one of these magnitudes is fast and
-// tightly bounded (avg ~10-17 hands, max ~25) -- see FIGHT_MAX_HANDS
-// below.
-const ENEMY_LOADOUT_REGULAR: SubroutineDefinition[] = [burstSubroutine('enemy-burst', 9)];
-const ENEMY_LOADOUT_ELITE: SubroutineDefinition[] = [burstSubroutine('enemy-elite-burst', 10)];
-const ENEMY_LOADOUT_GATEKEEPER: SubroutineDefinition[] = [burstSubroutine('enemy-gatekeeper-burst', 11)];
+// Phase 5 checkpoint C replaced the old flat single-burst-per-tier
+// dummy loadouts with real named-enemy selection (enemies.ts) -- see
+// resolveFight below. GAUGE_THRESHOLD/WIN_THRESHOLD/FIGHT_MAX_HANDS
+// were tuned against the old flat shape (Phase 4 checkpoint E); real
+// per-enemy retuning against the actual roster is checkpoint E's job.
 const GAUGE_THRESHOLD = 8;
 // Same empirical sweep as above -- 50 gave fast (~10-25 hand),
 // consistent convergence across the whole competitive magnitude range
@@ -114,29 +87,59 @@ type FightKind = 'regular' | 'elite' | 'gatekeeper';
 // anticipate (e.g. a heavily-grown late-run loadout), well under this.
 const FIGHT_MAX_HANDS = 5_000;
 
-const ENEMY_LOADOUTS: Record<FightKind, SubroutineDefinition[]> = {
-  regular: ENEMY_LOADOUT_REGULAR,
-  elite: ENEMY_LOADOUT_ELITE,
-  gatekeeper: ENEMY_LOADOUT_GATEKEEPER,
-};
+/** Picks the real named enemy for this fight (enemies.ts, checkpoint C):
+ * gatekeeper reads the identity map-gen already fixed onto the node;
+ * regular/elite pick randomly from the eligible tier+layer pool
+ * (or the opener-window override), every time. */
+function enemyForFight(kind: FightKind, node: MapNode, layerIndex: number, fightNumber: number, rng: Rng): EnemyDefinition {
+  return kind === 'gatekeeper' ? gatekeeperEnemyForNode(node) : pickRegularOrEliteEnemy(kind, layerIndex, fightNumber, rng);
+}
+
+/** Builds this fight's discard/play strategies from the enemy's
+ * skill-dial level -- only when the caller didn't already supply an
+ * explicit override. The session-24 test escape hatch stays
+ * authoritative: an explicit override always wins outright, real
+ * content only ever supplies a *default*. */
+function strategiesForFight(
+  kind: FightKind,
+  layerIndex: number,
+  fightNumber: number,
+  discardStrategies?: [DiscardStrategy, DiscardStrategy],
+  playStrategies?: [PlayStrategy, PlayStrategy],
+): { discardStrategies?: [DiscardStrategy, DiscardStrategy]; playStrategies?: [PlayStrategy, PlayStrategy] } {
+  if (discardStrategies || playStrategies) return { discardStrategies, playStrategies };
+  // Only the enemy (side 1) gets a skill-derived strategy -- side 0
+  // (the player) keeps playCombat's own baseline default exactly
+  // (discardLowestTwo/playLowestLegal), same as before this checkpoint.
+  const skill = enemySkill(kind, layerIndex, fightNumber);
+  return {
+    discardStrategies: [discardLowestTwo, discardSkillStrategy(skill)],
+    playStrategies: [playLowestLegal, pegSkillStrategy(skill)],
+  };
+}
 
 function resolveFight(
   kind: FightKind,
+  node: MapNode,
+  layerIndex: number,
+  fightNumber: number,
   rng: Rng,
   playerState: RunPlayerState,
   discardStrategies?: [DiscardStrategy, DiscardStrategy],
   playStrategies?: [PlayStrategy, PlayStrategy],
 ): EncounterOutcome {
-  const enemyLoadout = ENEMY_LOADOUTS[kind];
+  const enemy = enemyForFight(kind, node, layerIndex, fightNumber, rng);
+  const strategies = strategiesForFight(kind, layerIndex, fightNumber, discardStrategies, playStrategies);
   const seed = rng.nextInt(2 ** 31);
-  const result = playCombat([playerState.installedLoadout, enemyLoadout], {
+  const result = playCombat([playerState.installedLoadout, enemy.loadout], {
     seed,
     gaugeThreshold: GAUGE_THRESHOLD,
     winThreshold: WIN_THRESHOLD,
     maxHands: FIGHT_MAX_HANDS,
     classId: playerState.classId,
-    discardStrategies,
-    playStrategies,
+    enemyPassiveIds: enemy.passiveIds,
+    discardStrategies: strategies.discardStrategies,
+    playStrategies: strategies.playStrategies,
   });
 
   if (result.winner === 0) {
@@ -188,21 +191,29 @@ export function resolveEncounter(
   safehouseStrategy: SafehouseStrategy = preferMergeWhenAvailable,
   shopStrategy: ShopStrategy = buyCheapestAffordable,
   shopRerollStrategy: ShopRerollStrategy = rerollIfNothingAffordable,
-  /** Test-only escape hatch (session 24, tunable-skill AI checkpoint A),
-   * same treatment as run.ts's installedLoadoutOverride -- lets a sweep
-   * exercise a skilled *enemy* in real fights. Real per-tier enemy
-   * skill selection remains a separate, later decision; undefined here
-   * falls all the way through to playCombat's own baseline defaults. */
+  /** Test-only escape hatch (session 24, tunable-skill AI checkpoint A) --
+   * an explicit override always wins outright over the real skill-dial
+   * default checkpoint C now computes from the enemy/layer (see
+   * strategiesForFight above). */
   discardStrategies?: [DiscardStrategy, DiscardStrategy],
   playStrategies?: [PlayStrategy, PlayStrategy],
+  /** Which layer this node lives in (checkpoint C) -- feeds both
+   * eligibleEnemies' minLayer filter and the skill-dial formula.
+   * Defaults to 1 for any pre-checkpoint-C caller (none currently
+   * exist outside tests that don't care). */
+  layerIndex: number = 1,
+  /** How many real combats this run has already resolved (checkpoint A/
+   * C's opener-window fight counter) -- 0 means this is the very first
+   * fight of the run. */
+  fightNumber: number = 0,
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
-      return resolveFight('regular', rng, playerState, discardStrategies, playStrategies);
+      return resolveFight('regular', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies);
     case 'eliteFight':
-      return resolveFight('elite', rng, playerState, discardStrategies, playStrategies);
+      return resolveFight('elite', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies);
     case 'gatekeeperFight':
-      return resolveFight('gatekeeper', rng, playerState, discardStrategies, playStrategies);
+      return resolveFight('gatekeeper', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies);
     case 'safehouse': {
       // DESIGN.md's deliberate Rest-vs-Merge trade-off: one action per
       // visit (the node goes inert either way). Falls back to Rest if

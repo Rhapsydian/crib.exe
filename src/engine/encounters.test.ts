@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import { createNode } from './map-types';
 import { resolveEncounter } from './encounters';
+import { discardLowestTwo, type DiscardStrategy } from './deal';
+import { playLowestLegal, type PlayStrategy } from './pegging';
 import type { RunPlayerState } from './run';
 import type { SubroutineDefinition } from './subroutine-types';
 import { BREACHER_LOADOUT } from './subroutines';
@@ -87,14 +89,47 @@ const OVERWHELMING_PLAYER: RunPlayerState = {
 const NEGLIGIBLE_PLAYER = playerWithBurst(0.1);
 const SEEDS = [1, 2, 3];
 
-function winOutcomes(nodeType: 'regularFight' | 'eliteFight' | 'gatekeeperFight') {
+// Phase 5 checkpoint C: layerIndex 4 keeps every placeholder enemy
+// (minLayer 1-4) eligible regardless of tier, and fightNumber past the
+// opener window (enemies.ts's OPENER_FIGHT_WINDOW) so an eliteFight/
+// gatekeeperFight test node actually exercises its own tier instead of
+// being downgraded to an easy Regular opener. Gatekeeper nodes need a
+// real assignedEnemyId too -- createNode alone doesn't set one (that's
+// normally map-gen's job via assignGatekeeperEnemy). Every checkpoint-C
+// placeholder enemy is a simple always-firing burst (see enemies.ts's
+// alwaysBurst) specifically so outcomes here are a predictable function
+// of magnitude/skill, not real kit balance -- that's checkpoint D+E's
+// job, once real thematic (sometimes deliberately solo-weak, mirroring
+// the player-side Ghost class) content replaces these placeholders.
+const TEST_LAYER = 4;
+const TEST_FIGHT_NUMBER = 10;
+// Both sides pinned to the dumb baseline explicitly -- an explicit
+// override always wins outright over checkpoint C's computed skill-dial
+// default (see encounters.ts's strategiesForFight), so this restores
+// these pre-checkpoint-C tests' original "both sides equally dumb"
+// premise. Skill-dial correctness is a separate concern, covered by
+// ai.test.ts and enemies.ts's own eventual tests -- these tests only
+// care about resolveEncounter's Heat/reward/quarantine wiring.
+const BASELINE_STRATEGIES: [DiscardStrategy, DiscardStrategy] = [discardLowestTwo, discardLowestTwo];
+const BASELINE_PLAY_STRATEGIES: [PlayStrategy, PlayStrategy] = [playLowestLegal, playLowestLegal];
+
+function nodeFor(nodeType: 'regularFight' | 'eliteFight' | 'gatekeeperFight') {
   const node = createNode('n', nodeType);
-  return SEEDS.map((seed) => resolveEncounter(node, createRng(seed), OVERWHELMING_PLAYER));
+  return nodeType === 'gatekeeperFight' ? { ...node, assignedEnemyId: 'null-session' } : node;
+}
+
+function winOutcomes(nodeType: 'regularFight' | 'eliteFight' | 'gatekeeperFight') {
+  const node = nodeFor(nodeType);
+  return SEEDS.map((seed) =>
+    resolveEncounter(node, createRng(seed), OVERWHELMING_PLAYER, undefined, undefined, undefined, BASELINE_STRATEGIES, BASELINE_PLAY_STRATEGIES, TEST_LAYER, TEST_FIGHT_NUMBER),
+  );
 }
 
 function lossOutcomes(nodeType: 'regularFight' | 'eliteFight' | 'gatekeeperFight') {
-  const node = createNode('n', nodeType);
-  return SEEDS.map((seed) => resolveEncounter(node, createRng(seed), NEGLIGIBLE_PLAYER));
+  const node = nodeFor(nodeType);
+  return SEEDS.map((seed) =>
+    resolveEncounter(node, createRng(seed), NEGLIGIBLE_PLAYER, undefined, undefined, undefined, BASELINE_STRATEGIES, BASELINE_PLAY_STRATEGIES, TEST_LAYER, TEST_FIGHT_NUMBER),
+  );
 }
 
 describe('resolveEncounter -- regularFight', () => {

@@ -1,6 +1,7 @@
 import { createRng } from './rng';
 import { isReachable, neighborsOf, type LayerGraph, type NodeType, type RunPosition } from './map-types';
 import { generateLayer } from './map-gen';
+import { assignGatekeeperEnemy } from './enemies';
 import { move } from './traversal';
 import { resolveEncounter, type EncounterOutcome } from './encounters';
 import { addHeat } from './heat';
@@ -152,6 +153,14 @@ export function playRun(options: RunOptions): RunResult {
   const log: RunEvent[] = [];
   let heat = 0;
   let layersCompleted = 0;
+  // Phase 5 checkpoint A/C: counts real combats resolved this run
+  // (win or loss both count -- "a combat happened," not "a combat was
+  // won"), regardless of layer -- feeds the opener-window override
+  // (enemies.ts's pickRegularOrEliteEnemy/enemySkill) so the first few
+  // fights of a run are easy regardless of which node the player visits
+  // first (layer 1 is free-roam, so "the first node" isn't well-defined
+  // by position).
+  let fightsResolved = 0;
   let playerState = installedLoadoutOverride
     ? { classId, installedLoadout: installedLoadoutOverride, data: 0, bench: [], material: {}, rank: {} }
     : createInitialPlayerState(classId);
@@ -160,6 +169,14 @@ export function playRun(options: RunOptions): RunResult {
 
   for (let layerIndex = 0; layerIndex < layerNodeCounts.length; layerIndex++) {
     let graph = generateLayer({ rng, nodeCount: layerNodeCounts[layerIndex] });
+    // Fixes this layer's gatekeeper identity for the whole run (Phase 5
+    // checkpoint C) -- kept as a separate post-processing step rather
+    // than a generateLayer option, so map-gen.ts itself stays
+    // content-agnostic (its own "pure topology" scope). enemies.ts's
+    // layer numbering is 1-based (minLayer/eligibleEnemies), while this
+    // loop's layerIndex is 0-based -- +1 here is the only place that
+    // conversion needs to happen.
+    graph = assignGatekeeperEnemy(graph, layerIndex + 1, rng);
     log.push({ type: 'layerGenerated', layerIndex, nodeCount: graph.nodes.length });
     let position: RunPosition = { layerIndex, nodeId: graph.entryNodeId };
     let layerCleared = false;
@@ -187,7 +204,20 @@ export function playRun(options: RunOptions): RunResult {
       if (!node) throw new Error(`playRun: node "${position.nodeId}" is missing from its own layer graph`);
       if (node.state !== 'unresolved') continue; // already resolved -- just passing through
 
-      const outcome = resolveEncounter(node, rng, playerState, safehouseStrategy, shopStrategy, shopRerollStrategy, discardStrategies, playStrategies);
+      const isFightNode = node.type === 'regularFight' || node.type === 'eliteFight' || node.type === 'gatekeeperFight';
+      const outcome = resolveEncounter(
+        node,
+        rng,
+        playerState,
+        safehouseStrategy,
+        shopStrategy,
+        shopRerollStrategy,
+        discardStrategies,
+        playStrategies,
+        layerIndex + 1, // enemies.ts's layer numbering is 1-based
+        fightsResolved,
+      );
+      if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
       const afterEncounter = addHeat(heat, outcome.heatDelta);
       heat = afterEncounter.heat;
