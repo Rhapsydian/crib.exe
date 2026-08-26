@@ -108,7 +108,11 @@ describe('bestCardToForce', () => {
 
 describe('interpolatePegWeights', () => {
   it('returns the novice vector at skill=0 and the expert vector at skill=1', () => {
-    expect(interpolatePegWeights(0)).toEqual({ immediateScore: 1, defensiveRisk: 0, setupValue: 0 });
+    // immediateScore is 0.4 at novice, not 1 (session 26) -- the
+    // primary-value term is now diluted at low skill too, not just the
+    // secondary refinement terms, closing the "novice is basically as
+    // good as expert" gap the race-to-121 cross-matrix found.
+    expect(interpolatePegWeights(0)).toEqual({ immediateScore: 0.4, defensiveRisk: 0, setupValue: 0 });
     expect(interpolatePegWeights(1)).toEqual({ immediateScore: 1, defensiveRisk: 1, setupValue: 0.5 });
   });
 
@@ -171,7 +175,9 @@ describe('scorePegCandidate / pegSkillStrategy', () => {
 
 describe('interpolateDiscardWeights', () => {
   it('returns the novice vector at skill=0 and the expert vector (matching the old fixed CRIB_WEIGHT=1 behavior) at skill=1', () => {
-    expect(interpolateDiscardWeights(0)).toEqual({ handValue: 1, cribValue: 0 });
+    // handValue is 0.4 at novice, not 1 (session 26) -- same reasoning
+    // as interpolatePegWeights' matching change above.
+    expect(interpolateDiscardWeights(0)).toEqual({ handValue: 0.4, cribValue: 0 });
     expect(interpolateDiscardWeights(1)).toEqual({ handValue: 1, cribValue: 1 });
   });
 

@@ -73,7 +73,18 @@ export interface DiscardWeights {
   cribValue: number;
 }
 
-const DISCARD_NOVICE_WEIGHTS: DiscardWeights = { handValue: 1, cribValue: 0 };
+// Session 26: handValue used to be fixed at 1 for both ends -- the
+// skill dial only ever interpolated cribValue, meaning "novice" was
+// still a near-perfect hand-value optimizer with zero crib-awareness,
+// not a genuinely weak player. The race-to-121 cross-matrix (BACKLOG.md)
+// showed this produced almost no separation between skill 0 and skill
+// 1 (49.8%, a coin flip) despite skill 0 crushing the old dumb
+// baseline ~95% of the time -- the dominant term was never actually
+// diluted. Lowering it here is the cheap half of that fix (the other
+// half is real mistake-injection via ctx.rng, see PEG_MAX_TEMPERATURE/
+// DISCARD_MAX_TEMPERATURE below). TBD/playtesting, retuned in the
+// checkpoint E recalibration sweep.
+const DISCARD_NOVICE_WEIGHTS: DiscardWeights = { handValue: 0.4, cribValue: 0 };
 const DISCARD_EXPERT_WEIGHTS: DiscardWeights = { handValue: 1, cribValue: 1 };
 
 /** Skill as a single continuous 0-1 knob (decision 2), same shape as
@@ -228,7 +239,12 @@ export interface PegWeights {
   setupValue: number;
 }
 
-const PEG_NOVICE_WEIGHTS: PegWeights = { immediateScore: 1, defensiveRisk: 0, setupValue: 0 };
+// Session 26: immediateScore used to be fixed at 1 for both ends, same
+// gap and same fix as DISCARD_NOVICE_WEIGHTS.handValue above -- see
+// that constant's comment for the full reasoning (race-to-121
+// cross-matrix finding). TBD/playtesting, retuned in the checkpoint E
+// recalibration sweep.
+const PEG_NOVICE_WEIGHTS: PegWeights = { immediateScore: 0.4, defensiveRisk: 0, setupValue: 0 };
 const PEG_EXPERT_WEIGHTS: PegWeights = { immediateScore: 1, defensiveRisk: 1, setupValue: 0.5 };
 
 const RISKY_COUNTS = new Set([5, 21]);
