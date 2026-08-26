@@ -216,26 +216,40 @@ export const WARDEN_LOADOUT: SubroutineDefinition[] = [
 
 export const GHOST_LOADOUT: SubroutineDefinition[] = [
   {
-    id: 'null-session',
-    name: 'Null Session',
+    // Session 26: replaces Null Session. Null Session's enemyState-
+    // gated trigger meant it (and Kill Switch below) couldn't fire
+    // until the *enemy's own* gauge crossed a threshold, regardless of
+    // how well the player was playing -- the actual mechanism behind
+    // Ghost's win rate barely moving with player skill (the 4x4
+    // class-balance sweep, BACKLOG.md). Steganography's trigger is the
+    // player's own accumulated points instead, and its Ward payload
+    // reaches Return to Sender's absorb hook for the first time from
+    // the starting kit (previously unreachable -- none of Ghost's 3
+    // starting pieces cast Ward or HoT).
+    id: 'steganography',
+    name: 'Steganography',
     archetype: 'encryption',
-    // Corrected from DESIGN.md's "Self-state: Breach/Containment in
-    // enemy's favor" -- see file header.
-    trigger: { kind: 'enemyState', condition: 'breachContainmentAbove', value: BREACH_CONTAINMENT_THRESHOLD.high },
-    payload: { kind: 'instantCounterPush', amount: CAPPED.common },
+    trigger: { kind: 'accumulator', metric: 'points', threshold: COMMON.threshold },
+    payload: { kind: 'ward', amount: CAPPED.common },
     tags: [],
   },
   {
-    id: 'kill-switch',
-    name: 'Kill Switch',
+    // Session 26: replaces Kill Switch -- same denial effect and tag,
+    // re-triggered off the player's own play (an instant pair, not
+    // enemy gauge state) for the same reason as Steganography above.
+    // Occurrence rather than Accumulator so the two pieces don't fire
+    // in lockstep; reactive + 'instant' fits the trap/ambush flavor.
+    id: 'tripwire',
+    name: 'Tripwire',
     archetype: 'root',
-    trigger: { kind: 'enemyState', condition: 'breachContainmentBelow', value: BREACH_CONTAINMENT_THRESHOLD.low },
+    trigger: { kind: 'occurrence', category: 'pair', variation: 'instant' },
     payload: {
       kind: 'scheduledSabotage',
       resolvesAt: 'nextDeal',
       effect: { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: COMMON.burst },
     },
     tags: ['trap'],
+    reactive: true,
   },
   {
     id: 'low-profile',

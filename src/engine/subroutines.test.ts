@@ -185,54 +185,48 @@ describe('subroutine content — real combat smoke tests', () => {
     // Encryption+Root, zero direct damage access -- deliberately omits
     // classId here to isolate the kit's own three pieces from Return to
     // Sender (see the dedicated test right below for the passive's real,
-    // reworked effect). Under the pre-redesign shared scalar this meant
-    // the match hung forever (asserted via a maxHands timeout); under the
-    // two-gauge model escalation (checkpoint B) still resolves the match
-    // once the opponent's own shrinking threshold becomes reachable
-    // (Ghost's 3 starting pieces cast no Ward at all, so the opponent's
-    // hits go through freely), so a timeout is no longer the right signal
-    // here -- the real invariant is that Ghost's own gauge progress never
-    // advances at all without the passive, checked directly.
+    // reworked effect). Session 26's starting-kit redesign gave Ghost a
+    // real Ward-caster (Steganography) for the first time, but Ward
+    // absorption alone only *prevents* incoming damage -- it doesn't by
+    // itself credit anything to Ghost's own gauge (see resolve.ts:
+    // absorbing only advances the win gauge via Return to Sender's own
+    // credit hook). So the real invariant this test demonstrates hasn't
+    // changed: without the passive, Ghost's own gauge progress never
+    // advances at all, checked directly.
     const result = playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS });
     expect(result.winner).toBe(1); // Ghost never wins
     expect(result.peakFillFraction[0]).toBe(0); // Ghost's own gauge never moves
   });
 
-  it("Ghost's real starting kit, with the reworked Return to Sender active, still can't touch its own gauge within the new hard-resolution window -- a real, structural consequence of the hard deadline, not a regression in the passive itself", () => {
-    // Session 25's original claim here was "wins outright" (189 hands,
-    // pre-hard-resolution) -- Null Session's instantCounterPush gave
-    // Ghost a real, previously-impossible way to credit its own gauge.
-    // That mechanism is still real; it just can't be demonstrated
-    // inside a 20-hand cap in *this specific* matchup. Null Session's
-    // trigger (`enemyState: breachContainmentAbove, value: high` --
-    // subroutines.ts) is a late-game "counter-punch as they're about to
-    // win" design: it only arms once the *enemy's own* fill percentage
-    // is already high. Against genericOpponent's slow, flat
-    // accumulation (amount 4/turn, no escalation-driven acceleration of
-    // its own), the enemy's fill percentage never gets there within 20
-    // hands -- confirmed empirically across 100 sampled seeds, none of
-    // which showed Ghost's fill fraction rising above 0 even with the
-    // passive active. So both with and without the passive, Ghost's own
-    // gauge stays at exactly 0 here, and the hard-resolution tiebreak's
-    // defender-wins-ties rule decides it in the enemy's favor either
-    // way -- same mechanism, same outcome, as the bare-kit test above.
+  it("Ghost's real starting kit, with the reworked Return to Sender active, now wins reliably within the hard-resolution window -- the session 26 starting-kit redesign's core validation claim", () => {
+    // Prior versions of this test (session 25's "wins outright" at 189
+    // hands pre-hard-resolution, then session 26's "still can't touch
+    // its own gauge within 20 hands") both traced back to the same
+    // root cause: Null Session's and Kill Switch's `enemyState`-gated
+    // triggers meant Ghost's kit could only ever pay off once the
+    // *enemy's* gauge crossed a threshold, regardless of player skill
+    // or how the matchup was going -- confirmed as the mechanism behind
+    // Ghost being the one class whose win rate didn't move with player
+    // skill in the 4x4 class-balance sweep (BACKLOG.md).
     //
-    // Real, worth flagging for the next tuning pass: a starting passive
-    // whose only reachable trigger is inherently late-firing doesn't
-    // get a fair chance to prove itself under a hard 20-hand deadline.
-    // Either Return to Sender needs an earlier-arming hook, or Ghost's
-    // matchups need to reach meaningful enemy fill percentage faster,
-    // for this class to actually benefit from its own rework in
-    // practice now that "sudden death by hand 20" is a hard rule, not
-    // just a soft aspiration.
+    // Session 26's starting-kit redesign replaced both pieces:
+    // Steganography (was Null Session) triggers off the caster's own
+    // accumulated points and casts Ward -- reaching Return to Sender's
+    // absorb hook for the first time from the starting kit itself;
+    // Tripwire (was Kill Switch) triggers off an instant pair, same
+    // denial payload as before. Both fire off the player's own play,
+    // not enemy state. Result: seed 1 (this test's seed, unchanged)
+    // now wins outright within the hard 20-hand window; a 10-seed
+    // sample (0-9) shows 9/10 winning, versus 0/100 for the old kit
+    // under the exact same matchup.
     const withPassive = playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], {
       seed: 1,
       gaugeThreshold: 12,
       maxHands: GENEROUS_MAX_HANDS,
       classId: 'ghost',
     });
-    expect(withPassive.winner).toBe(1);
-    expect(withPassive.peakFillFraction[0]).toBe(0);
+    expect(withPassive.winner).toBe(0);
+    expect(withPassive.peakFillFraction[0]).toBeGreaterThan(0);
   });
 
   it('Saboteur and Operator win measurably faster against an empty enemy with their reworked passives active than without', () => {
