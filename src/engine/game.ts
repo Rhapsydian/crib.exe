@@ -1,6 +1,6 @@
 import type { Card } from './cards';
 import { createDeck, shuffle } from './deck';
-import { createRng, type Rng } from './rng';
+import { createRng, deriveAiNoiseSeed, type Rng } from './rng';
 import { deal, discardToCrib, discardLowestTwo, discardHighestTwo, cut, hisHeels, type DiscardStrategy, type CutStrategy } from './deal';
 import { playPegging, playLowestLegal, type PlayStrategy, type PeggingEvent } from './pegging';
 import { countHandEvents, countCribEvents, type HandScoreEvent } from './scoring';
@@ -61,6 +61,10 @@ export function playOneHand(
   playStrategy: PlayStrategy = playLowestLegal,
   cutStrategy: CutStrategy = cut,
   forcedDiscardSide?: PlayerIndex,
+  /** Session 26: the caller's dedicated AI-decision-noise stream (see
+   * rng.ts's deriveAiNoiseSeed) -- separate from `rng` above, which
+   * drives shuffles/cuts. */
+  aiRng?: Rng,
 ): HandResult {
   const nonDealer: PlayerIndex = (1 - dealer) as PlayerIndex;
   const scores: [number, number] = [...priorScores];
@@ -68,8 +72,8 @@ export function playOneHand(
   const shuffled = shuffle(createDeck(), rng);
   const { hands: dealtHands, stock } = deal(shuffled);
 
-  const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: dealer === 0 }, forcedDiscardSide === 0 ? discardHighestTwo : discardStrategy);
-  const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: dealer === 1 }, forcedDiscardSide === 1 ? discardHighestTwo : discardStrategy);
+  const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: dealer === 0, rng: aiRng }, forcedDiscardSide === 0 ? discardHighestTwo : discardStrategy);
+  const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: dealer === 1, rng: aiRng }, forcedDiscardSide === 1 ? discardHighestTwo : discardStrategy);
   const crib = [...d0.discarded, ...d1.discarded];
 
   const { starter } = cutStrategy(stock, rng);
@@ -77,7 +81,7 @@ export function playOneHand(
   scores[dealer] += heelsPoints;
 
   const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
-  const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, [playStrategy, playStrategy]);
+  const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, [playStrategy, playStrategy], undefined, undefined, aiRng);
   scores[0] += peggingScores[0];
   scores[1] += peggingScores[1];
 
@@ -125,12 +129,13 @@ export function playHands(handCount: number, options: GameOptions): GameResult {
   } = options;
 
   const rng = createRng(seed);
+  const aiRng = createRng(deriveAiNoiseSeed(seed));
   let dealer: PlayerIndex = startingDealer;
   let scores: [number, number] = [0, 0];
   const hands: HandResult[] = [];
 
   for (let i = 0; i < handCount; i++) {
-    const hand = playOneHand(dealer, scores, rng, discardStrategy, playStrategy);
+    const hand = playOneHand(dealer, scores, rng, discardStrategy, playStrategy, cut, undefined, aiRng);
     hands.push(hand);
     scores = hand.scoresAfter;
     dealer = (1 - dealer) as PlayerIndex;

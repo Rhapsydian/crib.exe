@@ -29,6 +29,14 @@ export interface DiscardContext {
   hand: Card[];
   isOwnCrib: boolean;
   knownOpponentHand?: Card[];
+  /** Session 26: a dedicated AI-decision-noise Rng stream (see
+   * rng.ts's deriveAiNoiseSeed), absent by default. Only a
+   * skill-dial strategy that opts into mistake-injection reads this --
+   * every other strategy (discardLowestTwo, discardHighestTwo, Root's
+   * targeting) ignores it entirely, and a strategy that does use it
+   * falls back to today's exact deterministic behavior whenever it's
+   * absent, so plumbing it through is non-breaking by construction. */
+  rng?: Rng;
 }
 
 export type DiscardStrategy = (ctx: DiscardContext) => [Card, Card];

@@ -1,4 +1,4 @@
-import { createRng } from './rng';
+import { createRng, deriveAiNoiseSeed } from './rng';
 import type { Card } from './cards';
 import { createDeck, shuffle } from './deck';
 import { deal, discardToCrib, discardLowestTwo, discardHighestTwo, cut, biasedCut, hisHeels, type DiscardStrategy, type CutStrategy } from './deal';
@@ -276,6 +276,12 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   } = options;
 
   const rng = createRng(seed);
+  // Session 26: a separate, decorrelated stream for AI-decision noise
+  // (see rng.ts's deriveAiNoiseSeed) -- never consumed by
+  // shuffles/cuts, so adding or changing how often the AI "rolls dice"
+  // can't perturb `rng`'s own sequence, which many existing tests
+  // assert exact deals/starters against.
+  const aiRng = createRng(deriveAiNoiseSeed(seed));
   let dealer: PlayerIndex = startingDealer;
   let scores: [number, number] = [0, 0];
   let combatState = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold);
@@ -403,8 +409,8 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
       : manipulation.forHand.forcedDiscardSide === 1
         ? discardHighestTwo
         : discardStrategies[1];
-    const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: dealer === 0, knownOpponentHand: combatState.sides[0].knownOpponentHand }, strategy0);
-    const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: dealer === 1, knownOpponentHand: combatState.sides[1].knownOpponentHand }, strategy1);
+    const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: dealer === 0, knownOpponentHand: combatState.sides[0].knownOpponentHand, rng: aiRng }, strategy0);
+    const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: dealer === 1, knownOpponentHand: combatState.sides[1].knownOpponentHand, rng: aiRng }, strategy1);
     const crib = [...d0.discarded, ...d1.discarded];
 
     winner = fireLifecycleGap('onCribSelected', () => crib);
@@ -429,6 +435,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
       playStrategies,
       [combatState.sides[0].knownCrib, combatState.sides[1].knownCrib],
       [combatState.sides[0].knownOpponentHand, combatState.sides[1].knownOpponentHand],
+      aiRng,
     );
     scores[0] += peggingScores[0];
     scores[1] += peggingScores[1];

@@ -1,5 +1,6 @@
 import type { Card } from './cards';
 import { cardValue, cardsEqual } from './cards';
+import type { Rng } from './rng';
 
 /**
  * Root mechanical redesign (session 24): context object, same reasoning
@@ -16,6 +17,9 @@ export interface PlayContext {
   sequence: Card[];
   knownCrib?: Card[];
   knownOpponentHand?: Card[];
+  /** Session 26: same AI-decision-noise Rng stream as DiscardContext.rng
+   * (deal.ts) -- see its doc comment for the full reasoning. */
+  rng?: Rng;
 }
 
 export type PlayStrategy = (ctx: PlayContext) => Card;
@@ -136,6 +140,11 @@ export function playPegging(
   chooseCard: [PlayStrategy, PlayStrategy] = [playLowestLegal, playLowestLegal],
   knownCrib?: [Card[] | undefined, Card[] | undefined],
   knownOpponentHand?: [Card[] | undefined, Card[] | undefined],
+  /** Session 26: the caller's dedicated AI-decision-noise stream (see
+   * rng.ts's deriveAiNoiseSeed), shared by both sides -- only one side
+   * acts per turn, so consuming it in strict turn order stays fully
+   * deterministic without needing a separate stream per side. */
+  aiRng?: Rng,
 ): PeggingResult {
   const hands: [Card[], Card[]] = [hand0.slice(), hand1.slice()];
   let count = 0;
@@ -157,6 +166,7 @@ export function playPegging(
         sequence: sequence.map((s) => s.card),
         knownCrib: knownCrib?.[player],
         knownOpponentHand: knownOpponentHand?.[player],
+        rng: aiRng,
       });
       hands[player] = hands[player].filter((c) => !cardsEqual(c, card));
       count += cardValue(card);
