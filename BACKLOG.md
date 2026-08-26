@@ -1200,3 +1200,84 @@ user wants eventually also isn't built here -- this work was
 deliberately designed (per-context `rng?` field, not a
 `combat.ts`-only hack) so `game.ts` already benefits from the same
 plumbing when that mode gets built.
+
+---
+
+**Real class-balance sweep against the expanded skill dial (session
+26, continued).** The race-to-121 harness proved the dial has real
+range in the abstract; this sweep checks what that actually does to
+the 6 classes via `playRun`, same methodology as every prior sweep.
+Four benchmark skill levels chosen from the 0.1-step race-to-121 curve
+rather than reusing the old {baseline, 0, 0.5, 1} points: 0.0 (now a
+genuine near-random floor), 0.3 (past the flattest part of the curve),
+0.6 (the steepest, most information-dense part of the whole dial), 0.9
+(effectively the ceiling -- 0.9 vs. 1.0 is nearly flat everywhere in
+the race-to-121 data, so 1.0 itself wasn't worth a separate cell).
+Full 4x4 (player x enemy) x 6 classes, 500 seeds/cell:
+
+| player 0.0 | enemy 0.0 | enemy 0.3 | enemy 0.6 | enemy 0.9 |
+|---|---|---|---|---|
+| warden | 85.8% | 81.0% | 63.4% | 41.6% |
+| blackhat | 49.0% | 41.0% | 22.4% | 6.6% |
+| breacher | 18.4% | 12.4% | 5.4% | 0.0% |
+| saboteur | 76.0% | 68.8% | 51.0% | 30.6% |
+| operator | 22.0% | 15.2% | 5.2% | 1.0% |
+| ghost | 16.0% | 19.2% | 11.6% | 8.6% |
+
+| player 0.3 | enemy 0.0 | enemy 0.3 | enemy 0.6 | enemy 0.9 |
+|---|---|---|---|---|
+| warden | 90.0% | 86.4% | 70.2% | 48.4% |
+| blackhat | 53.0% | 45.0% | 27.4% | 10.6% |
+| breacher | 27.6% | 22.4% | 9.0% | 1.4% |
+| saboteur | 79.8% | 75.6% | 59.0% | 38.0% |
+| operator | 30.0% | 19.2% | 9.0% | 2.0% |
+| ghost | 19.0% | 18.2% | 15.8% (dnr=1) | 10.0% |
+
+| player 0.6 | enemy 0.0 | enemy 0.3 | enemy 0.6 | enemy 0.9 |
+|---|---|---|---|---|
+| warden | 95.8% | 91.6% | 84.6% | 67.0% |
+| blackhat | 66.6% | 62.0% | 46.8% | 22.2% |
+| breacher | 50.4% | 41.0% | 19.8% | 5.0% |
+| saboteur | 90.8% | 86.0% | 74.8% | 51.6% |
+| operator | 49.2% | 39.6% | 22.0% | 7.4% |
+| ghost | 20.8% | 23.2% | 19.4% | 17.6% (dnr=1) |
+
+| player 0.9 | enemy 0.0 | enemy 0.3 | enemy 0.6 | enemy 0.9 |
+|---|---|---|---|---|
+| warden | 98.2% | 98.0% | 93.8% | 87.2% |
+| blackhat | 77.8% | 72.4% | 61.4% | 37.6% |
+| breacher | 78.6% | 70.0% | 44.8% | 16.6% |
+| saboteur | 97.0% | 95.8% | 88.0% | 74.4% |
+| operator | 76.0% | 66.0% | 46.0% | 24.2% |
+| ghost | 19.2% | 21.4% | 24.8% (dnr=1) | 27.6% (dnr=1) |
+
+**Real skill sensitivity finally shows up at the class level, and it's
+large.** Every earlier sweep this session (session 24's original grid
+through session 26's pre-expansion 3x3) found player/enemy skill barely
+moved any class more than a few points -- that was a real limitation
+of the old narrow dial, not a property of the classes. With genuine
+range: Breacher swings 0.0%->78.6% (player 0.0/enemy 0.9 -> player
+0.9/enemy 0.0), Operator 1.0%->76.0%, Warden 41.6%->98.2%. Skill now
+matters as much as, or more than, raw loadout magnitude for most of
+the roster.
+
+**Ghost is the one clear exception, and it's a real, structural
+finding, not noise.** Its win rate barely moves at all as player skill
+climbs -- 16.0% -> 19.0% -> 20.8% -> 19.2% against a weak enemy across
+player 0.0/0.3/0.6/0.9. This lines up exactly with the checkpoint-D
+test investigation earlier this session: Ghost's core mechanism
+(Return to Sender's `instantCounterPush`, via Null Session) only arms
+once the *enemy's own* gauge is already high (`enemyState:
+breachContainmentAbove, value: high` -- subroutines.ts) -- a trigger
+gated on enemy behavior, not on how well the player plays their own
+cards. Sharper discarding/pegging doesn't make that condition arrive
+any sooner. Worth flagging clearly for the next Ghost-specific tuning
+pass: unlike every other class here, Ghost's win rate is bottlenecked
+by something skill improvement structurally can't fix -- either the
+trigger needs an earlier-arming path, or Ghost's build theme needs a
+mechanism that actually rewards player skill the way the other five
+classes' now demonstrably do.
+
+Small residual `dnr` counts (1/500) reappeared for Ghost at a few of
+the tougher cells -- same flavor as the earlier hard-resolution
+writeup's finding, not yet investigated further.
