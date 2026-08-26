@@ -218,6 +218,16 @@ session before the implementation phases below can be fully scoped:
   balance number (Root passive rework, escalation timing, the hard
   resolution deadline) has so far only ever been validated against this
   one flat shape.
+- **Banked open question, user's current lean noted**: whether enemy
+  Cribbage-play skill should scale by fight *kind*
+  (regular/elite/gatekeeper -- the existing `ENEMY_LOADOUT_*` tiering)
+  or by *layer* (deeper layers get sharper opponents regardless of
+  fight kind). Raised session 26 while discussing what skill-dial
+  benchmarks to sweep classes against, now that the dial has real range
+  (see the race-to-121 finding above). User isn't committed to tying
+  skill level to the regular/elite/gatekeeper split -- current lean is
+  toward layer-based scaling instead. Explicitly deferred to its own
+  decision session, not resolved here.
 
 ## Phase 1 — Core Cribbage engine ✅ complete (session 16)
 
