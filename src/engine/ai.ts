@@ -88,6 +88,13 @@ export interface DiscardWeights {
 const DISCARD_NOVICE_WEIGHTS: DiscardWeights = { handValue: 0.4, cribValue: 0 };
 const DISCARD_EXPERT_WEIGHTS: DiscardWeights = { handValue: 1, cribValue: 1 };
 
+/** Session 26: real mistake-injection for discarding -- see
+ * softmaxPick's doc comment and PEG_MAX_TEMPERATURE's (separate
+ * constant, separate numeric scale -- discard hand-EV scores and
+ * pegging-candidate scores aren't comparable). TBD/playtesting,
+ * retuned in the checkpoint E recalibration sweep. */
+const DISCARD_MAX_TEMPERATURE = 4;
+
 /** Skill as a single continuous 0-1 knob (decision 2), same shape as
  * interpolatePegWeights. */
 export function interpolateDiscardWeights(skill: number): DiscardWeights {
@@ -204,18 +211,22 @@ export function predictBestDiscard(hand: Card[], isOwnCrib: boolean): [Card, Car
  */
 export function discardSkillStrategy(skill: number): DiscardStrategy {
   const weights = interpolateDiscardWeights(skill);
+  const temperature = temperatureForSkill(DISCARD_MAX_TEMPERATURE, skill);
   return (ctx) => {
     const predictedOpponentDiscard = ctx.knownOpponentHand
       ? predictBestDiscard(ctx.knownOpponentHand, !ctx.isOwnCrib)
       : undefined;
     const candidates = allDiscardPairs(ctx.hand);
+    const scores = candidates.map((pair) => scoreDiscard(ctx.hand, pair, ctx.isOwnCrib, predictedOpponentDiscard, weights));
+    if (ctx.rng && temperature > TEMPERATURE_EPSILON) {
+      return softmaxPick(candidates, scores, temperature, ctx.rng);
+    }
     let best = candidates[0];
     let bestScore = -Infinity;
-    for (const pair of candidates) {
-      const score = scoreDiscard(ctx.hand, pair, ctx.isOwnCrib, predictedOpponentDiscard, weights);
-      if (score > bestScore) {
-        bestScore = score;
-        best = pair;
+    for (let i = 0; i < candidates.length; i++) {
+      if (scores[i] > bestScore) {
+        bestScore = scores[i];
+        best = candidates[i];
       }
     }
     return best;

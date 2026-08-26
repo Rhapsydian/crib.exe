@@ -275,4 +275,37 @@ describe('discardSkillStrategy', () => {
     expect(hand.some((c) => c.rank === b.rank && c.suit === b.suit)).toBe(true);
     expect(a).not.toEqual(b);
   });
+
+  describe('softmax mistake-injection (session 26)', () => {
+    it('without ctx.rng, matches today\'s exact argmax at every skill level -- non-breaking by construction', () => {
+      const withoutRng = discardSkillStrategy(0)({ hand, isOwnCrib: true });
+      const weights = interpolateDiscardWeights(0);
+      const chosenScore = scoreDiscard(hand, withoutRng, true, undefined, weights);
+      for (const pair of allPairsOf(hand)) {
+        expect(scoreDiscard(hand, pair, true, undefined, weights)).toBeLessThanOrEqual(chosenScore + 1e-9);
+      }
+    });
+
+    it('with a seeded ctx.rng, skill 0 sometimes picks a non-argmax pair across many draws -- real mistake-injection, not just weight dilution', () => {
+      const strategy = discardSkillStrategy(0);
+      const rng = createRng(1);
+      const picks = new Set<string>();
+      for (let i = 0; i < 200; i++) {
+        const [a, b] = strategy({ hand, isOwnCrib: true, rng });
+        picks.add([a, b].map((c) => `${c.rank}-${c.suit}`).sort().join(','));
+      }
+      // If softmax degenerated back to argmax, only one pair would ever
+      // appear regardless of how many draws are taken.
+      expect(picks.size).toBeGreaterThan(1);
+    });
+
+    it('skill 1 stays deterministic argmax even with ctx.rng supplied -- temperature is 0 at skill 1 regardless', () => {
+      const strategy = discardSkillStrategy(1);
+      const rng = createRng(1);
+      const first = strategy({ hand, isOwnCrib: true, rng });
+      for (let i = 0; i < 50; i++) {
+        expect(strategy({ hand, isOwnCrib: true, rng })).toEqual(first);
+      }
+    });
+  });
 });
