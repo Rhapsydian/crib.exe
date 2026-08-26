@@ -389,14 +389,16 @@ describe('playCombat', () => {
   describe('escalation', () => {
     // A tiny, always-firing burst against a winThreshold it could never
     // realistically reach through normal play within a sane hand count
-    // -- only escalation's shrinking threshold (starts at hand 20,
-    // floors at 10) brings the bar down to something this weak enough
-    // to actually cross. Confirmed empirically to still resolve
-    // consistently at hand 261 for this exact setup even after moving
-    // the start point down from 100 (session 26) -- the floor is
-    // reached so early either way (hand 25 vs. the old hand 105) that
-    // the real bottleneck is this burst's own tiny accumulation rate
-    // against the floor value, not when escalation started.
+    // -- only escalation's shrinking threshold (starts at hand 10,
+    // shrinks fast enough to floor at 10 by hand 20 -- "effectively
+    // sudden death" by then, session 26) brings the bar down to
+    // something this weak enough to actually cross. Confirmed
+    // empirically to still resolve consistently at hand 261 for this
+    // exact setup despite both the start-hand and shrink-rate changes --
+    // the floor is reached almost immediately after escalation starts
+    // in every version tried so far, so the real bottleneck has always
+    // been this burst's own tiny accumulation rate against the floor
+    // value, not escalation's own timing.
     const weakBurst = (id: string): SubroutineDefinition => ({
       id,
       name: id,
@@ -406,8 +408,8 @@ describe('playCombat', () => {
       tags: [],
     });
 
-    it('does not resolve before escalation starts (hand 20)', () => {
-      expect(() => playCombat([[weakBurst('a')], []], { seed: 1, gaugeThreshold: 3, winThreshold: 15, maxHands: 15 })).toThrow(
+    it('does not resolve before escalation starts (hand 10)', () => {
+      expect(() => playCombat([[weakBurst('a')], []], { seed: 1, gaugeThreshold: 3, winThreshold: 15, maxHands: 8 })).toThrow(
         /did not resolve/,
       );
     });
@@ -418,7 +420,7 @@ describe('playCombat', () => {
       // catch it immediately.
       const result = playCombat([[weakBurst('a')], []], { seed: 1, gaugeThreshold: 3, winThreshold: 15, maxHands: 300 });
       expect(result.winner).toBe(0);
-      expect(result.hands.length).toBeGreaterThan(20); // genuinely resolved via escalation, not a fluke early win
+      expect(result.hands.length).toBeGreaterThan(10); // genuinely resolved via escalation, not a fluke early win
     });
   });
 });

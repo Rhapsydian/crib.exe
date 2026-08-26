@@ -181,16 +181,23 @@ function advance(
 // Escalation (session 22+): a match still resolves faster once it's
 // gone on long enough that "genuinely competitive" tuning can afford
 // to be patient early on -- see BACKLOG.md for the sharp positive-
-// feedback/stalemate risk this exists to bound. ESCALATION_START_HAND
-// was moved from 100 down to 20 (session 26) -- past this project's own
-// empirical finding that normal, healthy fights converge in ~10-25
-// hands on their own (itself close to a real Cribbage game's typical
-// 9-12 hands), so this remains mostly a stalemate rescue rather than a
-// broad tempo pacer, while still catching fights running toward the
-// long end of that natural range. All TBD/playtesting, same
-// placeholder convention as everywhere else in this project.
-const ESCALATION_START_HAND = 20;
-const ESCALATION_SHRINK_PER_HAND = 1;
+// feedback/stalemate risk this exists to bound. Retuned session 26:
+// starts at hand 10 (this project's own empirical finding is that
+// normal, healthy fights already converge in ~10-25 hands on their
+// own -- close to a real Cribbage game's typical 9-12 -- so this is
+// squarely a stalemate rescue for the slow tail, not a broad tempo
+// pacer for the typical case), and shrinks fast enough to reach the
+// floor by hand 20 -- "effectively sudden death" by then, not just a
+// gentle nudge. The shrink rate (4/hand) is calibrated against
+// encounters.ts's real WIN_THRESHOLD (50): (50 - 10 floor) / 10 hands
+// of escalation = 4. Since a side's own banked progress never resets
+// when its threshold shrinks, reaching the floor while either side
+// already has meaningful progress banked resolves the match almost
+// immediately -- that's what makes hand 20 feel like sudden death,
+// not the floor value alone. All TBD/playtesting, same placeholder
+// convention as everywhere else in this project.
+const ESCALATION_START_HAND = 10;
+const ESCALATION_SHRINK_PER_HAND = 4;
 const ESCALATION_MIN_THRESHOLD = 10;
 
 /** Shrinks both sides' own win-gauge thresholds by ESCALATION_SHRINK_PER_HAND,
