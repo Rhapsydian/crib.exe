@@ -896,6 +896,113 @@ subroutines) — needs its own dedicated session; concrete named Mod
 content; curses/negative-effect Mods (not raised this session, undecided
 either way); Event nodes' own design (pre-existing banked item).
 
+### Mods — Hook-Point Catalog (session 31, `/decision-session`)
+
+Direct follow-up to session 30, designing the hook-point catalog it
+explicitly deferred — the Mods equivalent of sessions 3-5's trigger/
+payload catalog work for subroutines. Explored the actual pipeline
+(`resolve.ts`'s existing 5 enemy-passive hooks; `run.ts`/`encounters.ts`/
+`shop.ts`'s plain orchestration code, with no hook mechanism at all)
+before proposing anything, which surfaced that most of the run-level
+surface already flows through two existing, already-rich structs
+(`EncounterOutcome`, `RunEvent`) rather than needing new state threaded
+through the engine from scratch.
+
+**11 hook points total, all chainable/mutation-capable** — each fires
+with a context value and returns a (possibly modified) version of it,
+the identical fold/thread pattern the existing enemy-passive dispatch
+already uses (`applyEnemyOnFirePassives(combatState, ...) -> combatState`,
+chained through several passives in sequence). This one shape covers
+both purely-reactive Mods (which return the input unchanged after their
+own side effect, same as most existing enemy passives) and reward/cost-
+altering Mods (which actually mutate the value before returning it) —
+no separate read-only-vs-mutating hook shape needed.
+
+**Combat-scoped** (the 5 existing enemy-passive hooks, extended to
+dispatch off a new player-side `ownedModIds` list alongside the existing
+`enemyPassiveIds`, plus 1 new):
+
+- **`onFire`** — a subroutine fires. **Widened this session**:
+  previously passed only `archetype`; now passes the full firing
+  `SubroutineDefinition` (id + tags + archetype). A real fix, not just
+  an addition — archetype alone can't support a tag-affinity Mod ("your
+  Trap-tagged subroutines hit harder"), one of the two hook categories
+  named as core to Mods back in session 30.
+- **`onTick`/`onTickExpiring`** — a DoT/HoT ticks or expires.
+- **`onGaugeCross50`** — a side's gauge crosses halfway to its
+  threshold.
+- **`onIncomingDirectBurst`** — incoming direct damage, before it
+  applies.
+- **`onCombatStart`** *(new)* — fires once per fight, before the first
+  hand, against live `CombatState`. Enemies never needed this (no setup
+  step, just a fixed loadout); a Mod like "start every fight with a
+  small Ward" does.
+
+**Run-scoped** (4 new — nothing analogous existed before this session):
+
+- **`onMove`** — a map traversal, before its flat Heat cost
+  (`traversal.ts`/`heat.ts`) is applied.
+- **`onEncounterResolved`** — a node resolution, carrying the full
+  `EncounterOutcome` (`heatDelta`, `quarantined`, `rewardTier`,
+  `dataAwarded`, `rewardOptions`, `mergeTargetId`, `shopPurchase`,
+  `rerollCost`). Covers Heat mitigation, bonus Data, *and*
+  reward-altering Mods (upgrading rarity, adding options) in one hook —
+  reward computation already happens independent of combat-internal
+  state (quality keys off encounter tier, not fight performance), so
+  there was never a need for a separate combat-scoped end-hook.
+- **`onShopSlateGenerated`** — a Shop visit's slate is built
+  (`shop.ts`'s `shopOfferingsForClass`), before the player/strategy
+  chooses — the hook a Shop-discount Mod needs, since prices are already
+  fixed by the time `EncounterOutcome.shopPurchase` exists.
+- **`onSubroutineAcquired`** — fires after a subroutine choice is
+  actually finalized (`run.ts`'s `playRun()`, post-`acquireSubroutine`),
+  against `RunPlayerState`. Deliberately distinct from
+  `onEncounterResolved`, which only ever sees the *offered*
+  `rewardOptions`, not which one got picked — the real choice happens
+  later, back in `playRun`, via `AcquisitionStrategy`. Motivating
+  example: "when you acquire a Malware subroutine, upgrade it once,"
+  reusing `merge.ts`'s existing rank-upgrade mechanism against the
+  newly-acquired piece rather than inventing a new upgrade path.
+- **`onModAcquired`** — fires once, when a Mod itself enters
+  `ownedModIds`, against `RunPlayerState`. Distinct from every other
+  hook here: those all fire on a *recurring* event and check an owned-id
+  list forever after; this one is for a Mod whose effect is a **one-time
+  structural mutation at acquisition time** rather than a standing
+  reactive check — closer to how the class starting loadout gets set up
+  today (`createInitialPlayerState` directly populates
+  `installedLoadout`, no hook involved) than to anything else in this
+  catalog.
+
+  **Motivating case, raised mid-session**: a Mod that grants an
+  always-slotted subroutine — installed permanently, reorderable by the
+  player like any other loadout piece (participates in the same
+  top-to-bottom firing/chaining), but **exempt from the installed-slot
+  cap and locked against removal**. This doesn't fit either of session
+  30's two engine buckets: it's not evaluated "outside the loadout" like
+  a reactive-subroutine Mod, since it genuinely needs to live inside
+  `installedLoadout`'s ordering. Resolved as two small additions rather
+  than a third engine mechanism: `onModAcquired` inserts the granted
+  `SubroutineDefinition` into `installedLoadout`, tagged with a new
+  per-entry marker (`grantedByModId?: string`, `loadout.ts`) that
+  `INSTALLED_SLOT_CAP` counting excludes and the uninstall action
+  rejects — the normal reorder action and normal fire-on-turn/chaining
+  logic need zero changes, since the entry is a completely ordinary
+  loadout member in every other respect. "Possibly upgrade it" falls out
+  for free this way too: it's a real owned subroutine, so the existing
+  Merge/rank mechanism (`merge.ts`) already applies with no new code.
+
+**Deliberately a starting catalog, not a closed one** — explicitly
+agreed to extend it later if a specific Mod's design demands a hook
+point that doesn't map onto one of these 10, rather than trying to
+anticipate every future need now.
+
+**Still open, unchanged from session 30**: concrete named Mod content;
+curses/negative-effect Mods; Event nodes' own design; exact numbers.
+What *is* now unblocked: a future engineering-scoping session (mirroring
+sessions 15/17/19/21) can turn this catalog plus session 30's shape into
+real implementation checkpoints, since both halves of "what a Mod needs
+to plug into" now exist on paper.
+
 ## Enemy Design
 
 **Session 27** replaced the placeholder enemy model with a real design,

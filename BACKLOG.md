@@ -19,14 +19,17 @@ design the *shape* of Mods** (StS-relic equivalent, see `DESIGN.md`'s
 new "Mods" subsection under Meta-Progression) — the long-deferred item
 from session 21's Phase 4 scope split. Shape only: engine mechanism
 split, class-passive migration, uniqueness, uncapped ownership,
-acquisition/Shop wiring, pool scoping. **Next up, before implementation
-can be scoped**: the hook-point catalog for registry-shaped Mods (the
-Mods equivalent of sessions 3-5's trigger/payload catalog work), then a
-future engineering-scoping session (same category as sessions 15/17/19/
-21) to turn both mechanisms into real checkpoints. The per-class
-magnitude/balance pass below remains the eventual next major milestone
-after Mods — not abandoned, just sequenced behind it at the user's
-request.
+acquisition/Shop wiring, pool scoping. **Session 31 followed immediately
+with the hook-point catalog** (see `DESIGN.md`'s new "Mods — Hook-Point
+Catalog" subsection) — 10 chainable hook points across combat and run
+scope, both structs (`EncounterOutcome`, `RunEvent`) reused rather than
+inventing new state. **Next up**: a future engineering-scoping session
+(same category as sessions 15/17/19/21) to turn session 30's shape plus
+session 31's catalog into real implementation checkpoints — both halves
+of "what a Mod needs" now exist on paper for the first time. The
+per-class magnitude/balance pass below remains the eventual next major
+milestone after Mods — not abandoned, just sequenced behind it at the
+user's request.
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
@@ -1681,3 +1684,76 @@ design (pre-existing banked item, now also gating Mods' third
 acquisition channel). Only once the hook-point catalog exists can a
 future engineering-scoping session (mirroring sessions 15/17/19/21) turn
 this shape into real implementation checkpoints.
+
+---
+
+**Mods -- hook-point catalog (session 31, `/decision-session`).** Direct
+follow-up, same sitting as session 30. Full reasoning in `DESIGN.md`'s
+new "Mods -- Hook-Point Catalog" subsection; this is the implementation-
+facing summary. Explored the actual code first (`resolve.ts`'s 5
+existing enemy-passive hooks; the total absence of any hook mechanism in
+`run.ts`/`encounters.ts`/`shop.ts`) before proposing anything, which
+surfaced that `EncounterOutcome` and `RunEvent` are already rich enough
+structs that most run-level Mods need no new state threaded through the
+engine, only a dispatch point.
+
+Resolved live, one decision at a time:
+
+- **Coarse hooks with rich context, not fine-grained ones per concern**
+  -- a Mod reads whichever field it cares about off a shared struct
+  (`EncounterOutcome`, etc.), the same "dispatch mechanism, not a
+  declarative DSL" philosophy session 27 already established for the
+  enemy registry.
+- **All 10 hook points are chainable/mutation-capable**, not read-only
+  -- the same fold/thread pattern the enemy-passive dispatch already
+  uses. This one shape covers both purely-reactive Mods and
+  reward/cost-altering ones without needing two different hook shapes;
+  surfaced when the user asked about reward-altering Mods and the
+  answer turned out to be "fix how `onEncounterResolved` was framed,"
+  not "add a new hook."
+- **No dedicated combat-end hook** -- `onEncounterResolved` (run-scoped)
+  already covers "how did the fight go," since reward computation
+  doesn't depend on combat-internal state anyway (quality keys off
+  encounter tier, not performance).
+- **`onSubroutineAcquired` included**, deliberately distinct from
+  `onEncounterResolved` -- the latter only ever sees the *offered*
+  `rewardOptions`, since the real pick happens later in `playRun()` via
+  `AcquisitionStrategy`. Justified by a concrete example the user gave:
+  "when you acquire a Malware subroutine, upgrade it once" (reusing
+  `merge.ts`'s existing rank mechanism against the new piece).
+- **`onFire`'s signature widened** from `archetype`-only to the full
+  firing `SubroutineDefinition` (id + tags + archetype) -- a real fix,
+  caught while checking the catalog against tag-affinity Mods (one of
+  the two hook categories named as core to Mods, session 30): archetype
+  alone can't support "your Trap-tagged subroutines hit harder."
+- **`onShopSlateGenerated` added** for Shop-discount Mods -- prices are
+  fixed by `shop.ts` before `EncounterOutcome.shopPurchase` exists, so a
+  price-altering Mod needs to act earlier in the pipeline than the
+  post-purchase hook can reach.
+- **`onModAcquired` added**, raised mid-session by a concrete Mod idea:
+  grant an always-slotted subroutine -- installed permanently,
+  reorderable like any other piece, but exempt from the slot cap and
+  locked against removal. Doesn't fit either of session 30's two engine
+  buckets (it must live *inside* `installedLoadout`'s ordering, not
+  outside it like a reactive-subroutine Mod). Resolved as a one-time
+  structural-mutation hook (fires once at Mod acquisition, against
+  `RunPlayerState`) plus a new per-entry loadout marker
+  (`grantedByModId?: string`) that `INSTALLED_SLOT_CAP` counting and the
+  uninstall action both special-case -- reorder and fire-on-turn/
+  chaining logic need zero changes. Upgrading the granted piece falls
+  out for free via the existing Merge/rank mechanism, no new code.
+
+**Final catalog (11)**: combat-scoped `onFire` (widened),
+`onTick`/`onTickExpiring`, `onGaugeCross50`, `onIncomingDirectBurst` (all
+4 extended from enemy-only to dual-sided), plus new `onCombatStart`;
+run-scoped `onMove`, `onEncounterResolved`, `onShopSlateGenerated`,
+`onSubroutineAcquired`, `onModAcquired` (all 5 new -- nothing analogous
+existed before this session). Explicitly a starting catalog, not closed
+-- more hook points get added later if specific content demands them.
+
+**Still open, unchanged from session 30**: concrete named Mod content,
+curses/negative-effect Mods, Event nodes' own design, exact numbers.
+**Now unblocked**: a future engineering-scoping session (mirroring
+sessions 15/17/19/21) can turn session 30's shape plus this catalog into
+real implementation checkpoints -- both halves of "what a Mod needs to
+plug into" exist on paper for the first time.
