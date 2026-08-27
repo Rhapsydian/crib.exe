@@ -22,6 +22,9 @@ import {
 import { addPoints, shrinkDuelThreshold, type InitiativeGauge } from './gauges';
 import {
   applyEnemyGaugeCross50Passives,
+  applyModGaugeCross50Passives,
+  applyModOnCombatStartPassives,
+  accumulatorThresholdMultiplier,
   applyFootholdBonus,
   applyThrottled,
   clearHandKnowledge,
@@ -129,7 +132,13 @@ function applyOccurrenceToState(combatState: CombatState, occurrence: ScoringOcc
     ...sideState,
     loadout: sideState.loadout.map((entry) => ({
       ...entry,
-      state: updateSubroutineState(entry.state, entry.definition, occurrence, side as PlayerIndex),
+      state: updateSubroutineState(
+        entry.state,
+        entry.definition,
+        occurrence,
+        side as PlayerIndex,
+        accumulatorThresholdMultiplier(combatState, side as PlayerIndex),
+      ),
     })),
   })) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
@@ -143,7 +152,13 @@ function applySuitPlayedToState(combatState: CombatState, suitPlayed: SuitPlayed
     ...sideState,
     loadout: sideState.loadout.map((entry) => ({
       ...entry,
-      state: updateSuitTallyState(entry.state, entry.definition, suitPlayed, side as PlayerIndex),
+      state: updateSuitTallyState(
+        entry.state,
+        entry.definition,
+        suitPlayed,
+        side as PlayerIndex,
+        accumulatorThresholdMultiplier(combatState, side as PlayerIndex),
+      ),
     })),
   })) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
@@ -314,7 +329,9 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   const aiRng = createRng(deriveAiNoiseSeed(seed));
   let dealer: PlayerIndex = startingDealer;
   let scores: [number, number] = [0, 0];
-  let combatState = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds);
+  let combatState = applyModOnCombatStartPassives(
+    createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds),
+  );
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
   let peakFillFraction: [number, number] = [0, 0];
@@ -337,7 +354,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
    * applyFootholdBonus's own doc comment) and re-derives the winner
    * afterward, since Foothold's own bonus can finish the match. */
   const step = (result: { combatState: CombatState; winner: PlayerIndex | null }): PlayerIndex | null => {
-    combatState = applyEnemyGaugeCross50Passives(applyFootholdBonus(result.combatState));
+    combatState = applyModGaugeCross50Passives(applyEnemyGaugeCross50Passives(applyFootholdBonus(result.combatState)));
     const [side0, side1] = combatState.sides;
     peakFillFraction = [
       Math.max(peakFillFraction[0], side0.winGauge.progress / side0.winGauge.threshold),

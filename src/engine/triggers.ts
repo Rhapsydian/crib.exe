@@ -138,17 +138,24 @@ export function suitPlayedFromPeggingEvent(event: PeggingEvent): SuitPlayed | nu
  * suitTally trigger watching a different suit, or a play belonging to
  * the other side.
  */
+/** `thresholdMultiplier` (Phase 5 Mods checkpoint C, session 33's 12th
+ * hook, `onTriggerEvaluate`): Overclocked Accumulator scales an
+ * Accumulator trigger's effective threshold before this comparison,
+ * rather than intercepting `triggers.ts`'s `isReady` (which only reads
+ * an already-latched boolean) -- see mods.ts's OVERCLOCKED_ACCUMULATOR_REDUCTION.
+ * Defaults to 1 (no change) for every caller that doesn't own the Mod. */
 export function updateSuitTallyState(
   state: SubroutineRuntimeState,
   definition: SubroutineDefinition,
   suitPlayed: SuitPlayed,
   side: PlayerIndex,
+  thresholdMultiplier: number = 1,
 ): SubroutineRuntimeState {
   if (suitPlayed.player !== side) return state;
   const trigger = definition.trigger;
   if (trigger.kind !== 'accumulator' || trigger.metric !== 'suitTally' || trigger.suit !== suitPlayed.suit) return state;
   const accumulatedProgress = state.accumulatedProgress + 1;
-  return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold };
+  return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold * thresholdMultiplier };
 }
 
 /**
@@ -159,11 +166,16 @@ export function updateSuitTallyState(
  * updateSuitTallyState above (a non-scoring-event-driven Accumulator
  * variant). No-op for every other trigger kind/metric.
  */
-export function updateMitigationBankedState(state: SubroutineRuntimeState, definition: SubroutineDefinition, amount: number): SubroutineRuntimeState {
+export function updateMitigationBankedState(
+  state: SubroutineRuntimeState,
+  definition: SubroutineDefinition,
+  amount: number,
+  thresholdMultiplier: number = 1,
+): SubroutineRuntimeState {
   const trigger = definition.trigger;
   if (trigger.kind !== 'accumulator' || trigger.metric !== 'mitigationBanked' || amount <= 0) return state;
   const accumulatedProgress = state.accumulatedProgress + amount;
-  return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold };
+  return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold * thresholdMultiplier };
 }
 
 /**
@@ -179,6 +191,7 @@ export function updateSubroutineState(
   definition: SubroutineDefinition,
   occurrence: ScoringOccurrence,
   side: PlayerIndex,
+  thresholdMultiplier: number = 1,
 ): SubroutineRuntimeState {
   if (occurrence.player !== side) return state;
   const trigger = definition.trigger;
@@ -188,7 +201,7 @@ export function updateSubroutineState(
     // fed from actual card plays rather than scoring occurrences.
     if (trigger.metric !== 'points') return state;
     const accumulatedProgress = state.accumulatedProgress + occurrence.magnitude;
-    return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold };
+    return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold * thresholdMultiplier };
   }
 
   if (trigger.kind === 'occurrence') {

@@ -5,7 +5,7 @@ import type { ClassId } from './classes';
 import { CLASS_DEFINITIONS } from './classes';
 import type { EnemyPassiveId } from './enemies';
 import type { ModId } from './mod-types';
-import { reactiveModSubroutines } from './mods';
+import { reactiveModSubroutines, MOD_SMALL, MOD_MEDIUM, OVERCLOCKED_ACCUMULATOR_REDUCTION, TAGGED_FIRMWARE_TAG } from './mods';
 import { easeTriggerCondition, improvedPayloadMagnitude } from './merge';
 import {
   createInitialState,
@@ -58,6 +58,11 @@ export interface ActiveTick {
    * the next tick, and how many have accumulated since the last one. */
   pointsPerTick?: number;
   accumulatedPoints?: number;
+  /** Redundant Ticks (Mods checkpoint C/H) has already spent this
+   * specific tick instance's one free extra tick before expiring --
+   * per-tick-instance, unlike Failsafe Cascade's per-fight one-shot
+   * (tracked via the usual passiveState flag instead). */
+  redundantTickUsed?: boolean;
 }
 
 export interface LoadoutEntry {
@@ -897,6 +902,115 @@ export function applyEnemyGaugeCross50Passives(combatState: CombatState): Combat
   return state;
 }
 
+// ---------------------------------------------------------------------
+// Mods (Phase 5 checkpoint C, session 30-33's design) -- combat-scoped
+// hook dispatch, dual-sided sibling to the enemy-passive dispatchers
+// above: same `{id, hookPoint, fn}` light-registry shape, checked
+// against CombatState.ownedModIds (side 0 only) instead of
+// enemyPassiveIds (side 1 only). Kept as separate functions rather than
+// interleaved into the enemy dispatchers themselves -- each hook point
+// still fires exactly once per event either way (both are called from
+// the same call site), but this keeps the well-tested 34-passive enemy
+// fold completely untouched.
+// ---------------------------------------------------------------------
+
+const MOD_EARLY_MOMENTUM_AMOUNT = MOD_SMALL; // TBD/playtesting
+
+/** Overclocked Accumulator's onTriggerEvaluate hook (the 12th hook,
+ * session 32) -- the effective threshold multiplier fed into
+ * triggers.ts's updateSubroutineState/updateSuitTallyState/
+ * updateMitigationBankedState, all 3 of an AccumulatorTrigger's metrics.
+ * Exported for combat.ts's applyOccurrenceToState/applySuitPlayedToState
+ * (which iterate both sides generically) and this file's own
+ * applySuitTallyCredit/creditMitigationBanked to share. */
+export function accumulatorThresholdMultiplier(combatState: CombatState, side: PlayerIndex): number {
+  return side === 0 && hasMod(combatState, 'overclocked-accumulator') ? 1 - OVERCLOCKED_ACCUMULATOR_REDUCTION : 1;
+}
+
+/** Warm Boot's onCombatStart hook -- called once per fight from
+ * combat.ts's playCombat, right after createCombatState, before the
+ * first hand. */
+export function applyModOnCombatStartPassives(combatState: CombatState): CombatState {
+  if (!hasMod(combatState, 'warm-boot')) return combatState;
+  const sideState = combatState.sides[0];
+  return { ...combatState, sides: replaceSide(combatState.sides, 0, { ...sideState, wardShield: sideState.wardShield + MOD_SMALL }) };
+}
+
+/** Early Momentum's onGaugeCross50 hook -- called from combat.ts's
+ * step() alongside applyEnemyGaugeCross50Passives/applyFootholdBonus. A
+ * push only (session 32: "small one-time push"), not Foothold's
+ * push+pull shape. */
+export function applyModGaugeCross50Passives(combatState: CombatState): CombatState {
+  if (!hasMod(combatState, 'early-momentum') || passiveStat(combatState, 0, 'early-momentum:fired') > 0) return combatState;
+  const gauge = combatState.sides[0].winGauge;
+  if (gauge.progress < gauge.threshold * EP_GAUGE_CROSS_FRACTION) return combatState;
+  return creditWinGauge(setPassiveStat(combatState, 0, 'early-momentum:fired', 1), 0, MOD_EARLY_MOMENTUM_AMOUNT);
+}
+
+/** Tagged Firmware/Malware Amplifier's onFire hook -- called from
+ * resolvePayload after any payload resolves, side 0 only.
+ * `firingDefinition` is only available from call sites that already
+ * have the full SubroutineDefinition on hand (every real fire path);
+ * resolvePendingSabotage's wrapped-effect replay doesn't carry one, so
+ * Tagged Firmware (which needs `.tags`) simply can't fire from a
+ * sabotage replay -- Malware Amplifier (archetype-only) still can. */
+function applyModOnFirePassives(combatState: CombatState, archetype: Archetype, caster: PlayerIndex, firingDefinition?: SubroutineDefinition): CombatState {
+  if (caster !== 0) return combatState;
+  let state = combatState;
+  if (hasMod(state, 'tagged-firmware') && firingDefinition?.tags.includes(TAGGED_FIRMWARE_TAG)) {
+    state = creditWinGauge(state, 0, MOD_MEDIUM);
+  }
+  if (hasMod(state, 'malware-amplifier') && archetype === 'malware') {
+    state = creditWinGauge(state, 0, MOD_MEDIUM);
+  }
+  return state;
+}
+
+/** Static Shield's onIncomingDirectBurst hook -- called from
+ * resolvePayloadCore's 'directBurst' case, checked before shield
+ * absorption (same as Stubborn Default), but uncapped -- mitigates
+ * every incoming hit, not just the first. */
+function applyModIncomingDirectBurstPassives(combatState: CombatState, target: PlayerIndex, amount: number): { combatState: CombatState; amount: number } {
+  if (target !== 0 || !hasMod(combatState, 'static-shield')) return { combatState, amount };
+  return { combatState, amount: Math.max(0, amount - MOD_SMALL) };
+}
+
+/** Dispatches every registered onTick passive -- Mods' sibling to
+ * applyEnemyOnTickPassives, called from the same applyTickPush site.
+ * No current Mod content hooks plain onTick (only onTickExpiring, via
+ * Redundant Ticks/Failsafe Cascade below) -- wired in now regardless so
+ * the hook point genuinely exists for future content, same "deliberately
+ * a starting catalog, not a closed one" treatment session 31 gave the
+ * whole catalog. */
+function applyModOnTickPassives(combatState: CombatState, _tick: ActiveTick, _listKey: 'dots' | 'hots'): CombatState {
+  return combatState;
+}
+
+/** Redundant Ticks/Failsafe Cascade's onTickExpiring hook -- called from
+ * processTickList right where a tick's remainingDuration would hit 0,
+ * only if no enemy onTickExpiring passive already claimed the extension
+ * (mirrors how the 3 enemy onTickExpiring passives themselves chain via
+ * early-return). Redundant Ticks extends *every* tick once (tracked per-
+ * tick-instance via ActiveTick.redundantTickUsed, since a fight can have
+ * several DoTs/HoTs active); Failsafe Cascade extends only the first
+ * tick to expire *each fight*, any tick (tracked via the usual
+ * passiveState one-shot flag, same shape as the enemy tickExpiryExtendOnce
+ * passives). Checked in that order -- Redundant Ticks first, since it's
+ * the more common effect and doesn't consume Failsafe Cascade's one-shot. */
+function applyModOnTickExpiringPassives(
+  combatState: CombatState,
+  tick: ActiveTick,
+): { combatState: CombatState; extend: boolean; tickPatch: Partial<ActiveTick> } {
+  if (tick.casterSide !== 0) return { combatState, extend: false, tickPatch: {} };
+  if (hasMod(combatState, 'redundant-ticks') && !tick.redundantTickUsed) {
+    return { combatState, extend: true, tickPatch: { redundantTickUsed: true } };
+  }
+  if (hasMod(combatState, 'failsafe-cascade') && passiveStat(combatState, 0, 'failsafe-cascade:used') === 0) {
+    return { combatState: setPassiveStat(combatState, 0, 'failsafe-cascade:used', 1), extend: true, tickPatch: {} };
+  }
+  return { combatState, extend: false, tickPatch: {} };
+}
+
 /** Resolves one subroutine's payload against the acting side's or
  * opposing side's state. `archetype` comes from the firing subroutine's
  * definition (payloads themselves don't carry it) -- needed for
@@ -910,10 +1024,17 @@ export function resolvePayload(
   combatState: CombatState,
   caster: PlayerIndex,
   context: ResolveContext = { priorFireCountThisTurn: 0 },
+  /** The full firing SubroutineDefinition, when the caller has one on
+   * hand (every real fire path does) -- Mods checkpoint C's onFire
+   * widening, needed by tag-affinity Mods (Tagged Firmware) that
+   * `archetype` alone can't support. Absent from resolvePendingSabotage's
+   * wrapped-effect replay, which only ever captured `archetype`. */
+  firingDefinition?: SubroutineDefinition,
 ): CombatState {
   const base = resolvePayloadCore(payload, archetype, combatState, caster, context);
   const withPrimed = applyPrimedPassive(base, archetype, caster);
-  return applyEnemyOnFirePassives(withPrimed, payload, archetype, caster);
+  const withEnemy = applyEnemyOnFirePassives(withPrimed, payload, archetype, caster);
+  return applyModOnFirePassives(withEnemy, archetype, caster, firingDefinition);
 }
 
 function resolvePayloadCore(
@@ -931,7 +1052,8 @@ function resolvePayloadCore(
       // pre-redesign scope -- piercing/chainFinisherScaling/
       // riskRewardBurst never checked wards either).
       const rawAmount = payload.amount * corruptionMultiplier(combatState, caster);
-      const incoming = applyEnemyIncomingDirectBurstPassives(combatState, target, rawAmount);
+      const afterEnemy = applyEnemyIncomingDirectBurstPassives(combatState, target, rawAmount);
+      const incoming = applyModIncomingDirectBurstPassives(afterEnemy.combatState, target, afterEnemy.amount);
       const amount = incoming.amount;
       const targetState = incoming.combatState.sides[target];
       const { sideState, absorbed, remaining } = absorbWithShield(targetState, amount);
@@ -1290,9 +1412,14 @@ export function fireNewlyReadyReactiveSubroutines(
       if (entry.definition.firesAt) continue;
       if (!justBecameReady || !entry.definition.reactive) continue;
 
-      state = resolvePayload(entry.definition.payload, entry.definition.archetype, state, side, {
-        priorFireCountThisTurn: 0,
-      });
+      state = resolvePayload(
+        entry.definition.payload,
+        entry.definition.archetype,
+        state,
+        side,
+        { priorFireCountThisTurn: 0 },
+        entry.definition,
+      );
       events.push({ subroutineId: entry.definition.id, side, payload: entry.definition.payload });
       state = updateLoadoutEntryState(state, side, i, resetAfterFire(state.sides[side].loadout[i].state));
     }
@@ -1327,7 +1454,8 @@ function applyTickPush(combatState: CombatState, tick: ActiveTick, listKey: 'dot
   const withFeedbackLoop = applyFeedbackLoopPassive(state, tick, listKey);
   const withReturnToSender = applyReturnToSenderTickPassive(withFeedbackLoop, tick, listKey, amount);
   const withSleeperCell = applySleeperCellPassive(withReturnToSender, tick.casterSide, listKey === 'dots');
-  return applyEnemyOnTickPassives(withSleeperCell, tick, listKey, amount);
+  const withEnemyTick = applyEnemyOnTickPassives(withSleeperCell, tick, listKey, amount);
+  return applyModOnTickPassives(withEnemyTick, tick, listKey);
 }
 
 /** Warden's Feedback Loop: every Encryption HoT tick also credits a
@@ -1366,7 +1494,13 @@ function processTickList(
     } else {
       const extended = applyEnemyOnTickExpiringPassives(state, tick, listKey);
       state = extended.combatState;
-      if (extended.extend) remaining.push({ ...updated, remainingDuration: 1 });
+      if (extended.extend) {
+        remaining.push({ ...updated, remainingDuration: 1 });
+      } else {
+        const modExtended = applyModOnTickExpiringPassives(state, tick);
+        state = modExtended.combatState;
+        if (modExtended.extend) remaining.push({ ...updated, ...modExtended.tickPatch, remainingDuration: 1 });
+      }
     }
   }
   const sideState = state.sides[storageSide];
@@ -1520,9 +1654,10 @@ export function consumePendingCribbageManipulation(
 
 function applySuitTallyCredit(combatState: CombatState, side: PlayerIndex, suit: Suit): CombatState {
   const sideState = combatState.sides[side];
+  const multiplier = accumulatorThresholdMultiplier(combatState, side);
   const loadout = sideState.loadout.map((entry) => ({
     ...entry,
-    state: updateSuitTallyState(entry.state, entry.definition, { suit, player: side }, side),
+    state: updateSuitTallyState(entry.state, entry.definition, { suit, player: side }, side, multiplier),
   }));
   return { ...combatState, sides: replaceSide(combatState.sides, side, { ...sideState, loadout }) };
 }
@@ -1533,9 +1668,10 @@ function applySuitTallyCredit(combatState: CombatState, side: PlayerIndex, suit:
  * -- parallel to applySuitTallyCredit above. */
 function creditMitigationBanked(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
   const sideState = combatState.sides[side];
+  const multiplier = accumulatorThresholdMultiplier(combatState, side);
   const loadout = sideState.loadout.map((entry) => ({
     ...entry,
-    state: updateMitigationBankedState(entry.state, entry.definition, amount),
+    state: updateMitigationBankedState(entry.state, entry.definition, amount, multiplier),
   }));
   return { ...combatState, sides: replaceSide(combatState.sides, side, { ...sideState, loadout }) };
 }
@@ -1572,9 +1708,14 @@ export function fireReadySubroutines(
     if (!isReady(entry.definition, entry.state, triggerContext)) continue;
     if (!entry.state.toggledOn) continue;
 
-    state = resolvePayload(entry.definition.payload, entry.definition.archetype, state, side, {
-      priorFireCountThisTurn: events.length,
-    });
+    state = resolvePayload(
+      entry.definition.payload,
+      entry.definition.archetype,
+      state,
+      side,
+      { priorFireCountThisTurn: events.length },
+      entry.definition,
+    );
     events.push({ subroutineId: entry.definition.id, side, payload: entry.definition.payload });
     firedIds.add(entry.definition.id);
     state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state));
@@ -1616,11 +1757,14 @@ export function fireHandLifecycleSubroutines(
     if (!isReady(entry.definition, entry.state, triggerContext)) continue;
     if (!entry.state.toggledOn) continue;
 
-    state = resolvePayload(entry.definition.payload, entry.definition.archetype, state, side, {
-      priorFireCountThisTurn: events.length,
-      revealedCards,
-      targetIsOwnCrib,
-    });
+    state = resolvePayload(
+      entry.definition.payload,
+      entry.definition.archetype,
+      state,
+      side,
+      { priorFireCountThisTurn: events.length, revealedCards, targetIsOwnCrib },
+      entry.definition,
+    );
     events.push({ subroutineId: entry.definition.id, side, payload: entry.definition.payload });
     state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state));
   }
