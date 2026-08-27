@@ -27,23 +27,24 @@ import { preferMergeWhenAvailable } from './merge';
  * needing seed-sweep luck to hit both outcomes.
  *
  * The win side uses Breacher's *real* starting kit with only Buffer
- * Overflow's magnitude scaled up -- Session Lock and Steady Hand stay
- * at their real, unscaled values, so this still exercises real trigger
- * timing (Occurrence: Run, Self-state: isDealer) and the real capped
- * instantCounterPush/midpoint-cap mechanic, not just a synthetic
- * single-piece stand-in. Confirmed empirically (debug sweep) to still
- * resolve in single-digit hands at this magnitude.
+ * Overflow's magnitude scaled up -- Session Lock and Lock Fatigue (session
+ * 29's replacement for Steady Hand) stay at their real, unscaled values,
+ * so this still exercises real trigger timing (Occurrence: Run, Self-state:
+ * isDealer) and the real capped instantCounterPush/midpoint-cap mechanic,
+ * not just a synthetic single-piece stand-in. Confirmed empirically (debug
+ * sweep) to still resolve in single-digit hands at this magnitude.
  *
- * The loss side can't use the same trick: with Session Lock/Steady
- * Hand's real defensive pieces left in, the fight doesn't resolve at
- * all within 20,000 hands regardless of how small Buffer Overflow's own
- * burst is -- the capped counter-push pair alone is enough to stalemate
- * indefinitely against the current (placeholder) enemy tuning. Forcing
- * a fast loss would require either stripping the defensive pieces (no
- * longer "real Breacher shape") or an enemy stronger than any fight
- * tier currently uses -- both are tuning questions for Phase 5, not
- * something to bake into this test. Falls back to a synthetic
- * single-piece negligible dummy instead.
+ * The loss side can't use the same trick: even with Lock Fatigue now
+ * giving Session Lock's suppression an eventual real-credit outlet
+ * (session 29), pinning Buffer Overflow's burst near zero still leaves no
+ * reliably fast, deterministic loss for a real Breacher kit -- Lock
+ * Fatigue's own accumulator threshold means convergence time still depends
+ * on dealer-turn timing, not a clean small-vs-large magnitude contrast the
+ * way the win side has. Forcing a fast loss would require either stripping
+ * the defensive/Lock-Fatigue pieces (no longer "real Breacher shape") or an
+ * enemy stronger than any fight tier currently uses -- both are tuning
+ * questions for Phase 5, not something to bake into this test. Falls back
+ * to a synthetic single-piece negligible dummy instead.
  */
 function overwhelmingBreacherLoadout(burstAmount: number): SubroutineDefinition[] {
   return BREACHER_LOADOUT.map((piece) =>

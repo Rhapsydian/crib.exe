@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Card } from './cards';
 import { bestCardToForce } from './ai';
-import { NEUTRAL_RARES } from './subroutines';
+import { NEUTRAL_RARES, BREACHER_LOADOUT } from './subroutines';
 import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
 import {
   createCombatState,
@@ -1012,6 +1012,18 @@ describe('mitigationBanked accumulator (session 28, Circuit Breaker)', () => {
     expect(state.sides[0].loadout[0].state.ready).toBe(false);
     state = resolvePayload({ kind: 'instantCounterPush', amount: 6 }, 'encryption', state, 0);
     expect(state.sides[0].loadout[0].state.ready).toBe(true);
+  });
+
+  it("fires Breacher's Lock Fatigue (session 29) once Session Lock's own suppression casts bank enough mitigation", () => {
+    const sessionLock = BREACHER_LOADOUT.find((s) => s.id === 'session-lock')!;
+    const lockFatigue = BREACHER_LOADOUT.find((s) => s.id === 'lock-fatigue')!;
+    let state = createCombatState([sessionLock, lockFatigue], [], 12);
+    // 3 Session Lock casts (amount 7 each = 21) aren't enough on their own (threshold 28).
+    for (let i = 0; i < 3; i++) state = resolvePayload(sessionLock.payload, sessionLock.archetype, state, 0);
+    expect(state.sides[0].loadout[1].state.ready).toBe(false);
+    // A 4th cast crosses the threshold and fires a real, opponent-independent credit.
+    state = resolvePayload(sessionLock.payload, sessionLock.archetype, state, 0);
+    expect(state.sides[0].loadout[1].state.ready).toBe(true);
   });
 });
 

@@ -1533,3 +1533,74 @@ session's revisions folded in) implemented and tested, 459 tests
 passing, a fresh roster-wide sweep exists with real findings recorded
 above. `DESIGN.md`'s Enemy Design/Neutral Archetype sections and this
 spec agree with what actually shipped.
+
+---
+
+**Breacher stalemate fix: Lock Fatigue, and a bigger gap it surfaced
+(session 29).** Direct follow-up to the checkpoint-E finding above
+("Breacher's own kit... is specifically prone to genuine stalemates
+against another patient/defensive kit"). Chosen fix, over the
+alternative of nerfing Legacy Firewall/Regular-tier Encryption
+suppression (much wider blast radius across every class's matchups):
+give Breacher's own kit a real way to convert prolonged suppression
+into an eventual win-gauge credit, reusing the exact mechanism the
+Neutral Archetype's Circuit Breaker already proved out (checkpoint
+E/session 28) rather than inventing a new one.
+
+**The change**: Steady Hand (Breacher's flavor Cantrip, an
+`always`-triggered flat 3-point suppression tick -- the weakest identity
+tie of the 3 starting pieces) replaced with **Lock Fatigue**
+(`subroutines.ts`, `BREACHER_LOADOUT`) -- an `accumulator` trigger
+watching `mitigationBanked` (already fed automatically by Session Lock's
+own suppression casts), firing a real `directBurst` once enough
+mitigation has been banked. "Holding the position" now eventually forces
+an opening instead of only ever denying one. Pure content, no new engine
+primitives -- same `mitigationBanked`/`creditMitigationBanked` machinery
+Circuit Breaker already exercises.
+
+**A real tuning miss caught by the sweep itself**: the first pass
+(threshold 14 ~= 2 Session Lock casts, `CAPPED.uncommon` = 11 burst)
+overshot badly -- Legacy Firewall vs. Breacher went from the diagnosing
+2/20 (10%, all-attrition) to **198/200 (99%)**, trivializing the exact
+matchup this was meant to merely fix, not dominate. Retuned to threshold
+28 (~4 casts) / `COMMON.burst` (5): **114/200 (57%)**, still zero
+genuine enemy threshold wins either way -- a real, non-trivializing
+improvement. Same "numbers, not vibes" discipline as every other sweep
+in this section: the first constant choice was wrong, and the sweep
+caught it immediately rather than after the fact.
+
+**The full-run sweep barely moved, and that's the real finding**: despite
+fixing the diagnosing 1-on-1 matchup cleanly, Breacher's `playRun`
+victory rate only went from 10.0% to **12.0%** (200 seeds) -- Legacy
+Firewall was never the dominant source of Breacher's weakness across a
+real run. Checking three other pure-Encryption enemies not covered by
+the original diagnosis (200 seeds each, direct `playCombat`):
+
+| enemy | tier | Breacher wins | how |
+|---|---|---|---|
+| Access Gate | regular (layer 2+) | 0/200 | mostly genuine threshold losses (107/200) |
+| Zero Trust Node | elite | 0/200 | all attrition |
+| Firewall Prime | gatekeeper | 1/200 | almost all genuine threshold losses |
+
+Breacher isn't just prone to *stalling* against patient kits (the
+mechanism Lock Fatigue fixes) -- it's broadly outgunned by the entire
+pure-Encryption enemy family, including matchups the enemy wins outright
+on offense (Access Gate, Firewall Prime), which a stall-conversion piece
+structurally can't touch. That's a magnitude problem, not a stalemate
+problem -- Session Lock/Buffer Overflow/Lock Fatigue's raw numbers may
+simply be too low relative to what pure-Encryption enemies bring at
+every tier, independent of the hand-20-timeout mechanism this session
+addressed.
+
+**Decided live, not acted on this session**: Lock Fatigue stays as
+tuned (a real, verified fix for the diagnosed stalemate mechanism, not
+reverted despite the full-run number barely moving) rather than chasing
+the broader gap reactively off three data points. **Banked for the real
+per-class magnitude/balance pass** (Phase 5's own long-standing item,
+now with three more concrete data points to work from): Breacher's raw
+offensive/mitigation magnitudes likely need a real increase against
+pure-Encryption opposition specifically, not just a stall-closer --
+Access Gate and Firewall Prime's *genuine* threshold wins over Breacher
+are the sharper, more urgent half of this finding than the stalemate
+cases were. 460 tests passing (up from 459 -- one new integration test
+covering Lock Fatigue's accumulator firing).

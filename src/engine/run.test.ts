@@ -18,15 +18,16 @@ import type { PlayStrategy } from './pegging';
  * of leaning on Breacher's real starting kit's natural variance.
  *
  * The overwhelming loadout keeps Breacher's real 3-piece kit (Session
- * Lock/Steady Hand at real values) and only scales Buffer Overflow's
- * burst up -- still exercises real trigger timing and the real capped-
- * defense mechanic, confirmed empirically to still resolve in single-
- * digit hands. The negligible loadout stays a synthetic single-piece
- * dummy: with the real defensive pieces left in, no burst magnitude
- * makes a loss resolve within tens of thousands of hands against the
- * current (placeholder) enemy tuning -- see encounters.test.ts's fuller
- * note on why that's a Phase 5 tuning question, not a test-construction
- * one.
+ * Lock/Lock Fatigue -- session 29's replacement for Steady Hand -- at
+ * real values) and only scales Buffer Overflow's burst up -- still
+ * exercises real trigger timing and the real capped-defense mechanic,
+ * confirmed empirically to still resolve in single-digit hands. The
+ * negligible loadout stays a synthetic single-piece dummy: pinning Buffer
+ * Overflow near zero still doesn't make a real Breacher kit lose fast and
+ * reliably (Lock Fatigue's own accumulator threshold ties convergence to
+ * dealer-turn timing rather than a clean magnitude contrast) -- see
+ * encounters.test.ts's fuller note on why that's a Phase 5 tuning
+ * question, not a test-construction one.
  *
  * Every playRun() call using NEGLIGIBLE_LOADOUT passes classId: 'ghost'
  * explicitly, not the default ('breacher') -- Phase 4 checkpoint B wired

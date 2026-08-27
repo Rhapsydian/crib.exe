@@ -408,8 +408,14 @@ than reaching for tags arbitrarily.
 - *Buffer Overflow* — Exploit, instant burst, Occurrence: Run.
 - *Session Lock* — Encryption, instant counter-push, Self-state: dealer
   this hand.
-- *Steady Hand* (Cantrip) — Always; small guaranteed Breach/Containment push
-  in your favor every turn. Tag: Daemon.
+- *Lock Fatigue* (Cantrip, session 29 replacement for Steady Hand) —
+  Encryption, instant burst, Accumulator: mitigation banked (~4 Session
+  Lock casts). Session Lock's own suppression casts feed it; once enough
+  mitigation has been banked it converts into a real credit toward your
+  own gauge — fixes a real structural gap where Breacher's suppression
+  pair never advanced its own win condition, letting a patient/defensive
+  enemy simply out-stall the hand-20 hard tiebreak (which always favors
+  the defender). Tag: Daemon.
 
 **Blackhat** (Exploit + Malware):
 - *Payload Drop* — Exploit, risk/reward burst (costs Heat), Occurrence:

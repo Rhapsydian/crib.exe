@@ -76,7 +76,7 @@ const HOT_GAUGE_FILL_FRACTION = 0.75; // Vulnerability Scan's edge-triggered rar
 // ahead of the class starting loadouts below, so Ghost's own Cantrip
 // retrofit sits next to (but is NOT the same object as) NEUTRAL_COMMONS'
 // own Always-triggered common -- same precedent every real archetype
-// already follows: a class's own Cantrip (Breacher's Steady Hand,
+// already follows: a class's own Cantrip (Breacher's Lock Fatigue,
 // Warden's Routine Maintenance) is never literally the same object/id
 // as its archetype pool's own Always-triggered common (Exploit's Script
 // Kiddie). Reusing one object for both would violate ALL_SUBROUTINES'
@@ -222,11 +222,26 @@ export const BREACHER_LOADOUT: SubroutineDefinition[] = [
     tags: [],
   },
   {
-    id: 'steady-hand',
-    name: 'Steady Hand',
+    // Session 29 replacement for Steady Hand: Breacher's suppression pair
+    // (this + Session Lock) fed every mitigation cast into
+    // mitigationBanked but never converted it into a real credit, so a
+    // patient/defensive opponent could out-stall Breacher until the
+    // hand-20 hard tiebreak (always resolves to the defender) sealed an
+    // automatic loss. Same accumulator/mitigationBanked mechanism as the
+    // Neutral Archetype's Circuit Breaker (see NEUTRAL_RARES above),
+    // sized for a single starting-kit mitigation source rather than a
+    // full grown loadout -- "holding the position" now eventually forces
+    // an opening instead of only ever denying one. threshold: 28 (~4
+    // Session Lock casts) / amount: COMMON.burst chosen after an initial
+    // CAPPED.uncommon/threshold-14 pass overshot badly (10%->99% win rate
+    // against the diagnosing matchup, Legacy Firewall) -- retuned down to
+    // a real, not trivializing, improvement (see BACKLOG.md session 29).
+    // Still TBD/playtesting like every other numeric constant here.
+    id: 'lock-fatigue',
+    name: 'Lock Fatigue',
     archetype: 'encryption',
-    trigger: { kind: 'always' },
-    payload: { kind: 'instantCounterPush', amount: 3 },
+    trigger: { kind: 'accumulator', metric: 'mitigationBanked', threshold: 28 },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
     tags: ['daemon'],
   },
 ];

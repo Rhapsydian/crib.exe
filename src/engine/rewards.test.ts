@@ -21,7 +21,7 @@ describe('rarityOf', () => {
 describe('rewardPoolForClass', () => {
   it("includes the class's own starting-loadout pieces", () => {
     const pool = rewardPoolForClass('breacher').map((p) => p.id);
-    expect(pool).toEqual(expect.arrayContaining(['buffer-overflow', 'session-lock', 'steady-hand']));
+    expect(pool).toEqual(expect.arrayContaining(['buffer-overflow', 'session-lock', 'lock-fatigue']));
   });
 
   it("includes both of the class's own archetype pools (Exploit + Encryption for Breacher)", () => {
