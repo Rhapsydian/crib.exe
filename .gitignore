@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# scripts/sweep.ts output (--out files) -- generated, not source
+sweep-*.jsonl
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
