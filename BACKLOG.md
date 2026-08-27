@@ -21,15 +21,21 @@ from session 21's Phase 4 scope split. Shape only: engine mechanism
 split, class-passive migration, uniqueness, uncapped ownership,
 acquisition/Shop wiring, pool scoping. **Session 31 followed immediately
 with the hook-point catalog** (see `DESIGN.md`'s new "Mods — Hook-Point
-Catalog" subsection) — 10 chainable hook points across combat and run
+Catalog" subsection) — 11 chainable hook points across combat and run
 scope, both structs (`EncounterOutcome`, `RunEvent`) reused rather than
-inventing new state. **Next up**: a future engineering-scoping session
-(same category as sessions 15/17/19/21) to turn session 30's shape plus
-session 31's catalog into real implementation checkpoints — both halves
-of "what a Mod needs" now exist on paper for the first time. The
-per-class magnitude/balance pass below remains the eventual next major
-milestone after Mods — not abandoned, just sequenced behind it at the
-user's request.
+inventing new state. **Session 32 then built a 17-Mod validation sample**
+against that catalog (see `DESIGN.md`'s new "Mods — Content Validation
+Pass" subsection), at the user's request, specifically to catch gaps
+before implementation gets scoped — found one real gap (a 12th hook,
+`onTriggerEvaluate`, for trigger-mechanism-affinity Mods) and confirmed
+one near-miss wasn't actually a gap (`onModAcquired` already covers
+run-start-style effects). **Next up**: a future engineering-scoping
+session (same category as sessions 15/17/19/21) to turn all three
+sessions' work into real implementation checkpoints — shape, catalog,
+and a validated content cross-section all now exist and agree with each
+other. The per-class magnitude/balance pass below remains the eventual
+next major milestone after Mods — not abandoned, just sequenced behind
+it at the user's request.
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
@@ -1757,3 +1763,49 @@ curses/negative-effect Mods, Event nodes' own design, exact numbers.
 sessions 15/17/19/21) can turn session 30's shape plus this catalog into
 real implementation checkpoints -- both halves of "what a Mod needs to
 plug into" exist on paper for the first time.
+
+---
+
+**Mods -- content validation pass (session 32, `/decision-session`).**
+Direct follow-up, same sitting as sessions 30-31. Full reasoning in
+`DESIGN.md`'s new "Mods -- Content Validation Pass" subsection; this is
+the implementation-facing summary. The user's own idea: before scoping
+implementation, build out enough real Mod content to confirm the
+shape/catalog doesn't have gaps -- explicitly motivated by session 17's
+own history (that Phase 2 scope was written before session 12's real
+subroutine content existed, and had to be rescoped once it turned out
+most of the real catalog didn't fit). Deliberately small: 17 Mods, aimed
+at touching every hook point and both engine buckets at least once, not
+at reaching launch-sized content volume.
+
+**A real gap, found by design**: drafting a trigger-mechanism-affinity
+Mod ("your Accumulator-triggered subroutines need less banked progress
+to fire") -- one of the three hook categories named as core to Mods
+since session 30's opening round -- exposed that nothing in the
+11-hook catalog could support it; `onFire` only runs after a trigger is
+already satisfied. **Added a 12th hook, `onTriggerEvaluate`**, chainable,
+firing during `triggers.ts`'s per-subroutine readiness check.
+
+**A near-miss, confirmed not to be a gap**: "permanently raise max Heat
+capacity" looked like it might need a new `onRunStart` hook, but
+`onModAcquired` already covers it -- a class-exclusive Mod granted at
+run start and a found Mod picked up mid-run route through the same
+acquisition moment regardless of timing.
+
+**The 17-Mod draft** (full table in `DESIGN.md`): 7 commons (single-hook,
+mild), 6 uncommons (tag/archetype-affinity, `onSubroutineAcquired`,
+`onTriggerEvaluate`, Shop/tick effects), 4 rares (a granted-subroutine
+Mod via `onModAcquired`, a genuine reactive-subroutine Mod from the
+*other* engine bucket, a tick-refresh effect, and a reward-rarity-upgrade
+effect). All 12 hooks and both engine buckets exercised by at least one
+entry -- confirmed by the user as a good starting spread.
+
+**Still open, genuinely unchanged**: this is a validation sample, not
+the launch pool -- no attempt to reach final content volume, author the
+3 archetype-sibling Amplifier Mods implied by Malware Amplifier, fully
+spec the two rares' actual `SubroutineDefinition` content, or design
+curses/Event-node content. **Now true for the first time**: shape
+(session 30), hook catalog (sessions 31-32), and a validated content
+cross-section all exist and agree with each other -- the strongest
+signal yet that a future engineering-scoping session can build real
+implementation checkpoints without a session-17-style rescope risk.

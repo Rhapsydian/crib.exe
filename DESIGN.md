@@ -1003,6 +1003,77 @@ sessions 15/17/19/21) can turn this catalog plus session 30's shape into
 real implementation checkpoints, since both halves of "what a Mod needs
 to plug into" now exist on paper.
 
+### Mods — Content Validation Pass (session 32, `/decision-session`)
+
+Before scoping implementation, the user asked to build out enough real
+Mod content first to confirm sessions 30-31's shape/catalog doesn't have
+gaps — directly motivated by this project's own history: session 17's
+original Phase 2 scope was written before session 12's concrete
+subroutine content existed, and turned out to leave most of the real
+catalog unusable, forcing a rescope. Deliberately small and
+deliberate rather than launch-sized: **17 Mods**, scoped specifically to
+touch every one of the (then-11) hook points and both engine buckets at
+least once, not to be a complete pool — the same relationship session
+12's 18 starting subroutines had to session 22's later 60-piece
+expansion.
+
+**A real gap, found by design rather than by accident**: drafting a
+trigger-mechanism-affinity Mod ("your Accumulator-triggered subroutines
+need 15% less banked progress to fire") — one of the three hook
+categories named as core to Mods all the way back at session 30's
+opening ("tags, ... specific archetypes, specific trigger mechanism")
+— exposed that nothing in the session-31 catalog could support it.
+`onFire` only runs *after* a trigger is already satisfied; nothing
+touches the readiness check itself. **Added a 12th hook,
+`onTriggerEvaluate`** — chainable, fires during `triggers.ts`'s
+per-subroutine readiness check, letting a Mod adjust the effective
+threshold/progress requirement before readiness is decided. Same shape
+as every other hook, just earlier in the pipeline than `onFire`.
+
+**One non-gap, confirmed rather than assumed**: a "permanently raise
+your max Heat capacity" style effect looked like it might need a new
+`onRunStart` hook, but doesn't — `onModAcquired` already covers it,
+since a class-exclusive Mod granted at run start and a found Mod picked
+up mid-run both route through the exact same acquisition moment, just
+at different times.
+
+**The 17-Mod draft**, by rarity — exact magnitudes are all TBD/
+playtesting, same discipline as every other numeric constant in this
+project:
+
+| Rarity | Name | Hook / mechanism | Effect |
+|---|---|---|---|
+| Common | Static Shield | `onIncomingDirectBurst` | Flat mitigation off every incoming direct burst |
+| Common | Light Footing | `onMove` | -1 flat Heat cost per move |
+| Common | Warm Boot | `onCombatStart` | Start every fight with a small Ward |
+| Common | Vendor Discount | `onShopSlateGenerated` | Shop prices reduced by a flat % |
+| Common | Early Momentum | `onGaugeCross50` | Small one-time push the first time your own gauge crosses halfway, each fight |
+| Common | Backup Generator | `onModAcquired` | Permanently raise max Heat capacity (the `onRunStart`-vs-`onModAcquired` test case above) |
+| Common | Petty Cache | `onEncounterResolved` | Small flat Data bonus on any win |
+| Uncommon | Tagged Firmware | `onFire` (tag) | Moderate magnitude bonus for subroutines carrying a specific Tag — exercises the session-31 `onFire` signature widening directly |
+| Uncommon | Malware Amplifier | `onFire` (archetype) | Moderate magnitude bonus for Malware subroutines. Archetype-heavy, subject to session 30's pool-scoping exclusion; implies 3 siblings (one per other archetype) as a content-scaling pattern, not drafted individually here |
+| Uncommon | Redundant Ticks | `onTick`/`onTickExpiring` | Your DoT/HoT ticks get one free extra tick before expiring |
+| Uncommon | Salvage Protocol | `onSubroutineAcquired` | The first Malware subroutine you acquire each run is immediately upgraded once — the exact motivating example from session 31 |
+| Uncommon | Overclocked Accumulator | `onTriggerEvaluate` | Your Accumulator-triggered subroutines need 15% less banked progress to fire — exercises the new 12th hook directly |
+| Uncommon | Bulk Buyer | `onShopSlateGenerated` | Shop always offers one extra common option |
+| Rare | Auxiliary Process (working name) | `onModAcquired`, granted-subroutine mechanism | Grants a bespoke, **neutral**-archetype, Always-triggered subroutine — always-slotted, cap-exempt, locked against removal. Neutral rather than archetype-tied so it isn't subject to the class-exclusion filter, same reasoning the Neutral Archetype itself used |
+| Rare | Rootkit Persistence (working name) | Reactive-subroutine bucket (not a hook at all) | A real `SubroutineDefinition`, fires outside the loadout (no slot). Root-flavored, Always-triggered, small manipulation effect every turn — confirms the *other* session-30 engine bucket still holds up under a real example |
+| Rare | Failsafe Cascade | `onTickExpiring` | The first time any of your DoTs/HoTs would expire each fight, it refreshes once for free instead |
+| Rare | Black Budget | `onEncounterResolved` | Elite/gatekeeper wins have a chance to upgrade the subroutine reward's rarity by one tier |
+
+Coverage check: all 12 hook points and both engine buckets are exercised
+by at least one entry above. Confirmed as a good starting spread.
+
+**Still open, genuinely unchanged**: this is a validation sample, not
+the launch pool — no attempt was made to reach final content volume,
+author the 3 archetype-sibling Amplifiers, fully spec the two rares'
+granted/bundled `SubroutineDefinition`s, or design curses/Event-node
+content. What *is* now true for the first time: the shape (session 30),
+the hook catalog (sessions 31-32), and a real cross-section of content
+all exist and agree with each other — the strongest signal yet that a
+future engineering-scoping session could turn this into real
+implementation checkpoints without the session-17-style rescope risk.
+
 ## Enemy Design
 
 **Session 27** replaced the placeholder enemy model with a real design,
