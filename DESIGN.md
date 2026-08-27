@@ -244,19 +244,23 @@ Broad strokes, not yet detailed:
   which the payload/trigger catalogs alone don't provide (see Open
   Questions).
 - Ascension-style unlockable harder difficulties.
-- An expanding pool of in-run passive items (StS-relic equivalent)
-  findable during runs — including passives that hook into subroutine
-  tags (see Subroutine Tags, below).
+- An expanding pool of in-run passive items (StS-relic equivalent),
+  called **Mods** — findable during runs, hooking into subroutine tags
+  (see Subroutine Tags, below), specific archetypes, specific trigger
+  mechanisms, or acting as extra reactive subroutines of their own. Full
+  design in the new "Mods" subsection, below.
 - The installed-loadout slot cap itself (see Subroutine Acquisition,
   below) can grow via a persistent, cross-run unlock, the same as
   everything else on this list.
 
-**Scope note (session 21)**: of this list, only Classes and Subroutine
-Acquisition are designed enough to build — see `BACKLOG.md` Phase 4.
-Ascension-style difficulty and the expanding in-run passive-item pool are
-still genuinely undesigned ("broad strokes" above is the whole design so
-far) and need their own future `/decision-session` before either is
-implementation-ready; they're deferred to Phase 5 alongside other
+**Scope note (session 21, updated session 30)**: of this list, Classes
+and Subroutine Acquisition were designed enough to build first (see
+`BACKLOG.md` Phase 4). Mods' *shape* is now designed too (session 30,
+see "Mods" below) — its hook-point catalog and actual content library
+remain future work, the same "infrastructure before content" split
+Phase 2 used for subroutines themselves. Ascension-style difficulty
+remains genuinely undesigned and still needs its own future
+`/decision-session`; both are tracked under Phase 5 alongside other
 undesigned content.
 
 ### Subroutine acquisition
@@ -371,7 +375,12 @@ difficulty at the same time.
 
 All 6 are innate for the whole run once that class is picked, not
 something found mid-run — the same role StS's class-starting relics
-(Burning Blood, Ring of the Snake, etc.) play. Most now do real,
+(Burning Blood, Ring of the Snake, etc.) play. **Session 30 makes this
+literal rather than analogical**: these 6 become class-exclusive Mods,
+granted at run start and never appearing in the general pool — see
+Meta-Progression's new "Mods" subsection, below (migrating the existing
+hand-coded functions onto that infrastructure is future implementation
+work, not done this session). Most now do real,
 repeated work over a fight rather than a single mild nudge: Feedback
 Loop always has; Sleeper Cell, Primed, and Return to Sender were
 reworked (session 25) into the same shape after balance sweeps proved
@@ -768,6 +777,124 @@ after absorbing enough, counter-attacks is a completely standard
 security concept, not a borrowed one. Worth revisiting once the real
 per-class magnitude/balance pass (Phase 5's long-standing open item)
 gets to Encryption specifically.
+
+### Mods (session 30, `/decision-session`)
+
+crib.exe's answer to StS relics: permanent, always-on effects the player
+accumulates over a run, structurally distinct from subroutines (no
+loadout slot, no install/bench split, no ordering, no cap — see
+Ownership below). Named **Mods**, fitting the hacking/hardware setting
+directly. This session settled the system's *shape* only — the
+hook-point catalog, concrete named content, and exact numbers are
+explicitly future work (see `BACKLOG.md` Phase 5), the same
+"infrastructure before content" split Phase 2 used for subroutines
+themselves.
+
+**Two engine mechanisms, split by effect shape, not a third bespoke
+system**:
+
+- A Mod that behaves like an extra reactive subroutine (fires on a
+  specific trigger, resolves a payload) authors as a real
+  `SubroutineDefinition`, reusing the full trigger/payload catalog
+  wholesale — fired outside the loadout entirely (no slot, no order),
+  always evaluated alongside it. Zero new engine machinery for this
+  category.
+- Everything else — tag/archetype-affinity boosts, stat/resource/economy
+  modifiers (Data, Heat), run-meta hooks (map/node interactions) —
+  extends the existing enemy-passive **light registry** (`resolve.ts`,
+  session 27) to a player-side owned-Mod-id list, the same
+  `{id, hookPoint, fn}` shape and generic `passiveState` scratch
+  bookkeeping already proven out for the 32-enemy roster, plus whatever
+  new hook points these need (onDataGain, onHeatChange, onNodeResolve,
+  etc. — not enumerated yet, a future session's job).
+
+Chosen over inventing a unified generic effect language, for the same
+reason session 21 (class passives) and session 27 (the enemy registry)
+both rejected premature genericization: two purpose-fit mechanisms
+already exist and cleanly cover every effect shape raised this session.
+
+**Class starting passives migrate onto this infrastructure.** The 6
+existing hand-coded starting passives (Foothold, Zero Day, Sleeper Cell,
+Primed, Feedback Loop, Return to Sender — session 11, reworked session
+25) become **class-exclusive Mods**: granted automatically at run start
+by class selection, never appearing in the general reward/Shop pool —
+mirrors StS's own character-locked starting relics (Burning Blood, Ring
+of the Snake) using the exact same relic system as a restricted
+acquisition path, not a separate mechanism. See Classes, above, for the
+updated note; migrating the 6 existing hand-coded functions onto the new
+mechanism is future implementation work, not done this session.
+
+**Uniqueness**: a Mod can only be owned once — acquiring a duplicate
+isn't possible; an already-owned Mod simply drops out of the reward/Shop
+pool for the rest of the run. Mirrors StS relic uniqueness directly.
+This means Mods need no Merge-style duplicate-material system at all — a
+real scope reduction versus subroutines.
+
+**Ownership: uncapped, no install/bench split, no ordering.** Unlike the
+subroutine loadout (capped specifically because always-evaluated content
+risks late-run bloat/unreadability, session 7), every owned Mod is
+simply always active. The subroutine cap's reasoning doesn't transfer:
+that cap protects a real *ordering/slot-scarcity* decision (which pieces
+are installed, in what sequence), and Mods have neither — there's no
+"which of my Mods are active" tension to protect. Late-run bloat here is
+a UI/presentation question (a scrollable/paginated Mods panel, same as
+StS's own relic bar), not an engine-level constraint. The opportunity
+cost for a Mod lives entirely in its acquisition (below), not in an
+equip limit.
+
+**Acquisition**: additive alongside the existing subroutine-choice
+reward, not competing for the same slot — winning an **elite or
+gatekeeper** fight grants a Mod choice *in addition to* the normal
+subroutine reward (regular fights grant subroutines only, unchanged).
+Mirrors StS's own elite-guarantees-a-relic-plus-the-normal-card-reward
+shape. This makes reward *shape itself* a difficulty/tier signal:
+regular = 1 reward type, elite/gatekeeper = 2, Shop = both purchasable,
+Event = a probable third channel once Event nodes are designed (a
+pre-existing banked item, `BACKLOG.md` Phase 0/3, now also gating this
+acquisition channel specifically for Mods).
+
+**Shop**: two independent slates in one Shop visit — the existing
+subroutine slate (session 22's 3-common/1-uncommon/1-wildcard shape,
+unchanged) plus a new, separately-generated and separately-rerollable
+Mod slate, both spending from the same Data pool. Deliberately not one
+combined slate/reroll: a subroutine-slate reroll and a Mod-slate reroll
+are different gambles over different pools, and forcing one reroll
+button to cover both would make rerolling always a compromise between
+two things the player might not both want to reroll.
+
+**Pool scoping: universal by default, with a targeted archetype
+exclusion.** Most Mods (tag-based, stat/resource, run-meta,
+archetype-agnostic reactive-subroutine Mods) are available to every
+class equally — unlike subroutine rewards (which draw *primarily* from a
+class's 2 specialized archetypes), the general Mod pool has no class
+affinity at all by default, matching StS's own non-character-restricted
+relic pool. The one exception: a Mod that leans heavily on one specific
+archetype (including an archetype-flavored `SubroutineDefinition`-shaped
+Mod) is excluded from a class's reward *and* Shop pool when that
+archetype isn't one of that class's 2 specializations — otherwise a
+class could be guaranteed a Mod it can never meaningfully fire, the same
+"don't ship a structurally dead piece" concern that drove the Neutral
+Archetype (session 28, above). Implemented as the same static
+`ClassDefinition.archetypes` check subroutine reward-pool scoping
+already uses, just inverted into an exclusion rather than a "primarily
+draws from" weighting — no new state-inspection machinery needed. (A
+class's own occasional off-class subroutine pickup, per session 7, could
+in principle make an excluded Mod useful anyway — accepted as a rare
+missed-synergy edge case, since guaranteeing no dead rewards matters
+more than catching every possible synergy.)
+
+**Rarity**: common/uncommon/rare, mirroring the subroutine pool's own
+shape (session 22) — commons simple, rares more power/build-defining.
+Exact distribution, Shop pricing, and elite/gatekeeper reward rarity
+floors are all TBD/playtesting placeholders, same discipline as every
+other numeric constant in this project.
+
+**Explicitly out of scope this session** (the "library," not the
+"shape"): the actual hook-point catalog for registry-shaped Mods (the
+equivalent of sessions 3-5's trigger/payload catalog work for
+subroutines) — needs its own dedicated session; concrete named Mod
+content; curses/negative-effect Mods (not raised this session, undecided
+either way); Event nodes' own design (pre-existing banked item).
 
 ## Enemy Design
 

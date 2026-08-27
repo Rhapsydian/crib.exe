@@ -14,6 +14,20 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
+**Session 30 (`/decision-session`) paused the balance-pass track to
+design the *shape* of Mods** (StS-relic equivalent, see `DESIGN.md`'s
+new "Mods" subsection under Meta-Progression) — the long-deferred item
+from session 21's Phase 4 scope split. Shape only: engine mechanism
+split, class-passive migration, uniqueness, uncapped ownership,
+acquisition/Shop wiring, pool scoping. **Next up, before implementation
+can be scoped**: the hook-point catalog for registry-shaped Mods (the
+Mods equivalent of sessions 3-5's trigger/payload catalog work), then a
+future engineering-scoping session (same category as sessions 15/17/19/
+21) to turn both mechanisms into real checkpoints. The per-class
+magnitude/balance pass below remains the eventual next major milestone
+after Mods — not abandoned, just sequenced behind it at the user's
+request.
+
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
 see Phase 5 below) — a single shared zero-sum scalar replaced with two
@@ -531,8 +545,12 @@ check — a static loadout no longer applies once acquisition exists.
 Additional subroutines/classes/enemy rosters/contract targets, balance
 pass, suit/subroutine art. Also now owns two systems deferred from Phase
 4 for being undesigned, not just unbuilt — **Ascension-style difficulty**
-and the **expanding in-run passive-item pool** — each needs its own
-`/decision-session` design pass before it's implementation-ready.
+and the **expanding in-run passive-item pool**, now named **Mods**. Mods'
+*shape* is designed as of session 30 (see `DESIGN.md`'s new "Mods"
+subsection) — its hook-point catalog and content library are still
+future work, see the session 30 write-up near the end of this section.
+Ascension remains genuinely undesigned and still needs its own
+`/decision-session` before it's implementation-ready.
 
 **Balance-pass context from Phase 3's own sweep (session 20)**: a
 500-seed sweep of `playRun()` under default settings (`beelineToGatekeeper`,
@@ -1604,3 +1622,62 @@ Access Gate and Firewall Prime's *genuine* threshold wins over Breacher
 are the sharper, more urgent half of this finding than the stalemate
 cases were. 460 tests passing (up from 459 -- one new integration test
 covering Lock Fatigue's accumulator firing).
+
+---
+
+**Mods -- design shape settled (session 30, `/decision-session`).**
+Full reasoning in `DESIGN.md`'s new "Mods" subsection under
+Meta-Progression; this is the implementation-facing summary. At the
+user's request, this paused the per-class magnitude/balance pass above
+to design crib.exe's StS-relic equivalent before that pass, on the
+theory that Mods will materially change what "balanced" even means once
+they exist. Docs-only session, no code -- same category as sessions 15/
+17/19/21's engineering-scoping sessions, but for design shape rather than
+implementation checkpoints, since nothing about Mods was designed at all
+before this (session 21 explicitly punted it).
+
+Resolved live, one decision at a time:
+
+- **Two engine mechanisms, not a third generic one**: trigger/payload-
+  shaped Mods reuse `SubroutineDefinition` wholesale (fired outside the
+  loadout, no slot/order); everything else (tag/archetype affinity,
+  stat/resource/economy modifiers, run-meta hooks) extends the existing
+  enemy-passive light registry (`resolve.ts`, session 27) to a
+  player-side owned-Mod-id list, with new hook points added as needed.
+- **The 6 class starting passives migrate onto this infrastructure** as
+  class-exclusive Mods (granted at run start, never in the general
+  pool) -- making `DESIGN.md`'s existing "same role as StS's class-
+  starting relics" comparison literal. Migration itself is unbuilt.
+- **Uniqueness**: no duplicates possible; an owned Mod drops out of
+  future reward/Shop pools. No Merge interaction needed.
+- **Ownership: uncapped**, no bench/installed split, no ordering -- the
+  subroutine loadout cap's "always-evaluated risks bloat" reasoning
+  (session 7) doesn't transfer, since Mods have no ordering/slot-
+  scarcity tension to protect in the first place. Opportunity cost lives
+  in acquisition, not an equip limit.
+- **Acquisition: additive**, not competing with the subroutine reward --
+  elite/gatekeeper wins grant a Mod choice *in addition to* the normal
+  subroutine reward (regular fights stay subroutine-only). Event nodes
+  are a probable third channel once designed (pre-existing banked item).
+- **Shop**: two independent slates (existing subroutine slate unchanged,
+  plus a new Mod slate), separately rerollable, one shared Data pool.
+- **Pool scoping: universal by default**, except a Mod leaning heavily
+  on one archetype is excluded from a class's reward/Shop pool when that
+  archetype isn't one of the class's 2 specializations -- reuses the
+  existing `ClassDefinition.archetypes` check subroutine rewards already
+  do, inverted into an exclusion. Prevents guaranteeing a class a
+  structurally dead reward, the same concern behind the Neutral
+  Archetype (session 28).
+- **Rarity**: common/uncommon/rare, mirroring subroutines -- commons
+  simple, rares more build-defining. All exact numbers (distribution,
+  Shop pricing, elite/gatekeeper rarity floors) TBD/playtesting.
+
+**Deliberately not touched this session** (shape, not library): the
+hook-point catalog for registry-shaped Mods -- the direct equivalent of
+sessions 3-5's trigger/payload catalog work for subroutines, and the
+next real design session this system needs; concrete named Mod content;
+curses/negative-effect Mods (not raised, undecided); Event nodes' own
+design (pre-existing banked item, now also gating Mods' third
+acquisition channel). Only once the hook-point catalog exists can a
+future engineering-scoping session (mirroring sessions 15/17/19/21) turn
+this shape into real implementation checkpoints.
