@@ -29,13 +29,17 @@ Pass" subsection), at the user's request, specifically to catch gaps
 before implementation gets scoped — found one real gap (a 12th hook,
 `onTriggerEvaluate`, for trigger-mechanism-affinity Mods) and confirmed
 one near-miss wasn't actually a gap (`onModAcquired` already covers
-run-start-style effects). **Next up**: a future engineering-scoping
-session (same category as sessions 15/17/19/21) to turn all three
-sessions' work into real implementation checkpoints — shape, catalog,
-and a validated content cross-section all now exist and agree with each
-other. The per-class magnitude/balance pass below remains the eventual
-next major milestone after Mods — not abandoned, just sequenced behind
-it at the user's request.
+run-start-style effects). **Session 33 closed out the design arc with a
+real 9-checkpoint implementation spec** (see this Phase's own "Mods
+Implementation" write-up, below) — all 17 Mods to be authored as real
+data in this pass (not a representative subset), and the 6 existing
+class starting passives migrate onto the new infrastructure in this same
+pass too, at the user's explicit request. **Next up**: an actual
+`/dev-session` implementing all 9 checkpoints — the first time this
+whole design arc (sessions 30-33) turns into real code. The per-class
+magnitude/balance pass below remains the eventual next major milestone
+after Mods ships — not abandoned, just sequenced behind it at the user's
+request.
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
@@ -1809,3 +1813,96 @@ curses/Event-node content. **Now true for the first time**: shape
 cross-section all exist and agree with each other -- the strongest
 signal yet that a future engineering-scoping session can build real
 implementation checkpoints without a session-17-style rescope risk.
+
+---
+
+**Mods Implementation (session 33, `/decision-session`) -- checkpointed
+implementation spec.** Engineering-scoping session, same category as
+sessions 15/17/19/21/27, turning sessions 30-32's design (shape, hook
+catalog, validated 17-Mod content) into real implementation checkpoints
+for a future `/dev-session`. The biggest single scope since the Enemy
+Library (session 27) -- arguably bigger, since it touches loadout,
+acquisition, Shop, and combat resolution all at once.
+
+Explored the actual codebase before proposing checkpoints, surfacing two
+calls made and stated rather than forced into questions, since precedent
+already pointed one way:
+
+- **File split**: `resolve.ts` is already 1595 lines (roughly doubled by
+  the enemy-passive registry alone); Mods roughly double the hook
+  surface again. Combat-scoped hook dispatch stays in `resolve.ts` (same
+  tight `CombatState` coupling the enemy passives already need), but the
+  type system (`mod-types.ts`, mirroring `subroutine-types.ts`) and
+  run-level hook dispatch plus concrete Mod data (`mods.ts`, mirroring
+  `subroutines.ts`) get new files.
+- **Granted-subroutine tracking**: no new field on `SubroutineDefinition`
+  -- `RunPlayerState` already tracks per-instance ownership state
+  separately from static subroutine data, keyed by id (`material`/`rank`,
+  both from Merge). A new `grantedByMod: Record<string, string>`
+  (subroutine id -> granting Mod id) follows that exact shape;
+  `loadout.ts`'s cap check and uninstall guard just consult it.
+
+Two real forks, resolved live:
+
+- **Content-authoring scope**: author all 17 validated Mods as real data
+  in this pass, not a Phase-2-style representative subset. Unlike Phase
+  2 (where the *full* subroutine catalog had no concrete content yet at
+  all), all 17 Mods are already fully designed -- no reason to hold any
+  back, and doing so tests the implementation against the exact
+  cross-section that already validated the hook catalog.
+- **Class-passive migration timing**: fold the 6 existing class starting
+  passives' migration onto the new infrastructure into this same phase
+  (as its own checkpoint), rather than deferring the way session 27
+  deferred it for the enemy registry. The user's call -- "it's work that
+  needs to be done, no sense in holding off" -- overriding the initial
+  recommendation to defer given real regression risk on well-tested,
+  balance-sensitive code (Ghost's rework, Lock Fatigue, etc.); mitigated
+  by keeping it as an isolated, separately-verified checkpoint rather
+  than folding it into the same checkpoint as brand-new infrastructure.
+
+**9 checkpoints:**
+
+- **A -- Mod type system** (`mod-types.ts`): `ModId`, rarity (reuse
+  existing common/uncommon/rare), an effect-kind union
+  (`reactiveSubroutine` | `hook`), `ModDefinition`, typed signatures for
+  all 12 hooks.
+- **B -- State threading**: `RunPlayerState` gains `ownedModIds: string[]`/
+  `grantedByMod: Record<string, string>`; `CombatOptions`/`CombatState`
+  gain a player-side owned-Mod-id list (mirroring `enemyPassiveIds`);
+  reactive-subroutine Mods evaluated alongside `installedLoadout` in the
+  fire-on-turn loop.
+- **C -- Combat-scoped hook dispatch** (`resolve.ts`, `triggers.ts`):
+  extend the 5 existing hooks (`onFire`, `onTick`, `onTickExpiring`,
+  `onGaugeCross50`, `onIncomingDirectBurst`) to dual-sided dispatch,
+  widen `onFire`'s signature from `archetype`-only to the full firing
+  `SubroutineDefinition`, add `onCombatStart` and `onTriggerEvaluate`.
+- **D -- Migrate the 6 class starting passives** onto the new dispatch
+  mechanism. Pure refactor, zero intended behavior change -- verified by
+  zero regression across the existing suite, especially the
+  balance-sensitive tests (Ghost's win-rate tests, Lock Fatigue's
+  integration test).
+- **E -- Run-level hook dispatch**: `onMove`, `onEncounterResolved`,
+  `onShopSlateGenerated`, `onSubroutineAcquired`, `onModAcquired`, wired
+  into `traversal.ts`/`heat.ts`, `encounters.ts`, `shop.ts`, `run.ts`
+  respectively.
+- **F -- Granted-subroutine mechanism** (`loadout.ts`): `grantedByMod`-
+  aware cap check (`installSubroutine`) and uninstall guard
+  (`uninstallSubroutine`) -- `reorderInstalled` needs no change.
+- **G -- Acquisition/reward/Shop wiring**: additive Mod-choice reward on
+  elite/gatekeeper wins (not competing with the existing subroutine
+  reward), Shop's second independent Mod slate (own reroll, same Data
+  pool), the archetype-exclusion pool filter (reusing
+  `ClassDefinition.archetypes`, inverted).
+- **H -- Author all 17 validated Mods as real data** (`mods.ts`),
+  including fully speccing the two rares' bundled/granted
+  `SubroutineDefinition` content (Auxiliary Process's granted piece,
+  Rootkit Persistence itself) as real data, not just names/descriptions.
+- **I -- Verification**: every one of the 12 hooks exercised by at least
+  one real test, zero regression in the existing 460-test suite, a
+  smoke-tested full run with several Mods active together.
+
+**Exit criteria**: all 9 checkpoints implemented and tested; the 6 class
+passives fully migrated with no behavior change; all 17 Mods exist as
+real, functioning data; a fresh `playRun()` sweep can be run with Mods
+active (not required to show any particular result this session -- that's
+the eventual balance pass's job, still sequenced after this).
