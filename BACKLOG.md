@@ -1441,3 +1441,95 @@ run the real `playRun()`/`resolveFight` balance sweep this checkpoint
 was always going to need -- now against a roster where every enemy has
 at least one genuine path to victory, which the original sweep plan
 didn't know it needed to guarantee.
+
+---
+
+**Checkpoint E completion: enemy retrofits, a real engine hang found
+and fixed, a reusable sweep harness, and the actual balance sweep
+(session 28, continued).**
+
+**Retrofits**: all 9 credit-incapable enemies (Legacy Firewall, Access
+Gate, Hardened Workstation, Zero Trust Node, Backchannel Handler,
+Firewall Prime, Ghost Process, Null Session, Ghost in the Machine)
+gained a neutral-archetype piece, either added or swapped for
+dead-weight content. `enemies.test.ts` (14 tests) directly asserts
+every one of the 32 enemies now has at least one payload kind capable
+of crediting its own win-gauge -- the concrete regression guard.
+
+**A real infinite-loop hang, found by the sweep itself, not
+hypothetically**: Blackhat (real grown loadout, including Botnet) vs.
+Ghost in the Machine (carries DNS Poisoning) hung forever on a specific
+seed -- traced (with temporary diagnostic logging, since real wall-
+clock time had passed hours by the time it was caught) to Choked's
+gauge-threshold reversal (`tickDebuffDurations`' natural-expiry path
+and `resolvePayload`'s early-cleanse path) having no floor, unlike
+Haste's own reduction. Botnet's Choked raised Ghost in the Machine's
+initiative threshold, DNS Poisoning's Haste then floor-reduced the same
+threshold, and Choked's later reversal ignored that floor entirely,
+landing exactly on 0 -- which hangs `gauges.ts`'s `addPoints` forever
+(a 0 decrement never lets `progress` fall below `threshold` again).
+Fixed by flooring both reversal paths at the same constant Haste uses
+(renamed `MIN_INITIATIVE_THRESHOLD`, no longer Haste-specific), plus
+hardening `addPoints` itself defensively -- this class of bug shouldn't
+depend on every future caller maintaining the invariant by hand. 4 new
+regression tests reproduce the exact interaction.
+
+**A reusable sweep harness**: `scripts/sweep.ts` (`npm run sweep`),
+requested mid-session once the hang made clear that scratch-script
+sweeps buffering all output until the end are actively dangerous (a
+hang loses every prior result and gives no clue which unit stuck).
+Prints one line per unit of work as it completes, optionally appending
+to a `--out` file. Two modes: `run` (playRun outcome distribution per
+class) and `enemy` (direct playCombat between one named enemy and one
+class's real starting kit, threshold-vs-attrition breakdown -- the
+shape used for the 9 retrofit verifications, now reusable instead of
+one-off).
+
+**The real balance sweep** (200 seeds/class, `npm run sweep run
+--seeds=200`, default settings/`beelineToGatekeeper`, real skill-dial
+enemy AI):
+
+| class | victory | heatMaxed | quarantined | noRoute | avg layers |
+|---|---|---|---|---|---|
+| breacher | 10.0% | 0 | 156 | 24 | 0.83 |
+| blackhat | 28.5% | 15 | 127 | 1 | 1.66 |
+| saboteur | 33.5% | 0 | 132 | 1 | 1.89 |
+| operator | 41.5% | 0 | 108 | 9 | 2.10 |
+| warden | 35.5% | 0 | 127 | 2 | 2.00 |
+| ghost | 23.0% | 0 | 154 | 0 | 1.60 |
+
+Average ~28.7% across classes -- a real, played-out "hard but
+winnable" roguelike rate, not broken wholesale. Quarantine dominates
+every class's losses (matching the corrected attrition rule's real
+effect), not Heat or no-route. **Breacher is the sharp outlier**,
+sitting at under a third of the next-worst class's rate despite being
+the designed onboarding/balanced starter. Traced with
+`npm run sweep enemy`: Legacy Firewall (Regular, pure mitigation +
+one neutral piece) beats Breacher's real starting kit 18/20 times,
+**entirely via attrition** (0 genuine threshold wins) -- but the same
+enemy loses 30/30 to Operator. Not a roster-wide problem: Breacher's
+own kit (Foothold's "hit hard, then hold the position," leaning on its
+own Session Lock/Steady Hand mitigation) is specifically prone to
+genuine stalemates against another patient/defensive kit, and every
+stalemate now resolves in the *defender's* favor (this session's own
+`resolveHardTiebreak` correction) -- a structural mismatch between
+Breacher's build identity and the corrected tiebreak rule, not a
+one-off tuning number.
+
+**Not fixed here, deliberately** -- this is a finding for the real
+per-class magnitude/balance pass (Phase 5's own long-standing open
+item, referenced by nearly every sweep in this section), not something
+to hand-tune reactively off one data point. Concrete candidates for
+that future pass, recorded here rather than acted on: give Breacher's
+kit (or its Foothold passive) a real answer to a patient opponent, not
+just raw damage; or accept the mismatch as intentional difficulty
+texture (a "must play sharp against defensive kits" class) and instead
+tune the Regular tier's Encryption-heavy stalling power down slightly.
+Re-run `npm run sweep` once any of that lands -- numbers, not vibes,
+matching this project's own stated discipline throughout this section.
+
+**Phase 5 checkpoint E is now complete**: all 6 checkpoints (A-F, this
+session's revisions folded in) implemented and tested, 459 tests
+passing, a fresh roster-wide sweep exists with real findings recorded
+above. `DESIGN.md`'s Enemy Design/Neutral Archetype sections and this
+spec agree with what actually shipped.
