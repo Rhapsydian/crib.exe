@@ -152,6 +152,21 @@ export function updateSuitTallyState(
 }
 
 /**
+ * Advances a mitigationBanked Accumulator subroutine's banked progress
+ * by `amount` -- session 28's Neutral Archetype (Circuit Breaker), fed
+ * from resolve.ts's creditMitigationBanked whenever the *same side*
+ * casts a Ward/instantCounterPush/hot payload, parallel to
+ * updateSuitTallyState above (a non-scoring-event-driven Accumulator
+ * variant). No-op for every other trigger kind/metric.
+ */
+export function updateMitigationBankedState(state: SubroutineRuntimeState, definition: SubroutineDefinition, amount: number): SubroutineRuntimeState {
+  const trigger = definition.trigger;
+  if (trigger.kind !== 'accumulator' || trigger.metric !== 'mitigationBanked' || amount <= 0) return state;
+  const accumulatedProgress = state.accumulatedProgress + amount;
+  return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold };
+}
+
+/**
  * Advances an Accumulator or Occurrence subroutine's banked progress
  * from one incoming occurrence. Occurrences belonging to the other side
  * are ignored — both families are scoped to the caster's own scoring

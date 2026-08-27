@@ -1,7 +1,7 @@
 import type { Archetype, SubroutineDefinition } from './subroutine-types';
 import type { ClassId } from './classes';
 import { CLASS_DEFINITIONS } from './classes';
-import { ARCHETYPE_POOLS } from './subroutines';
+import { ARCHETYPE_POOLS, NEUTRAL_POOL } from './subroutines';
 import type { Rng } from './rng';
 
 /**
@@ -24,7 +24,11 @@ export type RewardTier = 'none' | 'standard' | 'better';
 
 function buildRarityById(): Record<string, Rarity> {
   const map: Record<string, Rarity> = {};
-  for (const pool of Object.values(ARCHETYPE_POOLS)) {
+  // NEUTRAL_POOL (session 28) included here for correct rarity
+  // reporting even though it stays out of ARCHETYPE_POOLS proper --
+  // real acquisition (whether/how neutral pieces enter reward pools)
+  // is still banked, but rarityOf() should never be wrong about one.
+  for (const pool of [...Object.values(ARCHETYPE_POOLS), NEUTRAL_POOL]) {
     for (const piece of pool.commons) map[piece.id] = 'common';
     for (const piece of pool.uncommons) map[piece.id] = 'uncommon';
     for (const piece of pool.rares) map[piece.id] = 'rare';

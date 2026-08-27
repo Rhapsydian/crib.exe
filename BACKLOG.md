@@ -1370,3 +1370,74 @@ Exit criteria: all 6 checkpoints implemented and tested; a fresh
 `playRun()` sweep exists against the real roster (numbers, not vibes,
 matching this project's own stated discipline); `DESIGN.md`'s Enemy
 Design section and this spec agree with what actually shipped.
+
+---
+
+**Checkpoint E revision + Neutral Archetype (session 28,
+`/decision-session` mid-implementation).** While implementing
+checkpoint E, revised `resolveHardTiebreak` (`combat.ts`) per the
+user's own reframing: the hard-resolution deadline (hand 20) now
+unconditionally favors the defender rather than racing win-gauge
+fractions -- reaching that function at all already means the attacker
+failed to breach in time, so that's containment, full stop, not "closer
+wins." `CombatResult` gained `resolvedBy: 'threshold' | 'attrition'` so
+a sweep can tell real breaches apart from successful stalls. This
+surfaced a much bigger finding than the 2 tests it broke: **Ghost's
+real starting kit has a 0% genuine win rate** (30-seed check, 0
+threshold wins, all attrition losses, peak fill fraction never above
+~0.17) -- the session 26 "Ghost fix" was only ever validated under the
+old, looser tiebreak. Root cause, and the reason this became its own
+decision session rather than a quick patch: **only Exploit's
+direct-damage payloads and Malware's DoT ever credit a side's own
+win-gauge at all** -- every Encryption and Root payload only reduces
+the opponent or manipulates state. A kit built entirely from
+Encryption/Root, with no Malware DoT or Exploit piece, cannot win
+outright, period -- true for Ghost and for **9 of the 32 roster
+enemies** (Legacy Firewall, Access Gate, Hardened Workstation, Zero
+Trust Node, Backchannel Handler, Firewall Prime, Ghost Process, Null
+Session, Ghost in the Machine).
+
+Resolved by designing a **Neutral Archetype** -- full writeup in
+`DESIGN.md`'s new "Neutral Archetype" subsection (under
+Meta-Progression). Summary: a genuine 5th `Archetype` value (not one of
+the 4 reused for flavor -- naturally exempt from every archetype-gated
+passive check, and correctly has no suit affiliation, since Cribbage
+only has 4 real suits). Built entirely from trigger families that don't
+depend on suit (Always/Cantrip, Self-state, every occurrence category
+except the two that are inherently suit-based -- Flush, His Nobs), so
+these pieces can drop into *any* kit, including a pure-Encryption/Root
+one, without borrowing another archetype's identity. A small, 9-piece
+catalog (4 common/3 uncommon/2 rare, far smaller than each real
+archetype's 7/5/3 on purpose) -- see `DESIGN.md` for the full table.
+The rare **Circuit Breaker** is the capstone: converts the caster's own
+banked mitigation (Ward/instantCounterPush/HoT amounts already cast
+this match) into a real credit, a genuine "shield bash" -- Encryption/
+Root's actual identity (denial) becomes a legitimate win path instead
+of needing borrowed offense. This is the one piece needing a real new
+engine primitive (an accumulator metric tracking banked mitigation,
+fed from wherever Ward/instantCounterPush/hot resolve); the other 8 are
+pure data over existing trigger/payload machinery.
+
+**Retrofit scope, decided live**: Ghost's Cantrip (Low Profile) is
+replaced by the neutral Idle Process *in this same pass* -- the kit
+that surfaced the problem gets the fix immediately, not deferred. The
+9 struggling enemies get their own neutral-piece swaps as part of
+finishing checkpoint E below, not in this design pass. Two things
+explicitly banked, not resolved here: **acquisition** (how neutral
+pieces actually enter reward pools/Shop -- flagged by the user as its
+own future topic) and a **future subroutine-library expansion idea**:
+Circuit Breaker's mitigation-conversion mechanic could eventually be
+reincarnated as a *native Encryption* piece (a firewall that
+counter-attacks after absorbing enough is standard security framing,
+not a borrowed one) -- worth revisiting once Phase 5's long-standing
+per-class magnitude/balance pass reaches Encryption specifically.
+
+**Checkpoint E remaining work, updated**: implement the neutral
+archetype (type system + accumulator primitive + the 9 pieces +
+Ghost's retrofit), fix the 2 tests `resolveHardTiebreak`'s revision
+broke (both were asserting the old fraction-race behavior), swap a
+neutral piece into each of the 9 structurally-can't-win enemies, *then*
+run the real `playRun()`/`resolveFight` balance sweep this checkpoint
+was always going to need -- now against a roster where every enemy has
+at least one genuine path to victory, which the original sweep plan
+didn't know it needed to guarantee.

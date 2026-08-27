@@ -1,4 +1,4 @@
-import type { Archetype, SubroutineDefinition } from './subroutine-types';
+import type { SubroutineDefinition, SuitedArchetype } from './subroutine-types';
 import { CLASS_STARTING_LOADOUTS } from './subroutines';
 
 /**
@@ -19,7 +19,7 @@ export type PassiveId = 'foothold' | 'zeroDay' | 'sleeperCell' | 'primed' | 'fee
 
 export interface ClassDefinition {
   id: ClassId;
-  archetypes: [Archetype, Archetype];
+  archetypes: [SuitedArchetype, SuitedArchetype];
   startingPassiveId: PassiveId;
   startingLoadout: SubroutineDefinition[];
 }

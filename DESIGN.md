@@ -662,6 +662,107 @@ it, regardless of archetype — e.g. "your Trap-tagged subroutines do X."
 Specific passive designs aren't written yet; this section defines the
 hook they'd use.
 
+### Neutral Archetype (session 28, `/decision-session`)
+
+Triggered by a concrete finding during Phase 5 checkpoint E: correcting
+`resolveHardTiebreak`'s semantics (the hard-resolution deadline now
+unconditionally favors the defender, rather than whichever side's
+win-gauge fraction happened to be thinner — "if you can't breach in
+time, you're contained," applied literally instead of as a fraction
+race) revealed that Ghost's real starting kit had a **0% genuine win
+rate** across 30 seeds against a plain opponent — 0 threshold wins, all
+attrition losses, peak fill fraction never exceeding ~0.17. The
+session 26 "Ghost fix" had only ever been validated under the old,
+looser tiebreak. Root cause: **only two payload families ever credit a
+side's own win-gauge at all** — Exploit's direct-damage kinds
+(`directBurst`/`piercing`/`chainFinisherScaling`/`riskRewardBurst`) and
+Malware's `dot` tick. Every Encryption payload (`ward`,
+`instantCounterPush`, `hot`) and every Root payload (`instantManipulation`,
+`cribbageLayerManipulation`, `scheduledSabotage`, recon) only ever
+reduces the opponent's gauge, denies tempo, or manipulates state —
+never credits the caster's own. Any kit built entirely from Encryption
+and/or Root, with no Malware DoT and no Exploit piece, is
+**mathematically incapable of ever winning outright** — not slowly via
+attrition, but literally zero path to it. This affects both player
+kits (Ghost) and 9 of the 32 enemies (see Enemy Design's Roster).
+
+**Resolved as a genuine 5th `Archetype` value, `'neutral'`** — not one
+of the 4 existing archetypes reused for flavor. A neutral piece
+naturally fails every existing archetype-specific passive check
+(Primed's `=== 'root'`, Sleeper Cell's `=== 'malware'`, etc.) without
+needing new exclusion logic, and it can't have suit affinity anyway
+(Cribbage has exactly 4 real suits — a 5th archetype was never going to
+map onto a 5th one). Matches the StS-Colorless framing this was pitched
+against: Colorless cards aren't a 4th color in costume, they're their
+own bucket. `ARCHETYPE_POOLS`, suit theming, and every
+`ClassDefinition`/`EnemyDefinition.archetypes` pairing simply never
+need a `'neutral'` case — no class or enemy "specializes" in it, it's a
+shared toolbox everyone can draw from equally (session 7's originally-
+mentioned-but-never-built "universal pool" concept, now actually real).
+
+**Mechanism**: neutral pieces are built exclusively from trigger
+families that don't depend on suit-tally accumulation or the two
+suit-dependent occurrence categories (Flush, His Nobs) — Always/Cantrip,
+Self-state, and every *other* occurrence category (fifteen, pair, run,
+thirty-one, go, his heels) are already suit-independent in this engine
+(they score off rank/count, not suit), so the neutral catalog draws
+from those freely. Chained triggers are deliberately avoided for
+neutral content specifically (a chain needs a *specific* prerequisite
+subroutine id present in the same kit, which a piece meant to drop into
+*any* kit can't assume).
+
+**Scope, deliberately small**: 9 pieces total (4 common / 3 uncommon /
+2 rare) — reusing the existing rarity-tier shape rather than inventing
+a new one, but far smaller than each real archetype's 7/5/3, since this
+exists to patch a structural gap, not become a 5th full content
+pillar:
+
+| Rarity | Name | Trigger | Payload |
+|---|---|---|---|
+| Common | Idle Process | Always | Small directBurst |
+| Common | Elevated Session | Self-state: isDealer | Small directBurst |
+| Common | Checksum Match | Occurrence: fifteen, instant | Small directBurst |
+| Common | Steady Drip | Accumulator: points, threshold | Small directBurst |
+| Uncommon | Chain Reaction | Occurrence: run, instant | chainFinisherScaling (archetype-agnostic version of Exploit's Zero-Day Chain — scales off *any* subroutine firing earlier the same turn) |
+| Uncommon | Overclock | Self-state: heatAbove | Moderate directBurst |
+| Uncommon | Uptime | Occurrence: thirty-one, threshold | Moderate directBurst |
+| Rare | **Circuit Breaker** | New: accumulator on banked mitigation (see below) | Large directBurst |
+| Rare | Watchdog Timer | Occurrence: go, scaling, generous cap | directBurst, real punch at max stacks |
+
+**Circuit Breaker is the capstone idea**, not just a bigger burst: it
+converts the caster's own *already-cast* mitigation (Ward/
+instantCounterPush/HoT amounts generated this match) into a real credit
+— a genuine "shield bash." This is the one piece that needs a real new
+engine primitive, not just data: a new accumulator metric tracking
+total banked mitigation, fed from wherever those three payload kinds
+resolve. Every other piece in this set is pure data over existing
+trigger/payload machinery. The point of Circuit Breaker specifically:
+Encryption/Root's actual identity *is* denial — this lets that identity
+become a legitimate path to victory instead of asking those archetypes
+to borrow Exploit's identity just to have any offense at all.
+
+**Retrofit, this session**: Ghost's Cantrip (Low Profile) is replaced
+by Idle Process — Cantrips were already established (session 4) as
+universal/cross-cutting rather than archetype-exclusive, so a neutral
+Cantrip barely bends existing design language. The 9 struggling
+enemies (Enemy Design's Roster) get their own neutral-piece swaps in
+Phase 5 checkpoint E's own remaining work, not here.
+
+**Explicitly banked, not resolved this session**: how neutral pieces
+are actually *acquired* (reward-pool weighting, Shop availability,
+whether they're truly equal-weight for every class or something else)
+— flagged by the user as a real follow-up topic, deliberately deferred
+rather than decided in passing.
+
+**Banked idea for a future subroutine-library expansion pass**:
+Circuit Breaker's "convert banked mitigation into a strike" mechanic
+could eventually be reincarnated as a *native Encryption* piece (not
+just a neutral one) and still read as thematic — a firewall that,
+after absorbing enough, counter-attacks is a completely standard
+security concept, not a borrowed one. Worth revisiting once the real
+per-class magnitude/balance pass (Phase 5's long-standing open item)
+gets to Encryption specifically.
+
 ## Enemy Design
 
 **Session 27** replaced the placeholder enemy model with a real design,

@@ -11,6 +11,7 @@ import {
   isReady,
   resetAfterFire,
   updateSuitTallyState,
+  updateMitigationBankedState,
   type SubroutineRuntimeState,
   type TriggerContext,
 } from './triggers';
@@ -957,12 +958,13 @@ function resolvePayloadCore(
       // progress, not gauge-seeking offense on the caster's behalf).
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
       const pushed = reduceWinGauge(combatState, target, amount);
-      return applyReturnToSenderCounterPushPassive(pushed, caster, amount);
+      const withReturnToSender = applyReturnToSenderCounterPushPassive(pushed, caster, amount);
+      return creditMitigationBanked(withReturnToSender, caster, amount);
     }
     case 'ward': {
       const casterState = combatState.sides[caster];
       const sides = replaceSide(combatState.sides, caster, { ...casterState, wardShield: casterState.wardShield + payload.amount });
-      return { ...combatState, sides };
+      return creditMitigationBanked({ ...combatState, sides }, caster, payload.amount);
     }
     case 'hot': {
       const casterState = combatState.sides[caster];
@@ -978,7 +980,12 @@ function resolvePayloadCore(
         },
       ];
       const sides = replaceSide(combatState.sides, caster, { ...casterState, hots });
-      return { ...combatState, sides };
+      // Circuit Breaker banks HoT's full potential (amountPerTick *
+      // duration) at cast time, same as Ward/instantCounterPush credit
+      // immediately -- simpler than hooking applyTickPush's per-tick
+      // path separately, and "generated" reads fine as "committed," not
+      // strictly "already realized."
+      return creditMitigationBanked({ ...combatState, sides }, caster, payload.amountPerTick * payload.duration);
     }
     case 'cleanse': {
       const casterState = combatState.sides[caster];
@@ -1465,6 +1472,19 @@ function applySuitTallyCredit(combatState: CombatState, side: PlayerIndex, suit:
   const loadout = sideState.loadout.map((entry) => ({
     ...entry,
     state: updateSuitTallyState(entry.state, entry.definition, { suit, player: side }, side),
+  }));
+  return { ...combatState, sides: replaceSide(combatState.sides, side, { ...sideState, loadout }) };
+}
+
+/** Session 28's Neutral Archetype (Circuit Breaker): advances every
+ * mitigationBanked Accumulator subroutine on `side`'s own loadout by
+ * `amount`, called wherever that side casts Ward/instantCounterPush/hot
+ * -- parallel to applySuitTallyCredit above. */
+function creditMitigationBanked(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
+  const sideState = combatState.sides[side];
+  const loadout = sideState.loadout.map((entry) => ({
+    ...entry,
+    state: updateMitigationBankedState(entry.state, entry.definition, amount),
   }));
   return { ...combatState, sides: replaceSide(combatState.sides, side, { ...sideState, loadout }) };
 }

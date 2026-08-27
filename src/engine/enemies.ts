@@ -1,4 +1,4 @@
-import type { Archetype, SubroutineDefinition } from './subroutine-types';
+import type { SubroutineDefinition, SuitedArchetype } from './subroutine-types';
 import { ALL_POOL_SUBROUTINES } from './subroutines';
 import type { Rng } from './rng';
 import type { LayerGraph, MapNode } from './map-types';
@@ -111,7 +111,7 @@ export interface EnemyDefinition {
    * Archetype] -- session 27's decision: 2-archetype pairing is the
    * default but not a hard lock, single-archetype and bespoke 3+
    * archetype gatekeepers are both fine. */
-  archetypes: Archetype[];
+  archetypes: SuitedArchetype[];
   /** The layer (1-4) this identity starts appearing at -- it stays in
    * its tier's pool at every layer afterward, not just this one. */
   minLayer: number;

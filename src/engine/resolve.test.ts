@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Card } from './cards';
 import { bestCardToForce } from './ai';
+import { NEUTRAL_RARES } from './subroutines';
 import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
 import {
   createCombatState,
@@ -948,6 +949,40 @@ describe('instantManipulation -- suitTally target', () => {
     const state = createCombatState([watcher], [], 12);
     const result = resolvePayload({ kind: 'instantManipulation', target: 'suitTally', amount: 3 }, 'root', state, 0);
     expect(result.sides[0].loadout[0].state.ready).toBe(true);
+  });
+});
+
+describe('mitigationBanked accumulator (session 28, Circuit Breaker)', () => {
+  it('ward/instantCounterPush/hot each credit the caster\'s own mitigationBanked accumulator by their amount', () => {
+    const watcher = definition('breaker', { kind: 'accumulator', metric: 'mitigationBanked', threshold: 100 }, { kind: 'directBurst', amount: 1 });
+    const afterWard = resolvePayload({ kind: 'ward', amount: 5 }, 'neutral', createCombatState([watcher], [], 12), 0);
+    expect(afterWard.sides[0].loadout[0].state.accumulatedProgress).toBe(5);
+
+    const afterCounterPush = resolvePayload({ kind: 'instantCounterPush', amount: 5 }, 'neutral', createCombatState([watcher], [], 12), 0);
+    expect(afterCounterPush.sides[0].loadout[0].state.accumulatedProgress).toBe(5);
+
+    // hot banks its full potential (amountPerTick * duration) at cast time.
+    const afterHot = resolvePayload({ kind: 'hot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 4 }, 'neutral', createCombatState([watcher], [], 12), 0);
+    expect(afterHot.sides[0].loadout[0].state.accumulatedProgress).toBe(12);
+  });
+
+  it('does not credit the opponent\'s mitigationBanked accumulator, and ignores non-mitigation payloads', () => {
+    const watcher = definition('breaker', { kind: 'accumulator', metric: 'mitigationBanked', threshold: 100 }, { kind: 'directBurst', amount: 1 });
+    const state = createCombatState([], [watcher], 12);
+    const afterWard = resolvePayload({ kind: 'ward', amount: 5 }, 'neutral', state, 0);
+    expect(afterWard.sides[1].loadout[0].state.accumulatedProgress).toBe(0);
+
+    const afterBurst = resolvePayload({ kind: 'directBurst', amount: 5 }, 'exploit', createCombatState([watcher], [], 12), 0);
+    expect(afterBurst.sides[0].loadout[0].state.accumulatedProgress).toBe(0);
+  });
+
+  it('marks Circuit Breaker ready and fires it once enough mitigation is banked', () => {
+    const circuitBreaker = NEUTRAL_RARES.find((s) => s.id === 'circuit-breaker')!;
+    let state = createCombatState([circuitBreaker], [], 12);
+    state = resolvePayload({ kind: 'ward', amount: 6 }, 'encryption', state, 0);
+    expect(state.sides[0].loadout[0].state.ready).toBe(false);
+    state = resolvePayload({ kind: 'instantCounterPush', amount: 6 }, 'encryption', state, 0);
+    expect(state.sides[0].loadout[0].state.ready).toBe(true);
   });
 });
 

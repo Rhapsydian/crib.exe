@@ -6,11 +6,29 @@ import type { Suit } from './cards';
  * resolution is resolve.ts.
  */
 
-export type Archetype = 'exploit' | 'malware' | 'encryption' | 'root';
+/** 'neutral' (session 28's Neutral Archetype) is a genuine 5th value,
+ * not one of the other 4 reused for flavor -- it naturally fails every
+ * archetype-specific passive check (Primed's `=== 'root'`, Sleeper
+ * Cell's `=== 'malware'`, etc.) without needing new exclusion logic,
+ * and correctly has no suit affiliation at all (see SUIT_ARCHETYPES
+ * below, which stays a 4-entry map -- Cribbage only has 4 real suits, a
+ * neutral piece was never going to get a 5th one). No class or enemy
+ * ever "specializes" in it (ClassDefinition/EnemyDefinition.archetypes
+ * never includes it) -- it's a small, shared toolbox anyone can draw
+ * from, built entirely from trigger families that don't depend on suit
+ * (see DESIGN.md's "Neutral Archetype" section). */
+export type Archetype = 'exploit' | 'malware' | 'encryption' | 'root' | 'neutral';
+
+/** The 4 real, suited archetypes -- excludes 'neutral', which has no
+ * suit and which no class/enemy ever specializes in. Used for
+ * ClassDefinition/EnemyDefinition.archetypes so indexing ARCHETYPE_POOLS
+ * (subroutines.ts) or SUIT_ARCHETYPES by a class/enemy's own archetypes
+ * stays exhaustive without a 'neutral' case neither structure has. */
+export type SuitedArchetype = Exclude<Archetype, 'neutral'>;
 
 /** Suits are still the generic 0-3 slots from cards.ts; real suit-name
  * theming is a UI concern, not the engine's. */
-export const SUIT_ARCHETYPES: Record<Suit, Archetype> = {
+export const SUIT_ARCHETYPES: Record<Suit, SuitedArchetype> = {
   0: 'exploit',
   1: 'malware',
   2: 'encryption',
@@ -33,7 +51,13 @@ export type OccurrenceCategory =
 
 export type AccumulatorTrigger =
   | { kind: 'accumulator'; metric: 'points'; threshold: number }
-  | { kind: 'accumulator'; metric: 'suitTally'; suit: Suit; threshold: number };
+  | { kind: 'accumulator'; metric: 'suitTally'; suit: Suit; threshold: number }
+  /** Session 28's Neutral Archetype (Circuit Breaker): banks the total
+   * amount of the caster's own Ward/instantCounterPush/hot payloads
+   * cast this match -- fed from resolve.ts's creditMitigationBanked,
+   * called wherever those three payload kinds resolve. Suit-independent
+   * like 'points', unlike 'suitTally'. */
+  | { kind: 'accumulator'; metric: 'mitigationBanked'; threshold: number };
 
 export type OccurrenceTrigger =
   | { kind: 'occurrence'; category: OccurrenceCategory; variation: 'instant' }

@@ -97,6 +97,16 @@ export interface CombatResult {
    * so the outer run orchestrator needs this surfaced to fold it into
    * persistent run Heat, same reason peakFillFraction exists. */
   playerHeatGenerated: number;
+  /** How the match actually ended (session 27, checkpoint E): 'threshold'
+   * -- a side genuinely crossed its own win-gauge threshold, the normal
+   * way. 'attrition' -- neither side had, by HARD_RESOLUTION_HAND, so
+   * the defender (side 1) won by having successfully denied the
+   * attacker (side 0) a breach in time, not by generating any progress
+   * of its own. Surfaced so a balance sweep can tell "real offense" wins
+   * apart from "successfully stalled" wins -- see resolveHardTiebreak's
+   * own doc comment for why an attrition win no longer needs the
+   * defender to have any win-gauge progress at all. */
+  resolvedBy: 'threshold' | 'attrition';
 }
 
 function replaceSideGauge(combatState: CombatState, side: PlayerIndex, gauge: InitiativeGauge): CombatState {
@@ -238,19 +248,26 @@ function applyEscalation(combatState: CombatState): CombatState {
 // place as a defensive outer bound rather than removed.
 const HARD_RESOLUTION_HAND = 20;
 
-/** Forces a winner at the hard resolution deadline: whichever side has
- * the higher *current* win-gauge fill fraction (progress/threshold) --
- * not peakFillFraction, which can be stale for a side that surged
- * earlier and got pushed back since. An exact tie (including the
- * genuine zero-progress-on-both-sides deadlock) goes to the defender,
- * side 1 -- "if you can't breach in time, you're getting contained,"
- * the Breach/Containment theme applied literally as the tiebreak
- * itself, not just flavor text. */
-function resolveHardTiebreak(combatState: CombatState): PlayerIndex {
-  const [side0, side1] = combatState.sides;
-  const fraction0 = side0.winGauge.progress / side0.winGauge.threshold;
-  const fraction1 = side1.winGauge.progress / side1.winGauge.threshold;
-  return fraction0 > fraction1 ? 0 : 1;
+/** Forces a winner at the hard resolution deadline (session 27,
+ * checkpoint E revision): the defender, side 1, unconditionally --
+ * "attrition." Reaching this function at all already means side 0 (the
+ * attacker) failed to cross its own Breach threshold in time (normal
+ * resolution() would have ended the match already if it had), so under
+ * the Breach/Containment fiction that's containment achieved, full
+ * stop -- not a race decided by whoever's *closer*. This replaces
+ * session 26's fraction-comparison version (only an exact tie went to
+ * the defender; a side 0 with any nonzero fractional lead, however
+ * thin, used to win outright without ever actually breaching) --
+ * "closer" was never the right question once a stalemate itself is the
+ * defense's real win condition, particularly for kits with no
+ * win-gauge-crediting offense of their own (an Encryption-only or
+ * Root-only kit can *only* ever win this way, by design -- see
+ * DESIGN.md). Real difficulty consequence, not scoped to those kits:
+ * *every* fight the attacker hasn't already closed out by hand 20 is
+ * now a loss, where previously a narrow fractional lead could still
+ * win it. */
+function resolveHardTiebreak(): PlayerIndex {
+  return 1;
 }
 
 /** The ordered sequence of scoring occurrences for one hand, in the
@@ -295,12 +312,13 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   const log: FireEvent[] = [];
   let peakFillFraction: [number, number] = [0, 0];
 
-  const finish = (winner: PlayerIndex): CombatResult => ({
+  const finish = (winner: PlayerIndex, resolvedBy: 'threshold' | 'attrition' = 'threshold'): CombatResult => ({
     winner,
     log,
     hands,
     peakFillFraction,
     playerHeatGenerated: combatState.sides[0].heat,
+    resolvedBy,
   });
 
   /** Applies one step's result, tracks each side's running win-gauge
@@ -535,7 +553,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
 
     dealer = (1 - dealer) as PlayerIndex;
 
-    if (i + 1 >= HARD_RESOLUTION_HAND) return finish(resolveHardTiebreak(combatState));
+    if (i + 1 >= HARD_RESOLUTION_HAND) return finish(resolveHardTiebreak(), 'attrition');
   }
 
   throw new Error(`playCombat did not resolve within ${maxHands} hands`);

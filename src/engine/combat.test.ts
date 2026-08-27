@@ -414,13 +414,21 @@ describe('playCombat', () => {
       );
     });
 
-    it('rescues a match that would otherwise never reach its own winThreshold, correctly attributing the win', () => {
-      // Side 1 fires nothing at all -- if escalation ever incorrectly
-      // resolved in side 1's favor (e.g. a floor/shrink bug), this would
-      // catch it immediately.
+    it('resolves as an attrition loss for a side too weak to realistically close it out in time, even against an empty opposing loadout', () => {
+      // Session 27 checkpoint E revised resolveHardTiebreak: reaching
+      // the hard-resolution deadline (hand 20) at all means side 0 (the
+      // attacker) failed to breach in time, full stop -- side 1 wins
+      // unconditionally, not whichever side has the thinner fractional
+      // lead. Side 1 fires nothing at all here, which used to make side
+      // 0's tiny nonzero fraction win the old comparison outright; now
+      // it correctly loses anyway, since it never actually crossed its
+      // own threshold within the window escalation gives it (0.01/fire
+      // against even the escalated floor of 10 would need on the order
+      // of a thousand real fires -- not realistic within 20 hands).
       const result = playCombat([[weakBurst('a')], []], { seed: 1, gaugeThreshold: 3, winThreshold: 15, maxHands: 300 });
-      expect(result.winner).toBe(0);
-      expect(result.hands.length).toBeGreaterThan(10); // genuinely resolved via escalation, not a fluke early win
+      expect(result.winner).toBe(1);
+      expect(result.resolvedBy).toBe('attrition');
+      expect(result.hands.length).toBe(20); // combat.ts's own HARD_RESOLUTION_HAND
     });
   });
 });

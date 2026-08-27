@@ -61,6 +61,142 @@ const GAUGE_FILL_FRACTION = 0.5;
 const HOT_GAUGE_FILL_FRACTION = 0.75; // Vulnerability Scan's edge-triggered rare — see resolve.test.ts's Reactive coverage for why this is fine at a high fraction.
 
 // ---------------------------------------------------------------------
+// Neutral archetype (9) — session 28's `/decision-session`, DESIGN.md's
+// "Neutral Archetype". A genuine 5th Archetype value, not one of the 4
+// real ones reused for flavor — built entirely from trigger families
+// that don't depend on suit (Always, self-state, every occurrence
+// category except the two that are inherently suit-based: Flush, His
+// Nobs), so these pieces can drop into *any* kit, including a pure
+// Encryption/Root one, without borrowing another archetype's identity.
+// Deliberately small (4 common/3 uncommon/2 rare) next to each real
+// archetype's 7/5/3 — this exists to patch a structural gap (only
+// Exploit's direct-damage kinds and Malware's DoT ever credit a side's
+// own win-gauge; every Encryption/Root payload only denies or
+// manipulates), not to become a 5th full content pillar. Defined here,
+// ahead of the class starting loadouts below, so Ghost's own Cantrip
+// retrofit sits next to (but is NOT the same object as) NEUTRAL_COMMONS'
+// own Always-triggered common -- same precedent every real archetype
+// already follows: a class's own Cantrip (Breacher's Steady Hand,
+// Warden's Routine Maintenance) is never literally the same object/id
+// as its archetype pool's own Always-triggered common (Exploit's Script
+// Kiddie). Reusing one object for both would violate ALL_SUBROUTINES'
+// global-id-uniqueness invariant (subroutines.test.ts) the instant a
+// class's starting kit and the pool both listed it.
+//
+// Not yet wired into rewardPoolForClass/universalCantrips or
+// ARCHETYPE_POOLS (rewards.ts, buildRarityById) — real acquisition
+// (how a class/enemy actually gets one) is explicitly banked, not
+// resolved this session, per DESIGN.md.
+// ---------------------------------------------------------------------
+
+/** Ghost's new Cantrip (session 28), replacing Low Profile — deliberately
+ * low-power per session 4's own Cantrip convention ("guarantee something
+ * always happens"), same mechanical shape as Background Task below
+ * (NEUTRAL_COMMONS' own Always-triggered common) but its own bespoke
+ * object, matching every other class's Cantrip-vs-pool-common
+ * separation. */
+export const IDLE_PROCESS: SubroutineDefinition = {
+  id: 'idle-process',
+  name: 'Idle Process',
+  archetype: 'neutral',
+  trigger: { kind: 'always' },
+  payload: { kind: 'directBurst', amount: 2 },
+  tags: ['daemon'],
+};
+
+export const NEUTRAL_COMMONS: SubroutineDefinition[] = [
+  {
+    id: 'background-task',
+    name: 'Background Task',
+    archetype: 'neutral',
+    trigger: { kind: 'always' },
+    payload: { kind: 'directBurst', amount: 2 },
+    tags: ['daemon'],
+  },
+  {
+    id: 'elevated-session',
+    name: 'Elevated Session',
+    archetype: 'neutral',
+    trigger: { kind: 'selfState', condition: 'isDealer' },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: [],
+  },
+  {
+    id: 'checksum-match',
+    name: 'Checksum Match',
+    archetype: 'neutral',
+    trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: [],
+  },
+  {
+    id: 'steady-drip',
+    name: 'Steady Drip',
+    archetype: 'neutral',
+    trigger: { kind: 'accumulator', metric: 'points', threshold: COMMON.threshold },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: [],
+  },
+];
+
+export const NEUTRAL_UNCOMMONS: SubroutineDefinition[] = [
+  {
+    // Archetype-agnostic version of Exploit's Zero-Day Chain (occurrence:
+    // pair) -- Run instead, so a kit could plausibly carry both without
+    // redundancy, and it scales off *any* subroutine that already fired
+    // this turn, not just neutral ones.
+    id: 'chain-reaction',
+    name: 'Chain Reaction',
+    archetype: 'neutral',
+    trigger: { kind: 'occurrence', category: 'run', variation: 'instant' },
+    payload: { kind: 'chainFinisherScaling', baseAmount: UNCOMMON.burst - 3, perPriorFire: 3 },
+    tags: ['worm'],
+  },
+  {
+    id: 'overclock',
+    name: 'Overclock',
+    archetype: 'neutral',
+    trigger: { kind: 'selfState', condition: 'heatAbove', value: UNCOMMON.heat },
+    payload: { kind: 'directBurst', amount: UNCOMMON.burst },
+    tags: [],
+  },
+  {
+    id: 'uptime',
+    name: 'Uptime',
+    archetype: 'neutral',
+    trigger: { kind: 'occurrence', category: 'thirtyOne', variation: 'threshold', bankTarget: UNCOMMON.bankTarget },
+    payload: { kind: 'directBurst', amount: UNCOMMON.burst },
+    tags: [],
+  },
+];
+
+export const NEUTRAL_RARES: SubroutineDefinition[] = [
+  {
+    // The capstone: converts the caster's own already-cast mitigation
+    // (Ward/instantCounterPush/hot amounts, resolve.ts's
+    // creditMitigationBanked) into a real credit -- a genuine "shield
+    // bash." Encryption/Root's actual identity (denial) becomes a
+    // legitimate win path instead of needing borrowed offense.
+    id: 'circuit-breaker',
+    name: 'Circuit Breaker',
+    archetype: 'neutral',
+    trigger: { kind: 'accumulator', metric: 'mitigationBanked', threshold: RARE.threshold },
+    payload: { kind: 'directBurst', amount: RARE.burst + 3 },
+    tags: [],
+  },
+  {
+    id: 'watchdog-timer',
+    name: 'Watchdog Timer',
+    archetype: 'neutral',
+    trigger: { kind: 'occurrence', category: 'go', variation: 'scaling', cap: RARE.cap },
+    payload: { kind: 'directBurst', amount: RARE.burst + 2 },
+    tags: [],
+  },
+];
+
+export const NEUTRAL_POOL = { commons: NEUTRAL_COMMONS, uncommons: NEUTRAL_UNCOMMONS, rares: NEUTRAL_RARES };
+
+// ---------------------------------------------------------------------
 // Class starting loadouts (18) — DESIGN.md's "Starting Loadouts",
 // session 12. 3 per class: 1 per specialized archetype + 1 Cantrip.
 // ---------------------------------------------------------------------
@@ -251,14 +387,18 @@ export const GHOST_LOADOUT: SubroutineDefinition[] = [
     tags: ['trap'],
     reactive: true,
   },
-  {
-    id: 'low-profile',
-    name: 'Low Profile',
-    archetype: 'root',
-    trigger: { kind: 'always' },
-    payload: { kind: 'selfHeatReduction', amount: 3, floor: 10 },
-    tags: ['daemon'],
-  },
+  // Session 28: Low Profile retired in favor of the neutral Idle
+  // Process -- Ghost's real starting kit measured a 0% genuine win rate
+  // (30-seed check against a plain opponent, all attrition losses,
+  // peak fill fraction never above ~0.17) once resolveHardTiebreak
+  // stopped rewarding a thin fractional lead. Root cause: Encryption/
+  // Root have no payload kind that ever credits the caster's own
+  // win-gauge, so Ghost's kit (Steganography/Tripwire, both real, but
+  // neither one a credit) had zero path to victory. Idle Process is the
+  // fix -- same Always-triggered, guaranteed-every-turn Cantrip slot
+  // Low Profile held, but Neutral instead of Root, and it actually
+  // moves Ghost's own gauge. See DESIGN.md's "Neutral Archetype".
+  IDLE_PROCESS,
 ];
 
 export const CLASS_STARTING_LOADOUTS = {
@@ -893,10 +1033,24 @@ export const ALL_POOL_SUBROUTINES: SubroutineDefinition[] = [
   ...ROOT_COMMONS,
   ...ROOT_UNCOMMONS,
   ...ROOT_RARES,
+  // Session 28's 9-piece Neutral Archetype -- included here (unlike
+  // NEUTRAL_POOL itself, which stays out of ARCHETYPE_POOLS/rewards.ts's
+  // rarity lookup for now, acquisition being explicitly banked) so
+  // enemies.ts's pool() helper can find them for the checkpoint E enemy
+  // retrofits.
+  ...NEUTRAL_COMMONS,
+  ...NEUTRAL_UNCOMMONS,
+  ...NEUTRAL_RARES,
 ];
 
-/** All 78 -- the 18 starting-loadout pieces are also part of their
- * class's reward pool (session 21: "a class's own already-owned pieces
- * stay in its reward pool too"), so this is the full universe of named
- * subroutines in the game, not just the drawable pool. */
+/** All 78 real-archetype pieces plus the 9 neutral ones -- the 18
+ * starting-loadout pieces are also part of their class's reward pool
+ * (session 21: "a class's own already-owned pieces stay in its reward
+ * pool too"), so this is the full universe of named subroutines in the
+ * game, not just the drawable pool. Ghost's own Idle Process is the one
+ * deliberate exception to "starting-loadout ids never collide with pool
+ * ids" -- it's the *same* object in both ALL_STARTING_LOADOUT_SUBROUTINES
+ * (via GHOST_LOADOUT) and ALL_POOL_SUBROUTINES (via NEUTRAL_COMMONS),
+ * appearing twice here, harmlessly (id-keyed lookups just overwrite with
+ * the same value). */
 export const ALL_SUBROUTINES: SubroutineDefinition[] = [...ALL_STARTING_LOADOUT_SUBROUTINES, ...ALL_POOL_SUBROUTINES];
