@@ -41,6 +41,38 @@ magnitude/balance pass below remains the eventual next major milestone
 after Mods ships — not abandoned, just sequenced behind it at the user's
 request.
 
+**Session 34 (`/dev-session`) implemented all 9 of session 33's Mods
+checkpoints (A-I) in one pass**, closing out the sessions 30-33 design
+arc as real, working code -- `mod-types.ts` (new) and `mods.ts` (new)
+hold the type system and all 23 `ModDefinition`s (the 6 migrated class
+passives + all 17 validated Mods, none held back), `resolve.ts`/
+`triggers.ts` carry the combat-scoped hook dispatch, `run.ts`/`shop.ts`/
+`encounters.ts`/`loadout.ts` carry the run-level hooks and granted-
+subroutine mechanism. All 12 hook points (7 combat-scoped, 5 run-scoped)
+are wired and exercised, not just cataloged. One real implementation
+finding, discovered once inside the actual dispatch code rather than
+at the scoping stage: checkpoint D's plan called for literally *folding*
+the 6 class passives into the shared per-hook dispatcher functions
+alongside the enemy-passive registry, but several of them (Zero Day's
+mid-payload Heat waiver; Return to Sender's three distinct trigger
+points) don't fit that post-fire fold shape without changing their own
+behavior -- migrated their *gating* (from a `classId` string check to an
+`ownedModIds` membership check, via a new `hasMod` helper) while leaving
+each one's own call site where it already was, rather than forcing a
+relocation. Zero-regression safety for that migration came from a single
+design choice: `resolve.ts`'s `createCombatState` auto-derives the
+current class's own exclusive Mod into `ownedModIds` whenever `classId`
+is set, so every pre-existing test/call site that only ever passed
+`classId` (the whole suite, before this session) keeps getting that
+class's passive with no other change needed. 484 tests passing (from
+460, 24 new in `mods.test.ts`), `npm run check` clean throughout, 4
+commits. **Next up**: the per-class magnitude/balance pass, now for
+real -- re-run `playRun()`'s outcome-distribution sweep with Mods
+actually in the reward/Shop pool for the first time, per this Phase's
+own balance-pass context below (still not done: exact Mod magnitudes are
+all TBD/playtesting placeholders, same discipline as every other numeric
+constant in this project).
+
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
 see Phase 5 below) — a single shared zero-sum scalar replaced with two
@@ -1817,7 +1849,8 @@ implementation checkpoints without a session-17-style rescope risk.
 ---
 
 **Mods Implementation (session 33, `/decision-session`) -- checkpointed
-implementation spec.** Engineering-scoping session, same category as
+implementation spec, ✅ all 9 checkpoints implemented session 34.**
+Engineering-scoping session, same category as
 sessions 15/17/19/21/27, turning sessions 30-32's design (shape, hook
 catalog, validated 17-Mod content) into real implementation checkpoints
 for a future `/dev-session`. The biggest single scope since the Enemy
@@ -1860,49 +1893,88 @@ Two real forks, resolved live:
   by keeping it as an isolated, separately-verified checkpoint rather
   than folding it into the same checkpoint as brand-new infrastructure.
 
-**9 checkpoints:**
+**9 checkpoints, all ✅ implemented session 34** (real implementation
+notes/deviations from the plan below each):
 
 - **A -- Mod type system** (`mod-types.ts`): `ModId`, rarity (reuse
   existing common/uncommon/rare), an effect-kind union
   (`reactiveSubroutine` | `hook`), `ModDefinition`, typed signatures for
-  all 12 hooks.
-- **B -- State threading**: `RunPlayerState` gains `ownedModIds: string[]`/
-  `grantedByMod: Record<string, string>`; `CombatOptions`/`CombatState`
-  gain a player-side owned-Mod-id list (mirroring `enemyPassiveIds`);
-  reactive-subroutine Mods evaluated alongside `installedLoadout` in the
-  fire-on-turn loop.
+  all 12 hooks. **Shipped without the typed-per-hook-signature catalog**
+  -- `EnemyPassiveId`'s own precedent (a plain string union, dispatch
+  logic hand-written per id, no cataloged function-signature registry)
+  is the actual codebase idiom for this "light registry, not a
+  declarative DSL" pattern, so `mod-types.ts` matches it instead.
+- **B -- State threading**: `RunPlayerState` gains `ownedModIds: ModId[]`/
+  `grantedByMod: Record<string, string>` (plus `maxHeatBonus`/
+  `modRunState`, needed once E/H's real content -- Backup Generator,
+  Salvage Protocol -- got implemented); `CombatOptions`/`CombatState`
+  gain `ownedModIds` (mirroring `enemyPassiveIds`); reactive-subroutine
+  Mods are spliced directly into side 0's combat loadout at
+  `createCombatState` time, so `fireReadySubroutines`/
+  `fireNewlyReadyReactiveSubroutines`/`fireHandLifecycleSubroutines`
+  needed zero changes to also fire them.
 - **C -- Combat-scoped hook dispatch** (`resolve.ts`, `triggers.ts`):
-  extend the 5 existing hooks (`onFire`, `onTick`, `onTickExpiring`,
-  `onGaugeCross50`, `onIncomingDirectBurst`) to dual-sided dispatch,
-  widen `onFire`'s signature from `archetype`-only to the full firing
-  `SubroutineDefinition`, add `onCombatStart` and `onTriggerEvaluate`.
-- **D -- Migrate the 6 class starting passives** onto the new dispatch
-  mechanism. Pure refactor, zero intended behavior change -- verified by
-  zero regression across the existing suite, especially the
-  balance-sensitive tests (Ghost's win-rate tests, Lock Fatigue's
-  integration test).
-- **E -- Run-level hook dispatch**: `onMove`, `onEncounterResolved`,
-  `onShopSlateGenerated`, `onSubroutineAcquired`, `onModAcquired`, wired
-  into `traversal.ts`/`heat.ts`, `encounters.ts`, `shop.ts`, `run.ts`
-  respectively.
+  widened `onFire`'s signature (an optional `firingDefinition` param,
+  threaded from the 3 real fire call sites that have one on hand),
+  added `onCombatStart`/`onTriggerEvaluate`. **"Dual-sided dispatch"
+  shipped as sibling functions** (`applyModOnFirePassives` alongside
+  `applyEnemyOnFirePassives`, etc.), not interleaved into the existing
+  34-passive enemy fold -- both fire from the same call site either way,
+  but this kept that well-tested fold completely untouched. `onTriggerEvaluate`
+  plugs into `triggers.ts`'s Accumulator threshold comparisons (a new
+  `thresholdMultiplier` param on `updateSubroutineState`/
+  `updateSuitTallyState`/`updateMitigationBankedState`), not `isReady`
+  itself, since `isReady` only reads an already-latched boolean.
+- **D -- Migrate the 6 class starting passives.** **Real deviation from
+  plan**: the plan called for literally folding all 6 into the shared
+  dispatcher functions; several (Zero Day's mid-payload Heat waiver,
+  Return to Sender's three distinct trigger points) don't fit that
+  post-fire fold shape without changing their own behavior. Shipped as
+  gating-only migration instead -- each `classId === 'x'` check became an
+  `ownedModIds` membership check (`hasMod`), call sites unchanged.
+  Zero-regression safety came from `createCombatState` auto-deriving the
+  current class's own exclusive Mod into `ownedModIds` whenever `classId`
+  is set, so every pre-existing call site that only ever passed `classId`
+  keeps working with no other change. Verified: zero regression across
+  the full suite.
+- **E -- Run-level hook dispatch**: `onMove` (`run.ts`'s `playRun` loop,
+  between `move()` and `addHeat()`), `onEncounterResolved`/
+  `onShopSlateGenerated` (`encounters.ts`), `onSubroutineAcquired`/
+  `onModAcquired` (`run.ts`). Mostly hand-written dispatch functions in
+  `mods.ts` (mirroring `enemies.ts`'s data/`resolve.ts`'s logic split),
+  not `traversal.ts`/`heat.ts` directly -- `heat.ts`'s `addHeat` gained
+  an overridable `max` param instead (Backup Generator's own need).
 - **F -- Granted-subroutine mechanism** (`loadout.ts`): `grantedByMod`-
-  aware cap check (`installSubroutine`) and uninstall guard
-  (`uninstallSubroutine`) -- `reorderInstalled` needs no change.
+  aware cap check/uninstall guard, plus a new `installGrantedSubroutine`
+  helper (Auxiliary Process's own insertion path). `reorderInstalled`
+  needed no change, as planned.
 - **G -- Acquisition/reward/Shop wiring**: additive Mod-choice reward on
-  elite/gatekeeper wins (not competing with the existing subroutine
-  reward), Shop's second independent Mod slate (own reroll, same Data
-  pool), the archetype-exclusion pool filter (reusing
-  `ClassDefinition.archetypes`, inverted).
-- **H -- Author all 17 validated Mods as real data** (`mods.ts`),
-  including fully speccing the two rares' bundled/granted
-  `SubroutineDefinition` content (Auxiliary Process's granted piece,
-  Rootkit Persistence itself) as real data, not just names/descriptions.
-- **I -- Verification**: every one of the 12 hooks exercised by at least
-  one real test, zero regression in the existing 460-test suite, a
-  smoke-tested full run with several Mods active together.
+  elite/gatekeeper wins, Shop's second independent Mod slate (own
+  reroll). **Correction from the plan's own stated direction**: the
+  archetype-exclusion filter is the *same* inclusion direction
+  `rewardPoolForClass` already uses for its own archetype pools (a Mod
+  naming an archetype is only offered to a class whose own 2
+  specializations include it), not an inversion of it -- the plan's "invert
+  `!ownArchetypes.has(...)`" phrasing was a misreading of `DESIGN.md`'s
+  actual session-30 text, caught and fixed during implementation.
+  `EncounterOutcome` also gained `modRewardOptions`/`modShopPurchase`/
+  `modRerollCost`, mirroring the existing subroutine-reward fields --
+  a real shape gap the plan itself flagged as likely needed.
+- **H -- Author all 17 validated Mods as real data** (`mods.ts`).
+  Authored alongside B/C/E's plumbing rather than as a separate later
+  pass, since every Mod's real effect needed its hook to exist first --
+  by the time C finished, all 17 already had working implementations,
+  not just data shells.
+- **I -- Verification** (`mods.test.ts`, new): every one of the 12 hooks
+  exercised by a real test, zero regression (484/484, from 460), a
+  smoke-tested full `playRun()` with reactive-subroutine, hook-kind, and
+  granted-subroutine Mods all active together (a new `ownedModIdsOverride`
+  test-only escape hatch on `RunOptions`, mirroring
+  `installedLoadoutOverride`'s own precedent).
 
-**Exit criteria**: all 9 checkpoints implemented and tested; the 6 class
-passives fully migrated with no behavior change; all 17 Mods exist as
-real, functioning data; a fresh `playRun()` sweep can be run with Mods
-active (not required to show any particular result this session -- that's
-the eventual balance pass's job, still sequenced after this).
+**Exit criteria, all met**: all 9 checkpoints implemented and tested; the
+6 class passives migrated with zero regression; all 17 Mods exist as
+real, functioning data with working hook effects, not placeholders. A
+fresh `playRun()` sweep with Mods active is now possible for the first
+time -- not run this session (per the plan, that's the eventual balance
+pass's job, still sequenced after this) but genuinely unblocked.
