@@ -2,7 +2,10 @@ import type { PlayerIndex } from './pegging';
 import type { Card, Suit } from './cards';
 import type { Archetype, DebuffKind, HandLifecycleMoment, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
 import type { ClassId } from './classes';
+import { CLASS_DEFINITIONS } from './classes';
 import type { EnemyPassiveId } from './enemies';
+import type { ModId } from './mod-types';
+import { reactiveModSubroutines } from './mods';
 import { easeTriggerCondition, improvedPayloadMagnitude } from './merge';
 import {
   createInitialState,
@@ -163,6 +166,14 @@ export interface CombatState {
    * convention: this is implicitly "side 1 only," so no separate side
    * tag is needed. */
   enemyPassiveIds: EnemyPassiveId[];
+  /** Which Mod(s) side 0 (the player) owns this combat -- Phase 5 Mods
+   * checkpoint B, mirroring enemyPassiveIds' side-1-only convention.
+   * createCombatState always folds in the current class's own
+   * class-exclusive starting-passive Mod on top of whatever's passed in
+   * here, so every existing classId-driven call site keeps working
+   * unchanged (checkpoint D's zero-regression guarantee) -- this list is
+   * genuinely "every other owned Mod, plus the guaranteed class one." */
+  ownedModIds: ModId[];
 }
 
 export function createCombatSideState(definitions: SubroutineDefinition[], gaugeThreshold: number, winThreshold: number): CombatSideState {
@@ -204,10 +215,25 @@ export function createCombatState(
   classId?: ClassId,
   winThreshold: number = 100,
   enemyPassiveIds: EnemyPassiveId[] = [],
+  ownedModIds: ModId[] = [],
 ): CombatState {
+  // The class's own exclusive starting-passive Mod is always active
+  // whenever classId is set (checkpoint D) -- folded in here rather than
+  // required from every caller, so every pre-existing call site that
+  // only ever passed classId (the whole test suite, before Mods existed)
+  // keeps getting that class's passive with zero behavior change.
+  const classModId = classId ? CLASS_DEFINITIONS[classId].startingPassiveId : undefined;
+  const effectiveModIds = classModId && !ownedModIds.includes(classModId) ? [...ownedModIds, classModId] : ownedModIds;
+  // Reactive-subroutine Mods (session 30's "fires outside the loadout
+  // entirely" bucket) are simply appended to side 0's real loadout here
+  // -- no slot, no order, no cap, but otherwise an ordinary loadout
+  // entry as far as fireReadySubroutines/fireNewlyReadyReactiveSubroutines/
+  // fireHandLifecycleSubroutines are concerned, so none of those need any
+  // change to also fire these.
+  const playerLoadoutWithMods = [...playerLoadout, ...reactiveModSubroutines(effectiveModIds)];
   return {
     sides: [
-      createCombatSideState(playerLoadout, gaugeThreshold, winThreshold),
+      createCombatSideState(playerLoadoutWithMods, gaugeThreshold, winThreshold),
       createCombatSideState(enemyLoadout, gaugeThreshold, winThreshold),
     ],
     pendingSabotage: [],
@@ -215,6 +241,7 @@ export function createCombatState(
     classId,
     passiveTriggered: false,
     enemyPassiveIds,
+    ownedModIds: effectiveModIds,
   };
 }
 
@@ -441,7 +468,7 @@ function advanceFirstMatchingSubroutine(
  * not a debuff) -- `isMalwareEffect` lets either call site (the
  * 'debuff' case below, or applyTickPush's DoT branch) qualify. */
 function applySleeperCellPassive(combatState: CombatState, casterSide: PlayerIndex, isMalwareEffect: boolean): CombatState {
-  if (!isMalwareEffect || casterSide !== 0 || combatState.classId !== 'saboteur') return combatState;
+  if (!isMalwareEffect || casterSide !== 0 || !hasMod(combatState, 'sleeper-cell')) return combatState;
   const amount = SLEEPER_CELL_CREDIT_AMOUNT * corruptionMultiplier(combatState, casterSide);
   const credited = creditWinGauge(combatState, casterSide, amount);
   return advanceFirstMatchingSubroutine(credited, casterSide, (def) => def.archetype === 'root', SLEEPER_CELL_ADVANCE_AMOUNT);
@@ -457,7 +484,7 @@ function applySleeperCellPassive(combatState: CombatState, casterSide: PlayerInd
  * Loop. `shieldOwnerSide` is whoever's wardShield just absorbed the hit
  * (the defender in this exchange, not the attacker). */
 function applyReturnToSenderPassive(combatState: CombatState, shieldOwnerSide: PlayerIndex, absorbed: number): CombatState {
-  if (absorbed <= 0 || shieldOwnerSide !== 0 || combatState.classId !== 'ghost') return combatState;
+  if (absorbed <= 0 || shieldOwnerSide !== 0 || !hasMod(combatState, 'return-to-sender')) return combatState;
   return creditWinGauge(combatState, 0, absorbed * RETURN_TO_SENDER_RATIO);
 }
 
@@ -470,7 +497,7 @@ function applyReturnToSenderPassive(combatState: CombatState, shieldOwnerSide: P
  * that reduces the enemy's gauge also credits a portion back --
  * reachable turn one via Null Session. */
 function applyReturnToSenderCounterPushPassive(combatState: CombatState, casterSide: PlayerIndex, amount: number): CombatState {
-  if (casterSide !== 0 || combatState.classId !== 'ghost') return combatState;
+  if (casterSide !== 0 || !hasMod(combatState, 'return-to-sender')) return combatState;
   return creditWinGauge(combatState, 0, amount * RETURN_TO_SENDER_RATIO);
 }
 
@@ -482,7 +509,7 @@ function applyReturnToSenderCounterPushPassive(combatState: CombatState, casterS
  * Loop's own hook -- both gated on their own distinct classId, so they
  * coexist with no conflict (only one classId is ever active). */
 function applyReturnToSenderTickPassive(combatState: CombatState, tick: ActiveTick, listKey: 'dots' | 'hots', amount: number): CombatState {
-  if (listKey !== 'hots' || tick.casterSide !== 0 || combatState.classId !== 'ghost') return combatState;
+  if (listKey !== 'hots' || tick.casterSide !== 0 || !hasMod(combatState, 'return-to-sender')) return combatState;
   return creditWinGauge(combatState, 0, amount * RETURN_TO_SENDER_RATIO);
 }
 
@@ -517,6 +544,13 @@ function applyReturnToSenderTickPassive(combatState: CombatState, tick: ActiveTi
 
 function hasEnemyPassive(combatState: CombatState, id: EnemyPassiveId): boolean {
   return combatState.enemyPassiveIds.includes(id);
+}
+
+/** Mirrors hasEnemyPassive for the player-side Mod list -- Phase 5 Mods
+ * checkpoint C. Always side 0 in practice, same implicit convention
+ * ownedModIds itself documents. */
+function hasMod(combatState: CombatState, id: ModId): boolean {
+  return combatState.ownedModIds.includes(id);
 }
 
 function passiveStat(combatState: CombatState, side: PlayerIndex, key: string): number {
@@ -921,7 +955,7 @@ function resolvePayloadCore(
       const casterState = combatState.sides[caster];
       // Blackhat's Zero Day: the first Heat-costing Exploit fire each
       // combat waives its Heat cost entirely.
-      const zeroDay = caster === 0 && combatState.classId === 'blackhat' && !combatState.passiveTriggered && payload.heatCost > 0;
+      const zeroDay = caster === 0 && hasMod(combatState, 'zero-day') && !combatState.passiveTriggered && payload.heatCost > 0;
       const heat = zeroDay ? casterState.heat : casterState.heat + payload.heatCost;
       const sides = replaceSide(combatState.sides, caster, { ...casterState, heat });
       const state = { ...combatState, sides, passiveTriggered: zeroDay || combatState.passiveTriggered };
@@ -1302,7 +1336,7 @@ function applyTickPush(combatState: CombatState, tick: ActiveTick, listKey: 'dot
  * passiveTriggered. Only HoT ticks qualify; DoT ticks are already
  * uncapped Malware damage on their own, nothing to "add." */
 function applyFeedbackLoopPassive(combatState: CombatState, tick: ActiveTick, listKey: 'dots' | 'hots'): CombatState {
-  if (listKey !== 'hots' || tick.casterSide !== 0 || combatState.classId !== 'warden') return combatState;
+  if (listKey !== 'hots' || tick.casterSide !== 0 || !hasMod(combatState, 'feedback-loop')) return combatState;
   const amount = FEEDBACK_LOOP_DOT_AMOUNT * corruptionMultiplier(combatState, tick.casterSide);
   return creditWinGauge(combatState, tick.casterSide, amount);
 }

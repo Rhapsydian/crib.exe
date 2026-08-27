@@ -12,7 +12,18 @@ import {
 import { rarityOf } from './rewards';
 
 function playerState(data: number): RunPlayerState {
-  return { classId: 'breacher', installedLoadout: [], bench: [], data, material: {}, rank: {} };
+  return {
+    classId: 'breacher',
+    installedLoadout: [],
+    bench: [],
+    data,
+    material: {},
+    rank: {},
+    ownedModIds: [],
+    grantedByMod: {},
+    maxHeatBonus: 0,
+    modRunState: {},
+  };
 }
 
 describe('shopCostOf', () => {

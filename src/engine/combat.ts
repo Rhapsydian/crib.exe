@@ -8,6 +8,7 @@ import type { HandResult, PlayerIndex } from './game';
 import type { SubroutineDefinition, HandLifecycleMoment } from './subroutine-types';
 import type { ClassId } from './classes';
 import type { EnemyPassiveId } from './enemies';
+import type { ModId } from './mod-types';
 import {
   updateSubroutineState,
   updateSuitTallyState,
@@ -77,6 +78,11 @@ export interface CombatOptions {
    * checkpoint B. Defaults to none, same "absent = no passives active"
    * treatment classId already gets. */
   enemyPassiveIds?: EnemyPassiveId[];
+  /** Which Mod(s) side 0 (the player) owns this combat, beyond the
+   * current class's own guaranteed class-exclusive one (see
+   * resolve.ts's createCombatState) -- Phase 5 Mods checkpoint B.
+   * Defaults to none. */
+  ownedModIds?: ModId[];
 }
 
 export interface CombatResult {
@@ -296,6 +302,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     maxHands = 500,
     classId,
     enemyPassiveIds = [],
+    ownedModIds = [],
   } = options;
 
   const rng = createRng(seed);
@@ -307,7 +314,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   const aiRng = createRng(deriveAiNoiseSeed(seed));
   let dealer: PlayerIndex = startingDealer;
   let scores: [number, number] = [0, 0];
-  let combatState = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds);
+  let combatState = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds);
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
   let peakFillFraction: [number, number] = [0, 0];

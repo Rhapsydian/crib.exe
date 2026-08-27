@@ -8,7 +8,18 @@ function piece(id: string): SubroutineDefinition {
 }
 
 function playerState(installedLoadout: SubroutineDefinition[], bench: SubroutineDefinition[], material: Record<string, number> = {}): RunPlayerState {
-  return { classId: 'breacher', installedLoadout, data: 0, bench, material, rank: {} };
+  return {
+    classId: 'breacher',
+    installedLoadout,
+    data: 0,
+    bench,
+    material,
+    rank: {},
+    ownedModIds: [],
+    grantedByMod: {},
+    maxHeatBonus: 0,
+    modRunState: {},
+  };
 }
 
 describe('installSubroutine', () => {

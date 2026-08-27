@@ -1,5 +1,6 @@
 import type { SubroutineDefinition, SuitedArchetype } from './subroutine-types';
 import { CLASS_STARTING_LOADOUTS } from './subroutines';
+import type { ModId } from './mod-types';
 
 /**
  * Class type system (Phase 4 checkpoint A). All 6 classes ship
@@ -11,16 +12,16 @@ import { CLASS_STARTING_LOADOUTS } from './subroutines';
  */
 export type ClassId = 'breacher' | 'blackhat' | 'saboteur' | 'operator' | 'warden' | 'ghost';
 
-/** The 6 bespoke starting passives (session 11) -- hand-coded hooks in
- * combat.ts/resolve.ts (Phase 4 checkpoint B), not a generic framework.
- * Referenced here as data so ClassDefinition can name which one a class
- * gets; the hook logic itself doesn't exist until checkpoint B. */
-export type PassiveId = 'foothold' | 'zeroDay' | 'sleeperCell' | 'primed' | 'feedbackLoop' | 'returnToSender';
-
+/** The 6 bespoke starting passives (session 11) are class-exclusive Mods
+ * (Phase 5 Mods checkpoint D) -- granted automatically at run start by
+ * class selection (see run.ts's createInitialPlayerState and
+ * resolve.ts's createCombatState), never appearing in the general
+ * reward/Shop pool. `startingPassiveId` just names *which* ModId a class
+ * gets; the ModDefinition + hook logic live in mods.ts/resolve.ts. */
 export interface ClassDefinition {
   id: ClassId;
   archetypes: [SuitedArchetype, SuitedArchetype];
-  startingPassiveId: PassiveId;
+  startingPassiveId: ModId;
   startingLoadout: SubroutineDefinition[];
 }
 
@@ -34,13 +35,13 @@ export const CLASS_DEFINITIONS: Record<ClassId, ClassDefinition> = {
   blackhat: {
     id: 'blackhat',
     archetypes: ['exploit', 'malware'],
-    startingPassiveId: 'zeroDay',
+    startingPassiveId: 'zero-day',
     startingLoadout: CLASS_STARTING_LOADOUTS.blackhat,
   },
   saboteur: {
     id: 'saboteur',
     archetypes: ['malware', 'root'],
-    startingPassiveId: 'sleeperCell',
+    startingPassiveId: 'sleeper-cell',
     startingLoadout: CLASS_STARTING_LOADOUTS.saboteur,
   },
   operator: {
@@ -52,13 +53,13 @@ export const CLASS_DEFINITIONS: Record<ClassId, ClassDefinition> = {
   warden: {
     id: 'warden',
     archetypes: ['malware', 'encryption'],
-    startingPassiveId: 'feedbackLoop',
+    startingPassiveId: 'feedback-loop',
     startingLoadout: CLASS_STARTING_LOADOUTS.warden,
   },
   ghost: {
     id: 'ghost',
     archetypes: ['encryption', 'root'],
-    startingPassiveId: 'returnToSender',
+    startingPassiveId: 'return-to-sender',
     startingLoadout: CLASS_STARTING_LOADOUTS.ghost,
   },
 };

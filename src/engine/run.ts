@@ -4,14 +4,32 @@ import { generateLayer } from './map-gen';
 import { assignGatekeeperEnemy } from './enemies';
 import { move } from './traversal';
 import { resolveEncounter, type EncounterOutcome } from './encounters';
-import { addHeat } from './heat';
+import { addHeat, HEAT_MAX } from './heat';
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
-import { acquireSubroutine, alwaysAcquireFirst, INSTALLED_SLOT_CAP, type AcquisitionStrategy } from './loadout';
+import { acquireSubroutine, alwaysAcquireFirst, installGrantedSubroutine, INSTALLED_SLOT_CAP, type AcquisitionStrategy } from './loadout';
 import { mergeSubroutine, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
-import { buyCheapestAffordable, rerollIfNothingAffordable, type ShopStrategy, type ShopRerollStrategy } from './shop';
+import {
+  buyCheapestAffordable,
+  rerollIfNothingAffordable,
+  buyCheapestAffordableMod,
+  rerollModIfNothingAffordable,
+  type ShopStrategy,
+  type ShopRerollStrategy,
+  type ModShopStrategy,
+  type ModShopRerollStrategy,
+} from './shop';
 import type { DiscardStrategy } from './deal';
 import type { PlayStrategy } from './pegging';
+import type { ModDefinition, ModId } from './mod-types';
+import {
+  MOD_DEFINITIONS,
+  applyOnMoveMods,
+  applyOnSubroutineAcquiredMods,
+  applyOnModAcquiredMods,
+  alwaysAcquireFirstMod,
+  type ModAcquisitionStrategy,
+} from './mods';
 
 /**
  * The run orchestrator (session 19/20 checkpoint F): ties layer
@@ -30,7 +48,13 @@ const DEFAULT_LAYER_NODE_COUNTS: [number, number, number, number] = [10, 12, 12,
  * fight. `material`/`rank` (checkpoint E, merge.ts) track banked
  * duplicate material and current Merge rank, both keyed by subroutine
  * id -- acquiring an already-owned id banks material instead of adding
- * a second copy. */
+ * a second copy. `ownedModIds`/`grantedByMod`/`maxHeatBonus`/
+ * `modRunState` (Phase 5 Mods checkpoints B/E/F) track every Mod owned
+ * this run (beyond the class's own guaranteed starting one -- see
+ * resolve.ts's createCombatState), which installedLoadout subroutine
+ * (if any) was granted by which Mod, any permanent max-Heat raise
+ * (Backup Generator), and generic one-shot/counter scratch bookkeeping
+ * for run-scoped Mods (mirrors resolve.ts's per-combat passiveState). */
 export interface RunPlayerState {
   classId: ClassId;
   installedLoadout: SubroutineDefinition[];
@@ -38,10 +62,40 @@ export interface RunPlayerState {
   bench: SubroutineDefinition[];
   material: Record<string, number>;
   rank: Record<string, number>;
+  ownedModIds: ModId[];
+  grantedByMod: Record<string, string>;
+  maxHeatBonus: number;
+  modRunState: Record<string, number>;
 }
 
 export function createInitialPlayerState(classId: ClassId): RunPlayerState {
-  return { classId, installedLoadout: CLASS_DEFINITIONS[classId].startingLoadout, data: 0, bench: [], material: {}, rank: {} };
+  return {
+    classId,
+    installedLoadout: CLASS_DEFINITIONS[classId].startingLoadout,
+    data: 0,
+    bench: [],
+    material: {},
+    rank: {},
+    ownedModIds: [CLASS_DEFINITIONS[classId].startingPassiveId],
+    grantedByMod: {},
+    maxHeatBonus: 0,
+    modRunState: {},
+  };
+}
+
+/** Finalizes a Mod acquisition (reward pick or Shop purchase alike) --
+ * Phase 5 Mods checkpoints E/F: records ownership, runs onModAcquired
+ * (Backup Generator's max-Heat raise), and inserts a granted-subroutine
+ * Mod's own piece (Auxiliary Process) into installedLoadout, cap-exempt
+ * and removal-locked. The uniqueness guard is defensive -- every Mod
+ * pool draw already excludes owned ids (mods.ts's modPoolForClass), so
+ * this should never actually trigger against real content. */
+function acquireMod(playerState: RunPlayerState, mod: ModDefinition): RunPlayerState {
+  if (playerState.ownedModIds.includes(mod.id)) return playerState;
+  let state: RunPlayerState = { ...playerState, ownedModIds: [...playerState.ownedModIds, mod.id] };
+  state = applyOnModAcquiredMods(state, mod.id);
+  if (mod.grantedSubroutine) state = installGrantedSubroutine(state, mod.grantedSubroutine, mod.id);
+  return state;
 }
 
 export type RunOutcome = 'heatMaxed' | 'quarantined' | 'noRouteRemains' | 'victory';
@@ -110,6 +164,10 @@ export interface RunOptions {
    * checkpoint D. Defaults to alwaysAcquireFirst (legal-not-good, no
    * rarity/synergy judgment). */
   acquisitionStrategy?: AcquisitionStrategy;
+  /** Which (if any) of an elite/gatekeeper win's additive Mod-reward
+   * options a script acquires (Phase 5 Mods checkpoint G) -- same
+   * legal-not-good default treatment as acquisitionStrategy. */
+  modAcquisitionStrategy?: ModAcquisitionStrategy;
   /** Slot cap for installedLoadout -- checkpoint D. */
   installedSlotCap?: number;
   /** Rest-vs-Merge choice at a Safehouse -- checkpoint E. Defaults to
@@ -122,6 +180,10 @@ export interface RunOptions {
    * before buying -- checkpoint F follow-up. Defaults to
    * rerollIfNothingAffordable (legal-not-good). */
   shopRerollStrategy?: ShopRerollStrategy;
+  /** Mirrors shopStrategy/shopRerollStrategy for the parallel Mod slate
+   * (Phase 5 Mods checkpoint G). */
+  modShopStrategy?: ModShopStrategy;
+  modShopRerollStrategy?: ModShopRerollStrategy;
   /** Test-only escape hatch (session 24, tunable-skill AI checkpoint A),
    * same treatment as installedLoadoutOverride above -- lets a sweep
    * exercise a skilled opponent (either side) in real fights via
@@ -141,10 +203,13 @@ export function playRun(options: RunOptions): RunResult {
     traversalStrategy = beelineToGatekeeper,
     installedLoadoutOverride,
     acquisitionStrategy = alwaysAcquireFirst,
+    modAcquisitionStrategy = alwaysAcquireFirstMod,
     installedSlotCap = INSTALLED_SLOT_CAP,
     safehouseStrategy = preferMergeWhenAvailable,
     shopStrategy = buyCheapestAffordable,
     shopRerollStrategy = rerollIfNothingAffordable,
+    modShopStrategy = buyCheapestAffordableMod,
+    modShopRerollStrategy = rerollModIfNothingAffordable,
     discardStrategies,
     playStrategies,
   } = options;
@@ -162,7 +227,7 @@ export function playRun(options: RunOptions): RunResult {
   // by position).
   let fightsResolved = 0;
   let playerState = installedLoadoutOverride
-    ? { classId, installedLoadout: installedLoadoutOverride, data: 0, bench: [], material: {}, rank: {} }
+    ? { ...createInitialPlayerState(classId), installedLoadout: installedLoadoutOverride }
     : createInitialPlayerState(classId);
 
   const finish = (outcome: RunOutcome): RunResult => ({ outcome, layersCompleted, finalHeat: heat, log, playerState });
@@ -192,9 +257,13 @@ export function playRun(options: RunOptions): RunResult {
       const moveResult = move(graph, position, targetId);
       position = moveResult.position;
 
-      const afterMove = addHeat(heat, moveResult.heatCost);
+      // Light Footing (Phase 5 Mods checkpoint E): discounts the flat
+      // per-move Heat cost before it's applied.
+      const moveHeatCost = applyOnMoveMods(playerState.ownedModIds, moveResult.heatCost);
+      const maxHeat = HEAT_MAX + playerState.maxHeatBonus; // Backup Generator (checkpoint E)
+      const afterMove = addHeat(heat, moveHeatCost, maxHeat);
       heat = afterMove.heat;
-      log.push({ type: 'move', layerIndex, from: fromNodeId, to: position.nodeId, heatCost: moveResult.heatCost, heatAfter: heat });
+      log.push({ type: 'move', layerIndex, from: fromNodeId, to: position.nodeId, heatCost: moveHeatCost, heatAfter: heat });
       if (afterMove.maxed) {
         log.push({ type: 'runEnded', outcome: 'heatMaxed' });
         return finish('heatMaxed');
@@ -216,21 +285,41 @@ export function playRun(options: RunOptions): RunResult {
         playStrategies,
         layerIndex + 1, // enemies.ts's layer numbering is 1-based
         fightsResolved,
+        undefined, // enemyIdOverride -- test-only, never set by real play
+        modShopStrategy,
+        modShopRerollStrategy,
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
-      const afterEncounter = addHeat(heat, outcome.heatDelta);
+      const afterEncounter = addHeat(heat, outcome.heatDelta, HEAT_MAX + playerState.maxHeatBonus);
       heat = afterEncounter.heat;
       if (outcome.dataAwarded > 0) playerState = { ...playerState, data: playerState.data + outcome.dataAwarded };
       if (outcome.rewardOptions.length > 0) {
         const picked = acquisitionStrategy(outcome.rewardOptions, playerState);
-        if (picked) playerState = acquireSubroutine(playerState, picked, installedSlotCap);
+        if (picked) {
+          playerState = acquireSubroutine(playerState, picked, installedSlotCap);
+          // Salvage Protocol (checkpoint E) -- checked against every
+          // acquired piece, reward or Shop alike, per its own no-op guards.
+          playerState = applyOnSubroutineAcquiredMods(playerState, picked);
+        }
+      }
+      // Mod-choice reward (checkpoint G) -- additive, elite/gatekeeper
+      // wins only, never competing with the subroutine reward above.
+      if (outcome.modRewardOptions.length > 0) {
+        const pickedMod = modAcquisitionStrategy(outcome.modRewardOptions, playerState);
+        if (pickedMod) playerState = acquireMod(playerState, pickedMod);
       }
       if (outcome.mergeTargetId) playerState = mergeSubroutine(playerState, outcome.mergeTargetId);
       if (outcome.rerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.rerollCost };
       if (outcome.shopPurchase) {
         playerState = { ...playerState, data: playerState.data - outcome.shopPurchase.cost };
         playerState = acquireSubroutine(playerState, outcome.shopPurchase.piece, installedSlotCap);
+        playerState = applyOnSubroutineAcquiredMods(playerState, outcome.shopPurchase.piece);
+      }
+      if (outcome.modRerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.modRerollCost };
+      if (outcome.modShopPurchase) {
+        playerState = { ...playerState, data: playerState.data - outcome.modShopPurchase.cost };
+        playerState = acquireMod(playerState, outcome.modShopPurchase.mod);
       }
       log.push({ type: 'encounter', layerIndex, nodeId: node.id, nodeType: node.type, outcome, heatAfter: heat });
 

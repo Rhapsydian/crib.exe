@@ -7,19 +7,27 @@ import { discardSkillStrategy, pegSkillStrategy } from './ai';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
 import { heatFromLoss } from './heat';
-import { drawRewardOptions, type RewardTier } from './rewards';
+import { drawRewardOptions, drawUpgradedRewardOptions, type RewardTier } from './rewards';
 import { dataForTier } from './data';
 import { pickMergeTarget, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
 import { pickRegularOrEliteEnemy, gatekeeperEnemyForNode, enemySkill, ENEMY_ROSTER, type EnemyDefinition, type EnemyId } from './enemies';
 import {
   shopOfferingsForClass,
+  modOfferingsForClass,
   buyCheapestAffordable,
+  buyCheapestAffordableMod,
   rerollIfNothingAffordable,
+  rerollModIfNothingAffordable,
   REROLL_COST,
   type ShopOffering,
   type ShopStrategy,
   type ShopRerollStrategy,
+  type ModOffering,
+  type ModShopStrategy,
+  type ModShopRerollStrategy,
 } from './shop';
+import type { ModDefinition } from './mod-types';
+import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersForOwnedMods } from './mods';
 
 /**
  * Node encounter resolution (session 19/20 checkpoint E, player loadout
@@ -75,6 +83,19 @@ export interface EncounterOutcome {
    * playerState-affecting fields: this just records the cost incurred;
    * playRun() applies it. */
   rerollCost: number;
+  /** The additive Mod-choice reward actually offered on an elite/
+   * gatekeeper win (Phase 5 Mods checkpoint G) -- empty for a regular
+   * win, a loss, or any non-fight outcome. Never competes with
+   * rewardOptions; playRun() applies whichever (if either) gets picked. */
+  modRewardOptions: ModDefinition[];
+  /** What a Shop visit bought from the Mod slate, or null -- mirrors
+   * shopPurchase for the parallel, independently-generated/rerolled Mod
+   * slate (session 30). */
+  modShopPurchase: ModOffering | null;
+  /** REROLL_COST if a Shop visit spent Data to reroll the Mod slate
+   * once, else 0 -- mirrors rerollCost for the Mod slate's own
+   * independent reroll decision. */
+  modRerollCost: number;
 }
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
@@ -150,22 +171,38 @@ function resolveFight(
     maxHands: FIGHT_MAX_HANDS,
     classId: playerState.classId,
     enemyPassiveIds: enemy.passiveIds,
+    ownedModIds: playerState.ownedModIds,
     discardStrategies: strategies.discardStrategies,
     playStrategies: strategies.playStrategies,
   });
 
   if (result.winner === 0) {
     const rewardTier: RewardTier = kind === 'regular' ? 'standard' : 'better';
+    // Additive Mod-choice reward on elite/gatekeeper wins only (session
+    // 30) -- never on a regular win, alongside Petty Cache/Black Budget's
+    // onEncounterResolved hooks (Phase 5 Mods checkpoint E).
+    const modRewardOptions = kind === 'regular' ? [] : drawModRewardOptions(playerState.classId, playerState.ownedModIds, rng);
+    const modified = applyOnWinEncounterResolvedMods(
+      playerState.ownedModIds,
+      dataForTier(rewardTier),
+      drawRewardOptions(playerState.classId, rewardTier, rng),
+      kind,
+      rng,
+      (r) => drawUpgradedRewardOptions(playerState.classId, r),
+    );
     return {
       newState: 'inert',
       heatDelta: result.playerHeatGenerated,
       quarantined: false,
       rewardTier,
-      dataAwarded: dataForTier(rewardTier),
-      rewardOptions: drawRewardOptions(playerState.classId, rewardTier, rng),
+      dataAwarded: modified.dataAwarded,
+      rewardOptions: modified.rewardOptions,
       mergeTargetId: null,
       shopPurchase: null,
       rerollCost: 0,
+      modRewardOptions,
+      modShopPurchase: null,
+      modRerollCost: 0,
     };
   }
   if (kind === 'gatekeeper') {
@@ -181,6 +218,9 @@ function resolveFight(
       mergeTargetId: null,
       shopPurchase: null,
       rerollCost: 0,
+      modRewardOptions: [],
+      modShopPurchase: null,
+      modRerollCost: 0,
     };
   }
   return {
@@ -193,6 +233,9 @@ function resolveFight(
     mergeTargetId: null,
     shopPurchase: null,
     rerollCost: 0,
+    modRewardOptions: [],
+    modShopPurchase: null,
+    modRerollCost: 0,
   };
 }
 
@@ -223,6 +266,12 @@ export function resolveEncounter(
    * a matchup guaranteed to be reliably offensive (or reliably weak),
    * not whichever real enemy the random pick happens to land on. */
   enemyIdOverride?: EnemyId,
+  /** Mirrors shopStrategy/shopRerollStrategy for the parallel Mod slate
+   * (Phase 5 Mods checkpoint G) -- appended at the end rather than
+   * inserted alongside the subroutine-shop params above, so every
+   * existing positional call site stays valid unchanged. */
+  modShopStrategy: ModShopStrategy = buyCheapestAffordableMod,
+  modShopRerollStrategy: ModShopRerollStrategy = rerollModIfNothingAffordable,
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
@@ -249,6 +298,9 @@ export function resolveEncounter(
           mergeTargetId: targetId,
           shopPurchase: null,
           rerollCost: 0,
+          modRewardOptions: [],
+          modShopPurchase: null,
+          modRerollCost: 0,
         };
       }
       return {
@@ -261,20 +313,44 @@ export function resolveEncounter(
         mergeTargetId: null,
         shopPurchase: null,
         rerollCost: 0,
+        modRewardOptions: [],
+        modShopPurchase: null,
+        modRerollCost: 0,
       };
     }
     case 'shop': {
-      const firstSlate = shopOfferingsForClass(playerState.classId, rng);
+      // Vendor Discount/Bulk Buyer (Phase 5 Mods checkpoint E) apply to
+      // both independent slates equally -- a Shop-wide effect, not
+      // subroutine-only.
+      const { discountFraction, extraCommons } = shopModifiersForOwnedMods(playerState.ownedModIds);
+      const firstSlate = shopOfferingsForClass(playerState.classId, rng, extraCommons, discountFraction);
       // "Once": the reroll strategy is only ever asked against the
       // first slate, never against a slate it already produced.
       const rerolled = playerState.data >= REROLL_COST && shopRerollStrategy(firstSlate, playerState);
-      const offerings = rerolled ? shopOfferingsForClass(playerState.classId, rng) : firstSlate;
+      const offerings = rerolled ? shopOfferingsForClass(playerState.classId, rng, extraCommons, discountFraction) : firstSlate;
       const rerollCost = rerolled ? REROLL_COST : 0;
-      // The purchase decision needs to see the post-reroll Data balance
+
+      // The Mod slate (session 30: "two independent slates in one Shop
+      // visit... both spending from the same Data pool") -- its own
+      // separately-generated, separately-rerollable draw.
+      const firstModSlate = modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, discountFraction);
+      const modRerolled = playerState.data >= REROLL_COST && modShopRerollStrategy(firstModSlate, playerState);
+      const modOfferings = modRerolled
+        ? modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, discountFraction)
+        : firstModSlate;
+      const modRerollCost = modRerolled ? REROLL_COST : 0;
+
+      // The purchase decisions need to see the post-reroll Data balance
       // -- otherwise a strategy could "spend" the reroll cost and then
-      // still buy up to the full pre-reroll balance, overspending.
-      const stateAfterReroll = rerollCost > 0 ? { ...playerState, data: playerState.data - rerollCost } : playerState;
-      const shopPurchase = shopStrategy(offerings, stateAfterReroll);
+      // still buy up to the full pre-reroll balance, overspending. Both
+      // rerolls (if either happened) are deducted before either
+      // purchase decision is made.
+      const stateAfterRerolls =
+        rerollCost + modRerollCost > 0 ? { ...playerState, data: playerState.data - rerollCost - modRerollCost } : playerState;
+      const shopPurchase = shopStrategy(offerings, stateAfterRerolls);
+      const stateAfterShopPurchase = shopPurchase ? { ...stateAfterRerolls, data: stateAfterRerolls.data - shopPurchase.cost } : stateAfterRerolls;
+      const modShopPurchase = modShopStrategy(modOfferings, stateAfterShopPurchase);
+
       return {
         newState: 'inert',
         heatDelta: 0,
@@ -285,6 +361,9 @@ export function resolveEncounter(
         mergeTargetId: null,
         shopPurchase,
         rerollCost,
+        modRewardOptions: [],
+        modShopPurchase,
+        modRerollCost,
       };
     }
     case 'event':
@@ -298,6 +377,9 @@ export function resolveEncounter(
         mergeTargetId: null,
         shopPurchase: null,
         rerollCost: 0,
+        modRewardOptions: [],
+        modShopPurchase: null,
+        modRerollCost: 0,
       };
     case 'relay':
       throw new Error('resolveEncounter should never be called on a Relay node -- it has no encounter');

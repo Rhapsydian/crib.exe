@@ -4,7 +4,19 @@ import type { SubroutineDefinition } from './subroutine-types';
 import { easeTriggerCondition, mergeSubroutine, preferMergeWhenAvailable, pickMergeTarget, MERGE_RANK_CAP } from './merge';
 
 function playerState(overrides: Partial<RunPlayerState> = {}): RunPlayerState {
-  return { classId: 'breacher', installedLoadout: [], bench: [], data: 0, material: {}, rank: {}, ...overrides };
+  return {
+    classId: 'breacher',
+    installedLoadout: [],
+    bench: [],
+    data: 0,
+    material: {},
+    rank: {},
+    ownedModIds: [],
+    grantedByMod: {},
+    maxHeatBonus: 0,
+    modRunState: {},
+    ...overrides,
+  };
 }
 
 describe('easeTriggerCondition', () => {

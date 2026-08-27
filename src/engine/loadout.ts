@@ -13,11 +13,20 @@ import type { RunPlayerState } from './run';
 
 export const INSTALLED_SLOT_CAP = 6; // TBD/playtesting -- floated as flavor only, session 7
 
+/** Number of installedLoadout entries that actually count against
+ * slotCap -- excludes any entry granted by a Mod (Phase 5 Mods
+ * checkpoint F: `grantedByMod` tracks these by subroutine id), which are
+ * cap-exempt and removal-locked (see uninstallSubroutine below) but
+ * otherwise ordinary loadout members. */
+function cappedInstalledCount(playerState: RunPlayerState): number {
+  return playerState.installedLoadout.filter((piece) => !playerState.grantedByMod[piece.id]).length;
+}
+
 /** Moves `id` from bench to installedLoadout, appended at the end. A
- * no-op if `id` isn't on the bench, or if installedLoadout is already
- * at `slotCap`. */
+ * no-op if `id` isn't on the bench, or if the cap-counted portion of
+ * installedLoadout is already at `slotCap`. */
 export function installSubroutine(playerState: RunPlayerState, id: string, slotCap: number = INSTALLED_SLOT_CAP): RunPlayerState {
-  if (playerState.installedLoadout.length >= slotCap) return playerState;
+  if (cappedInstalledCount(playerState) >= slotCap) return playerState;
   const index = playerState.bench.findIndex((piece) => piece.id === id);
   if (index === -1) return playerState;
   const piece = playerState.bench[index];
@@ -27,14 +36,31 @@ export function installSubroutine(playerState: RunPlayerState, id: string, slotC
 }
 
 /** Moves `id` from installedLoadout to bench, appended at the end of the
- * bench. A no-op if `id` isn't currently installed. */
+ * bench. A no-op if `id` isn't currently installed, or if it's a
+ * Mod-granted entry (locked against removal, Phase 5 Mods checkpoint F). */
 export function uninstallSubroutine(playerState: RunPlayerState, id: string): RunPlayerState {
+  if (playerState.grantedByMod[id]) return playerState;
   const index = playerState.installedLoadout.findIndex((piece) => piece.id === id);
   if (index === -1) return playerState;
   const piece = playerState.installedLoadout[index];
   const installedLoadout = playerState.installedLoadout.slice();
   installedLoadout.splice(index, 1);
   return { ...playerState, installedLoadout, bench: [...playerState.bench, piece] };
+}
+
+/** Inserts a Mod-granted subroutine directly into installedLoadout,
+ * always-slotted, cap-exempt, and locked against removal (Phase 5 Mods
+ * checkpoint F -- Auxiliary Process's own mechanism, session 31). No
+ * bench step: unlike a normal acquisition, a granted piece is never
+ * "owned but not installed." reorderInstalled needs no special-casing --
+ * a granted entry participates in normal ordering/chaining like any
+ * other loadout member, only exempt from the cap and removal. */
+export function installGrantedSubroutine(playerState: RunPlayerState, subroutine: SubroutineDefinition, grantingModId: string): RunPlayerState {
+  return {
+    ...playerState,
+    installedLoadout: [...playerState.installedLoadout, subroutine],
+    grantedByMod: { ...playerState.grantedByMod, [subroutine.id]: grantingModId },
+  };
 }
 
 /** Moves the installedLoadout entry at `fromIndex` to `toIndex` --

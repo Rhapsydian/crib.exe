@@ -129,3 +129,16 @@ export function drawRewardOptions(classId: ClassId, tier: RewardTier, rng: Rng):
   const weighted = pool.map((piece) => ({ piece, weight: weights[rarityOf(piece.id)] }));
   return weightedSampleWithoutReplacement(weighted, REWARD_OPTIONS_COUNT, rng);
 }
+
+// TBD/playtesting -- a real shot at rares beyond even 'better', Black
+// Budget's own "upgrade rarity by one tier" (Mods checkpoint H).
+const UPGRADED_RARITY_WEIGHTS: Record<Rarity, number> = { common: 20, uncommon: 40, rare: 40 };
+
+/** Black Budget (Mods checkpoint H): re-draws a reward choice at a
+ * rarity weighting even more generous than 'better', rather than adding
+ * a 4th RewardTier value just for one Mod's own upgrade chance. */
+export function drawUpgradedRewardOptions(classId: ClassId, rng: Rng): SubroutineDefinition[] {
+  const pool = rewardPoolForClass(classId);
+  const weighted = pool.map((piece) => ({ piece, weight: UPGRADED_RARITY_WEIGHTS[rarityOf(piece.id)] }));
+  return weightedSampleWithoutReplacement(weighted, REWARD_OPTIONS_COUNT, rng);
+}

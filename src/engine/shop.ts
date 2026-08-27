@@ -3,6 +3,8 @@ import type { RunPlayerState } from './run';
 import type { ClassId } from './classes';
 import type { Rng } from './rng';
 import { rarityOf, rewardPoolForClass, type Rarity } from './rewards';
+import type { ModDefinition, ModId } from './mod-types';
+import { modPoolForClass } from './mods';
 
 /**
  * Shop wiring (Phase 4 checkpoint F): spends Data on a specific pick,
@@ -24,8 +26,10 @@ const SHOP_COST_BY_RARITY: Record<Rarity, number> = {
   rare: 150,
 };
 
-export function shopCostOf(id: string): number {
-  return SHOP_COST_BY_RARITY[rarityOf(id)];
+/** `discountFraction` (Vendor Discount, Mods checkpoint E/H) knocks a
+ * flat percentage off the base price, rounded to the nearest whole Data. */
+export function shopCostOf(id: string, discountFraction = 0): number {
+  return Math.round(SHOP_COST_BY_RARITY[rarityOf(id)] * (1 - discountFraction));
 }
 
 export interface ShopOffering {
@@ -58,14 +62,16 @@ function sampleDistinct<T>(items: T[], count: number, rng: Rng): T[] {
   return picked;
 }
 
-/** The Shop's slate for one visit: 3 commons, 1 uncommon, and one more
- * slot that's a coin flip between another uncommon or a rare -- a
- * fixed-size random subset of the class's reward pool, not the whole
- * thing (that would make Data a non-choice once a player could afford
- * everything). Re-rolled fresh from `rng` each visit. */
-export function shopOfferingsForClass(classId: ClassId, rng: Rng): ShopOffering[] {
+/** The Shop's slate for one visit: 3 commons (+ `extraCommons`, Bulk
+ * Buyer, Mods checkpoint E/H), 1 uncommon, and one more slot that's a
+ * coin flip between another uncommon or a rare -- a fixed-size random
+ * subset of the class's reward pool, not the whole thing (that would
+ * make Data a non-choice once a player could afford everything).
+ * Re-rolled fresh from `rng` each visit. `discountFraction` (Vendor
+ * Discount) is applied per-offering via shopCostOf. */
+export function shopOfferingsForClass(classId: ClassId, rng: Rng, extraCommons = 0, discountFraction = 0): ShopOffering[] {
   const byRarity = poolByRarity(classId);
-  const commons = sampleDistinct(byRarity.common, SHOP_COMMON_SLOTS, rng);
+  const commons = sampleDistinct(byRarity.common, SHOP_COMMON_SLOTS + extraCommons, rng);
   const uncommon = sampleDistinct(byRarity.uncommon, 1, rng);
 
   const wildcardTier: Rarity = rng.next() < 0.5 ? 'uncommon' : 'rare';
@@ -73,8 +79,76 @@ export function shopOfferingsForClass(classId: ClassId, rng: Rng): ShopOffering[
     wildcardTier === 'uncommon' ? byRarity.uncommon.filter((piece) => !uncommon.some((picked) => picked.id === piece.id)) : byRarity.rare;
   const wildcard = sampleDistinct(wildcardPool, 1, rng);
 
-  return [...commons, ...uncommon, ...wildcard].map((piece) => ({ piece, cost: shopCostOf(piece.id) }));
+  return [...commons, ...uncommon, ...wildcard].map((piece) => ({ piece, cost: shopCostOf(piece.id, discountFraction) }));
 }
+
+// ---------------------------------------------------------------------
+// Mods' own independent Shop slate (Phase 5 Mods checkpoint G, session
+// 30: "two independent slates in one Shop visit... both spending from
+// the same Data pool"). Same shape as the subroutine slate above (3
+// commons/1 uncommon/1 wildcard), its own separate reroll.
+// ---------------------------------------------------------------------
+
+// TBD/playtesting, same relative scaling as SHOP_COST_BY_RARITY.
+const MOD_SHOP_COST_BY_RARITY: Record<Rarity, number> = {
+  common: 25,
+  uncommon: 70,
+  rare: 175,
+};
+
+export interface ModOffering {
+  mod: ModDefinition;
+  cost: number;
+}
+
+export function modShopCostOf(rarity: Rarity, discountFraction = 0): number {
+  return Math.round(MOD_SHOP_COST_BY_RARITY[rarity] * (1 - discountFraction));
+}
+
+function modPoolByRarity(classId: ClassId, ownedModIds: ModId[]): Record<Rarity, ModDefinition[]> {
+  const pool = modPoolForClass(classId, ownedModIds);
+  return {
+    common: pool.filter((mod) => mod.rarity === 'common'),
+    uncommon: pool.filter((mod) => mod.rarity === 'uncommon'),
+    rare: pool.filter((mod) => mod.rarity === 'rare'),
+  };
+}
+
+export function modOfferingsForClass(classId: ClassId, ownedModIds: ModId[], rng: Rng, extraCommons = 0, discountFraction = 0): ModOffering[] {
+  const byRarity = modPoolByRarity(classId, ownedModIds);
+  const commons = sampleDistinct(byRarity.common, SHOP_COMMON_SLOTS + extraCommons, rng);
+  const uncommon = sampleDistinct(byRarity.uncommon, 1, rng);
+
+  const wildcardTier: Rarity = rng.next() < 0.5 ? 'uncommon' : 'rare';
+  const wildcardPool =
+    wildcardTier === 'uncommon' ? byRarity.uncommon.filter((mod) => !uncommon.some((picked) => picked.id === mod.id)) : byRarity.rare;
+  const wildcard = sampleDistinct(wildcardPool, 1, rng);
+
+  return [...commons, ...uncommon, ...wildcard].map((mod) => ({ mod, cost: modShopCostOf(mod.rarity, discountFraction) }));
+}
+
+/** Decides which (if any) Mod offering a script buys -- mirrors
+ * ShopStrategy for the parallel Mod slate. */
+export type ModShopStrategy = (offerings: ModOffering[], playerState: RunPlayerState) => ModOffering | null;
+
+/** Legal-not-good default, same shape as buyCheapestAffordable. */
+export const buyCheapestAffordableMod: ModShopStrategy = (offerings, playerState) => {
+  const affordable = offerings.filter((offering) => offering.cost <= playerState.data);
+  if (affordable.length === 0) return null;
+  return affordable.reduce((cheapest, offering) => (offering.cost < cheapest.cost ? offering : cheapest));
+};
+
+/** Decides whether to spend REROLL_COST to reroll the Mod slate once --
+ * mirrors ShopRerollStrategy, its own independent reroll (session 30:
+ * "not one combined slate/reroll... different gambles over different
+ * pools"). */
+export type ModShopRerollStrategy = (offerings: ModOffering[], playerState: RunPlayerState) => boolean;
+
+export const rerollModIfNothingAffordable: ModShopRerollStrategy = (offerings, playerState) => {
+  const canAffordReroll = playerState.data >= REROLL_COST;
+  const canAffordSomething = offerings.some((offering) => offering.cost <= playerState.data);
+  return canAffordReroll && !canAffordSomething;
+};
 
 /** Decides which (if any) Shop offering a script buys. Returns null to
  * decline (or when nothing is affordable). Mirrors AcquisitionStrategy/

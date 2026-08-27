@@ -77,6 +77,10 @@ function playerWithBurst(amount: number): RunPlayerState {
     bench: [],
     material: {},
     rank: {},
+    ownedModIds: [],
+    grantedByMod: {},
+    maxHeatBonus: 0,
+    modRunState: {},
   };
 }
 
@@ -87,6 +91,10 @@ const OVERWHELMING_PLAYER: RunPlayerState = {
   bench: [],
   material: {},
   rank: {},
+  ownedModIds: [],
+  grantedByMod: {},
+  maxHeatBonus: 0,
+  modRunState: {},
 };
 const NEGLIGIBLE_PLAYER = playerWithBurst(0.1);
 const SEEDS = [1, 2, 3];
@@ -243,6 +251,9 @@ describe('resolveEncounter -- non-fight nodes', () => {
       mergeTargetId: null,
       shopPurchase: null,
       rerollCost: 0,
+      modRewardOptions: [],
+      modShopPurchase: null,
+      modRerollCost: 0,
     });
   });
 
@@ -259,6 +270,9 @@ describe('resolveEncounter -- non-fight nodes', () => {
       mergeTargetId: 'buffer-overflow',
       shopPurchase: null,
       rerollCost: 0,
+      modRewardOptions: [],
+      modShopPurchase: null,
+      modRerollCost: 0,
     });
   });
 
@@ -274,6 +288,9 @@ describe('resolveEncounter -- non-fight nodes', () => {
       mergeTargetId: null,
       shopPurchase: null,
       rerollCost: 0,
+      modRewardOptions: [],
+      modShopPurchase: null,
+      modRerollCost: 0,
     });
   });
 
@@ -290,6 +307,10 @@ describe('resolveEncounter -- non-fight nodes', () => {
       mergeTargetId: null,
       shopPurchase: null,
       rerollCost: 0,
+      // 0 Data affords nothing on either slate -- both decline.
+      modRewardOptions: [],
+      modShopPurchase: null,
+      modRerollCost: 0,
     });
   });
 

@@ -25,10 +25,12 @@ export interface HeatUpdate {
 }
 
 /** Adds (or, with a negative amount, subtracts -- e.g. Rest) Heat,
- * clamped to [0, HEAT_MAX]. */
-export function addHeat(current: number, amount: number): HeatUpdate {
-  const heat = Math.min(HEAT_MAX, Math.max(0, current + amount));
-  return { heat, maxed: heat >= HEAT_MAX };
+ * clamped to [0, max]. `max` defaults to HEAT_MAX but is overridable --
+ * Backup Generator (Mods checkpoint E/H) permanently raises a run's own
+ * cap via RunPlayerState.maxHeatBonus, threaded in from run.ts. */
+export function addHeat(current: number, amount: number, max: number = HEAT_MAX): HeatUpdate {
+  const heat = Math.min(max, Math.max(0, current + amount));
+  return { heat, maxed: heat >= max };
 }
 
 /**
