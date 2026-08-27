@@ -160,6 +160,11 @@ export interface RunOptions {
    * that led encounters.test.ts to a deliberately lopsided player
    * construction instead of a seed sweep. Never used outside tests. */
   installedLoadoutOverride?: SubroutineDefinition[];
+  /** Test-only escape hatch, same treatment as installedLoadoutOverride
+   * -- lets a test start a run with a specific set of Mods already
+   * owned (beyond the class's own guaranteed starting one), rather than
+   * depending on natural elite/gatekeeper reward luck across a seed. */
+  ownedModIdsOverride?: ModId[];
   /** Which (if any) of a won fight's reward options a script acquires --
    * checkpoint D. Defaults to alwaysAcquireFirst (legal-not-good, no
    * rarity/synergy judgment). */
@@ -202,6 +207,7 @@ export function playRun(options: RunOptions): RunResult {
     layerNodeCounts = DEFAULT_LAYER_NODE_COUNTS,
     traversalStrategy = beelineToGatekeeper,
     installedLoadoutOverride,
+    ownedModIdsOverride,
     acquisitionStrategy = alwaysAcquireFirst,
     modAcquisitionStrategy = alwaysAcquireFirstMod,
     installedSlotCap = INSTALLED_SLOT_CAP,
@@ -229,6 +235,14 @@ export function playRun(options: RunOptions): RunResult {
   let playerState = installedLoadoutOverride
     ? { ...createInitialPlayerState(classId), installedLoadout: installedLoadoutOverride }
     : createInitialPlayerState(classId);
+  // Routed through the same acquireMod each real Mod pickup uses (not a
+  // raw ownedModIds splice), so onModAcquired's real side effects
+  // (Backup Generator's max-Heat raise, Auxiliary Process's granted
+  // subroutine) apply exactly as they would from a real acquisition.
+  for (const modId of ownedModIdsOverride ?? []) {
+    const mod = MOD_DEFINITIONS[modId];
+    if (mod) playerState = acquireMod(playerState, mod);
+  }
 
   const finish = (outcome: RunOutcome): RunResult => ({ outcome, layersCompleted, finalHeat: heat, log, playerState });
 
