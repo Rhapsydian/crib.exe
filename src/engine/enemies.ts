@@ -173,30 +173,56 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   { id: 'fuzzer-bot', name: 'Fuzzer Bot', tier: 'regular', archetypes: ['exploit'], minLayer: 2, loadout: [pool('fuzzer'), pool('race-condition')], passiveIds: ['trial-and-error'] },
   { id: 'botnet-node', name: 'Botnet Node', tier: 'regular', archetypes: ['malware'], minLayer: 1, loadout: [pool('botnet'), pool('adware')], passiveIds: ['still-spreading'] },
   { id: 'keylogger-process', name: 'Keylogger Process', tier: 'regular', archetypes: ['malware'], minLayer: 2, loadout: [pool('keylogger'), pool('corrupted-cache')], passiveIds: ['long-runtime'] },
-  { id: 'legacy-firewall', name: 'Legacy Firewall', tier: 'regular', archetypes: ['encryption'], minLayer: 1, loadout: [pool('basic-auth'), pool('checksum')], passiveIds: ['stubborn-default'] },
-  { id: 'access-gate', name: 'Access Gate', tier: 'regular', archetypes: ['encryption'], minLayer: 2, loadout: [pool('two-factor'), pool('sandboxing')], passiveIds: ['locked-down'] },
+  // Session 28 retrofit: Legacy Firewall's original 2-piece kit
+  // (basic-auth/checksum, both instantCounterPush) had zero payload
+  // that credits its own gauge -- structurally incapable of ever
+  // winning outright (DESIGN.md's Neutral Archetype section). Background
+  // Task (neutral common) gives it a small, real, unconditional credit.
+  { id: 'legacy-firewall', name: 'Legacy Firewall', tier: 'regular', archetypes: ['encryption'], minLayer: 1, loadout: [pool('basic-auth'), pool('checksum'), pool('background-task')], passiveIds: ['stubborn-default'] },
+  // Session 28 retrofit: same structural gap as Legacy Firewall --
+  // two-factor/sandboxing are both pure mitigation. Checksum Match
+  // (neutral common, occurrence:fifteen) instead of Background Task for
+  // roster variety (see Legacy Firewall's own note).
+  { id: 'access-gate', name: 'Access Gate', tier: 'regular', archetypes: ['encryption'], minLayer: 2, loadout: [pool('two-factor'), pool('sandboxing'), pool('checksum-match')], passiveIds: ['locked-down'] },
   { id: 'drive-by-kit', name: 'Drive-By Kit', tier: 'regular', archetypes: ['exploit', 'malware'], minLayer: 1, loadout: [pool('off-by-one'), pool('ransomware')], passiveIds: ['smash-and-grab'] },
   { id: 'rogue-endpoint', name: 'Rogue Endpoint', tier: 'regular', archetypes: ['exploit', 'malware'], minLayer: 2, loadout: [pool('credential-stuffing'), pool('trojan'), pool('race-condition')], passiveIds: ['opportunist'] },
   { id: 'patch-runner', name: 'Patch Runner', tier: 'regular', archetypes: ['exploit', 'encryption'], minLayer: 1, loadout: [pool('port-scan'), pool('patch')], passiveIds: ['cover-your-tracks'] },
   { id: 'perimeter-sentry', name: 'Perimeter Sentry', tier: 'regular', archetypes: ['exploit', 'encryption'], minLayer: 2, loadout: [pool('privilege-escalation'), pool('access-control')], passiveIds: ['hold-the-line'] },
   { id: 'quarantine-daemon', name: 'Quarantine Daemon', tier: 'regular', archetypes: ['malware', 'encryption'], minLayer: 1, loadout: [pool('patch-notes'), pool('adware')], passiveIds: ['steady-state'] },
-  { id: 'hardened-workstation', name: 'Hardened Workstation', tier: 'regular', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [pool('sandboxing'), pool('two-factor'), pool('slowloris')], passiveIds: ['grinds-you-down'] },
+  // Session 28 retrofit: Slowloris applies a debuff only (no DoT), so
+  // this kit had no credit-capable piece either -- swapped for Steady
+  // Drip (neutral common, accumulator:points) rather than adding a 4th
+  // piece, keeping Regular's 1-3-subroutine sizing.
+  { id: 'hardened-workstation', name: 'Hardened Workstation', tier: 'regular', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [pool('sandboxing'), pool('two-factor'), pool('steady-drip')], passiveIds: ['grinds-you-down'] },
 
   // --- Elite (8) -- 3+ subroutines, mostly uncommons ---
   { id: 'zero-day-broker', name: 'Zero-Day Broker', tier: 'elite', archetypes: ['exploit'], minLayer: 2, loadout: [pool('zero-day-chain'), pool('buffer-overrun'), pool('payload-multiplier')], passiveIds: ['fresh-exploit'] },
   { id: 'ransomware-deployment', name: 'Ransomware Deployment', tier: 'elite', archetypes: ['malware'], minLayer: 2, loadout: [pool('fork-bomb'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['escalating-demand'] },
-  { id: 'zero-trust-node', name: 'Zero Trust Node', tier: 'elite', archetypes: ['encryption'], minLayer: 2, loadout: [pool('rate-limiting'), pool('honeypot'), pool('redundant-backup')], passiveIds: ['no-exceptions'] },
+  // Session 28 retrofit: an all-mitigation Elite kit (same structural
+  // gap) -- Overclock (neutral uncommon, selfState:heatAbove) added as
+  // a 4th piece, "pushed to its limits, it strikes back."
+  { id: 'zero-trust-node', name: 'Zero Trust Node', tier: 'elite', archetypes: ['encryption'], minLayer: 2, loadout: [pool('rate-limiting'), pool('honeypot'), pool('redundant-backup'), pool('overclock')], passiveIds: ['no-exceptions'] },
   { id: 'compromised-ad-server', name: 'Compromised Ad Server', tier: 'elite', archetypes: ['exploit', 'malware'], minLayer: 2, loadout: [pool('watering-hole'), pool('polymorphic-worm'), pool('off-by-one')], passiveIds: ['infection-vector'] },
   { id: 'hardened-perimeter', name: 'Hardened Perimeter', tier: 'elite', archetypes: ['exploit', 'encryption'], minLayer: 2, loadout: [pool('watering-hole'), pool('air-gap'), pool('privilege-escalation')], passiveIds: ['foothold-reinforced'] },
   { id: 'blackout-cell', name: 'Blackout Cell', tier: 'elite', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [pool('persistent-threat'), pool('redundant-backup'), pool('slowloris')], passiveIds: ['attrition', 'held-together'] },
-  { id: 'backchannel-handler', name: 'Backchannel Handler', tier: 'elite', archetypes: ['root'], minLayer: 3, loadout: [pool('backchannel'), pool('dns-poisoning'), pool('dead-drop')], passiveIds: ['dead-drop-protocol', 'off-the-grid'] },
+  // Session 28 retrofit: a pure recon/denial Root kit, zero credit --
+  // Chain Reaction (neutral uncommon, occurrence:run) added as a 4th
+  // piece, "the recon pays off in a real strike."
+  { id: 'backchannel-handler', name: 'Backchannel Handler', tier: 'elite', archetypes: ['root'], minLayer: 3, loadout: [pool('backchannel'), pool('dns-poisoning'), pool('dead-drop'), pool('chain-reaction')], passiveIds: ['dead-drop-protocol', 'off-the-grid'] },
   { id: 'compromised-dependency', name: 'Compromised Dependency', tier: 'elite', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('supply-route'), pool('polymorphic-worm'), pool('fork-bomb')], passiveIds: ['sleeper-network'] },
 
   // --- Gatekeeper (12) -- fully bespoke, one stable per layer ---
   // Layer 1 -- perimeter/DMZ
   { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'encryption'], minLayer: 1, loadout: [pool('total-pwnage'), pool('patch'), pool('full-rollback'), pool('privilege-escalation')], passiveIds: ['reception-protocol'] },
-  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['encryption'], minLayer: 1, loadout: [pool('zero-trust'), pool('air-gap'), pool('redundant-backup')], passiveIds: ['no-way-in'] },
-  { id: 'ghost-process', name: 'Ghost Process', tier: 'gatekeeper', archetypes: ['root'], minLayer: 1, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('dns-poisoning')], passiveIds: ['digital-ghost'] },
+  // Session 28 retrofit: an all-mitigation gatekeeper -- Circuit
+  // Breaker (neutral rare) is a near-perfect thematic fit for the
+  // roster's purest defensive identity, converting exactly the
+  // mitigation this kit already generates into a real strike.
+  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['encryption'], minLayer: 1, loadout: [pool('zero-trust'), pool('air-gap'), pool('redundant-backup'), pool('circuit-breaker')], passiveIds: ['no-way-in'] },
+  // Session 28 retrofit: cron-job/full-system-compromise/dns-poisoning
+  // are all denial/manipulation, zero credit -- Watchdog Timer (neutral
+  // rare, occurrence:go, scaling) added: "keep calling Go, it corners you."
+  { id: 'ghost-process', name: 'Ghost Process', tier: 'gatekeeper', archetypes: ['root'], minLayer: 1, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('dns-poisoning'), pool('watchdog-timer')], passiveIds: ['digital-ghost'] },
   // Layer 2 -- internal LAN
   { id: 'incident-response', name: 'Incident Response', tier: 'gatekeeper', archetypes: ['exploit'], minLayer: 2, loadout: [pool('supply-chain-compromise'), pool('vulnerability-scan'), pool('zero-day-chain')], passiveIds: ['highest-bidder'] },
   { id: 'the-quarantine-ward', name: 'The Quarantine Ward', tier: 'gatekeeper', archetypes: ['malware', 'encryption'], minLayer: 2, loadout: [pool('epidemic'), pool('cold-storage'), pool('slowloris')], passiveIds: ['total-quarantine'] },
@@ -206,9 +232,17 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['exploit', 'malware'], minLayer: 3, loadout: [pool('vulnerability-scan'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['adaptive-defense'] },
   { id: 'silent-corruption', name: 'Silent Corruption', tier: 'gatekeeper', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('rootkit-deployment'), pool('epidemic'), pool('supply-route')], passiveIds: ['total-corruption'] },
   // Layer 4 -- core
-  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('air-gap')], passiveIds: ['null-session-passive'] },
+  // Session 28 retrofit: air-gap was already dead weight (its reactive
+  // trigger needs the caster's own Heat above a threshold, and enemies
+  // have no Heat source) on top of the kit's zero-credit problem --
+  // swapped for Circuit Breaker (neutral rare), the run's real
+  // final-boss layer earning the strongest fix.
+  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('circuit-breaker')], passiveIds: ['null-session-passive'] },
   { id: 'kernel-panic', name: 'Kernel Panic', tier: 'gatekeeper', archetypes: ['exploit', 'malware', 'encryption'], minLayer: 4, loadout: [pool('total-pwnage'), pool('epidemic'), pool('cold-storage')], passiveIds: ['redundant-kernel'] },
-  { id: 'ghost-in-the-machine', name: 'Ghost in the Machine', tier: 'gatekeeper', archetypes: ['root'], minLayer: 4, loadout: [pool('dns-poisoning'), pool('dead-drop'), pool('backchannel')], passiveIds: ['total-access'] },
+  // Session 28 retrofit: same pure recon/denial trio as its Layer 1
+  // echo, Ghost Process -- Watchdog Timer again (deliberate reuse,
+  // reinforcing the two enemies' own intentional narrative link).
+  { id: 'ghost-in-the-machine', name: 'Ghost in the Machine', tier: 'gatekeeper', archetypes: ['root'], minLayer: 4, loadout: [pool('dns-poisoning'), pool('dead-drop'), pool('backchannel'), pool('watchdog-timer')], passiveIds: ['total-access'] },
 ];
 
 /** Every enemy eligible for `tier` at `layerIndex` -- a floor for
