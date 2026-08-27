@@ -30,13 +30,22 @@ export interface InitiativeGaugeUpdate {
  * reports multiple triggered turns — a hand-count that dumps 24 points
  * against a threshold of 12 is 2 full turns, not 1 turn plus 12 wasted
  * points.
+ *
+ * Defensive floor: a threshold at or below 0 would make the loop below
+ * never terminate (progress never decreases). resolve.ts's own callers
+ * that reduce a threshold (Haste, Choked's reversal) are already floored
+ * at 1, but a real engine hang did happen here once (session 28,
+ * checkpoint E's balance sweep — Choked's un-floored reversal-on-expiry
+ * landed exactly on 0), so this function guards itself too rather than
+ * trusting every future caller to maintain the invariant correctly.
  */
 export function addPoints(gauge: InitiativeGauge, points: number): InitiativeGaugeUpdate {
   if (points <= 0) return { gauge, turnsTriggered: 0 };
+  const threshold = Math.max(1, gauge.threshold);
   let progress = gauge.progress + points;
   let turnsTriggered = 0;
-  while (progress >= gauge.threshold) {
-    progress -= gauge.threshold;
+  while (progress >= threshold) {
+    progress -= threshold;
     turnsTriggered += 1;
   }
   return { gauge: { ...gauge, progress }, turnsTriggered };

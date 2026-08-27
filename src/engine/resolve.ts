@@ -275,12 +275,23 @@ function corruptionMultiplier(combatState: CombatState, side: PlayerIndex): numb
 const THROTTLED_REDUCTION = 4; // x -- TBD/playtesting
 const THROTTLED_FLOOR = 1; // y -- TBD/playtesting
 
-/** Floor for ownGaugeThreshold's reduction (session 24 haste) -- must
- * stay above 0, since gauges.ts's addPoints loops "while progress >=
- * threshold," and a threshold of exactly 0 would loop forever the next
- * time any points at all are credited. TBD/playtesting beyond that hard
- * floor. */
-const HASTE_MIN_INITIATIVE_THRESHOLD = 1;
+/** Floor for *any* reduction to a side's own initiative-gauge threshold
+ * -- must stay above 0, since gauges.ts's addPoints loops "while
+ * progress >= threshold," and a threshold of exactly 0 (or negative)
+ * loops forever the next time any points at all are credited. Originally
+ * scoped just to Haste's own reduction (session 24), but Choked's
+ * un-floored reversal-on-expiry/early-cleanse (tickDebuffDurations, the
+ * 'cleanse' case below) turned out to need the exact same guard: Choked
+ * raises a threshold by a fixed amount and later reverts it by that same
+ * fixed amount, with no awareness of whatever *else* touched the same
+ * threshold in between (Haste's own floored reduction, most concretely)
+ * -- found as a genuine engine hang (session 28, checkpoint E's balance
+ * sweep), not a hypothetical: Botnet's Choked raised Ghost in the
+ * Machine's threshold, DNS Poisoning's Haste then floor-reduced it, and
+ * Choked's natural expiry reverted its own original bump unconditionally,
+ * landing exactly on 0 and spinning addPoints forever. TBD/playtesting
+ * beyond that hard floor. */
+const MIN_INITIATIVE_THRESHOLD = 1;
 
 /** Throttled (a debuff kind) dents points about to be credited to a
  * side's gauge -- a flat reduction with a floor, clamped so it can
@@ -1000,10 +1011,14 @@ function resolvePayloadCore(
       debuffs.splice(index, 1);
       // Cleansing a Choked debuff early must revert its threshold bump
       // too, same as natural expiry does (tickDebuffDurations) -- it
-      // shouldn't outlive the debuff record that caused it.
+      // shouldn't outlive the debuff record that caused it. Floored at
+      // MIN_INITIATIVE_THRESHOLD, same as Haste's own reduction -- an
+      // un-floored revert can land at or below 0 if something else
+      // (most concretely, Haste) also reduced this threshold in the
+      // meantime, which would hang gauges.ts's addPoints forever.
       const gauge =
         removed.debuffId === 'choked'
-          ? { ...casterState.gauge, threshold: casterState.gauge.threshold - removed.magnitude }
+          ? { ...casterState.gauge, threshold: Math.max(MIN_INITIATIVE_THRESHOLD, casterState.gauge.threshold - removed.magnitude) }
           : casterState.gauge;
       const sides = replaceSide(combatState.sides, caster, { ...casterState, debuffs, gauge });
       return { ...combatState, sides };
@@ -1043,10 +1058,10 @@ function resolvePayloadCore(
       if (payload.target === 'ownGaugeThreshold') {
         // Haste's other half -- the mirror of enemyGaugeThreshold's
         // permanent raise, floored so it can never reach a threshold of
-        // 0 (see HASTE_MIN_INITIATIVE_THRESHOLD's own comment for why
-        // that specifically would be unsafe, not just undesirable).
+        // 0 (see MIN_INITIATIVE_THRESHOLD's own comment for why that
+        // specifically would be unsafe, not just undesirable).
         const casterState = combatState.sides[caster];
-        const threshold = Math.max(HASTE_MIN_INITIATIVE_THRESHOLD, casterState.gauge.threshold - amount);
+        const threshold = Math.max(MIN_INITIATIVE_THRESHOLD, casterState.gauge.threshold - amount);
         const sides = replaceSide(combatState.sides, caster, { ...casterState, gauge: { ...casterState.gauge, threshold } });
         return { ...combatState, sides };
       }
@@ -1387,7 +1402,9 @@ export function tickDebuffDurations(combatState: CombatState): CombatState {
       if (remainingDuration > 0) {
         remaining.push({ ...debuff, remainingDuration });
       } else if (debuff.debuffId === 'choked') {
-        gauge = { ...gauge, threshold: gauge.threshold - debuff.magnitude };
+        // Floored at MIN_INITIATIVE_THRESHOLD -- see that constant's own
+        // doc comment for the real hang this guards against.
+        gauge = { ...gauge, threshold: Math.max(MIN_INITIATIVE_THRESHOLD, gauge.threshold - debuff.magnitude) };
       }
     }
     state = { ...state, sides: replaceSide(state.sides, side, { ...sideState, debuffs: remaining, gauge }) };

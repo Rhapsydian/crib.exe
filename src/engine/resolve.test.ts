@@ -851,6 +851,35 @@ describe("Choked -- temporary gauge-threshold bump", () => {
     const cleansed = resolvePayload({ kind: 'cleanse', debuffId: 'corrupted' }, 'encryption', state, 1);
     expect(cleansed.sides[1].gauge.threshold).toBe(12);
   });
+
+  it("floors the reversal at MIN_INITIATIVE_THRESHOLD (natural expiry) -- the session 28 real-hang regression: Haste lowering the same threshold in between must not let Choked's revert push it to 0 or below", () => {
+    let state = createCombatState([], [], 4);
+    // Choked raises 4 -> 9.
+    state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 2 }, 'malware', state, 0);
+    expect(state.sides[1].gauge.threshold).toBe(9);
+    // Haste (ownGaugeThreshold) then lowers side 1's own threshold by 8,
+    // floored at 1 -- exactly the real Ghost in the Machine/Blackhat
+    // sequence (Botnet's Choked, then DNS Poisoning's Haste).
+    state = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 8 }, 'root', state, 1);
+    expect(state.sides[1].gauge.threshold).toBe(1);
+    // Choked's own naive reversal (threshold - 5) would land on -4
+    // without the floor -- and a threshold at or below 0 hangs
+    // gauges.ts's addPoints forever the next time any points are scored.
+    state = tickDebuffDurations(state);
+    state = tickDebuffDurations(state); // duration 2 -> 1 -> 0, expires
+    expect(state.sides[1].gauge.threshold).toBe(1);
+    expect(state.sides[1].gauge.threshold).toBeGreaterThan(0);
+  });
+
+  it('floors the reversal at MIN_INITIATIVE_THRESHOLD (early cleanse) -- same regression, the cleanse path', () => {
+    let state = createCombatState([], [], 4);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 10 }, 'malware', state, 0);
+    state = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 8 }, 'root', state, 1);
+    expect(state.sides[1].gauge.threshold).toBe(1);
+    const cleansed = resolvePayload({ kind: 'cleanse', debuffId: 'choked' }, 'encryption', state, 1);
+    expect(cleansed.sides[1].gauge.threshold).toBe(1);
+    expect(cleansed.sides[1].gauge.threshold).toBeGreaterThan(0);
+  });
 });
 
 describe('instantManipulation -- enemyGaugeThreshold target', () => {

@@ -37,6 +37,19 @@ describe('InitiativeGauge / addPoints', () => {
     expect(turnsTriggered).toBe(0);
     expect(updated).toEqual(gauge);
   });
+
+  it('never hangs when threshold is 0 or negative -- the session 28 regression (Choked\'s un-floored reversal could land a real gauge here)', () => {
+    const zeroThreshold = { progress: 5, threshold: 0 };
+    expect(() => addPoints(zeroThreshold, 3)).not.toThrow();
+    const { turnsTriggered: t1 } = addPoints(zeroThreshold, 3);
+    expect(t1).toBeGreaterThan(0);
+    expect(Number.isFinite(t1)).toBe(true);
+
+    const negativeThreshold = { progress: 5, threshold: -4 };
+    expect(() => addPoints(negativeThreshold, 3)).not.toThrow();
+    const { turnsTriggered: t2 } = addPoints(negativeThreshold, 3);
+    expect(Number.isFinite(t2)).toBe(true);
+  });
 });
 
 describe('DuelGauge / addDuelProgress', () => {
