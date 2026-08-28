@@ -14,12 +14,16 @@ import {
   rerollIfNothingAffordable,
   buyCheapestAffordableMod,
   rerollModIfNothingAffordable,
+  buyCheapestAffordableBurner,
+  rerollBurnerIfNothingAffordable,
   neverActivateShopBurner,
   type ShopStrategy,
   type ShopRerollStrategy,
   type ModShopStrategy,
   type ModShopRerollStrategy,
   type ShopBurnerStrategy,
+  type BurnerShopStrategy,
+  type BurnerShopRerollStrategy,
 } from './shop';
 import type { DiscardStrategy } from './deal';
 import type { PlayStrategy } from './pegging';
@@ -33,7 +37,7 @@ import {
   type ModAcquisitionStrategy,
 } from './mods';
 import type { BurnerDefinition, BurnerId } from './burner-types';
-import { BURNER_CAP, BURNER_DEFINITIONS } from './burners';
+import { BURNER_CAP, BURNER_DEFINITIONS, alwaysAcquireFirstBurner, type BurnerAcquisitionStrategy } from './burners';
 
 /**
  * The run orchestrator (session 19/20 checkpoint F): ties layer
@@ -247,6 +251,12 @@ export interface RunOptions {
    * options a script acquires (Phase 5 Mods checkpoint G) -- same
    * legal-not-good default treatment as acquisitionStrategy. */
   modAcquisitionStrategy?: ModAcquisitionStrategy;
+  /** Which (if any) of a won fight's additive Burner-reward options a
+   * script acquires (Burners checkpoint F) -- offered on every fight
+   * tier including regular, unlike modAcquisitionStrategy's elite/
+   * gatekeeper-only reward. Cap-respecting via acquireBurner. Defaults
+   * to alwaysAcquireFirstBurner (legal-not-good). */
+  burnerAcquisitionStrategy?: BurnerAcquisitionStrategy;
   /** Slot cap for installedLoadout -- checkpoint D. */
   installedSlotCap?: number;
   /** Rest-vs-Merge choice at a Safehouse -- checkpoint E. Defaults to
@@ -267,6 +277,11 @@ export interface RunOptions {
    * on a Shop visit (Burners checkpoint E). Defaults to
    * neverActivateShopBurner. */
   shopBurnerStrategy?: ShopBurnerStrategy;
+  /** Mirrors shopStrategy/shopRerollStrategy (and modShopStrategy/
+   * modShopRerollStrategy) for the Burner slate's own third independent
+   * draw/reroll (checkpoint F). */
+  burnerShopStrategy?: BurnerShopStrategy;
+  burnerShopRerollStrategy?: BurnerShopRerollStrategy;
   /** Test-only escape hatch (session 24, tunable-skill AI checkpoint A),
    * same treatment as installedLoadoutOverride above -- lets a sweep
    * exercise a skilled opponent (either side) in real fights via
@@ -290,6 +305,7 @@ export function playRun(options: RunOptions): RunResult {
     mapBurnerStrategy = neverActivateMapBurner,
     acquisitionStrategy = alwaysAcquireFirst,
     modAcquisitionStrategy = alwaysAcquireFirstMod,
+    burnerAcquisitionStrategy = alwaysAcquireFirstBurner,
     installedSlotCap = INSTALLED_SLOT_CAP,
     safehouseStrategy = preferMergeWhenAvailable,
     shopStrategy = buyCheapestAffordable,
@@ -297,6 +313,8 @@ export function playRun(options: RunOptions): RunResult {
     modShopStrategy = buyCheapestAffordableMod,
     modShopRerollStrategy = rerollModIfNothingAffordable,
     shopBurnerStrategy = neverActivateShopBurner,
+    burnerShopStrategy = buyCheapestAffordableBurner,
+    burnerShopRerollStrategy = rerollBurnerIfNothingAffordable,
     discardStrategies,
     playStrategies,
   } = options;
@@ -426,6 +444,8 @@ export function playRun(options: RunOptions): RunResult {
         modShopStrategy,
         modShopRerollStrategy,
         shopBurnerStrategy,
+        burnerShopStrategy,
+        burnerShopRerollStrategy,
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
@@ -464,6 +484,13 @@ export function playRun(options: RunOptions): RunResult {
         const pickedMod = modAcquisitionStrategy(outcome.modRewardOptions, playerState);
         if (pickedMod) playerState = acquireMod(playerState, pickedMod);
       }
+      // Burner-choice reward (checkpoint F) -- additive, every fight tier
+      // including regular, never competing with the subroutine/Mod
+      // rewards above.
+      if (outcome.burnerRewardOptions.length > 0) {
+        const pickedBurner = burnerAcquisitionStrategy(outcome.burnerRewardOptions, playerState);
+        if (pickedBurner) playerState = acquireBurner(playerState, pickedBurner);
+      }
       if (outcome.mergeTargetId) playerState = mergeSubroutine(playerState, outcome.mergeTargetId);
       if (outcome.rerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.rerollCost };
       if (outcome.shopPurchase) {
@@ -475,6 +502,11 @@ export function playRun(options: RunOptions): RunResult {
       if (outcome.modShopPurchase) {
         playerState = { ...playerState, data: playerState.data - outcome.modShopPurchase.cost };
         playerState = acquireMod(playerState, outcome.modShopPurchase.mod);
+      }
+      if (outcome.burnerRerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.burnerRerollCost };
+      if (outcome.burnerShopPurchase) {
+        playerState = { ...playerState, data: playerState.data - outcome.burnerShopPurchase.cost };
+        playerState = acquireBurner(playerState, outcome.burnerShopPurchase.burner);
       }
       log.push({ type: 'encounter', layerIndex, nodeId: node.id, nodeType: node.type, outcome, heatAfter: heat });
 

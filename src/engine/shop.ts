@@ -5,7 +5,8 @@ import type { Rng } from './rng';
 import { rarityOf, rewardPoolForClass, type Rarity } from './rewards';
 import type { ModDefinition, ModId } from './mod-types';
 import { modPoolForClass } from './mods';
-import type { BurnerId } from './burner-types';
+import type { BurnerDefinition, BurnerId } from './burner-types';
+import { generalBurnerPool } from './burners';
 
 /**
  * Shop wiring (Phase 4 checkpoint F): spends Data on a specific pick,
@@ -139,6 +140,89 @@ export function modOfferingsForClass(
 
   return [...commons, ...uncommon, ...wildcard].map((mod) => ({ mod, cost: modShopCostOf(mod.rarity, discountFraction) }));
 }
+
+// ---------------------------------------------------------------------
+// Burners' own third independent Shop slate (Phase 5 Burners checkpoint
+// F) -- same shape again (3 commons/1 uncommon/1 wildcard, own separate
+// reroll), but the underlying pool is generalBurnerPool() directly, not
+// a per-class filter -- Burners are archetype-agnostic (DESIGN.md) and
+// duplicates are legal (checkpoint B), so there's no classId-scoping or
+// owned-exclusion step the way modPoolForClass needs. classId is still
+// accepted (unused) purely for call-site symmetry with
+// shopOfferingsForClass/modOfferingsForClass.
+// ---------------------------------------------------------------------
+
+// TBD/playtesting, same relative scaling as SHOP_COST_BY_RARITY/
+// MOD_SHOP_COST_BY_RARITY -- pitched a little below Mods' since a Burner
+// is spent once, not a standing effect.
+const BURNER_SHOP_COST_BY_RARITY: Record<Rarity, number> = {
+  common: 15,
+  uncommon: 45,
+  rare: 120,
+};
+
+export interface BurnerOffering {
+  burner: BurnerDefinition;
+  cost: number;
+}
+
+export function burnerShopCostOf(rarity: Rarity, discountFraction = 0): number {
+  return Math.round(BURNER_SHOP_COST_BY_RARITY[rarity] * (1 - discountFraction));
+}
+
+function burnerPoolByRarity(): Record<Rarity, BurnerDefinition[]> {
+  const pool = generalBurnerPool();
+  return {
+    common: pool.filter((burner) => burner.rarity === 'common'),
+    uncommon: pool.filter((burner) => burner.rarity === 'uncommon'),
+    rare: pool.filter((burner) => burner.rarity === 'rare'),
+  };
+}
+
+export function burnerOfferingsForClass(
+  classId: ClassId,
+  rng: Rng,
+  extraCommons = 0,
+  discountFraction = 0,
+  rarityFloor?: Rarity,
+): BurnerOffering[] {
+  // classId is unused -- see this section's header comment.
+  const byRarity = burnerPoolByRarity();
+  const commons = sampleDistinct(byRarity.common, SHOP_COMMON_SLOTS + extraCommons, rng);
+  const uncommon = sampleDistinct(byRarity.uncommon, 1, rng);
+
+  // See shopOfferingsForClass's own comment -- same Insider Tip treatment.
+  const wildcardTier: Rarity = rarityFloor === 'rare' ? 'rare' : rng.next() < 0.5 ? 'uncommon' : 'rare';
+  const wildcardPool =
+    wildcardTier === 'uncommon' ? byRarity.uncommon.filter((burner) => !uncommon.some((picked) => picked.id === burner.id)) : byRarity.rare;
+  const wildcard = sampleDistinct(wildcardPool, 1, rng);
+
+  return [...commons, ...uncommon, ...wildcard].map((burner) => ({ burner, cost: burnerShopCostOf(burner.rarity, discountFraction) }));
+}
+
+/** Decides which (if any) Burner offering a script buys -- mirrors
+ * ModShopStrategy for the third independent slate. Distinct from
+ * checkpoint E's ShopBurnerStrategy above (spending an already-carried
+ * coupon) -- this is buying a *new* Burner. */
+export type BurnerShopStrategy = (offerings: BurnerOffering[], playerState: RunPlayerState) => BurnerOffering | null;
+
+/** Legal-not-good default, same shape as buyCheapestAffordable/
+ * buyCheapestAffordableMod. */
+export const buyCheapestAffordableBurner: BurnerShopStrategy = (offerings, playerState) => {
+  const affordable = offerings.filter((offering) => offering.cost <= playerState.data);
+  if (affordable.length === 0) return null;
+  return affordable.reduce((cheapest, offering) => (offering.cost < cheapest.cost ? offering : cheapest));
+};
+
+/** Decides whether to spend Data to reroll the Burner slate once --
+ * mirrors ModShopRerollStrategy, its own independent reroll. */
+export type BurnerShopRerollStrategy = (offerings: BurnerOffering[], playerState: RunPlayerState) => boolean;
+
+export const rerollBurnerIfNothingAffordable: BurnerShopRerollStrategy = (offerings, playerState) => {
+  const canAffordReroll = playerState.data >= REROLL_COST;
+  const canAffordSomething = offerings.some((offering) => offering.cost <= playerState.data);
+  return canAffordReroll && !canAffordSomething;
+};
 
 /** Decides which (if any) Mod offering a script buys -- mirrors
  * ShopStrategy for the parallel Mod slate. */

@@ -14,10 +14,13 @@ import { pickRegularOrEliteEnemy, gatekeeperEnemyForNode, enemySkill, ENEMY_ROST
 import {
   shopOfferingsForClass,
   modOfferingsForClass,
+  burnerOfferingsForClass,
   buyCheapestAffordable,
   buyCheapestAffordableMod,
+  buyCheapestAffordableBurner,
   rerollIfNothingAffordable,
   rerollModIfNothingAffordable,
+  rerollBurnerIfNothingAffordable,
   neverActivateShopBurner,
   REROLL_COST,
   type ShopOffering,
@@ -26,12 +29,15 @@ import {
   type ModOffering,
   type ModShopStrategy,
   type ModShopRerollStrategy,
+  type BurnerOffering,
+  type BurnerShopStrategy,
+  type BurnerShopRerollStrategy,
   type ShopBurnerStrategy,
 } from './shop';
 import type { ModDefinition } from './mod-types';
 import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersForOwnedMods } from './mods';
-import type { BurnerId } from './burner-types';
-import { BURNER_DEFINITIONS, shopModifiersForActivatedBurner } from './burners';
+import type { BurnerId, BurnerDefinition } from './burner-types';
+import { BURNER_DEFINITIONS, shopModifiersForActivatedBurner, drawBurnerRewardOptions } from './burners';
 
 /**
  * Node encounter resolution (session 19/20 checkpoint E, player loadout
@@ -114,6 +120,21 @@ export interface EncounterOutcome {
    * carriedBurnerIds since resolveEncounter is a pure function that
    * doesn't hold RunPlayerState itself. */
   shopBurnerUsed: BurnerId | null;
+  /** The additive Burner-choice reward actually offered on a fight win --
+   * Phase 5 Burners checkpoint F. Unlike modRewardOptions (elite/
+   * gatekeeper only), offered on **every** fight tier including regular
+   * (DESIGN.md's Burners section). Empty for a loss, a non-win outcome,
+   * or any non-fight node. */
+  burnerRewardOptions: BurnerDefinition[];
+  /** What a Shop visit bought from the Burner slate, or null -- mirrors
+   * shopPurchase/modShopPurchase for the third, independently-generated/
+   * rerolled slate (checkpoint F). */
+  burnerShopPurchase: BurnerOffering | null;
+  /** REROLL_COST (or 0 if Loyalty Token's freeReroll was active) if a
+   * Shop visit spent Data to reroll the Burner slate once -- mirrors
+   * rerollCost/modRerollCost for the Burner slate's own independent
+   * reroll decision. */
+  burnerRerollCost: number;
 }
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
@@ -203,6 +224,9 @@ function resolveFight(
     // 30) -- never on a regular win, alongside Petty Cache/Black Budget's
     // onEncounterResolved hooks (Phase 5 Mods checkpoint E).
     const modRewardOptions = kind === 'regular' ? [] : drawModRewardOptions(playerState.classId, playerState.ownedModIds, rng);
+    // Additive Burner-choice reward on EVERY fight tier including regular
+    // (checkpoint F -- unlike modRewardOptions above, no kind gate).
+    const burnerRewardOptions = drawBurnerRewardOptions(rng);
     const modified = applyOnWinEncounterResolvedMods(
       playerState.ownedModIds,
       dataForTier(rewardTier),
@@ -226,6 +250,9 @@ function resolveFight(
       modRerollCost: 0,
       burnersUsedThisCombat: result.burnersUsedThisCombat,
       shopBurnerUsed: null,
+      burnerRewardOptions,
+      burnerShopPurchase: null,
+      burnerRerollCost: 0,
     };
   }
   if (kind === 'gatekeeper') {
@@ -246,6 +273,9 @@ function resolveFight(
       modRerollCost: 0,
       burnersUsedThisCombat: result.burnersUsedThisCombat,
       shopBurnerUsed: null,
+      burnerRewardOptions: [],
+      burnerShopPurchase: null,
+      burnerRerollCost: 0,
     };
   }
   return {
@@ -263,6 +293,9 @@ function resolveFight(
     modRerollCost: 0,
     burnersUsedThisCombat: result.burnersUsedThisCombat,
     shopBurnerUsed: null,
+    burnerRewardOptions: [],
+    burnerShopPurchase: null,
+    burnerRerollCost: 0,
   };
 }
 
@@ -304,6 +337,12 @@ export function resolveEncounter(
    * as modShopStrategy/modShopRerollStrategy above. Defaults to
    * neverActivateShopBurner. */
   shopBurnerStrategy: ShopBurnerStrategy = neverActivateShopBurner,
+  /** Mirrors shopStrategy/shopRerollStrategy (and modShopStrategy/
+   * modShopRerollStrategy) for the Burner slate's own third independent
+   * draw/reroll -- checkpoint F. Defaults to buyCheapestAffordableBurner/
+   * rerollBurnerIfNothingAffordable. */
+  burnerShopStrategy: BurnerShopStrategy = buyCheapestAffordableBurner,
+  burnerShopRerollStrategy: BurnerShopRerollStrategy = rerollBurnerIfNothingAffordable,
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
@@ -335,6 +374,9 @@ export function resolveEncounter(
           modRerollCost: 0,
           burnersUsedThisCombat: [],
           shopBurnerUsed: null,
+          burnerRewardOptions: [],
+          burnerShopPurchase: null,
+          burnerRerollCost: 0,
         };
       }
       return {
@@ -352,6 +394,9 @@ export function resolveEncounter(
         modRerollCost: 0,
         burnersUsedThisCombat: [],
         shopBurnerUsed: null,
+        burnerRewardOptions: [],
+        burnerShopPurchase: null,
+        burnerRerollCost: 0,
       };
     }
     case 'shop': {
@@ -395,16 +440,31 @@ export function resolveEncounter(
         : firstModSlate;
       const modRerollCost = modRerolled ? rerollCostThisVisit : 0;
 
+      // The Burner slate (checkpoint F) -- the third independent slate,
+      // same shape/reroll treatment as the Mod slate above. classId is
+      // accepted for call-site symmetry only (burnerOfferingsForClass is
+      // archetype-agnostic, see shop.ts's own header).
+      const firstBurnerSlate = burnerOfferingsForClass(playerState.classId, rng, extraCommons, discountFraction, rarityFloor);
+      const burnerSlateRerolled = playerState.data >= REROLL_COST && burnerShopRerollStrategy(firstBurnerSlate, playerState);
+      const burnerOfferingsSlate = burnerSlateRerolled
+        ? burnerOfferingsForClass(playerState.classId, rng, extraCommons, discountFraction, rarityFloor)
+        : firstBurnerSlate;
+      const burnerRerollCost = burnerSlateRerolled ? rerollCostThisVisit : 0;
+
       // The purchase decisions need to see the post-reroll Data balance
       // -- otherwise a strategy could "spend" the reroll cost and then
-      // still buy up to the full pre-reroll balance, overspending. Both
-      // rerolls (if either happened) are deducted before either
+      // still buy up to the full pre-reroll balance, overspending. All
+      // three rerolls (if any happened) are deducted before any
       // purchase decision is made.
       const stateAfterRerolls =
-        rerollCost + modRerollCost > 0 ? { ...playerState, data: playerState.data - rerollCost - modRerollCost } : playerState;
+        rerollCost + modRerollCost + burnerRerollCost > 0
+          ? { ...playerState, data: playerState.data - rerollCost - modRerollCost - burnerRerollCost }
+          : playerState;
       const shopPurchase = shopStrategy(offerings, stateAfterRerolls);
       const stateAfterShopPurchase = shopPurchase ? { ...stateAfterRerolls, data: stateAfterRerolls.data - shopPurchase.cost } : stateAfterRerolls;
       const modShopPurchase = modShopStrategy(modOfferings, stateAfterShopPurchase);
+      const stateAfterModPurchase = modShopPurchase ? { ...stateAfterShopPurchase, data: stateAfterShopPurchase.data - modShopPurchase.cost } : stateAfterShopPurchase;
+      const burnerShopPurchase = burnerShopStrategy(burnerOfferingsSlate, stateAfterModPurchase);
 
       return {
         newState: 'inert',
@@ -421,6 +481,9 @@ export function resolveEncounter(
         modRerollCost,
         burnersUsedThisCombat: [],
         shopBurnerUsed,
+        burnerRewardOptions: [],
+        burnerShopPurchase,
+        burnerRerollCost,
       };
     }
     case 'event':
@@ -439,6 +502,9 @@ export function resolveEncounter(
         modRerollCost: 0,
         burnersUsedThisCombat: [],
         shopBurnerUsed: null,
+        burnerRewardOptions: [],
+        burnerShopPurchase: null,
+        burnerRerollCost: 0,
       };
     case 'relay':
       throw new Error('resolveEncounter should never be called on a Relay node -- it has no encounter');

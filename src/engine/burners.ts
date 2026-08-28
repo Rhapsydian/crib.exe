@@ -1,5 +1,7 @@
 import type { BurnerDefinition, BurnerId } from './burner-types';
 import type { Rarity } from './rewards';
+import type { Rng } from './rng';
+import type { RunPlayerState } from './run';
 
 /**
  * Burner content (Phase 5 checkpoint A): the 8 validated Burners from
@@ -111,4 +113,61 @@ export function shopModifiersForActivatedBurner(activated: BurnerDefinition | un
   if (effect.kind === 'discount') return { discountFraction: effect.fraction, freeReroll: false };
   if (effect.kind === 'freeReroll') return { discountFraction: 0, freeReroll: true };
   return { discountFraction: 0, freeReroll: false, rarityFloor: effect.rarity };
+}
+
+// ---------------------------------------------------------------------
+// Combat-reward acquisition (Phase 5 Burners checkpoint F) -- mirrors
+// mods.ts's own ModAcquisitionStrategy/drawModRewardOptions pair, but
+// simpler: no class scoping (archetype-agnostic pool) and no owned-
+// exclusion (duplicates are legal, checkpoint B), so neither needs a
+// classId/ownedBurnerIds parameter the way the Mod version does.
+// ---------------------------------------------------------------------
+
+/** Decides which (if any) of an offered Burner reward's options a script
+ * acquires -- mirrors loadout.ts's AcquisitionStrategy/mods.ts's
+ * ModAcquisitionStrategy for the third, independent reward channel. */
+export type BurnerAcquisitionStrategy = (options: BurnerDefinition[], playerState: RunPlayerState) => BurnerDefinition | null;
+
+/** Always takes the first offered option -- legal-not-good, same
+ * treatment as alwaysAcquireFirst/alwaysAcquireFirstMod. */
+export const alwaysAcquireFirstBurner: BurnerAcquisitionStrategy = (options) => options[0] ?? null;
+
+// TBD/playtesting, same discipline as rewards.ts's RARITY_WEIGHTS_BY_TIER/
+// mods.ts's MOD_REWARD_WEIGHTS.
+const BURNER_REWARD_WEIGHTS: Record<Rarity, number> = { common: 60, uncommon: 30, rare: 10 };
+// A smaller choice than the 3-option subroutine reward, same reasoning
+// as MOD_REWARD_OPTIONS_COUNT -- additive on top of it, not competing.
+export const BURNER_REWARD_OPTIONS_COUNT = 2; // TBD/playtesting
+
+function weightedSampleBurnersWithoutReplacement(items: { burner: BurnerDefinition; weight: number }[], count: number, rng: Rng): BurnerDefinition[] {
+  const pool = items.filter((entry) => entry.weight > 0);
+  const picked: BurnerDefinition[] = [];
+  for (let i = 0; i < count && pool.length > 0; i++) {
+    const totalWeight = pool.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = rng.next() * totalWeight;
+    let index = pool.length - 1;
+    for (let j = 0; j < pool.length; j++) {
+      roll -= pool[j].weight;
+      if (roll <= 0) {
+        index = j;
+        break;
+      }
+    }
+    picked.push(pool[index].burner);
+    pool.splice(index, 1);
+  }
+  return picked;
+}
+
+/** Draws a won fight's additive Burner-choice reward -- unlike Mods'
+ * drawModRewardOptions (elite/gatekeeper only), Burners are offered on
+ * **every** fight tier including regular (DESIGN.md's Burners section:
+ * regular fights currently grant only a thin subroutine choice, and a
+ * lower-commitment single-use item suits that well). Never empties out
+ * the way a class-scoped Mod pool eventually can -- no ownership
+ * exclusion, so this always has something to offer. */
+export function drawBurnerRewardOptions(rng: Rng): BurnerDefinition[] {
+  const pool = generalBurnerPool();
+  const weighted = pool.map((burner) => ({ burner, weight: BURNER_REWARD_WEIGHTS[burner.rarity] }));
+  return weightedSampleBurnersWithoutReplacement(weighted, BURNER_REWARD_OPTIONS_COUNT, rng);
 }

@@ -258,6 +258,9 @@ describe('resolveEncounter -- non-fight nodes', () => {
       modRerollCost: 0,
       burnersUsedThisCombat: [],
       shopBurnerUsed: null,
+      burnerRewardOptions: [],
+      burnerShopPurchase: null,
+      burnerRerollCost: 0,
     });
   });
 
@@ -279,6 +282,9 @@ describe('resolveEncounter -- non-fight nodes', () => {
       modRerollCost: 0,
       burnersUsedThisCombat: [],
       shopBurnerUsed: null,
+      burnerRewardOptions: [],
+      burnerShopPurchase: null,
+      burnerRerollCost: 0,
     });
   });
 
@@ -299,6 +305,9 @@ describe('resolveEncounter -- non-fight nodes', () => {
       modRerollCost: 0,
       burnersUsedThisCombat: [],
       shopBurnerUsed: null,
+      burnerRewardOptions: [],
+      burnerShopPurchase: null,
+      burnerRerollCost: 0,
     });
   });
 
@@ -321,6 +330,9 @@ describe('resolveEncounter -- non-fight nodes', () => {
       modRerollCost: 0,
       burnersUsedThisCombat: [],
       shopBurnerUsed: null,
+      burnerRewardOptions: [],
+      burnerShopPurchase: null,
+      burnerRerollCost: 0,
     });
   });
 
