@@ -581,24 +581,45 @@ export function resolveEncounter(
       if (effect.subroutineGrant) eventGrant.subroutine = resolveSubroutineGrant(effect.subroutineGrant, playerState.classId, rng);
       if (effect.modGrant) eventGrant.mod = resolveModGrant(effect.modGrant, playerState.classId, playerState.ownedModIds, rng);
       if (effect.burnerGrant) eventGrant.burner = resolveBurnerGrant(effect.burnerGrant, rng);
-      // effect.bonusFight isn't resolved here -- checkpoint I's job.
+
+      // Bonus fight (checkpoint I) -- a classic gamble-tier beat, reusing
+      // resolveFight's existing machinery directly (same module, no
+      // export needed -- checkpoint H already put Event resolution in
+      // this file, so the "export it" step the spec anticipated turned
+      // out unnecessary). `node` is passed through but never actually
+      // consulted for a 'regular'/'elite' kind (only gatekeeperEnemyForNode
+      // reads it, gated on kind === 'gatekeeper', which a bonus fight can
+      // never be -- confirmed against enemyForFight above). The Event
+      // node's own newState/quarantined stay fixed (DESIGN.md: "inert
+      // after one resolved encounter, same as every other stub node
+      // type") regardless of whether the bonus fight is won or lost --
+      // losing a bonus fight costs Heat like any lost fight, it just
+      // doesn't close the Event tile itself the way a real lost
+      // regular/eliteFight node would. Not folded into run.ts's
+      // fightsResolved opener-window counter -- a deliberate, narrow-
+      // scope call (the checkpoint's own text scopes this to producing a
+      // correct EncounterOutcome, not to opener-window bookkeeping),
+      // banked as a real open question rather than silently decided.
+      const bonusFightOutcome = effect.bonusFight
+        ? resolveFight(effect.bonusFight.tier, node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies)
+        : undefined;
 
       return {
         newState: 'inert',
-        heatDelta: effect.heatDelta ?? 0,
+        heatDelta: (effect.heatDelta ?? 0) + (bonusFightOutcome?.heatDelta ?? 0),
         quarantined: false,
-        rewardTier: 'none',
-        dataAwarded: effect.dataDelta ?? 0,
-        rewardOptions: [],
+        rewardTier: bonusFightOutcome?.rewardTier ?? 'none',
+        dataAwarded: (effect.dataDelta ?? 0) + (bonusFightOutcome?.dataAwarded ?? 0),
+        rewardOptions: bonusFightOutcome?.rewardOptions ?? [],
         mergeTargetId: null,
         shopPurchase: null,
         rerollCost: 0,
-        modRewardOptions: [],
+        modRewardOptions: bonusFightOutcome?.modRewardOptions ?? [],
         modShopPurchase: null,
         modRerollCost: 0,
-        burnersUsedThisCombat: [],
+        burnersUsedThisCombat: bonusFightOutcome?.burnersUsedThisCombat ?? [],
         shopBurnerUsed: null,
-        burnerRewardOptions: [],
+        burnerRewardOptions: bonusFightOutcome?.burnerRewardOptions ?? [],
         burnerShopPurchase: null,
         burnerRerollCost: 0,
         eventGrant,

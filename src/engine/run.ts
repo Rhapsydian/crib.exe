@@ -3,7 +3,7 @@ import { isReachable, neighborsOf, type LayerGraph, type NodeType, type RunPosit
 import { generateLayer } from './map-gen';
 import { assignGatekeeperEnemy } from './enemies';
 import { move } from './traversal';
-import { resolveEncounter, type EncounterOutcome } from './encounters';
+import { resolveEncounter, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy } from './encounters';
 import { addHeat, HEAT_MAX } from './heat';
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
@@ -282,6 +282,11 @@ export interface RunOptions {
    * draw/reroll (checkpoint F). */
   burnerShopStrategy?: BurnerShopStrategy;
   burnerShopRerollStrategy?: BurnerShopRerollStrategy;
+  /** Which of an Event's choices a script takes (Events checkpoint H --
+   * missed in that checkpoint's own pass, caught and fixed here while
+   * verifying checkpoint I's bonus-fight path end-to-end via playRun).
+   * Defaults to alwaysFirstEventChoice. */
+  eventChoiceStrategy?: EventChoiceStrategy;
   /** Test-only escape hatch (session 24, tunable-skill AI checkpoint A),
    * same treatment as installedLoadoutOverride above -- lets a sweep
    * exercise a skilled opponent (either side) in real fights via
@@ -315,6 +320,7 @@ export function playRun(options: RunOptions): RunResult {
     shopBurnerStrategy = neverActivateShopBurner,
     burnerShopStrategy = buyCheapestAffordableBurner,
     burnerShopRerollStrategy = rerollBurnerIfNothingAffordable,
+    eventChoiceStrategy = alwaysFirstEventChoice,
     discardStrategies,
     playStrategies,
   } = options;
@@ -446,6 +452,7 @@ export function playRun(options: RunOptions): RunResult {
         shopBurnerStrategy,
         burnerShopStrategy,
         burnerShopRerollStrategy,
+        eventChoiceStrategy,
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
