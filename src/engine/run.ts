@@ -1,7 +1,7 @@
 import { createRng } from './rng';
 import { isReachable, neighborsOf, type LayerGraph, type MapNode, type NodeType, type RunPosition } from './map-types';
 import { generateLayer } from './map-gen';
-import { assignGatekeeperEnemy } from './enemies';
+import { assignGatekeeperEnemy, gatekeeperEnemyForNode, type EnemyDefinition } from './enemies';
 import { move } from './traversal';
 import { resolveEncounter, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy } from './encounters';
 import { addHeat, HEAT_MAX, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
@@ -316,6 +316,22 @@ export type MapBurnerStrategy = (ctx: MapBurnerActivationContext) => { burnerId:
  * mirrors combat.ts's neverActivateBurner. */
 export const neverActivateMapBurner: MapBurnerStrategy = () => null;
 
+/** Snapshot passed to onBeforeGatekeeperFight (session 39): the player's
+ * real accumulated state at the exact moment a gatekeeper fight is about
+ * to resolve -- whatever combat rewards/Shop purchases/Merges/Mods/
+ * Burners the run actually picked up getting here, not a bare starting
+ * kit. `layerIndex` is 1-based (enemies.ts's own convention) and
+ * `fightsResolved` is the run's running fight counter as of this exact
+ * fight -- both are exactly what a real resolveFight call would feed
+ * enemySkill/strategiesForFight, so a diagnostic script can reproduce
+ * the real skill-dial AI this fight would actually use. */
+export interface GatekeeperFightContext {
+  playerState: RunPlayerState;
+  layerIndex: number;
+  fightsResolved: number;
+  enemy: EnemyDefinition;
+}
+
 export interface RunOptions {
   seed: number;
   /** Defaults to Breacher, the designed starting/onboarding class
@@ -405,6 +421,17 @@ export interface RunOptions {
    * defaults. */
   discardStrategies?: [DiscardStrategy, DiscardStrategy];
   playStrategies?: [PlayStrategy, PlayStrategy];
+  /** Observational only -- called once per gatekeeper fight, right
+   * before it resolves, with the player's real accumulated state at
+   * that moment (session 39: the "realistic difficulty" diagnostic
+   * banked while investigating Null Session's kit-only floor numbers).
+   * Never consumed or awaited; has zero effect on how the run actually
+   * plays out. Purely a way for a script to snapshot (playerState,
+   * layerIndex, fightsResolved, enemy) for a *separate* playCombat call
+   * against the same enemy using the real production skill-dial AI,
+   * rather than replaying the run's own outcome. Undefined by default --
+   * a no-op for every existing caller. */
+  onBeforeGatekeeperFight?: (context: GatekeeperFightContext) => void;
 }
 
 export function playRun(options: RunOptions): RunResult {
@@ -433,6 +460,7 @@ export function playRun(options: RunOptions): RunResult {
     burnerActivationStrategies,
     discardStrategies,
     playStrategies,
+    onBeforeGatekeeperFight,
   } = options;
 
   const rng = createRng(seed);
@@ -552,6 +580,14 @@ export function playRun(options: RunOptions): RunResult {
       if (node.state !== 'unresolved') continue; // already resolved -- just passing through
 
       const isFightNode = node.type === 'regularFight' || node.type === 'eliteFight' || node.type === 'gatekeeperFight';
+      if (node.type === 'gatekeeperFight' && onBeforeGatekeeperFight) {
+        onBeforeGatekeeperFight({
+          playerState,
+          layerIndex: layerIndex + 1, // enemies.ts's layer numbering is 1-based, same conversion resolveEncounter's own call below uses
+          fightsResolved,
+          enemy: gatekeeperEnemyForNode(node),
+        });
+      }
       const outcome = resolveEncounter(
         node,
         rng,

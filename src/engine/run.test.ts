@@ -9,6 +9,7 @@ import {
   opportunisticTraversal,
   createInitialPlayerState,
   type TraversalStrategy,
+  type GatekeeperFightContext,
 } from './run';
 import type { SubroutineDefinition } from './subroutine-types';
 import { BREACHER_LOADOUT } from './subroutines';
@@ -303,6 +304,41 @@ describe('playRun', { timeout: 30_000 }, () => {
     const totalOwned = result.playerState.installedLoadout.length + result.playerState.bench.length;
     expect(totalOwned).toBeGreaterThan(3);
     expect(result.playerState.installedLoadout.length).toBeLessThanOrEqual(INSTALLED_SLOT_CAP);
+  });
+
+  it('onBeforeGatekeeperFight (session 39) fires once per gatekeeper fight with the real accumulated state at that moment', () => {
+    const victorySeed = Array.from({ length: 50 }, (_, seed) => seed).find(
+      (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper }).outcome === 'victory',
+    );
+    expect(victorySeed).toBeDefined();
+    const captures: GatekeeperFightContext[] = [];
+    const result = playRun({
+      seed: victorySeed!,
+      layerNodeCounts: TINY_LAYERS,
+      traversalStrategy: beelineToGatekeeper,
+      onBeforeGatekeeperFight: (ctx) => captures.push(ctx),
+    });
+    expect(result.outcome).toBe('victory');
+    // One capture per layer cleared -- fires right before the gatekeeper
+    // fight resolves, not after, so this can't just be re-deriving the
+    // 4 layerCleared log entries after the fact.
+    expect(captures).toHaveLength(4);
+    expect(captures.map((c) => c.layerIndex)).toEqual([1, 2, 3, 4]);
+    for (const c of captures) expect(c.enemy.tier).toBe('gatekeeper');
+    // fightsResolved should be non-decreasing across captures (each
+    // layer's regular/elite fights along the way bump it before the
+    // next layer's gatekeeper capture) -- same counter a real
+    // resolveFight call would see for this exact fight.
+    for (let i = 1; i < captures.length; i++) expect(captures[i].fightsResolved).toBeGreaterThanOrEqual(captures[i - 1].fightsResolved);
+    // The very first capture happens before this run's first-ever fight
+    // resolves (TINY_LAYERS' layer 1 is gatekeeper-only, matching the
+    // "gatekeeper-only fights" framing above) -- proves this is a live
+    // mid-run snapshot, not just the final RunResult.playerState handed
+    // back four times: at this exact moment nothing has been acquired
+    // yet, so the loadout is still exactly Breacher's starting 3 pieces.
+    expect(captures[0].fightsResolved).toBe(0);
+    expect(captures[0].playerState.installedLoadout).toHaveLength(3);
+    expect(captures[0].playerState.bench).toHaveLength(0);
   });
 
   it('reaches heatMaxed on real-scale layers when a strategy just wanders safely', () => {
