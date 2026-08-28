@@ -172,6 +172,15 @@ here either: Blackhat's Heat-fragility under any exploration-heavy
 strategy is itself a real finding worth its own look before touching
 `HEAT_PER_MOVE` or Blackhat's kit.
 
+**Next session**: the per-class magnitude/balance pass (standing next
+milestone since session 29) is still the eventual target, but two things
+from this session should inform it rather than be skipped past --
+Blackhat's Heat-exhaustion fragility under any exploration-heavy play,
+and the still-open "does more power or fewer survivors explain
+quarantine's drop" question above. A "middle ground" scripted traversal
+strategy (per this session's new design goal) would be a cheap, useful
+diagnostic to build before or alongside that pass.
+
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
 see Phase 5 below) — a single shared zero-sum scalar replaced with two

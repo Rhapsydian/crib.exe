@@ -9,14 +9,20 @@ triggers/payloads, initiative gauges, Breach/Containment resolution; the
 network-map/run-structure layer — free-roam movement, Heat, real duels
 wired into fight nodes; and meta-progression — 6 classes, subroutine
 acquisition, Merge/Shop) are implementation-complete, content-real (all 18
-class starting loadouts + a real 32-enemy roster across 4 layers), and
-verified by an automated test suite, `src/engine/`. Phase 5 (content,
-balance, and polish) is in progress — the Enemy Library and Neutral
-Archetype are built, and **Mods** (crib.exe's StS-relic equivalent) just
-shipped: 23 real Mods (the 6 class starting passives, migrated onto the
-same infrastructure, plus 17 new ones), all 12 hook points wired into
-combat/loadout/acquisition/Shop. A real per-class balance/tuning pass
-(now with Mods actually in the reward/Shop pool) is next.
+class starting loadouts + a real 32-enemy roster across 4 layers, every
+tier now eligible from layer 1 onward), and verified by an automated test
+suite, `src/engine/`. Phase 5 (content, balance, and polish) is in
+progress — the Enemy Library and Neutral Archetype are built, and **Mods**
+(crib.exe's StS-relic equivalent) shipped: 23 real Mods (the 6 class
+starting passives, migrated onto the same infrastructure, plus 17 new
+ones), all 12 hook points wired into combat/loadout/acquisition/Shop.
+`DESIGN.md` now states an explicit design goal for how a run should play:
+the ideal path is a middle ground between beelining a layer's gatekeeper
+and fully exploring it while managing Heat, with either extreme being a
+deliberate risk/reward tradeoff rather than something to balance away (see
+Map & Run Structure). A real per-class balance/tuning pass (now with Mods
+in the reward/Shop pool, and real per-traversal-strategy sweep data to
+work from) is next.
 See `DESIGN.md` for the full design, `BACKLOG.md` for the phased
 implementation roadmap and next-session pointer, and `session-logs/` for a
 per-session record of decisions and results.
