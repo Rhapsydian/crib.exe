@@ -69,17 +69,18 @@ function improveTriggerKnob(trigger: TriggerFamily): TriggerFamily {
   return increasedScalingCap(trigger, MERGE_SCALING_CAP_BONUS);
 }
 
-/** Bumps whichever field carries a payload's "how hard does this hit"
- * magnitude, or returns null if the payload has none (Ward/Cleanse/
- * Cribbage-Layer Manipulation, and Scheduled Sabotage's own top-level
- * shape -- its wrapped inner effect isn't recursed into, a deliberate
- * simplification). Generic by field name rather than a per-payload-kind
- * table beyond that dispatch, per the plan's own "resolved generically"
- * decision. Exported (session 25) for Operator's reworked Primed
- * passive (`resolve.ts`) to reuse -- the same generic magnitude bump,
- * applied to the caster's next Exploit fire instead of a permanent
- * Merge upgrade. */
-export function improvedPayloadMagnitude(payload: PayloadEffect, amount: number): PayloadEffect | null {
+/** Applies `transform` to whichever field carries a payload's "how hard
+ * does this hit" magnitude, or returns null if the payload has none
+ * (Ward/Cleanse/Cribbage-Layer Manipulation, and Scheduled Sabotage's
+ * own top-level shape -- its wrapped inner effect isn't recursed into, a
+ * deliberate simplification). Generic by field name rather than a
+ * per-payload-kind table beyond that dispatch, per the plan's own
+ * "resolved generically" decision. The shared engine behind both
+ * improvedPayloadMagnitude (additive, below) and enemies.ts's
+ * scaledPayloadMagnitude (multiplicative, session 39's per-layer
+ * difficulty scaler) -- factored out so the one big kind-by-kind dispatch
+ * only has to exist once. */
+function transformPayloadMagnitude(payload: PayloadEffect, transform: (amount: number) => number): PayloadEffect | null {
   switch (payload.kind) {
     case 'directBurst':
     case 'piercing':
@@ -90,19 +91,38 @@ export function improvedPayloadMagnitude(payload: PayloadEffect, amount: number)
     case 'ward':
       // Breach/Containment redesign (session 22+): Ward became an
       // accumulating shield amount, no longer archetype-scoped -- now a
-      // genuine magnitude Merge can improve, same as any other payload
+      // genuine magnitude this can transform, same as any other payload
       // with an `amount` field.
-      return { ...payload, amount: payload.amount + amount };
+      return { ...payload, amount: transform(payload.amount) };
     case 'chainFinisherScaling':
-      return { ...payload, baseAmount: payload.baseAmount + amount };
+      return { ...payload, baseAmount: transform(payload.baseAmount) };
     case 'dot':
     case 'hot':
-      return { ...payload, amountPerTick: payload.amountPerTick + amount };
+      return { ...payload, amountPerTick: transform(payload.amountPerTick) };
     case 'debuff':
-      return { ...payload, magnitude: payload.magnitude + amount };
+      return { ...payload, magnitude: transform(payload.magnitude) };
     default:
       return null;
   }
+}
+
+/** Bumps a payload's magnitude by a flat additive amount -- Merge's own
+ * upgrade shape. Exported (session 25) for Operator's reworked Primed
+ * passive (`resolve.ts`) to reuse -- the same generic magnitude bump,
+ * applied to the caster's next Exploit fire instead of a permanent
+ * Merge upgrade. */
+export function improvedPayloadMagnitude(payload: PayloadEffect, amount: number): PayloadEffect | null {
+  return transformPayloadMagnitude(payload, (current) => current + amount);
+}
+
+/** Scales a payload's magnitude by a multiplier -- enemies.ts's per-layer
+ * difficulty scaler (session 39), proportional rather than flat so it
+ * doesn't hit low- and high-magnitude payloads unevenly the way a flat
+ * bonus would. `multiplier` of 1 is a no-op (still returns a new object
+ * for a magnitude-bearing payload, same "null only for a genuinely
+ * magnitude-less payload" contract as improvedPayloadMagnitude). */
+export function scaledPayloadMagnitude(payload: PayloadEffect, multiplier: number): PayloadEffect | null {
+  return transformPayloadMagnitude(payload, (current) => current * multiplier);
 }
 
 function upgradedDefinition(definition: SubroutineDefinition): SubroutineDefinition {

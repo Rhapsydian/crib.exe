@@ -7,6 +7,7 @@ import {
   preferMergeWhenAvailable,
   opportunisticSafehouseStrategy,
   pickMergeTarget,
+  scaledPayloadMagnitude,
   MERGE_RANK_CAP,
 } from './merge';
 import { HEAT_HIGH_FRACTION, HEAT_MAX } from './heat';
@@ -85,6 +86,36 @@ function piece(id: string, overrides: Partial<SubroutineDefinition> = {}): Subro
     ...overrides,
   };
 }
+
+describe('scaledPayloadMagnitude (session 39, enemies.ts\'s per-layer difficulty scaler)', () => {
+  it('scales a magnitude-bearing payload proportionally, not by a flat amount', () => {
+    expect(scaledPayloadMagnitude({ kind: 'directBurst', amount: 10 }, 1.5)).toEqual({ kind: 'directBurst', amount: 15 });
+  });
+
+  it('returns null for a magnitude-less payload -- same "null means no knob" contract as improvedPayloadMagnitude', () => {
+    expect(scaledPayloadMagnitude({ kind: 'cleanse' }, 1.5)).toBeNull();
+  });
+
+  it('scales every magnitude field shape (baseAmount, amountPerTick, magnitude), not just amount', () => {
+    expect(scaledPayloadMagnitude({ kind: 'chainFinisherScaling', baseAmount: 4, perPriorFire: 1 }, 2)).toEqual({
+      kind: 'chainFinisherScaling',
+      baseAmount: 8,
+      perPriorFire: 1,
+    });
+    expect(scaledPayloadMagnitude({ kind: 'dot', amountPerTick: 2, cadence: 'globalPulse', duration: 3 }, 2)).toEqual({
+      kind: 'dot',
+      amountPerTick: 4,
+      cadence: 'globalPulse',
+      duration: 3,
+    });
+    expect(scaledPayloadMagnitude({ kind: 'debuff', debuffId: 'throttled', magnitude: 3, duration: 2 }, 2)).toEqual({
+      kind: 'debuff',
+      debuffId: 'throttled',
+      magnitude: 6,
+      duration: 2,
+    });
+  });
+});
 
 describe('mergeSubroutine', () => {
   it('improves a magnitude-bearing payload in place on the bench', () => {

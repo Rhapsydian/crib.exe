@@ -38,7 +38,7 @@ import { playRun, opportunisticTraversal, type GatekeeperFightContext } from '..
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import { playCombat } from '../src/engine/combat';
 import { GAUGE_THRESHOLD, WIN_THRESHOLD } from '../src/engine/encounters';
-import { enemySkill } from '../src/engine/enemies';
+import { enemySkill, magnitudeScalerFor, scaledEnemyLoadout } from '../src/engine/enemies';
 import { discardSkillStrategy, pegSkillStrategy } from '../src/engine/ai';
 import { BURNER_DEFINITIONS } from '../src/engine/burners';
 import type { ClassId } from '../src/engine/classes';
@@ -93,6 +93,10 @@ for (const classId of classes) {
 
     for (const capture of captures) {
       const enemySkillValue = enemySkill(capture.enemy.tier, capture.layerIndex, capture.fightsResolved);
+      // Session 39's own per-layer magnitude scaler -- same call
+      // resolveFight itself makes, so this diagnostic stays consistent
+      // with real production difficulty as that scaler gets retuned.
+      const scaledLoadout = scaledEnemyLoadout(capture.enemy.loadout, magnitudeScalerFor(capture.enemy, capture.layerIndex, capture.fightsResolved));
       // Same context-filtering resolveFight itself applies (encounters.ts)
       // -- a carried map/shop-only Burner has nothing to activate here.
       const combatBurnerIds = capture.playerState.carriedBurnerIds.filter((id) => BURNER_DEFINITIONS[id].contexts.includes('combat'));
@@ -101,7 +105,7 @@ for (const classId of classes) {
         // Deterministic and decorrelated per layer within a run -- not
         // meant to be cryptographically independent, just repeatable.
         const fightSeed = seed * 4 + capture.layerIndex;
-        const result = playCombat([capture.playerState.installedLoadout, capture.enemy.loadout], {
+        const result = playCombat([capture.playerState.installedLoadout, scaledLoadout], {
           seed: fightSeed,
           gaugeThreshold: GAUGE_THRESHOLD,
           winThreshold: WIN_THRESHOLD,

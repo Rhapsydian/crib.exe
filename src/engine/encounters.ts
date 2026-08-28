@@ -10,7 +10,16 @@ import { heatFromLoss } from './heat';
 import { drawRewardOptions, drawUpgradedRewardOptions, rewardPoolForClass, rarityOf, type RewardTier, type Rarity } from './rewards';
 import { dataForTier } from './data';
 import { pickMergeTarget, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
-import { pickRegularOrEliteEnemy, gatekeeperEnemyForNode, enemySkill, ENEMY_ROSTER, type EnemyDefinition, type EnemyId } from './enemies';
+import {
+  pickRegularOrEliteEnemy,
+  gatekeeperEnemyForNode,
+  enemySkill,
+  magnitudeScalerFor,
+  scaledEnemyLoadout,
+  ENEMY_ROSTER,
+  type EnemyDefinition,
+  type EnemyId,
+} from './enemies';
 import {
   shopOfferingsForClass,
   modOfferingsForClass,
@@ -221,7 +230,12 @@ function resolveFight(
   const enemy = enemyForFight(kind, node, layerIndex, fightNumber, rng, enemyIdOverride);
   const strategies = strategiesForFight(kind, layerIndex, fightNumber, discardStrategies, playStrategies);
   const seed = rng.nextInt(2 ** 31);
-  const result = playCombat([playerState.installedLoadout, enemy.loadout], {
+  // Per-layer difficulty scaler (session 39) -- applied here, not baked
+  // into ENEMY_ROSTER's own authored data, so that data stays static and
+  // regular/elite (which can appear at several layers) get a fresh scale
+  // each encounter rather than a fixed one.
+  const scaledLoadout = scaledEnemyLoadout(enemy.loadout, magnitudeScalerFor(enemy, layerIndex, fightNumber));
+  const result = playCombat([playerState.installedLoadout, scaledLoadout], {
     seed,
     gaugeThreshold: GAUGE_THRESHOLD,
     winThreshold: WIN_THRESHOLD,

@@ -1,5 +1,6 @@
 import type { SubroutineDefinition, SuitedArchetype } from './subroutine-types';
 import { ALL_POOL_SUBROUTINES } from './subroutines';
+import { scaledPayloadMagnitude } from './merge';
 import type { Rng } from './rng';
 import type { LayerGraph, MapNode } from './map-types';
 
@@ -119,6 +120,24 @@ export interface EnemyDefinition {
   /** 0-2 entries -- most enemies carry exactly one, a few Elites carry
    * two (session 27's "1-2 real passives" for that tier). */
   passiveIds: EnemyPassiveId[];
+  /** Per-layer difficulty scaler (session 39), gatekeeper-only -- an
+   * explicit, individually authored/tunable multiplier applied to this
+   * gatekeeper's own loadout magnitude, rather than derived live from a
+   * shared formula the way regular/elite scaling is (see
+   * enemyMagnitudeScaler below). Gatekeepers never repeat across layers
+   * (eligibleEnemies' exact-match rule), so "the same enemy at a higher
+   * layer" doesn't apply to them the way it does to regular/elite -- but
+   * the same underlying problem (gatekeeper-check.ts's session 39
+   * finding: layer 1 gatekeepers were harder than layer 4's, backwards
+   * from DESIGN.md's "meant to be very challenging for the layer it's
+   * presented at" intent) still needs a real per-identity knob. Seeded
+   * per-gatekeeper below from the same step regular/elite use, as a
+   * starting point for empirical retuning, not a final answer. Undefined
+   * (treated as 1, no scaling) for regular/elite -- they use
+   * enemyMagnitudeScaler instead, since a stored value wouldn't make
+   * sense for an identity that can legitimately appear at several
+   * different layers. */
+  magnitudeScaler?: number;
 }
 
 const SUBROUTINE_BY_ID: ReadonlyMap<string, SubroutineDefinition> = new Map(
@@ -218,37 +237,45 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   { id: 'compromised-dependency', name: 'Compromised Dependency', tier: 'elite', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('supply-route'), pool('polymorphic-worm'), pool('fork-bomb')], passiveIds: ['sleeper-network'] },
 
   // --- Gatekeeper (12) -- fully bespoke, one stable per layer ---
+  // magnitudeScaler (session 39) seeded uniformly per layer here --
+  // 1.0/1.15/1.3/1.45, the same 0.15-per-layer step regular/elite get
+  // from enemyMagnitudeScaler below -- as a starting point for empirical
+  // retuning against gatekeeper-check.ts, not a final answer. Each is a
+  // real, independent per-gatekeeper knob from here on, not slaved to
+  // this formula (e.g. Firewall Prime, already the roster's hardest
+  // fight at its own layer, is an obvious first candidate to dial back
+  // rather than leaving at the layer-1 baseline).
   // Layer 1 -- perimeter/DMZ
-  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'encryption'], minLayer: 1, loadout: [pool('total-pwnage'), pool('patch'), pool('full-rollback'), pool('privilege-escalation')], passiveIds: ['reception-protocol'] },
+  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'encryption'], minLayer: 1, loadout: [pool('total-pwnage'), pool('patch'), pool('full-rollback'), pool('privilege-escalation')], passiveIds: ['reception-protocol'], magnitudeScaler: 1.0 },
   // Session 28 retrofit: an all-mitigation gatekeeper -- Circuit
   // Breaker (neutral rare) is a near-perfect thematic fit for the
   // roster's purest defensive identity, converting exactly the
   // mitigation this kit already generates into a real strike.
-  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['encryption'], minLayer: 1, loadout: [pool('zero-trust'), pool('air-gap'), pool('redundant-backup'), pool('circuit-breaker')], passiveIds: ['no-way-in'] },
+  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['encryption'], minLayer: 1, loadout: [pool('zero-trust'), pool('air-gap'), pool('redundant-backup'), pool('circuit-breaker')], passiveIds: ['no-way-in'], magnitudeScaler: 1.0 },
   // Session 28 retrofit: cron-job/full-system-compromise/dns-poisoning
   // are all denial/manipulation, zero credit -- Watchdog Timer (neutral
   // rare, occurrence:go, scaling) added: "keep calling Go, it corners you."
-  { id: 'ghost-process', name: 'Ghost Process', tier: 'gatekeeper', archetypes: ['root'], minLayer: 1, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('dns-poisoning'), pool('watchdog-timer')], passiveIds: ['digital-ghost'] },
+  { id: 'ghost-process', name: 'Ghost Process', tier: 'gatekeeper', archetypes: ['root'], minLayer: 1, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('dns-poisoning'), pool('watchdog-timer')], passiveIds: ['digital-ghost'], magnitudeScaler: 1.0 },
   // Layer 2 -- internal LAN
-  { id: 'incident-response', name: 'Incident Response', tier: 'gatekeeper', archetypes: ['exploit'], minLayer: 2, loadout: [pool('supply-chain-compromise'), pool('vulnerability-scan'), pool('zero-day-chain')], passiveIds: ['highest-bidder'] },
-  { id: 'the-quarantine-ward', name: 'The Quarantine Ward', tier: 'gatekeeper', archetypes: ['malware', 'encryption'], minLayer: 2, loadout: [pool('epidemic'), pool('cold-storage'), pool('slowloris')], passiveIds: ['total-quarantine'] },
-  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['root', 'exploit'], minLayer: 2, loadout: [pool('supply-route'), pool('dead-drop'), pool('total-pwnage')], passiveIds: ['primed-to-strike'] },
+  { id: 'incident-response', name: 'Incident Response', tier: 'gatekeeper', archetypes: ['exploit'], minLayer: 2, loadout: [pool('supply-chain-compromise'), pool('vulnerability-scan'), pool('zero-day-chain')], passiveIds: ['highest-bidder'], magnitudeScaler: 1.15 },
+  { id: 'the-quarantine-ward', name: 'The Quarantine Ward', tier: 'gatekeeper', archetypes: ['malware', 'encryption'], minLayer: 2, loadout: [pool('epidemic'), pool('cold-storage'), pool('slowloris')], passiveIds: ['total-quarantine'], magnitudeScaler: 1.15 },
+  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['root', 'exploit'], minLayer: 2, loadout: [pool('supply-route'), pool('dead-drop'), pool('total-pwnage')], passiveIds: ['primed-to-strike'], magnitudeScaler: 1.15 },
   // Layer 3 -- secured subnet
-  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['malware'], minLayer: 3, loadout: [pool('fork-bomb'), pool('ransomware-cascade'), pool('total-compromise')], passiveIds: ['cascading-failure'] },
-  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['exploit', 'malware'], minLayer: 3, loadout: [pool('vulnerability-scan'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['adaptive-defense'] },
-  { id: 'silent-corruption', name: 'Silent Corruption', tier: 'gatekeeper', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('rootkit-deployment'), pool('epidemic'), pool('supply-route')], passiveIds: ['total-corruption'] },
+  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['malware'], minLayer: 3, loadout: [pool('fork-bomb'), pool('ransomware-cascade'), pool('total-compromise')], passiveIds: ['cascading-failure'], magnitudeScaler: 1.3 },
+  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['exploit', 'malware'], minLayer: 3, loadout: [pool('vulnerability-scan'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['adaptive-defense'], magnitudeScaler: 1.3 },
+  { id: 'silent-corruption', name: 'Silent Corruption', tier: 'gatekeeper', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('rootkit-deployment'), pool('epidemic'), pool('supply-route')], passiveIds: ['total-corruption'], magnitudeScaler: 1.3 },
   // Layer 4 -- core
   // Session 28 retrofit: air-gap was already dead weight (its reactive
   // trigger needs the caster's own Heat above a threshold, and enemies
   // have no Heat source) on top of the kit's zero-credit problem --
   // swapped for Circuit Breaker (neutral rare), the run's real
   // final-boss layer earning the strongest fix.
-  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('circuit-breaker')], passiveIds: ['null-session-passive'] },
-  { id: 'kernel-panic', name: 'Kernel Panic', tier: 'gatekeeper', archetypes: ['exploit', 'malware', 'encryption'], minLayer: 4, loadout: [pool('total-pwnage'), pool('epidemic'), pool('cold-storage')], passiveIds: ['redundant-kernel'] },
+  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('circuit-breaker')], passiveIds: ['null-session-passive'], magnitudeScaler: 1.45 },
+  { id: 'kernel-panic', name: 'Kernel Panic', tier: 'gatekeeper', archetypes: ['exploit', 'malware', 'encryption'], minLayer: 4, loadout: [pool('total-pwnage'), pool('epidemic'), pool('cold-storage')], passiveIds: ['redundant-kernel'], magnitudeScaler: 1.45 },
   // Session 28 retrofit: same pure recon/denial trio as its Layer 1
   // echo, Ghost Process -- Watchdog Timer again (deliberate reuse,
   // reinforcing the two enemies' own intentional narrative link).
-  { id: 'ghost-in-the-machine', name: 'Ghost in the Machine', tier: 'gatekeeper', archetypes: ['root'], minLayer: 4, loadout: [pool('dns-poisoning'), pool('dead-drop'), pool('backchannel'), pool('watchdog-timer')], passiveIds: ['total-access'] },
+  { id: 'ghost-in-the-machine', name: 'Ghost in the Machine', tier: 'gatekeeper', archetypes: ['root'], minLayer: 4, loadout: [pool('dns-poisoning'), pool('dead-drop'), pool('backchannel'), pool('watchdog-timer')], passiveIds: ['total-access'], magnitudeScaler: 1.45 },
 ];
 
 /** Every enemy eligible for `tier` at `layerIndex` -- a floor for
@@ -324,4 +351,52 @@ const OPENER_SKILL = 0; // the opener window pins skill to the floor regardless 
 export function enemySkill(tier: EnemyTier, layerIndex: number, fightsResolved: number): number {
   if (isOpenerWindow(fightsResolved)) return OPENER_SKILL;
   return Math.min(1, TIER_SKILL_BASE[tier] + LAYER_SKILL_STEP * (layerIndex - 1));
+}
+
+// Per-layer magnitude scaler (session 39, gatekeeper-check.ts's own
+// finding: layer 1 was measurably harder than layer 4 across every
+// class once real acquired power was accounted for -- nothing in the
+// engine scaled enemy payload magnitude by layer at all, only Cribbage
+// skill did, via a much smaller step). Regular/elite reuse this one
+// shared formula, computed live per encounter, since the same identity
+// can legitimately appear at several different layers (eligibleEnemies'
+// floor rule) -- a stored per-identity value wouldn't make sense the way
+// it does for gatekeepers (EnemyDefinition.magnitudeScaler above).
+// Tier-agnostic, unlike enemySkill's own tier-primary formula --
+// regular/elite already differ in base difficulty via kit size/passive
+// count, so this doesn't also need a tier split on top. Same
+// 0.15-per-layer step gatekeepers were seeded from. TBD/playtesting.
+const REGULAR_ELITE_MAGNITUDE_STEP = 0.15;
+const OPENER_MAGNITUDE_SCALER = 1; // the opener window pins this to no scaling too, same as skill
+
+function enemyMagnitudeScaler(layerIndex: number, fightsResolved: number): number {
+  if (isOpenerWindow(fightsResolved)) return OPENER_MAGNITUDE_SCALER;
+  return 1 + REGULAR_ELITE_MAGNITUDE_STEP * (layerIndex - 1);
+}
+
+/** The real magnitude scaler for any enemy encounter, regardless of
+ * tier -- gatekeepers read their own stored, individually tunable
+ * `magnitudeScaler` (defaulting to 1, no scaling, if somehow unset);
+ * regular/elite compute theirs live via enemyMagnitudeScaler above. One
+ * call site for encounters.ts/gatekeeper-check.ts to use either way. */
+export function magnitudeScalerFor(enemy: EnemyDefinition, layerIndex: number, fightsResolved: number): number {
+  if (enemy.tier === 'gatekeeper') return enemy.magnitudeScaler ?? 1;
+  return enemyMagnitudeScaler(layerIndex, fightsResolved);
+}
+
+/** Applies `multiplier` to every piece of `loadout` via
+ * merge.ts's scaledPayloadMagnitude -- a payload with no magnitude field
+ * (Ward/Cleanse/Cribbage-Layer Manipulation) is left unscaled, same
+ * "magnitude only, not trigger ease" scope as this session's own ask
+ * (unlike Merge's own upgradedDefinition, which falls back to easing the
+ * trigger condition -- deliberately not mirrored here, since making an
+ * enemy's condition easier to trigger is a different kind of change than
+ * "hits harder," out of scope for this pass). multiplier of 1 is
+ * effectively a no-op (new objects, same values). */
+export function scaledEnemyLoadout(loadout: SubroutineDefinition[], multiplier: number): SubroutineDefinition[] {
+  if (multiplier === 1) return loadout;
+  return loadout.map((piece) => {
+    const scaledPayload = scaledPayloadMagnitude(piece.payload, multiplier);
+    return scaledPayload ? { ...piece, payload: scaledPayload } : piece;
+  });
 }

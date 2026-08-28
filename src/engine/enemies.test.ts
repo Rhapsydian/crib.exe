@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import { createNode } from './map-types';
+import type { SubroutineDefinition } from './subroutine-types';
 import {
   ENEMY_ROSTER,
   eligibleEnemies,
@@ -8,6 +9,8 @@ import {
   assignGatekeeperEnemy,
   gatekeeperEnemyForNode,
   enemySkill,
+  magnitudeScalerFor,
+  scaledEnemyLoadout,
 } from './enemies';
 
 /**
@@ -116,5 +119,88 @@ describe('enemySkill', () => {
 
   it('is layer-secondary: the same tier climbs modestly from layer 1 to layer 4', () => {
     expect(enemySkill('regular', 1, 10)).toBeLessThan(enemySkill('regular', 4, 10));
+  });
+});
+
+describe('magnitudeScalerFor (session 39 per-layer difficulty scaler)', () => {
+  it('every gatekeeper has its own stored magnitudeScaler set', () => {
+    for (const gatekeeper of ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper')) {
+      expect(gatekeeper.magnitudeScaler).toBeDefined();
+    }
+  });
+
+  it("reads a gatekeeper's own stored value, not a live layer formula", () => {
+    const firewallPrime = ENEMY_ROSTER.find((e) => e.id === 'firewall-prime')!;
+    const nullSession = ENEMY_ROSTER.find((e) => e.id === 'null-session')!;
+    // Both real layerIndex/fightsResolved args are irrelevant here --
+    // the point is these are individually authored, not derived.
+    expect(magnitudeScalerFor(firewallPrime, firewallPrime.minLayer, 10)).toBe(firewallPrime.magnitudeScaler);
+    expect(magnitudeScalerFor(nullSession, nullSession.minLayer, 10)).toBe(nullSession.magnitudeScaler);
+    expect(magnitudeScalerFor(firewallPrime, firewallPrime.minLayer, 10)).not.toBe(magnitudeScalerFor(nullSession, nullSession.minLayer, 10));
+  });
+
+  it('regular/elite are pinned to 1 (no scaling) during the opener window regardless of layer', () => {
+    const regular = ENEMY_ROSTER.find((e) => e.tier === 'regular')!;
+    expect(magnitudeScalerFor(regular, 4, 0)).toBe(1);
+  });
+
+  it('regular/elite climb from layer 1 to layer 4, past the opener window', () => {
+    const regular = ENEMY_ROSTER.find((e) => e.tier === 'regular')!;
+    const elite = ENEMY_ROSTER.find((e) => e.tier === 'elite')!;
+    expect(magnitudeScalerFor(regular, 1, 10)).toBeLessThan(magnitudeScalerFor(regular, 4, 10));
+    expect(magnitudeScalerFor(elite, 1, 10)).toBeLessThan(magnitudeScalerFor(elite, 4, 10));
+  });
+
+  it('regular and elite use the same tier-agnostic formula at a given layer (unlike enemySkill, which is tier-primary)', () => {
+    const regular = ENEMY_ROSTER.find((e) => e.tier === 'regular')!;
+    const elite = ENEMY_ROSTER.find((e) => e.tier === 'elite')!;
+    expect(magnitudeScalerFor(regular, 3, 10)).toBe(magnitudeScalerFor(elite, 3, 10));
+  });
+});
+
+describe('scaledEnemyLoadout', () => {
+  const burst: SubroutineDefinition = {
+    id: 'test-burst',
+    name: 'test-burst',
+    archetype: 'exploit',
+    trigger: { kind: 'always' },
+    payload: { kind: 'directBurst', amount: 10 },
+    tags: [],
+  };
+  const cleanse: SubroutineDefinition = {
+    id: 'test-cleanse',
+    name: 'test-cleanse',
+    archetype: 'encryption',
+    trigger: { kind: 'always' },
+    payload: { kind: 'cleanse' },
+    tags: [],
+  };
+
+  it('scales a magnitude-bearing payload proportionally', () => {
+    const scaled = scaledEnemyLoadout([burst], 1.5);
+    expect(scaled[0].payload).toEqual({ kind: 'directBurst', amount: 15 });
+  });
+
+  it('leaves a magnitude-less payload unchanged', () => {
+    const scaled = scaledEnemyLoadout([cleanse], 1.5);
+    expect(scaled[0].payload).toEqual({ kind: 'cleanse' });
+  });
+
+  it("doesn't ease the trigger condition -- magnitude scaling only, unlike Merge's own upgrade path", () => {
+    const accumulator: SubroutineDefinition = {
+      id: 'test-accumulator',
+      name: 'test-accumulator',
+      archetype: 'malware',
+      trigger: { kind: 'accumulator', metric: 'points', threshold: 6 },
+      payload: { kind: 'cleanse' },
+      tags: [],
+    };
+    const scaled = scaledEnemyLoadout([accumulator], 1.5);
+    expect(scaled[0].trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 6 });
+  });
+
+  it('a multiplier of 1 is a genuine no-op (same array reference)', () => {
+    const loadout = [burst];
+    expect(scaledEnemyLoadout(loadout, 1)).toBe(loadout);
   });
 });
