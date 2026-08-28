@@ -252,7 +252,11 @@ export const BLACKHAT_LOADOUT: SubroutineDefinition[] = [
     name: 'Payload Drop',
     archetype: 'exploit',
     trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
-    payload: { kind: 'riskRewardBurst', amount: COMMON.burst + 2, heatCost: 4 },
+    // heatCost 4 -> 3 (balance pass, session 38/checkpoint-J follow-up):
+    // empirically swept against explore-heavy play alongside Static
+    // Noise's own fix below -- see BACKLOG.md's Blackhat Heat-fragility
+    // writeup for the full candidate comparison.
+    payload: { kind: 'riskRewardBurst', amount: COMMON.burst + 2, heatCost: 3 },
     tags: [],
   },
   {
@@ -268,7 +272,16 @@ export const BLACKHAT_LOADOUT: SubroutineDefinition[] = [
     name: 'Static Noise',
     archetype: 'exploit',
     trigger: { kind: 'always' },
-    payload: { kind: 'riskRewardBurst', amount: 3, heatCost: 1 },
+    // heatCost 1 -> 0 (balance pass): an Always-triggered Cantrip fires
+    // essentially every turn, so any nonzero heatCost here multiplies
+    // directly with fight length/count -- empirically the dominant driver
+    // of Blackhat's explore-mode Heat fragility (a 2% explore win rate,
+    // 65.5% heat-outs), far more than Payload Drop's own reduction above.
+    // A guaranteed-every-turn, deliberately low-power Cantrip shouldn't
+    // also be a guaranteed Heat tax -- that was a side effect of reusing
+    // riskRewardBurst for it, not an intended part of its "always fires"
+    // identity.
+    payload: { kind: 'riskRewardBurst', amount: 3, heatCost: 0 },
     tags: ['daemon'],
   },
 ];
