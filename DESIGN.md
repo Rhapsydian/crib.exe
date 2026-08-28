@@ -172,8 +172,10 @@ and **Merge** (see Subroutine Acquisition, under Meta-Progression — a
 deliberate git/version-control pun that fits the coding/hacking setting
 precisely; spends held duplicate subroutine material to upgrade a base
 copy) into a single either/or choice, StS-campfire-style; a **Shop** node
-(spend Data — see Subroutine Acquisition); an **Event** node (undesigned
-content, third acquisition channel). A node becomes **inert** after its
+(spend Data — see Subroutine Acquisition); an **Event** node (a
+narrative vignette with 2-4 choices, each ranging from fully transparent
+to a genuine gamble — see Meta-Progression's new "Events" subsection for
+the full design). A node becomes **inert** after its
 first resolved encounter, regardless of type — this is what preserves
 Safehouse's rest-vs-merge trade-off even though the map allows
 backtracking: the tension comes from the node being spent, not from being
@@ -267,19 +269,25 @@ Broad strokes, not yet detailed:
   (see Subroutine Tags, below), specific archetypes, specific trigger
   mechanisms, or acting as extra reactive subroutines of their own. Full
   design in the new "Mods" subsection, below.
+- A capped inventory of single-use, player-activated items, called
+  **Burners** — usable in combat (a single-fire payload effect), on the
+  map (a free move, a reveal, reopening a closed node), or in the Shop
+  (a discount/reroll/rarity-floor coupon). Full design in the new
+  "Burners" subsection, below.
 - The installed-loadout slot cap itself (see Subroutine Acquisition,
   below) can grow via a persistent, cross-run unlock, the same as
   everything else on this list.
 
-**Scope note (session 21, updated session 30)**: of this list, Classes
-and Subroutine Acquisition were designed enough to build first (see
-`BACKLOG.md` Phase 4). Mods' *shape* is now designed too (session 30,
-see "Mods" below) — its hook-point catalog and actual content library
-remain future work, the same "infrastructure before content" split
-Phase 2 used for subroutines themselves. Ascension-style difficulty
-remains genuinely undesigned and still needs its own future
-`/decision-session`; both are tracked under Phase 5 alongside other
-undesigned content.
+**Scope note (session 21, updated sessions 30 and 36)**: of this list,
+Classes and Subroutine Acquisition were designed enough to build first
+(see `BACKLOG.md` Phase 4). Mods' *shape* is now designed too (session
+30, see "Mods" below), and Burners' shape is designed as of this session
+(session 36, see "Burners" below) — both systems' hook-point/payload
+catalogs and actual content libraries remain future work, the same
+"infrastructure before content" split Phase 2 used for subroutines
+themselves. Ascension-style difficulty remains genuinely undesigned and
+still needs its own future `/decision-session`; all three are tracked
+under Phase 5 alongside other undesigned content.
 
 ### Subroutine acquisition
 
@@ -1092,6 +1100,156 @@ all exist and agree with each other — the strongest signal yet that a
 future engineering-scoping session could turn this into real
 implementation checkpoints without the session-17-style rescope risk.
 
+### Burners (session 36, `/decision-session`)
+
+crib.exe's answer to StS Potions: single-use, **player-activated-at-will**
+items — the one thing missing from the existing systems, which are
+otherwise either fully automatic (subroutines fire on trigger) or fully
+passive (Mods, always on). A Burner is manually triggered by the player
+at a moment of their own choosing, then gone. Directly answers a question
+the user raised going into this session — whether one-off consumables
+even belong in this design at all, given they're not a straight StS-
+Potion port — resolved yes, but reframed around that specific gap rather
+than copied wholesale.
+
+**Naming**: **Burner**, a real hacking/security-culture term — a burner
+phone: cheap, disposable, used once and discarded specifically to avoid
+being traced. A precise fit for "single-use, spent forever on use," and
+preferred over "Exploit" (collides with the Exploit archetype's own
+name) or a generic "Script"/"One-Shot."
+
+**Activation timing: only on the player's own turn**, the same moment
+subroutines resolve — not usable at an arbitrary point mid-hand. A true
+"anytime, even mid-pegging" panic-button version was considered and
+rejected for this session: it would need the engine's turn/hand-
+resolution loop to become pausable/resumable at arbitrary points, which
+doesn't exist today — the exact same gap already banked since session 24
+for real human-vs-AI play (every `DiscardStrategy`/`PlayStrategy` call is
+synchronous and expects an answer immediately). Own-turn-only reuses the
+existing turn-resolution hook almost as-is and still delivers real
+agency (choosing whether/which Burner to use that turn) without that
+scope increase. Worth revisiting if/when the resumable-engine work
+happens anyway.
+
+**Three usable contexts, one unified item pool — not three separate
+item types.** A single owned-item pool, where each Burner definition is
+tagged with which context(s) it's usable in, the same way a subroutine
+carries a trigger family:
+
+- **Combat** — resolves like a single-fire subroutine payload (a direct
+  burst, a Heat siphon, a guaranteed cut/discard swing), usable on the
+  player's own turn.
+- **Map** — an instant effect at the map level: a free move (no Heat
+  cost), revealing upcoming node types, or **reopening a previously
+  closed node**.
+- **Shop** — a "coupon" effect: a discount, a free reroll, or a
+  guaranteed rarity floor on the next purchase.
+
+The map-context "reopen a closed node" effect directly resolves the
+banked idea from session 9 ("a future ability/class passive that lets
+the player bypass a closed/lost node") — as a found/purchased item
+rather than a passive ability. See `BACKLOG.md` Phase 0 for the closed-
+out banked item.
+
+**Inventory: capped, no bench/installed split.** A hard slot limit,
+mirroring StS's own 2-3 potion slots and the subroutine loadout's own
+slot-scarcity tension (session 7) — a real "which am I carrying" choice.
+This differs from Mods' fully uncapped ownership (session 30), which is
+justified specifically by Mods having no ordering/slot-scarcity tension
+to protect at all; Burners do have that tension, closer to subroutines'
+own reasoning. Unlike subroutines, though, there's no separate owned-
+bench vs. carried-loadout split: a Burner is picked up and immediately
+usable, closer to a StS potion (hard cap, no "owned but not carried"
+state) than to always-evaluated background tech worth banking as Merge
+material. Exact slot count is TBD/playtesting, same discipline as every
+other numeric constant in this project.
+
+**Acquisition**: combat rewards from **all** fight tiers, not elite-only
+like Mods — regular fights currently grant only a subroutine choice, and
+a lower-commitment single-use item suits that thinner reward well. Plus
+a dedicated Shop slate (Data-spent, alongside the existing subroutine and
+Mod slates). Plus Events (see "Events," below) as the flavor-heavy
+primary source, matching StS's own event-reward pattern.
+
+**Pool scoping & rarity**: archetype-agnostic by default, like Mods —
+not tied to the 4 archetypes, since a one-shot utility item doesn't need
+the "don't hand a class a structurally dead reward" guard archetype-
+locked content does. Common/uncommon/rare, matching subroutines' and
+Mods' existing tiering convention. Since Events' gamble-tier choices can
+grant Burners (see below), the pool's most powerful entries are a
+natural fit for that tier specifically.
+
+**Explicitly out of scope this session** (shape, not library, same split
+every other content system in this project has gone through): concrete
+named Burner content; the exact payload catalog for combat-context
+Burners (likely reuses the existing subroutine payload catalog wholesale
+rather than inventing a new one, but not confirmed this session); exact
+numbers (slot cap, rarity distribution, Shop pricing).
+
+### Events (session 36, `/decision-session`)
+
+Designs the node type flagged as "undesigned content, third acquisition
+channel" since session 7 — the last remaining stub node type from Phase
+3. Merge and Shop were both given real design and implementation in
+Phase 4; Event never was.
+
+**Paradigm**: a narrative vignette with 2-4 choices, resolved instantly
+— no Cribbage played, StS's own event-node shape. Considered and
+rejected: a mini Cribbage-mechanical challenge, resolved via some
+lightweight non-full-combat card interaction, which would have reinforced
+the game's "everything resolves via real Cribbage" identity more
+directly, but is a genuinely new resolution mechanism, not just content
+— real engine work with no existing precedent to build on. Also rejected:
+a pure reward-reveal with no real choice, since it doesn't clearly earn
+being a distinct node type from Relay.
+
+**Risk model: a deliberate mix, not one global rule.** Each individual
+*choice* (not each Event) carries a `riskTier`: **transparent** (exact
+cost/reward stated up front), **visibleOdds** (a probabilistic outcome,
+odds and range both shown — e.g. "70% chance: +15 Data. 30% chance: +20
+Heat"), or **gamble** (genuinely unstated/uncertain outcome). A single
+Event can mix tiers across its own options — the safe choice, the
+calculated bet, and the wild gamble as three options on one vignette.
+
+The house-style default elsewhere in this design is full transparency —
+Heat costs, gauge thresholds, and accumulator bank counts are all stated
+numbers; nothing else in the design hides information from the player.
+`transparent` and `visibleOdds` both preserve that: Heat's entire design
+(the free-roam movement model's flat per-move cost, the margin-of-loss
+formula) depends on the player being able to do real risk math, which a
+fully hidden outcome would undermine specifically for the one resource
+whose whole point is being reasoned about, not gambled with.
+`gamble`-tier choices are the one deliberate, contained exception —
+confined to Events specifically, never touching combat/Heat's own core
+legibility, in service of the classic "the wording sounded fine and it
+wasn't" beat the genre leans on.
+
+**Risk tier gates reward ceiling**: transparent choices offer modest,
+safe value; visibleOdds choices offer moderate value with real variance;
+gamble-tier choices are the only place the pool's most powerful outcomes
+(a guaranteed rare Mod/Burner, a large Data windfall, reopening a closed
+node) can appear at all — mirrors how rarity already gates power in the
+subroutine/Mod pools, just applied to risk instead of acquisition cost.
+
+**Effect pool**: reuses existing resources and mechanisms wholesale —
+Heat delta, Data delta, a subroutine/Mod/Burner grant, or (a classic
+gamble-tier beat) triggering a bonus fight for a bigger payout. No new
+resource type needed.
+
+**Node-state behavior**: inert after one resolved encounter, same as
+every other stub node type since session 19 (Safehouse, Shop). No entry
+tax beyond the existing flat per-move Heat cost to reach it — the node
+itself doesn't add a second toll.
+
+**Explicitly out of scope this session** (shape, not library): concrete
+named Events; exact odds/numbers; whether Events are reskinned per
+contract target (a real future idea, given runs are already reskinned as
+different named companies/agencies); the class-specific-Event-grants-an-
+upgraded-starting-Mod idea banked at session 34's follow-up, which
+depended on Events existing at all. That prerequisite is now satisfied,
+but the idea still needs a second one — a genuine Mod-upgrade mechanism,
+since Mods have no Merge-style rank path today — before it's buildable.
+
 ## Enemy Design
 
 **Session 27** replaced the placeholder enemy model with a real design,
@@ -1410,7 +1568,8 @@ the red/green proximity above, though that's not why it was raised).
 
 ## Open Questions
 
-None currently blocking — this section is clear as of session 13. One
-banked idea remains (a future ability to bypass a closed/lost map node,
-session 9), tracked in `BACKLOG.md` Phase 0 rather than here since it was
-never a required design gap, just a noted idea for later.
+None currently blocking — this section is clear as of session 13. The
+one previously-banked idea (a future ability to bypass a closed/lost map
+node, session 9) is now resolved — see the new "Burners" subsection
+under Meta-Progression, whose map-context effects include reopening a
+closed node.

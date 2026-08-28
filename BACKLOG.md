@@ -181,6 +181,36 @@ quarantine's drop" question above. A "middle ground" scripted traversal
 strategy (per this session's new design goal) would be a cheap, useful
 diagnostic to build before or alongside that pass.
 
+**Session 36** (2026-08-28, `/decision-session`) designed both items the
+user flagged as necessary before the balance pass: a new consumable-item
+system (**Burners**) and the long-undesigned **Event** node. Full
+writeups in `DESIGN.md`'s new "Burners"/"Events" subsections under
+Meta-Progression; implementation-facing summaries in Phase 5, below.
+Resolved live, one decision at a time: Burners' niche (manual, on-demand
+activation — the one gap left by subroutines' automatic-trigger economy
+and Mods' passive economy), naming (**Burners**, a real hacking-culture
+term for a disposable, use-once, discard-to-avoid-tracing item),
+activation timing (own-turn only, not anytime-mid-hand -- the anytime
+version needs the same resumable-engine plumbing already banked since
+session 24 for human-vs-AI play), a three-context unified system
+(combat/map/shop, one owned-item pool), inventory shape (capped, no
+bench split), and acquisition (all fight tiers + Shop + Events). Then
+Events' paradigm (narrative vignette + choices, not a new Cribbage-
+resolution mechanism), risk model (a per-choice `transparent`/
+`visibleOdds`/`gamble` tier, risk gating reward ceiling -- a deliberate,
+contained exception to this project's otherwise fully-transparent house
+style), effect pool (reuses existing resources/grants, no new type), and
+node-state behavior (inert-after-one, matching Safehouse/Shop). Also
+resolves the session-9 banked node-bypass idea, as a map-context Burner
+effect rather than a passive ability. Docs-only session, no code -- same
+"shape now, content/implementation later" split Mods went through across
+sessions 30-33. **Next session**: either the per-class magnitude/balance
+pass (still the standing milestone, per session 35's own pointer above)
+or an engineering-scoping session turning this session's shape into real
+implementation checkpoints (mirroring sessions 15/17/19/21/27/33) -- ask
+rather than assume, same as every prior "what's next" fork in this
+project.
+
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
 see Phase 5 below) — a single shared zero-sum scalar replaced with two
@@ -321,10 +351,10 @@ session before the implementation phases below can be fully scoped:
   timing rather than flavor, orthogonal to archetype and independent of
   class specialization, multi-tag-per-subroutine allowed, extensible
   set. Specific passive designs that hook into tags still not written.
-- **Banked idea, not yet designed**: a future ability/class passive that
-  lets the player bypass a closed/lost node, turning a normally-permanent
-  failure into a recoverable one for specific builds. Noted session 9,
-  explicitly "idea space to explore."
+- ~~Banked idea: bypass a closed/lost node~~ — done, session 36: resolved
+  as a map-context Burner effect (reopening a closed node) rather than a
+  passive/ability — see `DESIGN.md`'s new "Burners" subsection under
+  Meta-Progression.
 - **Banked idea, not yet designed**: higher tiers of Root's
   `forceDiscardCard` manipulation (session 24, Root mechanical redesign
   checkpoint D -- see `ai.ts`'s `bestCardToForce`) could force the
@@ -2216,3 +2246,97 @@ inserts), or a new per-Mod magnitude-scaling concept Mods don't have at
 all yet. Not designed here -- flagged as real scoping work for whenever
 Event nodes themselves finally get designed, not a small follow-on to
 either the Root or Encryption notes above.
+
+---
+
+**Burners -- design shape settled (session 36, `/decision-session`).**
+Full reasoning in `DESIGN.md`'s new "Burners" subsection under
+Meta-Progression; this is the implementation-facing summary. Directly
+answers the user's own "are consumables even the right fit" question,
+raised going into this session -- resolved yes, deliberately reframed
+away from a direct StS-Potion port.
+
+Resolved live, one decision at a time:
+
+- **Niche**: manual, player-activated-at-will items -- the one gap left
+  by subroutines (automatic/trigger-gated) and Mods (passive/permanent).
+  Named **Burners**, after the real disposable-phone term.
+- **Activation timing: own-turn only**, not anytime-mid-hand -- the
+  anytime version needs the engine's turn/hand-resolution loop to become
+  pausable/resumable, the same gap already banked since session 24 for
+  human-vs-AI play. Deliberately deferred rather than half-built now.
+- **Three usable contexts, one unified item pool**: combat (single-fire
+  subroutine-payload-shaped effect), map (free move / reveal / reopen a
+  closed node -- resolves the session-9 banked node-bypass idea), Shop
+  (discount/reroll/rarity-floor coupon). Each Burner definition tags
+  which context(s) it's usable in, the same way a subroutine carries a
+  trigger family -- not three separate item systems.
+- **Inventory: capped, no bench/installed split** -- mirrors StS's 2-3
+  potion slots and the subroutine loadout's own slot-scarcity tension,
+  unlike Mods' uncapped ownership (justified specifically by having no
+  such tension). No bench split either, since a Burner is picked up and
+  immediately usable, unlike subroutines' bank-as-Merge-material bench.
+- **Acquisition**: combat rewards from all fight tiers (regular
+  included, unlike Mods' elite-only) + a Shop slate (third, alongside
+  subroutine/Mod slates) + Events (below) as the flavor-heavy primary
+  source.
+- **Pool scoping & rarity**: archetype-agnostic by default (like Mods);
+  common/uncommon/rare, matching existing tiering.
+
+**Deliberately not touched this session** (shape, not library): concrete
+named Burner content; the exact combat-context payload catalog (likely
+reuses the subroutine payload catalog wholesale, not confirmed); exact
+numbers (slot cap, rarity distribution, pricing).
+
+---
+
+**Events -- design shape settled (session 36, `/decision-session`).**
+Full reasoning in `DESIGN.md`'s new "Events" subsection under
+Meta-Progression; this is the implementation-facing summary. Closes the
+last undesigned Phase 3 stub node type -- Merge and Shop both got real
+design/implementation in Phase 4; Event never did, banked since
+session 3/7.
+
+Resolved live, one decision at a time:
+
+- **Paradigm**: narrative vignette + 2-4 choices, resolved instantly, no
+  Cribbage played. Considered and rejected: a mini Cribbage-mechanical
+  challenge (reinforces the "everything resolves via real Cribbage"
+  identity more directly, but is genuinely new engine work, not
+  content); a pure reward-reveal with no real choice (doesn't clearly
+  earn being distinct from Relay).
+- **Risk model: a deliberate per-choice mix**, not a global rule -- each
+  choice carries a `riskTier`: `transparent` (exact numbers stated),
+  `visibleOdds` (probabilistic, odds/range shown), or `gamble`
+  (genuinely uncertain). A single Event can mix tiers across its own
+  options. `gamble` is a deliberate, *contained* exception to this
+  project's otherwise fully-transparent house style (Heat costs, gauge
+  thresholds, bank counts are all stated elsewhere) -- confined to
+  Events specifically so Heat's own legibility (the free-roam
+  movement/per-move-cost model depends on real risk math) stays intact
+  everywhere else.
+- **Risk tier gates reward ceiling**: transparent = modest/safe,
+  visibleOdds = moderate/variance, gamble = the only tier where the
+  pool's most powerful outcomes (rare Mod/Burner, big Data, reopening a
+  closed node) can appear -- mirrors rarity gating power elsewhere,
+  applied to risk instead of acquisition cost.
+- **Effect pool**: reuses existing resources/mechanisms wholesale (Heat
+  delta, Data delta, subroutine/Mod/Burner grant, a bonus fight) -- no
+  new resource type.
+- **Node-state behavior**: inert after one resolution, same as
+  Safehouse/Shop since session 19; no entry tax beyond the existing flat
+  per-move Heat cost.
+
+**Deliberately not touched this session** (shape, not library): concrete
+named Events; exact odds/numbers; per-contract Event reskinning; the
+class-specific-Event-grants-upgraded-Mod idea banked at session 34
+(Events existing is now satisfied, but it still needs a second
+prerequisite -- a Mod-upgrade mechanism, since Mods have no Merge-style
+rank path).
+
+**Both now unblocked**: a future engineering-scoping session (mirroring
+sessions 15/17/19/21/27/33) can turn Burners' and Events' shape into
+real implementation checkpoints. Concrete content-authoring (named
+Burners, named Events) is a separate future pass either way, same
+"shape -> content -> implementation" split every other content system in
+this project has followed.
