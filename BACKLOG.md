@@ -322,15 +322,91 @@ tested candidates rather than tuned by feel:
 515/515 tests passing throughout (from 484), `npm run check` clean. 15
 commits this session (12 implementation checkpoints/fixes + 2 balance
 fixes + this close-out), none pushed yet -- ask before assuming, same
-as every prior session. **Next session**: the per-class magnitude/
-balance pass continues (other classes/matchups untouched this session --
-Saboteur, Operator, Warden, Ghost, and every gatekeeper besides the 6
-checked above), or Burner/Event content authoring beyond the 8+8
-validated samples, or the still-banked middle-ground/node-type-priority
-traversal-strategy gap (session 35, revisited but deliberately not built
-this session -- the user chose to sweep with the existing beeline/
-explore pair and bank better coverage as its own future scoping topic
-rather than block today's balance pass on it) -- ask rather than assume.
+as every prior session.
+
+**Session 39** (2026-08-28, same day, `/decision-session` then
+implemented same-session) closed the middle-ground traversal-strategy
+gap banked since session 35. Resolved live: the user corrected my first
+fights-only draft -- Shop/Event/Safehouse detours are real, if less
+direct, power gains too, not visits "for their own sake" -- landing on
+fights always first, Heat-high or material-high both pulling toward
+Safehouse, Data-high pulling toward Shop, and Event only pulling when
+Heat/material/Data are *all* low (a low-resource fallback gamble). Heat
+wins the Rest-vs-Merge tie at a Safehouse when both its own trigger and
+material's fire at once (the user's call -- Heat is the run-ending
+resource). Given the small scope (one traversal strategy, one safehouse
+strategy, a signature widen, CLI wiring), the user asked to implement
+in the same sitting rather than stop at a written spec.
+
+Shipped `opportunisticTraversal` (`run.ts`) + `opportunisticSafehouseStrategy`
+(`merge.ts`), every detour gated by a Heat safety-reserve check so
+exploring can never strand the run short of the gatekeeper.
+`TraversalStrategy`/`SafehouseStrategy` widened additively (existing
+strategies unaffected); wired into `scripts/sweep.ts` as
+`--traversal=opportunistic`, auto-paired with the new safehouse strategy
+as one coherent player profile. 528/528 tests passing (from 515), `npm
+run check` clean.
+
+**Comparison sweep** (200 seeds/class, all 3 strategies):
+
+| class | beeline | explore | opportunistic |
+|---|---|---|---|
+| breacher | 24.0% | 26.5% | 26.0% |
+| blackhat | 33.0% | 20.0% | **26.5%** |
+| saboteur | 33.0% | 51.5% | 50.5% |
+| operator | 40.5% | 43.0% | 42.5% |
+| warden | 33.5% | 50.5% | 43.0% |
+| ghost | 21.0% | 39.5% | 36.0% |
+| avg | 30.8% | 38.5% | 37.4% |
+
+Blackhat is the clean validation case: opportunistic's Heat-safety-
+reserve protects it from explore's known Heat fragility (26.5% vs.
+explore's 20.0%, heat-maxed roughly halved). Elsewhere it tracks close
+to explore, ahead of beeline.
+
+**Two findings from digging into the sweep, both banked for the actual
+balance pass rather than acted on now**:
+
+1. **The noRoute anomaly, explained, not a bug**: opportunistic showed a
+   *higher* `noRouteRemains` rate than explore for breacher/operator/
+   ghost despite being more Heat-conservative. Instrumented on 300
+   shared seeds: opportunistic engages *more* distinct fight nodes per
+   run than explore (e.g. breacher 9.05 vs 7.58) while using *fewer*
+   total moves (19.07 vs 23.33), because explore burns moves visiting
+   every Safehouse/Shop/Event node indiscriminately (zero closure risk
+   but wasted budget) and isn't actually nearest-first in its node
+   selection (node-array order, a pre-existing session-19
+   simplification), while opportunistic always takes the true shortest
+   path. Every sampled noRoute-ending run closed exactly 1 fight node
+   (matches session 20's "resilience guarantee only promises safety
+   against one closure" finding) -- so more distinct fights engaged is
+   more independent rolls against that single-point-of-failure risk. Net
+   victory *counts* stay essentially level (82 vs 82 breacher, 129 vs
+   123 operator, 113 vs 114 ghost) -- the extra engagement converts into
+   a mix of extra wins and extra noRoute losses, an honest reflection of
+   `DESIGN.md`'s own "either extreme is a real tradeoff" framing, not a
+   defect.
+2. **Does `HEAT_PER_MOVE` need bumping? Checked, not acted on.** For 5 of
+   6 classes movement Heat is already the dominant Heat source, but runs
+   still end (quarantine/noRoute) at only 32-42% of `HEAT_MAX` on
+   average, `heatMaxed` at 0/300 -- real headroom, not currently the
+   bottleneck. **Blackhat is the exception and the reason not to bump it
+   casually**: 72.7/100 average final Heat, 26% heat-maxed rate *at the
+   current value*, from its own kit's Heat taxes (session 38's fix)
+   compounding with movement -- a global bump would land hardest on the
+   class least able to absorb it. User's call: leave `HEAT_PER_MOVE` as
+   2 for now, test a candidate value against the full roster
+   (Blackhat-aware) during the actual balance pass instead of picking a
+   number by feel.
+
+1 implementation commit this session, not pushed. Session log:
+`session-logs/session-39-2026-08-28.md`.
+
+**Next session**: the per-class magnitude/balance pass continues
+(Saboteur, Operator, Warden, Ghost, and most gatekeepers still
+untouched) -- now with `opportunisticTraversal` as a 3rd sweep option
+and both findings above to fold in, or Burner/Event content authoring
+beyond the 8+8 validated samples -- ask rather than assume.
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,

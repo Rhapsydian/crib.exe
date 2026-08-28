@@ -24,10 +24,17 @@ acquisition. `DESIGN.md` now states an explicit design goal for how a run
 should play: the ideal path is a middle ground between beelining a
 layer's gatekeeper and fully exploring it while managing Heat, with
 either extreme being a deliberate risk/reward tradeoff rather than
-something to balance away (see Map & Run Structure). A real per-class
-balance/tuning pass is underway — Blackhat's explore-mode Heat fragility
-and Breacher's gatekeeper-tier fragility are both fixed and confirmed via
-sweep; the rest of the classes/matchups are still open.
+something to balance away (see Map & Run Structure) — a third scripted
+traversal strategy, **`opportunisticTraversal`**, now actually embodies
+that middle ground (fights first, then Heat/material/Data-driven pulls
+toward Safehouse/Shop/Event, gated by a Heat safety reserve), alongside
+the existing beeline/explore extremes. A real per-class balance/tuning
+pass is underway — Blackhat's explore-mode Heat fragility and Breacher's
+gatekeeper-tier fragility are both fixed and confirmed via sweep; the
+rest of the classes/matchups are still open, now with a 3rd traversal
+option and two banked findings (why the middle-ground strategy trades a
+higher noRoute rate for more fights engaged; whether `HEAT_PER_MOVE`
+needs a Blackhat-aware retune) to fold in.
 See `DESIGN.md` for the full design, `BACKLOG.md` for the phased
 implementation roadmap and next-session pointer, and `session-logs/` for a
 per-session record of decisions and results.
@@ -36,7 +43,7 @@ Domain: `cribexe.com` (registered available, not yet purchased).
 
 ## Engine
 
-- `npm test` — run the Vitest suite (515 tests as of session 38).
+- `npm test` — run the Vitest suite (528 tests as of session 39).
 - `npm run check` — type-check (`svelte-check` + `tsc`).
 - `npm run sweep -- run|enemy ...` — balance/regression sweep harness (see
   `scripts/sweep.ts`); used throughout Phase 5 to tune with real numbers
