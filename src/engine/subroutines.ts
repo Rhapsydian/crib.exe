@@ -206,7 +206,16 @@ export const BREACHER_LOADOUT: SubroutineDefinition[] = [
     id: 'buffer-overflow',
     name: 'Buffer Overflow',
     archetype: 'exploit',
-    trigger: { kind: 'occurrence', category: 'run', variation: 'instant' },
+    // category 'run' -> 'fifteen' (balance pass, session 38 follow-up):
+    // Breacher's only fast, unconditional offense piece was gated on
+    // Cribbage's less-common occurrence category, starving it of real
+    // win-gauge progress against fast/efficient gatekeepers. 'fifteen'
+    // fires far more often, the single highest-leverage lever found
+    // empirically against the diagnosing matchups (see BACKLOG.md's
+    // Breacher gatekeeper-fragility writeup for the full candidate
+    // comparison) -- a bigger identity change than a pure magnitude
+    // tweak, confirmed deliberately rather than defaulted to.
+    trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
     payload: { kind: 'directBurst', amount: COMMON.burst },
     tags: [],
   },
@@ -236,12 +245,25 @@ export const BREACHER_LOADOUT: SubroutineDefinition[] = [
     // CAPPED.uncommon/threshold-14 pass overshot badly (10%->99% win rate
     // against the diagnosing matchup, Legacy Firewall) -- retuned down to
     // a real, not trivializing, improvement (see BACKLOG.md session 29).
-    // Still TBD/playtesting like every other numeric constant here.
+    //
+    // threshold 28 -> 20, amount COMMON.burst(5) -> 7 (balance pass,
+    // session 38 follow-up): a gatekeeper-tier sweep found Breacher's
+    // own mitigationBanked->credit conversion was dramatically less
+    // efficient than the same mechanism on gatekeepers that use it
+    // (Firewall Prime's Circuit Breaker: threshold 10, payload 16, fed
+    // by 2 mitigation-banking sources vs Breacher's 1) -- not trying to
+    // match that ratio outright (Breacher is a starting-kit piece, not a
+    // bespoke gatekeeper one), just closing enough of the gap to raise
+    // the floor without trivializing easy matchups (still 100% against
+    // weak enemies after this change, empirically). See BACKLOG.md's
+    // Breacher gatekeeper-fragility writeup for the full candidate
+    // comparison against Firewall Prime/Ghost Process/Incident Response/
+    // Zero-Sum. Still TBD/playtesting like every other numeric constant.
     id: 'lock-fatigue',
     name: 'Lock Fatigue',
     archetype: 'encryption',
-    trigger: { kind: 'accumulator', metric: 'mitigationBanked', threshold: 28 },
-    payload: { kind: 'directBurst', amount: COMMON.burst },
+    trigger: { kind: 'accumulator', metric: 'mitigationBanked', threshold: 20 },
+    payload: { kind: 'directBurst', amount: 7 },
     tags: ['daemon'],
   },
 ];

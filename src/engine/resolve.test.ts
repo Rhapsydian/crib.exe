@@ -1018,10 +1018,11 @@ describe('mitigationBanked accumulator (session 28, Circuit Breaker)', () => {
     const sessionLock = BREACHER_LOADOUT.find((s) => s.id === 'session-lock')!;
     const lockFatigue = BREACHER_LOADOUT.find((s) => s.id === 'lock-fatigue')!;
     let state = createCombatState([sessionLock, lockFatigue], [], 12);
-    // 3 Session Lock casts (amount 7 each = 21) aren't enough on their own (threshold 28).
-    for (let i = 0; i < 3; i++) state = resolvePayload(sessionLock.payload, sessionLock.archetype, state, 0);
+    // 2 Session Lock casts (amount 7 each = 14) aren't enough on their own
+    // (threshold 20, balance pass session 38 follow-up -- was 28).
+    for (let i = 0; i < 2; i++) state = resolvePayload(sessionLock.payload, sessionLock.archetype, state, 0);
     expect(state.sides[0].loadout[1].state.ready).toBe(false);
-    // A 4th cast crosses the threshold and fires a real, opponent-independent credit.
+    // A 3rd cast crosses the threshold and fires a real, opponent-independent credit.
     state = resolvePayload(sessionLock.payload, sessionLock.archetype, state, 0);
     expect(state.sides[0].loadout[1].state.ready).toBe(true);
   });
