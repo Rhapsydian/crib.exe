@@ -31,7 +31,7 @@ import {
   type ModAcquisitionStrategy,
 } from './mods';
 import type { BurnerDefinition, BurnerId } from './burner-types';
-import { BURNER_CAP } from './burners';
+import { BURNER_CAP, BURNER_DEFINITIONS } from './burners';
 
 /**
  * The run orchestrator (session 19/20 checkpoint F): ties layer
@@ -120,11 +120,23 @@ function acquireBurner(playerState: RunPlayerState, burner: BurnerDefinition): R
   return { ...playerState, carriedBurnerIds: [...playerState.carriedBurnerIds, burner.id] };
 }
 
+/** Removes exactly one instance of `burnerId` from carriedBurnerIds --
+ * duplicates aren't deduplicated (checkpoint B), so this only ever
+ * consumes the one copy actually used, same one-for-one bookkeeping
+ * combat.ts's own remainingBurnerIds helper uses. */
+function removeOneCarriedBurner(playerState: RunPlayerState, burnerId: BurnerId): RunPlayerState {
+  const remaining = [...playerState.carriedBurnerIds];
+  const index = remaining.indexOf(burnerId);
+  if (index !== -1) remaining.splice(index, 1);
+  return { ...playerState, carriedBurnerIds: remaining };
+}
+
 export type RunOutcome = 'heatMaxed' | 'quarantined' | 'noRouteRemains' | 'victory';
 
 export type RunEvent =
   | { type: 'layerGenerated'; layerIndex: number; nodeCount: number }
   | { type: 'move'; layerIndex: number; from: string; to: string; heatCost: number; heatAfter: number }
+  | { type: 'mapBurnerActivated'; layerIndex: number; burnerId: BurnerId; targetNodeId?: string }
   | { type: 'encounter'; layerIndex: number; nodeId: string; nodeType: NodeType; outcome: EncounterOutcome; heatAfter: number }
   | { type: 'layerCleared'; layerIndex: number }
   | { type: 'runEnded'; outcome: RunOutcome };
@@ -167,6 +179,34 @@ export const exploreThenGatekeeper: TraversalStrategy = (graph, position, heat) 
   return beelineToGatekeeper(graph, position, heat);
 };
 
+/** Context passed to a MapBurnerStrategy for one traversal-loop
+ * iteration's decision -- mirrors combat.ts's BurnerActivationContext
+ * shape. availableBurnerIds is playerState.carriedBurnerIds filtered to
+ * map-context ones (no per-move "already used" bookkeeping needed here,
+ * unlike combat -- a used map Burner is removed from carriedBurnerIds
+ * immediately, in the same loop iteration, since there's no nested
+ * combat round-trip to surface usage back out of). closedNodeIds is the
+ * live target list for a reopenClosedNode pick. */
+export interface MapBurnerActivationContext {
+  graph: LayerGraph;
+  position: RunPosition;
+  heat: number;
+  playerState: RunPlayerState;
+  availableBurnerIds: BurnerId[];
+  closedNodeIds: string[];
+}
+
+/** Picks which (if any) available map-context Burner to activate before
+ * this iteration's traversal decision, or null to activate none.
+ * `targetNodeId` is only consulted for a reopenClosedNode pick (ignored,
+ * not required, for freeMove/revealUpcoming) and must be one of
+ * ctx.closedNodeIds -- an id outside that list is treated as null. */
+export type MapBurnerStrategy = (ctx: MapBurnerActivationContext) => { burnerId: BurnerId; targetNodeId?: string } | null;
+
+/** Default until a script actually wants to spend a map Burner --
+ * mirrors combat.ts's neverActivateBurner. */
+export const neverActivateMapBurner: MapBurnerStrategy = () => null;
+
 export interface RunOptions {
   seed: number;
   /** Defaults to Breacher, the designed starting/onboarding class
@@ -187,6 +227,16 @@ export interface RunOptions {
    * owned (beyond the class's own guaranteed starting one), rather than
    * depending on natural elite/gatekeeper reward luck across a seed. */
   ownedModIdsOverride?: ModId[];
+  /** Test-only escape hatch, same treatment as ownedModIdsOverride --
+   * lets a test start a run with specific Burners already carried,
+   * rather than depending on real acquisition (checkpoint F, not built
+   * yet as of checkpoint D). Routed through acquireBurner so BURNER_CAP
+   * is still respected. */
+  carriedBurnerIdsOverride?: BurnerId[];
+  /** Per-traversal-iteration map-context Burner activation (checkpoint
+   * D) -- called once per while-loop iteration, before that iteration's
+   * traversalStrategy call. Defaults to neverActivateMapBurner. */
+  mapBurnerStrategy?: MapBurnerStrategy;
   /** Which (if any) of a won fight's reward options a script acquires --
    * checkpoint D. Defaults to alwaysAcquireFirst (legal-not-good, no
    * rarity/synergy judgment). */
@@ -230,6 +280,8 @@ export function playRun(options: RunOptions): RunResult {
     traversalStrategy = beelineToGatekeeper,
     installedLoadoutOverride,
     ownedModIdsOverride,
+    carriedBurnerIdsOverride,
+    mapBurnerStrategy = neverActivateMapBurner,
     acquisitionStrategy = alwaysAcquireFirst,
     modAcquisitionStrategy = alwaysAcquireFirstMod,
     installedSlotCap = INSTALLED_SLOT_CAP,
@@ -265,6 +317,12 @@ export function playRun(options: RunOptions): RunResult {
     const mod = MOD_DEFINITIONS[modId];
     if (mod) playerState = acquireMod(playerState, mod);
   }
+  // Same treatment for Burners (checkpoint D's test-only escape hatch,
+  // routed through acquireBurner so BURNER_CAP is still respected).
+  for (const burnerId of carriedBurnerIdsOverride ?? []) {
+    const burner = BURNER_DEFINITIONS[burnerId];
+    if (burner) playerState = acquireBurner(playerState, burner);
+  }
 
   const finish = (outcome: RunOutcome): RunResult => ({ outcome, layersCompleted, finalHeat: heat, log, playerState });
 
@@ -289,13 +347,49 @@ export function playRun(options: RunOptions): RunResult {
       }
 
       const fromNodeId = position.nodeId;
+
+      // Map-context Burner activation (checkpoint D), before this
+      // iteration's traversal decision -- a reopened node becomes a
+      // legal target again in time for traversalStrategy to see it.
+      let freeMoveActivated = false;
+      const availableMapBurnerIds = playerState.carriedBurnerIds.filter((id) => BURNER_DEFINITIONS[id].contexts.includes('map'));
+      if (availableMapBurnerIds.length > 0) {
+        const closedNodeIds = graph.nodes.filter((n) => n.state === 'closed').map((n) => n.id);
+        const picked = mapBurnerStrategy({ graph, position, heat, playerState, availableBurnerIds: availableMapBurnerIds, closedNodeIds });
+        const burnerDef = picked && availableMapBurnerIds.includes(picked.burnerId) ? BURNER_DEFINITIONS[picked.burnerId] : undefined;
+        if (picked && burnerDef?.mapEffect) {
+          if (burnerDef.mapEffect.kind === 'reopenClosedNode' && picked.targetNodeId && closedNodeIds.includes(picked.targetNodeId)) {
+            const targetNodeId = picked.targetNodeId;
+            graph = reopenNode(graph, targetNodeId);
+            playerState = removeOneCarriedBurner(playerState, picked.burnerId);
+            log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId, targetNodeId });
+          } else if (burnerDef.mapEffect.kind === 'freeMove') {
+            freeMoveActivated = true;
+            playerState = removeOneCarriedBurner(playerState, picked.burnerId);
+            log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId });
+          } else if (burnerDef.mapEffect.kind === 'revealUpcoming') {
+            // Genuine no-op: every node's real type is already visible to
+            // traversalStrategy via `graph` itself -- this engine has no
+            // fog-of-war/hidden-map concept for a script to reveal into,
+            // the same "no AI/UI consumes it yet" treatment
+            // subroutine-types.ts's peekCrib documents for the analogous
+            // Cribbage-layer case. Still consumes the Burner.
+            playerState = removeOneCarriedBurner(playerState, picked.burnerId);
+            log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId });
+          }
+        }
+      }
+
       const targetId = traversalStrategy(graph, position, heat);
       const moveResult = move(graph, position, targetId);
       position = moveResult.position;
 
-      // Light Footing (Phase 5 Mods checkpoint E): discounts the flat
-      // per-move Heat cost before it's applied.
-      const moveHeatCost = applyOnMoveMods(playerState.ownedModIds, moveResult.heatCost);
+      // Light Footing (Phase 5 Mods checkpoint E) and Ghost Protocol
+      // (Burners checkpoint D) both discount/waive the flat per-move Heat
+      // cost before it's applied -- a free move skips the charge outright,
+      // same floored-at-0 treatment applyOnMoveMods already gives Light
+      // Footing (a move can never refund Heat, only discount/waive it).
+      const moveHeatCost = freeMoveActivated ? 0 : applyOnMoveMods(playerState.ownedModIds, moveResult.heatCost);
       const maxHeat = HEAT_MAX + playerState.maxHeatBonus; // Backup Generator (checkpoint E)
       const afterMove = addHeat(heat, moveHeatCost, maxHeat);
       heat = afterMove.heat;
@@ -402,6 +496,20 @@ function withoutClosedNodes(graph: LayerGraph): LayerGraph {
  * graphs, independent of generateLayer's randomness. */
 export function gatekeeperReachable(graph: LayerGraph, fromNodeId: string): boolean {
   return isReachable(withoutClosedNodes(graph), fromNodeId, graph.gatekeeperNodeId);
+}
+
+/** Reopens a closed node back to 'unresolved' -- the real engine gap
+ * Skeleton Key's map effect needed (session 37's exploration:
+ * map-types.ts's NodeState previously only ever tightened, unresolved ->
+ * inert/closed, never the reverse). No-ops (returns graph unchanged) if
+ * nodeId isn't currently closed -- same defensive-guard treatment as
+ * every other "declines if invalid" pick in this file. Exported so it's
+ * directly unit-testable against a hand-built graph, same precedent
+ * gatekeeperReachable set above. */
+export function reopenNode(graph: LayerGraph, nodeId: string): LayerGraph {
+  const target = graph.nodes.find((n) => n.id === nodeId);
+  if (!target || target.state !== 'closed') return graph;
+  return { ...graph, nodes: graph.nodes.map((n) => (n.id === nodeId ? { ...n, state: 'unresolved' } : n)) };
 }
 
 function shortestPath(graph: LayerGraph, fromId: string, toId: string): string[] {
