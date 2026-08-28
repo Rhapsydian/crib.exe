@@ -22,24 +22,32 @@
  * repro, the same way this file's own predecessor bug was found.
  *
  * Usage:
- *   npx tsx scripts/sweep.ts run [--classes=breacher,ghost] [--seeds=200] [--out=file.jsonl]
+ *   npx tsx scripts/sweep.ts run [--classes=breacher,ghost] [--seeds=200] [--traversal=beeline|explore] [--out=file.jsonl]
  *   npx tsx scripts/sweep.ts enemy --enemy=ghost-in-the-machine [--vs=blackhat] [--seeds=200] [--out=file.jsonl]
  *
  * `run` sweeps playRun() outcome distribution per class (RunOutcome +
- * layersCompleted). `enemy` sweeps a direct playCombat() between one
- * named enemy (enemies.ts) and one class's real starting kit, real game
- * settings (gaugeThreshold 8, winThreshold 50), reporting threshold vs.
+ * layersCompleted). `--traversal` selects which of run.ts's
+ * TraversalStrategy exports drives movement (default beeline, i.e.
+ * beelineToGatekeeper -- matches every sweep before session 35).
+ * `enemy` sweeps a direct playCombat() between one named enemy
+ * (enemies.ts) and one class's real starting kit, real game settings
+ * (gaugeThreshold 8, winThreshold 50), reporting threshold vs.
  * attrition wins on each side -- exactly the shape used to verify the
  * 9 credit-incapable-enemy retrofits this session.
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
-import { playRun, type RunOutcome } from '../src/engine/run';
+import { playRun, beelineToGatekeeper, exploreThenGatekeeper, type RunOutcome, type TraversalStrategy } from '../src/engine/run';
 import { playCombat } from '../src/engine/combat';
 import { CLASS_STARTING_LOADOUTS } from '../src/engine/subroutines';
 import { ENEMY_ROSTER } from '../src/engine/enemies';
 import type { ClassId } from '../src/engine/classes';
 
 const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
+
+const TRAVERSAL_STRATEGIES: Record<string, TraversalStrategy> = {
+  beeline: beelineToGatekeeper,
+  explore: exploreThenGatekeeper,
+};
 
 function parseArgs(argv: string[]): Record<string, string> {
   const args: Record<string, string> = {};
@@ -59,23 +67,28 @@ function sweepRun(args: Record<string, string>): void {
   const classes = args.classes ? (args.classes.split(',') as ClassId[]) : ALL_CLASSES;
   const seeds = Number(args.seeds ?? 100);
   const outFile = args.out;
+  const traversalName = args.traversal ?? 'beeline';
+  const traversalStrategy = TRAVERSAL_STRATEGIES[traversalName];
+  if (!traversalStrategy) {
+    throw new Error(`sweep.ts run: unknown --traversal="${traversalName}" (expected one of: ${Object.keys(TRAVERSAL_STRATEGIES).join(', ')})`);
+  }
   if (outFile) writeFileSync(outFile, ''); // truncate/create fresh
 
   for (const classId of classes) {
     const outcomes: Record<RunOutcome, number> = { victory: 0, heatMaxed: 0, quarantined: 0, noRouteRemains: 0 };
     let layersSum = 0;
     for (let seed = 0; seed < seeds; seed++) {
-      const result = playRun({ seed, classId });
+      const result = playRun({ seed, classId, traversalStrategy });
       outcomes[result.outcome]++;
       layersSum += result.layersCompleted;
       emit(
-        JSON.stringify({ mode: 'run', classId, seed, outcome: result.outcome, layersCompleted: result.layersCompleted }),
+        JSON.stringify({ mode: 'run', classId, seed, traversal: traversalName, outcome: result.outcome, layersCompleted: result.layersCompleted }),
         outFile,
       );
     }
     const total = seeds;
     console.log(
-      `\n${classId.padEnd(10)} victory=${outcomes.victory}/${total} (${((outcomes.victory / total) * 100).toFixed(1)}%)  heatMaxed=${outcomes.heatMaxed}  quarantined=${outcomes.quarantined}  noRoute=${outcomes.noRouteRemains}  avgLayers=${(layersSum / total).toFixed(2)}\n`,
+      `\n${classId.padEnd(10)} [${traversalName}] victory=${outcomes.victory}/${total} (${((outcomes.victory / total) * 100).toFixed(1)}%)  heatMaxed=${outcomes.heatMaxed}  quarantined=${outcomes.quarantined}  noRoute=${outcomes.noRouteRemains}  avgLayers=${(layersSum / total).toFixed(2)}\n`,
     );
   }
 }

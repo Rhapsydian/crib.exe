@@ -247,7 +247,19 @@ export function playRun(options: RunOptions): RunResult {
   const finish = (outcome: RunOutcome): RunResult => ({ outcome, layersCompleted, finalHeat: heat, log, playerState });
 
   for (let layerIndex = 0; layerIndex < layerNodeCounts.length; layerIndex++) {
-    let graph = generateLayer({ rng, nodeCount: layerNodeCounts[layerIndex] });
+    let graph = generateLayer({
+      rng,
+      nodeCount: layerNodeCounts[layerIndex],
+      // Session 35 fix: every DESIGN.md-authored elite enemy has
+      // minLayer 2 or 3 (none for layer 1, deliberately -- "Elite" table,
+      // Enemy Design) -- but map-gen.ts is content-agnostic and rolled
+      // eliteFight nodes on layer 1 anyway, which crashed the moment a
+      // traversal strategy actually visited one (pickRegularOrEliteEnemy
+      // throws when the eligible pool is empty). beelineToGatekeeper
+      // almost never hit that node, which is why this went unnoticed
+      // until exploreThenGatekeeper got its first real sweep.
+      typeWeights: layerIndex === 0 ? { eliteFight: 0 } : undefined,
+    });
     // Fixes this layer's gatekeeper identity for the whole run (Phase 5
     // checkpoint C) -- kept as a separate post-processing step rather
     // than a generateLayer option, so map-gen.ts itself stays
