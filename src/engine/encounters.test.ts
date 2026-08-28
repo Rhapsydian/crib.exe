@@ -81,6 +81,7 @@ function playerWithBurst(amount: number): RunPlayerState {
     grantedByMod: {},
     maxHeatBonus: 0,
     modRunState: {},
+    carriedBurnerIds: [],
   };
 }
 
@@ -95,6 +96,7 @@ const OVERWHELMING_PLAYER: RunPlayerState = {
   grantedByMod: {},
   maxHeatBonus: 0,
   modRunState: {},
+  carriedBurnerIds: [],
 };
 const NEGLIGIBLE_PLAYER = playerWithBurst(0.1);
 const SEEDS = [1, 2, 3];
@@ -254,6 +256,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
       modRewardOptions: [],
       modShopPurchase: null,
       modRerollCost: 0,
+      burnersUsedThisCombat: [],
     });
   });
 
@@ -273,6 +276,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
       modRewardOptions: [],
       modShopPurchase: null,
       modRerollCost: 0,
+      burnersUsedThisCombat: [],
     });
   });
 
@@ -291,6 +295,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
       modRewardOptions: [],
       modShopPurchase: null,
       modRerollCost: 0,
+      burnersUsedThisCombat: [],
     });
   });
 
@@ -311,6 +316,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
       modRewardOptions: [],
       modShopPurchase: null,
       modRerollCost: 0,
+      burnersUsedThisCombat: [],
     });
   });
 

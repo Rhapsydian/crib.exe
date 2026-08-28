@@ -15,6 +15,7 @@ function playerState(overrides: Partial<RunPlayerState> = {}): RunPlayerState {
     grantedByMod: {},
     maxHeatBonus: 0,
     modRunState: {},
+    carriedBurnerIds: [],
     ...overrides,
   };
 }

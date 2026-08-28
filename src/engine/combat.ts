@@ -9,6 +9,7 @@ import type { SubroutineDefinition, HandLifecycleMoment } from './subroutine-typ
 import type { ClassId } from './classes';
 import type { EnemyPassiveId } from './enemies';
 import type { ModId } from './mod-types';
+import type { BurnerId } from './burner-types';
 import {
   updateSubroutineState,
   updateSuitTallyState,
@@ -86,7 +87,38 @@ export interface CombatOptions {
    * resolve.ts's createCombatState) -- Phase 5 Mods checkpoint B.
    * Defaults to none. */
   ownedModIds?: ModId[];
+  /** Which Burner(s) side 0 (the player) is carrying into this combat,
+   * already filtered to combat-context ones -- Phase 5 Burners
+   * checkpoint B, mirroring ownedModIds' side-0-only convention.
+   * Defaults to none. */
+  carriedBurnerIds?: BurnerId[];
+  /** Per-side Burner-activation strategy (checkpoint C wires the actual
+   * call site) -- mirrors discardStrategies/playStrategies' per-side
+   * tuple shape. Side 1 (the enemy) has no Burner economy and should
+   * always return null; both default to `() => null` (no Burner ever
+   * activated), preserving every existing call site's behavior exactly. */
+  burnerActivationStrategies?: [BurnerActivationStrategy, BurnerActivationStrategy];
 }
+
+/** Context passed to a BurnerActivationStrategy for one turn's decision
+ * -- mirrors DiscardStrategy/PlayStrategy/CutStrategy's plain-function-
+ * over-one-context-object shape (deal.ts/pegging.ts). */
+export interface BurnerActivationContext {
+  combatState: CombatState;
+  side: PlayerIndex;
+  isDealer: boolean;
+}
+
+/** Picks which (if any) carried, not-yet-used Burner to activate this
+ * turn, or null to activate none -- checkpoint C wires the real call
+ * site (this file's per-occurrence turn loop, before that iteration's
+ * fireReadySubroutines call) and effect application via resolve.ts's
+ * exported resolvePayload. */
+export type BurnerActivationStrategy = (ctx: BurnerActivationContext) => BurnerId | null;
+
+/** Default for both sides until checkpoint C gives scripts a real
+ * choice to make -- never activates a Burner. */
+export const neverActivateBurner: BurnerActivationStrategy = () => null;
 
 export interface CombatResult {
   winner: PlayerIndex;
@@ -116,6 +148,13 @@ export interface CombatResult {
    * own doc comment for why an attrition win no longer needs the
    * defender to have any win-gauge progress at all. */
   resolvedBy: 'threshold' | 'attrition';
+  /** Which carried Burner(s) side 0 actually activated this combat --
+   * Phase 5 Burners checkpoint B, mirroring playerHeatGenerated's own
+   * three-hop pattern (combat.ts -> encounters.ts's EncounterOutcome ->
+   * run.ts, which removes these from RunPlayerState.carriedBurnerIds
+   * once the fight resolves). Always empty until checkpoint C's
+   * activation strategy is actually wired up and used. */
+  burnersUsedThisCombat: BurnerId[];
 }
 
 function replaceSideGauge(combatState: CombatState, side: PlayerIndex, gauge: InitiativeGauge): CombatState {
@@ -318,6 +357,8 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     classId,
     enemyPassiveIds = [],
     ownedModIds = [],
+    carriedBurnerIds = [],
+    burnerActivationStrategies = [neverActivateBurner, neverActivateBurner],
   } = options;
 
   const rng = createRng(seed);
@@ -330,11 +371,14 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   let dealer: PlayerIndex = startingDealer;
   let scores: [number, number] = [0, 0];
   let combatState = applyModOnCombatStartPassives(
-    createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds),
+    createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds),
   );
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
   let peakFillFraction: [number, number] = [0, 0];
+  // Checkpoint C populates this from the real activation call site --
+  // always empty until burnerActivationStrategies is actually wired up.
+  const burnersUsedThisCombat: BurnerId[] = [];
 
   const finish = (winner: PlayerIndex, resolvedBy: 'threshold' | 'attrition' = 'threshold'): CombatResult => ({
     winner,
@@ -343,6 +387,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     peakFillFraction,
     playerHeatGenerated: combatState.sides[0].heat,
     resolvedBy,
+    burnersUsedThisCombat,
   });
 
   /** Applies one step's result, tracks each side's running win-gauge

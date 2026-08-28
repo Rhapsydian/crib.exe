@@ -28,6 +28,8 @@ import {
 } from './shop';
 import type { ModDefinition } from './mod-types';
 import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersForOwnedMods } from './mods';
+import type { BurnerId } from './burner-types';
+import { BURNER_DEFINITIONS } from './burners';
 
 /**
  * Node encounter resolution (session 19/20 checkpoint E, player loadout
@@ -96,6 +98,13 @@ export interface EncounterOutcome {
    * once, else 0 -- mirrors rerollCost for the Mod slate's own
    * independent reroll decision. */
   modRerollCost: number;
+  /** Which carried Burner(s) side 0 actually activated during this
+   * encounter's combat, if any -- Phase 5 Burners checkpoint B, mirrors
+   * CombatResult.burnersUsedThisCombat straight through. Always empty
+   * for a non-fight outcome (Safehouse/Shop/Event -- no combat
+   * happened). run.ts's loop uses this to remove used Burners from
+   * RunPlayerState.carriedBurnerIds once the encounter resolves. */
+  burnersUsedThisCombat: BurnerId[];
 }
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
@@ -172,6 +181,9 @@ function resolveFight(
     classId: playerState.classId,
     enemyPassiveIds: enemy.passiveIds,
     ownedModIds: playerState.ownedModIds,
+    // Filtered to combat-context Burners only -- a carried map/shop-only
+    // Burner has nothing to activate here (checkpoint C).
+    carriedBurnerIds: playerState.carriedBurnerIds.filter((id) => BURNER_DEFINITIONS[id].contexts.includes('combat')),
     discardStrategies: strategies.discardStrategies,
     playStrategies: strategies.playStrategies,
   });
@@ -203,6 +215,7 @@ function resolveFight(
       modRewardOptions,
       modShopPurchase: null,
       modRerollCost: 0,
+      burnersUsedThisCombat: result.burnersUsedThisCombat,
     };
   }
   if (kind === 'gatekeeper') {
@@ -221,6 +234,7 @@ function resolveFight(
       modRewardOptions: [],
       modShopPurchase: null,
       modRerollCost: 0,
+      burnersUsedThisCombat: result.burnersUsedThisCombat,
     };
   }
   return {
@@ -236,6 +250,7 @@ function resolveFight(
     modRewardOptions: [],
     modShopPurchase: null,
     modRerollCost: 0,
+    burnersUsedThisCombat: result.burnersUsedThisCombat,
   };
 }
 
@@ -301,6 +316,7 @@ export function resolveEncounter(
           modRewardOptions: [],
           modShopPurchase: null,
           modRerollCost: 0,
+          burnersUsedThisCombat: [],
         };
       }
       return {
@@ -316,6 +332,7 @@ export function resolveEncounter(
         modRewardOptions: [],
         modShopPurchase: null,
         modRerollCost: 0,
+        burnersUsedThisCombat: [],
       };
     }
     case 'shop': {
@@ -364,6 +381,7 @@ export function resolveEncounter(
         modRewardOptions: [],
         modShopPurchase,
         modRerollCost,
+        burnersUsedThisCombat: [],
       };
     }
     case 'event':
@@ -380,6 +398,7 @@ export function resolveEncounter(
         modRewardOptions: [],
         modShopPurchase: null,
         modRerollCost: 0,
+        burnersUsedThisCombat: [],
       };
     case 'relay':
       throw new Error('resolveEncounter should never be called on a Relay node -- it has no encounter');

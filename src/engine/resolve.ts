@@ -6,6 +6,7 @@ import { CLASS_DEFINITIONS } from './classes';
 import type { EnemyPassiveId } from './enemies';
 import type { ModId } from './mod-types';
 import { reactiveModSubroutines, MOD_SMALL, MOD_MEDIUM, OVERCLOCKED_ACCUMULATOR_REDUCTION, TAGGED_FIRMWARE_TAG } from './mods';
+import type { BurnerId } from './burner-types';
 import { easeTriggerCondition, improvedPayloadMagnitude } from './merge';
 import {
   createInitialState,
@@ -179,6 +180,15 @@ export interface CombatState {
    * unchanged (checkpoint D's zero-regression guarantee) -- this list is
    * genuinely "every other owned Mod, plus the guaranteed class one." */
   ownedModIds: ModId[];
+  /** Which Burner(s) side 0 (the player) is carrying into this combat --
+   * Phase 5 Burners checkpoint B, mirroring ownedModIds' side-0-only
+   * convention. A snapshot taken at combat start (createCombatState),
+   * already filtered by run.ts to just this player's combat-context
+   * Burners; checkpoint C's activation strategy picks from this list,
+   * and a used Burner is surfaced back out via CombatResult.
+   * burnersUsedThisCombat rather than mutated out of this array
+   * directly. */
+  carriedBurnerIds: BurnerId[];
 }
 
 export function createCombatSideState(definitions: SubroutineDefinition[], gaugeThreshold: number, winThreshold: number): CombatSideState {
@@ -221,6 +231,7 @@ export function createCombatState(
   winThreshold: number = 100,
   enemyPassiveIds: EnemyPassiveId[] = [],
   ownedModIds: ModId[] = [],
+  carriedBurnerIds: BurnerId[] = [],
 ): CombatState {
   // The class's own exclusive starting-passive Mod is always active
   // whenever classId is set (checkpoint D) -- folded in here rather than
@@ -247,6 +258,7 @@ export function createCombatState(
     passiveTriggered: false,
     enemyPassiveIds,
     ownedModIds: effectiveModIds,
+    carriedBurnerIds,
   };
 }
 

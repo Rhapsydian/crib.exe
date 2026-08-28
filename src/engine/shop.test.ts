@@ -23,6 +23,7 @@ function playerState(data: number): RunPlayerState {
     grantedByMod: {},
     maxHeatBonus: 0,
     modRunState: {},
+    carriedBurnerIds: [],
   };
 }
 

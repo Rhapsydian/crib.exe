@@ -30,6 +30,8 @@ import {
   alwaysAcquireFirstMod,
   type ModAcquisitionStrategy,
 } from './mods';
+import type { BurnerDefinition, BurnerId } from './burner-types';
+import { BURNER_CAP } from './burners';
 
 /**
  * The run orchestrator (session 19/20 checkpoint F): ties layer
@@ -66,6 +68,12 @@ export interface RunPlayerState {
   grantedByMod: Record<string, string>;
   maxHeatBonus: number;
   modRunState: Record<string, number>;
+  /** Every Burner currently carried this run (Phase 5 Burners checkpoint
+   * B) -- a capped, unordered inventory, no bench/installed split (see
+   * burner-types.ts's own header). Duplicates are allowed to stack
+   * (unlike ownedModIds' uniqueness), since a Burner is a consumable
+   * item, not a permanent passive. */
+  carriedBurnerIds: BurnerId[];
 }
 
 export function createInitialPlayerState(classId: ClassId): RunPlayerState {
@@ -80,6 +88,7 @@ export function createInitialPlayerState(classId: ClassId): RunPlayerState {
     grantedByMod: {},
     maxHeatBonus: 0,
     modRunState: {},
+    carriedBurnerIds: [],
   };
 }
 
@@ -96,6 +105,19 @@ function acquireMod(playerState: RunPlayerState, mod: ModDefinition): RunPlayerS
   state = applyOnModAcquiredMods(state, mod.id);
   if (mod.grantedSubroutine) state = installGrantedSubroutine(state, mod.grantedSubroutine, mod.id);
   return state;
+}
+
+/** Finalizes a Burner acquisition (reward pick, Shop purchase, or a
+ * future Event grant alike) -- Phase 5 Burners checkpoint B, mirroring
+ * acquireMod's real shape/location above (not burners.ts -- see
+ * burner-types.ts's own header). Declines (no-op) once BURNER_CAP is
+ * reached -- no swap/bench fallback this pass (DESIGN.md's "Inventory":
+ * a hard cap, no owned-but-not-carried state). Unlike acquireMod,
+ * duplicates aren't deduplicated -- a Burner is a consumable item, not a
+ * unique permanent passive, so carrying two of the same one is legal. */
+function acquireBurner(playerState: RunPlayerState, burner: BurnerDefinition): RunPlayerState {
+  if (playerState.carriedBurnerIds.length >= BURNER_CAP) return playerState;
+  return { ...playerState, carriedBurnerIds: [...playerState.carriedBurnerIds, burner.id] };
 }
 
 export type RunOutcome = 'heatMaxed' | 'quarantined' | 'noRouteRemains' | 'victory';
@@ -307,6 +329,18 @@ export function playRun(options: RunOptions): RunResult {
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
       const afterEncounter = addHeat(heat, outcome.heatDelta, HEAT_MAX + playerState.maxHeatBonus);
       heat = afterEncounter.heat;
+      // Removes any Burner(s) actually activated in this encounter's
+      // combat (checkpoint C wires the real activation) -- removes one
+      // instance per use, not every copy, so a duplicate-stacked Burner
+      // isn't wiped out by using just one.
+      if (outcome.burnersUsedThisCombat.length > 0) {
+        const remaining = [...playerState.carriedBurnerIds];
+        for (const usedId of outcome.burnersUsedThisCombat) {
+          const index = remaining.indexOf(usedId);
+          if (index !== -1) remaining.splice(index, 1);
+        }
+        playerState = { ...playerState, carriedBurnerIds: remaining };
+      }
       if (outcome.dataAwarded > 0) playerState = { ...playerState, data: playerState.data + outcome.dataAwarded };
       if (outcome.rewardOptions.length > 0) {
         const picked = acquisitionStrategy(outcome.rewardOptions, playerState);

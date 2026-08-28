@@ -19,6 +19,7 @@ function playerState(installedLoadout: SubroutineDefinition[], bench: Subroutine
     grantedByMod: {},
     maxHeatBonus: 0,
     modRunState: {},
+    carriedBurnerIds: [],
   };
 }
 
