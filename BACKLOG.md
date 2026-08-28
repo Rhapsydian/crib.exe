@@ -229,6 +229,109 @@ confirming the shape). Docs-only, no code. **Next session**: an actual
 magnitude/balance pass (still the other standing candidate) -- ask
 rather than assume.
 
+**Session 38** (2026-08-28, `/dev-session`) implemented all 9 of session
+37's Burners + Events checkpoints (A-J) in one continuous pass, then
+used a same-session balance sweep to find and fix the two largest
+outlier classes -- full detail in Phase 5's "Burners + Events
+Implementation" write-up (checkpoint status) and this session's own
+`session-logs/session-38-2026-08-28.md` entry; summarized here at the
+level a future session needs to pick the thread back up.
+
+Checkpoints A-F (Burners) and G-J (Events + verification) shipped
+essentially as scoped, paced one checkpoint at a time at the user's
+request (verify, report, wait for go-ahead each time) rather than all
+at once the way session 34's Mods pass was. `burner-types.ts`/
+`burners.ts` and `event-types.ts`/`events.ts` (all new) hold the type
+systems and the 8+8 validated content pieces from session 37; combat/
+map/shop-context activation, the third independent Burner Shop slate,
+Event choice resolution (a real random-pick mechanism, not a persisted
+map-gen assignment), and bonus-fight resolution (folds straight into
+the same `EncounterOutcome` a normal fight would produce, so run.ts's
+existing reward-handling picked it up for free) all landed in
+`combat.ts`/`run.ts`/`shop.ts`/`encounters.ts`. `burners.test.ts`/
+`events.test.ts` (new, checkpoint J) cover every strategy type, all 8
+Burners across their real contexts (including `reopenNode` against a
+hand-built graph, mirroring `gatekeeperReachable`'s own Phase 3
+precedent), all 8 Events, and combined smoke tests.
+
+Verification writing surfaced two real gaps from earlier checkpoints in
+the same pass, both fixed immediately rather than deferred: `run.ts`
+never threaded `eventChoiceStrategy` into `RunOptions` at all
+(checkpoint H's own miss, caught while verifying checkpoint I's
+bonus-fight path end-to-end); and `resolveFight` never actually passed
+`burnerActivationStrategies` to `playCombat`, meaning combat-context
+Burner activation (checkpoint C's whole mechanism) was unreachable from
+a real `playRun` fight. Checkpoint J's own testing then found a third,
+more structural gap: the `noRouteRemains` reachability check ran
+*before* the map-Burner-activation step each loop iteration, so
+Skeleton Key's reopen effect -- its entire reason to exist -- could
+never fire in its own primary use case, since the run already ended the
+instant a closing node cut off the last route. Reordered the check to
+run after activation; verified with a real before/after (the same
+scenario ends in `noRouteRemains` without the Burner, and reopening it
+genuinely changes the outcome when carried).
+
+**Balance sweep, same session**: a fresh 6-class/200-seed/both-
+traversal sweep (the first with real Event/Burner content live, not
+directly comparable to sessions 34/35's pre-Burners/Events baselines)
+surfaced two sharp outliers, each dug into and fixed with empirically-
+tested candidates rather than tuned by feel:
+
+- **Blackhat's explore-mode Heat fragility** (2.0% win rate, 65.5%
+  heat-outs) traced to its own starting kit, not movement Heat -- two of
+  its three pieces cost Heat to fire, one of them (Static Noise) on
+  every single turn via an Always/Cantrip trigger, so the cost
+  multiplies directly with fight length/count. An isolated single-fight
+  test made it unambiguous: Blackhat generates 14.06 Heat from its own
+  kit alone against a weak enemy; Warden/Operator generate 0.00 (neither
+  has any Heat-costing payload). Fixed: Static Noise's `heatCost` 1→0
+  (a guaranteed-every-turn Cantrip shouldn't also be a guaranteed Heat
+  tax) plus Payload Drop 4→3. Result: explore 2.0%→20.0%, beeline
+  untouched (32.5%→33.0%), heat-outs 65.5%→34.5% -- deliberately not
+  full parity with beeline, preserving the real gap between Blackhat's
+  two playstyles rather than erasing it (a candidate that zeroed both
+  costs reached 32.5% explore, which would have).
+- **Breacher's gatekeeper-tier fragility** (12.0% overall, worst of all
+  6 classes) turned out not to be the stalemate/hard-tiebreak problem
+  session 28/29 diagnosed and partially fixed -- Breacher wins ~90%+
+  against 5/6 regular-tier enemies, and its gatekeeper losses are almost
+  entirely real `resolvedBy: 'threshold'` losses, not attrition
+  stalemates. A matched control sweep (same gatekeepers, Operator/Warden
+  starting kits) found Firewall Prime plays the *exact same strategy*
+  Breacher's kit does -- deny, bank mitigation via the
+  `mitigationBanked` accumulator, convert to a burst -- just far more
+  efficiently (threshold 10 vs Breacher's 28, payload 16 vs 5, 2
+  mitigation-banking sources vs 1); Warden, the only other
+  Encryption-paired class, loses to it exactly as badly (0%) while
+  Encryption-less Operator doesn't, confirming a mirror-match power gap
+  rather than an archetype counter. Ghost Process and Incident Response
+  are different mechanisms entirely (Root gauge-denial with a
+  self-accelerating Haste snowball; simply closing fights out in ~3.6
+  hands before Breacher's slow accumulator gets going). Tested 5
+  candidates against both the 4 hardest matchups and 3 easy controls
+  before picking one: Buffer Overflow's trigger (`occurrence: run` →
+  `occurrence: fifteen` -- a bigger identity change than a magnitude
+  tweak, but by far the single highest-leverage fix) plus Lock Fatigue's
+  threshold 28→20/amount 5→7. Result: beeline 12.0%→24.0%, explore
+  12.0%→26.5%, no overshoot (easy matchups held at 100% throughout).
+  Firewall Prime and Incident Response remain genuinely hard even after
+  this (0%/3% in isolated combat) -- deliberately left alone, since
+  both are broadly hard for other classes too (Operator 58%/10%, Warden
+  0%/40%), not a Breacher-specific gap still open.
+
+515/515 tests passing throughout (from 484), `npm run check` clean. 15
+commits this session (12 implementation checkpoints/fixes + 2 balance
+fixes + this close-out), none pushed yet -- ask before assuming, same
+as every prior session. **Next session**: the per-class magnitude/
+balance pass continues (other classes/matchups untouched this session --
+Saboteur, Operator, Warden, Ghost, and every gatekeeper besides the 6
+checked above), or Burner/Event content authoring beyond the 8+8
+validated samples, or the still-banked middle-ground/node-type-priority
+traversal-strategy gap (session 35, revisited but deliberately not built
+this session -- the user chose to sweep with the existing beeline/
+explore pair and bank better coverage as its own future scoping topic
+rather than block today's balance pass on it) -- ask rather than assume.
+
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
 see Phase 5 below) — a single shared zero-sum scalar replaced with two
@@ -2361,11 +2464,19 @@ this project has followed.
 
 ---
 
-**Burners + Events Implementation (session 37, `/decision-session`,
-engineering scoping)** -- checkpointed implementation spec for a future
-`/dev-session`, same category as sessions 15/17/19/21/27/33, directly
-continuing session 33's own precedent for Mods (shape -> hook catalog ->
-content validation -> implementation spec).
+**Burners + Events Implementation ✅ complete (session 37 scoped,
+session 38 implemented and verified)** -- checkpointed implementation
+spec, same category as sessions 15/17/19/21/27/33, directly continuing
+session 33's own precedent for Mods (shape -> hook catalog -> content
+validation -> implementation spec). All checkpoints A-J below shipped
+in session 38 (`/dev-session`) -- see this file's own top "NEXT SESSION"
+section and `session-logs/session-38-2026-08-28.md` for the full
+implementation writeup, including two real gaps checkpoint J's own
+verification found and fixed (`eventChoiceStrategy`/
+`burnerActivationStrategies` never threaded through `RunOptions`, and
+the `noRouteRemains` check running before Skeleton Key ever got a
+chance to reopen a node). Spec below is kept as-authored (session 37)
+for the historical checkpoint-by-checkpoint reference.
 
 Explored the actual engine (`resolve.ts`, `triggers.ts`, `combat.ts`,
 `subroutine-types.ts`, `mod-types.ts`/`mods.ts`, `gauges.ts`, `run.ts`,
@@ -2568,8 +2679,13 @@ directly.
   full `playRun()` with Burners carried/used and Events resolved across
   a full run, mirroring `mods.test.ts`'s own full-run smoke test.
 
-**Not done this session**: no code -- this is a scoping session, same
-as sessions 15/17/19/21/27/33; a future `/dev-session` implements these
-checkpoints. No further content authoring beyond the 8+8 validated
-samples above. Exact numbers (`BURNER_CAP`, bonus-fight reward
-magnitude, discount/reroll/rarity-floor values) all TBD/playtesting.
+**Not done this session (session 37 -- superseded, see the ✅ complete
+note above)**: no code -- this is a scoping session, same as sessions
+15/17/19/21/27/33; a future `/dev-session` implements these checkpoints.
+No further content authoring beyond the 8+8 validated samples above.
+Exact numbers (`BURNER_CAP`, bonus-fight reward magnitude, discount/
+reroll/rarity-floor values) all TBD/playtesting -- **still true after
+session 38**: implementation shipped the 8+8 validated samples exactly
+as authored, no new content, and none of these placeholder numbers were
+touched (the balance-pass fixes session 38 also made were to existing
+Blackhat/Breacher subroutine magnitudes, unrelated to Burners/Events).
