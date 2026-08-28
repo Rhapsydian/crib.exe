@@ -1978,3 +1978,48 @@ real, functioning data with working hook effects, not placeholders. A
 fresh `playRun()` sweep with Mods active is now possible for the first
 time -- not run this session (per the plan, that's the eventual balance
 pass's job, still sequenced after this) but genuinely unblocked.
+
+**First real Mods-active balance sweep (session 34, same-day follow-up)**
+-- `npm run sweep -- run --seeds=200`, all 6 classes, same legal-not-good
+default strategies every prior sweep in this project has used
+(`alwaysAcquireFirst`/`alwaysAcquireFirstMod`, `beelineToGatekeeper`),
+Mods now genuinely reachable via both the additive elite/gatekeeper
+reward and the Shop's second slate for the first time:
+
+| class     | victory | heatMaxed | quarantined | noRoute | avg layers |
+|-----------|---------|-----------|-------------|---------|------------|
+| breacher  | 18.0%   | 0.0%      | 78.0%       | 4.0%    | 0.93       |
+| blackhat  | 34.0%   | 4.0%      | 62.0%       | 0.0%    | 1.78       |
+| saboteur  | 35.5%   | 0.0%      | 64.0%       | 0.5%    | 1.96       |
+| operator  | 47.5%   | 0.0%      | 49.0%       | 3.5%    | 2.25       |
+| warden    | 41.0%   | 0.0%      | 57.5%       | 1.5%    | 2.12       |
+| ghost     | 20.5%   | 0.0%      | 79.5%       | 0.0%    | 1.58       |
+
+Average victory rate **32.75%**, up from session 28's pre-Mods baseline
+(~28.7%: breacher 10.0%, blackhat 28.5%, saboteur 33.5%, operator 41.5%,
+warden 35.5%, ghost 23.0%). Two real findings, not just "it went up":
+
+1. **Every class improved except Ghost**, which is flat within noise
+   (23.0%→20.5%). Reads as structural, not seed luck: Ghost's kit never
+   credits its own win-gauge directly (its whole identity, per
+   `DESIGN.md`), so the Mods that reward *firing* something (Tagged
+   Firmware's tag bonus, Malware Amplifier's archetype bonus) have
+   nothing to attach to on a Ghost loadout the way they do on an
+   offense-heavy class. Worth checking directly in a future session
+   rather than assuming -- a Ghost-specific breakdown of which Mods it
+   actually drew/used across these 200 seeds would confirm or rule this
+   out.
+2. **The relative class ordering is completely unchanged** from session
+   28: breacher and ghost remain the two weakest, operator remains
+   strongest, same rank order top to bottom. Mods gave a fairly uniform
+   uplift rather than reshuffling the balance picture -- useful to know
+   before the eventual per-class magnitude pass, since it means Mods
+   alone won't fix Breacher/Ghost's relative standing, only raise every
+   class's floor by roughly the same amount.
+
+**Not yet done**: a synergy-aware acquisition/Shop strategy (this sweep's
+`alwaysAcquireFirst`/`alwaysAcquireFirstMod` never weighs rarity or
+class fit); a breakdown of *which* Mods actually got drawn/used per
+class/seed (would directly test finding 1 above); the per-class
+magnitude/balance pass itself, which this sweep is scoping data for, not
+performing.
