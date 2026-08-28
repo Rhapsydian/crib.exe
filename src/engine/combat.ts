@@ -10,6 +10,7 @@ import type { ClassId } from './classes';
 import type { EnemyPassiveId } from './enemies';
 import type { ModId } from './mod-types';
 import type { BurnerId } from './burner-types';
+import { BURNER_DEFINITIONS } from './burners';
 import {
   updateSubroutineState,
   updateSuitTallyState,
@@ -35,6 +36,7 @@ import {
   fireNewlyReadyReactiveSubroutines,
   fireReadySubroutines,
   refreshTriggerReadiness,
+  resolvePayload,
   resolvePendingSabotage,
   tickCastersTurnPulse,
   tickDebuffDurations,
@@ -102,18 +104,24 @@ export interface CombatOptions {
 
 /** Context passed to a BurnerActivationStrategy for one turn's decision
  * -- mirrors DiscardStrategy/PlayStrategy/CutStrategy's plain-function-
- * over-one-context-object shape (deal.ts/pegging.ts). */
+ * over-one-context-object shape (deal.ts/pegging.ts). availableBurnerIds
+ * (checkpoint C) is combatState.carriedBurnerIds with this combat's
+ * already-used copies removed one-for-one -- carriedBurnerIds itself is
+ * a fixed start-of-combat snapshot (checkpoint B), so this is the field
+ * a strategy should actually pick from. */
 export interface BurnerActivationContext {
   combatState: CombatState;
   side: PlayerIndex;
   isDealer: boolean;
+  availableBurnerIds: BurnerId[];
 }
 
-/** Picks which (if any) carried, not-yet-used Burner to activate this
- * turn, or null to activate none -- checkpoint C wires the real call
- * site (this file's per-occurrence turn loop, before that iteration's
- * fireReadySubroutines call) and effect application via resolve.ts's
- * exported resolvePayload. */
+/** Picks which (if any) available Burner to activate this turn, or null
+ * to activate none. Called once per turn-loop iteration (checkpoint C's
+ * call site, this file's per-occurrence turn loop), before that
+ * iteration's fireReadySubroutines call -- an "opening move" framing.
+ * Returning an id not present in ctx.availableBurnerIds is treated the
+ * same as null (silently ignored). */
 export type BurnerActivationStrategy = (ctx: BurnerActivationContext) => BurnerId | null;
 
 /** Default for both sides until checkpoint C gives scripts a real
@@ -161,6 +169,19 @@ function replaceSideGauge(combatState: CombatState, side: PlayerIndex, gauge: In
   const sides = combatState.sides.slice() as [CombatSideState, CombatSideState];
   sides[side] = { ...sides[side], gauge };
   return { ...combatState, sides };
+}
+
+/** carriedBurnerIds minus already-used copies, one-for-one (not a Set
+ * difference -- duplicate ids are legal, checkpoint B). Same logic
+ * run.ts's own end-of-encounter removal uses, scoped here to one
+ * in-progress combat instead of a whole run. */
+function remainingBurnerIds(carried: BurnerId[], used: BurnerId[]): BurnerId[] {
+  const remaining = [...carried];
+  for (const usedId of used) {
+    const index = remaining.indexOf(usedId);
+    if (index !== -1) remaining.splice(index, 1);
+  }
+  return remaining;
 }
 
 /** Advances every subroutine on both sides against one occurrence --
@@ -606,6 +627,28 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
       if (winner !== null) return finish(winner);
 
       for (let turn = 0; turn < turnsTriggered; turn++) {
+        // Burner activation (checkpoint C): an "opening move" resolved
+        // before this turn's automatic subroutine fires. Side 1 (the
+        // enemy) has no Burner economy -- its strategy defaults to
+        // neverActivateBurner, so this is a genuine no-op for it, not a
+        // special case.
+        const availableBurnerIds = remainingBurnerIds(combatState.carriedBurnerIds, burnersUsedThisCombat);
+        if (availableBurnerIds.length > 0) {
+          const chosenBurnerId = burnerActivationStrategies[occurrence.player]({
+            combatState,
+            side: occurrence.player,
+            isDealer: occurrence.player === hand.dealer,
+            availableBurnerIds,
+          });
+          const burnerDef = chosenBurnerId && availableBurnerIds.includes(chosenBurnerId) ? BURNER_DEFINITIONS[chosenBurnerId] : undefined;
+          if (chosenBurnerId && burnerDef?.combatEffect) {
+            burnersUsedThisCombat.push(chosenBurnerId);
+            const afterBurner = resolvePayload(burnerDef.combatEffect, 'neutral', combatState, occurrence.player);
+            winner = step({ combatState: afterBurner, winner: resolution(afterBurner) });
+            if (winner !== null) return finish(winner);
+          }
+        }
+
         const fired = fireReadySubroutines(combatState, occurrence.player, {
           isDealer: occurrence.player === hand.dealer,
         });
