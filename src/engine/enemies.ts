@@ -196,12 +196,18 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   { id: 'hardened-workstation', name: 'Hardened Workstation', tier: 'regular', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [pool('sandboxing'), pool('two-factor'), pool('steady-drip')], passiveIds: ['grinds-you-down'] },
 
   // --- Elite (8) -- 3+ subroutines, mostly uncommons ---
-  { id: 'zero-day-broker', name: 'Zero-Day Broker', tier: 'elite', archetypes: ['exploit'], minLayer: 2, loadout: [pool('zero-day-chain'), pool('buffer-overrun'), pool('payload-multiplier')], passiveIds: ['fresh-exploit'] },
-  { id: 'ransomware-deployment', name: 'Ransomware Deployment', tier: 'elite', archetypes: ['malware'], minLayer: 2, loadout: [pool('fork-bomb'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['escalating-demand'] },
+  // Session 35: widened from minLayer 2 to 1 -- the 3 single-archetype
+  // Elites are the tier's simplest identities (mirroring Regular's own
+  // layer-1/layer-2 split by archetype simplicity), so layer 1 gets a
+  // real Elite presence without new authoring. The 2-archetype and Root
+  // Elites below stay at their original minLayer, preserving the
+  // "deeper layers draw from a harder-skewing subset" progression.
+  { id: 'zero-day-broker', name: 'Zero-Day Broker', tier: 'elite', archetypes: ['exploit'], minLayer: 1, loadout: [pool('zero-day-chain'), pool('buffer-overrun'), pool('payload-multiplier')], passiveIds: ['fresh-exploit'] },
+  { id: 'ransomware-deployment', name: 'Ransomware Deployment', tier: 'elite', archetypes: ['malware'], minLayer: 1, loadout: [pool('fork-bomb'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['escalating-demand'] },
   // Session 28 retrofit: an all-mitigation Elite kit (same structural
   // gap) -- Overclock (neutral uncommon, selfState:heatAbove) added as
   // a 4th piece, "pushed to its limits, it strikes back."
-  { id: 'zero-trust-node', name: 'Zero Trust Node', tier: 'elite', archetypes: ['encryption'], minLayer: 2, loadout: [pool('rate-limiting'), pool('honeypot'), pool('redundant-backup'), pool('overclock')], passiveIds: ['no-exceptions'] },
+  { id: 'zero-trust-node', name: 'Zero Trust Node', tier: 'elite', archetypes: ['encryption'], minLayer: 1, loadout: [pool('rate-limiting'), pool('honeypot'), pool('redundant-backup'), pool('overclock')], passiveIds: ['no-exceptions'] },
   { id: 'compromised-ad-server', name: 'Compromised Ad Server', tier: 'elite', archetypes: ['exploit', 'malware'], minLayer: 2, loadout: [pool('watering-hole'), pool('polymorphic-worm'), pool('off-by-one')], passiveIds: ['infection-vector'] },
   { id: 'hardened-perimeter', name: 'Hardened Perimeter', tier: 'elite', archetypes: ['exploit', 'encryption'], minLayer: 2, loadout: [pool('watering-hole'), pool('air-gap'), pool('privilege-escalation')], passiveIds: ['foothold-reinforced'] },
   { id: 'blackout-cell', name: 'Blackout Cell', tier: 'elite', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [pool('persistent-threat'), pool('redundant-backup'), pool('slowloris')], passiveIds: ['attrition', 'held-together'] },

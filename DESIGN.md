@@ -142,7 +142,25 @@ same treatment as other unresolved tuning values), regardless of
 direction or whether the destination is already resolved — this is what
 gives exploring a layer for value (fights, Rest, Shop, Event) its own
 FTL-style tension: gathering more before pushing on is always available,
-but never free. **Crossing a layer's gatekeeper is one-way** — the
+but never free.
+
+This tension is a deliberate design goal, not just flavor text: the
+intended ideal path threads a middle ground between beelining straight
+for each layer's gatekeeper and fully exploring every node before
+moving on. Leaning into either extreme is a real risk/reward tradeoff,
+not a mistake to design away. Exploring more of a layer means facing
+each gatekeeper with more accumulated power (Data spent, subroutines/
+Mods acquired) — but spends more Heat getting there, raising the chance
+of maxing out before ever reaching the fight. Beelining past a layer's
+regular/elite fights conserves that Heat, banking it as headroom to
+explore more freely in a later layer instead — at the cost of facing
+that layer's gatekeeper with a thinner kit. Session 35's sweep (see
+`BACKLOG.md`) found both pure extremes are worse than this framing
+implies neither should be — full beeline concentrates risk into
+gatekeeper losses, full explore just trades that for Heat-exhaustion and
+no-route losses instead.
+
+**Crossing a layer's gatekeeper is one-way** — the
 previous layer's graph becomes unreachable once the next one opens,
 mirroring FTL's own one-way-between/free-roam-within sector structure and
 keeping the run's state bounded across the 4 layers rather than growing
@@ -1229,9 +1247,9 @@ Root+Exploit and Root+Encryption back for Gatekeeper):
 
 | Name | Archetype(s) | Layers | Subroutines | Passive(s) |
 |---|---|---|---|---|
-| Zero-Day Broker | Exploit | 2+ | `zero-day-chain`, `buffer-overrun`, `payload-multiplier` | *Fresh Exploit* — first fire each combat gets a real bonus |
-| Ransomware Deployment | Malware | 2+ | `fork-bomb`, `polymorphic-worm`, `spyware` (worm's Corrupted arms spyware) | *Escalating Demand* — DoT magnitude grows a little each tick, capped |
-| Zero Trust Node | Encryption | 2+ | `rate-limiting`, `honeypot`, `redundant-backup` | *No Exceptions* — Ward refreshes once per combat instead of one-shot |
+| Zero-Day Broker | Exploit | 1+ | `zero-day-chain`, `buffer-overrun`, `payload-multiplier` | *Fresh Exploit* — first fire each combat gets a real bonus |
+| Ransomware Deployment | Malware | 1+ | `fork-bomb`, `polymorphic-worm`, `spyware` (worm's Corrupted arms spyware) | *Escalating Demand* — DoT magnitude grows a little each tick, capped |
+| Zero Trust Node | Encryption | 1+ | `rate-limiting`, `honeypot`, `redundant-backup` | *No Exceptions* — Ward refreshes once per combat instead of one-shot |
 | Compromised Ad Server | Exploit + Malware | 2+ | `watering-hole`, `polymorphic-worm`, `off-by-one` | *Infection Vector* — each Exploit fire also progresses its Malware DoT |
 | Hardened Perimeter | Exploit + Encryption | 2+ | `watering-hole`, `air-gap`, `privilege-escalation` | *Foothold, Reinforced* — push+pull at 50% gauge, plus a small denial on the player's next fire |
 | Blackout Cell | Malware + Encryption | 3+ | `persistent-threat`, `redundant-backup`, `slowloris` | *Attrition* — HoT/DoT tick bonus; *Held Together* — first cleanse against it each combat fails |

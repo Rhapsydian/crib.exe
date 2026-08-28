@@ -84,56 +84,76 @@ had never been swept -- `scripts/sweep.ts` had no CLI way to select a
 non-default traversal strategy until this session added `--traversal=
 beeline|explore`). Same 200-seed/class methodology as the session-34
 follow-up. First run under `explore` crashed immediately
-(`pickRegularOrEliteEnemy: no eligible elite enemy for layer 1`) --
-a real, pre-existing latent bug: every one of the Enemy Design section's
-8 authored Elite identities has `minLayer` 2 or 3 by deliberate design
-(none for layer 1), but `map-gen.ts`'s node-type weights are flat across
-all 4 layers and happily roll `eliteFight` nodes in layer 1 anyway.
-`beelineToGatekeeper` essentially never visits enough off-path nodes to
-hit one, which is exactly why this shipped unnoticed through 34 sessions
-of sweeps. Fixed in `run.ts` (not `map-gen.ts`, which stays
-content-agnostic by design -- same reasoning as `assignGatekeeperEnemy`)
-by passing `typeWeights: { eliteFight: 0 }` into `generateLayer` for
-layer 1 only, using the override mechanism `map-gen.ts` already exposed
-for exactly this kind of case. 484/484 tests still pass; this is a real
-bug fix, not a balance change (Elite nodes were never supposed to be
-layer-1-eligible).
+(`pickRegularOrEliteEnemy: no eligible elite enemy for layer 1`): every
+one of the Enemy Design section's 8 authored Elite identities had
+`minLayer` 2 or 3, none for layer 1, so `map-gen.ts` rolling an
+`eliteFight` node there (its type weights are flat across all 4 layers)
+produced an unresolvable node -- `beelineToGatekeeper` essentially never
+visits enough off-path nodes to hit one, which is why this shipped
+unnoticed through 34 sessions of sweeps. The user's call once this
+surfaced: layer 1 *should* have real Elites, not zero, so the actual fix
+went the opposite direction from the first patch attempted mid-session --
+`enemies.ts`'s 3 single-archetype Elites (Zero-Day Broker, Ransomware
+Deployment, Zero Trust Node) widened from `minLayer: 2` to `minLayer: 1`
+(the tier's simplest identities, mirroring Regular's own layer-1/layer-2
+split by archetype simplicity; the 2-archetype and Root Elites stay put,
+preserving the tier's harder-skewing-by-layer progression), and `DESIGN.md`'s
+Elite table updated to match. Real layer-specific Elite content is
+banked for a future authoring pass rather than done here. 484/484 tests
+still pass throughout.
 
-With that fixed, the actual comparison (`beeline` avg from the session-34
-follow-up vs. `explore`, both 200 seeds/class):
+This surfaced a design question worth stating explicitly rather than
+leaving implicit, resolved live (`/decision-session`, per this project's
+`.claude/dev-session.md` override) and now written into `DESIGN.md`'s
+Map & Run Structure section: **the intended ideal path is a middle
+ground between beelining and fully exploring a layer, managing Heat
+along the way** -- leaning into either extreme is a deliberate
+risk/reward tradeoff the design wants, not a problem to eliminate.
+Exploring buys more accumulated power before a gatekeeper fight at the
+cost of the Heat spent getting there; beelining conserves that Heat as
+headroom to explore more freely in a later layer, at the cost of a
+thinner kit at that layer's own gatekeeper. This session's sweep is the
+first real data point against that framing.
 
-| class     | victory (beeline→explore) | quarantined (beeline→explore) | heatMaxed | noRoute | avgLayers |
-|-----------|---------------------------|-------------------------------|-----------|---------|-----------|
-| breacher  | 18.0%→17.5%               | 78.0%→49.0%                   | 0%→0%     | 4.0%→33.5% | 0.93→1.06 |
-| blackhat  | 34.0%→3.0%                | 62.0%→34.0%                   | 4.0%→59.5%| 0%→3.5%    | 1.78→0.85 |
-| saboteur  | 35.5%→43.0%               | 64.0%→51.5%                   | 0%→0%     | 0.5%→5.5%  | 1.96→2.19 |
-| operator  | 47.5%→39.0%               | 49.0%→44.5%                   | 0%→0%     | 3.5%→16.5% | 2.25→2.10 |
-| warden    | 41.0%→39.0%               | 57.5%→53.5%                   | 0%→0%     | 1.5%→7.5%  | 2.12→2.08 |
-| ghost     | 20.5%→34.5%               | 79.5%→60.0%                   | 0%→0%     | 0%→5.5%    | 1.58→1.93 |
-| **avg**   | **32.75%→29.33%**         |                                |           |            |           |
+The comparison (`beeline` vs. `explore`, both 200 seeds/class, with the
+layer-1 Elites now in place):
+
+| class     | victory (beeline→explore) | quarantined (beeline→explore) | heatMaxed (beeline→explore) | noRoute (beeline→explore) | avgLayers (beeline→explore) |
+|-----------|---------------------------|-------------------------------|------------------------------|-----------------------------|------------------------------|
+| breacher  | 18.0%→14.0%               | 78.0%→45.0%                   | 0%→0%                        | 4.0%→41.0%                  | 0.93→1.00                    |
+| blackhat  | 34.0%→3.5%                | 62.0%→29.0%                   | 4.0%→64.5%                   | 0%→3.0%                     | 1.78→0.81                    |
+| saboteur  | 35.5%→46.5%               | 64.0%→49.0%                   | 0%→0%                        | 0.5%→4.5%                   | 1.96→2.28                    |
+| operator  | 47.5%→39.5%               | 49.0%→46.5%                   | 0%→0.5%                      | 3.5%→13.5%                  | 2.25→2.09                    |
+| warden    | 41.0%→42.5%               | 57.5%→47.0%                   | 0%→0%                        | 1.5%→10.5%                  | 2.12→2.17                    |
+| ghost     | 20.5%→36.5%               | 79.5%→54.5%                   | 0%→1.0%                      | 0%→8.0%                     | 1.58→1.98                    |
+| **avg**   | **32.75%→30.42%**         |                                |                               |                              |                              |
 
 **Hypothesis partially confirmed, but the naive read ("explore is just
-better") is wrong.** Quarantine's *share* of runs drops for every single
-class under `explore` (as predicted -- fewer runs die specifically at a
-gatekeeper fight), but overall victory rate doesn't rise to match; it's
-roughly flat-to-down (32.75%→29.33% averaged), because the quarantine
-share isn't converting into extra wins, it's converting into two other
-failure modes that `beelineToGatekeeper` structurally avoids:
-`noRouteRemains` (breacher 4.0%→33.5%, operator 3.5%→16.5%, warden
-1.5%→7.5%) and, most sharply, `heatMaxed` for Blackhat specifically
-(4.0%→59.5%, victory collapsing 34.0%→3.0%). Both trace to the same
-mechanical source: `exploreThenGatekeeper` pays `HEAT_PER_MOVE` for
-every extra move to every extra node, and fights more regular/elite
-nodes whose losses close them permanently -- this is the same dynamic
-session 20 already found and named (Phase 3's "25-seed sweep with an
-aggressive 'fight everything' strategy found `noRouteRemains` dominates
-(96%) ... a real, intended consequence of the resilience guarantee only
-promising safety against *one* closed node at a time, not several").
-Saboteur and Ghost are the two classes where exploring is unambiguously
-better (43.0%/34.5% vs. 35.5%/20.5%) -- both are Root-paired classes
-whose kit leans on recon/manipulation that has more surface to work
-with when more fights happen, consistent with Root's own known
-structural profile (session 24/25 writeups, above).
+better") is still wrong even with real layer-1 Elites in play.**
+Quarantine's *share* of runs drops for every single class under
+`explore` (as predicted -- fewer runs die specifically at a gatekeeper
+fight), but overall victory rate doesn't rise to match; it's roughly
+flat-to-down (32.75%→30.42% averaged), because the quarantine share
+isn't converting into extra wins, it's converting into two other failure
+modes that `beelineToGatekeeper` structurally avoids: `noRouteRemains`
+(breacher 4.0%→41.0%, operator 3.5%→13.5%, warden 1.5%→10.5%) and, most
+sharply, `heatMaxed` for Blackhat specifically (4.0%→64.5%, victory
+collapsing 34.0%→3.5%). Both trace to the same mechanical source:
+`exploreThenGatekeeper` pays `HEAT_PER_MOVE` for every extra move to
+every extra node, and fights more regular/elite nodes whose losses close
+them permanently -- this is the same dynamic session 20 already found
+and named (Phase 3's "25-seed sweep with an aggressive 'fight
+everything' strategy found `noRouteRemains` dominates (96%) ... a real,
+intended consequence of the resilience guarantee only promising safety
+against *one* closed node at a time, not several"). Saboteur and Ghost
+are the two classes where exploring is unambiguously better (46.5%/36.5%
+vs. 35.5%/20.5%) -- both are Root-paired classes whose kit leans on
+recon/manipulation that has more surface to work with when more fights
+happen, consistent with Root's own known structural profile (session
+24/25 writeups, above). This is exactly the "leaning into either extreme
+is a real risk/reward tradeoff" framing just written into `DESIGN.md` --
+neither pure strategy is simply better, each has a real, class-dependent
+cost.
 
 **Open question for a future session, not resolved here**: this sweep
 can't distinguish "reaching a gatekeeper fight with a stronger kit makes
@@ -142,12 +162,15 @@ gatekeeper fight at all, so the ones that do were already the
 easier/luckier seeds" -- both are consistent with quarantine's dropping
 share. A traversal strategy in between the two extremes (e.g. explore
 only within some Heat budget, or only fight nodes without visiting
-shop/event/safehouse for their own sake) would separate these, but
-wasn't built this session -- the two existing strategies were enough to
-answer the specific "is beeline the whole story" question asked. Not
-fixed or tuned here: Blackhat's Heat-fragility under any
-exploration-heavy strategy is itself a real finding worth its own look
-before touching HEAT_PER_MOVE or Blackhat's kit.
+shop/event/safehouse for their own sake) would separate these, and would
+also be the natural "actually play the middle ground" script this
+session's new design goal implies -- neither the pure-beeline nor
+pure-explore scripted strategy really embodies it. Not built this
+session -- the two existing strategies were enough to answer the
+specific "is beeline the whole story" question asked. Not fixed or tuned
+here either: Blackhat's Heat-fragility under any exploration-heavy
+strategy is itself a real finding worth its own look before touching
+`HEAT_PER_MOVE` or Blackhat's kit.
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
