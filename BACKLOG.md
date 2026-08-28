@@ -2037,3 +2037,20 @@ subroutines themselves (Root's payloads needed real gauge-touching teeth,
 not just recon/manipulation, before Saboteur/Operator/Ghost's win rates
 moved off the floor) -- applies identically to Mods now that the pool is
 expanding past the 17-item validation sample.
+
+**Also banked, same conversation**: Encryption-themed Mods specifically
+should lean into more shield-bash-style mechanics -- converting a side's
+own already-cast mitigation (Ward/instantCounterPush/HoT) into a real,
+uncapped credit, the same pattern Circuit Breaker (session 28's Neutral
+Archetype rare, see `DESIGN.md`'s Neutral Archetype section) already
+established via the `mitigationBanked` Accumulator metric
+(`triggers.ts`'s `updateMitigationBankedState`, fed from `resolve.ts`'s
+`creditMitigationBanked`). Encryption's payloads are deliberately capped
+at the Breach/Containment midpoint by design (`DESIGN.md`: "can only
+stabilize, never win alone," Ghost's Return to Sender being the one
+bypass) -- shield-bash is the established, already-proven way an
+Encryption-flavored piece gets a real closer without breaking that
+constraint, so future Encryption Mods should reuse it rather than
+inventing new pure-defense-only content that runs into the same
+never-closes-alone wall Legacy Firewall/Zero Trust Node/Firewall Prime
+all hit before their own session-28 neutral-piece retrofits.
