@@ -66,12 +66,17 @@ is set, so every pre-existing test/call site that only ever passed
 `classId` (the whole suite, before this session) keeps getting that
 class's passive with no other change needed. 484 tests passing (from
 460, 24 new in `mods.test.ts`), `npm run check` clean throughout, 4
-commits. **Next up**: the per-class magnitude/balance pass, now for
-real -- re-run `playRun()`'s outcome-distribution sweep with Mods
-actually in the reward/Shop pool for the first time, per this Phase's
-own balance-pass context below (still not done: exact Mod magnitudes are
-all TBD/playtesting placeholders, same discipline as every other numeric
-constant in this project).
+commits. **Same-day follow-up**: ran that sweep (200 seeds/class, see
+this Phase's own write-up below) -- average victory rate 32.75%, up from
+session 28's pre-Mods 28.7%, same relative class ordering. **Next
+session, user's direct ask**: dig into why losses are overwhelmingly
+`quarantined` (49-79.5% every class) while `heatMaxed`/`noRoute` stay
+near zero -- a real hypothesis is already banked (below, this Phase)
+pointing at `beelineToGatekeeper` itself concentrating all risk into
+gatekeeper fights, but it's unconfirmed; worth checking against a
+different traversal strategy before assuming. Exact Mod magnitudes
+remain TBD/playtesting placeholders, same discipline as every other
+numeric constant in this project.
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
@@ -2016,6 +2021,40 @@ warden 35.5%, ghost 23.0%). Two real findings, not just "it went up":
    before the eventual per-class magnitude pass, since it means Mods
    alone won't fix Breacher/Ghost's relative standing, only raise every
    class's floor by roughly the same amount.
+
+**Flagged for next session, user's direct ask -- re-highlighting the
+table itself, since this is the thing to actually dig into**:
+
+| class     | victory | heatMaxed | quarantined | noRoute | avg layers |
+|-----------|---------|-----------|-------------|---------|------------|
+| breacher  | 18.0%   | 0.0%      | 78.0%       | 4.0%    | 0.93       |
+| blackhat  | 34.0%   | 4.0%      | 62.0%       | 0.0%    | 1.78       |
+| saboteur  | 35.5%   | 0.0%      | 64.0%       | 0.5%    | 1.96       |
+| operator  | 47.5%   | 0.0%      | 49.0%       | 3.5%    | 2.25       |
+| warden    | 41.0%   | 0.0%      | 57.5%       | 1.5%    | 2.12       |
+| ghost     | 20.5%   | 0.0%      | 79.5%       | 0.0%    | 1.58       |
+
+Losses are overwhelmingly `quarantined` (49-79.5% of all runs, every
+class) -- `heatMaxed` is almost always exactly 0.0% (blackhat's 4.0% is
+the only nonzero cell in the whole column) and `noRoute` stays in the
+low single digits or 0.0%. Not investigated yet, but a real hypothesis
+worth checking first, rooted in the sweep's own traversal strategy: this
+is a `beelineToGatekeeper` sweep, which minimizes both Heat exposure
+(shortest path = fewest moves, fewest optional regular/elite fights to
+lose Heat-costing fights against) and node-closure risk (session 20's
+own finding: `noRouteRemains` dominates specifically under
+*aggressive, everything-visiting* strategies, the opposite extreme from
+beelining) -- but every layer still forces exactly one gatekeeper fight,
+and a gatekeeper loss bypasses Heat entirely and ends the run outright
+(`DESIGN.md` Resources: "a gatekeeper is the sole passage forward,"
+session 9). So beelining may be concentrating essentially all of a run's
+real risk into gatekeeper fights specifically, with regular/elite losses
+along the way rarely accumulating enough Heat to matter before a
+gatekeeper fight decides it outright. Worth checking directly against a
+different traversal strategy (`exploreThenGatekeeper` already exists,
+`run.ts`) to see whether the same quarantine-dominance holds, or whether
+it's a `beelineToGatekeeper`-specific artifact of this particular sweep
+methodology rather than a real characteristic of the game.
 
 **Not yet done**: a synergy-aware acquisition/Shop strategy (this sweep's
 `alwaysAcquireFirst`/`alwaysAcquireFirstMod` never weighs rarity or
