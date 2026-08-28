@@ -30,11 +30,20 @@ that middle ground (fights first, then Heat/material/Data-driven pulls
 toward Safehouse/Shop/Event, gated by a Heat safety reserve), alongside
 the existing beeline/explore extremes. A real per-class balance/tuning
 pass is underway — Blackhat's explore-mode Heat fragility and Breacher's
-gatekeeper-tier fragility are both fixed and confirmed via sweep; the
-rest of the classes/matchups are still open, now with a 3rd traversal
-option and two banked findings (why the middle-ground strategy trades a
-higher noRoute rate for more fights engaged; whether `HEAT_PER_MOVE`
-needs a Blackhat-aware retune) to fold in.
+gatekeeper-tier fragility are both fixed and confirmed via sweep. Enemy
+difficulty now also scales by layer for real: a per-layer magnitude
+scaler (regular/elite via a shared formula, gatekeepers via an
+individually-tunable stored value) fixes a genuine engine gap found this
+pass — layer 1 gatekeepers were measurably *harder* than layer 4's,
+backwards from the intended ramp. A new permanent diagnostic,
+`scripts/gatekeeper-check.ts`, measures gatekeeper difficulty against a
+player's *real* accumulated state from an actual run (not a bare
+starting kit) fought with the real production skill-dial AI on both
+sides — built after bare-kit matchup testing produced a misleading
+near-unwinnable reading for one gatekeeper that mostly resolved once
+realistic acquired power was accounted for. Firewall Prime (specifically
+vs. Warden) and layer 3's own weaker gatekeeper trio are the two known
+remaining outliers; the rest of the per-class pass is still open.
 See `DESIGN.md` for the full design, `BACKLOG.md` for the phased
 implementation roadmap and next-session pointer, and `session-logs/` for a
 per-session record of decisions and results.
@@ -43,11 +52,15 @@ Domain: `cribexe.com` (registered available, not yet purchased).
 
 ## Engine
 
-- `npm test` — run the Vitest suite (528 tests as of session 39).
+- `npm test` — run the Vitest suite (540 tests as of session 39).
 - `npm run check` — type-check (`svelte-check` + `tsc`).
 - `npm run sweep -- run|enemy ...` — balance/regression sweep harness (see
   `scripts/sweep.ts`); used throughout Phase 5 to tune with real numbers
   instead of guessing.
+- `npx tsx scripts/gatekeeper-check.ts` — realistic gatekeeper-difficulty
+  diagnostic: real accumulated player state from actual runs, fought
+  against the real production skill-dial enemy AI, aggregated by
+  gatekeeper and by layer.
 - `npm run dev` — Vite dev server (currently just the default Svelte
   scaffold; no game UI is wired up yet).
 

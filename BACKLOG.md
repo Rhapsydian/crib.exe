@@ -399,14 +399,72 @@ balance pass rather than acted on now**:
    (Blackhat-aware) during the actual balance pass instead of picking a
    number by feel.
 
-1 implementation commit this session, not pushed. Session log:
+1 implementation commit this session so far.
+
+**Session 39 continued same-day**: the balance pass the section above
+pointed at actually started -- and turned into a bigger arc than
+per-class numbers. Matchup-swept Saboteur/Operator/Warden/Ghost against
+all 12 gatekeepers on bare starting kits, found Null Session was a sharp
+bimodal outlier (Operator 96% vs. 0-8% for 5 other classes, not a
+"broadly hard" gatekeeper like Firewall Prime/Incident Response). Traced
+it via ablation to Zero Trust's `instantCounterPush` amount alone
+(`CAPPED.rare`=18, a single reactive proc wiping 36% of the win
+threshold) -- a bespoke, Null-Session-only tempered fix (amount ->
+`UNCOMMON.burst`=11) was built and tested, but **not shipped**.
+
+Why: asked how the matchup tests were actually run, and the honest
+answer -- bare starting kits, both sides on `playCombat`'s dumb baseline
+AI, not the real skill-dial AI real fights use -- led to a real
+methodology fix instead. Built `run.ts`'s `onBeforeGatekeeperFight` hook
+(captures a player's *real* accumulated state the instant a real
+`playRun()` reaches a gatekeeper) and `scripts/gatekeeper-check.ts` (new,
+permanent -- re-fights each captured real state against the real
+production skill-dial enemy AI, aggregating win rate; deliberately
+doesn't try to average a loadout across seeds, since acquired content
+can't be meaningfully blended). The realistic re-sweep reversed the Null
+Session finding almost entirely (93.5%/93.5%/64-71%/100%/65-69%/82-87%)
+-- the original 0% wall was mostly a worst-case-floor artifact. The Zero
+Trust fix stays shelved. Firewall Prime (especially Warden, 4.5-5.7%)
+is now the real remaining single-gatekeeper outlier, not yet worked.
+
+That same tool's by-layer aggregation then surfaced a real, structural
+engine gap: nothing scaled enemy magnitude by layer at all (only a
+small skill-dial step did) -- layer 1 was measurably the *hardest* tier
+across every class, backwards from `DESIGN.md`'s stated intent. Built and
+shipped a real per-layer magnitude scaler: regular/elite scale live via
+one shared formula (`enemyMagnitudeScaler`), gatekeepers get an explicit,
+individually-tunable stored `magnitudeScaler` field (per the user's own
+design call -- gatekeepers never repeat across layers, so a per-identity
+knob makes more sense than a formula). Empirically tuned, not guessed:
+0.15/layer narrowed the layer-1-vs-4 gap but didn't close it; 0.3/layer
+brought layer 4 to parity with layer 1. Layer 3 remains a real, separate
+outlier (already the easiest layer pre-scaling) -- likely a content
+issue (its own weak gatekeeper trio), not a magnitude one, flagged for a
+future pass. Confirmed wanted but explicitly deferred: independent
+per-side initiative/win-gauge thresholds -- real plumbing work
+(`CombatOptions`/`createCombatState` currently share one threshold both
+sides), scoped as its own future pass.
+
+Also removed `maxHands`/`FIGHT_MAX_HANDS` outright at the user's request
+-- vestigial since session 27's `HARD_RESOLUTION_HAND` made it
+unreachable for any real fight, previously left in place rather than
+deleted.
+
+540/540 tests passing (from 528), `npm run check` clean throughout. 6
+commits this half (`5b4d29d` maxHands removal, `b967e2e` the hook,
+`0819790`/`5cb3079` gatekeeper-check.ts, `46eeba8` the magnitude scaler,
+`7e5f23a` the 0.3 retune), all pushed to `origin/master` at the user's
+explicit request -- tip is now `7e5f23a`. Session log:
 `session-logs/session-39-2026-08-28.md`.
 
-**Next session**: the per-class magnitude/balance pass continues
-(Saboteur, Operator, Warden, Ghost, and most gatekeepers still
-untouched) -- now with `opportunisticTraversal` as a 3rd sweep option
-and both findings above to fold in, or Burner/Event content authoring
-beyond the 8+8 validated samples -- ask rather than assume.
+**Next session**: the per-class balance pass itself still hasn't
+happened in its original plain form -- Saboteur/Operator/Warden/Ghost
+win rates, now measurable both the old bare-kit way and the new
+realistic `gatekeeper-check.ts` way. Real candidates, un-prioritized:
+Firewall Prime/Warden's remaining outlier matchup, layer 3's weak
+gatekeeper trio, the independent-gauge-thresholds architecture work, or
+Burner/Event content authoring beyond the 8+8 validated samples -- ask
+rather than assume, same as every prior fork in this project.
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
