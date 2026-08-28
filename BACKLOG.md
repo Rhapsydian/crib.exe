@@ -211,6 +211,24 @@ implementation checkpoints (mirroring sessions 15/17/19/21/27/33) -- ask
 rather than assume, same as every prior "what's next" fork in this
 project.
 
+**Session 37** (2026-08-28, `/decision-session`, engineering scoping)
+took the second option: turned session 36's Burners/Events shape into a
+full checkpointed implementation spec (full writeup in Phase 5's new
+"Burners + Events Implementation" section, below), directly continuing
+session 33's own precedent for Mods (shape -> hook catalog -> content
+validation -> implementation spec). Explored the actual engine before
+proposing checkpoints, resolved two live decisions (reopening a closed
+node returns it to `unresolved`, not straight to `inert`; validate a
+small content sample for both systems before locking the spec, not
+after), authored and validated 8 concrete Events and 8 concrete Burners
+against the type system (the Event sample surfaced a real gap -- reward
+grants need to support a random-by-rarity draw, not just a hardcoded
+piece id -- closed in the type design; the Burner sample found no gap,
+confirming the shape). Docs-only, no code. **Next session**: an actual
+`/dev-session` implementing checkpoints A-J, or the per-class
+magnitude/balance pass (still the other standing candidate) -- ask
+rather than assume.
+
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
 see Phase 5 below) — a single shared zero-sum scalar replaced with two
@@ -2340,3 +2358,218 @@ real implementation checkpoints. Concrete content-authoring (named
 Burners, named Events) is a separate future pass either way, same
 "shape -> content -> implementation" split every other content system in
 this project has followed.
+
+---
+
+**Burners + Events Implementation (session 37, `/decision-session`,
+engineering scoping)** -- checkpointed implementation spec for a future
+`/dev-session`, same category as sessions 15/17/19/21/27/33, directly
+continuing session 33's own precedent for Mods (shape -> hook catalog ->
+content validation -> implementation spec).
+
+Explored the actual engine (`resolve.ts`, `triggers.ts`, `combat.ts`,
+`subroutine-types.ts`, `mod-types.ts`/`mods.ts`, `gauges.ts`, `run.ts`,
+`encounters.ts`, `shop.ts`, `loadout.ts`, `merge.ts`, `heat.ts`,
+`map-types.ts`/`map-gen.ts`, `traversal.ts`, `ai.ts`) before proposing
+anything. Key findings:
+
+- **No existing precedent for a mid-combat, player-chosen "activate
+  now" decision.** Every current strategy is either a per-hand AI call
+  (`DiscardStrategy`/`PlayStrategy`/`CutStrategy`) or a run-level "pick
+  1 of N offered" choice (`AcquisitionStrategy`/`ShopStrategy`/etc.).
+  Burners need a genuinely new strategy shape -- but it fits the
+  existing convention cleanly: every strategy today is its own
+  separate, loosely-typed optional field on `CombatOptions`/
+  `RunOptions` (confirmed: no unified `strategies: {...}` wrapper
+  exists anywhere), so a new field is idiomatic, not a departure.
+- **Combat-context Burner effects reuse `PayloadEffect` directly** via
+  `resolvePayloadCore` (`resolve.ts`) -- confirms what session 36's
+  `DESIGN.md` write-up flagged as "not confirmed." No new payload kinds
+  needed for combat.
+- **"Reopen a closed node" is a real engine gap, not just content.**
+  `NodeState` (`map-types.ts`) only ever transitions `unresolved ->
+  inert` or `unresolved -> closed` today -- no reverse transition
+  exists anywhere. **Resolved live**: reopening sends the node back to
+  `unresolved` (must be won again), not straight to `inert` (no free
+  pass) -- matches the session-9 "recoverable, not automatic" framing.
+- **No capped-unordered inventory exists anywhere** -- subroutines'
+  bench is uncapped, Mods' `ownedModIds` is uncapped. Burners' carried
+  set is new state on `RunPlayerState`, not a variation of something
+  reusable.
+- **Content-validation pass, done this session for both systems**
+  (mirroring Mods' session 32): 8 concrete Events (spanning all 3 risk
+  tiers) and 8 concrete Burners (spanning both new effect unions) were
+  drafted and checked against the proposed type shapes. The Event
+  sample surfaced a real gap -- a reward grant can't hardcode a
+  specific piece id as the pool grows, so grants need to support either
+  a named piece or a random draw filtered by rarity (built into
+  checkpoint G below). The Burner sample found no gap -- confirms
+  checkpoint A's shape rather than just filling it out, mirroring how
+  session 32 also confirmed a near-miss (`onRunStart`) wasn't actually
+  needed.
+
+**The 8 validated Events** (full table in `DESIGN.md`'s "Events"
+subsection is the design-level summary; this is the content itself):
+Dead Man's Switch (all 3 risk tiers on one vignette -- Defuse/
+Repurpose/Detonate), Abandoned Session (pure-transparent), Vendor
+Backdoor (transparent no-op / visibleOdds), The Whistleblower
+(transparent no-op / gamble), Salvage Run (transparent no-op / gamble
+-> bonus fight), Compromised Coworker (transparent / visibleOdds),
+Encrypted Cache (transparent no-op / gamble), Rival Hacker's Dead Drop
+(all 3 tiers, 3 choices). Coverage: all 3 risk tiers, every effect kind
+(Heat delta, Data delta, subroutine/Mod/Burner grant, bonus fight), both
+random-draw and specific grants.
+
+**The 8 validated Burners**: Flash Drive (Common, combat, `directBurst`
+-- confirms Exploit-catalog reuse), EMP Charge (Uncommon, combat,
+`instantCounterPush` -- confirms Encryption-catalog reuse too), Recon
+Ping (Common, map, `revealUpcoming`), Ghost Protocol (Uncommon, map,
+`freeMove`), Skeleton Key (Rare, map, `reopenClosedNode` -- the
+session-9 payoff), Stolen Coupon (Common, shop, `discount`), Loyalty
+Token (Uncommon, shop, `freeReroll`), Insider Tip (Rare, shop,
+`rarityFloor`). Coverage: both new effect-kind unions exercised by all 3
+of their own kinds each, plus 2 archetypes' worth of reused
+`PayloadEffect` kinds.
+
+**Burners -- checkpoints A-F:**
+
+- **A -- Type system** (`burner-types.ts`, new, mirrors
+  `mod-types.ts`): `BurnerId`; rarity (reuse common/uncommon/rare);
+  `BurnerContext = 'combat' | 'map' | 'shop'` (a Burner can carry more
+  than one); `BurnerDefinition { id, name, rarity, contexts:
+  BurnerContext[], combatEffect?: PayloadEffect, mapEffect?:
+  MapBurnerEffect, shopEffect?: ShopBurnerEffect }`. Two new small
+  effect-kind unions: `MapBurnerEffect = { kind: 'freeMove' } | { kind:
+  'revealUpcoming' } | { kind: 'reopenClosedNode' }`; `ShopBurnerEffect
+  = { kind: 'discount'; fraction: number } | { kind: 'freeReroll' } |
+  { kind: 'rarityFloor'; rarity: Rarity }`. Validated against the
+  8-Burner sample above -- confirmed, no changes needed.
+  `burners.ts` (new, mirrors `mods.ts`'s data half) holds the 8
+  validated `BurnerDefinition`s as real data.
+- **B -- State threading**: `RunPlayerState` gains `carriedBurnerIds:
+  BurnerId[]` + `BURNER_CAP` (TBD/playtesting, same discipline as
+  `INSTALLED_SLOT_CAP`). New `acquireBurner(playerState, burner):
+  boolean` (`burners.ts`, mirrors `acquireMod`'s shape but cap-
+  enforced, no bench/material fallback -- declines if full, no swap
+  mechanism this pass). `CombatOptions`/`CombatState` gain
+  `carriedBurnerIds: BurnerId[]` (a snapshot at combat start, filtered
+  to `contexts.includes('combat')`) and combat-local
+  `burnersUsedThisCombat: BurnerId[]`, surfaced on `CombatResult` so
+  `run.ts` can remove used Burners from `RunPlayerState.
+  carriedBurnerIds` once the fight resolves -- mirrors how Heat/other
+  side-effects already surface via `CombatResult` rather than mutating
+  `RunPlayerState` mid-combat.
+- **C -- Combat-context activation**: new `BurnerActivationStrategy =
+  (ctx: BurnerActivationContext) => BurnerId | null`, matching every
+  other Strategy type's shape. `CombatOptions` gains
+  `burnerActivationStrategies?: [BurnerActivationStrategy,
+  BurnerActivationStrategy]` (side 1/enemy always `() => null` --
+  player-only economy, like Heat). Called once per own-turn in
+  `combat.ts`'s `step()`, **before** that turn's automatic
+  `fireReadySubroutines` call (stated, not asked -- an "opening move"
+  framing). Effect application calls `resolvePayloadCore` directly
+  against the chosen Burner's `combatEffect` -- no new payload-dispatch
+  code needed.
+- **D -- Map-context activation + the reopen-closed-node capability**:
+  `map-types.ts` gains the new `closed -> unresolved` transition (the
+  real engine gap found in exploration). New `MapBurnerStrategy`
+  (mirrors `TraversalStrategy`'s shape), called once per traversal
+  decision in `run.ts`'s loop, before the existing `traversalStrategy`
+  call. `freeMove` skips the flat `HEAT_PER_MOVE` charge for that move;
+  `reopenClosedNode` needs a target node id -- the strategy context
+  needs the current graph's closed-node list to choose from.
+- **E -- Shop-context activation**: new `ShopBurnerStrategy` (mirrors
+  `ShopStrategy`/`ModShopStrategy`'s shape), called in `encounters.ts`'s
+  `shop` case before slate generation. `discount`/`rarityFloor` extend
+  the existing `shopModifiersForOwnedMods`-style computation (`mods.ts`)
+  with a parallel Burner-sourced modifier; `freeReroll` sets that
+  visit's reroll cost to 0 for one reroll.
+- **F -- Acquisition wiring**: extend `resolveFight`'s reward-drawing
+  logic (`encounters.ts`) to also draw `burnerRewardOptions` for **all**
+  fight tiers, regular included (unlike Mods' elite-only). New
+  `BurnerAcquisitionStrategy` (mirrors `AcquisitionStrategy`/
+  `ModAcquisitionStrategy`) in `RunOptions`, respects the checkpoint-B
+  cap. Plus a third independent Shop slate mirroring the subroutine/Mod
+  slate pattern in `shop.ts` exactly: `burnerOfferingsForClass`,
+  `BurnerOffering`, `BurnerShopStrategy`/`BurnerShopRerollStrategy`,
+  reusing the existing `REROLL_COST`. `EncounterOutcome` gains
+  `burnerRewardOptions: BurnerDefinition[]`, `burnerShopPurchase`,
+  `burnerRerollCost` -- mirroring the existing subroutine/Mod fields.
+
+**Events -- checkpoints G-I:**
+
+- **G -- Type system, incorporating the validation-pass fix**
+  (`event-types.ts`, new): `EventDefinition { id, name, choices:
+  EventChoice[] }`; `EventChoice { id, label, riskTier: 'transparent' |
+  'visibleOdds' | 'gamble', outcomes: WeightedOutcome[] }` (a
+  `transparent` choice is one outcome at probability 1;
+  `visibleOdds`/`gamble` differ only in whether the UI states the
+  odds -- the engine treats both identically, resolving by weighted
+  roll against `rng`). `WeightedOutcome { probability: number; effect:
+  EventEffect }`. `EventEffect = { heatDelta?: number; dataDelta?:
+  number; subroutineGrant?: Grant<SubroutineDefinition>; modGrant?:
+  Grant<ModDefinition>; burnerGrant?: Grant<BurnerDefinition>;
+  bonusFight?: { tier: 'regular' | 'elite' } }` where **`Grant<T> = {
+  specific: T } | { randomFromRarity: Rarity }`** -- the validation-pass
+  fix, resolved against the existing archetype/class-scoped pool logic
+  at resolution time, not authoring time. `events.ts` (new, mirrors
+  `enemies.ts`'s roster-of-data pattern) holds the 8 validated
+  `EventDefinition`s as real data.
+- **H -- Choice resolution**: replaces `encounters.ts`'s current
+  one-liner `case 'event':` stub (today: always-inert, all-zero
+  outcome, no strategy, no rng use) with real resolution. New
+  `EventChoiceStrategy = (event: EventDefinition, playerState:
+  RunPlayerState) => EventChoice` (mirrors the Shop/Acquisition
+  strategy shape) picks a choice; its `outcomes` are rolled against
+  `rng` (already threaded into `resolveEncounter`'s signature -- no new
+  plumbing needed); the result is translated into the existing
+  `EncounterOutcome` fields (`heatDelta`, `dataAwarded`, `newState:
+  'inert'` always) plus one new field, `eventGrant?: { subroutine?:
+  SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition
+  }` -- deliberately distinct from checkpoint F's `*RewardOptions`
+  fields, since an Event grant is a direct single item, not an offered
+  N-of-M pick.
+- **I -- Bonus-fight resolution**: a `gamble`-tier `bonusFight` effect
+  needs to resolve a real fight from inside the `event` branch. Reuse
+  `resolveFight`'s existing machinery rather than duplicating it --
+  likely needs `resolveFight` extracted into a small internally-
+  callable helper independent of the `node.type` switch, since today
+  it's only ever invoked from the `regularFight`/`eliteFight`/
+  `gatekeeperFight` branches. Same `discardStrategies`/`playStrategies`
+  params `resolveEncounter` already threads through get reused. The
+  bonus fight's own outcome folds directly into the same
+  `EncounterOutcome` being built for the Event node -- no new nested
+  `CombatResult` field, matching session 31's "reuse the struct, don't
+  add a hook" reasoning. Bonus-fight reward magnitude is
+  TBD/playtesting.
+
+**File organization** (stated, not asked -- precedent already points
+one way): `burner-types.ts` + `burners.ts` (new pair, mirrors
+`mod-types.ts`/`mods.ts` exactly); `event-types.ts` + `events.ts` (new
+pair, but `events.ts` is a roster-of-data file like `enemies.ts`, not a
+dispatch file -- Event *resolution* logic lives directly in
+`encounters.ts`'s extended `event` case, since there's no registry/
+hook-fan-out shape here the way Mods needed one). Combat-context Burner
+activation lives in `combat.ts` (a per-turn strategy call, not a
+passive-hook dispatch), but effect application calls into `resolve.ts`'s
+existing `resolvePayloadCore`. Map-context logic lives in
+`traversal.ts`/`map-types.ts`. Shop-context logic extends `shop.ts`
+directly.
+
+- **J -- Verification**: new `burners.test.ts`/`events.test.ts`
+  (mirrors `mods.test.ts`'s approach): every new strategy type
+  exercised at least once, all 8 authored Burners fired/activated at
+  least once across their contexts (including the reopen-closed-node
+  transition covered directly -- a hand-built graph with a closed node,
+  same style `gatekeeperReachable()` got its own direct unit test in
+  Phase 3), all 8 authored Events resolved at least once each
+  (transparent/visibleOdds/gamble paths and the bonus-fight path all
+  hit), zero regression across the full existing suite. A smoke-tested
+  full `playRun()` with Burners carried/used and Events resolved across
+  a full run, mirroring `mods.test.ts`'s own full-run smoke test.
+
+**Not done this session**: no code -- this is a scoping session, same
+as sessions 15/17/19/21/27/33; a future `/dev-session` implements these
+checkpoints. No further content authoring beyond the 8+8 validated
+samples above. Exact numbers (`BURNER_CAP`, bonus-fight reward
+magnitude, discount/reroll/rarity-floor values) all TBD/playtesting.

@@ -1186,6 +1186,16 @@ Burners (likely reuses the existing subroutine payload catalog wholesale
 rather than inventing a new one, but not confirmed this session); exact
 numbers (slot cap, rarity distribution, Shop pricing).
 
+**Session 37 (`/decision-session`, engineering scoping)**: confirmed the
+combat-payload-catalog-reuse question above by exploring the actual
+engine — combat-context Burners do reuse `PayloadEffect` wholesale, no
+new payload kinds needed. Authored and validated an 8-Burner content
+sample against the type system (2 combat, 3 map, 3 shop — one per new
+effect kind, confirming both `MapBurnerEffect` and `ShopBurnerEffect`
+need no changes). Full implementation-facing checkpoint spec (including
+the type system's exact shape) in `BACKLOG.md`'s new "Burners + Events
+Implementation" write-up under Phase 5.
+
 ### Events (session 36, `/decision-session`)
 
 Designs the node type flagged as "undesigned content, third acquisition
@@ -1249,6 +1259,21 @@ upgraded-starting-Mod idea banked at session 34's follow-up, which
 depended on Events existing at all. That prerequisite is now satisfied,
 but the idea still needs a second one — a genuine Mod-upgrade mechanism,
 since Mods have no Merge-style rank path today — before it's buildable.
+
+**Session 37 (`/decision-session`, engineering scoping)**: authored and
+validated an 8-Event content sample against the proposed `EventEffect`
+shape, spanning all 3 risk tiers and every effect kind — surfaced one
+real gap (a reward grant can't hardcode a specific piece id as the pool
+grows, so grants need to support either a named piece or a random draw
+filtered by rarity) and closed it in the type design directly. Also
+resolved the exact node-state mechanics for a Burner's "reopen a closed
+node" effect: it returns the node to `unresolved` (must be won again),
+not straight to `inert` (no automatic free pass) — matches the
+"recoverable, not automatic" framing this idea was banked under at
+session 9, and keeps a single-use item's power level in line with the
+rest of the pool. Full implementation-facing checkpoint spec in
+`BACKLOG.md`'s new "Burners + Events Implementation" write-up under
+Phase 5.
 
 ## Enemy Design
 
