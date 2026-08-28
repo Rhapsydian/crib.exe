@@ -38,6 +38,7 @@ import {
 } from './mods';
 import type { BurnerDefinition, BurnerId } from './burner-types';
 import { BURNER_CAP, BURNER_DEFINITIONS, alwaysAcquireFirstBurner, type BurnerAcquisitionStrategy } from './burners';
+import type { BurnerActivationStrategy } from './combat';
 
 /**
  * The run orchestrator (session 19/20 checkpoint F): ties layer
@@ -287,6 +288,12 @@ export interface RunOptions {
    * verifying checkpoint I's bonus-fight path end-to-end via playRun).
    * Defaults to alwaysFirstEventChoice. */
   eventChoiceStrategy?: EventChoiceStrategy;
+  /** Per-side combat-context Burner activation for every real fight the
+   * run resolves (Burners checkpoint C -- missed threading past
+   * combat.ts in that checkpoint's own pass, caught and fixed here at
+   * checkpoint J while writing the smoke test that needed it). Defaults
+   * to playCombat's own [neverActivateBurner, neverActivateBurner]. */
+  burnerActivationStrategies?: [BurnerActivationStrategy, BurnerActivationStrategy];
   /** Test-only escape hatch (session 24, tunable-skill AI checkpoint A),
    * same treatment as installedLoadoutOverride above -- lets a sweep
    * exercise a skilled opponent (either side) in real fights via
@@ -321,6 +328,7 @@ export function playRun(options: RunOptions): RunResult {
     burnerShopStrategy = buyCheapestAffordableBurner,
     burnerShopRerollStrategy = rerollBurnerIfNothingAffordable,
     eventChoiceStrategy = alwaysFirstEventChoice,
+    burnerActivationStrategies,
     discardStrategies,
     playStrategies,
   } = options;
@@ -372,16 +380,18 @@ export function playRun(options: RunOptions): RunResult {
     let layerCleared = false;
 
     while (!layerCleared) {
-      if (!gatekeeperReachable(graph, position.nodeId)) {
-        log.push({ type: 'runEnded', outcome: 'noRouteRemains' });
-        return finish('noRouteRemains');
-      }
-
       const fromNodeId = position.nodeId;
 
-      // Map-context Burner activation (checkpoint D), before this
-      // iteration's traversal decision -- a reopened node becomes a
-      // legal target again in time for traversalStrategy to see it.
+      // Map-context Burner activation (checkpoint D), before both this
+      // iteration's traversal decision AND the no-route-remains check
+      // right below -- checkpoint J verification found that checking
+      // reachability first defeated Skeleton Key's entire purpose: the
+      // moment a closing node cuts off the last route, the run ended
+      // before the player ever got a chance to reopen it, even carrying
+      // the one Burner designed to save exactly that situation.
+      // DESIGN.md's own framing for this ("recoverable, not automatic,"
+      // resolving the session-9 banked node-bypass idea) only holds if
+      // reopening can happen before the run gives up, not after.
       let freeMoveActivated = false;
       const availableMapBurnerIds = playerState.carriedBurnerIds.filter((id) => BURNER_DEFINITIONS[id].contexts.includes('map'));
       if (availableMapBurnerIds.length > 0) {
@@ -409,6 +419,11 @@ export function playRun(options: RunOptions): RunResult {
             log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId });
           }
         }
+      }
+
+      if (!gatekeeperReachable(graph, position.nodeId)) {
+        log.push({ type: 'runEnded', outcome: 'noRouteRemains' });
+        return finish('noRouteRemains');
       }
 
       const targetId = traversalStrategy(graph, position, heat);
@@ -453,6 +468,7 @@ export function playRun(options: RunOptions): RunResult {
         burnerShopStrategy,
         burnerShopRerollStrategy,
         eventChoiceStrategy,
+        burnerActivationStrategies,
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };

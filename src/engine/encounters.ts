@@ -2,7 +2,7 @@ import type { MapNode, NodeState } from './map-types';
 import type { Rng } from './rng';
 import type { SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
-import { playCombat } from './combat';
+import { playCombat, type BurnerActivationStrategy } from './combat';
 import { discardSkillStrategy, pegSkillStrategy } from './ai';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
@@ -211,6 +211,13 @@ function resolveFight(
   discardStrategies?: [DiscardStrategy, DiscardStrategy],
   playStrategies?: [PlayStrategy, PlayStrategy],
   enemyIdOverride?: EnemyId,
+  /** Per-side combat-context Burner activation (checkpoint C's own
+   * mechanism, threaded all the way through here -- checkpoint J
+   * verification caught that resolveFight never actually passed this to
+   * playCombat, meaning a real playRun fight had no way to reach it at
+   * all until now). Defaults to playCombat's own [neverActivateBurner,
+   * neverActivateBurner] when omitted. */
+  burnerActivationStrategies?: [BurnerActivationStrategy, BurnerActivationStrategy],
 ): EncounterOutcome {
   const enemy = enemyForFight(kind, node, layerIndex, fightNumber, rng, enemyIdOverride);
   const strategies = strategiesForFight(kind, layerIndex, fightNumber, discardStrategies, playStrategies);
@@ -228,6 +235,7 @@ function resolveFight(
     carriedBurnerIds: playerState.carriedBurnerIds.filter((id) => BURNER_DEFINITIONS[id].contexts.includes('combat')),
     discardStrategies: strategies.discardStrategies,
     playStrategies: strategies.playStrategies,
+    burnerActivationStrategies,
   });
 
   if (result.winner === 0) {
@@ -424,14 +432,20 @@ export function resolveEncounter(
    * same append-at-the-end treatment as every prior checkpoint's new
    * strategy param. Defaults to alwaysFirstEventChoice. */
   eventChoiceStrategy: EventChoiceStrategy = alwaysFirstEventChoice,
+  /** Per-side combat-context Burner activation for every real fight this
+   * encounter resolves, event bonus fights included -- checkpoint J
+   * verification caught that this was never threaded past combat.ts at
+   * all (fixed here). Defaults to playCombat's own
+   * [neverActivateBurner, neverActivateBurner] when omitted. */
+  burnerActivationStrategies?: [BurnerActivationStrategy, BurnerActivationStrategy],
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
-      return resolveFight('regular', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride);
+      return resolveFight('regular', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies);
     case 'eliteFight':
-      return resolveFight('elite', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride);
+      return resolveFight('elite', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies);
     case 'gatekeeperFight':
-      return resolveFight('gatekeeper', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride);
+      return resolveFight('gatekeeper', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies);
     case 'safehouse': {
       // DESIGN.md's deliberate Rest-vs-Merge trade-off: one action per
       // visit (the node goes inert either way). Falls back to Rest if
@@ -601,7 +615,7 @@ export function resolveEncounter(
       // correct EncounterOutcome, not to opener-window bookkeeping),
       // banked as a real open question rather than silently decided.
       const bonusFightOutcome = effect.bonusFight
-        ? resolveFight(effect.bonusFight.tier, node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies)
+        ? resolveFight(effect.bonusFight.tier, node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, undefined, burnerActivationStrategies)
         : undefined;
 
       return {
