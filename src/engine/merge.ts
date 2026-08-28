@@ -1,5 +1,6 @@
 import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
 import type { RunPlayerState } from './run';
+import { HEAT_HIGH_FRACTION, HEAT_MAX } from './heat';
 
 /**
  * Duplicate material & Merge (Phase 4 checkpoint E): acquiring an
@@ -15,6 +16,10 @@ export const MERGE_MAGNITUDE_BONUS = 3; // TBD/playtesting
 const MERGE_TRIGGER_EASE_AMOUNT = 2; // TBD/playtesting
 const MERGE_SCALING_CAP_BONUS = 2; // TBD/playtesting
 export const MERGE_RANK_CAP = 3; // TBD/playtesting, same treatment as the slot cap
+
+// Total banked material (summed across every subroutine id) counted as
+// "high" by the opportunistic Safehouse strategy below -- TBD/playtesting.
+export const MATERIAL_HIGH_THRESHOLD = 2;
 
 /** Eases whichever numeric "how much banked progress needed" knob a
  * trigger carries, floored/ceilinged sensibly -- shared by Operator's
@@ -140,13 +145,35 @@ export function mergeSubroutine(playerState: RunPlayerState, id: string): RunPla
  * DESIGN.md's deliberate trade-off, one action per visit (a node goes
  * inert after its first resolved encounter regardless of type). */
 export type SafehouseAction = 'rest' | 'merge';
-export type SafehouseStrategy = (playerState: RunPlayerState) => SafehouseAction;
+/** `heat` is the run's current Heat at the moment of the Safehouse visit
+ * -- added alongside opportunisticSafehouseStrategy below, since Rest-vs-
+ * Merge can't be Heat-aware without it. preferMergeWhenAvailable ignores
+ * it, same as beelineToGatekeeper already ignores TraversalStrategy's own
+ * `heat` parameter -- a function with fewer declared params still
+ * satisfies the wider type. */
+export type SafehouseStrategy = (playerState: RunPlayerState, heat: number) => SafehouseAction;
 
 /** Legal-not-good default, mirroring discardStrategy/traversalStrategy/
  * acquisitionStrategy's own pattern: Merge whenever there's any banked
  * material at all, otherwise Rest. */
 export const preferMergeWhenAvailable: SafehouseStrategy = (playerState) =>
   Object.values(playerState.material).some((count) => count > 0) ? 'merge' : 'rest';
+
+/** The Rest-vs-Merge half of the opportunistic player profile (paired
+ * with run.ts's opportunisticTraversal, decided in the same
+ * /decision-session): Heat pressure and banked material both pull a
+ * script toward a Safehouse in the first place (see opportunisticTraversal's
+ * own comment), but only one action can be taken per visit. Heat wins the
+ * tie when both are true at once -- it's the run-ending resource, so
+ * relieving it is safety-critical in a way Merge's power gain isn't;
+ * material alone (Heat not high) still prefers Merge, matching
+ * preferMergeWhenAvailable's own default lean whenever Heat isn't the
+ * pressing concern. */
+export const opportunisticSafehouseStrategy: SafehouseStrategy = (playerState, heat) => {
+  const heatHigh = heat >= HEAT_HIGH_FRACTION * (HEAT_MAX + playerState.maxHeatBonus);
+  if (heatHigh) return 'rest';
+  return preferMergeWhenAvailable(playerState, heat);
+};
 
 /** Which id to spend Merge on, when a script chose 'merge' -- the id
  * with the most banked material (ties broken by insertion order). Not

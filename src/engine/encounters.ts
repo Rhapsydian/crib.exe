@@ -438,6 +438,13 @@ export function resolveEncounter(
    * all (fixed here). Defaults to playCombat's own
    * [neverActivateBurner, neverActivateBurner] when omitted. */
   burnerActivationStrategies?: [BurnerActivationStrategy, BurnerActivationStrategy],
+  /** The run's current Heat at the moment of this node's visit -- same
+   * append-at-the-end treatment as every prior checkpoint's new param.
+   * Only consulted by the Safehouse case below (a Heat-aware
+   * SafehouseStrategy can't decide Rest-vs-Merge without it); defaults to
+   * 0 for any pre-existing caller that doesn't care (matches
+   * preferMergeWhenAvailable, which ignores it entirely). */
+  currentHeat: number = 0,
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
@@ -452,7 +459,7 @@ export function resolveEncounter(
       // the strategy chose 'merge' but nothing is actually banked to
       // spend -- 'merge' with no material would otherwise waste the
       // visit entirely.
-      const targetId = safehouseStrategy(playerState) === 'merge' ? pickMergeTarget(playerState) : null;
+      const targetId = safehouseStrategy(playerState, currentHeat) === 'merge' ? pickMergeTarget(playerState) : null;
       if (targetId) {
         return {
           newState: 'inert',

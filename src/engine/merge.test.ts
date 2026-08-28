@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import type { RunPlayerState } from './run';
 import type { SubroutineDefinition } from './subroutine-types';
-import { easeTriggerCondition, mergeSubroutine, preferMergeWhenAvailable, pickMergeTarget, MERGE_RANK_CAP } from './merge';
+import {
+  easeTriggerCondition,
+  mergeSubroutine,
+  preferMergeWhenAvailable,
+  opportunisticSafehouseStrategy,
+  pickMergeTarget,
+  MERGE_RANK_CAP,
+} from './merge';
+import { HEAT_HIGH_FRACTION, HEAT_MAX } from './heat';
 
 function playerState(overrides: Partial<RunPlayerState> = {}): RunPlayerState {
   return {
@@ -145,12 +153,40 @@ describe('mergeSubroutine', () => {
 
 describe('preferMergeWhenAvailable', () => {
   it("chooses 'merge' when any material is banked", () => {
-    expect(preferMergeWhenAvailable(playerState({ material: { a: 1 } }))).toBe('merge');
+    expect(preferMergeWhenAvailable(playerState({ material: { a: 1 } }), 0)).toBe('merge');
   });
 
   it("chooses 'rest' when nothing is banked", () => {
-    expect(preferMergeWhenAvailable(playerState({ material: {} }))).toBe('rest');
-    expect(preferMergeWhenAvailable(playerState({ material: { a: 0 } }))).toBe('rest');
+    expect(preferMergeWhenAvailable(playerState({ material: {} }), 0)).toBe('rest');
+    expect(preferMergeWhenAvailable(playerState({ material: { a: 0 } }), 0)).toBe('rest');
+  });
+});
+
+describe('opportunisticSafehouseStrategy', () => {
+  const heatHigh = Math.ceil(HEAT_HIGH_FRACTION * HEAT_MAX);
+  const heatLow = 0;
+
+  it("chooses 'rest' when Heat is high, even with material banked -- Heat wins the tie", () => {
+    expect(opportunisticSafehouseStrategy(playerState({ material: { a: 1 } }), heatHigh)).toBe('rest');
+  });
+
+  it("chooses 'merge' when material is banked and Heat is not high", () => {
+    expect(opportunisticSafehouseStrategy(playerState({ material: { a: 1 } }), heatLow)).toBe('merge');
+  });
+
+  it("chooses 'rest' when Heat is high and nothing is banked", () => {
+    expect(opportunisticSafehouseStrategy(playerState({ material: {} }), heatHigh)).toBe('rest');
+  });
+
+  it("chooses 'rest' when Heat is not high and nothing is banked", () => {
+    expect(opportunisticSafehouseStrategy(playerState({ material: {} }), heatLow)).toBe('rest');
+  });
+
+  it('respects a raised max Heat (maxHeatBonus) when judging whether Heat counts as high', () => {
+    // heatHigh is exactly the threshold for the unraised cap -- with the
+    // cap raised, that same absolute Heat value is no longer "high"
+    // relative to the new max, so material should win instead.
+    expect(opportunisticSafehouseStrategy(playerState({ material: { a: 1 }, maxHeatBonus: 100 }), heatHigh)).toBe('merge');
   });
 });
 

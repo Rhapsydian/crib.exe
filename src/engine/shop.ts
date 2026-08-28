@@ -28,6 +28,15 @@ const SHOP_COST_BY_RARITY: Record<Rarity, number> = {
   rare: 150,
 };
 
+// Data thresholds used by run.ts's opportunisticTraversal to decide
+// whether a Shop detour is worth pulling toward (high) or counts as one
+// of the three "nothing worth detouring for" conditions behind an Event
+// pull (low) -- TBD/playtesting. High sits comfortably above a common
+// piece's own cost; low sits below REROLL_COST, i.e. can't do much of
+// anything at the Shop yet.
+export const DATA_HIGH_THRESHOLD = 30;
+export const DATA_LOW_THRESHOLD = 8;
+
 /** `discountFraction` (Vendor Discount, Mods checkpoint E/H) knocks a
  * flat percentage off the base price, rounded to the nearest whole Data. */
 export function shopCostOf(id: string, discountFraction = 0): number {

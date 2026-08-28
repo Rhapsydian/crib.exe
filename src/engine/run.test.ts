@@ -1,12 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import { createNode, type LayerGraph } from './map-types';
 import { legalMoves } from './traversal';
-import { playRun, gatekeeperReachable, beelineToGatekeeper, exploreThenGatekeeper, type TraversalStrategy } from './run';
+import {
+  playRun,
+  gatekeeperReachable,
+  beelineToGatekeeper,
+  exploreThenGatekeeper,
+  opportunisticTraversal,
+  createInitialPlayerState,
+  type TraversalStrategy,
+} from './run';
 import type { SubroutineDefinition } from './subroutine-types';
 import { BREACHER_LOADOUT } from './subroutines';
 import { INSTALLED_SLOT_CAP } from './loadout';
 import type { DiscardStrategy } from './deal';
 import type { PlayStrategy } from './pegging';
+import { HEAT_MAX, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
+import { MATERIAL_HIGH_THRESHOLD } from './merge';
+import { DATA_HIGH_THRESHOLD, DATA_LOW_THRESHOLD } from './shop';
 
 /** Same reasoning as encounters.test.ts's OVERWHELMING/NEGLIGIBLE_PLAYER:
  * Breach/Containment's sharp positive-feedback dynamics mean a real
@@ -123,6 +134,92 @@ describe('gatekeeperReachable', () => {
       gatekeeperNodeId: 'gate',
     };
     expect(gatekeeperReachable(graph, 'entry')).toBe(true);
+  });
+});
+
+describe('opportunisticTraversal', () => {
+  // Star topology centered on entry: every candidate node type is one hop
+  // from entry, and (with no other edges) two hops from gate via entry --
+  // enough to exercise the safety-reserve calculation without needing a
+  // more elaborate graph.
+  function starGraph(): LayerGraph {
+    return {
+      nodes: [
+        createNode('entry', 'relay'),
+        createNode('fight', 'regularFight'),
+        createNode('safehouse', 'safehouse'),
+        createNode('shop', 'shop'),
+        createNode('event', 'event'),
+        createNode('gate', 'gatekeeperFight'),
+      ],
+      edges: [
+        { a: 'entry', b: 'fight' },
+        { a: 'entry', b: 'safehouse' },
+        { a: 'entry', b: 'shop' },
+        { a: 'entry', b: 'event' },
+        { a: 'entry', b: 'gate' },
+      ],
+      entryNodeId: 'entry',
+      gatekeeperNodeId: 'gate',
+    };
+  }
+  const position = { layerIndex: 0, nodeId: 'entry' };
+  const lowHeat = 0;
+  const highHeat = Math.ceil(HEAT_HIGH_FRACTION * HEAT_MAX);
+
+  it('falls back to beelineToGatekeeper when no playerState is given', () => {
+    expect(opportunisticTraversal(starGraph(), position, lowHeat)).toBe('gate');
+  });
+
+  it('prefers a reachable fight node over everything else, regardless of state', () => {
+    const player = { ...createInitialPlayerState('breacher'), material: { a: MATERIAL_HIGH_THRESHOLD }, data: DATA_HIGH_THRESHOLD };
+    expect(opportunisticTraversal(starGraph(), position, highHeat, player)).toBe('fight');
+  });
+
+  it('pulls toward the Safehouse when Heat is high and no fight is available', () => {
+    const graph = { ...starGraph(), nodes: starGraph().nodes.map((n) => (n.type === 'regularFight' ? { ...n, state: 'inert' as const } : n)) };
+    const player = { ...createInitialPlayerState('breacher'), data: DATA_HIGH_THRESHOLD }; // Data also high, Heat should still win
+    expect(opportunisticTraversal(graph, position, highHeat, player)).toBe('safehouse');
+  });
+
+  it('pulls toward the Safehouse when banked material is high (Heat not high)', () => {
+    const graph = { ...starGraph(), nodes: starGraph().nodes.map((n) => (n.type === 'regularFight' ? { ...n, state: 'inert' as const } : n)) };
+    const player = { ...createInitialPlayerState('breacher'), material: { a: MATERIAL_HIGH_THRESHOLD } };
+    expect(opportunisticTraversal(graph, position, lowHeat, player)).toBe('safehouse');
+  });
+
+  it('pulls toward the Shop when Data is high (Heat and material not high)', () => {
+    const graph = { ...starGraph(), nodes: starGraph().nodes.map((n) => (n.type === 'regularFight' ? { ...n, state: 'inert' as const } : n)) };
+    const player = { ...createInitialPlayerState('breacher'), data: DATA_HIGH_THRESHOLD };
+    expect(opportunisticTraversal(graph, position, lowHeat, player)).toBe('shop');
+  });
+
+  it('pulls toward the Event when Heat, material, and Data are all low', () => {
+    const graph = { ...starGraph(), nodes: starGraph().nodes.map((n) => (n.type === 'regularFight' ? { ...n, state: 'inert' as const } : n)) };
+    const player = { ...createInitialPlayerState('breacher'), data: DATA_LOW_THRESHOLD };
+    expect(opportunisticTraversal(graph, position, lowHeat, player)).toBe('event');
+  });
+
+  it('beelines when Safehouse/Shop/Event are all still available but no pull condition is active', () => {
+    const graph = { ...starGraph(), nodes: starGraph().nodes.map((n) => (n.type === 'regularFight' ? { ...n, state: 'inert' as const } : n)) };
+    // Mid-range Heat/Data, no material banked: not high enough to pull
+    // toward Safehouse/Shop, not low enough (all three) to pull toward
+    // Event -- Safehouse/Shop/Event are all still genuinely reachable and
+    // unresolved here, so this proves the algorithm actively declines
+    // them rather than just having nothing left to pull toward.
+    const midHeat = Math.round(((HEAT_HIGH_FRACTION + HEAT_LOW_FRACTION) / 2) * HEAT_MAX);
+    const player = { ...createInitialPlayerState('breacher'), data: Math.round((DATA_HIGH_THRESHOLD + DATA_LOW_THRESHOLD) / 2) };
+    expect(opportunisticTraversal(graph, position, midHeat, player)).toBe('gate');
+  });
+
+  it('never takes a detour that would risk stranding it short of the gatekeeper -- falls through to beeline instead', () => {
+    const graph = { ...starGraph(), nodes: starGraph().nodes.map((n) => (n.type === 'regularFight' ? { ...n, state: 'inert' as const } : n)) };
+    const player = { ...createInitialPlayerState('breacher'), material: { a: MATERIAL_HIGH_THRESHOLD } };
+    // Detouring to safehouse costs 3 hops (entry->safehouse->entry->gate)
+    // worth of Heat -- pin current Heat close enough to HEAT_MAX that the
+    // reserve can't cover it, even though material is high.
+    const nearMaxHeat = HEAT_MAX - 3 * HEAT_PER_MOVE + 1;
+    expect(opportunisticTraversal(graph, position, nearMaxHeat, player)).toBe('gate');
   });
 });
 

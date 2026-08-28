@@ -14,6 +14,14 @@
 export const HEAT_MAX = 100; // TBD/playtesting
 export const HEAT_PER_MOVE = 2; // TBD/playtesting
 
+// Fractions of max Heat used by the opportunistic traversal/Safehouse
+// strategy pair (run.ts/merge.ts) to decide when Heat pressure should
+// pull toward a Safehouse (high) or count as one of the three "nothing
+// worth detouring for" conditions behind an Event pull (low). TBD/
+// playtesting, same treatment as every other numeric constant here.
+export const HEAT_HIGH_FRACTION = 0.5;
+export const HEAT_LOW_FRACTION = 0.2;
+
 const BASE_HEAT_BY_TIER: Record<'regular' | 'elite', number> = {
   regular: 15, // TBD/playtesting
   elite: 30, // TBD/playtesting -- deliberately much higher: real risk for the better reward

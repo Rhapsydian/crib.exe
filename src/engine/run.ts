@@ -1,17 +1,19 @@
 import { createRng } from './rng';
-import { isReachable, neighborsOf, type LayerGraph, type NodeType, type RunPosition } from './map-types';
+import { isReachable, neighborsOf, type LayerGraph, type MapNode, type NodeType, type RunPosition } from './map-types';
 import { generateLayer } from './map-gen';
 import { assignGatekeeperEnemy } from './enemies';
 import { move } from './traversal';
 import { resolveEncounter, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy } from './encounters';
-import { addHeat, HEAT_MAX } from './heat';
+import { addHeat, HEAT_MAX, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
 import { acquireSubroutine, alwaysAcquireFirst, installGrantedSubroutine, INSTALLED_SLOT_CAP, type AcquisitionStrategy } from './loadout';
-import { mergeSubroutine, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
+import { mergeSubroutine, preferMergeWhenAvailable, opportunisticSafehouseStrategy, MATERIAL_HIGH_THRESHOLD, type SafehouseStrategy } from './merge';
 import {
   buyCheapestAffordable,
   rerollIfNothingAffordable,
+  DATA_HIGH_THRESHOLD,
+  DATA_LOW_THRESHOLD,
   buyCheapestAffordableMod,
   rerollModIfNothingAffordable,
   buyCheapestAffordableBurner,
@@ -161,8 +163,12 @@ export interface RunResult {
 /** Decides the next node to move to, given the current layer graph,
  * position, and Heat. Must always return a node in legalMoves(graph,
  * position) -- "legal-not-good," the same contract as Phase 1/2's
- * scripted discard/play strategies. */
-export type TraversalStrategy = (graph: LayerGraph, position: RunPosition, heat: number) => string;
+ * scripted discard/play strategies. `playerState` is optional -- added
+ * for opportunisticTraversal below, which needs to see material/Data
+ * alongside Heat; beelineToGatekeeper/exploreThenGatekeeper both ignore
+ * it, the same way beelineToGatekeeper already ignores `heat` itself
+ * (a function with fewer declared params still satisfies a wider type). */
+export type TraversalStrategy = (graph: LayerGraph, position: RunPosition, heat: number, playerState?: RunPlayerState) => string;
 
 /** Rush straight for the gatekeeper by shortest path, ignoring
  * everything else in the layer. */
@@ -183,6 +189,102 @@ export const exploreThenGatekeeper: TraversalStrategy = (graph, position, heat) 
     const path = shortestPath(live, position.nodeId, target.id);
     if (path.length >= 2) return path[1];
   }
+  return beelineToGatekeeper(graph, position, heat);
+};
+
+// TBD/playtesting -- extra Heat headroom (beyond the raw detour cost)
+// opportunisticTraversal insists on keeping in reserve before taking any
+// non-fight detour, so exploring never itself strands the player short of
+// the gatekeeper. Roughly 2 moves' worth of cushion.
+const OPPORTUNISTIC_RESERVE_MARGIN = 2 * HEAT_PER_MOVE;
+
+/** The "middle ground" traversal strategy (session 39, `/decision-session`
+ * -- banked since session 35's beeline/explore sweep comparison, which
+ * found neither extreme reflects DESIGN.md's own stated ideal: "a middle
+ * ground between beelining and fully exploring a layer, managing Heat
+ * along the way"). Priority, resolved live one tier at a time:
+ *
+ * 1. Reachable fight nodes (regular/elite) always win -- direct,
+ *    reliable power, no state-dependence.
+ * 2. Heat pressure: if current Heat is already high, a reachable
+ *    Safehouse outranks everything below (Heat is the run-ending
+ *    resource -- relieving it is safety-critical in a way the other
+ *    detours below aren't; opportunisticSafehouseStrategy, merge.ts,
+ *    carries the same Heat-wins-the-tie call into the Rest-vs-Merge
+ *    decision once there).
+ * 3. Otherwise, banked material or high Data each pull toward their own
+ *    node type (Safehouse->Merge, Shop) -- co-equal tiers, both real
+ *    (if less direct than a fight's) power gains the user specifically
+ *    corrected this session's first draft to include, rather than
+ *    scoping the strategy to fights-only. Nearest reachable candidate
+ *    wins if both fire at once.
+ * 4. If Heat, material, and Data are *all* low together, an Event is the
+ *    one node type left worth a gamble-driven detour.
+ * 5. Otherwise: beeline the rest of the way, same fallback
+ *    exploreThenGatekeeper already uses.
+ *
+ * Every detour (any tier above) is additionally gated by a safety
+ * reserve: a node is only ever a candidate if reaching it, then taking
+ * the shortest remaining path from there to the gatekeeper, keeps total
+ * Heat spent under HEAT_MAX (plus any maxHeatBonus) with
+ * OPPORTUNISTIC_RESERVE_MARGIN to spare -- this strategy never explores
+ * its way into a Heat-maxed dead end. */
+export const opportunisticTraversal: TraversalStrategy = (graph, position, heat, playerState) => {
+  if (!playerState) return beelineToGatekeeper(graph, position, heat);
+
+  const live = withoutClosedNodes(graph);
+  const maxHeat = HEAT_MAX + playerState.maxHeatBonus;
+
+  const detourHeatCost = (targetId: string): number | null => {
+    const toTarget = shortestPath(live, position.nodeId, targetId);
+    if (toTarget.length < 2) return null;
+    const toGatekeeper = targetId === graph.gatekeeperNodeId ? [targetId] : shortestPath(live, targetId, graph.gatekeeperNodeId);
+    if (toGatekeeper.length === 0) return null;
+    return (toTarget.length - 1 + toGatekeeper.length - 1) * HEAT_PER_MOVE;
+  };
+  const withinReserve = (targetId: string): boolean => {
+    const cost = detourHeatCost(targetId);
+    return cost !== null && heat + cost + OPPORTUNISTIC_RESERVE_MARGIN <= maxHeat;
+  };
+  /** Next hop toward whichever of `nodes` has the shortest path, or null
+   * if none are reachable within the safety reserve. */
+  const nearestOf = (nodes: MapNode[]): string | null => {
+    let best: { nextHop: string; length: number } | null = null;
+    for (const node of nodes) {
+      if (!withinReserve(node.id)) continue;
+      const path = shortestPath(live, position.nodeId, node.id);
+      if (path.length >= 2 && (!best || path.length < best.length)) best = { nextHop: path[1], length: path.length };
+    }
+    return best?.nextHop ?? null;
+  };
+  const unresolvedOfType = (type: NodeType): MapNode[] => graph.nodes.filter((n) => n.state === 'unresolved' && n.type === type);
+
+  const fightTarget = nearestOf([...unresolvedOfType('regularFight'), ...unresolvedOfType('eliteFight')]);
+  if (fightTarget) return fightTarget;
+
+  const heatHigh = heat >= HEAT_HIGH_FRACTION * maxHeat;
+  if (heatHigh) {
+    const safehouseTarget = nearestOf(unresolvedOfType('safehouse'));
+    if (safehouseTarget) return safehouseTarget;
+  }
+
+  const totalMaterial = Object.values(playerState.material).reduce((sum, count) => sum + count, 0);
+  const materialHigh = totalMaterial >= MATERIAL_HIGH_THRESHOLD;
+  const dataHigh = playerState.data >= DATA_HIGH_THRESHOLD;
+  if (materialHigh || dataHigh) {
+    const candidates = [...(materialHigh ? unresolvedOfType('safehouse') : []), ...(dataHigh ? unresolvedOfType('shop') : [])];
+    const target = nearestOf(candidates);
+    if (target) return target;
+  }
+
+  const heatLow = heat <= HEAT_LOW_FRACTION * maxHeat;
+  const materialLow = totalMaterial === 0;
+  const dataLow = playerState.data <= DATA_LOW_THRESHOLD;
+  if (heatLow && materialLow && dataLow) {
+    const eventTarget = nearestOf(unresolvedOfType('event'));
+    if (eventTarget) return eventTarget;
+  }
+
   return beelineToGatekeeper(graph, position, heat);
 };
 
@@ -426,7 +528,7 @@ export function playRun(options: RunOptions): RunResult {
         return finish('noRouteRemains');
       }
 
-      const targetId = traversalStrategy(graph, position, heat);
+      const targetId = traversalStrategy(graph, position, heat, playerState);
       const moveResult = move(graph, position, targetId);
       position = moveResult.position;
 
@@ -469,6 +571,7 @@ export function playRun(options: RunOptions): RunResult {
         burnerShopRerollStrategy,
         eventChoiceStrategy,
         burnerActivationStrategies,
+        heat,
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };

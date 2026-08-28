@@ -22,13 +22,18 @@
  * repro, the same way this file's own predecessor bug was found.
  *
  * Usage:
- *   npx tsx scripts/sweep.ts run [--classes=breacher,ghost] [--seeds=200] [--traversal=beeline|explore] [--out=file.jsonl]
+ *   npx tsx scripts/sweep.ts run [--classes=breacher,ghost] [--seeds=200] [--traversal=beeline|explore|opportunistic] [--out=file.jsonl]
  *   npx tsx scripts/sweep.ts enemy --enemy=ghost-in-the-machine [--vs=blackhat] [--seeds=200] [--out=file.jsonl]
  *
  * `run` sweeps playRun() outcome distribution per class (RunOutcome +
  * layersCompleted). `--traversal` selects which of run.ts's
  * TraversalStrategy exports drives movement (default beeline, i.e.
  * beelineToGatekeeper -- matches every sweep before session 35).
+ * `opportunistic` (session 39) is the "middle ground" strategy banked
+ * since session 35 -- paired automatically with merge.ts's
+ * opportunisticSafehouseStrategy (beeline/explore keep the old
+ * preferMergeWhenAvailable default), since the two were designed as one
+ * coherent player profile, not independent dials.
  * `enemy` sweeps a direct playCombat() between one named enemy
  * (enemies.ts) and one class's real starting kit, real game settings
  * (gaugeThreshold 8, winThreshold 50), reporting threshold vs.
@@ -36,10 +41,11 @@
  * 9 credit-incapable-enemy retrofits this session.
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
-import { playRun, beelineToGatekeeper, exploreThenGatekeeper, type RunOutcome, type TraversalStrategy } from '../src/engine/run';
+import { playRun, beelineToGatekeeper, exploreThenGatekeeper, opportunisticTraversal, type RunOutcome, type TraversalStrategy } from '../src/engine/run';
 import { playCombat } from '../src/engine/combat';
 import { CLASS_STARTING_LOADOUTS } from '../src/engine/subroutines';
 import { ENEMY_ROSTER } from '../src/engine/enemies';
+import { preferMergeWhenAvailable, opportunisticSafehouseStrategy, type SafehouseStrategy } from '../src/engine/merge';
 import type { ClassId } from '../src/engine/classes';
 
 const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
@@ -47,6 +53,18 @@ const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 
 const TRAVERSAL_STRATEGIES: Record<string, TraversalStrategy> = {
   beeline: beelineToGatekeeper,
   explore: exploreThenGatekeeper,
+  opportunistic: opportunisticTraversal,
+};
+
+// opportunisticTraversal is designed as one coherent "mindful mid-tier
+// player" alongside opportunisticSafehouseStrategy (session 39,
+// `/decision-session`) -- pairing them here so `--traversal=opportunistic`
+// exercises both halves together, not just the movement half with the
+// old always-merge default.
+const SAFEHOUSE_STRATEGIES: Record<string, SafehouseStrategy> = {
+  beeline: preferMergeWhenAvailable,
+  explore: preferMergeWhenAvailable,
+  opportunistic: opportunisticSafehouseStrategy,
 };
 
 function parseArgs(argv: string[]): Record<string, string> {
@@ -69,6 +87,7 @@ function sweepRun(args: Record<string, string>): void {
   const outFile = args.out;
   const traversalName = args.traversal ?? 'beeline';
   const traversalStrategy = TRAVERSAL_STRATEGIES[traversalName];
+  const safehouseStrategy = SAFEHOUSE_STRATEGIES[traversalName];
   if (!traversalStrategy) {
     throw new Error(`sweep.ts run: unknown --traversal="${traversalName}" (expected one of: ${Object.keys(TRAVERSAL_STRATEGIES).join(', ')})`);
   }
@@ -78,7 +97,7 @@ function sweepRun(args: Record<string, string>): void {
     const outcomes: Record<RunOutcome, number> = { victory: 0, heatMaxed: 0, quarantined: 0, noRouteRemains: 0 };
     let layersSum = 0;
     for (let seed = 0; seed < seeds; seed++) {
-      const result = playRun({ seed, classId, traversalStrategy });
+      const result = playRun({ seed, classId, traversalStrategy, safehouseStrategy });
       outcomes[result.outcome]++;
       layersSum += result.layersCompleted;
       emit(
