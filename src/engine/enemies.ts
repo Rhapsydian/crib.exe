@@ -238,8 +238,9 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
 
   // --- Gatekeeper (12) -- fully bespoke, one stable per layer ---
   // magnitudeScaler (session 39) seeded uniformly per layer here --
-  // 1.0/1.15/1.3/1.45, the same 0.15-per-layer step regular/elite get
-  // from enemyMagnitudeScaler below -- as a starting point for empirical
+  // 1.0/1.3/1.6/1.9, the same 0.3-per-layer step regular/elite get from
+  // enemyMagnitudeScaler below (bumped from an initial 0.15 -- see that
+  // constant's own comment) -- as a starting point for empirical
   // retuning against gatekeeper-check.ts, not a final answer. Each is a
   // real, independent per-gatekeeper knob from here on, not slaved to
   // this formula (e.g. Firewall Prime, already the roster's hardest
@@ -257,25 +258,25 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   // rare, occurrence:go, scaling) added: "keep calling Go, it corners you."
   { id: 'ghost-process', name: 'Ghost Process', tier: 'gatekeeper', archetypes: ['root'], minLayer: 1, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('dns-poisoning'), pool('watchdog-timer')], passiveIds: ['digital-ghost'], magnitudeScaler: 1.0 },
   // Layer 2 -- internal LAN
-  { id: 'incident-response', name: 'Incident Response', tier: 'gatekeeper', archetypes: ['exploit'], minLayer: 2, loadout: [pool('supply-chain-compromise'), pool('vulnerability-scan'), pool('zero-day-chain')], passiveIds: ['highest-bidder'], magnitudeScaler: 1.15 },
-  { id: 'the-quarantine-ward', name: 'The Quarantine Ward', tier: 'gatekeeper', archetypes: ['malware', 'encryption'], minLayer: 2, loadout: [pool('epidemic'), pool('cold-storage'), pool('slowloris')], passiveIds: ['total-quarantine'], magnitudeScaler: 1.15 },
-  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['root', 'exploit'], minLayer: 2, loadout: [pool('supply-route'), pool('dead-drop'), pool('total-pwnage')], passiveIds: ['primed-to-strike'], magnitudeScaler: 1.15 },
+  { id: 'incident-response', name: 'Incident Response', tier: 'gatekeeper', archetypes: ['exploit'], minLayer: 2, loadout: [pool('supply-chain-compromise'), pool('vulnerability-scan'), pool('zero-day-chain')], passiveIds: ['highest-bidder'], magnitudeScaler: 1.3 },
+  { id: 'the-quarantine-ward', name: 'The Quarantine Ward', tier: 'gatekeeper', archetypes: ['malware', 'encryption'], minLayer: 2, loadout: [pool('epidemic'), pool('cold-storage'), pool('slowloris')], passiveIds: ['total-quarantine'], magnitudeScaler: 1.3 },
+  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['root', 'exploit'], minLayer: 2, loadout: [pool('supply-route'), pool('dead-drop'), pool('total-pwnage')], passiveIds: ['primed-to-strike'], magnitudeScaler: 1.3 },
   // Layer 3 -- secured subnet
-  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['malware'], minLayer: 3, loadout: [pool('fork-bomb'), pool('ransomware-cascade'), pool('total-compromise')], passiveIds: ['cascading-failure'], magnitudeScaler: 1.3 },
-  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['exploit', 'malware'], minLayer: 3, loadout: [pool('vulnerability-scan'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['adaptive-defense'], magnitudeScaler: 1.3 },
-  { id: 'silent-corruption', name: 'Silent Corruption', tier: 'gatekeeper', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('rootkit-deployment'), pool('epidemic'), pool('supply-route')], passiveIds: ['total-corruption'], magnitudeScaler: 1.3 },
+  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['malware'], minLayer: 3, loadout: [pool('fork-bomb'), pool('ransomware-cascade'), pool('total-compromise')], passiveIds: ['cascading-failure'], magnitudeScaler: 1.6 },
+  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['exploit', 'malware'], minLayer: 3, loadout: [pool('vulnerability-scan'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['adaptive-defense'], magnitudeScaler: 1.6 },
+  { id: 'silent-corruption', name: 'Silent Corruption', tier: 'gatekeeper', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('rootkit-deployment'), pool('epidemic'), pool('supply-route')], passiveIds: ['total-corruption'], magnitudeScaler: 1.6 },
   // Layer 4 -- core
   // Session 28 retrofit: air-gap was already dead weight (its reactive
   // trigger needs the caster's own Heat above a threshold, and enemies
   // have no Heat source) on top of the kit's zero-credit problem --
   // swapped for Circuit Breaker (neutral rare), the run's real
   // final-boss layer earning the strongest fix.
-  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('circuit-breaker')], passiveIds: ['null-session-passive'], magnitudeScaler: 1.45 },
-  { id: 'kernel-panic', name: 'Kernel Panic', tier: 'gatekeeper', archetypes: ['exploit', 'malware', 'encryption'], minLayer: 4, loadout: [pool('total-pwnage'), pool('epidemic'), pool('cold-storage')], passiveIds: ['redundant-kernel'], magnitudeScaler: 1.45 },
+  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('circuit-breaker')], passiveIds: ['null-session-passive'], magnitudeScaler: 1.9 },
+  { id: 'kernel-panic', name: 'Kernel Panic', tier: 'gatekeeper', archetypes: ['exploit', 'malware', 'encryption'], minLayer: 4, loadout: [pool('total-pwnage'), pool('epidemic'), pool('cold-storage')], passiveIds: ['redundant-kernel'], magnitudeScaler: 1.9 },
   // Session 28 retrofit: same pure recon/denial trio as its Layer 1
   // echo, Ghost Process -- Watchdog Timer again (deliberate reuse,
   // reinforcing the two enemies' own intentional narrative link).
-  { id: 'ghost-in-the-machine', name: 'Ghost in the Machine', tier: 'gatekeeper', archetypes: ['root'], minLayer: 4, loadout: [pool('dns-poisoning'), pool('dead-drop'), pool('backchannel'), pool('watchdog-timer')], passiveIds: ['total-access'], magnitudeScaler: 1.45 },
+  { id: 'ghost-in-the-machine', name: 'Ghost in the Machine', tier: 'gatekeeper', archetypes: ['root'], minLayer: 4, loadout: [pool('dns-poisoning'), pool('dead-drop'), pool('backchannel'), pool('watchdog-timer')], passiveIds: ['total-access'], magnitudeScaler: 1.9 },
 ];
 
 /** Every enemy eligible for `tier` at `layerIndex` -- a floor for
@@ -365,8 +366,10 @@ export function enemySkill(tier: EnemyTier, layerIndex: number, fightsResolved: 
 // Tier-agnostic, unlike enemySkill's own tier-primary formula --
 // regular/elite already differ in base difficulty via kit size/passive
 // count, so this doesn't also need a tier split on top. Same
-// 0.15-per-layer step gatekeepers were seeded from. TBD/playtesting.
-const REGULAR_ELITE_MAGNITUDE_STEP = 0.15;
+// 0.3-per-layer step gatekeepers were seeded from (bumped from an
+// initial 0.15 -- gatekeeper-check.ts showed 0.15 narrowed the
+// layer-1-hardest gap but didn't close it). TBD/playtesting.
+const REGULAR_ELITE_MAGNITUDE_STEP = 0.3;
 const OPENER_MAGNITUDE_SCALER = 1; // the opener window pins this to no scaling too, same as skill
 
 function enemyMagnitudeScaler(layerIndex: number, fightsResolved: number): number {
