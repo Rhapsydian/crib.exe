@@ -288,27 +288,29 @@ describe('resolveEncounter -- non-fight nodes', () => {
     });
   });
 
-  it('Event is a no-op stub that goes inert', () => {
-    const outcome = resolveEncounter(createNode('n', 'event'), createRng(1), OVERWHELMING_PLAYER);
-    expect(outcome).toEqual({
-      newState: 'inert',
-      heatDelta: 0,
-      quarantined: false,
-      rewardTier: 'none',
-      dataAwarded: 0,
-      rewardOptions: [],
-      mergeTargetId: null,
-      shopPurchase: null,
-      rerollCost: 0,
-      modRewardOptions: [],
-      modShopPurchase: null,
-      modRerollCost: 0,
-      burnersUsedThisCombat: [],
-      shopBurnerUsed: null,
-      burnerRewardOptions: [],
-      burnerShopPurchase: null,
-      burnerRerollCost: 0,
+  it('resolves a real Event outcome deterministically per seed (checkpoint H, replacing the old always-inert stub)', () => {
+    const outcome1 = resolveEncounter(createNode('n', 'event'), createRng(1), OVERWHELMING_PLAYER);
+    expect(outcome1.newState).toBe('inert');
+    expect(outcome1.quarantined).toBe(false);
+    expect(outcome1.rewardTier).toBe('none');
+    expect(outcome1.mergeTargetId).toBeNull();
+    expect(outcome1.shopPurchase).toBeNull();
+    expect(outcome1.modShopPurchase).toBeNull();
+    expect(outcome1.burnerShopPurchase).toBeNull();
+    expect(outcome1.eventGrant).toBeDefined();
+
+    // Same seed -> same resolved outcome (deterministic, no hidden
+    // nondeterminism in the event/choice/outcome/grant pick chain).
+    const outcome1Again = resolveEncounter(createNode('n', 'event'), createRng(1), OVERWHELMING_PLAYER);
+    expect(outcome1Again).toEqual(outcome1);
+
+    // A real rng-driven resolution (not a static stub) varies across
+    // seeds -- swept since any single pair could coincidentally match.
+    const shapes = Array.from({ length: 10 }, (_, i) => {
+      const o = resolveEncounter(createNode('n', 'event'), createRng(i + 1), OVERWHELMING_PLAYER);
+      return JSON.stringify({ heatDelta: o.heatDelta, dataAwarded: o.dataAwarded, eventGrant: o.eventGrant });
     });
+    expect(new Set(shapes).size).toBeGreaterThan(1);
   });
 
   it('Shop declines and goes inert when nothing is affordable', () => {

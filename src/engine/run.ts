@@ -468,7 +468,11 @@ export function playRun(options: RunOptions): RunResult {
       if (outcome.shopBurnerUsed) {
         playerState = removeOneCarriedBurner(playerState, outcome.shopBurnerUsed);
       }
-      if (outcome.dataAwarded > 0) playerState = { ...playerState, data: playerState.data + outcome.dataAwarded };
+      // !== 0, not > 0: combat/Data-tier rewards are always non-negative
+      // in practice, but an Event's dataDelta (checkpoint H) is a
+      // genuine signed delta -- a future negative-cost Event choice
+      // should still apply correctly, not get silently dropped.
+      if (outcome.dataAwarded !== 0) playerState = { ...playerState, data: playerState.data + outcome.dataAwarded };
       if (outcome.rewardOptions.length > 0) {
         const picked = acquisitionStrategy(outcome.rewardOptions, playerState);
         if (picked) {
@@ -508,6 +512,15 @@ export function playRun(options: RunOptions): RunResult {
         playerState = { ...playerState, data: playerState.data - outcome.burnerShopPurchase.cost };
         playerState = acquireBurner(playerState, outcome.burnerShopPurchase.burner);
       }
+      // An Event grant (checkpoint H) is a direct single item, applied
+      // outright -- no acquisitionStrategy step, unlike the *RewardOptions
+      // fields above (those are offered choices; this isn't).
+      if (outcome.eventGrant?.subroutine) {
+        playerState = acquireSubroutine(playerState, outcome.eventGrant.subroutine, installedSlotCap);
+        playerState = applyOnSubroutineAcquiredMods(playerState, outcome.eventGrant.subroutine);
+      }
+      if (outcome.eventGrant?.mod) playerState = acquireMod(playerState, outcome.eventGrant.mod);
+      if (outcome.eventGrant?.burner) playerState = acquireBurner(playerState, outcome.eventGrant.burner);
       log.push({ type: 'encounter', layerIndex, nodeId: node.id, nodeType: node.type, outcome, heatAfter: heat });
 
       if (outcome.quarantined) {

@@ -7,7 +7,7 @@ import { discardSkillStrategy, pegSkillStrategy } from './ai';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
 import { heatFromLoss } from './heat';
-import { drawRewardOptions, drawUpgradedRewardOptions, type RewardTier } from './rewards';
+import { drawRewardOptions, drawUpgradedRewardOptions, rewardPoolForClass, rarityOf, type RewardTier, type Rarity } from './rewards';
 import { dataForTier } from './data';
 import { pickMergeTarget, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
 import { pickRegularOrEliteEnemy, gatekeeperEnemyForNode, enemySkill, ENEMY_ROSTER, type EnemyDefinition, type EnemyId } from './enemies';
@@ -34,10 +34,13 @@ import {
   type BurnerShopRerollStrategy,
   type ShopBurnerStrategy,
 } from './shop';
-import type { ModDefinition } from './mod-types';
-import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersForOwnedMods } from './mods';
+import type { ModDefinition, ModId } from './mod-types';
+import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersForOwnedMods, modPoolForClass } from './mods';
 import type { BurnerId, BurnerDefinition } from './burner-types';
-import { BURNER_DEFINITIONS, shopModifiersForActivatedBurner, drawBurnerRewardOptions } from './burners';
+import { BURNER_DEFINITIONS, shopModifiersForActivatedBurner, drawBurnerRewardOptions, generalBurnerPool } from './burners';
+import type { ClassId } from './classes';
+import type { EventDefinition, EventChoice, Grant } from './event-types';
+import { EVENT_ROSTER } from './events';
 
 /**
  * Node encounter resolution (session 19/20 checkpoint E, player loadout
@@ -135,6 +138,15 @@ export interface EncounterOutcome {
    * rerollCost/modRerollCost for the Burner slate's own independent
    * reroll decision. */
   burnerRerollCost: number;
+  /** What an Event's resolved choice granted, if anything -- checkpoint
+   * H. Deliberately optional and distinct in shape from *RewardOptions
+   * (burnerRewardOptions/modRewardOptions/rewardOptions): an Event grant
+   * is a direct single item a script never picks between, not an
+   * offered N-of-M choice, so there's no parallel acquisition-strategy
+   * step in run.ts -- the grant (if any) is just applied outright. Only
+   * ever set on an 'event' node; every other node omits the field
+   * entirely rather than setting it to an empty object. */
+  eventGrant?: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition };
 }
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
@@ -299,6 +311,71 @@ function resolveFight(
   };
 }
 
+// ---------------------------------------------------------------------
+// Event choice resolution (Phase 5 Events checkpoint H) -- lives
+// directly here rather than in events.ts (which is roster data only) or
+// event-types.ts (pure types), matching this checkpoint's own file-
+// organization note: no registry/hook-fan-out shape here the way Mods
+// needed one.
+// ---------------------------------------------------------------------
+
+/** Decides which of an Event's choices a script takes -- mirrors
+ * ShopStrategy/AcquisitionStrategy's "legal-not-good scripted decision"
+ * shape, but picks from a fixed list rather than an offered slate. */
+export type EventChoiceStrategy = (event: EventDefinition, playerState: RunPlayerState) => EventChoice;
+
+/** Legal-not-good default: always takes the first listed choice, no
+ * risk/reward judgment. */
+export const alwaysFirstEventChoice: EventChoiceStrategy = (event) => event.choices[0];
+
+/** Rolls one of a choice's weighted outcomes against `rng` -- a
+ * `transparent` choice's single outcome (probability 1) always "rolls"
+ * true on the first iteration, so this needs no special-casing per risk
+ * tier. Same cumulative-roll-with-fallback shape as rewards.ts's/
+ * mods.ts's/burners.ts's own weighted-sampling helpers, guarding against
+ * a probability sum that lands a hair under 1 by floating-point error. */
+function rollWeightedOutcome(outcomes: EventChoice['outcomes'], rng: Rng): EventChoice['outcomes'][number] {
+  let roll = rng.next();
+  for (const outcome of outcomes) {
+    roll -= outcome.probability;
+    if (roll <= 0) return outcome;
+  }
+  return outcomes[outcomes.length - 1];
+}
+
+/** Resolves a subroutineGrant -- a named piece outright, or a uniform
+ * random pick from the player's class reward pool filtered by rarity
+ * (rewards.ts's rewardPoolForClass/rarityOf, the same pool combat
+ * rewards draw from). Undefined if a randomFromRarity draw finds nothing
+ * at that rarity for this class -- a real possibility for a narrow pool,
+ * treated as "no grant" rather than throwing. */
+function resolveSubroutineGrant(grant: Grant<SubroutineDefinition>, classId: ClassId, rng: Rng): SubroutineDefinition | undefined {
+  if ('specific' in grant) return grant.specific;
+  const filtered = rewardPoolForClass(classId).filter((piece) => rarityOf(piece.id) === grant.randomFromRarity);
+  if (filtered.length === 0) return undefined;
+  return filtered[rng.nextInt(filtered.length)];
+}
+
+/** Mirrors resolveSubroutineGrant for Mods -- modPoolForClass (mods.ts)
+ * already excludes owned ids, so a randomFromRarity draw never hands
+ * back a duplicate. */
+function resolveModGrant(grant: Grant<ModDefinition>, classId: ClassId, ownedModIds: ModId[], rng: Rng): ModDefinition | undefined {
+  if ('specific' in grant) return grant.specific;
+  const filtered = modPoolForClass(classId, ownedModIds).filter((mod) => mod.rarity === grant.randomFromRarity);
+  if (filtered.length === 0) return undefined;
+  return filtered[rng.nextInt(filtered.length)];
+}
+
+/** Mirrors resolveSubroutineGrant/resolveModGrant for Burners -- no
+ * class scoping needed (archetype-agnostic pool, same as checkpoint F's
+ * burnerOfferingsForClass). */
+function resolveBurnerGrant(grant: Grant<BurnerDefinition>, rng: Rng): BurnerDefinition | undefined {
+  if ('specific' in grant) return grant.specific;
+  const filtered = generalBurnerPool().filter((burner) => burner.rarity === grant.randomFromRarity);
+  if (filtered.length === 0) return undefined;
+  return filtered[rng.nextInt(filtered.length)];
+}
+
 export function resolveEncounter(
   node: MapNode,
   rng: Rng,
@@ -343,6 +420,10 @@ export function resolveEncounter(
    * rerollBurnerIfNothingAffordable. */
   burnerShopStrategy: BurnerShopStrategy = buyCheapestAffordableBurner,
   burnerShopRerollStrategy: BurnerShopRerollStrategy = rerollBurnerIfNothingAffordable,
+  /** Which of an Event's choices a script takes (checkpoint H) --
+   * same append-at-the-end treatment as every prior checkpoint's new
+   * strategy param. Defaults to alwaysFirstEventChoice. */
+  eventChoiceStrategy: EventChoiceStrategy = alwaysFirstEventChoice,
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
@@ -486,13 +567,28 @@ export function resolveEncounter(
         burnerRerollCost,
       };
     }
-    case 'event':
+    case 'event': {
+      // Random pick at resolution time, not a persisted map-gen-time
+      // assignment -- mirrors enemyForFight's regular/elite treatment
+      // (gatekeeperEnemyForNode's persisted-identity treatment doesn't
+      // apply here: an Event, like a regular/elite fight, is one-and-
+      // done, never needing a stable identity across revisits).
+      const eventDef = EVENT_ROSTER[rng.nextInt(EVENT_ROSTER.length)];
+      const choice = eventChoiceStrategy(eventDef, playerState);
+      const { effect } = rollWeightedOutcome(choice.outcomes, rng);
+
+      const eventGrant: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition } = {};
+      if (effect.subroutineGrant) eventGrant.subroutine = resolveSubroutineGrant(effect.subroutineGrant, playerState.classId, rng);
+      if (effect.modGrant) eventGrant.mod = resolveModGrant(effect.modGrant, playerState.classId, playerState.ownedModIds, rng);
+      if (effect.burnerGrant) eventGrant.burner = resolveBurnerGrant(effect.burnerGrant, rng);
+      // effect.bonusFight isn't resolved here -- checkpoint I's job.
+
       return {
         newState: 'inert',
-        heatDelta: 0,
+        heatDelta: effect.heatDelta ?? 0,
         quarantined: false,
         rewardTier: 'none',
-        dataAwarded: 0,
+        dataAwarded: effect.dataDelta ?? 0,
         rewardOptions: [],
         mergeTargetId: null,
         shopPurchase: null,
@@ -505,7 +601,9 @@ export function resolveEncounter(
         burnerRewardOptions: [],
         burnerShopPurchase: null,
         burnerRerollCost: 0,
+        eventGrant,
       };
+    }
     case 'relay':
       throw new Error('resolveEncounter should never be called on a Relay node -- it has no encounter');
   }
