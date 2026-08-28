@@ -2054,3 +2054,23 @@ constraint, so future Encryption Mods should reuse it rather than
 inventing new pure-defense-only content that runs into the same
 never-closes-alone wall Legacy Firewall/Zero Trust Node/Firewall Prime
 all hit before their own session-28 neutral-piece retrofits.
+
+**Also banked, same conversation**: class-specific random Events that
+offer an *upgraded* version of that class's own starting Mod (Foothold,
+Zero Day, Sleeper Cell, Primed, Feedback Loop, Return to Sender -- the 6
+migrated onto Mod infrastructure this session, `mods.ts`). Two real
+prerequisites this depends on, both already banked separately and still
+undesigned: **Event nodes' own design** (banked since session 3,
+`DESIGN.md`/`BACKLOG.md` Phase 0/3, still just a stub `inert` no-op in
+`encounters.ts`) and a genuinely **new Mod-upgrade mechanism** -- Mods
+have no Merge-style rank/magnitude-upgrade path at all today (session
+30's deliberate scope reduction: "uncapped ownership... no Merge-style
+duplicate-material system," since a Mod can only ever be owned once).
+An "upgraded starting Mod" would need either a second, stronger
+`ModDefinition` per class-exclusive Mod that a class-specific Event can
+grant as a *replacement* (swapping the id in `ownedModIds`, closer to
+how `onModAcquired`'s granted-subroutine mechanism already replaces/
+inserts), or a new per-Mod magnitude-scaling concept Mods don't have at
+all yet. Not designed here -- flagged as real scoping work for whenever
+Event nodes themselves finally get designed, not a small follow-on to
+either the Root or Encryption notes above.
