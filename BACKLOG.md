@@ -2023,3 +2023,17 @@ class fit); a breakdown of *which* Mods actually got drawn/used per
 class/seed (would directly test finding 1 above); the per-class
 magnitude/balance pass itself, which this sweep is scoping data for, not
 performing.
+
+**Banked for the next Mod-content pass, user's direct call on finding 1
+above**: Root-themed Mods specifically should add real gauge-related
+power (win-gauge credit or enemy-gauge suppression), not just
+denial/manipulation/tempo effects -- otherwise every future Root-flavored
+Mod repeats exactly the gap finding 1 just found in the current 17 (none
+of them are Root-flavored at all; Rootkit Persistence is Root but its
+`instantManipulation`/`enemyGauge` payload only suppresses the *enemy's*
+gauge, never credits the caster's own). This is the same lesson the
+session 24-25 Root mechanical redesign already had to learn for
+subroutines themselves (Root's payloads needed real gauge-touching teeth,
+not just recon/manipulation, before Saboteur/Operator/Ghost's win rates
+moved off the floor) -- applies identically to Mods now that the pool is
+expanding past the 17-item validation sample.
