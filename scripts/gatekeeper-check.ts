@@ -21,7 +21,14 @@
  * chosen player skill level -- and aggregate win rate per (class,
  * gatekeeper, player skill) bucket. Each layer's gatekeeper is randomly
  * assigned from a small eligible pool, so N seeds naturally spreads
- * samples across the whole roster, not just one target gatekeeper.
+ * samples across the whole roster, not just one target gatekeeper. Also
+ * reports the same win rate aggregated by layerIndex instead of enemy id
+ * (per class, and combined across all classes) -- the per-layer
+ * difficulty *curve* DESIGN.md's Enemy Design section describes as
+ * authoring intent ("meant to be very challenging for the layer it's
+ * presented at"), which nothing in the engine actually enforces
+ * automatically (the only real per-layer mechanism is the skill dial's
+ * modest LAYER_SKILL_STEP).
  *
  * Usage:
  *   npx tsx scripts/gatekeeper-check.ts [--classes=breacher,ghost] [--seeds=300] [--playerSkills=0.75,1] [--out=file.jsonl]
@@ -62,6 +69,13 @@ if (outFile) writeFileSync(outFile, '');
 // key: `${classId}|${enemyId}|${playerSkill}`
 const wins: Record<string, number> = {};
 const totals: Record<string, number> = {};
+// Same shape, keyed by layer instead of enemy id (`${classId}|${layerIndex}|${playerSkill}`)
+// -- aggregates across whichever 1-4 gatekeepers each layer happened to
+// draw, to see the difficulty *curve* across layers rather than one
+// enemy at a time. A separate `all|...` bucket (classId '(all classes)')
+// gives the cross-class trend too.
+const layerWins: Record<string, number> = {};
+const layerTotals: Record<string, number> = {};
 function bump(map: Record<string, number>, key: string): void {
   map[key] = (map[key] ?? 0) + 1;
 }
@@ -102,6 +116,13 @@ for (const classId of classes) {
         const key = `${classId}|${capture.enemy.id}|${playerSkill}`;
         bump(totals, key);
         if (result.winner === 0) bump(wins, key);
+
+        for (const layerKeyClass of [classId, '(all classes)']) {
+          const layerKey = `${layerKeyClass}|${capture.layerIndex}|${playerSkill}`;
+          bump(layerTotals, layerKey);
+          if (result.winner === 0) bump(layerWins, layerKey);
+        }
+
         emit(
           JSON.stringify({
             classId,
@@ -128,4 +149,26 @@ for (const classId of classes) {
     const t = totals[key];
     console.log(`  ${enemyId.padEnd(22)} skill=${playerSkill.padEnd(5)} ${w}/${t} (${((w / t) * 100).toFixed(1)}%)`);
   }
+
+  console.log(`\n--- ${classId} by layer (aggregated across whichever gatekeeper each layer drew) ---`);
+  const layerKeysForClass = Object.keys(layerTotals)
+    .filter((k) => k.startsWith(`${classId}|`))
+    .sort();
+  for (const key of layerKeysForClass) {
+    const [, layerIndex, playerSkill] = key.split('|');
+    const w = layerWins[key] ?? 0;
+    const t = layerTotals[key];
+    console.log(`  layer ${layerIndex}  skill=${playerSkill.padEnd(5)} ${w}/${t} (${((w / t) * 100).toFixed(1)}%)`);
+  }
+}
+
+console.log(`\n=== difficulty curve across all classes ===`);
+const allClassesKeys = Object.keys(layerTotals)
+  .filter((k) => k.startsWith('(all classes)|'))
+  .sort();
+for (const key of allClassesKeys) {
+  const [, layerIndex, playerSkill] = key.split('|');
+  const w = layerWins[key] ?? 0;
+  const t = layerTotals[key];
+  console.log(`  layer ${layerIndex}  skill=${playerSkill.padEnd(5)} ${w}/${t} (${((w / t) * 100).toFixed(1)}%)`);
 }
