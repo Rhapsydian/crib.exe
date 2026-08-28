@@ -1,4 +1,5 @@
 import type { BurnerDefinition, BurnerId } from './burner-types';
+import type { Rarity } from './rewards';
 
 /**
  * Burner content (Phase 5 checkpoint A): the 8 validated Burners from
@@ -87,4 +88,27 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
  * exclusion. No class-scoping needed at all. */
 export function generalBurnerPool(): BurnerDefinition[] {
   return Object.values(BURNER_DEFINITIONS);
+}
+
+/** Shop-context Burner activation's effect on this visit's slate
+ * generation/reroll cost (checkpoint E) -- mirrors mods.ts's
+ * shopModifiersForOwnedMods, but for a single one-shot activated Burner
+ * rather than a standing owned-Mod check. `discountFraction` doesn't
+ * stack with Vendor Discount (encounters.ts's shop case takes the
+ * larger of the two, not a compounded multiply) -- a coupon and a
+ * standing discount are both "the best price available," not additive
+ * savings. `freeReroll` zeroes REROLL_COST for both independent slates'
+ * reroll decisions this visit (simplest legible reading of "a free
+ * reroll" for a placeholder/TBD economy -- see DESIGN.md's Burners
+ * section). */
+export function shopModifiersForActivatedBurner(activated: BurnerDefinition | undefined): {
+  discountFraction: number;
+  freeReroll: boolean;
+  rarityFloor?: Rarity;
+} {
+  if (!activated?.shopEffect) return { discountFraction: 0, freeReroll: false };
+  const effect = activated.shopEffect;
+  if (effect.kind === 'discount') return { discountFraction: effect.fraction, freeReroll: false };
+  if (effect.kind === 'freeReroll') return { discountFraction: 0, freeReroll: true };
+  return { discountFraction: 0, freeReroll: false, rarityFloor: effect.rarity };
 }

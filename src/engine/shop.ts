@@ -5,6 +5,7 @@ import type { Rng } from './rng';
 import { rarityOf, rewardPoolForClass, type Rarity } from './rewards';
 import type { ModDefinition, ModId } from './mod-types';
 import { modPoolForClass } from './mods';
+import type { BurnerId } from './burner-types';
 
 /**
  * Shop wiring (Phase 4 checkpoint F): spends Data on a specific pick,
@@ -69,12 +70,16 @@ function sampleDistinct<T>(items: T[], count: number, rng: Rng): T[] {
  * make Data a non-choice once a player could afford everything).
  * Re-rolled fresh from `rng` each visit. `discountFraction` (Vendor
  * Discount) is applied per-offering via shopCostOf. */
-export function shopOfferingsForClass(classId: ClassId, rng: Rng, extraCommons = 0, discountFraction = 0): ShopOffering[] {
+export function shopOfferingsForClass(classId: ClassId, rng: Rng, extraCommons = 0, discountFraction = 0, rarityFloor?: Rarity): ShopOffering[] {
   const byRarity = poolByRarity(classId);
   const commons = sampleDistinct(byRarity.common, SHOP_COMMON_SLOTS + extraCommons, rng);
   const uncommon = sampleDistinct(byRarity.uncommon, 1, rng);
 
-  const wildcardTier: Rarity = rng.next() < 0.5 ? 'uncommon' : 'rare';
+  // Insider Tip (Burners checkpoint E): a 'rare' floor forces the
+  // wildcard slot to be rare outright instead of the normal 50/50 coin
+  // flip. A 'common'/'uncommon' floor needs no special case -- the
+  // wildcard slot already guarantees uncommon-or-better every visit.
+  const wildcardTier: Rarity = rarityFloor === 'rare' ? 'rare' : rng.next() < 0.5 ? 'uncommon' : 'rare';
   const wildcardPool =
     wildcardTier === 'uncommon' ? byRarity.uncommon.filter((piece) => !uncommon.some((picked) => picked.id === piece.id)) : byRarity.rare;
   const wildcard = sampleDistinct(wildcardPool, 1, rng);
@@ -114,12 +119,20 @@ function modPoolByRarity(classId: ClassId, ownedModIds: ModId[]): Record<Rarity,
   };
 }
 
-export function modOfferingsForClass(classId: ClassId, ownedModIds: ModId[], rng: Rng, extraCommons = 0, discountFraction = 0): ModOffering[] {
+export function modOfferingsForClass(
+  classId: ClassId,
+  ownedModIds: ModId[],
+  rng: Rng,
+  extraCommons = 0,
+  discountFraction = 0,
+  rarityFloor?: Rarity,
+): ModOffering[] {
   const byRarity = modPoolByRarity(classId, ownedModIds);
   const commons = sampleDistinct(byRarity.common, SHOP_COMMON_SLOTS + extraCommons, rng);
   const uncommon = sampleDistinct(byRarity.uncommon, 1, rng);
 
-  const wildcardTier: Rarity = rng.next() < 0.5 ? 'uncommon' : 'rare';
+  // See shopOfferingsForClass's own comment -- same Insider Tip treatment.
+  const wildcardTier: Rarity = rarityFloor === 'rare' ? 'rare' : rng.next() < 0.5 ? 'uncommon' : 'rare';
   const wildcardPool =
     wildcardTier === 'uncommon' ? byRarity.uncommon.filter((mod) => !uncommon.some((picked) => picked.id === mod.id)) : byRarity.rare;
   const wildcard = sampleDistinct(wildcardPool, 1, rng);
@@ -183,3 +196,20 @@ export const rerollIfNothingAffordable: ShopRerollStrategy = (offerings, playerS
   const canAffordSomething = offerings.some((offering) => offering.cost <= playerState.data);
   return canAffordReroll && !canAffordSomething;
 };
+
+// ---------------------------------------------------------------------
+// Shop-context Burner activation (Phase 5 Burners checkpoint E) --
+// distinct from checkpoint F's BurnerShopStrategy/BurnerShopRerollStrategy
+// below (deciding what to BUY from the Burner slate itself): this is
+// deciding whether to SPEND an already-carried "coupon" Burner
+// (discount/freeReroll/rarityFloor) on this visit. Decided before either
+// slate is generated (encounters.ts's shop case, mirrors Vendor
+// Discount/Bulk Buyer's own onShopSlateGenerated hook timing), so there
+// are no offerings yet to react to -- just which Burner (if any) to burn
+// this visit.
+// ---------------------------------------------------------------------
+
+export type ShopBurnerStrategy = (availableBurnerIds: BurnerId[], playerState: RunPlayerState) => BurnerId | null;
+
+/** Default until a script actually wants to spend a shop Burner. */
+export const neverActivateShopBurner: ShopBurnerStrategy = () => null;

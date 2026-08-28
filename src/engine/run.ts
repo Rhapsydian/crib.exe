@@ -14,10 +14,12 @@ import {
   rerollIfNothingAffordable,
   buyCheapestAffordableMod,
   rerollModIfNothingAffordable,
+  neverActivateShopBurner,
   type ShopStrategy,
   type ShopRerollStrategy,
   type ModShopStrategy,
   type ModShopRerollStrategy,
+  type ShopBurnerStrategy,
 } from './shop';
 import type { DiscardStrategy } from './deal';
 import type { PlayStrategy } from './pegging';
@@ -261,6 +263,10 @@ export interface RunOptions {
    * (Phase 5 Mods checkpoint G). */
   modShopStrategy?: ModShopStrategy;
   modShopRerollStrategy?: ModShopRerollStrategy;
+  /** Which (if any) carried shop-context "coupon" Burner a script spends
+   * on a Shop visit (Burners checkpoint E). Defaults to
+   * neverActivateShopBurner. */
+  shopBurnerStrategy?: ShopBurnerStrategy;
   /** Test-only escape hatch (session 24, tunable-skill AI checkpoint A),
    * same treatment as installedLoadoutOverride above -- lets a sweep
    * exercise a skilled opponent (either side) in real fights via
@@ -290,6 +296,7 @@ export function playRun(options: RunOptions): RunResult {
     shopRerollStrategy = rerollIfNothingAffordable,
     modShopStrategy = buyCheapestAffordableMod,
     modShopRerollStrategy = rerollModIfNothingAffordable,
+    shopBurnerStrategy = neverActivateShopBurner,
     discardStrategies,
     playStrategies,
   } = options;
@@ -418,6 +425,7 @@ export function playRun(options: RunOptions): RunResult {
         undefined, // enemyIdOverride -- test-only, never set by real play
         modShopStrategy,
         modShopRerollStrategy,
+        shopBurnerStrategy,
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
@@ -434,6 +442,11 @@ export function playRun(options: RunOptions): RunResult {
           if (index !== -1) remaining.splice(index, 1);
         }
         playerState = { ...playerState, carriedBurnerIds: remaining };
+      }
+      // Shop-context "coupon" Burner (checkpoint E) -- same "recorded,
+      // not applied" split as shopPurchase/modShopPurchase below.
+      if (outcome.shopBurnerUsed) {
+        playerState = removeOneCarriedBurner(playerState, outcome.shopBurnerUsed);
       }
       if (outcome.dataAwarded > 0) playerState = { ...playerState, data: playerState.data + outcome.dataAwarded };
       if (outcome.rewardOptions.length > 0) {

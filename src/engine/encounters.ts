@@ -18,6 +18,7 @@ import {
   buyCheapestAffordableMod,
   rerollIfNothingAffordable,
   rerollModIfNothingAffordable,
+  neverActivateShopBurner,
   REROLL_COST,
   type ShopOffering,
   type ShopStrategy,
@@ -25,11 +26,12 @@ import {
   type ModOffering,
   type ModShopStrategy,
   type ModShopRerollStrategy,
+  type ShopBurnerStrategy,
 } from './shop';
 import type { ModDefinition } from './mod-types';
 import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersForOwnedMods } from './mods';
 import type { BurnerId } from './burner-types';
-import { BURNER_DEFINITIONS } from './burners';
+import { BURNER_DEFINITIONS, shopModifiersForActivatedBurner } from './burners';
 
 /**
  * Node encounter resolution (session 19/20 checkpoint E, player loadout
@@ -105,6 +107,13 @@ export interface EncounterOutcome {
    * happened). run.ts's loop uses this to remove used Burners from
    * RunPlayerState.carriedBurnerIds once the encounter resolves. */
   burnersUsedThisCombat: BurnerId[];
+  /** Which carried shop-context "coupon" Burner (if any) was spent on
+   * this Shop visit -- Phase 5 Burners checkpoint E. Always null for any
+   * non-Shop node. Same "recorded, not applied" split as shopPurchase/
+   * modShopPurchase: run.ts's loop removes it from RunPlayerState.
+   * carriedBurnerIds since resolveEncounter is a pure function that
+   * doesn't hold RunPlayerState itself. */
+  shopBurnerUsed: BurnerId | null;
 }
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
@@ -216,6 +225,7 @@ function resolveFight(
       modShopPurchase: null,
       modRerollCost: 0,
       burnersUsedThisCombat: result.burnersUsedThisCombat,
+      shopBurnerUsed: null,
     };
   }
   if (kind === 'gatekeeper') {
@@ -235,6 +245,7 @@ function resolveFight(
       modShopPurchase: null,
       modRerollCost: 0,
       burnersUsedThisCombat: result.burnersUsedThisCombat,
+      shopBurnerUsed: null,
     };
   }
   return {
@@ -251,6 +262,7 @@ function resolveFight(
     modShopPurchase: null,
     modRerollCost: 0,
     burnersUsedThisCombat: result.burnersUsedThisCombat,
+    shopBurnerUsed: null,
   };
 }
 
@@ -287,6 +299,11 @@ export function resolveEncounter(
    * existing positional call site stays valid unchanged. */
   modShopStrategy: ModShopStrategy = buyCheapestAffordableMod,
   modShopRerollStrategy: ModShopRerollStrategy = rerollModIfNothingAffordable,
+  /** Which (if any) carried shop-context "coupon" Burner a script spends
+   * on a Shop visit (checkpoint E) -- same append-at-the-end treatment
+   * as modShopStrategy/modShopRerollStrategy above. Defaults to
+   * neverActivateShopBurner. */
+  shopBurnerStrategy: ShopBurnerStrategy = neverActivateShopBurner,
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
@@ -317,6 +334,7 @@ export function resolveEncounter(
           modShopPurchase: null,
           modRerollCost: 0,
           burnersUsedThisCombat: [],
+          shopBurnerUsed: null,
         };
       }
       return {
@@ -333,29 +351,49 @@ export function resolveEncounter(
         modShopPurchase: null,
         modRerollCost: 0,
         burnersUsedThisCombat: [],
+        shopBurnerUsed: null,
       };
     }
     case 'shop': {
+      // Shop-context Burner activation (checkpoint E), decided before
+      // either slate is generated -- same timing as Vendor Discount/Bulk
+      // Buyer's own onShopSlateGenerated hook below, just a one-shot
+      // carried item instead of a standing owned Mod.
+      const availableShopBurnerIds = playerState.carriedBurnerIds.filter((id) => BURNER_DEFINITIONS[id].contexts.includes('shop'));
+      const chosenShopBurnerId =
+        availableShopBurnerIds.length > 0 ? shopBurnerStrategy(availableShopBurnerIds, playerState) : null;
+      const activatedShopBurner =
+        chosenShopBurnerId && availableShopBurnerIds.includes(chosenShopBurnerId) ? BURNER_DEFINITIONS[chosenShopBurnerId] : undefined;
+      const shopBurnerUsed = activatedShopBurner ? activatedShopBurner.id : null;
+      const burnerModifiers = shopModifiersForActivatedBurner(activatedShopBurner);
+
       // Vendor Discount/Bulk Buyer (Phase 5 Mods checkpoint E) apply to
       // both independent slates equally -- a Shop-wide effect, not
-      // subroutine-only.
-      const { discountFraction, extraCommons } = shopModifiersForOwnedMods(playerState.ownedModIds);
-      const firstSlate = shopOfferingsForClass(playerState.classId, rng, extraCommons, discountFraction);
+      // subroutine-only. A Burner coupon's discount doesn't stack with
+      // Vendor Discount (the larger of the two applies, not a compounded
+      // multiply -- see burners.ts's shopModifiersForActivatedBurner).
+      const { discountFraction: modDiscountFraction, extraCommons } = shopModifiersForOwnedMods(playerState.ownedModIds);
+      const discountFraction = Math.max(modDiscountFraction, burnerModifiers.discountFraction);
+      const rarityFloor = burnerModifiers.rarityFloor;
+      const rerollCostThisVisit = burnerModifiers.freeReroll ? 0 : REROLL_COST;
+      const firstSlate = shopOfferingsForClass(playerState.classId, rng, extraCommons, discountFraction, rarityFloor);
       // "Once": the reroll strategy is only ever asked against the
       // first slate, never against a slate it already produced.
       const rerolled = playerState.data >= REROLL_COST && shopRerollStrategy(firstSlate, playerState);
-      const offerings = rerolled ? shopOfferingsForClass(playerState.classId, rng, extraCommons, discountFraction) : firstSlate;
-      const rerollCost = rerolled ? REROLL_COST : 0;
+      const offerings = rerolled ? shopOfferingsForClass(playerState.classId, rng, extraCommons, discountFraction, rarityFloor) : firstSlate;
+      const rerollCost = rerolled ? rerollCostThisVisit : 0;
 
       // The Mod slate (session 30: "two independent slates in one Shop
       // visit... both spending from the same Data pool") -- its own
-      // separately-generated, separately-rerollable draw.
-      const firstModSlate = modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, discountFraction);
+      // separately-generated, separately-rerollable draw. Insider Tip's
+      // rarityFloor/Loyalty Token's freeReroll apply here too -- a
+      // Burner coupon is Shop-wide, same as Vendor Discount/Bulk Buyer.
+      const firstModSlate = modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, discountFraction, rarityFloor);
       const modRerolled = playerState.data >= REROLL_COST && modShopRerollStrategy(firstModSlate, playerState);
       const modOfferings = modRerolled
-        ? modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, discountFraction)
+        ? modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, discountFraction, rarityFloor)
         : firstModSlate;
-      const modRerollCost = modRerolled ? REROLL_COST : 0;
+      const modRerollCost = modRerolled ? rerollCostThisVisit : 0;
 
       // The purchase decisions need to see the post-reroll Data balance
       // -- otherwise a strategy could "spend" the reroll cost and then
@@ -382,6 +420,7 @@ export function resolveEncounter(
         modShopPurchase,
         modRerollCost,
         burnersUsedThisCombat: [],
+        shopBurnerUsed,
       };
     }
     case 'event':
@@ -399,6 +438,7 @@ export function resolveEncounter(
         modShopPurchase: null,
         modRerollCost: 0,
         burnersUsedThisCombat: [],
+        shopBurnerUsed: null,
       };
     case 'relay':
       throw new Error('resolveEncounter should never be called on a Relay node -- it has no encounter');
