@@ -63,14 +63,16 @@ const REST_HEAT_REDUCTION = 20; // TBD/playtesting
 // magnitudes and structural bugs). Still genuinely open. (The third
 // member of this old trio, FIGHT_MAX_HANDS, was removed in session 39 --
 // see combat.ts's HARD_RESOLUTION_HAND.)
-const GAUGE_THRESHOLD = 8;
+// Exported (session 39) so diagnostic scripts can reuse the single real
+// source of truth instead of copying these two numbers by hand.
+export const GAUGE_THRESHOLD = 8;
 // Same empirical sweep as above -- 50 gave fast (~10-25 hand),
 // consistent convergence across the whole competitive magnitude range
 // while still leaving enough resolution for the amount-differences
 // between tiers to matter. TBD/playtesting, same as every numeric
 // constant in this project, but now grounded in the new model's actual
 // behavior rather than carried over from the old one.
-const WIN_THRESHOLD = 50;
+export const WIN_THRESHOLD = 50;
 
 export interface EncounterOutcome {
   newState: NodeState;
