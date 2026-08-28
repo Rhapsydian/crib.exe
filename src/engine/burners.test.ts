@@ -42,7 +42,6 @@ describe('Combat-context activation -- BurnerActivationStrategy', () => {
       seed: 1,
       gaugeThreshold: 8,
       winThreshold: 100,
-      maxHands: 30,
       carriedBurnerIds: ['flash-drive'],
       burnerActivationStrategies: [alwaysFlashDrive, neverActivateBurner],
     });
@@ -55,7 +54,6 @@ describe('Combat-context activation -- BurnerActivationStrategy', () => {
       seed: 1,
       gaugeThreshold: 8,
       winThreshold: 100,
-      maxHands: 30,
       carriedBurnerIds: ['emp-charge'],
       burnerActivationStrategies: [alwaysEmpCharge, neverActivateBurner],
     });
@@ -68,7 +66,6 @@ describe('Combat-context activation -- BurnerActivationStrategy', () => {
       seed: 1,
       gaugeThreshold: 8,
       winThreshold: 200,
-      maxHands: 50,
       carriedBurnerIds: ['flash-drive', 'flash-drive'],
       burnerActivationStrategies: [alwaysFlashDrive, neverActivateBurner],
     });
@@ -80,7 +77,6 @@ describe('Combat-context activation -- BurnerActivationStrategy', () => {
       seed: 1,
       gaugeThreshold: 8,
       winThreshold: 100,
-      maxHands: 30,
       carriedBurnerIds: [],
     });
     expect(result.burnersUsedThisCombat).toEqual([]);

@@ -156,21 +156,23 @@ describe('subroutine content — real combat smoke tests', () => {
   ];
 
   // These placeholder magnitudes happen to put a couple of matchups
-  // close enough to balanced that convergence is genuinely slow (e.g.
-  // Breacher vs. genericOpponent takes ~3000 hands, not a bug -- just a
-  // real property of these specific TBD numbers, exactly the kind of
-  // thing a future balance pass would tune). A generous maxHands
-  // accommodates that without weakening what this test actually checks
-  // (no crash, no malformed data), while still catching a true
-  // structural stalemate (Ghost, Encryption -- excluded below, covered
-  // by their own dedicated test instead).
-  const GENEROUS_MAX_HANDS = 20_000;
+  // close enough to balanced that "natural" convergence (crossing a
+  // threshold via real offense) is genuinely slow or never happens at
+  // all -- not a bug, just a real property of these specific TBD
+  // numbers, exactly the kind of thing a future balance pass would
+  // tune. combat.ts's HARD_RESOLUTION_HAND (hand 20) means every one of
+  // these still resolves either way -- the resolution just becomes an
+  // attrition loss for whichever side never crossed its own threshold,
+  // rather than never happening. What these tests actually check is "no
+  // crash, no malformed data," not "resolves via real offense" -- true
+  // structural stalemates (Ghost, Encryption) are excluded below and
+  // covered by their own dedicated test instead.
 
   it('every class\'s starting loadout except Ghost can fight to resolution without throwing', () => {
     for (const classId of Object.keys(CLASS_STARTING_LOADOUTS) as (keyof typeof CLASS_STARTING_LOADOUTS)[]) {
       if (classId === 'ghost') continue;
       const loadout = loadoutFor(classId);
-      expect(() => playCombat([loadout, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS })).not.toThrow();
+      expect(() => playCombat([loadout, genericOpponent], { seed: 1, gaugeThreshold: 12 })).not.toThrow();
     }
   });
 
@@ -178,7 +180,7 @@ describe('subroutine content — real combat smoke tests', () => {
     for (const [key, pool] of Object.entries(ARCHETYPE_POOLS)) {
       if (key === 'encryption') continue;
       const loadout = [...pool.commons, ...pool.uncommons, ...pool.rares];
-      expect(() => playCombat([loadout, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS })).not.toThrow();
+      expect(() => playCombat([loadout, genericOpponent], { seed: 1, gaugeThreshold: 12 })).not.toThrow();
     }
   });
 
@@ -186,7 +188,7 @@ describe('subroutine content — real combat smoke tests', () => {
     for (const key of ['exploit', 'malware'] as const) {
       const pool = ARCHETYPE_POOLS[key];
       const loadout = [...pool.commons, ...pool.uncommons, ...pool.rares];
-      const result = playCombat([loadout, []], { seed: 1, gaugeThreshold: 12, maxHands: 500 });
+      const result = playCombat([loadout, []], { seed: 1, gaugeThreshold: 12 });
       expect(result.winner).toBe(0);
     }
   });
@@ -203,7 +205,7 @@ describe('subroutine content — real combat smoke tests', () => {
     // by itself credit anything (only Return to Sender's hook does), and
     // Tripwire is pure denial.
     const steganographyAndTripwire = CLASS_STARTING_LOADOUTS.ghost.filter((piece) => piece.id !== 'idle-process');
-    const result = playCombat([steganographyAndTripwire, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS });
+    const result = playCombat([steganographyAndTripwire, genericOpponent], { seed: 1, gaugeThreshold: 12 });
     expect(result.winner).toBe(1);
     expect(result.peakFillFraction[0]).toBe(0);
   });
@@ -224,7 +226,7 @@ describe('subroutine content — real combat smoke tests', () => {
     // directly (peak fill jumps roughly 4-5x against this benchmark, not
     // whether it wins outright against it -- see the next test for that,
     // against a more realistic opponent).
-    const withoutPassive = playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS });
+    const withoutPassive = playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], { seed: 1, gaugeThreshold: 12 });
     expect(withoutPassive.peakFillFraction[0]).toBeGreaterThan(0.5);
   });
 
@@ -249,7 +251,6 @@ describe('subroutine content — real combat smoke tests', () => {
       seed: 1,
       gaugeThreshold: 8,
       winThreshold: 50,
-      maxHands: GENEROUS_MAX_HANDS,
       classId: 'ghost',
     });
     expect(result.winner).toBe(0);
@@ -263,8 +264,8 @@ describe('subroutine content — real combat smoke tests', () => {
     // before," matching how these two reworks (checkpoints A/B) actually
     // differ from Ghost's (checkpoint C).
     for (const classId of ['saboteur', 'operator'] as const) {
-      const withPassive = playCombat([CLASS_STARTING_LOADOUTS[classId], []], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS, classId });
-      const withoutPassive = playCombat([CLASS_STARTING_LOADOUTS[classId], []], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS });
+      const withPassive = playCombat([CLASS_STARTING_LOADOUTS[classId], []], { seed: 1, gaugeThreshold: 12, classId });
+      const withoutPassive = playCombat([CLASS_STARTING_LOADOUTS[classId], []], { seed: 1, gaugeThreshold: 12 });
       expect(withPassive.winner).toBe(0);
       expect(withoutPassive.winner).toBe(0);
       expect(withPassive.hands.length).toBeLessThan(withoutPassive.hands.length);
@@ -294,13 +295,13 @@ describe('subroutine content — real combat smoke tests', () => {
     // realistic in-game risk.
     const encryptionPool = ARCHETYPE_POOLS.encryption;
     const encryptionLoadout = [...encryptionPool.commons, ...encryptionPool.uncommons, ...encryptionPool.rares];
-    const result = playCombat([encryptionLoadout, genericOpponent], { seed: 1, gaugeThreshold: 12, maxHands: GENEROUS_MAX_HANDS });
+    const result = playCombat([encryptionLoadout, genericOpponent], { seed: 1, gaugeThreshold: 12 });
     expect(result.winner).toBe(1);
     expect(result.hands.length).toBe(20);
     expect(result.peakFillFraction).toEqual([0, 0]);
   });
 
   it('the full 78-subroutine set on one side resolves against an empty enemy without throwing', () => {
-    expect(() => playCombat([ALL_SUBROUTINES, []], { seed: 1, gaugeThreshold: 12, maxHands: 500 })).not.toThrow();
+    expect(() => playCombat([ALL_SUBROUTINES, []], { seed: 1, gaugeThreshold: 12 })).not.toThrow();
   });
 });

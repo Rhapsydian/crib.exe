@@ -55,9 +55,14 @@ const REST_HEAT_REDUCTION = 20; // TBD/playtesting
 
 // Phase 5 checkpoint C replaced the old flat single-burst-per-tier
 // dummy loadouts with real named-enemy selection (enemies.ts) -- see
-// resolveFight below. GAUGE_THRESHOLD/WIN_THRESHOLD/FIGHT_MAX_HANDS
-// were tuned against the old flat shape (Phase 4 checkpoint E); real
-// per-enemy retuning against the actual roster is checkpoint E's job.
+// resolveFight below. GAUGE_THRESHOLD/WIN_THRESHOLD were tuned against
+// the old flat shape (Phase 4 checkpoint E), and real per-enemy
+// retuning against the actual roster was left for this phase's own
+// checkpoint E -- which, per session 39's audit, never actually
+// re-validated these two thresholds themselves (it focused on enemy
+// magnitudes and structural bugs). Still genuinely open. (The third
+// member of this old trio, FIGHT_MAX_HANDS, was removed in session 39 --
+// see combat.ts's HARD_RESOLUTION_HAND.)
 const GAUGE_THRESHOLD = 8;
 // Same empirical sweep as above -- 50 gave fast (~10-25 hand),
 // consistent convergence across the whole competitive magnitude range
@@ -151,14 +156,6 @@ export interface EncounterOutcome {
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
 
-// The two-gauge redesign's race-to-threshold dynamics converge fast and
-// consistently (empirically ~10-25 hands at the magnitudes above, even
-// at the extremes of the swept range) -- a generous but no longer
-// enormous margin over that. Escalation (checkpoint B) starts at hand
-// 100 as a backstop for any matchup this placeholder tuning didn't
-// anticipate (e.g. a heavily-grown late-run loadout), well under this.
-const FIGHT_MAX_HANDS = 5_000;
-
 /** Picks the real named enemy for this fight (enemies.ts, checkpoint C):
  * gatekeeper reads the identity map-gen already fixed onto the node;
  * regular/elite pick randomly from the eligible tier+layer pool
@@ -226,7 +223,6 @@ function resolveFight(
     seed,
     gaugeThreshold: GAUGE_THRESHOLD,
     winThreshold: WIN_THRESHOLD,
-    maxHands: FIGHT_MAX_HANDS,
     classId: playerState.classId,
     enemyPassiveIds: enemy.passiveIds,
     ownedModIds: playerState.ownedModIds,

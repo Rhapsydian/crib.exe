@@ -130,7 +130,6 @@ function sweepEnemy(args: Record<string, string>): void {
       seed,
       gaugeThreshold: 8,
       winThreshold: 50,
-      maxHands: 5000,
       classId,
       enemyPassiveIds: enemy.passiveIds,
     });

@@ -73,10 +73,6 @@ export interface CombatOptions {
   discardStrategies?: [DiscardStrategy, DiscardStrategy];
   playStrategies?: [PlayStrategy, PlayStrategy];
   startingDealer?: PlayerIndex;
-  /** Safety cap against a combat that never resolves (e.g. an empty
-   * loadout whose gauge can never trigger a turn) -- real content always
-   * scores *something* each hand, so this should never bind in practice. */
-  maxHands?: number;
   /** Which starting passive (if any) to check at its hook points --
    * Phase 4 checkpoint B. Only side 0 (the player) ever has a class. */
   classId?: ClassId;
@@ -317,16 +313,18 @@ function applyEscalation(combatState: CombatState): CombatState {
 // stalemate (both sides suppressing each other's progress as fast as
 // it accumulates, or a kit that can never land a hit at all -- see
 // subroutines.test.ts's solo-Encryption-pool case) can still run past
-// FIGHT_MAX_HANDS (encounters.ts) without ever crossing either
-// threshold, throwing instead of returning a result. Found as a real,
-// if rare, occurrence in this session's own 500-seed re-sweep (Ghost,
-// once its passive rework let it genuinely contest). The user's call:
-// no fight should ever fail to resolve, full stop -- so at the end of
-// hand 20 (the same hand escalation's own shrink schedule already
-// reaches its floor by), force a real winner regardless of whether
-// either threshold was actually crossed. This makes FIGHT_MAX_HANDS
-// effectively unreachable for any real fight going forward; left in
-// place as a defensive outer bound rather than removed.
+// whatever hand-count bound existed at the time without ever crossing
+// either threshold, throwing instead of returning a result. Found as a
+// real, if rare, occurrence in this session's own 500-seed re-sweep
+// (Ghost, once its passive rework let it genuinely contest). The user's
+// call: no fight should ever fail to resolve, full stop -- so at the
+// end of hand 20 (the same hand escalation's own shrink schedule
+// already reaches its floor by), force a real winner regardless of
+// whether either threshold was actually crossed. This made the old
+// FIGHT_MAX_HANDS/maxHands concept vestigial from this point on --
+// every real fight resolves well before it could ever matter -- and it
+// was finally removed outright in session 39 rather than kept as an
+// unreachable defensive bound.
 const HARD_RESOLUTION_HAND = 20;
 
 /** Forces a winner at the hard resolution deadline (session 27,
@@ -374,7 +372,6 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     discardStrategies = [discardLowestTwo, discardLowestTwo],
     playStrategies = [playLowestLegal, playLowestLegal],
     startingDealer = 0,
-    maxHands = 500,
     classId,
     enemyPassiveIds = [],
     ownedModIds = [],
@@ -456,7 +453,13 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     return null;
   };
 
-  for (let i = 0; i < maxHands; i++) {
+  // HARD_RESOLUTION_HAND is the only real bound -- its own unconditional
+  // check below always returns by the loop's last iteration, so there's
+  // no separate "maxHands" concept above it anymore (removed: user
+  // request, session 39 -- FIGHT_MAX_HANDS/maxHands had been vestigial
+  // since session 27 introduced the hard deadline, "left in place as a
+  // defensive outer bound" at the time rather than removed).
+  for (let i = 0; i < HARD_RESOLUTION_HAND; i++) {
     let winner: PlayerIndex | null = null;
 
     // Escalation: once the match has run long enough, both sides' own
@@ -668,5 +671,10 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     if (i + 1 >= HARD_RESOLUTION_HAND) return finish(resolveHardTiebreak(), 'attrition');
   }
 
-  throw new Error(`playCombat did not resolve within ${maxHands} hands`);
+  // Provably unreachable: the loop runs exactly HARD_RESOLUTION_HAND
+  // iterations, and the `i + 1 >= HARD_RESOLUTION_HAND` check above
+  // always returns by the last one, unconditionally. Kept only to
+  // satisfy TypeScript's control-flow analysis (it can't prove that on
+  // its own) -- not a real safety net anymore.
+  throw new Error('playCombat: unreachable -- HARD_RESOLUTION_HAND always forces a result before this point');
 }
