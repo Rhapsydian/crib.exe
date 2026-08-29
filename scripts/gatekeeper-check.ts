@@ -31,7 +31,7 @@
  * modest LAYER_SKILL_STEP).
  *
  * Usage:
- *   npx tsx scripts/gatekeeper-check.ts [--classes=breacher,ghost] [--seeds=300] [--playerSkills=0.75,1] [--out=file.jsonl]
+ *   npx tsx scripts/gatekeeper-check.ts [--classes=breacher,ghost] [--seeds=300] [--playerSkills=0.85] [--out=file.jsonl]
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { playRun, opportunisticTraversal, type GatekeeperFightContext } from '../src/engine/run';
@@ -44,6 +44,14 @@ import { BURNER_DEFINITIONS } from '../src/engine/burners';
 import type { ClassId } from '../src/engine/classes';
 
 const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
+// Session 39: the player's own standing default for realistic diagnostics
+// -- anchored to the hardest real enemy skill in the game (layer-4
+// gatekeeper, enemySkill() tops out at 0.84, enemies.ts) rather than
+// picked arbitrarily, chosen so a raw-Cribbage mirror match against that
+// ceiling comes out close to a fair 50% (scripts/cribbage-skill-matrix.ts
+// calibration table). Opt-in only, per-script convention -- not an
+// engine-level default.
+const DEFAULT_PLAYER_SKILL = '0.85';
 
 function parseArgs(argv: string[]): Record<string, string> {
   const args: Record<string, string> = {};
@@ -62,7 +70,7 @@ function emit(line: string, outFile?: string): void {
 const args = parseArgs(process.argv.slice(2));
 const classes = args.classes ? (args.classes.split(',') as ClassId[]) : ALL_CLASSES;
 const seeds = Number(args.seeds ?? 300);
-const playerSkills = (args.playerSkills ?? '0.75,1').split(',').map(Number);
+const playerSkills = (args.playerSkills ?? DEFAULT_PLAYER_SKILL).split(',').map(Number);
 const outFile = args.out;
 if (outFile) writeFileSync(outFile, '');
 

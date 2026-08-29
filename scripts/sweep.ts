@@ -22,7 +22,7 @@
  * repro, the same way this file's own predecessor bug was found.
  *
  * Usage:
- *   npx tsx scripts/sweep.ts run [--classes=breacher,ghost] [--seeds=200] [--traversal=beeline|explore|opportunistic] [--out=file.jsonl]
+ *   npx tsx scripts/sweep.ts run [--classes=breacher,ghost] [--seeds=200] [--traversal=beeline|explore|opportunistic] [--playerSkill=0.85] [--out=file.jsonl]
  *   npx tsx scripts/sweep.ts enemy --enemy=ghost-in-the-machine [--vs=blackhat] [--seeds=200] [--out=file.jsonl]
  *
  * `run` sweeps playRun() outcome distribution per class (RunOutcome +
@@ -81,6 +81,16 @@ function emit(line: string, outFile?: string): void {
   if (outFile) appendFileSync(outFile, line + '\n');
 }
 
+// Session 39: the player's own standing default for full-run diagnostics
+// -- anchored to the hardest real enemy skill in the game (layer-4
+// gatekeeper, enemySkill() tops out at 0.84, enemies.ts) rather than
+// picked arbitrarily, chosen so a raw-Cribbage mirror match against that
+// ceiling comes out close to a fair 50% (scripts/cribbage-skill-matrix.ts
+// calibration table). Opt-in only -- run.ts's own playerSkill option
+// still defaults to undefined (playCombat's dumb baseline) when nothing
+// passes it, so this is a script-level convention, not an engine default.
+const PLAYER_SKILL = 0.85;
+
 function sweepRun(args: Record<string, string>): void {
   const classes = args.classes ? (args.classes.split(',') as ClassId[]) : ALL_CLASSES;
   const seeds = Number(args.seeds ?? 100);
@@ -88,6 +98,7 @@ function sweepRun(args: Record<string, string>): void {
   const traversalName = args.traversal ?? 'beeline';
   const traversalStrategy = TRAVERSAL_STRATEGIES[traversalName];
   const safehouseStrategy = SAFEHOUSE_STRATEGIES[traversalName];
+  const playerSkill = args.playerSkill === undefined ? PLAYER_SKILL : Number(args.playerSkill);
   if (!traversalStrategy) {
     throw new Error(`sweep.ts run: unknown --traversal="${traversalName}" (expected one of: ${Object.keys(TRAVERSAL_STRATEGIES).join(', ')})`);
   }
@@ -97,7 +108,7 @@ function sweepRun(args: Record<string, string>): void {
     const outcomes: Record<RunOutcome, number> = { victory: 0, heatMaxed: 0, quarantined: 0, noRouteRemains: 0 };
     let layersSum = 0;
     for (let seed = 0; seed < seeds; seed++) {
-      const result = playRun({ seed, classId, traversalStrategy, safehouseStrategy });
+      const result = playRun({ seed, classId, traversalStrategy, safehouseStrategy, playerSkill });
       outcomes[result.outcome]++;
       layersSum += result.layersCompleted;
       emit(
