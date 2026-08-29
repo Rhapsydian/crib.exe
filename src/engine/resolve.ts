@@ -394,7 +394,16 @@ const SLEEPER_CELL_ADVANCE_AMOUNT = 3; // TBD/playtesting
 const SLEEPER_CELL_CREDIT_AMOUNT = 4; // TBD/playtesting -- direct win-gauge credit, session 25 rework
 const PRIMED_THRESHOLD_REDUCTION = 2; // TBD/playtesting
 const PRIMED_MAGNITUDE_BONUS = 3; // TBD/playtesting -- payload magnitude bump, session 25 rework
-const FEEDBACK_LOOP_DOT_AMOUNT = 2; // TBD/playtesting
+// Flat amount queued as a bonus for the caster's next tick of the
+// opposite type, every time a HoT or DoT tick fires -- deliberately a
+// fixed step, not a fraction of the triggering tick's own size (tried
+// first, rejected -- see applyFeedbackLoopAmplification's own comment
+// for why proportional-to-self growth compounds too fast). Empirically
+// tuned against a full-run sweep, same target as the per-layer scaler:
+// 1 -> 23.3%, 0.5 -> 17.0%, 0.3/0.25 -> 15.0%, 0.15 -> 13.7% (StS's
+// ascension-0 9-15% band). TBD/playtesting, revisit if the wider
+// per-class balance pass finds it needs another adjustment.
+const FEEDBACK_LOOP_AMPLIFICATION_AMOUNT = 0.15;
 const RETURN_TO_SENDER_RATIO = 0.5; // TBD/playtesting -- portion of absorbed/reduced amount redirected to Ghost's own gauge
 
 /** Breacher's Foothold: the first time the player's own gauge reaches
@@ -1458,27 +1467,65 @@ function updateLoadoutEntryState(
  * 'hots') reduce the *opponent's* gauge directly instead, Encryption's
  * gradual mitigation tool -- no cap needed, reduceWinGauge already
  * floors at 0. Corrupted is re-checked at every individual tick (not
- * frozen at registration), same as any other payload resolution. */
+ * frozen at registration), same as any other payload resolution.
+ * Feedback Loop's amplification (below) runs first and can boost this
+ * tick's own effective amount before the base effect applies. */
 function applyTickPush(combatState: CombatState, tick: ActiveTick, listKey: 'dots' | 'hots'): CombatState {
-  const amount = tick.amountPerTick * corruptionMultiplier(combatState, tick.casterSide);
+  const baseAmount = tick.amountPerTick * corruptionMultiplier(combatState, tick.casterSide);
+  const amplified = applyFeedbackLoopAmplification(combatState, tick, listKey, baseAmount);
+  const amount = amplified.amount;
   const state =
-    listKey === 'hots' ? reduceWinGauge(combatState, opponentOf(tick.casterSide), amount) : creditWinGauge(combatState, tick.casterSide, amount);
-  const withFeedbackLoop = applyFeedbackLoopPassive(state, tick, listKey);
-  const withReturnToSender = applyReturnToSenderTickPassive(withFeedbackLoop, tick, listKey, amount);
+    listKey === 'hots'
+      ? reduceWinGauge(amplified.combatState, opponentOf(tick.casterSide), amount)
+      : creditWinGauge(amplified.combatState, tick.casterSide, amount);
+  const withReturnToSender = applyReturnToSenderTickPassive(state, tick, listKey, amount);
   const withSleeperCell = applySleeperCellPassive(withReturnToSender, tick.casterSide, listKey === 'dots');
   const withEnemyTick = applyEnemyOnTickPassives(withSleeperCell, tick, listKey, amount);
   return applyModOnTickPassives(withEnemyTick, tick, listKey);
 }
 
-/** Warden's Feedback Loop: every Encryption HoT tick also credits a
- * small, uncapped Malware-flavored bonus to the caster's own gauge --
- * persistent, unlike the 4 one-shot passives above, so not gated by
- * passiveTriggered. Only HoT ticks qualify; DoT ticks are already
- * uncapped Malware damage on their own, nothing to "add." */
-function applyFeedbackLoopPassive(combatState: CombatState, tick: ActiveTick, listKey: 'dots' | 'hots'): CombatState {
-  if (listKey !== 'hots' || tick.casterSide !== 0 || !hasMod(combatState, 'feedback-loop')) return combatState;
-  const amount = FEEDBACK_LOOP_DOT_AMOUNT * corruptionMultiplier(combatState, tick.casterSide);
-  return creditWinGauge(combatState, tick.casterSide, amount);
+/** Warden's Feedback Loop, redesigned (session 39): HoT and Malware's
+ * DoT reciprocally amplify each other's *magnitude* instead of a flat
+ * per-tick win-gauge bonus -- every HoT tick queues a flat bonus onto
+ * the caster's own *next* DoT tick, and every DoT tick queues a flat
+ * bonus onto the caster's own *next* HoT tick, each first consuming
+ * whatever bonus is already queued for itself. A flat step per tick
+ * (not a fraction of the tick's own current size, which was tried first
+ * and rejected -- proportional-to-self growth compounds multiplicatively
+ * rather than linearly, and even a modest-looking ratio made the whole
+ * kit noticeably *stronger* than before any fix, empirically, once a
+ * real match's worth of ticks had a chance to compound). Self-
+ * reinforcing, but genuinely requires sustaining *both* archetypes'
+ * ticking to keep growing -- a queued bonus just sits (in
+ * CombatSideState.passiveState, no expiry) until the opposite type
+ * ticks again, unlike the original flat-bonus version it replaces.
+ *
+ * Replaces the original flat FEEDBACK_LOOP_DOT_AMOUNT bonus (session 22+),
+ * found this session to conceptually overlap with Ghost's own Return to
+ * Sender, which already hooks HoT ticks (session 25) -- this makes
+ * Feedback Loop a genuinely distinct mechanic instead of a smaller,
+ * narrower echo of a passive another class already owns more fully.
+ * Session 25's own second proposed fix for this passive, tried after the
+ * simpler magnitude/dealer-gating options either undershot or overlapped.
+ *
+ * Returns the tick's boosted amount for the caller to apply the base
+ * effect with (not the raw one) and the updated state (queue consumed/
+ * refreshed). A no-op pass-through for every non-Warden combat. */
+function applyFeedbackLoopAmplification(
+  combatState: CombatState,
+  tick: ActiveTick,
+  listKey: 'dots' | 'hots',
+  baseAmount: number,
+): { combatState: CombatState; amount: number } {
+  if (tick.casterSide !== 0 || !hasMod(combatState, 'feedback-loop')) return { combatState, amount: baseAmount };
+  const ownKey = listKey === 'hots' ? 'feedback-loop:pendingHotBonus' : 'feedback-loop:pendingDotBonus';
+  const otherKey = listKey === 'hots' ? 'feedback-loop:pendingDotBonus' : 'feedback-loop:pendingHotBonus';
+  const queuedBonus = passiveStat(combatState, 0, ownKey);
+  const amount = baseAmount + queuedBonus;
+  let state = queuedBonus > 0 ? setPassiveStat(combatState, 0, ownKey, 0) : combatState;
+  const otherQueued = passiveStat(state, 0, otherKey);
+  state = setPassiveStat(state, 0, otherKey, otherQueued + FEEDBACK_LOOP_AMPLIFICATION_AMOUNT);
+  return { combatState: state, amount };
 }
 
 /** Shared by both tick drivers below: walks the tick list stored at

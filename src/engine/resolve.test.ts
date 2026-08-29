@@ -1333,48 +1333,66 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
   });
 
-  describe('Feedback Loop (Warden)', () => {
-    it("reduces the opponent's gauge (HoT) and also credits the caster's own gauge (the bonus)", () => {
+  describe('Feedback Loop (Warden, redesigned session 39 -- reciprocal HoT/DoT amplification, a flat per-tick step)', () => {
+    const hotPiece = definition(
+      'hot-piece',
+      { kind: 'always' },
+      { kind: 'hot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
+      { archetype: 'encryption' },
+    );
+    const dotPiece = definition(
+      'dot-piece',
+      { kind: 'always' },
+      { kind: 'dot', amountPerTick: 4, cadence: 'castersTurnPulse', duration: 5 },
+      { archetype: 'malware' },
+    );
+
+    it("a lone HoT tick reduces the opponent's gauge as normal, but credits nothing to the caster on its own -- it only queues a bonus for the caster's next DoT tick", () => {
       let state = createCombatState([], [], 12, 'warden');
       state = resolvePayload({ kind: 'directBurst', amount: 50 }, 'exploit', state, 1); // enemy banks 50
-      const hotPiece = definition(
-        'hot-piece',
-        { kind: 'always' },
-        { kind: 'hot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
-        { archetype: 'encryption' },
-      );
       state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
       const result = tickCastersTurnPulse(state, 0);
-      expect(result.sides[1].winGauge.progress).toBe(47); // 50 - 3 (HoT)
-      expect(result.sides[0].winGauge.progress).toBe(2); // + FEEDBACK_LOOP_DOT_AMOUNT
+      expect(result.sides[1].winGauge.progress).toBe(47); // 50 - 3 (HoT), unaffected by the redesign
+      expect(result.sides[0].winGauge.progress).toBe(0); // no self-credit -- nothing has consumed the queued bonus yet
     });
 
-    it('does not add a bonus for a class other than Warden', () => {
-      let state = createCombatState([], [], 12);
-      state = resolvePayload({ kind: 'directBurst', amount: 50 }, 'exploit', state, 1);
-      const hotPiece = definition(
-        'hot-piece',
-        { kind: 'always' },
-        { kind: 'hot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
-        { archetype: 'encryption' },
-      );
-      state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
-      const result = tickCastersTurnPulse(state, 0);
-      expect(result.sides[1].winGauge.progress).toBe(47);
-      expect(result.sides[0].winGauge.progress).toBe(0); // no bonus
-    });
-
-    it('does not add a bonus to DoT ticks even for Warden', () => {
-      const dotPiece = definition(
-        'dot-piece',
-        { kind: 'always' },
-        { kind: 'dot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
-        { archetype: 'malware' },
-      );
-      let state = createCombatState([dotPiece], [], 12, 'warden');
+    it('a lone DoT tick credits its own base amount only -- no bonus queued yet either direction', () => {
+      let state = createCombatState([], [], 12, 'warden');
       state = resolvePayload(dotPiece.payload, 'malware', state, 0);
       const result = tickCastersTurnPulse(state, 0);
-      expect(result.sides[0].winGauge.progress).toBe(3); // just the DoT itself, no extra bonus stacking
+      expect(result.sides[0].winGauge.progress).toBe(4); // just the DoT's own amountPerTick
+    });
+
+    it("within one tick pass, DoT fires before HoT (processTickList's own dots-before-hots order) -- so the DoT ticks unboosted first, then queues a flat bonus that immediately boosts that same pass's HoT tick", () => {
+      let state = createCombatState([], [], 12, 'warden');
+      state = resolvePayload({ kind: 'directBurst', amount: 50 }, 'exploit', state, 1); // enemy banks 50
+      state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
+      state = resolvePayload(dotPiece.payload, 'malware', state, 0);
+      state = tickCastersTurnPulse(state, 0);
+      expect(state.sides[0].winGauge.progress).toBe(4); // just the DoT's own base amount -- nothing was queued yet when it fired
+      // 50 - 3.15: HoT's base 3, boosted by the flat FEEDBACK_LOOP_AMPLIFICATION_AMOUNT
+      // (0.15) the DoT just queued -- toBeCloseTo, not toBe, since 0.15 isn't exactly
+      // representable in floating point.
+      expect(state.sides[1].winGauge.progress).toBeCloseTo(46.85, 10);
+    });
+
+    it('a second pass then shows the DoT tick benefiting from the bonus the first pass\'s HoT tick queued -- the reciprocal loop actually compounding, not just a one-time interaction', () => {
+      let state = createCombatState([], [], 12, 'warden');
+      state = resolvePayload({ kind: 'directBurst', amount: 50 }, 'exploit', state, 1);
+      state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
+      state = resolvePayload(dotPiece.payload, 'malware', state, 0);
+      state = tickCastersTurnPulse(state, 0); // pass 1: DoT +4 (unboosted), HoT denies 3.15 (3 base + 0.15 flat queued), queues 0.15 flat for the next DoT
+      state = tickCastersTurnPulse(state, 0); // pass 2: DoT +4.15 (4 base + 0.15 queued)
+      expect(state.sides[0].winGauge.progress).toBeCloseTo(8.15, 10); // 4 (pass 1) + 4.15 (pass 2)
+    });
+
+    it('does not apply for a class other than Warden', () => {
+      let state = createCombatState([], [], 12); // no classId
+      state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
+      state = resolvePayload(dotPiece.payload, 'malware', state, 0);
+      state = tickCastersTurnPulse(state, 0);
+      state = tickCastersTurnPulse(state, 0);
+      expect(state.sides[0].winGauge.progress).toBe(8); // 2 DoT ticks at their own base amount, never boosted
     });
   });
 
