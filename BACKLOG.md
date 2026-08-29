@@ -457,14 +457,82 @@ commits this half (`5b4d29d` maxHands removal, `b967e2e` the hook,
 explicit request -- tip is now `7e5f23a`. Session log:
 `session-logs/session-39-2026-08-28.md`.
 
-**Next session**: the per-class balance pass itself still hasn't
-happened in its original plain form -- Saboteur/Operator/Warden/Ghost
-win rates, now measurable both the old bare-kit way and the new
-realistic `gatekeeper-check.ts` way. Real candidates, un-prioritized:
-Firewall Prime/Warden's remaining outlier matchup, layer 3's weak
-gatekeeper trio, the independent-gauge-thresholds architecture work, or
-Burner/Event content authoring beyond the 8+8 validated samples -- ask
-rather than assume, same as every prior fork in this project.
+**Session 39 continued a third time, same day**: the per-class balance
+pass actually happened, against a real external target the user set
+directly -- Slay the Spire's own ascension-0 full-run win rate (9-15%
+for a new player). Measured against it (a fresh `scripts/sweep.ts`
+full-run sweep, post-magnitude-scaler): the average was already down to
+~21% from the scaler alone, but Saboteur/Operator/Warden/Ghost still sat
+20-29%, well above the band (Breacher 11.7%/Blackhat 13.3% were already
+inside it). Went class by class, same isolate-then-fix discipline as
+every prior balance fix, each confirmed against a real full-run sweep
+before locking in:
+
+- **Warden** (26.3% -> 13.7%): Feedback Loop, already flagged as a
+  suspect since session 25, gave every Encryption HoT tick a flat +2
+  win-gauge bonus unconditionally. A flat-magnitude fix alone would have
+  worked numerically, but investigation found it made Feedback Loop a
+  narrower, weaker echo of Ghost's own Return to Sender (which already
+  hooks HoT ticks, proportionally, plus two other trigger paths) --
+  redesigned instead as reciprocal HoT/DoT amplification (every HoT tick
+  queues a bonus for the caster's next DoT tick and vice versa, tracked
+  via two scratch keys in `CombatSideState.passiveState`). First
+  attempt scaled the bonus proportionally to the triggering tick's own
+  size (matching Return to Sender's own ratio) -- compounded
+  multiplicatively across a match and made Warden *stronger* than before
+  any fix; rebuilt as a flat per-tick step instead (linear growth),
+  tuned to 0.15.
+- **Saboteur** (24.3% -> 12.0%): Sleeper Cell credited a flat +4 on top
+  of every Malware DoT tick's own natural credit -- Silent Worm's DoT is
+  Saboteur's *only* credit-capable payload at all, so this one passive
+  was carrying most of the class. Straightforward retune, 4 -> 2 (no
+  identity-overlap concern the way Warden's had).
+- **Operator** (20.7% -> 11.0%): Primed permanently boosts Precision
+  Strike's own magnitude every time either Root piece fires (Ping Sweep
+  is guaranteed every turn), compounding continuously across a whole
+  match, not per-tick -- structurally different from the first two.
+  Zeroing it collapsed Operator entirely (0.7% win rate, avgLayers 0.10,
+  81% noRoute), confirming it was carrying regular-fight performance
+  too, not just gatekeepers -- needed a much smaller relative cut (3 ->
+  1.5) than Warden's or Saboteur's.
+- **Ghost** (28.7% -> 13.7%): needed two levers together, neither alone
+  reached the band. Idle Process (session 28's fix for Ghost's original
+  0%-genuine-win-rate finding) is Ghost's only *guaranteed* credit
+  source -- zeroing it alone collapsed Ghost entirely (0.0%, avgLayers
+  0.01, 99% noRoute). Return to Sender's own ratio, tested alone even at
+  0, only reached 17.0% -- still above target. Halved both together
+  (Idle Process 2 -> 1, Return to Sender ratio 0.5 -> 0.25) -> 13.7%.
+
+**A real cross-class coupling was found and fixed while re-verifying
+with a fresh full sweep afterward**: Warden's own number had shifted
+(41/300 -> 43/300) purely from the Operator commit landing, despite that
+diff touching nothing Warden-related. Traced to `applyPrimedForSide1`
+(Zero-Sum's own enemy passive, `primed-to-strike`) reusing Operator's
+exact `PRIMED_THRESHOLD_REDUCTION`/`PRIMED_MAGNITUDE_BONUS` constants
+unconditionally -- retuning Operator's own passive had incidentally
+retuned Zero-Sum's difficulty for every other class fighting it too.
+Split into independent `ZERO_SUM_PRIMED_*` constants (seeded at the
+original values, a pure decoupling not a balance change) at the user's
+own suggestion, once asked whether the two should share tuning at all.
+
+542/542 tests passing throughout (from 528 before this arc began), `npm
+run check` clean. 6 commits this half (`3a4556f` Warden, `115bd0b`
+Saboteur, `6e3652b` Operator, `2e1cfa4` Ghost, `42f985e` the Zero-Sum
+decoupling -- plus this doc pass), all pushed to `origin/master` --
+tip is now `42f985e` before this close-out.
+
+**Final result**: all 6 classes' full-run victory rate inside StS's
+ascension-0 9-15% band -- breacher 11.7%, blackhat 13.3%, saboteur
+12.0%, operator 11.0%, warden 13.7%, ghost 13.7%.
+
+**Next session**: real candidates, un-prioritized -- Firewall Prime
+(especially vs. Warden, still near-unwinnable even with realistic
+acquired power), layer 3's own weaker gatekeeper trio (Total
+Compromise/Adaptive Threat/Silent Corruption, likely a content issue not
+a magnitude one), the independent-per-side-gauge-thresholds architecture
+work (confirmed wanted, not yet scoped), or Burner/Event content
+authoring beyond the 8+8 validated samples -- ask rather than assume,
+same as every prior fork in this project.
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
