@@ -24,13 +24,21 @@
  * with nothing that can go wrong afterward. Fails loudly if that ever
  * stops being true (e.g. a future "layer 5" or post-victory check).
  *
+ * `--excludeGatekeeper=<enemyId>` ablates one gatekeeper from selection
+ * entirely at every layer (run.ts's excludedGatekeeperIds) -- lets a
+ * before/after comparison isolate whether a specific gatekeeper is a
+ * difficulty outlier vs. its layer-mates, rather than guessing from its
+ * own isolated win rate alone (which doesn't account for how often it's
+ * even drawn, or how the rest of a run's difficulty compares).
+ *
  * Usage:
- *   npx tsx scripts/layer-funnel.ts [--classes=breacher,ghost] [--seeds=600] [--playerSkill=0.85] [--out=file.jsonl]
+ *   npx tsx scripts/layer-funnel.ts [--classes=breacher,ghost] [--seeds=600] [--playerSkill=0.85] [--excludeGatekeeper=firewall-prime] [--out=file.jsonl]
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { playRun, opportunisticTraversal } from '../src/engine/run';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import type { ClassId } from '../src/engine/classes';
+import type { EnemyId } from '../src/engine/enemies';
 
 const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
 const LAYER_COUNT = 4;
@@ -62,6 +70,7 @@ const args = parseArgs(process.argv.slice(2));
 const classes = args.classes ? (args.classes.split(',') as ClassId[]) : ALL_CLASSES;
 const seeds = Number(args.seeds ?? 600);
 const playerSkill = args.playerSkill === undefined ? PLAYER_SKILL : Number(args.playerSkill);
+const excludedGatekeeperIds = args.excludeGatekeeper ? [args.excludeGatekeeper as EnemyId] : undefined;
 const outFile = args.out;
 if (outFile) writeFileSync(outFile, '');
 
@@ -75,7 +84,7 @@ for (const classId of classes) {
   const reachedLayer = new Array(LAYER_COUNT).fill(0);
   let victories = 0;
   for (let seed = 0; seed < seeds; seed++) {
-    const result = playRun({ seed, classId, traversalStrategy: opportunisticTraversal, safehouseStrategy: opportunisticSafehouseStrategy, playerSkill });
+    const result = playRun({ seed, classId, traversalStrategy: opportunisticTraversal, safehouseStrategy: opportunisticSafehouseStrategy, playerSkill, excludedGatekeeperIds });
     for (let i = 0; i < LAYER_COUNT; i++) if (result.layersCompleted >= i + 1) reachedLayer[i]++;
     if (result.outcome === 'victory') victories++;
     emit(JSON.stringify({ classId, seed, outcome: result.outcome, layersCompleted: result.layersCompleted }), outFile);

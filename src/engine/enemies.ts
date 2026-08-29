@@ -372,8 +372,16 @@ export function pickRegularOrEliteEnemy(tier: 'regular' | 'elite', layerIndex: n
  * stable for the run. Called from run.ts right after generateLayer,
  * keeping map-gen.ts itself content-agnostic (its own "pure topology"
  * scope). */
-export function assignGatekeeperEnemy(graph: LayerGraph, layerIndex: number, rng: Rng): LayerGraph {
-  const stable = eligibleEnemies('gatekeeper', layerIndex);
+/** `excludedIds` (session 39): lets a diagnostic ablate one or more
+ * gatekeepers from selection entirely -- e.g. "what does the funnel look
+ * like with Firewall Prime never assigned anywhere," to isolate whether
+ * a specific gatekeeper is an outlier. Undefined/empty changes nothing
+ * (every existing caller). Throws the same way as an empty natural stable
+ * if excluding narrows a layer's pool to nothing -- won't happen with the
+ * current 3-per-layer roster excluding one at a time, but stays a loud
+ * failure rather than a silent one if the roster ever shrinks. */
+export function assignGatekeeperEnemy(graph: LayerGraph, layerIndex: number, rng: Rng, excludedIds?: EnemyId[]): LayerGraph {
+  const stable = eligibleEnemies('gatekeeper', layerIndex).filter((e) => !excludedIds?.includes(e.id));
   if (stable.length === 0) throw new Error(`enemies.ts: no gatekeeper stable defined for layer ${layerIndex}`);
   const chosen = stable[rng.nextInt(stable.length)];
   const nodes = graph.nodes.map((n) => (n.id === graph.gatekeeperNodeId ? { ...n, assignedEnemyId: chosen.id } : n));

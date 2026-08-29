@@ -1,7 +1,7 @@
 import { createRng } from './rng';
 import { isReachable, neighborsOf, type LayerGraph, type MapNode, type NodeType, type RunPosition } from './map-types';
 import { generateLayer } from './map-gen';
-import { assignGatekeeperEnemy, gatekeeperEnemyForNode, type EnemyDefinition } from './enemies';
+import { assignGatekeeperEnemy, gatekeeperEnemyForNode, type EnemyDefinition, type EnemyId } from './enemies';
 import { move } from './traversal';
 import { resolveEncounter, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy } from './encounters';
 import { addHeat, HEAT_MAX, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
@@ -432,6 +432,11 @@ export interface RunOptions {
    * generated without setting this is a floor-skill-player number, not
    * a "the player" number; say so explicitly when reporting one. */
   playerSkill?: number;
+  /** Gatekeepers to exclude from selection entirely at every layer
+   * (session 39) -- lets a diagnostic ablate one gatekeeper at a time to
+   * isolate whether it's a difficulty outlier vs. its layer-mates.
+   * Undefined/empty changes nothing, the default. */
+  excludedGatekeeperIds?: EnemyId[];
   /** Observational only -- called once per gatekeeper fight, right
    * before it resolves, with the player's real accumulated state at
    * that moment (session 39: the "realistic difficulty" diagnostic
@@ -472,6 +477,7 @@ export function playRun(options: RunOptions): RunResult {
     discardStrategies,
     playStrategies,
     playerSkill,
+    excludedGatekeeperIds,
     onBeforeGatekeeperFight,
   } = options;
 
@@ -516,7 +522,7 @@ export function playRun(options: RunOptions): RunResult {
     // layer numbering is 1-based (minLayer/eligibleEnemies), while this
     // loop's layerIndex is 0-based -- +1 here is the only place that
     // conversion needs to happen.
-    graph = assignGatekeeperEnemy(graph, layerIndex + 1, rng);
+    graph = assignGatekeeperEnemy(graph, layerIndex + 1, rng, excludedGatekeeperIds);
     log.push({ type: 'layerGenerated', layerIndex, nodeCount: graph.nodes.length });
     let position: RunPosition = { layerIndex, nodeId: graph.entryNodeId };
     let layerCleared = false;
