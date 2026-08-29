@@ -353,6 +353,32 @@ export interface SubroutineDefinition {
    * `reactive` -- readiness (via `trigger`) still governs whether it's
    * *armed*, `firesAt` only says *when* an armed one actually fires. */
   firesAt?: HandLifecycleMoment;
+  /** Caps how many times this subroutine can ever fire in one combat,
+   * regardless of how many more times its trigger condition would
+   * otherwise re-arm it (session 39). Undefined means unlimited, the
+   * default and pre-existing behavior for every subroutine. Currently
+   * only enforced for the reactive selfState/enemyState re-arm path
+   * (see resolve.ts's refreshTriggerReadiness) -- a Reactive piece whose
+   * level condition keeps re-triggering (e.g. an opponent's gauge
+   * repeatedly crossing back above a threshold) would otherwise fire
+   * every single time, unbounded. Not yet checked for
+   * accumulator/occurrence trigger re-arming; extend there too if a
+   * future piece needs the same cap on a non-reactive trigger. */
+  maxFiresPerCombat?: number;
+  /** How much this payload's own magnitude shrinks per prior fire this
+   * combat (session 39) -- a self-limiting alternative to
+   * `maxFiresPerCombat` for a payload that should keep firing but hit
+   * diminishing returns rather than a hard wall. Requires
+   * `magnitudeFloor` alongside it (the minimum it decays down to, never
+   * below). Undefined means no decay, the default. See merge.ts's
+   * decayedPayloadMagnitude for the actual formula and resolve.ts's
+   * payloadForFire for where it's applied (every real fire-dispatch
+   * path: fireReadySubroutines, fireNewlyReadyReactiveSubroutines,
+   * fireHandLifecycleSubroutines). */
+  magnitudeDecayPerFire?: number;
+  /** The floor `magnitudeDecayPerFire` decays down to and never below.
+   * Ignored (and meaningless) without `magnitudeDecayPerFire` set. */
+  magnitudeFloor?: number;
 }
 
 /** The three real Cribbage lifecycle moments a `firesAt` subroutine can

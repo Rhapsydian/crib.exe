@@ -125,6 +125,27 @@ export function scaledPayloadMagnitude(payload: PayloadEffect, multiplier: numbe
   return transformPayloadMagnitude(payload, (current) => current * multiplier);
 }
 
+/** Shrinks a payload's magnitude linearly by `decayPerFire` for every
+ * prior fire this combat (`fireCount`), floored at `floor` -- the
+ * mechanism behind SubroutineDefinition.magnitudeDecayPerFire (session
+ * 39, Firewall Prime's Zero Trust redesign). A self-limiting alternative
+ * to a hard fire cap: still hits close to full strength the first couple
+ * of times, but tapers toward `floor` rather than stopping outright, so
+ * persistent pressure eventually gets real relief instead of hitting an
+ * infinite wall. `fireCount` is the count *before* this fire (how many
+ * times it's already fired, not counting the current one) -- resolve.ts's
+ * payloadForFire reads it straight from the still-unincremented runtime
+ * state, since resetAfterFire (which increments it) hasn't run yet at
+ * the point a fire's own payload gets resolved. */
+export function decayedPayloadMagnitude(
+  payload: PayloadEffect,
+  fireCount: number,
+  decayPerFire: number,
+  floor: number,
+): PayloadEffect | null {
+  return transformPayloadMagnitude(payload, (current) => Math.max(floor, current - decayPerFire * fireCount));
+}
+
 function upgradedDefinition(definition: SubroutineDefinition): SubroutineDefinition {
   const improvedPayload = improvedPayloadMagnitude(definition.payload, MERGE_MAGNITUDE_BONUS);
   if (improvedPayload) return { ...definition, payload: improvedPayload };

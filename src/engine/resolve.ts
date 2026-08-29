@@ -7,7 +7,7 @@ import type { EnemyPassiveId } from './enemies';
 import type { ModId } from './mod-types';
 import { reactiveModSubroutines, MOD_SMALL, MOD_MEDIUM, OVERCLOCKED_ACCUMULATOR_REDUCTION, TAGGED_FIRMWARE_TAG } from './mods';
 import type { BurnerId } from './burner-types';
-import { easeTriggerCondition, improvedPayloadMagnitude } from './merge';
+import { easeTriggerCondition, improvedPayloadMagnitude, decayedPayloadMagnitude } from './merge';
 import {
   createInitialState,
   evaluateEnemyState,
@@ -1430,7 +1430,9 @@ export function refreshTriggerReadiness(combatState: CombatState, handDealer: Pl
 
       const conditionTrue =
         trigger.kind === 'selfState' ? evaluateSelfState(trigger, context.self) : evaluateEnemyState(trigger, context.enemy);
-      const justArmed = entry.definition.reactive ? conditionTrue && !entry.state.lastConditionTrue : conditionTrue;
+      const underFireCap =
+        entry.definition.maxFiresPerCombat === undefined || entry.state.fireCount < entry.definition.maxFiresPerCombat;
+      const justArmed = entry.definition.reactive ? conditionTrue && !entry.state.lastConditionTrue && underFireCap : conditionTrue;
 
       return {
         ...entry,
@@ -1474,15 +1476,9 @@ export function fireNewlyReadyReactiveSubroutines(
       if (entry.definition.firesAt) continue;
       if (!justBecameReady || !entry.definition.reactive) continue;
 
-      state = resolvePayload(
-        entry.definition.payload,
-        entry.definition.archetype,
-        state,
-        side,
-        { priorFireCountThisTurn: 0 },
-        entry.definition,
-      );
-      events.push({ subroutineId: entry.definition.id, side, payload: entry.definition.payload });
+      const fireEffect = payloadForFire(entry);
+      state = resolvePayload(fireEffect, entry.definition.archetype, state, side, { priorFireCountThisTurn: 0 }, entry.definition);
+      events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
       state = updateLoadoutEntryState(state, side, i, resetAfterFire(state.sides[side].loadout[i].state));
     }
   }
@@ -1782,6 +1778,23 @@ export interface FireEvent {
   payload: PayloadEffect;
 }
 
+/** The payload a firing `entry` should actually resolve with -- its base
+ * definition payload, unless `magnitudeDecayPerFire` is set, in which
+ * case a decayed copy reflecting how many times it's already fired this
+ * combat (session 39). Shared by every real fire-dispatch path
+ * (fireReadySubroutines, fireNewlyReadyReactiveSubroutines,
+ * fireHandLifecycleSubroutines) so decay applies consistently regardless
+ * of which one a given subroutine actually fires through. `entry.state`
+ * here is still pre-fire (resetAfterFire, which increments fireCount,
+ * hasn't run for this fire yet), so `fireCount` correctly reflects prior
+ * fires only, not this one. */
+function payloadForFire(entry: LoadoutEntry): PayloadEffect {
+  const { magnitudeDecayPerFire, magnitudeFloor } = entry.definition;
+  if (magnitudeDecayPerFire === undefined) return entry.definition.payload;
+  const decayed = decayedPayloadMagnitude(entry.definition.payload, entry.state.fireCount, magnitudeDecayPerFire, magnitudeFloor ?? 0);
+  return decayed ?? entry.definition.payload;
+}
+
 /**
  * Iterates `side`'s loadout top-to-bottom, firing every subroutine that
  * is both ready and not toggled off. Chained triggers fed by an earlier
@@ -1808,15 +1821,9 @@ export function fireReadySubroutines(
     if (!isReady(entry.definition, entry.state, triggerContext)) continue;
     if (!entry.state.toggledOn) continue;
 
-    state = resolvePayload(
-      entry.definition.payload,
-      entry.definition.archetype,
-      state,
-      side,
-      { priorFireCountThisTurn: events.length },
-      entry.definition,
-    );
-    events.push({ subroutineId: entry.definition.id, side, payload: entry.definition.payload });
+    const fireEffect = payloadForFire(entry);
+    state = resolvePayload(fireEffect, entry.definition.archetype, state, side, { priorFireCountThisTurn: events.length }, entry.definition);
+    events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
     firedIds.add(entry.definition.id);
     state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state));
   }
@@ -1857,15 +1864,16 @@ export function fireHandLifecycleSubroutines(
     if (!isReady(entry.definition, entry.state, triggerContext)) continue;
     if (!entry.state.toggledOn) continue;
 
+    const fireEffect = payloadForFire(entry);
     state = resolvePayload(
-      entry.definition.payload,
+      fireEffect,
       entry.definition.archetype,
       state,
       side,
       { priorFireCountThisTurn: events.length, revealedCards, targetIsOwnCrib },
       entry.definition,
     );
-    events.push({ subroutineId: entry.definition.id, side, payload: entry.definition.payload });
+    events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
     state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state));
   }
 

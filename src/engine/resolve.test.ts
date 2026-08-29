@@ -24,7 +24,9 @@ function definition(
   id: string,
   trigger: TriggerFamily,
   payload: PayloadEffect,
-  overrides: Partial<Pick<SubroutineDefinition, 'archetype' | 'togglable' | 'reactive' | 'firesAt'>> = {},
+  overrides: Partial<
+    Pick<SubroutineDefinition, 'archetype' | 'togglable' | 'reactive' | 'firesAt' | 'maxFiresPerCombat' | 'magnitudeDecayPerFire' | 'magnitudeFloor'>
+  > = {},
 ): SubroutineDefinition {
   return {
     id,
@@ -36,6 +38,9 @@ function definition(
     togglable: overrides.togglable,
     reactive: overrides.reactive,
     firesAt: overrides.firesAt,
+    maxFiresPerCombat: overrides.maxFiresPerCombat,
+    magnitudeDecayPerFire: overrides.magnitudeDecayPerFire,
+    magnitudeFloor: overrides.magnitudeFloor,
   };
 }
 
@@ -489,6 +494,137 @@ describe('refreshTriggerReadiness', () => {
       state = withHeat(state, 0, 10); // true again -- a real rising edge this time
       state = refreshTriggerReadiness(state, 0);
       expect(state.sides[0].loadout[0].state.ready).toBe(true);
+    });
+
+    describe('maxFiresPerCombat (session 39)', () => {
+      const cappedReactive = definition(
+        'capped-reactive',
+        { kind: 'selfState', condition: 'heatAbove', value: 5 },
+        { kind: 'directBurst', amount: 3 },
+        { reactive: true, maxFiresPerCombat: 2 },
+      );
+
+      /** Arms (if a rising edge is live), then fires it via the real
+       * fireNewlyReadyReactiveSubroutines path -- same pattern the
+       * existing edge-triggering tests above use, so fireCount actually
+       * increments through the real mechanism, not a hand-set field. */
+      function armAndFire(state: ReturnType<typeof createCombatState>) {
+        const before = state;
+        const after = refreshTriggerReadiness(state, 0);
+        const { combatState } = fireNewlyReadyReactiveSubroutines(before, after);
+        return combatState;
+      }
+
+      it('re-arms up to the cap, repeatedly cycling the condition false/true', () => {
+        let state = createCombatState([cappedReactive], [], 12);
+        state = withHeat(state, 0, 10);
+        state = armAndFire(state); // fire 1
+        expect(state.sides[0].loadout[0].state.fireCount).toBe(1);
+        expect(state.sides[0].winGauge.progress).toBe(3);
+
+        state = withHeat(state, 0, 0); // condition drops
+        state = refreshTriggerReadiness(state, 0);
+        state = withHeat(state, 0, 10); // rising edge again -- still under the cap (fireCount 1 < 2)
+        state = armAndFire(state); // fire 2
+        expect(state.sides[0].loadout[0].state.fireCount).toBe(2);
+        expect(state.sides[0].winGauge.progress).toBe(6);
+      });
+
+      it('stops re-arming once fireCount reaches maxFiresPerCombat, even on a genuine rising edge', () => {
+        let state = createCombatState([cappedReactive], [], 12);
+        state = withHeat(state, 0, 10);
+        state = armAndFire(state); // fire 1
+        state = withHeat(state, 0, 0);
+        state = refreshTriggerReadiness(state, 0);
+        state = withHeat(state, 0, 10);
+        state = armAndFire(state); // fire 2 -- now at the cap (2)
+        expect(state.sides[0].loadout[0].state.fireCount).toBe(2);
+
+        state = withHeat(state, 0, 0); // drop again
+        state = refreshTriggerReadiness(state, 0);
+        state = withHeat(state, 0, 10); // a real rising edge -- but the cap should block re-arming
+        state = refreshTriggerReadiness(state, 0);
+        expect(state.sides[0].loadout[0].state.ready).toBe(false);
+        expect(state.sides[0].winGauge.progress).toBe(6); // unchanged from the 2 real fires above
+      });
+
+      it('an undefined maxFiresPerCombat (every existing subroutine) is never capped', () => {
+        let state = createCombatState([reactiveHeatAbove], [], 12);
+        for (let i = 0; i < 5; i++) {
+          state = withHeat(state, 0, 10);
+          state = armAndFire(state);
+          state = withHeat(state, 0, 0);
+          state = refreshTriggerReadiness(state, 0);
+        }
+        expect(state.sides[0].loadout[0].state.fireCount).toBe(5);
+      });
+    });
+
+    describe('magnitudeDecayPerFire (session 39, Firewall Prime\'s Zero Trust redesign)', () => {
+      const decayingReactive = definition(
+        'decaying-reactive',
+        { kind: 'selfState', condition: 'heatAbove', value: 5 },
+        { kind: 'instantCounterPush', amount: 18 },
+        { reactive: true, magnitudeDecayPerFire: 4, magnitudeFloor: 4 },
+      );
+
+      function armAndFireOn(state: ReturnType<typeof createCombatState>) {
+        const before = state;
+        const after = refreshTriggerReadiness(state, 0);
+        return fireNewlyReadyReactiveSubroutines(before, after);
+      }
+
+      it('fires at full magnitude the first time (fireCount 0)', () => {
+        let state = createCombatState([], [decayingReactive], 12);
+        state = withHeat(state, 1, 10);
+        const { combatState, events } = armAndFireOn(state);
+        expect(events[0].payload).toEqual({ kind: 'instantCounterPush', amount: 18 });
+        expect(combatState.sides[0].winGauge.progress).toBe(0); // reduceWinGauge floors at 0, side 0 had nothing banked
+      });
+
+      it('decays on each subsequent fire, floored, and the logged FireEvent reflects the decayed amount', () => {
+        let state = createCombatState([], [decayingReactive], 12);
+        // Give side 0 (the target of side 1's counter-push) enough banked
+        // progress to observe each decayed reduction distinctly.
+        state = resolvePayload({ kind: 'directBurst', amount: 100 }, 'exploit', state, 0);
+
+        state = withHeat(state, 1, 10);
+        let result = armAndFireOn(state);
+        state = result.combatState;
+        expect(result.events[0].payload).toEqual({ kind: 'instantCounterPush', amount: 18 }); // fire 1: 18 - 4*0
+        expect(state.sides[0].winGauge.progress).toBe(82); // 100 - 18
+
+        state = withHeat(state, 1, 0);
+        state = refreshTriggerReadiness(state, 0);
+        state = withHeat(state, 1, 10);
+        result = armAndFireOn(state);
+        state = result.combatState;
+        expect(result.events[0].payload).toEqual({ kind: 'instantCounterPush', amount: 14 }); // fire 2: 18 - 4*1
+        expect(state.sides[0].winGauge.progress).toBe(68); // 82 - 14
+
+        state = withHeat(state, 1, 0);
+        state = refreshTriggerReadiness(state, 0);
+        state = withHeat(state, 1, 10);
+        result = armAndFireOn(state);
+        state = result.combatState;
+        expect(result.events[0].payload).toEqual({ kind: 'instantCounterPush', amount: 10 }); // fire 3: 18 - 4*2
+        expect(state.sides[0].winGauge.progress).toBe(58); // 68 - 10
+      });
+
+      it('never decays below magnitudeFloor no matter how many times it fires', () => {
+        let state = createCombatState([], [decayingReactive], 12);
+        state = resolvePayload({ kind: 'directBurst', amount: 1000 }, 'exploit', state, 0);
+
+        for (let i = 0; i < 8; i++) {
+          state = withHeat(state, 1, 10);
+          const result = armAndFireOn(state);
+          state = result.combatState;
+          if (i >= 4) expect(result.events[0].payload).toEqual({ kind: 'instantCounterPush', amount: 4 }); // floored by fire 5 (18 - 4*4 = 2, clamped to floor 4)
+          state = withHeat(state, 1, 0);
+          state = refreshTriggerReadiness(state, 0);
+        }
+        expect(state.sides[1].loadout[0].state.fireCount).toBe(8);
+      });
     });
   });
 });

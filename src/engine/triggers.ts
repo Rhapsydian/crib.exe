@@ -28,10 +28,16 @@ export interface SubroutineRuntimeState {
    * stays true. Ignored by every other trigger family and by
    * non-Reactive subroutines. */
   lastConditionTrue: boolean;
+  /** How many times this subroutine has actually fired so far this
+   * combat (session 39) — incremented in resetAfterFire, checked against
+   * SubroutineDefinition.maxFiresPerCombat wherever that cap applies.
+   * Tracked for every subroutine unconditionally (cheap), even though
+   * only a `maxFiresPerCombat`-bearing definition ever reads it. */
+  fireCount: number;
 }
 
 export function createInitialState(): SubroutineRuntimeState {
-  return { accumulatedProgress: 0, bankedOccurrences: 0, ready: false, toggledOn: true, lastConditionTrue: false };
+  return { accumulatedProgress: 0, bankedOccurrences: 0, ready: false, toggledOn: true, lastConditionTrue: false, fireCount: 0 };
 }
 
 /** Clears banked/accumulated progress and the ready flag after an actual
@@ -40,9 +46,11 @@ export function createInitialState(): SubroutineRuntimeState {
  * `toggledOn`, a separate manual switch, or `lastConditionTrue`, which
  * must survive the fire/reset boundary for edge-detection to keep
  * working correctly (resetting it would look like a false→true
- * transition on the very next check if the condition is still true). */
+ * transition on the very next check if the condition is still true).
+ * Does increment `fireCount` — this function is only ever called once a
+ * fire has genuinely happened (see its 3 call sites in resolve.ts). */
 export function resetAfterFire(state: SubroutineRuntimeState): SubroutineRuntimeState {
-  return { ...state, accumulatedProgress: 0, bankedOccurrences: 0, ready: false };
+  return { ...state, accumulatedProgress: 0, bankedOccurrences: 0, ready: false, fireCount: state.fireCount + 1 };
 }
 
 /**

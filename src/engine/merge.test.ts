@@ -8,6 +8,7 @@ import {
   opportunisticSafehouseStrategy,
   pickMergeTarget,
   scaledPayloadMagnitude,
+  decayedPayloadMagnitude,
   MERGE_RANK_CAP,
 } from './merge';
 import { HEAT_HIGH_FRACTION, HEAT_MAX } from './heat';
@@ -114,6 +115,33 @@ describe('scaledPayloadMagnitude (session 39, enemies.ts\'s per-layer difficulty
       magnitude: 6,
       duration: 2,
     });
+  });
+});
+
+describe('decayedPayloadMagnitude (session 39, Firewall Prime\'s Zero Trust redesign)', () => {
+  it('decays linearly by fireCount, not scaling with the base amount', () => {
+    expect(decayedPayloadMagnitude({ kind: 'instantCounterPush', amount: 18 }, 2, 4, 4)).toEqual({
+      kind: 'instantCounterPush',
+      amount: 10, // 18 - 2*4
+    });
+  });
+
+  it('floors at the given value rather than continuing to decay or going negative', () => {
+    expect(decayedPayloadMagnitude({ kind: 'instantCounterPush', amount: 18 }, 10, 4, 4)).toEqual({
+      kind: 'instantCounterPush',
+      amount: 4, // 18 - 10*4 = -22, floored at 4
+    });
+  });
+
+  it('fireCount 0 (the first fire) leaves the amount at its full base value', () => {
+    expect(decayedPayloadMagnitude({ kind: 'instantCounterPush', amount: 18 }, 0, 4, 4)).toEqual({
+      kind: 'instantCounterPush',
+      amount: 18,
+    });
+  });
+
+  it('returns null for a magnitude-less payload, same contract as the other transforms', () => {
+    expect(decayedPayloadMagnitude({ kind: 'cleanse' }, 3, 4, 4)).toBeNull();
   });
 });
 
