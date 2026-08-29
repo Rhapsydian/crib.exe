@@ -252,7 +252,43 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   // Breaker (neutral rare) is a near-perfect thematic fit for the
   // roster's purest defensive identity, converting exactly the
   // mitigation this kit already generates into a real strike.
-  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['encryption'], minLayer: 1, loadout: [pool('zero-trust'), pool('air-gap'), pool('redundant-backup'), pool('circuit-breaker')], passiveIds: ['no-way-in'], magnitudeScaler: 1.0 },
+  // Session 39, ground-up redesign (in progress): Zero Trust's own
+  // reactive enemyState trigger re-arms every time the player's own
+  // Breach/Containment climbs back above the threshold after being
+  // pushed down -- unbounded, it fired an average of 8.28 times per real
+  // match against Warden (600-seed check), dragging fights toward the
+  // hard-resolution deadline and giving Circuit Breaker far more time to
+  // build than a normal fight would. A hard fire cap either does nothing
+  // or trivializes the matchup for every class (tested, no good middle
+  // value exists) -- redesigned instead as a self-limiting decay via the
+  // new magnitudeDecayPerFire mechanism: still hits close to full
+  // strength the first couple of times, tapers toward a real-but-
+  // survivable floor rather than an infinite wall. A bespoke copy (not
+  // the shared pool piece -- Null Session and any future user of Zero
+  // Trust stay unaffected). Decay/floor values TBD/playtesting, being
+  // tuned empirically against the real matchup next.
+  {
+    id: 'firewall-prime',
+    name: 'Firewall Prime',
+    tier: 'gatekeeper',
+    archetypes: ['encryption'],
+    minLayer: 1,
+    loadout: [
+      { ...pool('zero-trust'), id: 'zero-trust-firewall-prime', magnitudeDecayPerFire: 1, magnitudeFloor: 10 },
+      pool('air-gap'),
+      // Redundant Backup's hot payload credits mitigationBanked its full
+      // amountPerTick*duration at cast time (resolve.ts's `case 'hot':`) --
+      // at the shared player value (5*4=20) a single cast alone armed
+      // Circuit Breaker (threshold 10) more than 2x over, before Zero
+      // Trust ever fired. Tuned down here (2*4=8, below threshold alone)
+      // so Circuit Breaker needs contribution from more than one piece.
+      // TBD/playtesting.
+      { ...pool('redundant-backup'), id: 'redundant-backup-firewall-prime', payload: { kind: 'hot', amountPerTick: 2, cadence: 'castersTurnPulse', duration: 4 } },
+      pool('circuit-breaker'),
+    ],
+    passiveIds: ['no-way-in'],
+    magnitudeScaler: 1.0,
+  },
   // Session 28 retrofit: cron-job/full-system-compromise/dns-poisoning
   // are all denial/manipulation, zero credit -- Watchdog Timer (neutral
   // rare, occurrence:go, scaling) added: "keep calling Go, it corners you."
