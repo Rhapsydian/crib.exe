@@ -139,15 +139,16 @@ export interface EnemyDefinition {
    * sense for an identity that can legitimately appear at several
    * different layers. */
   magnitudeScaler?: number;
-  /** Per-side threshold overrides (session 40), gatekeeper-only -- same
-   * reasoning as magnitudeScaler above: gatekeepers never repeat across
-   * layers, so a stored per-identity value is meaningful in a way it
-   * wouldn't be for regular/elite (which always read the flat
-   * GAUGE_THRESHOLD/WIN_THRESHOLD constants instead, see
-   * gaugeThresholdFor/winThresholdFor below). Undefined (falls back to
-   * the flat constant) for every gatekeeper as of this session -- real
-   * per-gatekeeper values are the next balance pass's job, not this
-   * plumbing session's. */
+  /** Per-side threshold overrides (session 40 plumbing; first real value
+   * authored the same session, continued as the balance pass),
+   * gatekeeper-only -- same reasoning as magnitudeScaler above:
+   * gatekeepers never repeat across layers, so a stored per-identity
+   * value is meaningful in a way it wouldn't be for regular/elite (which
+   * always read the flat GAUGE_THRESHOLD/WIN_THRESHOLD constants
+   * instead, see gaugeThresholdFor/winThresholdFor below). Undefined
+   * (falls back to the flat constant) for most gatekeepers still -- the
+   * balance pass this plumbing was built for is ongoing, one layer at a
+   * time. */
   gaugeThreshold?: number;
   winThreshold?: number;
 }
@@ -332,7 +333,7 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   // have no Heat source) on top of the kit's zero-credit problem --
   // swapped for Circuit Breaker (neutral rare), the run's real
   // final-boss layer earning the strongest fix.
-  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('circuit-breaker')], passiveIds: ['null-session-passive'], magnitudeScaler: 1.9 },
+  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('circuit-breaker')], passiveIds: ['null-session-passive'], magnitudeScaler: 1.9, winThreshold: 65 },
   { id: 'kernel-panic', name: 'Kernel Panic', tier: 'gatekeeper', archetypes: ['exploit', 'malware', 'encryption'], minLayer: 4, loadout: [pool('total-pwnage'), pool('epidemic'), pool('cold-storage')], passiveIds: ['redundant-kernel'], magnitudeScaler: 1.9 },
   // Session 28 retrofit: same pure recon/denial trio as its Layer 1
   // echo, Ghost Process -- Watchdog Timer again (deliberate reuse,

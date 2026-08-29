@@ -162,8 +162,14 @@ describe('magnitudeScalerFor (session 39 per-layer difficulty scaler)', () => {
 });
 
 describe('gaugeThresholdFor/winThresholdFor (session 40, per-side threshold plumbing)', () => {
-  it('every gatekeeper leaves both overrides unset this session -- zero behavior change', () => {
-    for (const gatekeeper of ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper')) {
+  it('session 40 continued (balance pass): Null Session is the first gatekeeper with a real override, needing more of its own win-gauge progress to win (was crushing Saboteur/Warden specifically)', () => {
+    const nullSession = ENEMY_ROSTER.find((e) => e.id === 'null-session')!;
+    expect(nullSession.winThreshold).toBe(65);
+    expect(nullSession.gaugeThreshold).toBeUndefined();
+  });
+
+  it('every other gatekeeper still leaves both overrides unset -- the balance pass is ongoing, not done', () => {
+    for (const gatekeeper of ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper' && e.id !== 'null-session')) {
       expect(gatekeeper.gaugeThreshold).toBeUndefined();
       expect(gatekeeper.winThreshold).toBeUndefined();
     }

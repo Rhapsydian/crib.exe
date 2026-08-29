@@ -671,12 +671,84 @@ immediately after scoping, at the user's own request (no gap between
 `/decision-session` and `/dev-session` this time -- see the Phase 5
 section's own ✅ complete note for the full verification detail: 572/572
 tests, clean `npm run check`, byte-identical 50-seed regression sweep).
-**Next session**: the gatekeeper balance pass itself, now informed by
-session 39's audit *and* carrying two independent tuning knobs
-(`magnitudeScaler` and the new per-side threshold overrides) instead of
-just one -- or the dynamic hook's own future use (a real Mod that calls
-`adjustSideWinThreshold`, not built this session). Ask rather than
-assume, same as every prior fork in this project.
+
+**Same day, continued -- the gatekeeper balance pass itself started**,
+layer 4 first per the audit's own suggested order (widest spread, single
+largest effect). Diagnosed before touching any numbers, same discipline
+as every prior fix in this project:
+
+- **Kernel Panic (the layer's easy outlier, -5.63)**: realistic-state
+  diagnostic (`gatekeeper-check.ts`, 200 seeds/class) confirmed it at a
+  flat **100.0% player win rate across all 6 classes** (65/65) --
+  essentially harmless. Tested both new levers against it directly
+  (`winThreshold` 50->30, then also `gaugeThreshold` 8->4 on top) --
+  **neither moved the number at all, still 100.0% across the board**.
+  Conclusion: the problem isn't distance-to-win or turn cadence, it's
+  that its two credit-capable pieces (Total Pwnage, Epidemic) essentially
+  never generate real progress in a realistic fight length -- both use
+  RARE-tier accumulator/occurrence triggers (`RARE.bankTarget`/
+  `RARE.threshold`) that apparently rarely bank up before the fight
+  resolves. **Reverted both test overrides, left unset** -- fixing this
+  for real needs either a shared RARE-tier constant change (would affect
+  other content project-wide, not just Kernel Panic) or bespoke content
+  (this project's own "enemy roster is 100% shared-pool content" banked
+  item, above), not a threshold override. Flagged for a future,
+  differently-scoped session.
+- **Null Session (the layer's hard outlier, +5.20)**: same diagnostic
+  showed brutal, wildly class-dependent results -- Operator 100.0% (9/9)
+  while Saboteur sat at 20.0% (3/15) and Warden at 22.2% (2/9). Traced to
+  `null-session-passive` (`resolve.ts`): a flat, unconditional +7 credit
+  toward Null Session's *own* gauge the instant the player's own gauge
+  crosses 50% of its threshold -- a "punish the leader" mechanic with no
+  real counterplay, on top of a working Circuit Breaker win path via
+  Zero Trust's counter-push banking. **Fix**: `winThreshold: 65` (up from
+  the flat 50), tested against 65 and 80 -- 65 already captured nearly
+  all the available gain (Saboteur 20.0%->26.7%, Warden 22.2%->44.4%,
+  Blackhat 50.0%->57.1%, Operator unaffected at 100.0%); 80 was
+  virtually identical to 65 (Saboteur/Warden/Blackhat all unchanged,
+  only Breacher moved one seed's worth), a real plateau -- the remaining
+  gap for Saboteur/Warden most likely traces to Zero Trust's own
+  *reactive* `instantCounterPush` (fires whenever the player's gauge gets
+  high, not gated by turn cadence) causing repeated attrition losses
+  rather than Null Session ever reaching its own threshold, which
+  `winThreshold` alone can't fix -- flagged as a real follow-up rather
+  than chased further this checkpoint. Locked in at 65 (the smaller,
+  equally-effective value). Full-run regression (300-seed `beeline`
+  sweep, before/after, all 6 classes): small, uniformly positive
+  movement (+0.3 to +1.6pp per class, e.g. Warden 18.0%->18.3%, Breacher
+  25.7%->27.3%) -- bounded and sane, exactly what changing one of three
+  layer-4 gatekeepers should do to a full-run number.
+
+**Real methodological finding, surfaced while trying to check this
+against the "StS 9-15% band" target from session 39's own close-out**:
+that band is now **stale and not directly comparable** to a plain
+`scripts/sweep.ts run` call. It was calibrated against `sweep.ts`'s
+*old* default (`playCombat`'s dumb floor baseline for the player) --
+commit `e3b3727`, later the same session, changed that default to
+`playerSkill=0.85` (matching `gatekeeper-check.ts`'s own convention,
+motivated by the pure-Cribbage skill calibration work), so an unflagged
+`sweep.ts run` today measures a materially easier scenario (smart player)
+than the one the 9-15% band was set against -- not a regression, a
+retroactive change in what the same command measures. Confirmed by
+running the pre-Null-Session-change codebase (`git stash`) at
+`--seeds=300`: 25.7-30.0% across classes, matching the *ablation audit's*
+own Table 1 baseline (~25.78% avg) almost exactly, not the close-out's
+~12.23% avg. **Not resolved here** -- whether to recalibrate a new target
+band under the current player-skill-aware default, or drop the
+fixed-band framing in favor of paired before/after comparisons (what
+this checkpoint used instead), is its own open question, flagged for the
+user rather than assumed.
+
+573/573 tests passing (from 572, one test rewritten -- session 40's own
+"every gatekeeper leaves both overrides unset" regression guard correctly
+started failing the instant Null Session got a real value, split into a
+Null-Session-specific assertion plus an "every other gatekeeper still
+unset" guard for the rest of the pass), `npm run check` clean.
+
+**Next**: layer 2 (Incident Response too hard vs. Quarantine Ward/
+Zero-Sum too easy) is next per the audit's own order, or Kernel Panic's
+harder, differently-scoped fix, or the stale-band question above -- ask
+rather than assume, same as every prior fork in this project.
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
