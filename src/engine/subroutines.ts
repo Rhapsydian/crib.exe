@@ -100,7 +100,13 @@ export const IDLE_PROCESS: SubroutineDefinition = {
   name: 'Idle Process',
   archetype: 'neutral',
   trigger: { kind: 'always' },
-  payload: { kind: 'directBurst', amount: 2 },
+  // amount 2 -> 1 (session 39 balance fix, combined with Return to
+  // Sender's own ratio 0.5 -> 0.25 in resolve.ts). Zeroing this alone
+  // collapsed Ghost entirely (0.0% win rate, avgLayers 0.01, 99%
+  // noRoute) -- it's Ghost's only *guaranteed* credit source (Tripwire
+  // is pure denial, Return to Sender only pays off when Steganography's
+  // Ward actually absorbs a hit), so it stays real, just smaller.
+  payload: { kind: 'directBurst', amount: 1 },
   tags: ['daemon'],
 };
 

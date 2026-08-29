@@ -1403,7 +1403,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 1); // enemy attacks, fully absorbed
       expect(result.sides[0].wardShield).toBe(10); // 20 - 10 absorbed
       expect(result.sides[1].winGauge.progress).toBe(0); // attacker denied credit
-      expect(result.sides[0].winGauge.progress).toBe(5); // 10 absorbed * 0.5 ratio
+      expect(result.sides[0].winGauge.progress).toBe(2.5); // 10 absorbed * 0.25 ratio (0.5 -> 0.25, session 39)
     });
 
     it('credits proportionally to partial absorption too, not just a full break', () => {
@@ -1412,7 +1412,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 1); // shield only partially covers it
       expect(result.sides[0].wardShield).toBe(0); // fully consumed
       expect(result.sides[1].winGauge.progress).toBe(4); // 10 - 6 got through
-      expect(result.sides[0].winGauge.progress).toBe(3); // 6 absorbed * 0.5
+      expect(result.sides[0].winGauge.progress).toBe(1.5); // 6 absorbed * 0.25
     });
 
     it('does not credit for a class other than Ghost', () => {
@@ -1434,7 +1434,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       const result = resolvePayload({ kind: 'instantCounterPush', amount: 10 }, 'encryption', state, 0);
       expect(result.sides[1].winGauge.progress).toBe(0); // enemy's gauge reduced
       expect(result.sides[0].wardShield).toBe(0); // confirms no Ward involvement at all
-      expect(result.sides[0].winGauge.progress).toBe(5); // 10 * 0.5 ratio, credited to Ghost
+      expect(result.sides[0].winGauge.progress).toBe(2.5); // 10 * 0.25 ratio, credited to Ghost (0.5 -> 0.25, session 39)
     });
 
     it('does not credit instantCounterPush for a class other than Ghost', () => {
@@ -1454,7 +1454,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
       const result = tickCastersTurnPulse(state, 0);
       expect(result.sides[1].winGauge.progress).toBe(0); // enemy's gauge reduced by the HoT
-      expect(result.sides[0].winGauge.progress).toBe(2); // 4 * 0.5 ratio
+      expect(result.sides[0].winGauge.progress).toBe(1); // 4 * 0.25 ratio (0.5 -> 0.25, session 39)
     });
 
     it('does not credit a DoT tick (Malware, not the HoT this hook targets)', () => {

@@ -223,11 +223,14 @@ describe('subroutine content — real combat smoke tests', () => {
     // Idle Process (replacing the old Cantrip, Low Profile) is the fix
     // -- Neutral, Always-triggered, a small but real, unconditional
     // credit every turn. This test checks the magnitude of that fix
-    // directly (peak fill jumps roughly 4-5x against this benchmark, not
-    // whether it wins outright against it -- see the next test for that,
-    // against a more realistic opponent).
+    // directly (peak fill goes from exactly 0 to a real fraction against
+    // this benchmark, not whether it wins outright against it -- see the
+    // next test for that, against a more realistic opponent). Idle
+    // Process's own amount was halved (2 -> 1) in session 39's balance
+    // pass alongside Return to Sender's ratio, so the fraction here is
+    // smaller than it was originally, but still genuinely nonzero.
     const withoutPassive = playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], { seed: 1, gaugeThreshold: 12 });
-    expect(withoutPassive.peakFillFraction[0]).toBeGreaterThan(0.5);
+    expect(withoutPassive.peakFillFraction[0]).toBeGreaterThan(0.25);
   });
 
   it('Ghost genuinely wins via real threshold-crossing (not attrition) under real game settings against a realistically weak opponent', () => {
@@ -235,11 +238,12 @@ describe('subroutine content — real combat smoke tests', () => {
     // benchmark -- gaugeThreshold 12, an unconditional always-firing
     // amount-4 Exploit opponent -- deliberately harder than anything
     // encounters.ts actually configures (gaugeThreshold 8, winThreshold
-    // 50), and even Idle Process's real, substantial fix can't fully
-    // clear that specific stress test within the hard 20-hand window
-    // (empirically: still 0/30 genuine wins against it, just a much
-    // closer attrition loss than before -- 0.6-0.87 peak fill instead of
-    // 0.08-0.17). Against the game's own real settings and a
+    // 50), and even Idle Process's real fix can't fully clear that
+    // specific stress test within the hard 20-hand window (still 0/30
+    // genuine wins against it, just a real, nonzero peak fill instead of
+    // exactly 0 -- see the test above; exact figures shift with session
+    // 39's Idle Process/Return to Sender retune, not re-measured here).
+    // Against the game's own real settings and a
     // realistically weak opponent (comparable to an actual Regular-tier
     // enemy, not a deliberately tough stress-test benchmark), Ghost does
     // win reliably and genuinely -- confirmed here directly rather than

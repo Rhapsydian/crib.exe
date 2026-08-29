@@ -419,7 +419,15 @@ const PRIMED_MAGNITUDE_BONUS = 1.5;
 // ascension-0 9-15% band). TBD/playtesting, revisit if the wider
 // per-class balance pass finds it needs another adjustment.
 const FEEDBACK_LOOP_AMPLIFICATION_AMOUNT = 0.15;
-const RETURN_TO_SENDER_RATIO = 0.5; // TBD/playtesting -- portion of absorbed/reduced amount redirected to Ghost's own gauge
+// TBD/playtesting -- 0.5 -> 0.25 (session 39 balance fix, combined with
+// Idle Process's own amount 2 -> 1 in subroutines.ts). Return to Sender
+// alone, even fully zeroed, only brought Ghost's full-run win rate to
+// 17.0% -- still above target -- since Idle Process (Ghost's only
+// *guaranteed* credit source, added session 28 specifically because
+// Ghost's kit otherwise has zero reliable win path) was also carrying
+// real weight. Neither lever alone reached StS's ascension-0 9-15% band;
+// halving both together landed at 13.7%.
+const RETURN_TO_SENDER_RATIO = 0.25;
 
 /** Breacher's Foothold: the first time the player's own gauge reaches
  * 50% of its threshold this combat, a one-time symmetric bonus -- X% of
