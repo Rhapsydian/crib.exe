@@ -32,6 +32,13 @@ export interface GameOptions {
   seed: number;
   discardStrategy?: DiscardStrategy;
   playStrategy?: PlayStrategy;
+  /** Per-side override for discardStrategy/playStrategy above (session
+   * 39) -- mirrors combat.ts's CombatOptions tuple shape, for a bare
+   * (no roguelite mechanics) two-different-skill-levels cribbage match.
+   * Undefined keeps both sides on the single discardStrategy/playStrategy
+   * above, exactly as before this pair of fields existed. */
+  discardStrategies?: [DiscardStrategy, DiscardStrategy];
+  playStrategies?: [PlayStrategy, PlayStrategy];
   startingDealer?: PlayerIndex;
 }
 
@@ -65,6 +72,13 @@ export function playOneHand(
    * rng.ts's deriveAiNoiseSeed) -- separate from `rng` above, which
    * drives shuffles/cuts. */
   aiRng?: Rng,
+  /** Per-side override for discardStrategy/playStrategy above (session
+   * 39) -- undefined keeps that side on the shared discardStrategy/
+   * playStrategy parameter, exactly as before this pair of params
+   * existed. Same append-at-the-end treatment as every other checkpoint
+   * addition in this file. */
+  discardStrategies?: [DiscardStrategy, DiscardStrategy],
+  playStrategies?: [PlayStrategy, PlayStrategy],
 ): HandResult {
   const nonDealer: PlayerIndex = (1 - dealer) as PlayerIndex;
   const scores: [number, number] = [...priorScores];
@@ -72,8 +86,10 @@ export function playOneHand(
   const shuffled = shuffle(createDeck(), rng);
   const { hands: dealtHands, stock } = deal(shuffled);
 
-  const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: dealer === 0, rng: aiRng }, forcedDiscardSide === 0 ? discardHighestTwo : discardStrategy);
-  const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: dealer === 1, rng: aiRng }, forcedDiscardSide === 1 ? discardHighestTwo : discardStrategy);
+  const discard0 = discardStrategies ? discardStrategies[0] : discardStrategy;
+  const discard1 = discardStrategies ? discardStrategies[1] : discardStrategy;
+  const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: dealer === 0, rng: aiRng }, forcedDiscardSide === 0 ? discardHighestTwo : discard0);
+  const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: dealer === 1, rng: aiRng }, forcedDiscardSide === 1 ? discardHighestTwo : discard1);
   const crib = [...d0.discarded, ...d1.discarded];
 
   const { starter } = cutStrategy(stock, rng);
@@ -81,7 +97,7 @@ export function playOneHand(
   scores[dealer] += heelsPoints;
 
   const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
-  const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, [playStrategy, playStrategy], undefined, undefined, aiRng);
+  const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, playStrategies ?? [playStrategy, playStrategy], undefined, undefined, aiRng);
   scores[0] += peggingScores[0];
   scores[1] += peggingScores[1];
 
@@ -115,16 +131,24 @@ export function playOneHand(
 
 /**
  * Plays out `handCount` full hands, alternating dealer each time.
- * Deliberately has no target-score/winner concept — crib.exe doesn't use
- * race-to-121 as its win condition (see DESIGN.md Combat System,
- * Breach/Containment), so that's not this engine's job to invent; this just
- * plays the underlying card game correctly.
+ * Deliberately has no target-score/winner concept — this file stays the
+ * pure primitive layer (deal/discard/cut/peg/count), with no game-mode
+ * concept baked in, mirroring how combat.ts (Breach/Containment) lives
+ * as its own separate file built on these primitives rather than inside
+ * this one. Basic Cribbage (standard race-to-121, no roguelite layer at
+ * all) is a planned alternate game mode (session 39, stated explicitly
+ * at least twice -- see BACKLOG.md's "NEXT SESSION" section and this
+ * project's memory) with the same shape: a real win-loop belongs in its
+ * own peer file (basic-cribbage.ts) built on playOneHand below, not
+ * inline in a scratch script and not merged into this one.
  */
 export function playHands(handCount: number, options: GameOptions): GameResult {
   const {
     seed,
     discardStrategy = discardLowestTwo,
     playStrategy = playLowestLegal,
+    discardStrategies,
+    playStrategies,
     startingDealer = 0,
   } = options;
 
@@ -135,7 +159,7 @@ export function playHands(handCount: number, options: GameOptions): GameResult {
   const hands: HandResult[] = [];
 
   for (let i = 0; i < handCount; i++) {
-    const hand = playOneHand(dealer, scores, rng, discardStrategy, playStrategy, cut, undefined, aiRng);
+    const hand = playOneHand(dealer, scores, rng, discardStrategy, playStrategy, cut, undefined, aiRng, discardStrategies, playStrategies);
     hands.push(hand);
     scores = hand.scoresAfter;
     dealer = (1 - dealer) as PlayerIndex;
