@@ -197,15 +197,22 @@ function strategiesForFight(
   fightNumber: number,
   discardStrategies?: [DiscardStrategy, DiscardStrategy],
   playStrategies?: [PlayStrategy, PlayStrategy],
+  /** Player-side (side 0) skill dial, decoupled from the enemy's own --
+   * session 39's "never interlocked" rule. The enemy's skill below is
+   * always computed from enemySkill(kind, layerIndex, fightNumber)
+   * regardless of this value; this only ever changes side 0's strategy.
+   * Undefined keeps side 0 at playCombat's baseline default
+   * (discardLowestTwo/playLowestLegal), same as before this parameter
+   * existed. */
+  playerSkill?: number,
 ): { discardStrategies?: [DiscardStrategy, DiscardStrategy]; playStrategies?: [PlayStrategy, PlayStrategy] } {
   if (discardStrategies || playStrategies) return { discardStrategies, playStrategies };
-  // Only the enemy (side 1) gets a skill-derived strategy -- side 0
-  // (the player) keeps playCombat's own baseline default exactly
-  // (discardLowestTwo/playLowestLegal), same as before this checkpoint.
   const skill = enemySkill(kind, layerIndex, fightNumber);
+  const playerDiscard = playerSkill === undefined ? discardLowestTwo : discardSkillStrategy(playerSkill);
+  const playerPeg = playerSkill === undefined ? playLowestLegal : pegSkillStrategy(playerSkill);
   return {
-    discardStrategies: [discardLowestTwo, discardSkillStrategy(skill)],
-    playStrategies: [playLowestLegal, pegSkillStrategy(skill)],
+    discardStrategies: [playerDiscard, discardSkillStrategy(skill)],
+    playStrategies: [playerPeg, pegSkillStrategy(skill)],
   };
 }
 
@@ -226,9 +233,13 @@ function resolveFight(
    * all until now). Defaults to playCombat's own [neverActivateBurner,
    * neverActivateBurner] when omitted. */
   burnerActivationStrategies?: [BurnerActivationStrategy, BurnerActivationStrategy],
+  /** Player-side skill dial, decoupled from the enemy's own -- see
+   * strategiesForFight's own doc comment. Same append-at-the-end
+   * treatment as every prior checkpoint's new param. */
+  playerSkill?: number,
 ): EncounterOutcome {
   const enemy = enemyForFight(kind, node, layerIndex, fightNumber, rng, enemyIdOverride);
-  const strategies = strategiesForFight(kind, layerIndex, fightNumber, discardStrategies, playStrategies);
+  const strategies = strategiesForFight(kind, layerIndex, fightNumber, discardStrategies, playStrategies, playerSkill);
   const seed = rng.nextInt(2 ** 31);
   // Per-layer difficulty scaler (session 39) -- applied here, not baked
   // into ENEMY_ROSTER's own authored data, so that data stays static and
@@ -457,14 +468,19 @@ export function resolveEncounter(
    * 0 for any pre-existing caller that doesn't care (matches
    * preferMergeWhenAvailable, which ignores it entirely). */
   currentHeat: number = 0,
+  /** Player-side skill dial, decoupled from the enemy's own -- same
+   * append-at-the-end treatment as every prior checkpoint's new param.
+   * See strategiesForFight's doc comment for the "never interlocked"
+   * rule this exists to enforce. */
+  playerSkill?: number,
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
-      return resolveFight('regular', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies);
+      return resolveFight('regular', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies, playerSkill);
     case 'eliteFight':
-      return resolveFight('elite', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies);
+      return resolveFight('elite', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies, playerSkill);
     case 'gatekeeperFight':
-      return resolveFight('gatekeeper', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies);
+      return resolveFight('gatekeeper', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies, playerSkill);
     case 'safehouse': {
       // DESIGN.md's deliberate Rest-vs-Merge trade-off: one action per
       // visit (the node goes inert either way). Falls back to Rest if
@@ -634,7 +650,7 @@ export function resolveEncounter(
       // correct EncounterOutcome, not to opener-window bookkeeping),
       // banked as a real open question rather than silently decided.
       const bonusFightOutcome = effect.bonusFight
-        ? resolveFight(effect.bonusFight.tier, node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, undefined, burnerActivationStrategies)
+        ? resolveFight(effect.bonusFight.tier, node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, undefined, burnerActivationStrategies, playerSkill)
         : undefined;
 
       return {

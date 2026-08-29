@@ -421,6 +421,17 @@ export interface RunOptions {
    * defaults. */
   discardStrategies?: [DiscardStrategy, DiscardStrategy];
   playStrategies?: [PlayStrategy, PlayStrategy];
+  /** Player-side (side 0) skill dial, decoupled from the enemy's own --
+   * session 39's "never interlocked" rule. Enemy skill is always
+   * computed from enemySkill(tier, layerIndex, fightNumber) regardless
+   * of this value; this only ever changes the player's own strategy.
+   * Ignored when discardStrategies/playStrategies above are set (that
+   * escape hatch still wins outright). Undefined keeps the player at
+   * playCombat's baseline default (discardLowestTwo/playLowestLegal),
+   * same as before this option existed -- so every full-run metric
+   * generated without setting this is a floor-skill-player number, not
+   * a "the player" number; say so explicitly when reporting one. */
+  playerSkill?: number;
   /** Observational only -- called once per gatekeeper fight, right
    * before it resolves, with the player's real accumulated state at
    * that moment (session 39: the "realistic difficulty" diagnostic
@@ -460,6 +471,7 @@ export function playRun(options: RunOptions): RunResult {
     burnerActivationStrategies,
     discardStrategies,
     playStrategies,
+    playerSkill,
     onBeforeGatekeeperFight,
   } = options;
 
@@ -608,6 +620,7 @@ export function playRun(options: RunOptions): RunResult {
         eventChoiceStrategy,
         burnerActivationStrategies,
         heat,
+        playerSkill,
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
