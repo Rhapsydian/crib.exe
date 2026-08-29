@@ -56,9 +56,14 @@ const RARE = { burst: 13, tick: 5, pointsPerTick: 8, threshold: 10, bankTarget: 
  * (same "defensive numeric knob" shape). */
 const CAPPED = { common: 7, uncommon: 11, rare: 18 };
 
-const BREACH_CONTAINMENT_THRESHOLD = { low: 40, high: 60 };
-const GAUGE_FILL_FRACTION = 0.5;
-const HOT_GAUGE_FILL_FRACTION = 0.75; // Vulnerability Scan's edge-triggered rare — see resolve.test.ts's Reactive coverage for why this is fine at a high fraction.
+// Exported (session 39): enemy-subroutines.ts's own enemyState-triggered
+// content shares these same semantic thresholds ("what fraction counts as
+// the player winning") -- a real shared concept, unlike COMMON/UNCOMMON/
+// CAPPED below, which are player-content power-tier tuning and stay
+// private/uncoupled from the enemy-only catalog on purpose.
+export const BREACH_CONTAINMENT_THRESHOLD = { low: 40, high: 60 };
+export const GAUGE_FILL_FRACTION = 0.5;
+export const HOT_GAUGE_FILL_FRACTION = 0.75; // Vulnerability Scan's edge-triggered rare — see resolve.test.ts's Reactive coverage for why this is fine at a high fraction.
 
 // ---------------------------------------------------------------------
 // Neutral archetype (9) — session 28's `/decision-session`, DESIGN.md's

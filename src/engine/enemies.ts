@@ -1,5 +1,6 @@
 import type { SubroutineDefinition, SuitedArchetype } from './subroutine-types';
 import { ALL_POOL_SUBROUTINES } from './subroutines';
+import { ENEMY_ONLY_SUBROUTINES } from './enemy-subroutines';
 import { scaledPayloadMagnitude } from './merge';
 import type { Rng } from './rng';
 import type { LayerGraph, MapNode } from './map-types';
@@ -141,16 +142,21 @@ export interface EnemyDefinition {
 }
 
 const SUBROUTINE_BY_ID: ReadonlyMap<string, SubroutineDefinition> = new Map(
-  ALL_POOL_SUBROUTINES.map((subroutine) => [subroutine.id, subroutine]),
+  [...ALL_POOL_SUBROUTINES, ...ENEMY_ONLY_SUBROUTINES].map((subroutine) => [subroutine.id, subroutine]),
 );
 
-/** Looks up a real subroutine from the shared pool catalog by id --
- * throws immediately on a typo/missing id rather than silently shipping
- * a gap in an enemy's kit. Enemies draw straight from this catalog
- * (DESIGN.md: "subroutines can be drawn straight from the player's own
- * catalog... or be fully bespoke to one enemy") -- the session 27 roster
- * draft used only pool pieces, no bespoke subroutine content, so this is
- * the only lookup path checkpoint D needs. */
+/** Looks up a real subroutine by id, from either the shared player-pool
+ * catalog or enemy-subroutines.ts's own enemy-only catalog -- throws
+ * immediately on a typo/missing id rather than silently shipping a gap
+ * in an enemy's kit. Enemies can draw from either (DESIGN.md:
+ * "subroutines can be drawn straight from the player's own catalog... or
+ * be fully bespoke to one enemy") -- the session 27 roster draft used
+ * only pool pieces, no bespoke content at all, until session 39's roster
+ * audit found that produced real dead content (Heat-gated triggers,
+ * which no enemy can ever satisfy) and enemy-subroutines.ts's catalog
+ * was added to fix it. Enemy-only ids are never reachable through a
+ * player's own Merge/Shop/reward draw -- this function is the only thing
+ * that ever resolves one. */
 export function pool(id: string): SubroutineDefinition {
   const found = SUBROUTINE_BY_ID.get(id);
   if (!found) throw new Error(`enemies.ts: no pool subroutine with id "${id}"`);
@@ -191,7 +197,7 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   { id: 'script-kiddie', name: 'Script Kiddie', tier: 'regular', archetypes: ['exploit'], minLayer: 1, loadout: [pool('script-kiddie'), pool('port-scan')], passiveIds: ['lucky-guess'] },
   { id: 'fuzzer-bot', name: 'Fuzzer Bot', tier: 'regular', archetypes: ['exploit'], minLayer: 2, loadout: [pool('fuzzer'), pool('race-condition')], passiveIds: ['trial-and-error'] },
   { id: 'botnet-node', name: 'Botnet Node', tier: 'regular', archetypes: ['malware'], minLayer: 1, loadout: [pool('botnet'), pool('adware')], passiveIds: ['still-spreading'] },
-  { id: 'keylogger-process', name: 'Keylogger Process', tier: 'regular', archetypes: ['malware'], minLayer: 2, loadout: [pool('keylogger'), pool('corrupted-cache')], passiveIds: ['long-runtime'] },
+  { id: 'keylogger-process', name: 'Keylogger Process', tier: 'regular', archetypes: ['malware'], minLayer: 2, loadout: [pool('keylogger'), pool('memory-leak')], passiveIds: ['long-runtime'] },
   // Session 28 retrofit: Legacy Firewall's original 2-piece kit
   // (basic-auth/checksum, both instantCounterPush) had zero payload
   // that credits its own gauge -- structurally incapable of ever
@@ -221,19 +227,19 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   // real Elite presence without new authoring. The 2-archetype and Root
   // Elites below stay at their original minLayer, preserving the
   // "deeper layers draw from a harder-skewing subset" progression.
-  { id: 'zero-day-broker', name: 'Zero-Day Broker', tier: 'elite', archetypes: ['exploit'], minLayer: 1, loadout: [pool('zero-day-chain'), pool('buffer-overrun'), pool('payload-multiplier')], passiveIds: ['fresh-exploit'] },
+  { id: 'zero-day-broker', name: 'Zero-Day Broker', tier: 'elite', archetypes: ['exploit'], minLayer: 1, loadout: [pool('zero-day-chain'), pool('buffer-overrun'), pool('fracture-point')], passiveIds: ['fresh-exploit'] },
   { id: 'ransomware-deployment', name: 'Ransomware Deployment', tier: 'elite', archetypes: ['malware'], minLayer: 1, loadout: [pool('fork-bomb'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['escalating-demand'] },
   // Session 28 retrofit: an all-mitigation Elite kit (same structural
   // gap) -- Overclock (neutral uncommon, selfState:heatAbove) added as
   // a 4th piece, "pushed to its limits, it strikes back."
-  { id: 'zero-trust-node', name: 'Zero Trust Node', tier: 'elite', archetypes: ['encryption'], minLayer: 1, loadout: [pool('rate-limiting'), pool('honeypot'), pool('redundant-backup'), pool('overclock')], passiveIds: ['no-exceptions'] },
+  { id: 'zero-trust-node', name: 'Zero Trust Node', tier: 'elite', archetypes: ['encryption'], minLayer: 1, loadout: [pool('rate-limiting'), pool('honeypot'), pool('redundant-backup'), pool('escalating-response')], passiveIds: ['no-exceptions'] },
   { id: 'compromised-ad-server', name: 'Compromised Ad Server', tier: 'elite', archetypes: ['exploit', 'malware'], minLayer: 2, loadout: [pool('watering-hole'), pool('polymorphic-worm'), pool('off-by-one')], passiveIds: ['infection-vector'] },
-  { id: 'hardened-perimeter', name: 'Hardened Perimeter', tier: 'elite', archetypes: ['exploit', 'encryption'], minLayer: 2, loadout: [pool('watering-hole'), pool('air-gap'), pool('privilege-escalation')], passiveIds: ['foothold-reinforced'] },
+  { id: 'hardened-perimeter', name: 'Hardened Perimeter', tier: 'elite', archetypes: ['exploit', 'encryption'], minLayer: 2, loadout: [pool('watering-hole'), pool('fail-secure'), pool('privilege-escalation')], passiveIds: ['foothold-reinforced'] },
   { id: 'blackout-cell', name: 'Blackout Cell', tier: 'elite', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [pool('persistent-threat'), pool('redundant-backup'), pool('slowloris')], passiveIds: ['attrition', 'held-together'] },
   // Session 28 retrofit: a pure recon/denial Root kit, zero credit --
   // Chain Reaction (neutral uncommon, occurrence:run) added as a 4th
   // piece, "the recon pays off in a real strike."
-  { id: 'backchannel-handler', name: 'Backchannel Handler', tier: 'elite', archetypes: ['root'], minLayer: 3, loadout: [pool('backchannel'), pool('dns-poisoning'), pool('dead-drop'), pool('chain-reaction')], passiveIds: ['dead-drop-protocol', 'off-the-grid'] },
+  { id: 'backchannel-handler', name: 'Backchannel Handler', tier: 'elite', archetypes: ['root'], minLayer: 3, loadout: [pool('intercept'), pool('dns-poisoning'), pool('dead-drop'), pool('chain-reaction')], passiveIds: ['dead-drop-protocol', 'off-the-grid'] },
   { id: 'compromised-dependency', name: 'Compromised Dependency', tier: 'elite', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('supply-route'), pool('polymorphic-worm'), pool('fork-bomb')], passiveIds: ['sleeper-network'] },
 
   // --- Gatekeeper (12) -- fully bespoke, one stable per layer ---
@@ -275,7 +281,15 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
     minLayer: 1,
     loadout: [
       { ...pool('zero-trust'), id: 'zero-trust-firewall-prime', magnitudeDecayPerFire: 1, magnitudeFloor: 10 },
-      pool('air-gap'),
+      // Was Air Gap, session 39's original dead-piece finding (selfState:
+      // heatAbove, unreachable -- enemies never accumulate Heat). Replaced
+      // with Fail-Secure (enemy-subroutines.ts), a genuinely enemy-viable
+      // Ward-caster -- which also resurrects `no-way-in` below: that
+      // passive only ever re-casts a just-fired Ward, and Air Gap being
+      // the kit's sole (and dead) Ward-caster made it doubly dead. Now
+      // that Fail-Secure can actually fire, no-way-in has something real
+      // to refresh again.
+      pool('fail-secure'),
       // Redundant Backup's hot payload credits mitigationBanked its full
       // amountPerTick*duration at cast time (resolve.ts's `case 'hot':`) --
       // at the shared player value (5*4=20) a single cast alone armed
@@ -312,7 +326,7 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   // Session 28 retrofit: same pure recon/denial trio as its Layer 1
   // echo, Ghost Process -- Watchdog Timer again (deliberate reuse,
   // reinforcing the two enemies' own intentional narrative link).
-  { id: 'ghost-in-the-machine', name: 'Ghost in the Machine', tier: 'gatekeeper', archetypes: ['root'], minLayer: 4, loadout: [pool('dns-poisoning'), pool('dead-drop'), pool('backchannel'), pool('watchdog-timer')], passiveIds: ['total-access'], magnitudeScaler: 1.9 },
+  { id: 'ghost-in-the-machine', name: 'Ghost in the Machine', tier: 'gatekeeper', archetypes: ['root'], minLayer: 4, loadout: [pool('dns-poisoning'), pool('dead-drop'), pool('intercept'), pool('watchdog-timer')], passiveIds: ['total-access'], magnitudeScaler: 1.9 },
 ];
 
 /** Every enemy eligible for `tier` at `layerIndex` -- a floor for

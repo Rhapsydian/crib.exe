@@ -25,14 +25,43 @@ per this project's own scratch-script convention; and again in session
 standalone Cribbage to a target score (`game.ts`'s `playOneHand`/
 `playHands`, a race-to-121 win-loop, per-side-skill plumbing for a bare
 game) is permanent, committed engine code from now on, even when the
-immediate reason for writing it is a one-off check. `game.ts`'s
-`playOneHand`/`playHands` gained per-side discard/play strategy support
-in session 39 (`scripts/cribbage-skill-matrix.ts`), but as of that
-session's end there is still no reusable "play a full basic-Cribbage
-game to a target score, report a winner" function inside `game.ts`
-itself -- the win-loop only exists inline in that diagnostic script.
-Promoting that into `game.ts` as real exported API is the concrete next
-step toward the actual game mode.
+immediate reason for writing it is a one-off check. **Done as of session
+39**: `game.ts`'s `playOneHand`/`playHands` gained per-side discard/play
+strategy support, and `src/engine/basic-cribbage.ts` now provides a real
+`playBasicCribbageGame` (race-to-121, independent playerSkill/enemySkill,
+skunk/double-skunk detection) as committed, tested engine code -- not
+just a diagnostic script.
+
+**Banked (session 39): enemy roster is 100% shared-pool content, never
+followed through on its own design intent.** A full 32-enemy audit
+(session 39) found 7 dead-trigger instances across 9 enemies, all
+because every enemy draws its entire loadout from the same catalog
+players use (`enemies.ts`'s `pool()`) -- `enemies.ts`'s own doc comment
+cites DESIGN.md allowing enemy content to be "fully bespoke to one
+enemy," but the session-27 roster draft used only pool pieces, for
+every one of the 32 enemies, and nothing since has revisited that.
+Session 39 fixed the 7 broken slots with real bespoke content
+(`src/engine/enemy-subroutines.ts`, a genuinely enemy-only catalog --
+see that file's own doc comment) but deliberately did NOT touch the
+other ~25 enemies' still-pool-drawn kits, per explicit user direction
+("Option 1 for now, backlog option 2"). The broader initiative -- giving
+some or all of the rest of the roster real bespoke, theme-appropriate
+content instead of reused player pieces -- is open for a future session,
+scoped as its own thing rather than folded into a dead-code fix.
+
+**Related, unconfirmed finding surfaced while building the above**:
+`gaugeFillAbove` (an existing `enemyState` trigger condition, used by
+the already-shipped Honeypot and Vulnerability Scan pool pieces) reads
+`gauges.ts`'s `InitiativeGauge` -- the turn-cadence meter, which is
+designed to cycle/reset on every crossing -- not real win-progress.
+Empirically, a piece using it fired 15-26 times in an 18-20-hand match
+during session 39's own testing, once every turn or two, which reads
+more like an `always`-ish trigger than the "meaningful late-game
+reactive punish" the two existing pieces both appear to be designed as.
+Not touched or fixed this session (out of scope, and neither piece is
+dead -- both fire, just perhaps far more often than intended) -- worth a
+real look at what Honeypot/Vulnerability Scan actually do in practice
+before assuming they're balanced as shipped.
 
 **Session 30 (`/decision-session`) paused the balance-pass track to
 design the *shape* of Mods** (StS-relic equivalent, see `DESIGN.md`'s
