@@ -14,6 +14,24 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
+**Real balance candidates from session 39's gatekeeper-ablation audit**
+(`docs/session-39-gatekeeper-balance-audit.md`), un-prioritized, no
+tuning applied yet -- ask rather than assume, same as every prior fork
+in this project:
+- **Layer 4 has the roster's widest difficulty spread** (10.83 points):
+  Null Session too hard (+5.20 avg delta from baseline), Kernel Panic
+  too easy (-5.63, the single largest ablation effect measured in
+  either direction).
+- **Layer 2**: Incident Response too hard (+4.10), The Quarantine
+  Ward/Zero-Sum both comparatively easy (-3.07/-2.40).
+- **Layer 1**: Firewall Prime remains a confirmed outlier even after its
+  own ground-up redesign this session (+5.22); Ghost Process is the
+  layer's easy outlier (-3.71), not a neutral third option.
+- **Retire the "layer 3's trio is weak" assumption** (below, and in
+  README's own now-corrected status paragraph) -- the audit found it's
+  actually the best-balanced layer in the roster (2.33-point spread).
+  Don't carry it forward into a future task list.
+
 **Standing rule (session 39): basic-Cribbage engine code is never
 scratch.** "Basic Cribbage" (standard race-to-121, no Breach/
 Containment, no subroutines/gauges/Heat) is a planned **alternate game
@@ -582,6 +600,13 @@ a magnitude one), the independent-per-side-gauge-thresholds architecture
 work (confirmed wanted, not yet scoped), or Burner/Event content
 authoring beyond the 8+8 validated samples -- ask rather than assume,
 same as every prior fork in this project.
+
+*(Historical snapshot -- session 39's later gatekeeper-ablation audit,
+see "NEXT SESSION" at the top of this file, found the "layer 3 weak
+trio" guess above was wrong: layer 3 is the best-balanced layer in the
+roster. Firewall Prime got a real redesign pass and improved but is
+still a confirmed outlier. Leaving this paragraph as-is for the
+historical record of what was believed at the time.)*
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,

@@ -62,8 +62,18 @@ classes — the 9-15% target band was calibrated against the old
 floor-skill numbers and hasn't been re-derived for a real skilled
 player yet, so it's not currently authoritative. Firewall Prime
 (specifically vs. Warden) was redesigned ground-up and meaningfully
-improved (0.0% → 11.8%) but isn't fully resolved; layer 3's own weaker
-gatekeeper trio remains untouched. A full 32-enemy roster audit also
+improved (0.0% → 11.8%) but isn't fully resolved. **A follow-up
+gatekeeper-ablation audit** (`docs/session-39-gatekeeper-balance-audit.md`
+— ablating each of the 12 gatekeepers one at a time via `run.ts`'s new
+`excludedGatekeeperIds` and comparing the real full-run funnel, not each
+gatekeeper's own isolated win rate) overturned the "layer 3's trio is
+weak" assumption above: layer 3 is actually the *best-balanced* layer in
+the roster (2.33-point spread). Layer 4 has the real, previously
+unflagged imbalance instead (10.83-point spread — Null Session too hard,
+Kernel Panic the single largest ablation effect measured in either
+direction), and Firewall Prime is confirmed to remain an outlier even
+after its own redesign. No tuning from these findings has been applied
+yet. A full 32-enemy roster audit also
 found 7 genuinely dead subroutine pieces (Heat-gated triggers — enemies
 never accumulate Heat at all) across 9 enemies, fixed with a real
 enemy-only subroutine catalog (`src/engine/enemy-subroutines.ts`); the
