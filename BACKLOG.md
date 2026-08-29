@@ -14,6 +14,26 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
+**Standing rule (session 39): basic-Cribbage engine code is never
+scratch.** "Basic Cribbage" (standard race-to-121, no Breach/
+Containment, no subroutines/gauges/Heat) is a planned **alternate game
+mode**, not just an AI-calibration diagnostic -- the user has now asked
+for this to be retained twice (session 26's original race-to-121
+cross-matrix, explicitly labeled "a scratch driver" below and deleted
+per this project's own scratch-script convention; and again in session
+39 after discovering it was gone). Any driver/loop that plays real,
+standalone Cribbage to a target score (`game.ts`'s `playOneHand`/
+`playHands`, a race-to-121 win-loop, per-side-skill plumbing for a bare
+game) is permanent, committed engine code from now on, even when the
+immediate reason for writing it is a one-off check. `game.ts`'s
+`playOneHand`/`playHands` gained per-side discard/play strategy support
+in session 39 (`scripts/cribbage-skill-matrix.ts`), but as of that
+session's end there is still no reusable "play a full basic-Cribbage
+game to a target score, report a winner" function inside `game.ts`
+itself -- the win-loop only exists inline in that diagnostic script.
+Promoting that into `game.ts` as real exported API is the concrete next
+step toward the actual game mode.
+
 **Session 30 (`/decision-session`) paused the balance-pass track to
 design the *shape* of Mods** (StS-relic equivalent, see `DESIGN.md`'s
 new "Mods" subsection under Meta-Progression) — the long-deferred item
