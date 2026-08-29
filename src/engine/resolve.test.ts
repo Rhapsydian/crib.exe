@@ -1154,7 +1154,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       const state = createCombatState([rootPiece()], [], 12, 'saboteur');
       const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 0);
       expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(3);
-      expect(result.sides[0].winGauge.progress).toBe(4); // SLEEPER_CELL_CREDIT_AMOUNT
+      expect(result.sides[0].winGauge.progress).toBe(2); // SLEEPER_CELL_CREDIT_AMOUNT (4 -> 2, session 39 balance fix)
       expect(result.passiveTriggered).toBe(false); // no longer one-shot
     });
 
@@ -1163,7 +1163,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       state = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 0);
       state = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 0);
       expect(state.sides[0].loadout[0].state.accumulatedProgress).toBe(6);
-      expect(state.sides[0].winGauge.progress).toBe(8);
+      expect(state.sides[0].winGauge.progress).toBe(4); // 2 x SLEEPER_CELL_CREDIT_AMOUNT (2)
     });
 
     it("fires from the caster's own Malware DoT tick -- the reachability fix (Silent Worm is a DoT, not a debuff, so this is what makes Sleeper Cell reachable turn one)", () => {
@@ -1176,7 +1176,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       let state = createCombatState([dotPiece, rootPiece()], [], 12, 'saboteur');
       state = resolvePayload(dotPiece.payload, 'malware', state, 0);
       const result = tickCastersTurnPulse(state, 0);
-      expect(result.sides[0].winGauge.progress).toBe(7); // 3 (the DoT itself) + 4 (Sleeper Cell credit)
+      expect(result.sides[0].winGauge.progress).toBe(5); // 3 (the DoT itself) + 2 (Sleeper Cell credit)
       expect(result.sides[0].loadout[1].state.accumulatedProgress).toBe(3); // the Root piece, index 1
     });
 

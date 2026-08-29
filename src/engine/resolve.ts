@@ -391,7 +391,13 @@ export interface ResolveContext {
 
 const FOOTHOLD_BONUS_FRACTION = 0.1; // TBD/playtesting -- X% of threshold, applied to both gauges
 const SLEEPER_CELL_ADVANCE_AMOUNT = 3; // TBD/playtesting
-const SLEEPER_CELL_CREDIT_AMOUNT = 4; // TBD/playtesting -- direct win-gauge credit, session 25 rework
+// TBD/playtesting -- 4 -> 2 (session 39 balance fix): Silent Worm's DoT
+// is Saboteur's only credit-capable payload at all, and this flat bonus
+// stacking on top of every one of its ticks unconditionally was doing
+// most of the class's heavy lifting (full-run win rate 24.3% at 4, 4.0%
+// at 0 -- overshoots -- 12.0% at 2, landing in StS's ascension-0 9-15%
+// band). Now equal to Silent Worm's own base tick size (COMMON.tick).
+const SLEEPER_CELL_CREDIT_AMOUNT = 2;
 const PRIMED_THRESHOLD_REDUCTION = 2; // TBD/playtesting
 const PRIMED_MAGNITUDE_BONUS = 3; // TBD/playtesting -- payload magnitude bump, session 25 rework
 // Flat amount queued as a bonus for the caster's next tick of the
