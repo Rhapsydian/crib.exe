@@ -19,7 +19,7 @@ import {
   type SubroutineRuntimeState,
   type TriggerContext,
 } from './triggers';
-import { createInitiativeGauge, createDuelGauge, addDuelProgress, reduceDuelProgress, type InitiativeGauge, type DuelGauge } from './gauges';
+import { createInitiativeGauge, createDuelGauge, addDuelProgress, reduceDuelProgress, shrinkDuelThreshold, type InitiativeGauge, type DuelGauge } from './gauges';
 import { bestCardToForce } from './ai';
 
 /**
@@ -226,9 +226,9 @@ export function clearHandKnowledge(combatState: CombatState): CombatState {
 export function createCombatState(
   playerLoadout: SubroutineDefinition[],
   enemyLoadout: SubroutineDefinition[],
-  gaugeThreshold: number,
+  gaugeThreshold: [number, number],
   classId?: ClassId,
-  winThreshold: number = 100,
+  winThreshold: [number, number] = [100, 100],
   enemyPassiveIds: EnemyPassiveId[] = [],
   ownedModIds: ModId[] = [],
   carriedBurnerIds: BurnerId[] = [],
@@ -249,8 +249,8 @@ export function createCombatState(
   const playerLoadoutWithMods = [...playerLoadout, ...reactiveModSubroutines(effectiveModIds)];
   return {
     sides: [
-      createCombatSideState(playerLoadoutWithMods, gaugeThreshold, winThreshold),
-      createCombatSideState(enemyLoadout, gaugeThreshold, winThreshold),
+      createCombatSideState(playerLoadoutWithMods, gaugeThreshold[0], winThreshold[0]),
+      createCombatSideState(enemyLoadout, gaugeThreshold[1], winThreshold[1]),
     ],
     pendingSabotage: [],
     pendingCribbageManipulation: [],
@@ -299,6 +299,22 @@ export function reduceWinGauge(combatState: CombatState, side: PlayerIndex, amou
   if (amount <= 0) return combatState;
   const sideState = combatState.sides[side];
   const gauge = reduceDuelProgress(sideState.winGauge, amount);
+  const sides = replaceSide(combatState.sides, side, { ...sideState, winGauge: gauge });
+  return { ...combatState, sides };
+}
+
+/** Shrinks `side`'s own winGauge threshold by `amount`, floored at
+ * `minThreshold` -- session 40's dynamic-hook primitive, the mechanism a
+ * future Mod could call from the existing onCombatStart hook (see
+ * applyModOnCombatStartPassives below) to make a side's own win easier
+ * to reach. Delegates to gauges.ts's shrinkDuelThreshold, the same
+ * primitive combat.ts's own applyEscalation already uses -- never
+ * touches progress, so it can't itself resolve a match. No real Mod
+ * calls this yet (session 40 is plumbing only); exported so one can. */
+export function adjustSideWinThreshold(combatState: CombatState, side: PlayerIndex, amount: number, minThreshold: number): CombatState {
+  if (amount <= 0) return combatState;
+  const sideState = combatState.sides[side];
+  const gauge = shrinkDuelThreshold(sideState.winGauge, amount, minThreshold);
   const sides = replaceSide(combatState.sides, side, { ...sideState, winGauge: gauge });
   return { ...combatState, sides };
 }

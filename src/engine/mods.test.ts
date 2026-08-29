@@ -46,7 +46,7 @@ function piece(id: string, overrides: Partial<SubroutineDefinition> = {}): Subro
 
 describe('onFire -- Tagged Firmware / Malware Amplifier', () => {
   it('Tagged Firmware credits a bonus when a matching-tag subroutine fires', () => {
-    const withMod = createCombatState([], [], 12, undefined, 100, [], ['tagged-firmware']);
+    const withMod = createCombatState([], [], [12, 12], undefined, [100, 100], [], ['tagged-firmware']);
     const tagged = piece('tagged', { tags: [TAGGED_FIRMWARE_TAG] });
     const result = resolvePayload(tagged.payload, tagged.archetype, withMod, 0, { priorFireCountThisTurn: 0 }, tagged);
     expect(result.sides[0].winGauge.progress).toBe(5 + MOD_MEDIUM);
@@ -58,13 +58,13 @@ describe('onFire -- Tagged Firmware / Malware Amplifier', () => {
   });
 
   it('Malware Amplifier credits a bonus on any Malware fire, archetype-only (no definition needed)', () => {
-    const withMod = createCombatState([], [], 12, undefined, 100, [], ['malware-amplifier']);
+    const withMod = createCombatState([], [], [12, 12], undefined, [100, 100], [], ['malware-amplifier']);
     const result = resolvePayload({ kind: 'directBurst', amount: 5 }, 'malware', withMod, 0);
     expect(result.sides[0].winGauge.progress).toBe(5 + MOD_MEDIUM);
   });
 
   it('side 1 (enemy) never gets a player Mod bonus', () => {
-    const withMod = createCombatState([], [], 12, undefined, 100, [], ['malware-amplifier']);
+    const withMod = createCombatState([], [], [12, 12], undefined, [100, 100], [], ['malware-amplifier']);
     const result = resolvePayload({ kind: 'directBurst', amount: 5 }, 'malware', withMod, 1);
     expect(result.sides[1].winGauge.progress).toBe(5);
   });
@@ -72,7 +72,7 @@ describe('onFire -- Tagged Firmware / Malware Amplifier', () => {
 
 describe('onTick / onTickExpiring -- Redundant Ticks / Failsafe Cascade', () => {
   it('Redundant Ticks extends a single tick instance once before it expires', () => {
-    const base = createCombatState([], [], 12, undefined, 100, [], ['redundant-ticks']);
+    const base = createCombatState([], [], [12, 12], undefined, [100, 100], [], ['redundant-ticks']);
     let state = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 1 }, 'malware', base, 0);
     // First tick: duration exhausts to 0, would normally expire -- Redundant Ticks extends it once.
     state = tickCastersTurnPulse(state, 0);
@@ -85,7 +85,7 @@ describe('onTick / onTickExpiring -- Redundant Ticks / Failsafe Cascade', () => 
   });
 
   it('Failsafe Cascade extends only the first tick to expire each fight, not a second', () => {
-    const base = createCombatState([], [], 12, undefined, 100, [], ['failsafe-cascade']);
+    const base = createCombatState([], [], [12, 12], undefined, [100, 100], [], ['failsafe-cascade']);
     let state = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 1 }, 'malware', base, 0);
     state = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 1 }, 'malware', state, 0);
     expect(state.sides[1].dots).toHaveLength(2);
@@ -95,7 +95,7 @@ describe('onTick / onTickExpiring -- Redundant Ticks / Failsafe Cascade', () => 
   });
 
   it('without the Mod, a duration-1 tick expires normally after one tick', () => {
-    const base = createCombatState([], [], 12);
+    const base = createCombatState([], [], [12, 12]);
     let state = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 1 }, 'malware', base, 0);
     state = tickCastersTurnPulse(state, 0);
     expect(state.sides[1].dots).toEqual([]);
@@ -104,7 +104,7 @@ describe('onTick / onTickExpiring -- Redundant Ticks / Failsafe Cascade', () => 
 
 describe('onGaugeCross50 -- Early Momentum', () => {
   it("pushes the player's own gauge once, the first time it crosses halfway", () => {
-    const base = createCombatState([], [], 12, undefined, 100, [], ['early-momentum']);
+    const base = createCombatState([], [], [12, 12], undefined, [100, 100], [], ['early-momentum']);
     const at50 = { ...base, sides: [{ ...base.sides[0], winGauge: { progress: 50, threshold: 100 } }, base.sides[1]] as typeof base.sides };
     const first = applyModGaugeCross50Passives(at50);
     expect(first.sides[0].winGauge.progress).toBe(50 + MOD_SMALL);
@@ -115,7 +115,7 @@ describe('onGaugeCross50 -- Early Momentum', () => {
 
 describe('onIncomingDirectBurst -- Static Shield', () => {
   it('mitigates a flat amount off every incoming direct burst, uncapped', () => {
-    const state = createCombatState([], [], 12, undefined, 100, [], ['static-shield']);
+    const state = createCombatState([], [], [12, 12], undefined, [100, 100], [], ['static-shield']);
     const afterFirst = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 1);
     expect(afterFirst.sides[1].winGauge.progress).toBe(10 - MOD_SMALL);
     const afterSecond = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', afterFirst, 1);
@@ -125,13 +125,13 @@ describe('onIncomingDirectBurst -- Static Shield', () => {
 
 describe('onCombatStart -- Warm Boot', () => {
   it('starts the fight with a small Ward on side 0', () => {
-    const withMod = createCombatState([], [], 12, undefined, 100, [], ['warm-boot']);
+    const withMod = createCombatState([], [], [12, 12], undefined, [100, 100], [], ['warm-boot']);
     const result = applyModOnCombatStartPassives(withMod);
     expect(result.sides[0].wardShield).toBe(MOD_SMALL);
   });
 
   it('is a no-op without the Mod', () => {
-    const withoutMod = createCombatState([], [], 12);
+    const withoutMod = createCombatState([], [], [12, 12]);
     expect(applyModOnCombatStartPassives(withoutMod)).toEqual(withoutMod);
   });
 });

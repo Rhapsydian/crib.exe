@@ -40,8 +40,8 @@ describe('Combat-context activation -- BurnerActivationStrategy', () => {
     const alwaysFlashDrive: BurnerActivationStrategy = (ctx) => (ctx.availableBurnerIds.includes('flash-drive') ? 'flash-drive' : null);
     const result = playCombat([[], []], {
       seed: 1,
-      gaugeThreshold: 8,
-      winThreshold: 100,
+      gaugeThreshold: [8, 8],
+      winThreshold: [100, 100],
       carriedBurnerIds: ['flash-drive'],
       burnerActivationStrategies: [alwaysFlashDrive, neverActivateBurner],
     });
@@ -52,8 +52,8 @@ describe('Combat-context activation -- BurnerActivationStrategy', () => {
     const alwaysEmpCharge: BurnerActivationStrategy = (ctx) => (ctx.availableBurnerIds.includes('emp-charge') ? 'emp-charge' : null);
     const result = playCombat([[], []], {
       seed: 1,
-      gaugeThreshold: 8,
-      winThreshold: 100,
+      gaugeThreshold: [8, 8],
+      winThreshold: [100, 100],
       carriedBurnerIds: ['emp-charge'],
       burnerActivationStrategies: [alwaysEmpCharge, neverActivateBurner],
     });
@@ -64,8 +64,8 @@ describe('Combat-context activation -- BurnerActivationStrategy', () => {
     const alwaysFlashDrive: BurnerActivationStrategy = (ctx) => (ctx.availableBurnerIds.includes('flash-drive') ? 'flash-drive' : null);
     const result = playCombat([[], []], {
       seed: 1,
-      gaugeThreshold: 8,
-      winThreshold: 200,
+      gaugeThreshold: [8, 8],
+      winThreshold: [200, 200],
       carriedBurnerIds: ['flash-drive', 'flash-drive'],
       burnerActivationStrategies: [alwaysFlashDrive, neverActivateBurner],
     });
@@ -75,8 +75,8 @@ describe('Combat-context activation -- BurnerActivationStrategy', () => {
   it('the enemy side never activates a Burner by default', () => {
     const result = playCombat([[], []], {
       seed: 1,
-      gaugeThreshold: 8,
-      winThreshold: 100,
+      gaugeThreshold: [8, 8],
+      winThreshold: [100, 100],
       carriedBurnerIds: [],
     });
     expect(result.burnersUsedThisCombat).toEqual([]);

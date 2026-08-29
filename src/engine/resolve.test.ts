@@ -18,6 +18,7 @@ import {
   tickDebuffDurations,
   consumePendingCribbageManipulation,
   applyFootholdBonus,
+  adjustSideWinThreshold,
 } from './resolve';
 
 function definition(
@@ -49,7 +50,7 @@ const alwaysBurst = (id: string, amount = 5) =>
 
 describe("resolvePayload — offense credits the caster's own gauge", () => {
   it("directBurst credits the caster's own winGauge (side 0 or side 1), never the opponent's", () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const forPlayer = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0);
     expect(forPlayer.sides[0].winGauge.progress).toBe(10);
     expect(forPlayer.sides[1].winGauge.progress).toBe(0);
@@ -60,7 +61,7 @@ describe("resolvePayload — offense credits the caster's own gauge", () => {
   });
 
   it("a shield on the target absorbs a directBurst up to its amount, denying the caster's gauge credit for that portion", () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'ward', amount: 6 }, 'encryption', state, 1); // side 1 builds a shield
     const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0); // side 0 attacks
     expect(result.sides[1].wardShield).toBe(0); // fully consumed
@@ -68,7 +69,7 @@ describe("resolvePayload — offense credits the caster's own gauge", () => {
   });
 
   it('a shield larger than the incoming hit absorbs it all and denies all credit', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'ward', amount: 20 }, 'encryption', state, 1);
     const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0);
     expect(result.sides[1].wardShield).toBe(10); // 20 - 10
@@ -76,7 +77,7 @@ describe("resolvePayload — offense credits the caster's own gauge", () => {
   });
 
   it('piercing ignores an active shield entirely', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'ward', amount: 6 }, 'encryption', state, 1);
     const result = resolvePayload({ kind: 'piercing', amount: 10 }, 'exploit', state, 0);
     expect(result.sides[0].winGauge.progress).toBe(10); // full amount, unabsorbed
@@ -84,7 +85,7 @@ describe("resolvePayload — offense credits the caster's own gauge", () => {
   });
 
   it('chainFinisherScaling scales with how many subroutines already fired this turn', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const payload: PayloadEffect = { kind: 'chainFinisherScaling', baseAmount: 2, perPriorFire: 3 };
     const first = resolvePayload(payload, 'exploit', state, 0, { priorFireCountThisTurn: 0 });
     expect(first.sides[0].winGauge.progress).toBe(2);
@@ -93,14 +94,14 @@ describe("resolvePayload — offense credits the caster's own gauge", () => {
   });
 
   it("riskRewardBurst credits the caster's own gauge and costs Heat", () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'riskRewardBurst', amount: 6, heatCost: 3 }, 'exploit', state, 0);
     expect(result.sides[0].winGauge.progress).toBe(6);
     expect(result.sides[0].heat).toBe(3);
   });
 
   it('chainFinisherScaling/riskRewardBurst are not shield-checked (matches pre-redesign scope -- only directBurst ever was)', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'ward', amount: 999 }, 'encryption', state, 1);
     const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10, heatCost: 0 }, 'exploit', state, 0);
     expect(result.sides[0].winGauge.progress).toBe(10); // shield never checked
@@ -109,21 +110,21 @@ describe("resolvePayload — offense credits the caster's own gauge", () => {
 
 describe('selfHeatReduction', () => {
   it("reduces the caster's own Heat, floored", () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, heatCost: 5 }, 'exploit', state, 0);
     const result = resolvePayload({ kind: 'selfHeatReduction', amount: 3, floor: 1 }, 'root', state, 0);
     expect(result.sides[0].heat).toBe(2);
   });
 
   it('never reduces Heat below the floor', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, heatCost: 2 }, 'exploit', state, 0);
     const result = resolvePayload({ kind: 'selfHeatReduction', amount: 10, floor: 1 }, 'root', state, 0);
     expect(result.sides[0].heat).toBe(1);
   });
 
   it('is halved by Corrupted like any other magnitude', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, heatCost: 10 }, 'exploit', state, 0);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
     const result = resolvePayload({ kind: 'selfHeatReduction', amount: 4, floor: 0 }, 'root', state, 0);
@@ -133,7 +134,7 @@ describe('selfHeatReduction', () => {
 
 describe('resolvePayload — status effects', () => {
   it('dot applies to the opposing side', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload(
       { kind: 'dot', amountPerTick: 2, cadence: 'globalPulse', duration: 3 },
       'malware',
@@ -147,7 +148,7 @@ describe('resolvePayload — status effects', () => {
   });
 
   it('debuff applies to the opposing side', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload(
       { kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 2 },
       'malware',
@@ -158,7 +159,7 @@ describe('resolvePayload — status effects', () => {
   });
 
   it("cleanse removes a debuff from the caster's own side", () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 2 }, 'malware', state, 1);
     expect(state.sides[0].debuffs).toHaveLength(1);
     const cleansed = resolvePayload({ kind: 'cleanse', debuffId: 'corrupted' }, 'encryption', state, 0);
@@ -168,7 +169,7 @@ describe('resolvePayload — status effects', () => {
 
 describe('fireReadySubroutines', () => {
   it('fires a single ready subroutine and resets its state afterward', () => {
-    const state = createCombatState([alwaysBurst('a', 5)], [], 12);
+    const state = createCombatState([alwaysBurst('a', 5)], [], [12, 12]);
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events).toHaveLength(1);
     expect(events[0].subroutineId).toBe('a');
@@ -178,14 +179,14 @@ describe('fireReadySubroutines', () => {
 
   it('does not fire a subroutine whose condition is not met', () => {
     const notReady = definition('a', { kind: 'occurrence', category: 'run', variation: 'instant' }, { kind: 'directBurst', amount: 5 });
-    const state = createCombatState([notReady], [], 12);
+    const state = createCombatState([notReady], [], [12, 12]);
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events).toHaveLength(0);
     expect(combatState.sides[0].winGauge.progress).toBe(0);
   });
 
   it('skips a ready subroutine that has been toggled off', () => {
-    const state = createCombatState([alwaysBurst('a', 5)], [], 12);
+    const state = createCombatState([alwaysBurst('a', 5)], [], [12, 12]);
     state.sides[0].loadout[0].state = { ...state.sides[0].loadout[0].state, toggledOn: false };
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events).toHaveLength(0);
@@ -195,7 +196,7 @@ describe('fireReadySubroutines', () => {
   it('a chained subroutine fed by an earlier fire becomes ready and fires in the same pass', () => {
     const first = alwaysBurst('a', 4);
     const second = definition('b', { kind: 'chained', afterSubroutineId: 'a' }, { kind: 'directBurst', amount: 7 });
-    const state = createCombatState([first, second], [], 12);
+    const state = createCombatState([first, second], [], [12, 12]);
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events.map((e) => e.subroutineId)).toEqual(['a', 'b']);
     expect(combatState.sides[0].winGauge.progress).toBe(11);
@@ -206,14 +207,14 @@ describe('fireReadySubroutines', () => {
     const first = alwaysBurst('a', 4);
     // loadout order: b before a -- b's condition (a fired) can't be met
     // within this single top-to-bottom pass since a hasn't fired yet.
-    const state = createCombatState([second, first], [], 12);
+    const state = createCombatState([second, first], [], [12, 12]);
     const { events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events.map((e) => e.subroutineId)).toEqual(['a']);
   });
 
   it('skips a firesAt-tagged entry even when otherwise ready -- it only ever fires via fireHandLifecycleSubroutines', () => {
     const piece = definition('a', { kind: 'always' }, { kind: 'directBurst', amount: 5 }, { firesAt: 'onDealt' });
-    const state = createCombatState([piece], [], 12);
+    const state = createCombatState([piece], [], [12, 12]);
     const { events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(events).toHaveLength(0);
   });
@@ -222,7 +223,7 @@ describe('fireReadySubroutines', () => {
 describe('fireHandLifecycleSubroutines', () => {
   it('fires a ready subroutine tagged for the matching moment', () => {
     const piece = definition('a', { kind: 'always' }, { kind: 'directBurst', amount: 5 }, { firesAt: 'onDealt' });
-    const state = createCombatState([piece], [], 12);
+    const state = createCombatState([piece], [], [12, 12]);
     const { combatState, events } = fireHandLifecycleSubroutines(state, 0, 'onDealt', { isDealer: false });
     expect(events).toHaveLength(1);
     expect(events[0].subroutineId).toBe('a');
@@ -232,7 +233,7 @@ describe('fireHandLifecycleSubroutines', () => {
 
   it('does not fire a subroutine tagged for a different moment', () => {
     const piece = definition('a', { kind: 'always' }, { kind: 'directBurst', amount: 5 }, { firesAt: 'onCribSelected' });
-    const state = createCombatState([piece], [], 12);
+    const state = createCombatState([piece], [], [12, 12]);
     const { combatState, events } = fireHandLifecycleSubroutines(state, 0, 'onDealt', { isDealer: false });
     expect(events).toHaveLength(0);
     expect(combatState.sides[0].winGauge.progress).toBe(0);
@@ -245,14 +246,14 @@ describe('fireHandLifecycleSubroutines', () => {
       { kind: 'directBurst', amount: 5 },
       { firesAt: 'onDealt' },
     );
-    const state = createCombatState([piece], [], 12);
+    const state = createCombatState([piece], [], [12, 12]);
     const { events } = fireHandLifecycleSubroutines(state, 0, 'onDealt', { isDealer: false });
     expect(events).toHaveLength(0);
   });
 
   it('skips a firesAt subroutine that has been toggled off', () => {
     const piece = definition('a', { kind: 'always' }, { kind: 'directBurst', amount: 5 }, { firesAt: 'onDealt' });
-    const state = createCombatState([piece], [], 12);
+    const state = createCombatState([piece], [], [12, 12]);
     state.sides[0].loadout[0].state = { ...state.sides[0].loadout[0].state, toggledOn: false };
     const { events } = fireHandLifecycleSubroutines(state, 0, 'onDealt', { isDealer: false });
     expect(events).toHaveLength(0);
@@ -260,7 +261,7 @@ describe('fireHandLifecycleSubroutines', () => {
 
   it('threads revealedCards through to a revealOpponentHand payload, storing it as knownOpponentHand', () => {
     const piece = definition('a', { kind: 'always' }, { kind: 'revealOpponentHand' }, { firesAt: 'onDealt' });
-    const state = createCombatState([piece], [], 12);
+    const state = createCombatState([piece], [], [12, 12]);
     const opponentHand: Card[] = [{ rank: 7, suit: 0 }, { rank: 9, suit: 1 }];
     const { combatState } = fireHandLifecycleSubroutines(state, 0, 'onDealt', { isDealer: false }, opponentHand);
     expect(combatState.sides[0].knownOpponentHand).toEqual(opponentHand);
@@ -272,7 +273,7 @@ describe('recon payloads (session 24 checkpoint C)', () => {
   const crib: Card[] = [{ rank: 5, suit: 1 }, { rank: 5, suit: 3 }, { rank: 10, suit: 0 }, { rank: 2, suit: 2 }];
 
   it('revealOpponentHand stores revealedCards as the caster\'s own knownOpponentHand', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'revealOpponentHand' }, 'root', state, 0, {
       priorFireCountThisTurn: 0,
       revealedCards: opponentHand,
@@ -282,7 +283,7 @@ describe('recon payloads (session 24 checkpoint C)', () => {
   });
 
   it('revealOpponentKeptHand also stores into knownOpponentHand -- the later, smaller reveal supersedes the earlier one', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'revealOpponentHand' }, 'root', state, 0, {
       priorFireCountThisTurn: 0,
       revealedCards: [...opponentHand, { rank: 11, suit: 3 }],
@@ -296,7 +297,7 @@ describe('recon payloads (session 24 checkpoint C)', () => {
   });
 
   it('revealCrib stores revealedCards as knownCrib', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'revealCrib' }, 'root', state, 1, {
       priorFireCountThisTurn: 0,
       revealedCards: crib,
@@ -306,7 +307,7 @@ describe('recon payloads (session 24 checkpoint C)', () => {
   });
 
   it('is a no-op when no revealedCards were supplied (defensive fallback)', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'revealOpponentHand' }, 'root', state, 0);
     expect(result.sides[0].knownOpponentHand).toBeUndefined();
   });
@@ -314,7 +315,7 @@ describe('recon payloads (session 24 checkpoint C)', () => {
 
 describe('clearHandKnowledge', () => {
   it('clears both sides\' knownOpponentHand/knownCrib', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'revealOpponentHand' }, 'root', state, 0, {
       priorFireCountThisTurn: 0,
       revealedCards: [{ rank: 4, suit: 0 }],
@@ -329,7 +330,7 @@ describe('clearHandKnowledge', () => {
   });
 
   it('also clears any forcedDiscardPair', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'forceDiscardCard' }, 'root', state, 0, {
       priorFireCountThisTurn: 0,
       revealedCards: [{ rank: 3, suit: 0 }, { rank: 3, suit: 1 }, { rank: 8, suit: 2 }, { rank: 9, suit: 3 }, { rank: 1, suit: 0 }, { rank: 12, suit: 1 }],
@@ -351,7 +352,7 @@ describe('forceDiscardCard payload (session 24 checkpoint D)', () => {
   ];
 
   it('sets forcedDiscardPair on the target side (opponent of the caster), not the caster', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'forceDiscardCard' }, 'root', state, 0, {
       priorFireCountThisTurn: 0,
       revealedCards: targetHand,
@@ -362,7 +363,7 @@ describe('forceDiscardCard payload (session 24 checkpoint D)', () => {
   });
 
   it('the forced pair matches ai.ts\'s bestCardToForce for the same hand', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'forceDiscardCard' }, 'root', state, 1, {
       priorFireCountThisTurn: 0,
       revealedCards: targetHand,
@@ -372,7 +373,7 @@ describe('forceDiscardCard payload (session 24 checkpoint D)', () => {
   });
 
   it('is a no-op when no revealedCards were supplied (defensive fallback)', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'forceDiscardCard' }, 'root', state, 0);
     expect(result.sides[1].forcedDiscardPair).toBeUndefined();
   });
@@ -388,7 +389,7 @@ describe('refreshTriggerReadiness', () => {
   const selfIsDealer = definition('dealer', { kind: 'selfState', condition: 'isDealer' }, { kind: 'directBurst', amount: 1 });
 
   it('latches ready the moment a selfState condition becomes true', () => {
-    let state = createCombatState([selfHeatAbove], [], 12);
+    let state = createCombatState([selfHeatAbove], [], [12, 12]);
     state = refreshTriggerReadiness(state, 0);
     expect(state.sides[0].loadout[0].state.ready).toBe(false);
 
@@ -398,7 +399,7 @@ describe('refreshTriggerReadiness', () => {
   });
 
   it('stays latched even after the underlying condition reverts to false (the actual bug fix)', () => {
-    let state = createCombatState([selfHeatAbove], [], 12);
+    let state = createCombatState([selfHeatAbove], [], [12, 12]);
     state = { ...state, sides: [{ ...state.sides[0], heat: 10 }, state.sides[1]] as typeof state.sides };
     state = refreshTriggerReadiness(state, 0);
     expect(state.sides[0].loadout[0].state.ready).toBe(true);
@@ -411,7 +412,7 @@ describe('refreshTriggerReadiness', () => {
   });
 
   it("latches an enemyState condition against the *other* side's state", () => {
-    let state = createCombatState([], [enemyGaugeFillAbove], 12);
+    let state = createCombatState([], [enemyGaugeFillAbove], [12, 12]);
     state = refreshTriggerReadiness(state, 0);
     expect(state.sides[1].loadout[0].state.ready).toBe(false);
 
@@ -423,16 +424,16 @@ describe('refreshTriggerReadiness', () => {
   });
 
   it('respects handDealer for isDealer/isNonDealer', () => {
-    const notDealer = refreshTriggerReadiness(createCombatState([selfIsDealer], [], 12), 1);
+    const notDealer = refreshTriggerReadiness(createCombatState([selfIsDealer], [], [12, 12]), 1);
     expect(notDealer.sides[0].loadout[0].state.ready).toBe(false);
 
-    const isDealer = refreshTriggerReadiness(createCombatState([selfIsDealer], [], 12), 0);
+    const isDealer = refreshTriggerReadiness(createCombatState([selfIsDealer], [], [12, 12]), 0);
     expect(isDealer.sides[0].loadout[0].state.ready).toBe(true);
   });
 
   it('does not touch accumulator/occurrence/chained/always subroutines', () => {
     const occurrenceDef = definition('occ', { kind: 'occurrence', category: 'go', variation: 'instant' }, { kind: 'directBurst', amount: 1 });
-    const state = refreshTriggerReadiness(createCombatState([occurrenceDef, alwaysBurst('always')], [], 12), 0);
+    const state = refreshTriggerReadiness(createCombatState([occurrenceDef, alwaysBurst('always')], [], [12, 12]), 0);
     expect(state.sides[0].loadout[0].state.ready).toBe(false); // occurrence untouched, no matching occurrence fed in
     expect(state.sides[0].loadout[1].state.ready).toBe(false); // always is evaluated live at fire time, not latched here
   });
@@ -452,14 +453,14 @@ describe('refreshTriggerReadiness', () => {
     }
 
     it('arms on the false-to-true transition and stays armed on repeated true checks (no accidental re-debounce)', () => {
-      let state = createCombatState([reactiveHeatAbove], [], 12);
+      let state = createCombatState([reactiveHeatAbove], [], [12, 12]);
       state = withHeat(state, 0, 10); // condition true from the start
       state = refreshTriggerReadiness(state, 0);
       expect(state.sides[0].loadout[0].state.ready).toBe(true); // first observation is a rising edge from the initial false
     });
 
     it('does not re-arm on a second check while the condition stays continuously true', () => {
-      let state = createCombatState([reactiveHeatAbove], [], 12);
+      let state = createCombatState([reactiveHeatAbove], [], [12, 12]);
       state = withHeat(state, 0, 10);
       state = refreshTriggerReadiness(state, 0); // arms: ready=true, lastConditionTrue=true
 
@@ -484,7 +485,7 @@ describe('refreshTriggerReadiness', () => {
     });
 
     it('re-arms after the condition genuinely goes false and comes back true', () => {
-      let state = createCombatState([reactiveHeatAbove], [], 12);
+      let state = createCombatState([reactiveHeatAbove], [], [12, 12]);
       state = withHeat(state, 0, 10);
       state = refreshTriggerReadiness(state, 0); // arms
       state = withHeat(state, 0, 0); // condition reverts to false
@@ -516,7 +517,7 @@ describe('refreshTriggerReadiness', () => {
       }
 
       it('re-arms up to the cap, repeatedly cycling the condition false/true', () => {
-        let state = createCombatState([cappedReactive], [], 12);
+        let state = createCombatState([cappedReactive], [], [12, 12]);
         state = withHeat(state, 0, 10);
         state = armAndFire(state); // fire 1
         expect(state.sides[0].loadout[0].state.fireCount).toBe(1);
@@ -531,7 +532,7 @@ describe('refreshTriggerReadiness', () => {
       });
 
       it('stops re-arming once fireCount reaches maxFiresPerCombat, even on a genuine rising edge', () => {
-        let state = createCombatState([cappedReactive], [], 12);
+        let state = createCombatState([cappedReactive], [], [12, 12]);
         state = withHeat(state, 0, 10);
         state = armAndFire(state); // fire 1
         state = withHeat(state, 0, 0);
@@ -549,7 +550,7 @@ describe('refreshTriggerReadiness', () => {
       });
 
       it('an undefined maxFiresPerCombat (every existing subroutine) is never capped', () => {
-        let state = createCombatState([reactiveHeatAbove], [], 12);
+        let state = createCombatState([reactiveHeatAbove], [], [12, 12]);
         for (let i = 0; i < 5; i++) {
           state = withHeat(state, 0, 10);
           state = armAndFire(state);
@@ -575,7 +576,7 @@ describe('refreshTriggerReadiness', () => {
       }
 
       it('fires at full magnitude the first time (fireCount 0)', () => {
-        let state = createCombatState([], [decayingReactive], 12);
+        let state = createCombatState([], [decayingReactive], [12, 12]);
         state = withHeat(state, 1, 10);
         const { combatState, events } = armAndFireOn(state);
         expect(events[0].payload).toEqual({ kind: 'instantCounterPush', amount: 18 });
@@ -583,7 +584,7 @@ describe('refreshTriggerReadiness', () => {
       });
 
       it('decays on each subsequent fire, floored, and the logged FireEvent reflects the decayed amount', () => {
-        let state = createCombatState([], [decayingReactive], 12);
+        let state = createCombatState([], [decayingReactive], [12, 12]);
         // Give side 0 (the target of side 1's counter-push) enough banked
         // progress to observe each decayed reduction distinctly.
         state = resolvePayload({ kind: 'directBurst', amount: 100 }, 'exploit', state, 0);
@@ -612,7 +613,7 @@ describe('refreshTriggerReadiness', () => {
       });
 
       it('never decays below magnitudeFloor no matter how many times it fires', () => {
-        let state = createCombatState([], [decayingReactive], 12);
+        let state = createCombatState([], [decayingReactive], [12, 12]);
         state = resolvePayload({ kind: 'directBurst', amount: 1000 }, 'exploit', state, 0);
 
         for (let i = 0; i < 8; i++) {
@@ -632,7 +633,7 @@ describe('refreshTriggerReadiness', () => {
 describe('fireNewlyReadyReactiveSubroutines', () => {
   it('fires a subroutine whose readiness just flipped true and is reactive', () => {
     const def = definition('r', { kind: 'always' }, { kind: 'directBurst', amount: 4 }, { reactive: true });
-    const before = createCombatState([def], [], 12);
+    const before = createCombatState([def], [], [12, 12]);
     const after = { ...before, sides: [{ ...before.sides[0], loadout: [{ ...before.sides[0].loadout[0], state: { ...before.sides[0].loadout[0].state, ready: true } }] }, before.sides[1]] as typeof before.sides };
 
     const { combatState, events } = fireNewlyReadyReactiveSubroutines(before, after);
@@ -648,8 +649,8 @@ describe('fireNewlyReadyReactiveSubroutines', () => {
       ...s,
       sides: [{ ...s.sides[0], loadout: [{ ...s.sides[0].loadout[0], state: { ...s.sides[0].loadout[0].state, ready: true } }] }, s.sides[1]] as typeof s.sides,
     });
-    const before = withReady(createCombatState([def], [], 12));
-    const after = withReady(createCombatState([def], [], 12));
+    const before = withReady(createCombatState([def], [], [12, 12]));
+    const after = withReady(createCombatState([def], [], [12, 12]));
 
     const { events } = fireNewlyReadyReactiveSubroutines(before, after);
     expect(events).toHaveLength(0);
@@ -657,7 +658,7 @@ describe('fireNewlyReadyReactiveSubroutines', () => {
 
   it('does not fire a newly-ready subroutine that is not reactive', () => {
     const def = definition('r', { kind: 'always' }, { kind: 'directBurst', amount: 4 });
-    const before = createCombatState([def], [], 12);
+    const before = createCombatState([def], [], [12, 12]);
     const after = { ...before, sides: [{ ...before.sides[0], loadout: [{ ...before.sides[0].loadout[0], state: { ...before.sides[0].loadout[0].state, ready: true } }] }, before.sides[1]] as typeof before.sides };
 
     const { events } = fireNewlyReadyReactiveSubroutines(before, after);
@@ -667,7 +668,7 @@ describe('fireNewlyReadyReactiveSubroutines', () => {
 
 describe("instantCounterPush -- reduces the opponent's gauge directly", () => {
   it("reduces the target's own winGauge progress, leaving the caster's own untouched", () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'directBurst', amount: 30 }, 'exploit', state, 1); // enemy banks some progress
     const result = resolvePayload({ kind: 'instantCounterPush', amount: 12 }, 'encryption', state, 0);
     expect(result.sides[1].winGauge.progress).toBe(18); // 30 - 12
@@ -675,14 +676,14 @@ describe("instantCounterPush -- reduces the opponent's gauge directly", () => {
   });
 
   it('floors at 0 rather than going negative -- no more midpoint cap, just a floor', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'directBurst', amount: 5 }, 'exploit', state, 1);
     const result = resolvePayload({ kind: 'instantCounterPush', amount: 999 }, 'encryption', state, 0);
     expect(result.sides[1].winGauge.progress).toBe(0);
   });
 
   it("is not blocked by the target's own wardShield -- Ward only intercepts gauge-seeking offense, not mitigation", () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'directBurst', amount: 30 }, 'exploit', state, 1);
     state = resolvePayload({ kind: 'ward', amount: 999 }, 'encryption', state, 1); // enemy shields up
     const result = resolvePayload({ kind: 'instantCounterPush', amount: 12 }, 'encryption', state, 0);
@@ -691,7 +692,7 @@ describe("instantCounterPush -- reduces the opponent's gauge directly", () => {
   });
 
   it("reduces side 0's gauge when cast by side 1", () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'directBurst', amount: 30 }, 'exploit', state, 0);
     const result = resolvePayload({ kind: 'instantCounterPush', amount: 12 }, 'encryption', state, 1);
     expect(result.sides[0].winGauge.progress).toBe(18);
@@ -700,7 +701,7 @@ describe("instantCounterPush -- reduces the opponent's gauge directly", () => {
 
 describe('tickCastersTurnPulse', () => {
   it("ticks a DoT (stored on the target) when its caster gets a turn, not the target -- credits the caster's own gauge", () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const withDot = resolvePayload(
       { kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 2 },
       'malware',
@@ -720,7 +721,7 @@ describe('tickCastersTurnPulse', () => {
   });
 
   it('removes the tick once its duration is exhausted', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     let withDot = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 2 }, 'malware', state, 0);
     withDot = tickCastersTurnPulse(withDot, 0);
     withDot = tickCastersTurnPulse(withDot, 0);
@@ -729,7 +730,7 @@ describe('tickCastersTurnPulse', () => {
   });
 
   it("a caster's-turn-pulse HoT tick reduces the opponent's gauge, uncapped -- no more midpoint cap", () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'directBurst', amount: 50 }, 'exploit', state, 1); // enemy banks 50
     const withHot = resolvePayload({ kind: 'hot', amountPerTick: 999, cadence: 'castersTurnPulse', duration: 1 }, 'encryption', state, 0);
     const result = tickCastersTurnPulse(withHot, 0);
@@ -738,7 +739,7 @@ describe('tickCastersTurnPulse', () => {
   });
 
   it('does not tick a globalPulse tick', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const withDot = resolvePayload(
       { kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 2, pointsPerTick: 10 },
       'malware',
@@ -753,7 +754,7 @@ describe('tickCastersTurnPulse', () => {
 
 describe('tickGlobalPulse', () => {
   it('ticks once combined points cross pointsPerTick', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const withDot = resolvePayload(
       { kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 3, pointsPerTick: 10 },
       'malware',
@@ -768,7 +769,7 @@ describe('tickGlobalPulse', () => {
   });
 
   it('fires multiple times from a single large occurrence, carrying overshoot', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const withDot = resolvePayload(
       { kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 5, pointsPerTick: 10 },
       'malware',
@@ -781,7 +782,7 @@ describe('tickGlobalPulse', () => {
   });
 
   it('is combined across both sides -- points scored by either side count', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     // Side 1 casts the dot (onto side 0), but side 0's own scoring should still feed it.
     const withDot = resolvePayload(
       { kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 1, pointsPerTick: 10 },
@@ -795,7 +796,7 @@ describe('tickGlobalPulse', () => {
   });
 
   it('ignores a castersTurnPulse tick and one with no pointsPerTick', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     let withDots = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'castersTurnPulse', duration: 1 }, 'malware', state, 0);
     withDots = resolvePayload({ kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 1 }, 'malware', withDots, 0); // no pointsPerTick
     const result = tickGlobalPulse(withDots, 100);
@@ -804,7 +805,7 @@ describe('tickGlobalPulse', () => {
   });
 
   it('removes the tick once duration is exhausted mid-batch', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const withDot = resolvePayload(
       { kind: 'dot', amountPerTick: 5, cadence: 'globalPulse', duration: 2, pointsPerTick: 10 },
       'malware',
@@ -819,7 +820,7 @@ describe('tickGlobalPulse', () => {
 
 describe('scheduledSabotage / resolvePendingSabotage', () => {
   it('registers a pending entry instead of resolving immediately', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload(
       { kind: 'scheduledSabotage', resolvesAt: 'nextDeal', effect: { kind: 'directBurst', amount: 15 } },
       'root',
@@ -833,7 +834,7 @@ describe('scheduledSabotage / resolvePendingSabotage', () => {
   });
 
   it('resolves and clears a pending effect', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const scheduled = resolvePayload(
       { kind: 'scheduledSabotage', resolvesAt: 'nextDeal', effect: { kind: 'directBurst', amount: 15 } },
       'root',
@@ -846,12 +847,12 @@ describe('scheduledSabotage / resolvePendingSabotage', () => {
   });
 
   it('is a no-op on an empty list', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     expect(resolvePendingSabotage(state)).toEqual(state);
   });
 
   it('resolves multiple pending effects from both casters', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload(
       { kind: 'scheduledSabotage', resolvesAt: 'nextDeal', effect: { kind: 'directBurst', amount: 10 } },
       'root',
@@ -870,7 +871,7 @@ describe('scheduledSabotage / resolvePendingSabotage', () => {
   });
 
   it('a wrapped scheduledSabotage re-schedules for a future deal instead of resolving now', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const scheduled = resolvePayload(
       {
         kind: 'scheduledSabotage',
@@ -893,12 +894,12 @@ describe('scheduledSabotage / resolvePendingSabotage', () => {
 
 describe('applyThrottled', () => {
   it('leaves points unchanged when the side has no active Throttled debuff', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     expect(applyThrottled(state, 0, 12)).toBe(12);
   });
 
   it('dents points by the flat reduction, floored, never exceeding the original', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
     expect(applyThrottled(state, 0, 12)).toBe(8); // 12 - 4 (THROTTLED_REDUCTION)
     expect(applyThrottled(state, 0, 2)).toBe(1); // 2 - 4 would be -2, floored at 1
@@ -906,7 +907,7 @@ describe('applyThrottled', () => {
   });
 
   it('does not affect the other side', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
     expect(applyThrottled(state, 1, 12)).toBe(12);
   });
@@ -914,14 +915,14 @@ describe('applyThrottled', () => {
 
 describe("Corrupted -- reduces the debuffed side's own payload magnitude", () => {
   it('halves a directBurst from a corrupted caster', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
     const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0);
     expect(result.sides[0].winGauge.progress).toBe(5);
   });
 
   it("does not reduce riskRewardBurst's Heat cost, only its magnitude", () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1);
     const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10, heatCost: 6 }, 'exploit', state, 0);
     expect(result.sides[0].winGauge.progress).toBe(5);
@@ -929,7 +930,7 @@ describe("Corrupted -- reduces the debuffed side's own payload magnitude", () =>
   });
 
   it('halves a dot tick from a corrupted caster, re-checked at tick time', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     const withDot = resolvePayload({ kind: 'dot', amountPerTick: 10, cadence: 'castersTurnPulse', duration: 1 }, 'malware', state, 0);
     const corrupted = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', withDot, 1); // applies to side 0, the dot's caster
     const result = tickCastersTurnPulse(corrupted, 0);
@@ -937,7 +938,7 @@ describe("Corrupted -- reduces the debuffed side's own payload magnitude", () =>
   });
 
   it('is not applied to ward, cleanse, or debuff-application', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
     const withWard = resolvePayload({ kind: 'ward', amount: 6 }, 'encryption', state, 0);
     expect(withWard.sides[0].wardShield).toBe(6); // unaffected by corruption
@@ -946,19 +947,19 @@ describe("Corrupted -- reduces the debuffed side's own payload magnitude", () =>
 
 describe("Choked -- temporary gauge-threshold bump", () => {
   it("raises the target's gauge threshold immediately on application", () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 2 }, 'malware', state, 0);
     expect(result.sides[1].gauge.threshold).toBe(17);
   });
 
   it('does not touch the threshold for a non-choked debuff', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 5, duration: 2 }, 'malware', state, 0);
     expect(result.sides[1].gauge.threshold).toBe(12);
   });
 
   it('reverts the bump when the debuff expires naturally (tickDebuffDurations)', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 2 }, 'malware', state, 0);
     expect(state.sides[1].gauge.threshold).toBe(17);
 
@@ -972,7 +973,7 @@ describe("Choked -- temporary gauge-threshold bump", () => {
   });
 
   it('reverts the bump when cleansed early, before natural expiry', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 10 }, 'malware', state, 0);
     expect(state.sides[1].gauge.threshold).toBe(17);
 
@@ -982,14 +983,14 @@ describe("Choked -- temporary gauge-threshold bump", () => {
   });
 
   it('cleansing a non-choked debuff does not touch the threshold', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 5, duration: 10 }, 'malware', state, 0);
     const cleansed = resolvePayload({ kind: 'cleanse', debuffId: 'corrupted' }, 'encryption', state, 1);
     expect(cleansed.sides[1].gauge.threshold).toBe(12);
   });
 
   it("floors the reversal at MIN_INITIATIVE_THRESHOLD (natural expiry) -- the session 28 real-hang regression: Haste lowering the same threshold in between must not let Choked's revert push it to 0 or below", () => {
-    let state = createCombatState([], [], 4);
+    let state = createCombatState([], [], [4, 4]);
     // Choked raises 4 -> 9.
     state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 2 }, 'malware', state, 0);
     expect(state.sides[1].gauge.threshold).toBe(9);
@@ -1008,7 +1009,7 @@ describe("Choked -- temporary gauge-threshold bump", () => {
   });
 
   it('floors the reversal at MIN_INITIATIVE_THRESHOLD (early cleanse) -- same regression, the cleanse path', () => {
-    let state = createCombatState([], [], 4);
+    let state = createCombatState([], [], [4, 4]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 10 }, 'malware', state, 0);
     state = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 8 }, 'root', state, 1);
     expect(state.sides[1].gauge.threshold).toBe(1);
@@ -1020,7 +1021,7 @@ describe("Choked -- temporary gauge-threshold bump", () => {
 
 describe('instantManipulation -- enemyGaugeThreshold target', () => {
   it("permanently raises the target's gauge threshold, no duration/expiry", () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload(
       { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: 8 },
       'root',
@@ -1032,7 +1033,7 @@ describe('instantManipulation -- enemyGaugeThreshold target', () => {
   });
 
   it('is reduced by Corrupted like any other instantManipulation amount', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
     const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: 8 }, 'root', state, 0);
     expect(result.sides[1].gauge.threshold).toBe(16); // 12 + 4 (halved)
@@ -1041,33 +1042,33 @@ describe('instantManipulation -- enemyGaugeThreshold target', () => {
 
 describe('instantManipulation -- ownGauge/ownGaugeThreshold targets (haste, session 24)', () => {
   it("ownGauge adds directly to the caster's own gauge progress, never the target's", () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGauge', amount: 5 }, 'root', state, 0);
     expect(result.sides[0].gauge.progress).toBe(5);
     expect(result.sides[1].gauge.progress).toBe(0);
   });
 
   it("ownGauge can push progress past threshold without clamping -- the overflow is left for the next natural addPoints to carry", () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGauge', amount: 20 }, 'root', state, 0);
     expect(result.sides[0].gauge.progress).toBe(20); // uncapped, not wrapped/floored here
   });
 
   it("ownGaugeThreshold permanently lowers the caster's own gauge threshold", () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 5 }, 'root', state, 0);
     expect(result.sides[0].gauge.threshold).toBe(7);
     expect(result.sides[1].gauge.threshold).toBe(12); // untouched
   });
 
   it('ownGaugeThreshold is floored so it can never reach 0 or below', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 500 }, 'root', state, 0);
     expect(result.sides[0].gauge.threshold).toBeGreaterThan(0);
   });
 
   it('both haste targets are reduced by Corrupted like any other instantManipulation amount', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
     const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGauge', amount: 8 }, 'root', state, 0);
     expect(result.sides[0].gauge.progress).toBe(4); // 8 halved
@@ -1076,7 +1077,7 @@ describe('instantManipulation -- ownGauge/ownGaugeThreshold targets (haste, sess
 
 describe('tickDebuffDurations', () => {
   it('decrements remainingDuration and removes expired debuffs', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 2 }, 'malware', state, 0);
     state = tickDebuffDurations(state);
     expect(state.sides[1].debuffs).toEqual([{ debuffId: 'corrupted', magnitude: 1, remainingDuration: 1 }]);
@@ -1085,7 +1086,7 @@ describe('tickDebuffDurations', () => {
   });
 
   it('is a no-op with no active debuffs', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     expect(tickDebuffDurations(state)).toEqual(state);
   });
 });
@@ -1094,7 +1095,7 @@ describe('instantManipulation -- suitTally target', () => {
   it("boosts every suitTally Accumulator on the caster's own side, regardless of watched suit", () => {
     const watchesSpades = definition('a', { kind: 'accumulator', metric: 'suitTally', suit: 0, threshold: 5 }, { kind: 'directBurst', amount: 1 });
     const watchesHearts = definition('b', { kind: 'accumulator', metric: 'suitTally', suit: 1, threshold: 5 }, { kind: 'directBurst', amount: 1 });
-    const state = createCombatState([watchesSpades, watchesHearts], [], 12);
+    const state = createCombatState([watchesSpades, watchesHearts], [], [12, 12]);
     const result = resolvePayload({ kind: 'instantManipulation', target: 'suitTally', amount: 3 }, 'root', state, 0);
     expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(3);
     expect(result.sides[0].loadout[1].state.accumulatedProgress).toBe(3);
@@ -1103,7 +1104,7 @@ describe('instantManipulation -- suitTally target', () => {
   it('does not touch a non-suitTally accumulator or the enemy side', () => {
     const points = definition('a', { kind: 'accumulator', metric: 'points', threshold: 5 }, { kind: 'directBurst', amount: 1 });
     const enemyWatcher = definition('b', { kind: 'accumulator', metric: 'suitTally', suit: 0, threshold: 5 }, { kind: 'directBurst', amount: 1 });
-    const state = createCombatState([points], [enemyWatcher], 12);
+    const state = createCombatState([points], [enemyWatcher], [12, 12]);
     const result = resolvePayload({ kind: 'instantManipulation', target: 'suitTally', amount: 3 }, 'root', state, 0);
     expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(0);
     expect(result.sides[1].loadout[0].state.accumulatedProgress).toBe(0);
@@ -1111,7 +1112,7 @@ describe('instantManipulation -- suitTally target', () => {
 
   it('marks the subroutine ready once the boost crosses the threshold', () => {
     const watcher = definition('a', { kind: 'accumulator', metric: 'suitTally', suit: 0, threshold: 3 }, { kind: 'directBurst', amount: 1 });
-    const state = createCombatState([watcher], [], 12);
+    const state = createCombatState([watcher], [], [12, 12]);
     const result = resolvePayload({ kind: 'instantManipulation', target: 'suitTally', amount: 3 }, 'root', state, 0);
     expect(result.sides[0].loadout[0].state.ready).toBe(true);
   });
@@ -1120,30 +1121,30 @@ describe('instantManipulation -- suitTally target', () => {
 describe('mitigationBanked accumulator (session 28, Circuit Breaker)', () => {
   it('ward/instantCounterPush/hot each credit the caster\'s own mitigationBanked accumulator by their amount', () => {
     const watcher = definition('breaker', { kind: 'accumulator', metric: 'mitigationBanked', threshold: 100 }, { kind: 'directBurst', amount: 1 });
-    const afterWard = resolvePayload({ kind: 'ward', amount: 5 }, 'neutral', createCombatState([watcher], [], 12), 0);
+    const afterWard = resolvePayload({ kind: 'ward', amount: 5 }, 'neutral', createCombatState([watcher], [], [12, 12]), 0);
     expect(afterWard.sides[0].loadout[0].state.accumulatedProgress).toBe(5);
 
-    const afterCounterPush = resolvePayload({ kind: 'instantCounterPush', amount: 5 }, 'neutral', createCombatState([watcher], [], 12), 0);
+    const afterCounterPush = resolvePayload({ kind: 'instantCounterPush', amount: 5 }, 'neutral', createCombatState([watcher], [], [12, 12]), 0);
     expect(afterCounterPush.sides[0].loadout[0].state.accumulatedProgress).toBe(5);
 
     // hot banks its full potential (amountPerTick * duration) at cast time.
-    const afterHot = resolvePayload({ kind: 'hot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 4 }, 'neutral', createCombatState([watcher], [], 12), 0);
+    const afterHot = resolvePayload({ kind: 'hot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 4 }, 'neutral', createCombatState([watcher], [], [12, 12]), 0);
     expect(afterHot.sides[0].loadout[0].state.accumulatedProgress).toBe(12);
   });
 
   it('does not credit the opponent\'s mitigationBanked accumulator, and ignores non-mitigation payloads', () => {
     const watcher = definition('breaker', { kind: 'accumulator', metric: 'mitigationBanked', threshold: 100 }, { kind: 'directBurst', amount: 1 });
-    const state = createCombatState([], [watcher], 12);
+    const state = createCombatState([], [watcher], [12, 12]);
     const afterWard = resolvePayload({ kind: 'ward', amount: 5 }, 'neutral', state, 0);
     expect(afterWard.sides[1].loadout[0].state.accumulatedProgress).toBe(0);
 
-    const afterBurst = resolvePayload({ kind: 'directBurst', amount: 5 }, 'exploit', createCombatState([watcher], [], 12), 0);
+    const afterBurst = resolvePayload({ kind: 'directBurst', amount: 5 }, 'exploit', createCombatState([watcher], [], [12, 12]), 0);
     expect(afterBurst.sides[0].loadout[0].state.accumulatedProgress).toBe(0);
   });
 
   it('marks Circuit Breaker ready and fires it once enough mitigation is banked', () => {
     const circuitBreaker = NEUTRAL_RARES.find((s) => s.id === 'circuit-breaker')!;
-    let state = createCombatState([circuitBreaker], [], 12);
+    let state = createCombatState([circuitBreaker], [], [12, 12]);
     state = resolvePayload({ kind: 'ward', amount: 6 }, 'encryption', state, 0);
     expect(state.sides[0].loadout[0].state.ready).toBe(false);
     state = resolvePayload({ kind: 'instantCounterPush', amount: 6 }, 'encryption', state, 0);
@@ -1153,7 +1154,7 @@ describe('mitigationBanked accumulator (session 28, Circuit Breaker)', () => {
   it("fires Breacher's Lock Fatigue (session 29) once Session Lock's own suppression casts bank enough mitigation", () => {
     const sessionLock = BREACHER_LOADOUT.find((s) => s.id === 'session-lock')!;
     const lockFatigue = BREACHER_LOADOUT.find((s) => s.id === 'lock-fatigue')!;
-    let state = createCombatState([sessionLock, lockFatigue], [], 12);
+    let state = createCombatState([sessionLock, lockFatigue], [], [12, 12]);
     // 2 Session Lock casts (amount 7 each = 14) aren't enough on their own
     // (threshold 20, balance pass session 38 follow-up -- was 28).
     for (let i = 0; i < 2; i++) state = resolvePayload(sessionLock.payload, sessionLock.archetype, state, 0);
@@ -1166,20 +1167,20 @@ describe('mitigationBanked accumulator (session 28, Circuit Breaker)', () => {
 
 describe('cribbageLayerManipulation / consumePendingCribbageManipulation', () => {
   it('registers a pending entry instead of resolving immediately', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload({ kind: 'cribbageLayerManipulation', action: 'forceDiscard' }, 'root', state, 0);
     expect(result.pendingCribbageManipulation).toEqual([{ casterSide: 0, action: 'forceDiscard', suit: undefined }]);
   });
 
   it("forceDiscard resolves to forcing the *target*, not the caster", () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'cribbageLayerManipulation', action: 'forceDiscard' }, 'root', state, 0);
     const { forHand } = consumePendingCribbageManipulation(state, 0);
     expect(forHand.forcedDiscardSide).toBe(1);
   });
 
   it('skewCut biases toward a Jack when the caster is dealing, away otherwise', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'cribbageLayerManipulation', action: 'skewCut' }, 'root', state, 0);
     expect(consumePendingCribbageManipulation(state, 0).forHand.cutBias).toBe('towardJack');
     expect(consumePendingCribbageManipulation(state, 1).forHand.cutBias).toBe('awayFromJack');
@@ -1187,7 +1188,7 @@ describe('cribbageLayerManipulation / consumePendingCribbageManipulation', () =>
 
   it('markSuit applies its tally credit immediately and clears the pending list', () => {
     const watcher = definition('a', { kind: 'accumulator', metric: 'suitTally', suit: 2, threshold: 1 }, { kind: 'directBurst', amount: 1 });
-    let state = createCombatState([watcher], [], 12);
+    let state = createCombatState([watcher], [], [12, 12]);
     state = resolvePayload({ kind: 'cribbageLayerManipulation', action: 'markSuit', suit: 2 }, 'root', state, 0);
     expect(state.pendingCribbageManipulation).toHaveLength(1);
 
@@ -1199,7 +1200,7 @@ describe('cribbageLayerManipulation / consumePendingCribbageManipulation', () =>
   });
 
   it('peekCrib is consumed with no effect on state or forHand', () => {
-    let state = createCombatState([], [], 12);
+    let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'cribbageLayerManipulation', action: 'peekCrib' }, 'root', state, 0);
     const { combatState: result, forHand } = consumePendingCribbageManipulation(state, 0);
     expect(result.pendingCribbageManipulation).toEqual([]);
@@ -1207,7 +1208,7 @@ describe('cribbageLayerManipulation / consumePendingCribbageManipulation', () =>
   });
 
   it('is a no-op with nothing pending', () => {
-    const state = createCombatState([], [], 12);
+    const state = createCombatState([], [], [12, 12]);
     const { combatState: result, forHand } = consumePendingCribbageManipulation(state, 0);
     expect(result).toEqual(state);
     expect(forHand).toEqual({});
@@ -1217,7 +1218,7 @@ describe('cribbageLayerManipulation / consumePendingCribbageManipulation', () =>
 describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/Containment redesign)', () => {
   describe('Foothold (Breacher)', () => {
     it("adds a symmetric bonus the first time the player's own gauge reaches 50% of its threshold", () => {
-      const before = createCombatState([], [], 12, 'breacher', 100);
+      const before = createCombatState([], [], [12, 12], 'breacher', [100, 100]);
       const state = {
         ...before,
         sides: [
@@ -1232,7 +1233,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
 
     it('does not trigger before reaching 50%', () => {
-      const before = createCombatState([], [], 12, 'breacher', 100);
+      const before = createCombatState([], [], [12, 12], 'breacher', [100, 100]);
       const state = { ...before, sides: [{ ...before.sides[0], winGauge: { progress: 49, threshold: 100 } }, before.sides[1]] as typeof before.sides };
       const result = applyFootholdBonus(state);
       expect(result.sides[0].winGauge.progress).toBe(49);
@@ -1240,7 +1241,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
 
     it('does not re-trigger once already consumed', () => {
-      const before = createCombatState([], [], 12, 'breacher', 100);
+      const before = createCombatState([], [], [12, 12], 'breacher', [100, 100]);
       const at50 = { ...before, sides: [{ ...before.sides[0], winGauge: { progress: 50, threshold: 100 } }, before.sides[1]] as typeof before.sides };
       const first = applyFootholdBonus(at50);
       const second = applyFootholdBonus(first);
@@ -1248,7 +1249,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
 
     it('does not trigger for a class other than breacher', () => {
-      const before = createCombatState([], [], 12, 'blackhat', 100);
+      const before = createCombatState([], [], [12, 12], 'blackhat', [100, 100]);
       const state = { ...before, sides: [{ ...before.sides[0], winGauge: { progress: 50, threshold: 100 } }, before.sides[1]] as typeof before.sides };
       expect(applyFootholdBonus(state)).toEqual(state);
     });
@@ -1256,27 +1257,27 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
 
   describe('Zero Day (Blackhat)', () => {
     it('waives Heat cost for the first Heat-costing Exploit fire', () => {
-      const state = createCombatState([], [], 12, 'blackhat');
+      const state = createCombatState([], [], [12, 12], 'blackhat');
       const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 4 }, 'exploit', state, 0);
       expect(result.sides[0].heat).toBe(0);
       expect(result.passiveTriggered).toBe(true);
     });
 
     it('costs Heat normally on the second Heat-costing Exploit fire', () => {
-      let state = createCombatState([], [], 12, 'blackhat');
+      let state = createCombatState([], [], [12, 12], 'blackhat');
       state = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 4 }, 'exploit', state, 0);
       state = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 4 }, 'exploit', state, 0);
       expect(state.sides[0].heat).toBe(4);
     });
 
     it('does not consume the passive on a zero-cost fire', () => {
-      const state = createCombatState([], [], 12, 'blackhat');
+      const state = createCombatState([], [], [12, 12], 'blackhat');
       const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 0 }, 'exploit', state, 0);
       expect(result.passiveTriggered).toBe(false);
     });
 
     it('does not apply for a different class', () => {
-      const state = createCombatState([], [], 12, 'breacher');
+      const state = createCombatState([], [], [12, 12], 'breacher');
       const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 4 }, 'exploit', state, 0);
       expect(result.sides[0].heat).toBe(4);
     });
@@ -1287,7 +1288,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       definition('root-piece', { kind: 'always' }, { kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, { archetype: 'root' });
 
     it('advances the first Root subroutine and credits win gauge when a Malware debuff is applied -- persistent, not gated by passiveTriggered', () => {
-      const state = createCombatState([rootPiece()], [], 12, 'saboteur');
+      const state = createCombatState([rootPiece()], [], [12, 12], 'saboteur');
       const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 0);
       expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(3);
       expect(result.sides[0].winGauge.progress).toBe(2); // SLEEPER_CELL_CREDIT_AMOUNT (4 -> 2, session 39 balance fix)
@@ -1295,7 +1296,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
 
     it('fires again on a second qualifying debuff -- persistence, the actual fix for the old one-shot gate', () => {
-      let state = createCombatState([rootPiece()], [], 12, 'saboteur');
+      let state = createCombatState([rootPiece()], [], [12, 12], 'saboteur');
       state = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 0);
       state = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 0);
       expect(state.sides[0].loadout[0].state.accumulatedProgress).toBe(6);
@@ -1309,7 +1310,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
         { kind: 'dot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
         { archetype: 'malware' },
       );
-      let state = createCombatState([dotPiece, rootPiece()], [], 12, 'saboteur');
+      let state = createCombatState([dotPiece, rootPiece()], [], [12, 12], 'saboteur');
       state = resolvePayload(dotPiece.payload, 'malware', state, 0);
       const result = tickCastersTurnPulse(state, 0);
       expect(result.sides[0].winGauge.progress).toBe(5); // 3 (the DoT itself) + 2 (Sleeper Cell credit)
@@ -1323,28 +1324,28 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
         { kind: 'hot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 5 },
         { archetype: 'encryption' },
       );
-      let state = createCombatState([hotPiece], [rootPiece()], 12, 'saboteur');
+      let state = createCombatState([hotPiece], [rootPiece()], [12, 12], 'saboteur');
       state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
       const result = tickCastersTurnPulse(state, 0);
       expect(result.sides[0].winGauge.progress).toBe(0); // HoT itself only reduces the opponent, credits nothing to the caster
     });
 
     it('does not trigger for a debuff cast by a non-Malware subroutine', () => {
-      const state = createCombatState([rootPiece()], [], 12, 'saboteur');
+      const state = createCombatState([rootPiece()], [], [12, 12], 'saboteur');
       const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(0);
       expect(result.sides[0].winGauge.progress).toBe(0);
     });
 
     it("does not trigger for the enemy's own debuff", () => {
-      const state = createCombatState([], [rootPiece()], 12, 'saboteur');
+      const state = createCombatState([], [rootPiece()], [12, 12], 'saboteur');
       const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 1);
       expect(result.sides[1].loadout[0].state.accumulatedProgress).toBe(0);
       expect(result.sides[1].winGauge.progress).toBe(0);
     });
 
     it('does not apply for a different class', () => {
-      const state = createCombatState([rootPiece()], [], 12, 'breacher');
+      const state = createCombatState([rootPiece()], [], [12, 12], 'breacher');
       const result = resolvePayload({ kind: 'debuff', debuffId: 'throttled', magnitude: 2, duration: 2 }, 'malware', state, 0);
       expect(result.sides[0].loadout[0].state.accumulatedProgress).toBe(0);
       expect(result.sides[0].winGauge.progress).toBe(0);
@@ -1359,7 +1360,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
         { kind: 'directBurst', amount: 5 },
         { archetype: 'exploit' },
       );
-      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const state = createCombatState([exploitPiece], [], [12, 12], 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 8 });
       expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 6.5 }); // + PRIMED_MAGNITUDE_BONUS (3 -> 1.5, session 39)
@@ -1373,7 +1374,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
         { kind: 'directBurst', amount: 5 },
         { archetype: 'exploit' },
       );
-      let state = createCombatState([exploitPiece], [], 12, 'operator');
+      let state = createCombatState([exploitPiece], [], [12, 12], 'operator');
       state = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       state = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(state.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 6 });
@@ -1387,7 +1388,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
         { kind: 'directBurst', amount: 5 },
         { archetype: 'exploit' },
       );
-      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const state = createCombatState([exploitPiece], [], [12, 12], 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({
         kind: 'occurrence',
@@ -1404,7 +1405,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
         { kind: 'directBurst', amount: 5 },
         { archetype: 'exploit' },
       );
-      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const state = createCombatState([exploitPiece], [], [12, 12], 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'occurrence', category: 'flush', variation: 'scaling', cap: 4 });
       expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 6.5 }); // + PRIMED_MAGNITUDE_BONUS (1.5)
@@ -1417,7 +1418,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
         { kind: 'directBurst', amount: 5 },
         { archetype: 'exploit' },
       );
-      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const state = createCombatState([exploitPiece], [], [12, 12], 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'selfState', condition: 'heatAbove', value: 8 });
     });
@@ -1429,14 +1430,14 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
         { kind: 'directBurst', amount: 5 },
         { archetype: 'exploit' },
       );
-      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const state = createCombatState([exploitPiece], [], [12, 12], 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'selfState', condition: 'heatBelow', value: 12 });
     });
 
     it('still boosts payload magnitude even when the trigger has no reducible knob', () => {
       const exploitPiece = definition('exploit-piece', { kind: 'always' }, { kind: 'directBurst', amount: 5 }, { archetype: 'exploit' });
-      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const state = createCombatState([exploitPiece], [], [12, 12], 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'always' });
       expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 6.5 }); // + PRIMED_MAGNITUDE_BONUS (1.5)
@@ -1449,7 +1450,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
         { kind: 'cleanse' },
         { archetype: 'exploit' },
       );
-      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const state = createCombatState([exploitPiece], [], [12, 12], 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'cleanse' });
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 8 });
@@ -1462,7 +1463,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
         { kind: 'directBurst', amount: 5 },
         { archetype: 'exploit' },
       );
-      const state = createCombatState([exploitPiece], [], 12, 'operator');
+      const state = createCombatState([exploitPiece], [], [12, 12], 'operator');
       const result = resolvePayload({ kind: 'directBurst', amount: 3 }, 'exploit', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 10 });
       expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 5 });
@@ -1484,7 +1485,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     );
 
     it("a lone HoT tick reduces the opponent's gauge as normal, but credits nothing to the caster on its own -- it only queues a bonus for the caster's next DoT tick", () => {
-      let state = createCombatState([], [], 12, 'warden');
+      let state = createCombatState([], [], [12, 12], 'warden');
       state = resolvePayload({ kind: 'directBurst', amount: 50 }, 'exploit', state, 1); // enemy banks 50
       state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
       const result = tickCastersTurnPulse(state, 0);
@@ -1493,14 +1494,14 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
 
     it('a lone DoT tick credits its own base amount only -- no bonus queued yet either direction', () => {
-      let state = createCombatState([], [], 12, 'warden');
+      let state = createCombatState([], [], [12, 12], 'warden');
       state = resolvePayload(dotPiece.payload, 'malware', state, 0);
       const result = tickCastersTurnPulse(state, 0);
       expect(result.sides[0].winGauge.progress).toBe(4); // just the DoT's own amountPerTick
     });
 
     it("within one tick pass, DoT fires before HoT (processTickList's own dots-before-hots order) -- so the DoT ticks unboosted first, then queues a flat bonus that immediately boosts that same pass's HoT tick", () => {
-      let state = createCombatState([], [], 12, 'warden');
+      let state = createCombatState([], [], [12, 12], 'warden');
       state = resolvePayload({ kind: 'directBurst', amount: 50 }, 'exploit', state, 1); // enemy banks 50
       state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
       state = resolvePayload(dotPiece.payload, 'malware', state, 0);
@@ -1513,7 +1514,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
 
     it('a second pass then shows the DoT tick benefiting from the bonus the first pass\'s HoT tick queued -- the reciprocal loop actually compounding, not just a one-time interaction', () => {
-      let state = createCombatState([], [], 12, 'warden');
+      let state = createCombatState([], [], [12, 12], 'warden');
       state = resolvePayload({ kind: 'directBurst', amount: 50 }, 'exploit', state, 1);
       state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
       state = resolvePayload(dotPiece.payload, 'malware', state, 0);
@@ -1523,7 +1524,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
 
     it('does not apply for a class other than Warden', () => {
-      let state = createCombatState([], [], 12); // no classId
+      let state = createCombatState([], [], [12, 12]); // no classId
       state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
       state = resolvePayload(dotPiece.payload, 'malware', state, 0);
       state = tickCastersTurnPulse(state, 0);
@@ -1534,7 +1535,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
 
   describe('Return to Sender (Ghost, reworked session 25)', () => {
     it("credits Ghost's own gauge proportionally whenever the shield absorbs a hit", () => {
-      let state = createCombatState([], [], 12, 'ghost');
+      let state = createCombatState([], [], [12, 12], 'ghost');
       state = resolvePayload({ kind: 'ward', amount: 20 }, 'encryption', state, 0); // Ghost shields up
       const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 1); // enemy attacks, fully absorbed
       expect(result.sides[0].wardShield).toBe(10); // 20 - 10 absorbed
@@ -1543,7 +1544,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
 
     it('credits proportionally to partial absorption too, not just a full break', () => {
-      let state = createCombatState([], [], 12, 'ghost');
+      let state = createCombatState([], [], [12, 12], 'ghost');
       state = resolvePayload({ kind: 'ward', amount: 6 }, 'encryption', state, 0);
       const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 1); // shield only partially covers it
       expect(result.sides[0].wardShield).toBe(0); // fully consumed
@@ -1552,21 +1553,21 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
 
     it('does not credit for a class other than Ghost', () => {
-      let state = createCombatState([], [], 12);
+      let state = createCombatState([], [], [12, 12]);
       state = resolvePayload({ kind: 'ward', amount: 20 }, 'encryption', state, 0);
       const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 1);
       expect(result.sides[0].winGauge.progress).toBe(0); // no bonus
     });
 
     it("does not credit when Ghost's shield doesn't own the absorption (enemy's own shield absorbing Ghost's hit)", () => {
-      let state = createCombatState([], [], 12, 'ghost');
+      let state = createCombatState([], [], [12, 12], 'ghost');
       state = resolvePayload({ kind: 'ward', amount: 20 }, 'encryption', state, 1); // enemy shields, not Ghost
       const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0); // Ghost attacks into it
       expect(result.sides[0].winGauge.progress).toBe(0); // Ghost's own hit got absorbed, no credit for Ghost
     });
 
     it("credits Ghost's own gauge from instantCounterPush alone, with zero Ward activity -- the reachability fix (Null Session, Ghost's actual starting piece, is instantCounterPush, not Ward)", () => {
-      const state = createCombatState([], [], 12, 'ghost');
+      const state = createCombatState([], [], [12, 12], 'ghost');
       const result = resolvePayload({ kind: 'instantCounterPush', amount: 10 }, 'encryption', state, 0);
       expect(result.sides[1].winGauge.progress).toBe(0); // enemy's gauge reduced
       expect(result.sides[0].wardShield).toBe(0); // confirms no Ward involvement at all
@@ -1574,7 +1575,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
     });
 
     it('does not credit instantCounterPush for a class other than Ghost', () => {
-      const state = createCombatState([], [], 12);
+      const state = createCombatState([], [], [12, 12]);
       const result = resolvePayload({ kind: 'instantCounterPush', amount: 10 }, 'encryption', state, 0);
       expect(result.sides[0].winGauge.progress).toBe(0);
     });
@@ -1586,7 +1587,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
         { kind: 'hot', amountPerTick: 4, cadence: 'castersTurnPulse', duration: 5 },
         { archetype: 'encryption' },
       );
-      let state = createCombatState([hotPiece], [], 12, 'ghost');
+      let state = createCombatState([hotPiece], [], [12, 12], 'ghost');
       state = resolvePayload(hotPiece.payload, 'encryption', state, 0);
       const result = tickCastersTurnPulse(state, 0);
       expect(result.sides[1].winGauge.progress).toBe(0); // enemy's gauge reduced by the HoT
@@ -1600,10 +1601,40 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
         { kind: 'dot', amountPerTick: 4, cadence: 'castersTurnPulse', duration: 5 },
         { archetype: 'malware' },
       );
-      let state = createCombatState([dotPiece], [], 12, 'ghost');
+      let state = createCombatState([dotPiece], [], [12, 12], 'ghost');
       state = resolvePayload(dotPiece.payload, 'malware', state, 0);
       const result = tickCastersTurnPulse(state, 0);
       expect(result.sides[0].winGauge.progress).toBe(4); // just the DoT itself, no extra Return to Sender credit
     });
+  });
+});
+
+describe('adjustSideWinThreshold (session 40 dynamic-hook primitive)', () => {
+  it("shrinks only the targeted side's own winGauge threshold", () => {
+    const state = createCombatState([], [], [12, 12], undefined, [50, 50]);
+    const result = adjustSideWinThreshold(state, 0, 15, 10);
+    expect(result.sides[0].winGauge.threshold).toBe(35);
+    expect(result.sides[1].winGauge.threshold).toBe(50); // untouched
+  });
+
+  it('never touches progress, only threshold', () => {
+    let state = createCombatState([], [], [12, 12], undefined, [50, 50]);
+    state = resolvePayload({ kind: 'directBurst', amount: 20 }, 'exploit', state, 0);
+    const result = adjustSideWinThreshold(state, 0, 15, 10);
+    expect(result.sides[0].winGauge.progress).toBe(20); // unchanged
+    expect(result.sides[0].winGauge.threshold).toBe(35);
+  });
+
+  it('floors at minThreshold, same as gauges.ts shrinkDuelThreshold', () => {
+    const state = createCombatState([], [], [12, 12], undefined, [50, 50]);
+    const result = adjustSideWinThreshold(state, 1, 1000, 10);
+    expect(result.sides[1].winGauge.threshold).toBe(10);
+    expect(result.sides[0].winGauge.threshold).toBe(50); // untouched
+  });
+
+  it('is a no-op for a non-positive amount', () => {
+    const state = createCombatState([], [], [12, 12], undefined, [50, 50]);
+    expect(adjustSideWinThreshold(state, 0, 0, 10)).toBe(state);
+    expect(adjustSideWinThreshold(state, 0, -5, 10)).toBe(state);
   });
 });

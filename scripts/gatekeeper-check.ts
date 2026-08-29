@@ -38,7 +38,7 @@ import { playRun, opportunisticTraversal, type GatekeeperFightContext } from '..
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import { playCombat } from '../src/engine/combat';
 import { GAUGE_THRESHOLD, WIN_THRESHOLD } from '../src/engine/encounters';
-import { enemySkill, magnitudeScalerFor, scaledEnemyLoadout } from '../src/engine/enemies';
+import { enemySkill, magnitudeScalerFor, gaugeThresholdFor, winThresholdFor, scaledEnemyLoadout } from '../src/engine/enemies';
 import { discardSkillStrategy, pegSkillStrategy } from '../src/engine/ai';
 import { BURNER_DEFINITIONS } from '../src/engine/burners';
 import type { ClassId } from '../src/engine/classes';
@@ -115,8 +115,11 @@ for (const classId of classes) {
         const fightSeed = seed * 4 + capture.layerIndex;
         const result = playCombat([capture.playerState.installedLoadout, scaledLoadout], {
           seed: fightSeed,
-          gaugeThreshold: GAUGE_THRESHOLD,
-          winThreshold: WIN_THRESHOLD,
+          // Session 40: same per-side accessors resolveFight itself now
+          // uses, so this diagnostic stays consistent as gatekeeper
+          // threshold overrides get authored in a future balance pass.
+          gaugeThreshold: [GAUGE_THRESHOLD, gaugeThresholdFor(capture.enemy, capture.layerIndex, capture.fightsResolved, GAUGE_THRESHOLD)],
+          winThreshold: [WIN_THRESHOLD, winThresholdFor(capture.enemy, capture.layerIndex, capture.fightsResolved, WIN_THRESHOLD)],
           classId: capture.playerState.classId,
           enemyPassiveIds: capture.enemy.passiveIds,
           ownedModIds: capture.playerState.ownedModIds,

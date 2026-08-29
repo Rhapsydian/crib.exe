@@ -139,6 +139,17 @@ export interface EnemyDefinition {
    * sense for an identity that can legitimately appear at several
    * different layers. */
   magnitudeScaler?: number;
+  /** Per-side threshold overrides (session 40), gatekeeper-only -- same
+   * reasoning as magnitudeScaler above: gatekeepers never repeat across
+   * layers, so a stored per-identity value is meaningful in a way it
+   * wouldn't be for regular/elite (which always read the flat
+   * GAUGE_THRESHOLD/WIN_THRESHOLD constants instead, see
+   * gaugeThresholdFor/winThresholdFor below). Undefined (falls back to
+   * the flat constant) for every gatekeeper as of this session -- real
+   * per-gatekeeper values are the next balance pass's job, not this
+   * plumbing session's. */
+  gaugeThreshold?: number;
+  winThreshold?: number;
 }
 
 const SUBROUTINE_BY_ID: ReadonlyMap<string, SubroutineDefinition> = new Map(
@@ -443,6 +454,26 @@ function enemyMagnitudeScaler(layerIndex: number, fightsResolved: number): numbe
 export function magnitudeScalerFor(enemy: EnemyDefinition, layerIndex: number, fightsResolved: number): number {
   if (enemy.tier === 'gatekeeper') return enemy.magnitudeScaler ?? 1;
   return enemyMagnitudeScaler(layerIndex, fightsResolved);
+}
+
+/** Per-side threshold accessors (session 40) -- the real gaugeThreshold/
+ * winThreshold for any enemy encounter, gatekeeper or not. Mirrors
+ * magnitudeScalerFor's own shape, with one difference: there's no
+ * universal "no override" constant the way magnitude has `1`, since the
+ * flat values (GAUGE_THRESHOLD/WIN_THRESHOLD) live in encounters.ts,
+ * which already imports from this file -- `flatDefault` is passed in by
+ * the caller instead of imported here, to avoid a circular import.
+ * Regular/elite always return flatDefault unchanged -- no per-layer
+ * formula the way magnitude gets one (a real, separate future balance
+ * question, out of scope for this plumbing-only session). */
+export function gaugeThresholdFor(enemy: EnemyDefinition, layerIndex: number, fightsResolved: number, flatDefault: number): number {
+  if (enemy.tier === 'gatekeeper') return enemy.gaugeThreshold ?? flatDefault;
+  return flatDefault;
+}
+
+export function winThresholdFor(enemy: EnemyDefinition, layerIndex: number, fightsResolved: number, flatDefault: number): number {
+  if (enemy.tier === 'gatekeeper') return enemy.winThreshold ?? flatDefault;
+  return flatDefault;
 }
 
 /** Applies `multiplier` to every piece of `loadout` via

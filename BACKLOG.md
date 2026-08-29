@@ -14,6 +14,16 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
+**Session 40 update**: independent per-side gauge/win thresholds have now
+landed (session 40, `/decision-session` then same-day `/dev-session` --
+see the "Independent Per-Side Gauge/Win Thresholds -- Implementation" ✅
+complete spec in Phase 5) -- the user's own explicit sequencing call, so
+the balance-pass candidates directly below are now ready to act on with
+both `magnitudeScaler` (session 39) and a per-gatekeeper threshold
+override available as independent levers, rather than just the one.
+Nothing about the audit's findings themselves changed, only what tools
+are available to address them.
+
 **Real balance candidates from session 39's gatekeeper-ablation audit**
 (`docs/session-39-gatekeeper-balance-audit.md`), un-prioritized, no
 tuning applied yet -- ask rather than assume, same as every prior fork
@@ -607,6 +617,66 @@ trio" guess above was wrong: layer 3 is the best-balanced layer in the
 roster. Firewall Prime got a real redesign pass and improved but is
 still a confirmed outlier. Leaving this paragraph as-is for the
 historical record of what was believed at the time.)*
+
+**Session 40** (2026-08-29, `/decision-session`, engineering scoping)
+took the independent-per-side-gauge-thresholds architecture item off
+session 39's own "next session" list (above) -- the user's explicit
+choice, ahead of the gatekeeper balance pass the audit above is waiting
+on, reasoning that per-side thresholds are themselves a balancing lever
+and worth having available before that pass locks in specific numbers.
+Explored the actual engine before proposing checkpoints (`gauges.ts`,
+`resolve.ts`, `combat.ts`, `encounters.ts`, `enemies.ts`,
+`scripts/gatekeeper-check.ts`) rather than assuming the shape. Two live
+decisions resolved:
+
+1. **Scope for this session: plumbing only, zero balance change** --
+   independent per-side storage for both `gaugeThreshold` and
+   `winThreshold`, plus an optional per-gatekeeper override field for
+   each (mirroring session 39's own `magnitudeScaler` precedent exactly),
+   every override left unset so behavior is unchanged until the
+   follow-up balance pass deliberately sets one. The user's own framing
+   ("before trying to balance gatekeepers") put the actual tuning pass
+   after this, not inside it -- same "shape before content" split this
+   project already used for Mods (30-33) and Burners/Events (36-38).
+2. **"Expand the content design space" means a real runtime hook this
+   session too, not just a static per-enemy field** -- the user asked
+   for both explicitly. Resolved to reuse the existing `onCombatStart`
+   Mod hook (session 31, already real -- Warm Boot uses it today) rather
+   than invent a new hook point: it fires once per fight, right after
+   `createCombatState`, before escalation ever touches a threshold, so a
+   threshold-adjusting Mod effect composes cleanly with escalation's own
+   shrink with no ordering questions to resolve. No real Mod is
+   authored this session -- the hook is proven with a mechanism-level
+   test, not shipped content, mirroring how session 31 proved its own
+   hook catalog before session 32 validated real content against it.
+
+A third, smaller call made in passing rather than asked live (confident
+there was one clearly-right answer given the two decisions above):
+regular/elite enemies stay on the flat global constants for both
+thresholds, no per-layer scaling formula the way `magnitudeScaler` gives
+them one -- whether deeper layers should also demand more win-gauge
+progress is a real, separate balance question, out of scope for a
+session whose whole point is zero measured behavior change. Only
+gatekeepers get the optional override, for the same reason
+`magnitudeScaler` is gatekeeper-only: they never repeat across layers, so
+a stored per-identity value is meaningful in a way it wouldn't be for an
+enemy that can appear at several different layers.
+
+Full checkpointed implementation spec (checkpoints A-F) in Phase 5's new
+"Independent Per-Side Gauge/Win Thresholds -- Implementation" section,
+below.
+
+**Same day, `/dev-session`**: all 6 checkpoints implemented and verified
+immediately after scoping, at the user's own request (no gap between
+`/decision-session` and `/dev-session` this time -- see the Phase 5
+section's own ✅ complete note for the full verification detail: 572/572
+tests, clean `npm run check`, byte-identical 50-seed regression sweep).
+**Next session**: the gatekeeper balance pass itself, now informed by
+session 39's audit *and* carrying two independent tuning knobs
+(`magnitudeScaler` and the new per-side threshold overrides) instead of
+just one -- or the dynamic hook's own future use (a real Mod that calls
+`adjustSideWinThreshold`, not built this session). Ask rather than
+assume, same as every prior fork in this project.
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
@@ -2965,3 +3035,140 @@ session 38**: implementation shipped the 8+8 validated samples exactly
 as authored, no new content, and none of these placeholder numbers were
 touched (the balance-pass fixes session 38 also made were to existing
 Blackhat/Breacher subroutine magnitudes, unrelated to Burners/Events).
+
+**Independent Per-Side Gauge/Win Thresholds -- Implementation ✅ complete
+(session 40, `/decision-session` scoped and `/dev-session` implemented,
+same day)** -- checkpointed implementation spec, same category as
+sessions 15/17/19/21/27/33/37, taken ahead of the gatekeeper balance pass
+at the user's own explicit request (see this file's top "NEXT SESSION"
+section and the "Session 40" log entry, above, for the two decisions
+resolved live and the reasoning behind them). All checkpoints A-F below
+shipped same-day: 572/572 tests passing (from 564, 8 new -- 4 covering
+`gaugeThresholdFor`/`winThresholdFor` in `enemies.test.ts`, 4 covering
+`adjustSideWinThreshold` in `resolve.test.ts`), `npm run check` clean.
+Checkpoint F's own regression sweep (50 seeds, `opportunistic`
+traversal, every class) came back byte-identical before/after -- "zero
+behavior change" held exactly as scoped, since every gatekeeper's
+override was left unset per checkpoint B. One real implementation
+finding beyond the spec's own scope, caught by `npm run check` rather
+than left latent: `resolve.test.ts`/`mods.test.ts`/`enemy-
+passives.test.ts` also call `createCombatState` *directly* (not just
+through `playCombat`), several with a 4th positional `classId` arg and a
+5th positional `winThreshold` arg -- the spec's own file list (checkpoint
+E) named the `playCombat`-based test files by object-literal `gaugeThreshold:`/
+`winThreshold:` keys, which a grep for that exact string pattern doesn't
+catch when the same values are passed positionally. All ~150 additional
+call sites across those 3 files migrated the same mechanical way. Spec
+below is kept as-authored (session 40) for the historical
+checkpoint-by-checkpoint reference.
+
+Explored `gauges.ts`, `resolve.ts`, `combat.ts`, `encounters.ts`,
+`enemies.ts`, and `scripts/gatekeeper-check.ts` before proposing
+anything. Key findings:
+
+- **`DuelGauge`/`InitiativeGauge` (`gauges.ts`) already store `progress`/
+  `threshold` per side as independent objects** -- nothing about the
+  underlying data structure forces symmetry. The sharing happens one
+  layer up: `createCombatState`/`createCombatSideState` (`resolve.ts`)
+  take a single `gaugeThreshold`/`winThreshold` number and pass the exact
+  same value to both sides' `createCombatSideState` calls. This checkpoint
+  set only needs to remove that artificially-imposed symmetry, not touch
+  `gauges.ts` itself.
+- **`magnitudeScaler` (session 39, `enemies.ts`) is an exact structural
+  precedent to mirror**: an optional field on `EnemyDefinition`,
+  gatekeeper-only (they never repeat across layers, so a stored
+  per-identity value makes sense in a way it wouldn't for regular/elite),
+  defaulting to no-scaling when unset, read through one shared
+  `magnitudeScalerFor(enemy, layerIndex, fightsResolved)` accessor used
+  by both `encounters.ts` and `scripts/gatekeeper-check.ts`. Threshold
+  overrides follow the identical shape.
+- **`onCombatStart` (session 31, `resolve.ts`'s
+  `applyModOnCombatStartPassives`) is already real and already used**
+  (Warm Boot) -- fires once per fight, right after `createCombatState`,
+  before the first hand and therefore before `combat.ts`'s
+  `applyEscalation` ever shrinks a threshold. The natural, lowest-risk
+  hook for a threshold-adjusting Mod: no ordering question against
+  escalation to resolve, since it always runs first.
+- **`scripts/gatekeeper-check.ts` duplicates `encounters.ts`'s own
+  `playCombat` call site** (its own `scaledEnemyLoadout`/
+  `magnitudeScalerFor` usage, not a call through `resolveFight`) --
+  needs the identical threshold-accessor wiring as `encounters.ts`
+  itself, not just a mention.
+- **~30 existing call sites pass a bare scalar** for `gaugeThreshold`
+  and/or `winThreshold`: `combat.test.ts`, `subroutines.test.ts`,
+  `burners.test.ts`, `scripts/sweep.ts`, `scripts/cribbage-skill-
+  matrix.ts`. Every one needs mechanical migration to the new tuple
+  shape -- no dual-type shim kept around to avoid touching them.
+
+**Checkpoints:**
+
+- **A -- Type shape** (`combat.ts`, `resolve.ts`): `CombatOptions.
+  gaugeThreshold` changes from `number` to `[number, number]` (still
+  required); `CombatOptions.winThreshold` changes from `number` to
+  `[number, number]` (still optional, default `[100, 100]`, same default
+  magnitude as today's shared `100`). `createCombatState`/
+  `createCombatSideState` (`resolve.ts`) take the per-side pair and pass
+  each side's own number to its own `createCombatSideState` call, instead
+  of the same scalar to both. `gauges.ts` itself is unchanged.
+- **B -- Enemy-side authoring** (`enemies.ts`): `EnemyDefinition` gains
+  two new optional fields, `gaugeThreshold?: number` and `winThreshold?:
+  number`, gatekeeper-only by convention (mirrors `magnitudeScaler`'s own
+  doc-comment reasoning exactly). Every existing gatekeeper leaves both
+  unset in this checkpoint -- that's what makes this session a zero
+  behavior change. Two new accessor functions, `gaugeThresholdFor(enemy,
+  layerIndex, fightsResolved): number` and `winThresholdFor(enemy,
+  layerIndex, fightsResolved): number`, mirroring `magnitudeScalerFor`'s
+  exact shape: a gatekeeper reads its own stored value (falling back to
+  the existing flat `GAUGE_THRESHOLD`/`WIN_THRESHOLD` constants when
+  unset); regular/elite always return the flat constant, full stop -- no
+  per-layer formula the way magnitude gets one (a real, separate future
+  balance question, deliberately out of scope here per the "plumbing
+  only" decision).
+- **C -- Wiring** (`encounters.ts`, `scripts/gatekeeper-check.ts`): both
+  call sites that build the `playCombat` options object change
+  `gaugeThreshold: GAUGE_THRESHOLD, winThreshold: WIN_THRESHOLD` to
+  `gaugeThreshold: [GAUGE_THRESHOLD, gaugeThresholdFor(enemy, layerIndex,
+  fightNumber)], winThreshold: [WIN_THRESHOLD, winThresholdFor(enemy,
+  layerIndex, fightNumber)]` -- player side (index 0) always the flat
+  constant, enemy side (index 1) resolved per-identity. Both call sites
+  need the identical change (per the `gatekeeper-check.ts` finding
+  above).
+- **D -- Dynamic hook** (`resolve.ts`): extend the existing
+  `onCombatStart` fold (today: just `applyModOnCombatStartPassives`'s
+  single Warm Boot check) with a second case that can adjust a side's own
+  `winGauge.threshold`, reusing `gauges.ts`'s existing
+  `shrinkDuelThreshold` (already exactly "shrink a gauge's threshold,
+  floored") rather than inventing a new gauge primitive. A
+  threshold-raising counterpart (`growDuelThreshold`) is not built this
+  checkpoint -- nothing needs one yet, and `shrinkDuelThreshold` alone is
+  enough to prove the mechanism reaches the right field. No real Mod is
+  authored or shipped here -- verified by a synthetic test-only Mod id
+  exercised directly in `resolve.test.ts`, proving the hook can actually
+  reach and mutate `CombatSideState.winGauge.threshold` via the same
+  `hasMod`/`replaceSide` pattern every other Mod hook already uses, not a
+  new entry in `mods.ts`.
+- **E -- Migrate existing call sites** (`combat.test.ts`,
+  `subroutines.test.ts`, `burners.test.ts`, `scripts/sweep.ts`,
+  `scripts/cribbage-skill-matrix.ts`): every bare-scalar `gaugeThreshold`/
+  `winThreshold` becomes a symmetric tuple (`gaugeThreshold: 5` ->
+  `gaugeThreshold: [5, 5]`) -- purely mechanical, preserves every existing
+  test's actual intent (both sides sharing one threshold), no shimmed
+  dual-type support kept around afterward.
+- **F -- Verification**: full suite green (542 tests today, plus
+  whatever coverage checkpoints B/D add -- mirrors `enemies.test.ts`'s
+  own `magnitudeScalerFor` coverage for the new accessors, plus D's
+  mechanism test), `npm run check` clean. A same-seed regression check,
+  same discipline as session 35's own precedent: run a sweep (or a
+  smaller seed sample) before and after this lands, confirm bit-identical
+  win rates with every gatekeeper's override left unset -- the whole
+  point of "plumbing only" is that this checkpoint should show zero
+  measured change.
+
+**Not done this session**: no code -- this is a scoping session, same as
+sessions 15/17/19/21/27/33/37. No gatekeeper gets a real `gaugeThreshold`/
+`winThreshold` override authored (checkpoint B's fields all stay unset) --
+that's the balance pass this work was explicitly built to unblock,
+sequenced after, not part of it. No real Mod ships using checkpoint D's
+hook -- the mechanism is proven, not used. Regular/elite per-layer
+threshold scaling (the magnitude-style formula) is flagged as a real,
+separate future question, not decided here.

@@ -10,7 +10,10 @@ import {
   gatekeeperEnemyForNode,
   enemySkill,
   magnitudeScalerFor,
+  gaugeThresholdFor,
+  winThresholdFor,
   scaledEnemyLoadout,
+  type EnemyDefinition,
 } from './enemies';
 
 /**
@@ -155,6 +158,36 @@ describe('magnitudeScalerFor (session 39 per-layer difficulty scaler)', () => {
     const regular = ENEMY_ROSTER.find((e) => e.tier === 'regular')!;
     const elite = ENEMY_ROSTER.find((e) => e.tier === 'elite')!;
     expect(magnitudeScalerFor(regular, 3, 10)).toBe(magnitudeScalerFor(elite, 3, 10));
+  });
+});
+
+describe('gaugeThresholdFor/winThresholdFor (session 40, per-side threshold plumbing)', () => {
+  it('every gatekeeper leaves both overrides unset this session -- zero behavior change', () => {
+    for (const gatekeeper of ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper')) {
+      expect(gatekeeper.gaugeThreshold).toBeUndefined();
+      expect(gatekeeper.winThreshold).toBeUndefined();
+    }
+  });
+
+  it('falls back to flatDefault for a gatekeeper with no override set', () => {
+    const firewallPrime = ENEMY_ROSTER.find((e) => e.id === 'firewall-prime')!;
+    expect(gaugeThresholdFor(firewallPrime, firewallPrime.minLayer, 10, 8)).toBe(8);
+    expect(winThresholdFor(firewallPrime, firewallPrime.minLayer, 10, 50)).toBe(50);
+  });
+
+  it("reads a gatekeeper's own stored override when set, ignoring flatDefault", () => {
+    const overridden: EnemyDefinition = { ...ENEMY_ROSTER.find((e) => e.id === 'null-session')!, gaugeThreshold: 4, winThreshold: 30 };
+    expect(gaugeThresholdFor(overridden, overridden.minLayer, 10, 8)).toBe(4);
+    expect(winThresholdFor(overridden, overridden.minLayer, 10, 50)).toBe(30);
+  });
+
+  it('regular/elite always return flatDefault, regardless of layer or fightsResolved -- no per-layer formula unlike magnitude', () => {
+    const regular = ENEMY_ROSTER.find((e) => e.tier === 'regular')!;
+    const elite = ENEMY_ROSTER.find((e) => e.tier === 'elite')!;
+    expect(gaugeThresholdFor(regular, 1, 0, 8)).toBe(8);
+    expect(gaugeThresholdFor(regular, 4, 10, 8)).toBe(8);
+    expect(winThresholdFor(elite, 1, 0, 50)).toBe(50);
+    expect(winThresholdFor(elite, 4, 10, 50)).toBe(50);
   });
 });
 

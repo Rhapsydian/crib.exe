@@ -58,13 +58,19 @@ import {
 
 export interface CombatOptions {
   seed: number;
-  gaugeThreshold: number;
-  /** Threshold for each side's own win-gauge (gauges.ts's DuelGauge) --
-   * symmetric at combat start (session 22+ redesign; see
-   * gauges.ts/resolve.ts's own headers). Defaults to 100, mirroring the
-   * old shared scalar's scale, though it's an independent TBD/playtesting
-   * number now, not tied to any 0-100 shared axis. */
-  winThreshold?: number;
+  /** Per-side initiative-gauge threshold (session 40: was one shared
+   * scalar applied to both sides; gauges.ts's InitiativeGauge always
+   * modeled a side's own threshold independently, the symmetry was only
+   * ever imposed here). Index 0 is the player's own, index 1 the
+   * enemy's. */
+  gaugeThreshold: [number, number];
+  /** Per-side threshold for each side's own win-gauge (gauges.ts's
+   * DuelGauge) -- independent per side (session 40 redesign; previously
+   * one shared scalar, see gaugeThreshold's own note above). Defaults to
+   * [100, 100], mirroring the old shared scalar's scale, though it's an
+   * independent TBD/playtesting number now, not tied to any 0-100 shared
+   * axis. */
+  winThreshold?: [number, number];
   /** Per-side discard/play strategies (session 24, tunable-skill AI
    * checkpoint A) -- each side gets its own, rather than one shared
    * function used for both. Both default to `[discardLowestTwo,
@@ -368,7 +374,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   const {
     seed,
     gaugeThreshold,
-    winThreshold = 100,
+    winThreshold = [100, 100],
     discardStrategies = [discardLowestTwo, discardLowestTwo],
     playStrategies = [playLowestLegal, playLowestLegal],
     startingDealer = 0,

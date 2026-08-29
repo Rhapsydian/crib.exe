@@ -139,8 +139,8 @@ function sweepEnemy(args: Record<string, string>): void {
   for (let seed = 0; seed < seeds; seed++) {
     const result = playCombat([CLASS_STARTING_LOADOUTS[classId], enemy.loadout], {
       seed,
-      gaugeThreshold: 8,
-      winThreshold: 50,
+      gaugeThreshold: [8, 8],
+      winThreshold: [50, 50],
       classId,
       enemyPassiveIds: enemy.passiveIds,
     });

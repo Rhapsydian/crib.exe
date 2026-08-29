@@ -24,7 +24,7 @@ function alwaysBurst(id: string, amount: number): SubroutineDefinition {
 
 describe('playCombat', () => {
   it('resolves in the player\'s favor when only the player has a firing subroutine', () => {
-    const result = playCombat([[alwaysBurst('a', 20)], []], { seed: 1, gaugeThreshold: 5 });
+    const result = playCombat([[alwaysBurst('a', 20)], []], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.winner).toBe(0);
     expect(result.hands.length).toBeGreaterThan(0);
     expect(result.log.length).toBeGreaterThan(0);
@@ -32,7 +32,7 @@ describe('playCombat', () => {
   });
 
   it('resolves in the enemy\'s favor when only the enemy has a firing subroutine', () => {
-    const result = playCombat([[], [alwaysBurst('b', 20)]], { seed: 1, gaugeThreshold: 5 });
+    const result = playCombat([[], [alwaysBurst('b', 20)]], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.winner).toBe(1);
     expect(result.log.every((e) => e.side === 1)).toBe(true);
   });
@@ -42,8 +42,8 @@ describe('playCombat', () => {
       [alwaysBurst('a', 3)],
       [alwaysBurst('b', 2)],
     ];
-    const a = playCombat(loadouts, { seed: 42, gaugeThreshold: 8 });
-    const b = playCombat(loadouts, { seed: 42, gaugeThreshold: 8 });
+    const a = playCombat(loadouts, { seed: 42, gaugeThreshold: [8, 8] });
+    const b = playCombat(loadouts, { seed: 42, gaugeThreshold: [8, 8] });
     expect(a).toEqual(b);
   });
 
@@ -52,7 +52,7 @@ describe('playCombat', () => {
       [alwaysBurst('a', 3)],
       [alwaysBurst('b', 3)],
     ];
-    const result = playCombat(loadouts, { seed: 7, gaugeThreshold: 6 });
+    const result = playCombat(loadouts, { seed: 7, gaugeThreshold: [6, 6] });
     expect([0, 1]).toContain(result.winner);
   });
 
@@ -61,8 +61,8 @@ describe('playCombat', () => {
       [alwaysBurst('a', 3)],
       [alwaysBurst('b', 3)],
     ];
-    const a = playCombat(loadouts, { seed: 1, gaugeThreshold: 6 });
-    const b = playCombat(loadouts, { seed: 2, gaugeThreshold: 6 });
+    const a = playCombat(loadouts, { seed: 1, gaugeThreshold: [6, 6] });
+    const b = playCombat(loadouts, { seed: 2, gaugeThreshold: [6, 6] });
     expect(a.hands).not.toEqual(b.hands);
   });
 
@@ -73,7 +73,7 @@ describe('playCombat', () => {
     // threshold on its own, so this exercises the deadline at its most
     // extreme: side 1 (the defender) wins unconditionally at hand 20,
     // not a throw/hang.
-    const result = playCombat([[], []], { seed: 1, gaugeThreshold: 5 });
+    const result = playCombat([[], []], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.winner).toBe(1);
     expect(result.resolvedBy).toBe('attrition');
     expect(result.hands.length).toBe(20);
@@ -88,14 +88,14 @@ describe('playCombat', () => {
       payload: { kind: 'riskRewardBurst', amount: 20, heatCost: 4 },
       tags: [],
     };
-    const result = playCombat([[riskyPlayer], []], { seed: 1, gaugeThreshold: 5 });
+    const result = playCombat([[riskyPlayer], []], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.winner).toBe(0);
     expect(result.playerHeatGenerated).toBeGreaterThan(0);
     expect(result.playerHeatGenerated % 4).toBe(0);
   });
 
   it('reports zero player Heat generated when nothing costs Heat', () => {
-    const result = playCombat([[alwaysBurst('a', 20)], []], { seed: 1, gaugeThreshold: 5 });
+    const result = playCombat([[alwaysBurst('a', 20)], []], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.playerHeatGenerated).toBe(0);
   });
 
@@ -121,7 +121,7 @@ describe('playCombat', () => {
     // -- consumed at the start of the *next* hand, immediately arming
     // and firing the Reactive suit-payoff via the credit alone, with no
     // card of that suit needing to actually be played.
-    const result = playCombat([[suitMarker, suitPayoff], []], { seed: 1, gaugeThreshold: 5 });
+    const result = playCombat([[suitMarker, suitPayoff], []], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.winner).toBe(0);
     expect(result.log.some((e) => e.subroutineId === 'suit-payoff')).toBe(true);
   });
@@ -135,7 +135,7 @@ describe('playCombat', () => {
       payload: { kind: 'cribbageLayerManipulation', action: 'forceDiscard' },
       tags: [],
     };
-    expect(() => playCombat([[discardForcer, alwaysBurst('finisher', 20)], []], { seed: 3, gaugeThreshold: 5 })).not.toThrow();
+    expect(() => playCombat([[discardForcer, alwaysBurst('finisher', 20)], []], { seed: 3, gaugeThreshold: [5, 5] })).not.toThrow();
   });
 
   it('a suitTally Accumulator fires from cards played, not from scoring', () => {
@@ -152,7 +152,7 @@ describe('playCombat', () => {
     // takes to resolve, and side 1 is empty -- the only way
     // breachContainment can move is the suit-watcher actually firing
     // from real cards played during pegging.
-    const result = playCombat([[suitWatcher], []], { seed: 1, gaugeThreshold: 100_000 });
+    const result = playCombat([[suitWatcher], []], { seed: 1, gaugeThreshold: [100_000, 100_000] });
     expect(result.winner).toBe(0);
     expect(result.log.length).toBeGreaterThan(0);
     expect(result.log.every((e) => e.side === 0 && e.subroutineId === 'suit-watcher')).toBe(true);
@@ -171,7 +171,7 @@ describe('playCombat', () => {
     // turn; after that, side 1 has an empty loadout (can never push
     // back), so any further movement toward side 0's win can only come
     // from global-pulse ticking off combined scoring, not from turns.
-    const result = playCombat([[globalDot], []], { seed: 1, gaugeThreshold: 3 });
+    const result = playCombat([[globalDot], []], { seed: 1, gaugeThreshold: [3, 3] });
     expect(result.winner).toBe(0);
     expect(result.log.length).toBeGreaterThan(0);
   });
@@ -191,7 +191,7 @@ describe('playCombat', () => {
     // up, pending entries would pile up forever and this would instead
     // hit the hard-resolution deadline (hand 20) and resolve as an
     // attrition loss for side 0, not the real win asserted below.
-    const result = playCombat([[sabotageBurst], []], { seed: 1, gaugeThreshold: 5 });
+    const result = playCombat([[sabotageBurst], []], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.winner).toBe(0);
   });
 
@@ -210,7 +210,7 @@ describe('playCombat', () => {
     // normal turn, so any side-0 fire in the log can only be the
     // Reactive path. Side 1 has an empty loadout, so it can never fire
     // even if it somehow got a turn.
-    const result = playCombat([[reactiveFifteen], []], { seed: 1, gaugeThreshold: 100_000 });
+    const result = playCombat([[reactiveFifteen], []], { seed: 1, gaugeThreshold: [100_000, 100_000] });
     expect(result.winner).toBe(0);
     expect(result.log.length).toBeGreaterThan(0);
     expect(result.log.every((e) => e.side === 0 && e.subroutineId === 'reactive-fifteen')).toBe(true);
@@ -220,7 +220,7 @@ describe('playCombat', () => {
     "the hand-lifecycle decomposition produces byte-for-byte identical HandResults to a direct game.ts replay for the same seed " +
       '(session 24 checkpoint B regression check)',
     () => {
-      const result = playCombat([[alwaysBurst('winner', 1000)], []], { seed: 42, gaugeThreshold: 1 });
+      const result = playCombat([[alwaysBurst('winner', 1000)], []], { seed: 42, gaugeThreshold: [1, 1] });
       expect(result.hands.length).toBeGreaterThan(0);
 
       // Independently replay the exact same rng sequence through game.ts's
@@ -267,7 +267,7 @@ describe('playCombat', () => {
     };
     const result = playCombat([[recon, alwaysBurst('winner', 1000)], []], {
       seed: 5,
-      gaugeThreshold: 1,
+      gaugeThreshold: [1, 1],
       discardStrategies: [spyDiscardStrategy, spyDiscardStrategy],
     });
     expect(result.hands.length).toBeGreaterThan(0);
@@ -298,7 +298,7 @@ describe('playCombat', () => {
     };
     const result = playCombat([[manipulator, alwaysBurst('winner', 1000)], []], {
       seed: 7,
-      gaugeThreshold: 1,
+      gaugeThreshold: [1, 1],
       discardStrategies: [spyDiscardStrategy, spyDiscardStrategy],
     });
     expect(result.hands.length).toBeGreaterThan(0);
@@ -327,7 +327,7 @@ describe('playCombat', () => {
     // turns at once via gauges.ts's addPoints overflow-carrying, each
     // firing burst -- winThreshold=3 lets that single release resolve
     // the match immediately, well within hand 1.
-    const result = playCombat([[haste, burst], []], { seed: 3, gaugeThreshold: 5, winThreshold: 3 });
+    const result = playCombat([[haste, burst], []], { seed: 3, gaugeThreshold: [5, 5], winThreshold: [3, 3] });
     expect(result.winner).toBe(0);
     expect(result.log.filter((e) => e.subroutineId === 'burst').length).toBeGreaterThanOrEqual(3);
   });
@@ -366,7 +366,7 @@ describe('playCombat', () => {
     // the match resolves in.
     const result = playCombat([[cribRecon, handRecon, burst], []], {
       seed: 11,
-      gaugeThreshold: 1,
+      gaugeThreshold: [1, 1],
       playStrategies: [spyPlayStrategy, spyPlayStrategy],
     });
     expect(result.hands.length).toBeGreaterThan(0);
@@ -378,8 +378,8 @@ describe('playCombat', () => {
     const burst = alwaysBurst('winner', 20);
     const result = playCombat([[burst], [burst]], {
       seed: 13,
-      gaugeThreshold: 5,
-      winThreshold: 30,
+      gaugeThreshold: [5, 5],
+      winThreshold: [30, 30],
       playStrategies: [pegSkillStrategy(1), pegSkillStrategy(0)],
     });
     expect([0, 1]).toContain(result.winner);
@@ -389,8 +389,8 @@ describe('playCombat', () => {
     const burst = alwaysBurst('winner', 20);
     const result = playCombat([[burst], [burst]], {
       seed: 17,
-      gaugeThreshold: 5,
-      winThreshold: 30,
+      gaugeThreshold: [5, 5],
+      winThreshold: [30, 30],
       discardStrategies: [discardSkillStrategy(1), discardSkillStrategy(0)],
     });
     expect([0, 1]).toContain(result.winner);
@@ -428,7 +428,7 @@ describe('playCombat', () => {
       // own threshold within the window escalation gives it (0.01/fire
       // against even the escalated floor of 10 would need on the order
       // of a thousand real fires -- not realistic within 20 hands).
-      const result = playCombat([[weakBurst('a')], []], { seed: 1, gaugeThreshold: 3, winThreshold: 15 });
+      const result = playCombat([[weakBurst('a')], []], { seed: 1, gaugeThreshold: [3, 3], winThreshold: [15, 15] });
       expect(result.winner).toBe(1);
       expect(result.resolvedBy).toBe('attrition');
       expect(result.hands.length).toBe(20); // combat.ts's own HARD_RESOLUTION_HAND

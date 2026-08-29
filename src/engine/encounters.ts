@@ -15,6 +15,8 @@ import {
   gatekeeperEnemyForNode,
   enemySkill,
   magnitudeScalerFor,
+  gaugeThresholdFor,
+  winThresholdFor,
   scaledEnemyLoadout,
   ENEMY_ROSTER,
   type EnemyDefinition,
@@ -248,8 +250,11 @@ function resolveFight(
   const scaledLoadout = scaledEnemyLoadout(enemy.loadout, magnitudeScalerFor(enemy, layerIndex, fightNumber));
   const result = playCombat([playerState.installedLoadout, scaledLoadout], {
     seed,
-    gaugeThreshold: GAUGE_THRESHOLD,
-    winThreshold: WIN_THRESHOLD,
+    // Per-side threshold overrides (session 40) -- player side always
+    // the flat constant, enemy side resolved per-identity (gatekeeper-
+    // only override, falls back to the flat constant when unset).
+    gaugeThreshold: [GAUGE_THRESHOLD, gaugeThresholdFor(enemy, layerIndex, fightNumber, GAUGE_THRESHOLD)],
+    winThreshold: [WIN_THRESHOLD, winThresholdFor(enemy, layerIndex, fightNumber, WIN_THRESHOLD)],
     classId: playerState.classId,
     enemyPassiveIds: enemy.passiveIds,
     ownedModIds: playerState.ownedModIds,

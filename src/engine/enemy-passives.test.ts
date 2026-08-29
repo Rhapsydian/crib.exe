@@ -17,7 +17,7 @@ function definition(id: string, trigger: TriggerFamily, payload: PayloadEffect, 
 }
 
 function stateWithEnemyPassives(passiveIds: EnemyPassiveId[], threshold = 100) {
-  return createCombatState([], [], 12, undefined, threshold, passiveIds);
+  return createCombatState([], [], [12, 12], undefined, [threshold, threshold], passiveIds);
 }
 
 describe('enemy passives -- onFire hook', () => {

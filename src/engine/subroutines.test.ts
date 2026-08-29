@@ -127,7 +127,7 @@ describe('subroutine content — structural integrity', () => {
 describe('subroutine content — every payload resolves without throwing', () => {
   it('resolvePayload succeeds for every subroutine, cast from either side', () => {
     for (const sub of ALL_SUBROUTINES) {
-      const state = createCombatState([sub], [], 20);
+      const state = createCombatState([sub], [], [20, 20]);
       expect(() => resolvePayload(sub.payload, sub.archetype, state, 0)).not.toThrow();
       expect(() => resolvePayload(sub.payload, sub.archetype, state, 1)).not.toThrow();
     }
@@ -172,7 +172,7 @@ describe('subroutine content — real combat smoke tests', () => {
     for (const classId of Object.keys(CLASS_STARTING_LOADOUTS) as (keyof typeof CLASS_STARTING_LOADOUTS)[]) {
       if (classId === 'ghost') continue;
       const loadout = loadoutFor(classId);
-      expect(() => playCombat([loadout, genericOpponent], { seed: 1, gaugeThreshold: 12 })).not.toThrow();
+      expect(() => playCombat([loadout, genericOpponent], { seed: 1, gaugeThreshold: [12, 12] })).not.toThrow();
     }
   });
 
@@ -180,7 +180,7 @@ describe('subroutine content — real combat smoke tests', () => {
     for (const [key, pool] of Object.entries(ARCHETYPE_POOLS)) {
       if (key === 'encryption') continue;
       const loadout = [...pool.commons, ...pool.uncommons, ...pool.rares];
-      expect(() => playCombat([loadout, genericOpponent], { seed: 1, gaugeThreshold: 12 })).not.toThrow();
+      expect(() => playCombat([loadout, genericOpponent], { seed: 1, gaugeThreshold: [12, 12] })).not.toThrow();
     }
   });
 
@@ -188,7 +188,7 @@ describe('subroutine content — real combat smoke tests', () => {
     for (const key of ['exploit', 'malware'] as const) {
       const pool = ARCHETYPE_POOLS[key];
       const loadout = [...pool.commons, ...pool.uncommons, ...pool.rares];
-      const result = playCombat([loadout, []], { seed: 1, gaugeThreshold: 12 });
+      const result = playCombat([loadout, []], { seed: 1, gaugeThreshold: [12, 12] });
       expect(result.winner).toBe(0);
     }
   });
@@ -205,7 +205,7 @@ describe('subroutine content — real combat smoke tests', () => {
     // by itself credit anything (only Return to Sender's hook does), and
     // Tripwire is pure denial.
     const steganographyAndTripwire = CLASS_STARTING_LOADOUTS.ghost.filter((piece) => piece.id !== 'idle-process');
-    const result = playCombat([steganographyAndTripwire, genericOpponent], { seed: 1, gaugeThreshold: 12 });
+    const result = playCombat([steganographyAndTripwire, genericOpponent], { seed: 1, gaugeThreshold: [12, 12] });
     expect(result.winner).toBe(1);
     expect(result.peakFillFraction[0]).toBe(0);
   });
@@ -229,7 +229,7 @@ describe('subroutine content — real combat smoke tests', () => {
     // Process's own amount was halved (2 -> 1) in session 39's balance
     // pass alongside Return to Sender's ratio, so the fraction here is
     // smaller than it was originally, but still genuinely nonzero.
-    const withoutPassive = playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], { seed: 1, gaugeThreshold: 12 });
+    const withoutPassive = playCombat([CLASS_STARTING_LOADOUTS.ghost, genericOpponent], { seed: 1, gaugeThreshold: [12, 12] });
     expect(withoutPassive.peakFillFraction[0]).toBeGreaterThan(0.25);
   });
 
@@ -253,8 +253,8 @@ describe('subroutine content — real combat smoke tests', () => {
     ];
     const result = playCombat([CLASS_STARTING_LOADOUTS.ghost, weakOpponent], {
       seed: 1,
-      gaugeThreshold: 8,
-      winThreshold: 50,
+      gaugeThreshold: [8, 8],
+      winThreshold: [50, 50],
       classId: 'ghost',
     });
     expect(result.winner).toBe(0);
@@ -268,8 +268,8 @@ describe('subroutine content — real combat smoke tests', () => {
     // before," matching how these two reworks (checkpoints A/B) actually
     // differ from Ghost's (checkpoint C).
     for (const classId of ['saboteur', 'operator'] as const) {
-      const withPassive = playCombat([CLASS_STARTING_LOADOUTS[classId], []], { seed: 1, gaugeThreshold: 12, classId });
-      const withoutPassive = playCombat([CLASS_STARTING_LOADOUTS[classId], []], { seed: 1, gaugeThreshold: 12 });
+      const withPassive = playCombat([CLASS_STARTING_LOADOUTS[classId], []], { seed: 1, gaugeThreshold: [12, 12], classId });
+      const withoutPassive = playCombat([CLASS_STARTING_LOADOUTS[classId], []], { seed: 1, gaugeThreshold: [12, 12] });
       expect(withPassive.winner).toBe(0);
       expect(withoutPassive.winner).toBe(0);
       expect(withPassive.hands.length).toBeLessThan(withoutPassive.hands.length);
@@ -299,13 +299,13 @@ describe('subroutine content — real combat smoke tests', () => {
     // realistic in-game risk.
     const encryptionPool = ARCHETYPE_POOLS.encryption;
     const encryptionLoadout = [...encryptionPool.commons, ...encryptionPool.uncommons, ...encryptionPool.rares];
-    const result = playCombat([encryptionLoadout, genericOpponent], { seed: 1, gaugeThreshold: 12 });
+    const result = playCombat([encryptionLoadout, genericOpponent], { seed: 1, gaugeThreshold: [12, 12] });
     expect(result.winner).toBe(1);
     expect(result.hands.length).toBe(20);
     expect(result.peakFillFraction).toEqual([0, 0]);
   });
 
   it('the full 78-subroutine set on one side resolves against an empty enemy without throwing', () => {
-    expect(() => playCombat([ALL_SUBROUTINES, []], { seed: 1, gaugeThreshold: 12 })).not.toThrow();
+    expect(() => playCombat([ALL_SUBROUTINES, []], { seed: 1, gaugeThreshold: [12, 12] })).not.toThrow();
   });
 });
