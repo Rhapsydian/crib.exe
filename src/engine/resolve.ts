@@ -398,6 +398,14 @@ const SLEEPER_CELL_ADVANCE_AMOUNT = 3; // TBD/playtesting
 // at 0 -- overshoots -- 12.0% at 2, landing in StS's ascension-0 9-15%
 // band). Now equal to Silent Worm's own base tick size (COMMON.tick).
 const SLEEPER_CELL_CREDIT_AMOUNT = 2;
+// Operator's own Primed passive -- was also, until session 39, reused
+// unchanged by Zero-Sum's own enemy passive (primed-to-strike, below),
+// discovered when retuning this one for Operator's own balance
+// incidentally nerfed Zero-Sum for every other class too. Split into
+// separate ZERO_SUM_PRIMED_* constants below so each side's tuning is
+// deliberate and independent -- a shared name/formula shape ("Primed" /
+// "primed-to-strike") is fine as flavor, but shouldn't couple their
+// actual numbers.
 const PRIMED_THRESHOLD_REDUCTION = 2; // TBD/playtesting
 // TBD/playtesting -- 3 -> 1.5 (session 39 balance fix): applies every
 // time either Root piece fires (Ping Sweep is guaranteed every turn), so
@@ -409,6 +417,13 @@ const PRIMED_THRESHOLD_REDUCTION = 2; // TBD/playtesting
 // rate (StS's ascension-0 9-15% band); 2 also works (14.3%, nearer the
 // band's edge) but 1.5 leaves more headroom.
 const PRIMED_MAGNITUDE_BONUS = 1.5;
+// Zero-Sum's own copy of Primed's two knobs (session 39 split) -- still
+// the original, never-independently-tuned values (2/3) for now, kept
+// exactly as they were before the split so this change is a pure
+// decoupling, not also a balance change. A future pass can retune
+// Zero-Sum's own difficulty on its own terms without touching Operator's.
+const ZERO_SUM_PRIMED_THRESHOLD_REDUCTION = 2; // TBD/playtesting
+const ZERO_SUM_PRIMED_MAGNITUDE_BONUS = 3; // TBD/playtesting
 // Flat amount queued as a bonus for the caster's next tick of the
 // opposite type, every time a HoT or DoT tick fires -- deliberately a
 // fixed step, not a fraction of the triggering tick's own size (tried
@@ -829,14 +844,17 @@ function crossFeedProgress(combatState: CombatState, _sourceId: string, targetId
 
 /** Primed to Strike (Zero-Sum), reusing applyPrimedPassive's exact
  * mechanism (ease + boost the caster's own next Exploit entry) against
- * side 1's own loadout instead of side 0's classId-gated version. */
+ * side 1's own loadout instead of side 0's classId-gated version --
+ * its own independent ZERO_SUM_PRIMED_* constants (session 39 split),
+ * not Operator's own PRIMED_* ones, even though the values started
+ * identical. */
 function applyPrimedForSide1(combatState: CombatState): CombatState {
   const sideState = combatState.sides[1];
   const index = sideState.loadout.findIndex((entry) => entry.definition.archetype === 'exploit');
   if (index === -1) return combatState;
   const entry = sideState.loadout[index];
-  const easedTrigger = easeTriggerCondition(entry.definition.trigger, PRIMED_THRESHOLD_REDUCTION);
-  const boostedPayload = improvedPayloadMagnitude(entry.definition.payload, PRIMED_MAGNITUDE_BONUS) ?? entry.definition.payload;
+  const easedTrigger = easeTriggerCondition(entry.definition.trigger, ZERO_SUM_PRIMED_THRESHOLD_REDUCTION);
+  const boostedPayload = improvedPayloadMagnitude(entry.definition.payload, ZERO_SUM_PRIMED_MAGNITUDE_BONUS) ?? entry.definition.payload;
   const loadout = sideState.loadout.slice();
   loadout[index] = { ...entry, definition: { ...entry.definition, trigger: easedTrigger, payload: boostedPayload } };
   return { ...combatState, sides: replaceSide(combatState.sides, 1, { ...sideState, loadout }) };
