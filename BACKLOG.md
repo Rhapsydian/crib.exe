@@ -745,10 +745,96 @@ started failing the instant Null Session got a real value, split into a
 Null-Session-specific assertion plus an "every other gatekeeper still
 unset" guard for the rest of the pass), `npm run check` clean.
 
+**Same day, continued a third time -- Kernel Panic's harder fix**, at the
+user's explicit direction (they pushed back on the "stale band" framing
+above first -- correctly: skill=0.5 full-run numbers still land close to
+the original 9-15% band, e.g. Saboteur 12.7% vs. 12.0%, Warden 14.3% vs.
+13.7% -- the band isn't stale, skill=0.85 was just the wrong comparison
+point; noted for future checks, not litigated further).
+
+**Instrumented the real firing frequency directly** (a scratch script,
+deleted after use per this project's own convention -- reused
+`gatekeeper-check.ts`'s real-captured-state methodology, forced against
+`kernel-panic` specifically, read `CombatResult.log` for per-subroutine
+fire counts): realistic layer-4 fights against Kernel Panic average
+**2.33 hands** (100% resolved by the player's own threshold, 0%
+attrition) -- confirms the earlier hypothesis directly. Total Pwnage
+fired in ~10% of fights, Epidemic/Cold Storage in ~0.6% (roughly 1 in
+166) -- both of Kernel Panic's RARE-tier accumulator/occurrence-threshold
+triggers essentially never complete before the fight is already over.
+
+**Fix, per the user's explicit direction (rework trigger shape, keep
+payload flavor)**: three new bespoke, enemy-only replacement pieces
+(`enemy-subroutines.ts`, mirroring session 39's own precedent) --
+**Stack Overflow** (replaces Total Pwnage: same piercing-burst identity,
+`occurrence:pair` widened from `threshold`/`bankTarget:4` to `instant` --
+fires on every pair, no banking), **Memory Corruption** (replaces
+Epidemic: same DoT/globalPulse identity, `accumulator:suitTally`
+widened to `always` -- casts from Kernel Panic's very first turn instead
+of waiting on a suit-tally accumulator built for a much longer fight),
+**Failsafe Reboot** (replaces Cold Storage: same HoT/globalPulse
+identity, same `always` fix -- suppressing the player's own gauge from
+turn 1 matters even more given how fast real fights close out). Kernel
+Panic's `loadout` in `enemies.ts` swapped to these three; the original
+pool pieces are untouched (still real player-facing rewards).
+
+**Re-instrumented immediately**: fire frequency jumped hugely (Stack
+Overflow 0.10->0.97/fight, the DoT/HoT 0.006->1.48/fight each) but the
+isolated win rate swung from a flat 100.0% to a genuinely wide,
+believable spread. **Magnitude tuning, empirical, three candidates
+tested** (each checked against both the isolated `gatekeeper-check.ts`
+read and, critically, a full-run `sweep.ts` regression at skill=0.5 --
+the isolated number alone was misleading on its own, see below):
+
+| candidate | DoT/HoT tick | Stack Overflow burst | full-run avg (skill=0.5) | isolated K.P. avg |
+|---|---|---|---|---|
+| baseline (broken) | -- (never fires) | -- (never fires) | ~15.6% | 100.0% |
+| 1 | 5 (orig. RARE tier) | 8 (orig. ENEMY_UNCOMMON) | ~8.3% | ~43.8% |
+| 2 | 3 | 6 (new, decoupled) | ~8.8% | -- |
+| 3 (**locked in**) | 2 | 5 | ~9.2% | ~63.9% |
+
+Decoupled Stack Overflow's own magnitude into a new
+`STACK_OVERFLOW_BURST` constant rather than continuing to share
+`ENEMY_UNCOMMON.burst` with Fracture Point/Escalating Response (two
+unrelated enemies) -- same "split a shared constant once one consumer
+needs independent tuning" precedent as session 39's Zero-Sum/Operator
+decoupling, avoided here *before* it could cause the same kind of
+accidental cross-enemy coupling.
+
+**A real, distinct finding surfaced by the candidate table, not chased
+further this checkpoint**: Operator's isolated win rate against Kernel
+Panic was **exactly 28/300 (9.3%) at the full-run level across all three
+magnitude candidates**, and its isolated read (29.4%) sits far below
+every other class (50.0-81.0%) at the final candidate -- Operator's
+losses to Kernel Panic aren't magnitude-sensitive at all within the
+tested range, meaning something structural (not Kernel Panic's own
+numbers) is driving it. Flagged for its own future dig rather than
+guessed at here.
+
+**Locked in candidate 3** (tick 2, burst 5) -- diminishing returns were
+clear and consistent by the third candidate (each step down bought only
+~0.6-1.0pp per class, while Operator never moved), and going further
+risked undoing the fix's own point by making Kernel Panic trivial again
+for the classes that had already improved. The full-run drop from
+"Kernel Panic contributes zero difficulty" to "Kernel Panic is a real,
+if now-reasonable, threat" is treated as an expected, honest consequence
+of fixing a genuinely broken enemy, not something to fully offset by
+retuning everything else down to compensate -- consistent with how this
+project has always treated correctness fixes (e.g. the layer-1-Elite
+fix, session 35) as allowed to move the numbers, not something requiring
+the numbers to stay perfectly still.
+
+574/574 tests passing (from 573 -- new coverage: a `resolvePayload`
+smoke test for `ENEMY_ONLY_SUBROUTINES` specifically, closing a
+pre-existing gap that also silently covered the 5 session-39 bespoke
+pieces, which had never had one), `npm run check` clean.
+
 **Next**: layer 2 (Incident Response too hard vs. Quarantine Ward/
-Zero-Sum too easy) is next per the audit's own order, or Kernel Panic's
-harder, differently-scoped fix, or the stale-band question above -- ask
-rather than assume, same as every prior fork in this project.
+Zero-Sum too easy) is next per the audit's own order, or Operator's
+specific Kernel Panic weakness (magnitude-insensitive, needs a real dig
+before guessing at a fix), or continued full-run recalibration once
+layer 2/1 are also addressed -- ask rather than assume, same as every
+prior fork in this project.
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,

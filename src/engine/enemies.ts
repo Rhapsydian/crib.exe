@@ -334,7 +334,7 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   // swapped for Circuit Breaker (neutral rare), the run's real
   // final-boss layer earning the strongest fix.
   { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('circuit-breaker')], passiveIds: ['null-session-passive'], magnitudeScaler: 1.9, winThreshold: 65 },
-  { id: 'kernel-panic', name: 'Kernel Panic', tier: 'gatekeeper', archetypes: ['exploit', 'malware', 'encryption'], minLayer: 4, loadout: [pool('total-pwnage'), pool('epidemic'), pool('cold-storage')], passiveIds: ['redundant-kernel'], magnitudeScaler: 1.9 },
+  { id: 'kernel-panic', name: 'Kernel Panic', tier: 'gatekeeper', archetypes: ['exploit', 'malware', 'encryption'], minLayer: 4, loadout: [pool('stack-overflow'), pool('memory-corruption'), pool('failsafe-reboot')], passiveIds: ['redundant-kernel'], magnitudeScaler: 1.9 },
   // Session 28 retrofit: same pure recon/denial trio as its Layer 1
   // echo, Ghost Process -- Watchdog Timer again (deliberate reuse,
   // reinforcing the two enemies' own intentional narrative link).

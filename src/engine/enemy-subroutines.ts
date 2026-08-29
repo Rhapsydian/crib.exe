@@ -38,6 +38,18 @@ import { BREACH_CONTAINMENT_THRESHOLD } from './subroutines';
 const ENEMY_COMMON = { tick: 2, duration: 3 };
 const ENEMY_UNCOMMON = { burst: 8 };
 const ENEMY_CAPPED = { common: 7 };
+// Seeded at subroutines.ts's own RARE tier's tick shape (5/5/8) -- these
+// two replace RARE-tier DoT/HoT pieces (session 40 continued, below),
+// same like-for-like magnitude convention as the rest of this file, kept
+// as this catalog's own copy per this file's own header.
+const ENEMY_RARE = { tick: 2, duration: 5, pointsPerTick: 8 };
+// Stack Overflow's own burst, decoupled from ENEMY_UNCOMMON.burst rather
+// than reusing it (Fracture Point/Escalating Response's shared tier
+// value) -- tuned down from that shared value specifically for firing on
+// every single pair occurrence instead of once per rare condition,
+// mirroring session 39's Zero-Sum/Operator decoupling precedent (split a
+// shared constant once one consumer needs independent tuning).
+const STACK_OVERFLOW_BURST = 5; // TBD/playtesting
 
 export const ENEMY_ONLY_SUBROUTINES: SubroutineDefinition[] = [
   {
@@ -155,5 +167,69 @@ export const ENEMY_ONLY_SUBROUTINES: SubroutineDefinition[] = [
     payload: { kind: 'revealCrib' },
     tags: [],
     firesAt: 'onCribSelected',
+  },
+  {
+    id: 'stack-overflow',
+    name: 'Stack Overflow',
+    archetype: 'exploit',
+    // Replaces Total Pwnage on Kernel Panic (session 40 continued,
+    // gatekeeper balance pass). Diagnosed via a real firing-frequency
+    // instrument: realistic layer-4 fights against Kernel Panic average
+    // 2.33 hands (100% resolved by the player's own threshold, 0%
+    // attrition) -- Total Pwnage's occurrence:pair,threshold,bankTarget:4
+    // essentially never banks up in that window (fired in ~10% of
+    // fights; Epidemic/Cold Storage in ~0.6%). Neither the new per-side
+    // gaugeThreshold nor winThreshold levers moved this at all when
+    // tested directly -- a subroutine that never becomes ready doesn't
+    // fire more often just because it's the enemy's turn more often. The
+    // real fix is trigger *shape*: same piercing-burst identity, but
+    // Instant instead of Threshold -- fires on every single pair
+    // occurrence, no banking, so it can actually contribute within a
+    // realistically short fight. Magnitude uses its own decoupled
+    // STACK_OVERFLOW_BURST (below ENEMY_UNCOMMON.burst), since firing on
+    // every occurrence instead of once per 4 banked is a large frequency
+    // increase in its own right -- empirically tuned, not assumed
+    // correct on the first pass (see this file's own decoupling note
+    // above).
+    trigger: { kind: 'occurrence', category: 'pair', variation: 'instant' },
+    payload: { kind: 'piercing', amount: STACK_OVERFLOW_BURST },
+    tags: ['piercing'],
+  },
+  {
+    id: 'memory-corruption',
+    name: 'Memory Corruption',
+    archetype: 'malware',
+    // Replaces Epidemic on Kernel Panic (session 40 continued, same
+    // diagnostic as Stack Overflow above) -- accumulator:suitTally
+    // threshold:10 essentially never completes in a ~2-3 hand fight, so
+    // the DoT itself (globalPulse cadence, same tick shape as the
+    // original) never even gets cast. Always -- fires the instant Kernel
+    // Panic gets its first turn, giving the tick the maximum possible
+    // number of hands to actually pulse in a short fight, rather than
+    // waiting on an accumulator built for a much longer one. Tick
+    // shape/magnitude kept at ENEMY_RARE (== the original Epidemic's own
+    // RARE-tier tick) -- only the casting condition changed, not the
+    // DoT's own bite once applied.
+    trigger: { kind: 'always' },
+    payload: { kind: 'dot', amountPerTick: ENEMY_RARE.tick, cadence: 'globalPulse', duration: ENEMY_RARE.duration, pointsPerTick: ENEMY_RARE.pointsPerTick },
+    tags: ['daemon'],
+  },
+  {
+    id: 'failsafe-reboot',
+    name: 'Failsafe Reboot',
+    archetype: 'encryption',
+    // Replaces Cold Storage on Kernel Panic (session 40 continued, same
+    // diagnostic as Stack Overflow/Memory Corruption above) -- same
+    // accumulator:suitTally dead-trigger problem, same Always fix. HoT
+    // suppresses the *player's* gauge rather than crediting Kernel
+    // Panic's own, so getting it applying from turn 1 matters even more
+    // here: a fast-closing player is exactly what this piece exists to
+    // slow down, and it was never getting the chance to. Tick
+    // shape/magnitude kept at ENEMY_RARE + 4 (== the original Cold
+    // Storage's own RARE.tick+4 HoT amount) -- only the casting condition
+    // changed.
+    trigger: { kind: 'always' },
+    payload: { kind: 'hot', amountPerTick: ENEMY_RARE.tick + 4, cadence: 'globalPulse', duration: ENEMY_RARE.duration, pointsPerTick: ENEMY_RARE.pointsPerTick },
+    tags: ['daemon'],
   },
 ];

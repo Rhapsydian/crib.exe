@@ -7,6 +7,7 @@ import {
   NEUTRAL_POOL,
   CLASS_STARTING_LOADOUTS,
 } from './subroutines';
+import { ENEMY_ONLY_SUBROUTINES } from './enemy-subroutines';
 import { createCombatState, resolvePayload } from './resolve';
 import { playCombat } from './combat';
 import type { SubroutineDefinition } from './subroutine-types';
@@ -127,6 +128,14 @@ describe('subroutine content — structural integrity', () => {
 describe('subroutine content — every payload resolves without throwing', () => {
   it('resolvePayload succeeds for every subroutine, cast from either side', () => {
     for (const sub of ALL_SUBROUTINES) {
+      const state = createCombatState([sub], [], [20, 20]);
+      expect(() => resolvePayload(sub.payload, sub.archetype, state, 0)).not.toThrow();
+      expect(() => resolvePayload(sub.payload, sub.archetype, state, 1)).not.toThrow();
+    }
+  });
+
+  it('resolvePayload succeeds for every enemy-only subroutine too -- never covered by ALL_SUBROUTINES above (enemy-subroutines.ts is deliberately excluded from it)', () => {
+    for (const sub of ENEMY_ONLY_SUBROUTINES) {
       const state = createCombatState([sub], [], [20, 20]);
       expect(() => resolvePayload(sub.payload, sub.archetype, state, 0)).not.toThrow();
       expect(() => resolvePayload(sub.payload, sub.archetype, state, 1)).not.toThrow();
