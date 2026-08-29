@@ -399,7 +399,16 @@ const SLEEPER_CELL_ADVANCE_AMOUNT = 3; // TBD/playtesting
 // band). Now equal to Silent Worm's own base tick size (COMMON.tick).
 const SLEEPER_CELL_CREDIT_AMOUNT = 2;
 const PRIMED_THRESHOLD_REDUCTION = 2; // TBD/playtesting
-const PRIMED_MAGNITUDE_BONUS = 3; // TBD/playtesting -- payload magnitude bump, session 25 rework
+// TBD/playtesting -- 3 -> 1.5 (session 39 balance fix): applies every
+// time either Root piece fires (Ping Sweep is guaranteed every turn), so
+// this compounds continuously across a whole match, not per-tick like
+// Feedback Loop/Sleeper Cell -- 0 collapsed Operator entirely (0.7% win
+// rate, avgLayers 0.10, 81% noRoute -- it was carrying regular-fight
+// performance too, not just gatekeepers), so this needed a much smaller
+// relative cut than either of those. 1.5 lands at 11.0% full-run win
+// rate (StS's ascension-0 9-15% band); 2 also works (14.3%, nearer the
+// band's edge) but 1.5 leaves more headroom.
+const PRIMED_MAGNITUDE_BONUS = 1.5;
 // Flat amount queued as a bonus for the caster's next tick of the
 // opposite type, every time a HoT or DoT tick fires -- deliberately a
 // fixed step, not a fraction of the triggering tick's own size (tried

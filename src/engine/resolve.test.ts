@@ -1226,7 +1226,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       const state = createCombatState([exploitPiece], [], 12, 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 8 });
-      expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 8 }); // + PRIMED_MAGNITUDE_BONUS
+      expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 6.5 }); // + PRIMED_MAGNITUDE_BONUS (3 -> 1.5, session 39)
       expect(result.passiveTriggered).toBe(false); // no longer one-shot
     });
 
@@ -1241,7 +1241,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       state = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       state = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(state.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 6 });
-      expect(state.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 11 });
+      expect(state.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 8 }); // 2 x PRIMED_MAGNITUDE_BONUS (1.5)
     });
 
     it('reduces bankTarget for an Occurrence: threshold Exploit subroutine', () => {
@@ -1271,7 +1271,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       const state = createCombatState([exploitPiece], [], 12, 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'occurrence', category: 'flush', variation: 'scaling', cap: 4 });
-      expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 8 });
+      expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 6.5 }); // + PRIMED_MAGNITUDE_BONUS (1.5)
     });
 
     it('eases a Self-state heatAbove Exploit subroutine (lowers the bar)', () => {
@@ -1303,7 +1303,7 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       const state = createCombatState([exploitPiece], [], 12, 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
       expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'always' });
-      expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 8 });
+      expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 6.5 }); // + PRIMED_MAGNITUDE_BONUS (1.5)
     });
 
     it('leaves the payload untouched when it has no magnitude field to boost (trigger-ease still applies)', () => {
