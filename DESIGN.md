@@ -536,31 +536,49 @@ multiple sub-types rather than one move apiece:
   subroutine effectiveness or slowed gauge fill — a status-effect stack
   applied *to a side*, distinct from Root's direct rewrites of
   values/flow).
-- **Encryption** (4): **instant counter-push** (directly reduces the
-  *opponent's* gauge — a genuine suppression tool, not a push toward any
-  shared value); **ward** (an accumulating shield on the caster's own
-  side — absorbs the opponent's future non-Piercing offense, denying the
-  gauge credit it would otherwise earn them, until the shield depletes;
-  Piercing bypasses it entirely, the one counter-play against a
+- **Encryption** (7, +3 session 40 continued — see the new "Archetype
+  Win-Condition Audit" section below): **instant counter-push** (directly
+  reduces the *opponent's* gauge — a genuine suppression tool, not a push
+  toward any shared value); **ward** (an accumulating shield on the
+  caster's own side — absorbs the opponent's future non-Piercing offense,
+  denying the gauge credit it would otherwise earn them, until the shield
+  depletes; Piercing bypasses it entirely, the one counter-play against a
   ward-heavy build); **HoT** (gradual reduction of the *opponent's*
   gauge over time, mechanically symmetric to Malware's DoT's tick-
   cadence framework, just aimed at suppression instead of credit);
-  **cleanse** (removes an existing debuff afflicting you).
-- **Root** (5, session 24 redesign — see below): **instant manipulation**
-  (directly alter a gauge/threshold, a suit tally, or another
-  subroutine's enable-condition progress — slow, denying/delaying the
-  *opponent's* initiative gauge, or haste, accelerating the *caster's
-  own*, both live here as the same payload pointed at either side);
-  **Cribbage-layer manipulation** (a blunt whole-pair forced discard,
-  skew the cut, mark a suit — peekCrib itself is a permanent documented
-  no-op, see below); **scheduled sabotage** (fires now, but its effect
-  doesn't resolve until a specific *future* Cribbage-flow checkpoint,
-  e.g. skewing next hand's cut); **recon** (reveals real, otherwise-
-  hidden data — the opponent's dealt hand, the crib's contents, or their
-  kept hand — that the caster's *own* future discard/pegging decisions
-  can use); **surgical manipulation** (forces one specific card out of
-  the opponent's hand, chosen adversarially against their own best
-  interest, rather than dictating their whole discard pair).
+  **cleanse** (removes an existing debuff afflicting you); **ward
+  counter** (adds to the shield exactly like plain Ward, but arms an
+  ongoing effect for the rest of the fight: every future absorb on that
+  side, from *any* Ward source, also credits a portion to the caster's
+  own gauge — generalizes Ghost's Return to Sender passive, session 25,
+  into real archetype-native content instead of one class's exclusive
+  Mod); **draining HoT** (identical shape to plain HoT, but each tick
+  also credits a portion to the caster on top of the usual opponent
+  suppression — both effects fire every tick, not a split of one pool);
+  **ward bash** (spends a fraction of the caster's *current* Ward shield
+  for an equal-sized instant credit; a high fraction, naturally, spends
+  nearly the whole shield — deliberately no separate "consume everything"
+  flag, the cost falls out of the same field a lower fraction uses).
+- **Root** (6, session 24 redesign, +1 session 40 continued — see
+  below): **instant manipulation** (directly alter a gauge/threshold, a
+  suit tally, or another subroutine's enable-condition progress — slow,
+  denying/delaying the *opponent's* initiative gauge, or haste,
+  accelerating the *caster's own*, both live here as the same payload
+  pointed at either side); **Cribbage-layer manipulation** (a blunt
+  whole-pair forced discard, skew the cut, mark a suit — peekCrib itself
+  is a permanent documented no-op, see below); **scheduled sabotage**
+  (fires now, but its effect doesn't resolve until a specific *future*
+  Cribbage-flow checkpoint, e.g. skewing next hand's cut); **recon**
+  (reveals real, otherwise-hidden data — the opponent's dealt hand, the
+  crib's contents, or their kept hand — that the caster's *own* future
+  discard/pegging decisions can use); **surgical manipulation** (forces
+  one specific card out of the opponent's hand, chosen adversarially
+  against their own best interest, rather than dictating their whole
+  discard pair); **session hijack** (steals progress directly out of the
+  *opponent's* own gauge and credits it to the caster's, capped at
+  whatever the opponent actually had banked — the one payload kind in the
+  whole catalog that's a genuine two-sided transfer rather than a
+  relabeled burst, and Root's first native win-condition path).
 
   **Hand-lifecycle firing (session 24)**: recon and surgical manipulation
   don't wait for a turn or defer to the next hand — they fire at one of
@@ -584,10 +602,16 @@ subroutine firing).
 
 ### Subroutine trigger catalog
 
-What causes a subroutine to become enabled. Six trigger families, plus
-one orthogonal property. Four of the families are each one archetype's
-primary identity; the other two are universal, cross-cutting tools any
-archetype's subroutines can use — the same role Togglable already plays:
+What causes a subroutine to become enabled. Eight trigger families (six
+original + two Root-native additions, session 40 continued), plus one
+orthogonal property. Four of the six original families are each one
+archetype's primary identity; two (Chained, Always) are universal,
+cross-cutting tools any archetype's subroutines can use. The two newest
+(Rare-occurrence, Hand-outcome) are deliberately *not* universal the same
+way — both are Root-only in practice, giving Root three of the eight
+families total (Enemy-state plus these two), reflecting that it needed
+real new tooling to get a native win condition at all — see the new
+"Archetype Win-Condition Audit" section below for why.
 
 - **Accumulators** — count something over time, fire at a threshold.
   Point-count cooldown, suit-count tally; extensible to e.g. rank-count.
@@ -651,7 +675,27 @@ archetype's subroutines can use — the same role Togglable already plays:
   each turn even if nothing else is ready (chip damage, feeding another
   subroutine's accumulator, minor healing/warding). Any archetype can
   have a cheap Cantrip-tier version.
-- **Togglable** (orthogonal to all 6 families above) — some subroutines
+- **Rare-occurrence triggers** (Root-native, session 40 continued) —
+  watch a specific Occurrence category at or above a magnitude floor,
+  from *either* side, not just the caster's own — the one deliberate
+  break from Occurrence's own self-scoping rule above. Fires the instant
+  a qualifying occurrence happens, bypassing the normal ready-flag/
+  turn-gate pipeline entirely (no `reactive` flag needed — this family
+  doesn't use that machinery at all, it's evaluated directly inside
+  combat's own per-occurrence loop). "Royal pair" (magnitude ≥ 3) is
+  genuinely rare, not just a flavorful name — Pair's own magnitude is
+  already 2/3/4 for pair/pair-royal/double-pair-royal, so the floor does
+  real work.
+- **Hand-outcome triggers** ("Crib Trap," Root-native, session 40
+  continued) — watch one phase's own aggregate total for a just-resolved
+  hand (crib, either side's kept hand, or pegging score), read directly
+  off that hand's already-computed totals rather than approximated from
+  individual occurrences. Same turn-independent, bypass-the-pipeline
+  firing as Rare-occurrence above, checked once per hand right after it
+  resolves. A crib-phase watcher only ever fires on a hand where the
+  watched side is actually that hand's dealer — the crib belongs to the
+  dealer, not an error when it isn't applicable that hand.
+- **Togglable** (orthogonal to all 8 families above) — some subroutines
   carry a manual on/off switch, independent of their base trigger type;
   off means it never fires regardless of whether its condition is met.
   This is the confirmed **mid-combat** lever (a between-fights-only
@@ -795,14 +839,106 @@ whether they're truly equal-weight for every class or something else)
 — flagged by the user as a real follow-up topic, deliberately deferred
 rather than decided in passing.
 
-**Banked idea for a future subroutine-library expansion pass**:
-Circuit Breaker's "convert banked mitigation into a strike" mechanic
-could eventually be reincarnated as a *native Encryption* piece (not
-just a neutral one) and still read as thematic — a firewall that,
-after absorbing enough, counter-attacks is a completely standard
-security concept, not a borrowed one. Worth revisiting once the real
-per-class magnitude/balance pass (Phase 5's long-standing open item)
-gets to Encryption specifically.
+**Resolved session 40 continued** (`/decision-session`, full writeup in
+the new "Archetype Win-Condition Audit" section immediately below): the
+banked idea just above — Circuit Breaker's mechanic reincarnated as
+native Encryption content — shipped as **Ward Counter**, one of three new
+Encryption offense payloads. Root, which had the identical structural gap
+Encryption did, got its own native fix too (Session Hijack plus two new
+Root-only trigger families) rather than continuing to lean on the Neutral
+Archetype as its only patch.
+
+### Archetype Win-Condition Audit (session 40 continued, `/decision-session`)
+
+Triggered by stepping back from a gatekeeper-by-gatekeeper balance chase
+to ask a bigger question directly: does every archetype actually have
+both a real win condition (for a player using it) and a real containment
+identity (for an enemy using it, holding out to the hand-20 hard
+tiebreak)? Confirmed directly from `resolve.ts`'s payload dispatch, not
+assumed from this doc's own prose — **Encryption and Root had zero
+payload kinds that credit the caster's own gauge**, before this session.
+Every Encryption payload only denied the opponent or managed the
+caster's own defense; every Root payload only manipulated tempo,
+thresholds, or the Cribbage layer itself. "Mitigation can't win alone"
+(Resources, above) was a deliberate, stated structural property — but
+"Encryption/Root can never win via threshold *at all*, only via
+attrition" turned out to be a separate, unintended gap the design never
+actually closed. The Neutral Archetype (above) already patched this once,
+by lending Exploit-shaped offense to every class equally — a real fix at
+the time, but a patch borrowing from a 5th archetype, not something
+either archetype's own catalog could do.
+
+**A second, related finding, empirical rather than structural**: real
+fire-frequency instrumentation against several gatekeepers (the
+session-40 gatekeeper balance pass, `BACKLOG.md`) found that the hand-20
+attrition/hard-tiebreak backstop is barely reached in practice at all.
+Across 3,151 real fights spanning all 12 gatekeepers (300 seeds/class,
+realistic acquired power, skill=0.85), only two gatekeepers ever resolved
+via attrition — **Firewall Prime** (pure Encryption, 17.1%) and **Null
+Session** (Root+Encryption, 3.6%). Every other gatekeeper, all 10 of the
+remaining archetype pairings including `the-quarantine-ward`
+(Malware+Encryption, a name that literally invokes "contain until hand
+20"), showed a flat **0.0% attrition rate** across thousands of fights.
+Firewall Prime's own number makes the mechanism visible precisely because
+it's the one gatekeeper for which attrition was, before this session, its
+*only* structurally possible path to a win at all (pure Encryption, no
+other archetype, no Neutral pieces) — every other pairing has *some*
+credit-capable content in its kit and simply wins via threshold well
+before hand 20 in practice, real fights resolving in 2-5 hands rather
+than the 10-25 escalation's own timeline assumes. The implication is
+broader than just Encryption/Root: the "hold out to hand 20" containment
+identity is close to decorative for nearly every archetype pairing right
+now, not a gap unique to the two that structurally couldn't reach it at
+all. Not acted on this session — flagged here since it bears directly on
+how any future gatekeeper balance pass, or a future escalation-timeline
+retune, should be read.
+
+**The fix, shipped this session** (session log in `BACKLOG.md`'s top
+"NEXT SESSION" section, same "shape now, content later" split every other
+system in this project has used): three new Encryption payload kinds and
+three new Root
+mechanisms, detailed in the Payload/Trigger catalog sections above --
+**Ward Counter**, **Draining HoT**, **Ward Bash** (Encryption), and
+**Session Hijack**, **Rare-occurrence triggers**, **Hand-outcome
+triggers** (Root). Two design principles held across all six, resolved
+live rather than assumed:
+
+- **Reuse a proven mechanism before inventing a new one.** Ward
+  Counter/Draining HoT are a direct generalization of Ghost's own Return
+  to Sender passive (session 25, `RETURN_TO_SENDER_RATIO`) — already
+  tuned across two real balance passes — promoted from one class's
+  exclusive Mod into real archetype-native content any Encryption
+  subroutine can use. Session Hijack composes for free from two
+  already-existing primitives (`reduceWinGauge` + `creditWinGauge`).
+- **Root getting bespoke *trigger* effects reads more on-theme for the
+  archetype than bespoke *payloads*** (the user's own framing, adopted
+  directly) — Root's whole identity is "root access to any piece of the
+  system," which fits "I watch for a specific real event and react to
+  it" better than "I hit you." Session Hijack is the one exception (a
+  genuine two-sided transfer, not a relabeled burst, chosen specifically
+  because extending `instantManipulation` with an `ownWinGauge` target
+  was rejected as mechanically indistinguishable from Exploit's own
+  `directBurst`); Rare-occurrence and Hand-outcome are trigger-only,
+  pairing with existing credit payloads rather than needing new ones.
+
+**Also fixed along the way, both real engine bugs surfaced while doing
+this audit, not part of the archetype work itself**: `gaugeFillAbove`
+(an `enemyState` condition) read the cyclical InitiativeGauge instead of
+real win-progress, confirmed via instrumentation to fire ~1.5 times in a
+2.5-hand fight for pieces authored as a rare late-game punish (Honeypot,
+Vulnerability Scan) — migrated both to `breachContainmentAbove`, which
+reads the real thing. Separately, the pegging-phase skill AI never
+actually read `knownOpponentHand` despite Root's own Directory Traversal
+piece populating it end-to-end since session 24 — the reveal fired, the
+data was there, and the AI never looked at it; fixed to resolve a real
+defensive threat from the known hand instead of a blanket count-based
+guess.
+
+**Explicitly not done this session**: no real subroutine has been
+authored using any of the six new mechanisms yet — this is shape only,
+same discipline as Mods/Burners/Events before their own content passes.
+The broader attrition finding above (escalation's own timeline vs. how
+fast real fights actually resolve) is flagged, not investigated further.
 
 ### Mods (session 30, `/decision-session`)
 

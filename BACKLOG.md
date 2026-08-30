@@ -14,29 +14,47 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Session 40 update**: independent per-side gauge/win thresholds have now
-landed (session 40, `/decision-session` then same-day `/dev-session` --
-see the "Independent Per-Side Gauge/Win Thresholds -- Implementation" ✅
-complete spec in Phase 5) -- the user's own explicit sequencing call, so
-the balance-pass candidates directly below are now ready to act on with
-both `magnitudeScaler` (session 39) and a per-gatekeeper threshold
-override available as independent levers, rather than just the one.
-Nothing about the audit's findings themselves changed, only what tools
-are available to address them.
+**Session 40 update, current as of the archetype-design arc's close**:
+independent per-side gauge/win thresholds landed first (checkpoints A-F,
+Phase 5), then the gatekeeper balance candidates below started getting
+worked through layer by layer -- **Kernel Panic and Null Session (layer
+4) are fixed**; **Incident Response's own root cause (layer 2) is found
+and fixed** (a real engine bug, `gaugeFillAbove`, not a magnitude issue --
+see the "Session 40 continued a fourth time" log entry, below), but
+**The Quarantine Ward and Zero-Sum (layer 2) are still open** -- Quarantine
+Ward is confirmed to be the identical dead-content problem Kernel Panic
+was, likely reusable via the same bespoke-replacement fix. **Layer 1 and
+the layer-3 "retire the weak-trio assumption" note below remain
+untouched.** Partway through layer 2, the session pivoted to a bigger
+question -- see immediately below.
+
+**Bigger than gatekeeper balance: an archetype win-condition audit
+happened** (`/decision-session`, "Session 40 continued a fifth time",
+full design writeup in `DESIGN.md`'s new "Archetype Win-Condition Audit"
+section). Confirmed Encryption and Root both had zero payload kinds
+capable of crediting the caster's own gauge, and a 3,151-fight empirical
+audit found the hand-20 attrition backstop is reached almost never in
+practice, for nearly every archetype pairing, not just those two. Shipped
+six new engine mechanisms closing the structural gap (three Encryption
+payloads, three Root mechanisms) -- shape only, no real content authored
+with any of them yet. This is very likely a better next-session starting
+point than continuing the gatekeeper chase cold: the balance work below
+was itself what surfaced the deeper gap, and now there are new levers
+(plus, eventually, real content) that any further gatekeeper tuning
+should probably be done with, not around.
 
 **Real balance candidates from session 39's gatekeeper-ablation audit**
-(`docs/session-39-gatekeeper-balance-audit.md`), un-prioritized, no
-tuning applied yet -- ask rather than assume, same as every prior fork
-in this project:
-- **Layer 4 has the roster's widest difficulty spread** (10.83 points):
-  Null Session too hard (+5.20 avg delta from baseline), Kernel Panic
-  too easy (-5.63, the single largest ablation effect measured in
-  either direction).
-- **Layer 2**: Incident Response too hard (+4.10), The Quarantine
-  Ward/Zero-Sum both comparatively easy (-3.07/-2.40).
+(`docs/session-39-gatekeeper-balance-audit.md`) -- still the reference
+list for what's left, updated inline as items get resolved:
+- **Layer 4** ✅ done: Null Session (was +5.20 avg delta, too hard) and
+  Kernel Panic (was -5.63, too easy, the single largest ablation effect
+  measured in either direction) both fixed, session 40.
+- **Layer 2**: Incident Response (was +4.10, too hard) ✅ root cause
+  fixed (the `gaugeFillAbove` bug, not the piece itself). The Quarantine
+  Ward/Zero-Sum (-3.07/-2.40, too easy) still open.
 - **Layer 1**: Firewall Prime remains a confirmed outlier even after its
-  own ground-up redesign this session (+5.22); Ghost Process is the
-  layer's easy outlier (-3.71), not a neutral third option.
+  own ground-up redesign session 39 (+5.22); Ghost Process is the
+  layer's easy outlier (-3.71), not a neutral third option. Untouched.
 - **Retire the "layer 3's trio is weak" assumption** (below, and in
   README's own now-corrected status paragraph) -- the audit found it's
   actually the best-balanced layer in the roster (2.33-point spread).
@@ -835,6 +853,138 @@ specific Kernel Panic weakness (magnitude-insensitive, needs a real dig
 before guessing at a fix), or continued full-run recalibration once
 layer 2/1 are also addressed -- ask rather than assume, same as every
 prior fork in this project.
+
+**Same day, continued a fourth time -- layer 2, and a real engine bug
+found along the way.** Diagnosed all three layer-2 gatekeepers the same
+way as layer 4 (real firing-frequency instrumentation before touching any
+numbers): **Incident Response** (hard, +4.10) turned out *not* to be dead
+content like the layer-4 fixes -- all three of its pieces fire at healthy
+rates (~1-1.5/fight in a 2.46-hand fight). **The Quarantine Ward** (easy,
+-3.07) is the exact same problem as Kernel Panic, down to sharing the
+identical dead `epidemic`/`cold-storage` pieces. **Zero-Sum** (easy,
+-2.40) is a partial version of the same thing (`dead-drop` never fires at
+all; `total-pwnage` underpowered). None of these three were fixed this
+session -- the Incident Response finding redirected the session entirely.
+
+**Incident Response's own frequent firing traced to `Vulnerability
+Scan`'s `gaugeFillAbove` trigger** -- session 39's own banked-but-
+unconfirmed suspicion (`gaugeFillAbove` reads the cyclical
+InitiativeGauge, not real win-progress) confirmed directly: 1.48 fires in
+a 2.46-hand fight for a piece authored as a rare late-game punish. Fixed
+per the user's explicit direction ("fix the gaugeFillAbove bug first"):
+migrated `Vulnerability Scan`/`Honeypot` (subroutines.ts) to
+`breachContainmentAbove`, the same fix `enemy-subroutines.ts`'s
+Fail-Secure/Escalating Response/Intercept already used for the identical
+reason (session 39). `Honeypot` was also missing `reactive: true`
+entirely, a second, compounding bug, fixed alongside. `Priority
+Override`/`Sinkhole` (Root) also use `gaugeFillAbove` but were
+deliberately left alone -- their own design intent (frequent Root-priming,
+tempo catch-up) is genuinely compatible with the condition's real
+cyclical behavior, unlike the two rare-punish pieces. Verified:
+`Vulnerability Scan`'s fire rate dropped 1.48 -> 0.85/fight. Blast radius
+reached beyond Incident Response -- `Adaptive Threat` (layer 3, shares
+`Vulnerability Scan`) and `Zero Trust Node` (layer 1 elite, carries
+`Honeypot`) both affected; `Adaptive Threat`'s previously "fine" status
+(session 39's audit, part of the layer judged "best-balanced") turned out
+to be propped up by this same bug -- now measured at 92.9-100.0% player
+win rate, effectively neutered. Full-run recalibration (both skill=0.5
+and skill=0.85, requested explicitly by the user after correctly pushing
+back that skill=0.85 alone was the wrong comparison point for the earlier
+"stale band" framing) showed every class's win rate pulled back *up*
+across the board -- the `gaugeFillAbove` fix had been quietly propping up
+difficulty in a different spot than Kernel Panic/Null Session had been
+suppressing it, netting out to a wider, less even spread than before any
+of session 40's fixes (Warden/Ghost trending low, Blackhat trending high)
+rather than a uniformly tighter one. Commit `9c6d870`.
+
+**Same day, continued a fifth time -- stepping back from gatekeeper
+balance to a real archetype-design audit.** The user's own call, after
+the `gaugeFillAbove` finding: "do we need to take a hard look at the
+combat system and archetypes?" Assessed directly rather than guessed --
+every finding this session traced to *content* (dead triggers, one buggy
+shared condition), not the combat system's own mechanics (Breach/
+Containment racing, escalation, the hard tiebreak all held up under
+scrutiny) -- but the user redirected one level deeper anyway: audit the
+*archetypes* themselves specifically, since "each archetype needs win
+conditions" -- both a real path to win as a player, and a real path to
+contain as an enemy. Full writeup, findings, and the resulting design
+(all six new mechanisms, the attrition-rate empirical finding) now lives
+in `DESIGN.md`'s new **"Archetype Win-Condition Audit"** section
+(between Neutral Archetype and Mods) -- summarized here for the session
+log:
+
+- Confirmed directly from `resolve.ts`'s payload dispatch: **Encryption
+  and Root had zero payload kinds that credit the caster's own gauge**,
+  before this session -- a real, unintended gap distinct from "mitigation
+  can't win alone" (a deliberate, stated property).
+- A broader empirical audit (all 12 gatekeepers, 3,151 real fights)
+  found the hand-20 attrition backstop is reached almost never in
+  practice -- only Firewall Prime (17.1%, pure Encryption, structurally
+  had no other path before this session) and Null Session (3.6%) ever
+  resolve that way; the other 10 gatekeepers sit at a flat 0.0% across
+  thousands of fights, `The Quarantine Ward` included despite its own
+  name invoking exactly that identity. Not acted on this session, flagged
+  for whenever escalation's own timeline or the next balance pass gets
+  revisited.
+- **Encryption offense** (commit `85b1924`): `wardCounter`, `drainingHot`,
+  `wardBash` -- the first two generalize Ghost's own Return to Sender
+  passive (already proven, already tuned) into real archetype-native
+  content; `wardBash` is the user's own idea ("Ward Bash"), designed so a
+  high spend-fraction naturally consumes the whole shield without a
+  separate flag.
+- **Root offense** (commits `67f0bae`, `d4293c6`): three options were
+  weighed live for Root's own payload gap -- extending
+  `instantManipulation` with an `ownWinGauge` target (rejected, the user's
+  own read: "that's just directBurst") vs. **Session Hijack** (chosen:
+  a genuine two-sided win-gauge transfer, capped at what the opponent
+  actually had banked) vs. a recon-payoff idea ("Data Ransom," not
+  built -- see DESIGN.md's own section for why it didn't clear the same
+  "not just directBurst again" bar). Separately, per the user's own
+  explicit steer ("Root getting bespoke trigger effects is more on theme
+  for the archetype than getting bespoke payloads"), two new Root-only
+  trigger families: **Rare-occurrence** (watches either side's real
+  Cribbage occurrences at or above a magnitude floor -- "royal pair," not
+  just any pair) and **Hand-outcome** ("Crib Trap," the user's own
+  motivating example -- gain progress when the enemy scores a crib hand
+  > 4), both firing directly off real Cribbage-layer events, bypassing
+  the normal ready-flag/turn-gate pipeline entirely rather than composing
+  from what already existed.
+- **A real, separate engine bug found and fixed along the way** (commit
+  `bf50185`), not part of the archetype audit itself: the user caught
+  that the pegging-phase skill AI was supposed to be informed by Root's
+  own `Directory Traversal` piece (`revealOpponentKeptHand`,
+  `firesAt: 'onPlayPhaseStart'`) -- checked directly rather than assumed,
+  and confirmed `scorePegCandidate`'s own type signature explicitly
+  excluded `knownOpponentHand` (`Pick<PlayContext, 'legalCards' | 'count'
+  | 'sequence'>`), even though the data was already flowing correctly
+  end-to-end since session 24. Fixed: `RISKY_COUNTS`' blanket "5 or 21 is
+  risky" guess now only runs when the opponent's hand isn't actually
+  known; when it is, defensiveRisk resolves two real threats (a card that
+  completes 15/31 at this exact count, a same-rank pairing card) instead
+  of guessing. Narrow in practice -- only `Directory Traversal` uses this
+  payload today, so no broad recalibration sweep was run for this one.
+
+610/610 tests passing (from 574 at the top of this arc -- 36 new,
+spanning `enemies.test.ts`, `resolve.test.ts`, `ai.test.ts`), `npm run
+check` clean throughout. 6 commits this arc (`9c6d870` gaugeFillAbove,
+`85b1924` Encryption offense, `67f0bae` Session Hijack, `bf50185` pegging
+AI, `d4293c6` the two Root triggers), none pushed yet -- ask before
+assuming, same as every prior session. **Not done**: no real subroutine
+content authored with any of the six new mechanisms yet (shape only, same
+split every other system in this project got); layer 2's own three
+gatekeepers (Incident Response/Quarantine Ward/Zero-Sum) still
+un-fixed; the broader attrition-rate/escalation-timeline question is
+flagged, not investigated.
+
+**Next**: real candidates, un-prioritized -- author real content using
+the six new archetype mechanisms (the natural next step per this
+project's own "shape then content" convention), return to layer 2's
+still-open fixes (Quarantine Ward can likely reuse Kernel Panic's own
+bespoke replacements directly, being the identical dead-content problem),
+dig into the attrition-rate/escalation-timeline question the audit
+surfaced, or continue the full-run recalibration once more gatekeepers
+are addressed -- ask rather than assume, same as every prior fork in this
+project.
 
 **Phase 4 is complete** (session 22, all 6 checkpoints), and the
 Breach/Containment combat model has since been redesigned (session 22+,
