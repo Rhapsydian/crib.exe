@@ -33,7 +33,9 @@ import {
   consumePendingCribbageManipulation,
   createCombatState,
   fireHandLifecycleSubroutines,
+  fireHandOutcomeSubroutines,
   fireNewlyReadyReactiveSubroutines,
+  fireRareOccurrenceSubroutines,
   fireReadySubroutines,
   refreshTriggerReadiness,
   resolvePayload,
@@ -459,6 +461,35 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     return null;
   };
 
+  /** Root offense (session 40 continued): fires every handOutcome-
+   * triggered subroutine once per hand, both sides, right after that
+   * hand's HandResult is built -- same "route through step() so peak-
+   * tracking/resolution stays uniform" contract fireLifecycleGap above
+   * already has. */
+  const fireHandOutcomeGap = (hand: HandResult): PlayerIndex | null => {
+    for (const side of [0, 1] as PlayerIndex[]) {
+      const fired = fireHandOutcomeSubroutines(combatState, side, hand);
+      log.push(...fired.events);
+      const winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
+      if (winner !== null) return winner;
+    }
+    return null;
+  };
+
+  /** Root offense (session 40 continued): fires every rareOccurrence-
+   * triggered subroutine matching `occurrence`, both sides, watching
+   * either side's own scoring per each piece's own watchSide field. Same
+   * step()-routing contract as fireHandOutcomeGap above. */
+  const fireRareOccurrenceGap = (occurrence: ScoringOccurrence): PlayerIndex | null => {
+    for (const side of [0, 1] as PlayerIndex[]) {
+      const fired = fireRareOccurrenceSubroutines(combatState, side, occurrence);
+      log.push(...fired.events);
+      const winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
+      if (winner !== null) return winner;
+    }
+    return null;
+  };
+
   // HARD_RESOLUTION_HAND is the only real bound -- its own unconditional
   // check below always returns by the loop's last iteration, so there's
   // no separate "maxHands" concept above it anymore (removed: user
@@ -591,6 +622,14 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     };
     hands.push(hand);
 
+    // Root offense (session 40 continued): handOutcome traps resolve
+    // against this hand's own just-computed totals, before anything
+    // else about the new hand (sabotage/debuff-duration resolution,
+    // the occurrence loop) happens -- conceptually this is still part
+    // of *this* hand finishing, not the next one starting.
+    winner = fireHandOutcomeGap(hand);
+    if (winner !== null) return finish(winner);
+
     // Scheduled Sabotage "resolves at next deal," and debuff durations
     // (measured in hands, unlike DoT/HoT ticks) count down -- both right
     // here, before anything else in this new hand happens. advance()
@@ -616,6 +655,13 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     for (const occurrence of occurrencesForHand(hand)) {
       const beforeOccurrence = combatState;
       winner = step(checkReactive(beforeOccurrence, applyOccurrenceToState(combatState, occurrence), log));
+      if (winner !== null) return finish(winner);
+
+      // Root offense (session 40 continued): rareOccurrence watchers
+      // check this occurrence directly, independent of the readiness
+      // state applyOccurrenceToState/checkReactive just updated above --
+      // this trigger family never touches that machinery at all.
+      winner = fireRareOccurrenceGap(occurrence);
       if (winner !== null) return finish(winner);
 
       // Global-pulse DoT/HoT ticks watch combined scoring from either

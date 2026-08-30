@@ -1,4 +1,5 @@
 import type { PlayerIndex } from './pegging';
+import type { HandResult } from './game';
 import type { Card, Suit } from './cards';
 import type { Archetype, DebuffKind, HandLifecycleMoment, PayloadEffect, SubroutineDefinition, TickCadence } from './subroutine-types';
 import type { ClassId } from './classes';
@@ -18,6 +19,7 @@ import {
   updateMitigationBankedState,
   type SubroutineRuntimeState,
   type TriggerContext,
+  type ScoringOccurrence,
 } from './triggers';
 import { createInitiativeGauge, createDuelGauge, addDuelProgress, reduceDuelProgress, shrinkDuelThreshold, type InitiativeGauge, type DuelGauge } from './gauges';
 import { bestCardToForce } from './ai';
@@ -1988,6 +1990,94 @@ export function fireHandLifecycleSubroutines(
     );
     events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
     state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state));
+  }
+
+  return { combatState: state, events };
+}
+
+/** Fires every rareOccurrence-triggered subroutine on `side` that
+ * matches `occurrence` (session 40 continued) -- see
+ * RareOccurrenceTrigger's own doc comment (subroutine-types.ts) for the
+ * full design. Bypasses the normal ready-flag/turn-gate pipeline
+ * entirely, same shape as fireNewlyReadyReactiveSubroutines above:
+ * resolves the instant a qualifying occurrence happens, regardless of
+ * whose turn it is, watching either side's own scoring per the
+ * trigger's own watchSide field rather than only the caster's. Called
+ * once per occurrence, for both sides, from combat.ts's existing
+ * occurrence loop. */
+export function fireRareOccurrenceSubroutines(
+  combatState: CombatState,
+  side: PlayerIndex,
+  occurrence: ScoringOccurrence,
+): { combatState: CombatState; events: FireEvent[] } {
+  let state = combatState;
+  const events: FireEvent[] = [];
+  const loadoutLength = state.sides[side].loadout.length;
+
+  for (let i = 0; i < loadoutLength; i++) {
+    const entry = state.sides[side].loadout[i];
+    const trigger = entry.definition.trigger;
+    if (trigger.kind !== 'rareOccurrence') continue;
+    if (trigger.category !== occurrence.category || occurrence.magnitude < trigger.minMagnitude) continue;
+    const matchesSide =
+      trigger.watchSide === 'either' ||
+      (trigger.watchSide === 'own' && occurrence.player === side) ||
+      (trigger.watchSide === 'enemy' && occurrence.player !== side);
+    if (!matchesSide) continue;
+    const underFireCap = entry.definition.maxFiresPerCombat === undefined || entry.state.fireCount < entry.definition.maxFiresPerCombat;
+    if (!underFireCap || !entry.state.toggledOn) continue;
+
+    const fireEffect = payloadForFire(entry);
+    state = resolvePayload(fireEffect, entry.definition.archetype, state, side, { priorFireCountThisTurn: events.length }, entry.definition);
+    events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
+    state = updateLoadoutEntryState(state, side, i, resetAfterFire(state.sides[side].loadout[i].state));
+  }
+
+  return { combatState: state, events };
+}
+
+/** Fires every handOutcome-triggered subroutine on `side` whose
+ * condition is met by `hand`'s own just-resolved totals (session 40
+ * continued) -- see HandOutcomeTrigger's own doc comment
+ * (subroutine-types.ts) for the full design. Same bypass-the-normal-
+ * pipeline treatment as fireRareOccurrenceSubroutines above -- called
+ * once per hand, for both sides, from combat.ts right after that hand's
+ * HandResult is built. */
+export function fireHandOutcomeSubroutines(
+  combatState: CombatState,
+  side: PlayerIndex,
+  hand: HandResult,
+): { combatState: CombatState; events: FireEvent[] } {
+  let state = combatState;
+  const events: FireEvent[] = [];
+  const loadoutLength = state.sides[side].loadout.length;
+  const opponent = opponentOf(side);
+
+  for (let i = 0; i < loadoutLength; i++) {
+    const entry = state.sides[side].loadout[i];
+    const trigger = entry.definition.trigger;
+    if (trigger.kind !== 'handOutcome') continue;
+    const resolvedPlayer = trigger.side === 'own' ? side : opponent;
+
+    let actualValue: number;
+    if (trigger.phase === 'crib') {
+      if (hand.dealer !== resolvedPlayer) continue; // the crib belongs to the dealer only
+      actualValue = hand.cribScore;
+    } else if (trigger.phase === 'hand') {
+      actualValue = resolvedPlayer === hand.dealer ? hand.dealerHandScore : hand.nonDealerHandScore;
+    } else {
+      actualValue = hand.peggingScores[resolvedPlayer];
+    }
+
+    const conditionMet = trigger.comparison === 'above' ? actualValue > trigger.value : actualValue < trigger.value;
+    if (!conditionMet) continue;
+    const underFireCap = entry.definition.maxFiresPerCombat === undefined || entry.state.fireCount < entry.definition.maxFiresPerCombat;
+    if (!underFireCap || !entry.state.toggledOn) continue;
+
+    const fireEffect = payloadForFire(entry);
+    state = resolvePayload(fireEffect, entry.definition.archetype, state, side, { priorFireCountThisTurn: events.length }, entry.definition);
+    events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
+    state = updateLoadoutEntryState(state, side, i, resetAfterFire(state.sides[side].loadout[i].state));
   }
 
   return { combatState: state, events };

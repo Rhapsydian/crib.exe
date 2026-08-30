@@ -314,5 +314,13 @@ export function isReady(
       return evaluateChained(trigger, context.firedSubroutineIdsThisTurn);
     case 'always':
       return evaluateAlways(trigger);
+    case 'rareOccurrence':
+    case 'handOutcome':
+      // Never ready via the normal pipeline (session 40 continued) --
+      // both bypass it entirely, fired directly by
+      // resolve.ts's fireRareOccurrenceSubroutines/
+      // fireHandOutcomeSubroutines instead. Neither has anything to do
+      // with turn-based readiness.
+      return false;
   }
 }

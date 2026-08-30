@@ -19,7 +19,10 @@ import {
   consumePendingCribbageManipulation,
   applyFootholdBonus,
   adjustSideWinThreshold,
+  fireRareOccurrenceSubroutines,
+  fireHandOutcomeSubroutines,
 } from './resolve';
+import type { HandResult } from './game';
 
 function definition(
   id: string,
@@ -1770,5 +1773,165 @@ describe('Root offense (session 40 continued) -- sessionHijack', () => {
     let state = resolvePayload({ kind: 'directBurst', amount: 30 }, 'exploit', createCombatState([watcher], [], [12, 12]), 1);
     state = resolvePayload({ kind: 'sessionHijack', amount: 10 }, 'root', state, 0);
     expect(state.sides[0].loadout[0].state.accumulatedProgress).toBe(0);
+  });
+});
+
+describe('Root offense (session 40 continued) -- rareOccurrence trigger', () => {
+  it("fires on a matching category at/above minMagnitude, watchSide 'own'", () => {
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'own' }, { kind: 'sessionHijack', amount: 5 }, { archetype: 'root' });
+    let state = resolvePayload({ kind: 'directBurst', amount: 20 }, 'exploit', createCombatState([watcher], [], [12, 12]), 1); // enemy banks progress to steal
+    const result = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 3 }); // pair royal, cast by side 0
+    expect(result.events).toHaveLength(1);
+    expect(result.combatState.sides[0].winGauge.progress).toBe(5);
+  });
+
+  it('does not fire below minMagnitude -- a bare pair does not count as "royal"', () => {
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'own' }, { kind: 'sessionHijack', amount: 5 }, { archetype: 'root' });
+    const state = createCombatState([watcher], [], [12, 12]);
+    const result = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 2 }); // bare pair
+    expect(result.events).toHaveLength(0);
+  });
+
+  it('does not fire for a non-matching category', () => {
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'own' }, { kind: 'sessionHijack', amount: 5 }, { archetype: 'root' });
+    const state = createCombatState([watcher], [], [12, 12]);
+    const result = fireRareOccurrenceSubroutines(state, 0, { category: 'run', player: 0, magnitude: 4 });
+    expect(result.events).toHaveLength(0);
+  });
+
+  it("watchSide 'own' ignores the opponent's own occurrence", () => {
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'own' }, { kind: 'sessionHijack', amount: 5 }, { archetype: 'root' });
+    const state = createCombatState([watcher], [], [12, 12]);
+    const result = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 1, magnitude: 3 }); // the enemy's own pair royal
+    expect(result.events).toHaveLength(0);
+  });
+
+  it("watchSide 'enemy' fires only for the opponent's occurrence, not the caster's own", () => {
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'enemy' }, { kind: 'directBurst', amount: 5 }, { archetype: 'root' });
+    const state = createCombatState([watcher], [], [12, 12]);
+    const ownOccurrence = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 3 });
+    expect(ownOccurrence.events).toHaveLength(0);
+    const enemyOccurrence = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 1, magnitude: 3 });
+    expect(enemyOccurrence.events).toHaveLength(1);
+  });
+
+  it("watchSide 'either' fires regardless of which side scored it", () => {
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'either' }, { kind: 'directBurst', amount: 5 }, { archetype: 'root' });
+    const state = createCombatState([watcher], [], [12, 12]);
+    expect(fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 3 }).events).toHaveLength(1);
+    expect(fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 1, magnitude: 3 }).events).toHaveLength(1);
+  });
+
+  it('respects maxFiresPerCombat', () => {
+    const watcher = definition(
+      'watcher',
+      { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'either' },
+      { kind: 'directBurst', amount: 5 },
+      { archetype: 'root', maxFiresPerCombat: 1 },
+    );
+    let state = createCombatState([watcher], [], [12, 12]);
+    const first = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 3 });
+    expect(first.events).toHaveLength(1);
+    const second = fireRareOccurrenceSubroutines(first.combatState, 0, { category: 'pair', player: 0, magnitude: 3 });
+    expect(second.events).toHaveLength(0);
+  });
+
+  it('never becomes ready via the normal turn-gated pipeline -- isReady/refreshTriggerReadiness never latch it', () => {
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'either' }, { kind: 'directBurst', amount: 5 }, { archetype: 'root' });
+    let state = createCombatState([watcher], [], [12, 12]);
+    state = refreshTriggerReadiness(state, 0);
+    const fired = fireReadySubroutines(state, 0, { isDealer: true });
+    expect(fired.events).toHaveLength(0); // never fires via the normal path, regardless of readiness refresh
+  });
+});
+
+function testHand(overrides: Partial<HandResult> = {}): HandResult {
+  return {
+    dealer: 0,
+    starter: { rank: 1, suit: 0 },
+    hisHeelsPoints: 0,
+    peggingScores: [0, 0],
+    nonDealerHandScore: 0,
+    dealerHandScore: 0,
+    cribScore: 0,
+    scoresAfter: [0, 0],
+    peggingEvents: [],
+    nonDealerHandEvents: [],
+    dealerHandEvents: [],
+    cribEvents: [],
+    ...overrides,
+  };
+}
+
+describe('Root offense (session 40 continued) -- handOutcome trigger ("Crib Trap")', () => {
+  it('the motivating example: gains progress when the enemy scores a crib hand greater than 4', () => {
+    const trap = definition('trap', { kind: 'handOutcome', phase: 'crib', side: 'enemy', comparison: 'above', value: 4 }, { kind: 'directBurst', amount: 7 }, { archetype: 'root' });
+    const state = createCombatState([trap], [], [12, 12]);
+    const enemyDealtBigCrib = testHand({ dealer: 1, cribScore: 5 }); // side 1 (the enemy) is dealer, crib > 4
+    const result = fireHandOutcomeSubroutines(state, 0, enemyDealtBigCrib);
+    expect(result.events).toHaveLength(1);
+    expect(result.combatState.sides[0].winGauge.progress).toBe(7);
+  });
+
+  it('does not fire when the caster is dealer -- the crib belongs to the dealer, not "the enemy"', () => {
+    const trap = definition('trap', { kind: 'handOutcome', phase: 'crib', side: 'enemy', comparison: 'above', value: 4 }, { kind: 'directBurst', amount: 7 }, { archetype: 'root' });
+    const state = createCombatState([trap], [], [12, 12]);
+    const casterDealtBigCrib = testHand({ dealer: 0, cribScore: 10 }); // side 0 (the caster) is dealer this hand
+    const result = fireHandOutcomeSubroutines(state, 0, casterDealtBigCrib);
+    expect(result.events).toHaveLength(0);
+  });
+
+  it('does not fire when the value does not clear the threshold', () => {
+    const trap = definition('trap', { kind: 'handOutcome', phase: 'crib', side: 'enemy', comparison: 'above', value: 4 }, { kind: 'directBurst', amount: 7 }, { archetype: 'root' });
+    const state = createCombatState([trap], [], [12, 12]);
+    const smallCrib = testHand({ dealer: 1, cribScore: 4 }); // exactly 4, not above
+    const result = fireHandOutcomeSubroutines(state, 0, smallCrib);
+    expect(result.events).toHaveLength(0);
+  });
+
+  it("phase 'hand' resolves to the resolved side's own kept-hand score, dealer or not", () => {
+    const trap = definition('trap', { kind: 'handOutcome', phase: 'hand', side: 'own', comparison: 'above', value: 8 }, { kind: 'directBurst', amount: 3 }, { archetype: 'root' });
+    const state = createCombatState([trap], [], [12, 12]);
+    const asNonDealer = testHand({ dealer: 1, nonDealerHandScore: 10, dealerHandScore: 0 }); // caster (side 0) is non-dealer
+    expect(fireHandOutcomeSubroutines(state, 0, asNonDealer).events).toHaveLength(1);
+    const asDealer = testHand({ dealer: 0, dealerHandScore: 10, nonDealerHandScore: 0 }); // caster (side 0) is dealer
+    expect(fireHandOutcomeSubroutines(state, 0, asDealer).events).toHaveLength(1);
+  });
+
+  it("phase 'pegging' reads peggingScores directly", () => {
+    const trap = definition('trap', { kind: 'handOutcome', phase: 'pegging', side: 'own', comparison: 'above', value: 5 }, { kind: 'directBurst', amount: 3 }, { archetype: 'root' });
+    const state = createCombatState([trap], [], [12, 12]);
+    const result = fireHandOutcomeSubroutines(state, 0, testHand({ peggingScores: [6, 0] }));
+    expect(result.events).toHaveLength(1);
+  });
+
+  it("comparison 'below' fires under the threshold, not over", () => {
+    const trap = definition('trap', { kind: 'handOutcome', phase: 'crib', side: 'own', comparison: 'below', value: 2 }, { kind: 'directBurst', amount: 3 }, { archetype: 'root' });
+    const state = createCombatState([trap], [], [12, 12]);
+    expect(fireHandOutcomeSubroutines(state, 0, testHand({ dealer: 0, cribScore: 1 })).events).toHaveLength(1);
+    expect(fireHandOutcomeSubroutines(state, 0, testHand({ dealer: 0, cribScore: 3 })).events).toHaveLength(0);
+  });
+
+  it('respects maxFiresPerCombat', () => {
+    const trap = definition(
+      'trap',
+      { kind: 'handOutcome', phase: 'crib', side: 'enemy', comparison: 'above', value: 4 },
+      { kind: 'directBurst', amount: 3 },
+      { archetype: 'root', maxFiresPerCombat: 1 },
+    );
+    let state = createCombatState([trap], [], [12, 12]);
+    const hand = testHand({ dealer: 1, cribScore: 6 });
+    const first = fireHandOutcomeSubroutines(state, 0, hand);
+    expect(first.events).toHaveLength(1);
+    const second = fireHandOutcomeSubroutines(first.combatState, 0, hand);
+    expect(second.events).toHaveLength(0);
+  });
+
+  it('never becomes ready via the normal turn-gated pipeline', () => {
+    const trap = definition('trap', { kind: 'handOutcome', phase: 'crib', side: 'enemy', comparison: 'above', value: 4 }, { kind: 'directBurst', amount: 3 }, { archetype: 'root' });
+    let state = createCombatState([trap], [], [12, 12]);
+    state = refreshTriggerReadiness(state, 0);
+    const fired = fireReadySubroutines(state, 0, { isDealer: true });
+    expect(fired.events).toHaveLength(0);
   });
 });

@@ -89,9 +89,61 @@ export interface AlwaysTrigger {
 }
 
 /**
- * The 6 trigger families. Togglable is deliberately NOT a 7th member —
- * DESIGN.md is explicit it's an orthogonal property, so it lives on
- * SubroutineDefinition instead.
+ * Root-native, session 40 continued: watches a specific occurrence
+ * category at or above a magnitude floor, from *either* side, not just
+ * the caster's own -- the one deliberate break from Occurrence's own
+ * "scoped to the caster's own scoring events" rule (DESIGN.md). Fires
+ * the instant a qualifying occurrence happens (resolve.ts's
+ * fireRareOccurrenceSubroutines), completely independent of whose turn
+ * it is -- no `reactive` flag needed, this trigger family doesn't go
+ * through the normal ready-flag pipeline at all. `minMagnitude` is what
+ * makes "rare" real rather than aspirational: a Pair occurrence's own
+ * magnitude is 2 for a bare pair, 3 for pair royal, 4 for double pair
+ * royal (DESIGN.md's Pair category), so `minMagnitude: 3` genuinely
+ * means "pair royal or better," not "any pair." Pairs with any existing
+ * credit-capable payload (sessionHijack, directBurst, etc.) -- no new
+ * payload kind needed, the novelty is entirely in the trigger.
+ */
+export interface RareOccurrenceTrigger {
+  kind: 'rareOccurrence';
+  category: OccurrenceCategory;
+  minMagnitude: number;
+  watchSide: 'own' | 'enemy' | 'either';
+}
+
+/**
+ * Root-native, session 40 continued: watches one phase's own aggregate
+ * total for a resolved hand -- crib/hand/pegging scores are each already
+ * computed onto HandResult (game.ts) before any turn-based processing
+ * begins, so this checks the real number directly rather than
+ * approximating from individual occurrences. Fires once per qualifying
+ * hand (resolve.ts's fireHandOutcomeSubroutines), right after that
+ * hand's HandResult is built -- same "bypasses the normal ready-flag
+ * pipeline entirely" treatment as RareOccurrenceTrigger above, for the
+ * same reason: this has nothing to do with turn-based readiness.
+ *
+ * `phase: 'crib'` only ever resolves for a hand where `side` (resolved
+ * from the caster's own perspective) is actually that hand's dealer --
+ * the crib belongs to the dealer, so a hand where the specified side
+ * isn't dealing simply doesn't trigger this pass, not an error.
+ * `phase: 'hand'` resolves to `side`'s own kept-hand score regardless of
+ * dealer role (dealerHandScore or nonDealerHandScore, whichever `side`
+ * actually was that hand). `phase: 'pegging'` reads peggingScores
+ * directly.
+ */
+export interface HandOutcomeTrigger {
+  kind: 'handOutcome';
+  phase: 'crib' | 'hand' | 'pegging';
+  side: 'own' | 'enemy';
+  comparison: 'above' | 'below';
+  value: number;
+}
+
+/**
+ * The 8 trigger families (6 original + RareOccurrenceTrigger/
+ * HandOutcomeTrigger, session 40 continued). Togglable is deliberately
+ * NOT a member — DESIGN.md is explicit it's an orthogonal property, so
+ * it lives on SubroutineDefinition instead.
  */
 export type TriggerFamily =
   | AccumulatorTrigger
@@ -99,7 +151,9 @@ export type TriggerFamily =
   | EnemyStateTrigger
   | SelfStateTrigger
   | ChainedTrigger
-  | AlwaysTrigger;
+  | AlwaysTrigger
+  | RareOccurrenceTrigger
+  | HandOutcomeTrigger;
 
 /** Malware DoT / Encryption HoT tick cadence (DESIGN.md: a per-subroutine
  * property, not universal). Global pulse ticks off combined points from
