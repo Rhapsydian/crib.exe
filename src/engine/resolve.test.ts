@@ -1742,3 +1742,33 @@ describe('Encryption offense (session 40 continued) -- wardCounter/drainingHot/w
     });
   });
 });
+
+describe('Root offense (session 40 continued) -- sessionHijack', () => {
+  it("transfers a flat amount from the opponent's win-gauge to the caster's own", () => {
+    let state = resolvePayload({ kind: 'directBurst', amount: 30 }, 'exploit', createCombatState([], [], [12, 12]), 1); // enemy banks 30
+    const result = resolvePayload({ kind: 'sessionHijack', amount: 10 }, 'root', state, 0);
+    expect(result.sides[1].winGauge.progress).toBe(20); // 30 - 10
+    expect(result.sides[0].winGauge.progress).toBe(10); // the caster gains exactly what was taken
+  });
+
+  it("caps the credit at what the opponent actually had -- can't steal more than what's there", () => {
+    let state = resolvePayload({ kind: 'directBurst', amount: 4 }, 'exploit', createCombatState([], [], [12, 12]), 1); // enemy banks only 4
+    const result = resolvePayload({ kind: 'sessionHijack', amount: 10 }, 'root', state, 0);
+    expect(result.sides[1].winGauge.progress).toBe(0); // floored, same as reduceWinGauge alone
+    expect(result.sides[0].winGauge.progress).toBe(4); // capped at what was actually there, not the full requested 10
+  });
+
+  it('against an empty opponent gauge, is a harmless no-op -- not a disguised free burst', () => {
+    const state = createCombatState([], [], [12, 12]);
+    const result = resolvePayload({ kind: 'sessionHijack', amount: 10 }, 'root', state, 0);
+    expect(result.sides[1].winGauge.progress).toBe(0);
+    expect(result.sides[0].winGauge.progress).toBe(0);
+  });
+
+  it('does not feed mitigationBanked -- offense, not defensive effort', () => {
+    const watcher = definition('breaker', { kind: 'accumulator', metric: 'mitigationBanked', threshold: 100 }, { kind: 'directBurst', amount: 1 });
+    let state = resolvePayload({ kind: 'directBurst', amount: 30 }, 'exploit', createCombatState([watcher], [], [12, 12]), 1);
+    state = resolvePayload({ kind: 'sessionHijack', amount: 10 }, 'root', state, 0);
+    expect(state.sides[0].loadout[0].state.accumulatedProgress).toBe(0);
+  });
+});

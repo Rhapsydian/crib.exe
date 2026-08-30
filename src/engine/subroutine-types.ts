@@ -268,7 +268,39 @@ export interface WardBashPayload {
   fraction: number;
 }
 
-// --- Root (3) ---
+// --- Root (4) ---
+
+/**
+ * Root offense (session 40 continued -- confirmed from resolvePayloadCore's
+ * dispatch, same as Encryption before this session's WardCounterPayload/
+ * DrainingHotPayload/WardBashPayload: Root has zero payload kinds that
+ * credit the caster's own gauge). Two shapes were weighed: extending
+ * InstantManipulationPayload with a new 'ownWinGauge' target (rejected --
+ * mechanically indistinguishable from directBurst wearing Root's flavor
+ * text, no new tension) vs. this: "Session Hijack," a genuine two-sided
+ * transfer, steals progress directly out of the opponent's own win-gauge
+ * and credits it to the caster's -- composes for free from two
+ * already-existing primitives (reduceWinGauge + creditWinGauge), but is
+ * mechanically new to the catalog regardless (nothing else does a
+ * coupled dual-side transfer). More distinctly Root's own identity than
+ * a relabeled burst: not "I hit you" (Exploit) or "I drain/absorb you"
+ * (Encryption), but "I redirect your own intrusion progress into my
+ * session" -- session hijacking is a real hacking term (intercepting and
+ * taking over an active connection), a direct thematic fit.
+ *
+ * The credited amount is capped at what the opponent actually had banked
+ * (see resolve.ts's own case) -- crediting the full requested `amount`
+ * regardless of the opponent's actual progress would make this strictly
+ * better against a near-empty gauge than a full one, backwards from "you
+ * can only steal what's there." 1:1 transfer for this first draft (no
+ * separate efficiency ratio); doesn't feed mitigationBanked -- offense,
+ * not defensive effort, same reasoning WardBashPayload was excluded.
+ */
+export interface SessionHijackPayload {
+  kind: 'sessionHijack';
+  amount: number;
+}
+
 export interface InstantManipulationPayload {
   kind: 'instantManipulation';
   /** 'enemyGaugeThreshold' (session 21+) permanently raises the enemy's
@@ -396,6 +428,7 @@ export type PayloadEffect =
   | WardCounterPayload
   | DrainingHotPayload
   | WardBashPayload
+  | SessionHijackPayload
   | InstantManipulationPayload
   | CribbageLayerManipulationPayload
   | ScheduledSabotagePayload

@@ -88,6 +88,7 @@ function transformPayloadMagnitude(payload: PayloadEffect, transform: (amount: n
     case 'instantCounterPush':
     case 'instantManipulation':
     case 'selfHeatReduction':
+    case 'sessionHijack':
     case 'ward':
       // Breach/Containment redesign (session 22+): Ward became an
       // accumulating shield amount, no longer archetype-scoped -- now a

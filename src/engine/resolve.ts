@@ -1334,6 +1334,21 @@ function resolvePayloadCore(
       const sides = replaceSide(combatState.sides, caster, { ...casterState, debuffs, gauge });
       return { ...combatState, sides };
     }
+    case 'sessionHijack': {
+      // Root offense (session 40 continued) -- see the payload's own
+      // header comment for why this is a genuine transfer, not a
+      // relabeled directBurst. Capped at the target's own actual
+      // progress: crediting the full requested amount regardless of
+      // what was really there would make this strictly better against a
+      // near-empty gauge, backwards from "you can only steal what's
+      // there" -- same "can't take more than what's there" shape
+      // absorbWithShield already uses for Ward.
+      const requested = payload.amount * corruptionMultiplier(combatState, caster);
+      const targetProgress = combatState.sides[target].winGauge.progress;
+      const stolen = Math.min(targetProgress, requested);
+      const reduced = reduceWinGauge(combatState, target, requested);
+      return creditWinGauge(reduced, caster, stolen);
+    }
     case 'instantManipulation': {
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
       if (payload.target === 'enemyGauge') {
