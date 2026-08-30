@@ -173,6 +173,43 @@ describe('scorePegCandidate / pegSkillStrategy', () => {
     expect(legalCards).toContainEqual(chosen);
   });
 
+  describe('knownOpponentHand -- precise defensive read (session 40 continued, closing the revealOpponentKeptHand gap)', () => {
+    const expert = interpolatePegWeights(1);
+
+    it('flags a threat via a real 15/31-completing card at a count RISKY_COUNTS would never flag', () => {
+      // Count 13 isn't in RISKY_COUNTS at all, but the known hand holds a
+      // 2 that completes exactly 15 -- the blanket heuristic would call
+      // this safe; the real read correctly calls it risky.
+      const ctx = { legalCards: [safe], count: 11, sequence, knownOpponentHand: [card(2, 3)] };
+      const ctxBlind = { legalCards: [safe], count: 11, sequence };
+      expect(scorePegCandidate(safe, ctx, expert)).toBeLessThan(scorePegCandidate(safe, ctxBlind, expert));
+    });
+
+    it('flags a pairing threat regardless of the resulting count', () => {
+      const pairable = card(7, 0);
+      const ctx = { legalCards: [pairable], count: 0, sequence: [], knownOpponentHand: [card(7, 3)] };
+      const ctxBlind = { legalCards: [pairable], count: 0, sequence: [] };
+      expect(scorePegCandidate(pairable, ctx, expert)).toBeLessThan(scorePegCandidate(pairable, ctxBlind, expert));
+    });
+
+    it("clears RISKY_COUNTS' blanket flag when the known hand actually can't punish it -- the real value-add, not just an added penalty", () => {
+      // riskyPair leaves the count at 21 (blanket-risky), but a known
+      // opponent hand with nothing that completes 15/31 from 21 and no
+      // pairing card means the real read is safe.
+      const harmlessHand = [card(3, 3)]; // 21+3=24, no completion; rank 3 doesn't pair riskyPair's rank 10
+      const ctx = { legalCards: [riskyPair, safe], count: 11, sequence, knownOpponentHand: harmlessHand };
+      const ctxBlind = { legalCards: [riskyPair, safe], count: 11, sequence };
+      expect(scorePegCandidate(riskyPair, ctx, expert)).toBeGreaterThan(scorePegCandidate(riskyPair, ctxBlind, expert));
+    });
+
+    it('pegSkillStrategy actually changes its pick when knownOpponentHand reveals the blanket-risky count is really safe', () => {
+      const strategy = pegSkillStrategy(1); // expert: defensiveRisk fully weighted
+      const harmlessHand = [card(3, 3)];
+      const chosen = strategy({ legalCards: [riskyPair, safe], count: 11, sequence, knownOpponentHand: harmlessHand });
+      expect(chosen).toEqual(riskyPair); // immediate score wins once the "risk" is known to be fake
+    });
+  });
+
   describe('softmax mistake-injection (session 26)', () => {
     it('without ctx.rng, matches today\'s exact argmax at every skill level -- non-breaking by construction', () => {
       const strategy = pegSkillStrategy(0);

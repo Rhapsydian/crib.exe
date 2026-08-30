@@ -262,6 +262,28 @@ const PEG_EXPERT_WEIGHTS: PegWeights = { immediateScore: 1, defensiveRisk: 1, se
 const RISKY_COUNTS = new Set([5, 21]);
 const DEFENSIVE_RISK_PENALTY = 3; // TBD/playtesting
 
+/** Precise defensive read when the opponent's kept hand is actually
+ * known (session 40 continued -- closing a real gap: revealOpponentKeptHand
+ * (resolve.ts), firesAt: 'onPlayPhaseStart', has populated PlayContext.
+ * knownOpponentHand end-to-end since session 24, but scorePegCandidate
+ * never read it -- RISKY_COUNTS' blanket "5 or 21 is risky" guess ran
+ * unconditionally even when the real answer was sitting right there).
+ * Two concrete threats a known hand actually resolves, not just
+ * estimates: does the opponent hold a card that completes 15 or 31 at
+ * this exact resulting count, and does the opponent hold a card of the
+ * same rank just played (an immediate pair). Deliberately not attempting
+ * run detection here -- setupValue's own adjacent-rank heuristic already
+ * covers that space approximately, and a precise run check needs the
+ * live sequence, not just the opponent's hand in isolation. */
+function knownOpponentThreatensThisPlay(card: Card, newCount: number, knownOpponentHand: Card[]): boolean {
+  const completes15Or31 = knownOpponentHand.some((c) => {
+    const value = cardValue(c);
+    return newCount + value === 15 || newCount + value === 31;
+  });
+  const canPair = knownOpponentHand.some((c) => c.rank === card.rank);
+  return completes15Or31 || canPair;
+}
+
 /** Session 26: real mistake-injection for pegging -- see softmaxPick's
  * doc comment. Separate from DISCARD_MAX_TEMPERATURE below because
  * pegging-candidate scores and discard hand-EV scores are on very
@@ -332,11 +354,20 @@ export function interpolatePegWeights(skill: number): PegWeights {
 }
 
 /** Weighted score for playing `card` from `ctx` -- exported so both the
- * factory below and tests can evaluate a single candidate directly. */
-export function scorePegCandidate(card: Card, ctx: Pick<PlayContext, 'legalCards' | 'count' | 'sequence'>, weights: PegWeights): number {
+ * factory below and tests can evaluate a single candidate directly.
+ * `knownOpponentHand` (session 40 continued) upgrades defensiveRisk from
+ * RISKY_COUNTS' blanket guess to a real, resolved read whenever it's
+ * populated -- see knownOpponentThreatensThisPlay's own doc comment. */
+export function scorePegCandidate(card: Card, ctx: Pick<PlayContext, 'legalCards' | 'count' | 'sequence' | 'knownOpponentHand'>, weights: PegWeights): number {
   const newCount = ctx.count + cardValue(card);
   const immediateScore = scoreCardPlay([...ctx.sequence, card], newCount).total;
-  const defensiveRisk = RISKY_COUNTS.has(newCount) ? DEFENSIVE_RISK_PENALTY : 0;
+  const defensiveRisk = ctx.knownOpponentHand
+    ? knownOpponentThreatensThisPlay(card, newCount, ctx.knownOpponentHand)
+      ? DEFENSIVE_RISK_PENALTY
+      : 0
+    : RISKY_COUNTS.has(newCount)
+      ? DEFENSIVE_RISK_PENALTY
+      : 0;
   const setupValue = ctx.legalCards.filter((c) => !cardsEqual(c, card) && Math.abs(c.rank - card.rank) <= 1).length;
   return weights.immediateScore * immediateScore - weights.defensiveRisk * defensiveRisk + weights.setupValue * setupValue;
 }
