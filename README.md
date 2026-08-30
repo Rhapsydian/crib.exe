@@ -84,6 +84,63 @@ layer) is now a real, tested, permanent alternate-game-mode engine
 (`src/engine/basic-cribbage.ts`) rather than a throwaway diagnostic —
 the entire per-class balance pass above still describes the roguelite
 mode; Basic Cribbage is a separate, still-unbuilt-in-the-UI mode.
+
+**Independent per-side gauge/win thresholds** shipped next (both a side's
+initiative-gauge cadence and win-gauge target are now genuinely
+independent per side, not one shared scalar), used immediately to fix two
+of the layer-4 audit findings above: Null Session's own passive was
+punishing whoever crossed 50% first regardless of real threat (raised its
+own `winThreshold`), and Kernel Panic turned out to be structurally dead
+content — real fights against it average 2.33 hands, far too short for
+its RARE-tier accumulator triggers to ever bank up, fixed with three
+bespoke enemy-only replacement pieces using faster trigger shapes instead
+(same payload flavor). A separately confirmed engine bug,
+`gaugeFillAbove` (an `enemyState` condition reading the cyclical
+turn-cadence gauge instead of real win-progress), turned out to be
+propping up Incident Response's own difficulty and, more surprisingly,
+layer 3's Adaptive Threat too — migrated to the condition that actually
+reads win-progress.
+
+**A full Archetype Win-Condition Audit followed** — stepping back from
+gatekeeper-by-gatekeeper tuning to ask whether every archetype has both a
+real win condition (for a player) and a real containment identity (for
+an enemy holding out to the hand-20 hard tiebreak). Confirmed directly
+from the payload dispatch code: Encryption and Root had zero payload
+kinds able to credit the caster's own gauge at all. A separate,
+much larger empirical finding: across 3,151 real gatekeeper fights (all
+12 gatekeepers, realistic acquired power), only 2 ever resolved via the
+hand-20 attrition backstop — the "hold out to the deadline" containment
+identity is close to decorative for nearly every archetype pairing, not
+just the two that structurally couldn't reach it. Fixed with six new
+native mechanisms — Encryption's `wardCounter`/`drainingHot`/`wardBash`
+(generalizing Ghost's own Return to Sender passive into real archetype
+content) and Root's `sessionHijack` payload plus two new Root-only
+trigger families, `rareOccurrence` (reacts to either side's rare
+Cribbage plays, e.g. a pair royal) and `handOutcome` (reacts to a
+resolved hand's own crib/hand/pegging total, e.g. "the enemy's crib
+scores above average") — both bypassing the normal turn-gated firing
+pipeline entirely, evaluated directly against real game events. A real
+pegging-AI gap was found and fixed along the way too: Root's own
+Directory Traversal piece had populated the opponent's known hand since
+session 24, but the pegging AI never actually read it.
+
+**A 12-piece content-validation sample** (2 per new mechanism, split
+across Encryption/Root) followed, grounded by a new permanent diagnostic,
+`scripts/occurrence-frequency.ts` — real raw-Cribbage occurrence
+frequency and score-distribution stats (skill=0.85, no roguelite layer
+at all), used to set real rarity thresholds (pair-royal-or-better is a
+genuine 8.8% of pair occurrences) instead of guessing. The sample
+produced a real, positive confirmation: a solo Encryption-pool loadout,
+which could previously only ever win by outlasting an opponent to the
+hard-resolution deadline, now genuinely crosses its own win-gauge
+threshold in real combat. This is shape/validation only — no full
+content pass yet; the user's own stated roadmap is a full audit-and-
+roughly-double pass across the player pool, then the enemy pool, Mods,
+classes (particularly the five of six that touch Encryption or Root),
+and the gatekeeper roster, each its own session, finishing with a heavy
+ablation-driven balance pass to pick the best-fitting subset of an
+intentionally over-generated gatekeeper pool.
+
 See `DESIGN.md` for the full design, `BACKLOG.md` for the phased
 implementation roadmap and next-session pointer, and `session-logs/` for a
 per-session record of decisions and results.
@@ -92,7 +149,7 @@ Domain: `cribexe.com` (registered available, not yet purchased).
 
 ## Engine
 
-- `npm test` — run the Vitest suite (564 tests as of session 39).
+- `npm test` — run the Vitest suite (611 tests as of session 40).
 - `npm run check` — type-check (`svelte-check` + `tsc`).
 - `npm run sweep -- run|enemy ...` — balance/regression sweep harness (see
   `scripts/sweep.ts`); used throughout Phase 5 to tune with real numbers
@@ -109,6 +166,11 @@ Domain: `cribexe.com` (registered available, not yet purchased).
 - `npx tsx scripts/cribbage-skill-matrix.ts` — pure-Cribbage skill-vs-
   skill win-rate calibration grid, entirely outside the roguelite layer;
   what a "player skill" default actually means in Cribbage terms.
+- `npx tsx scripts/occurrence-frequency.ts` — real raw-Cribbage
+  occurrence frequency (by category and magnitude) and hand/crib/pegging
+  score distributions, also outside the roguelite layer; calibrates
+  content thresholds (rareOccurrence's minMagnitude, handOutcome's value)
+  against actual play instead of guessing.
 - `npm run dev` — Vite dev server (currently just the default Svelte
   scaffold; no game UI is wired up yet).
 

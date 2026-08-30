@@ -14,7 +14,33 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Session 40 update, current as of the archetype-design arc's close**:
+**Session 40 close-out update (most current)**: the content-validation
+sample is done -- 12 new pool pieces (6 Encryption, 6 Root, 2 per new
+mechanism), grounded in a new permanent tool
+(`scripts/occurrence-frequency.ts`, real raw-Cribbage occurrence-
+frequency/score-distribution stats) rather than guessed numbers. Real,
+positive confirmation: `subroutines.test.ts`'s solo-Encryption-pool test
+now genuinely wins via threshold (was previously structurally
+impossible, by design, before this session). Full detail in
+`session-logs/session-40-2026-08-30.md`.
+
+**The user's own explicit roadmap for what comes after** (confirmed as a
+genuine multi-session program, not one sitting): audit and roughly
+double the player-facing subroutine pool (leveraging the six new
+mechanisms and general variety) -> do the same for the enemy-only pool
+(mindful not to use trigger families unavailable to enemies, and
+decoupling any constants copied from the player pool, same precedent as
+this session's own Stack Overflow/session 39's Zero-Sum decoupling) ->
+same treatment for the Mod pool -> a full class audit, particularly the
+5 of 6 classes that touch Encryption or Root -> double the gatekeeper
+pool using the new design space -> a heavy final analysis pass (funnel
+tests, ablating each gatekeeper) to pick the best-fitting 3 per layer,
+setting outliers aside for review. **User's own stated intent: "I'll
+start the full audit in the next session"** -- Phase 1 (the player pool)
+is the concrete next step, not a fork to ask about.
+
+**Older context, current as of the archetype-design arc's close (before the
+validation sample)**:
 independent per-side gauge/win thresholds landed first (checkpoints A-F,
 Phase 5), then the gatekeeper balance candidates below started getting
 worked through layer by layer -- **Kernel Panic and Null Session (layer
