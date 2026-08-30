@@ -187,6 +187,87 @@ export interface CleansePayload {
   debuffId?: DebuffKind;
 }
 
+/**
+ * Encryption offense, part 1 of 3 (session 40 continued -- Encryption's
+ * payload catalog had zero kinds that credit the caster's own gauge,
+ * confirmed directly from resolve.ts's dispatch; "mitigation can't win
+ * alone" was a deliberate structural property, but Encryption having no
+ * native path to ever win outright was a real gap, not the same thing).
+ * Generalizes Ghost's Return to Sender passive (resolve.ts,
+ * RETURN_TO_SENDER_RATIO) from a single class-locked Mod into a real,
+ * native Encryption payload kind any subroutine can use.
+ *
+ * Adds to the caster's own wardShield exactly like plain Ward, but also
+ * arms an ongoing "counter" effect for the rest of the combat: every
+ * future absorb on this side (from *any* ward source, not just this
+ * cast) also credits `ratio` of the absorbed amount to this side's own
+ * gauge. Armed via passiveState (resolve.ts's passiveStat/
+ * setPassiveStat), not a new CombatSideState field -- wardShield is a
+ * single pooled number, not tracked per-casting-subroutine, so "my ward
+ * absorbing something" can only ever mean "this side's ward," the same
+ * scope Return to Sender itself already uses. If more than one
+ * wardCounter piece is ever active at once, the most recently fired one's
+ * ratio simply overwrites the stored value -- not additive. Ratio
+ * TBD/playtesting; expect it below Return to Sender's own 0.25 (that
+ * ratio was tuned as one class's entire win condition, not a bonus
+ * stacked on top of a normal defensive kit).
+ */
+export interface WardCounterPayload {
+  kind: 'wardCounter';
+  amount: number;
+  ratio: number;
+}
+
+/**
+ * Encryption offense, part 2 of 3 (session 40 continued -- see
+ * WardCounterPayload's own header for the shared context). Same shape as
+ * HotPayload, but each tick also credits `ratio` of that tick's own
+ * amount to the caster's own gauge, on top of the full amount still
+ * reducing the opponent's -- both effects happen every tick, not a split
+ * of one pool. Implemented via a new optional ActiveTick.selfCreditRatio
+ * field (resolve.ts) rather than a third tick list alongside dots/hots --
+ * keeps every existing dots/hots-enumerating function (tickGlobalPulse,
+ * tickCastersTurnPulse, tickExpiryExtendOnce, etc.) untouched. Ratio
+ * TBD/playtesting, same reasoning as WardCounterPayload.
+ */
+export interface DrainingHotPayload {
+  kind: 'drainingHot';
+  amountPerTick: number;
+  cadence: TickCadence;
+  duration: number;
+  /** See DotPayload.pointsPerTick -- same meaning, only for 'globalPulse'. */
+  pointsPerTick?: number;
+  ratio: number;
+}
+
+/**
+ * Encryption offense, part 3 of 3 (session 40 continued -- see
+ * WardCounterPayload's own header for the shared context). "Ward Bash" --
+ * cashes in a fraction of the caster's *current* wardShield for an
+ * instant credit to their own gauge, reducing wardShield by the same
+ * spent amount. Structurally simpler than the other two: reads/writes
+ * wardShield and winGauge directly, no new persistent state at all --
+ * unlike WardCounterPayload, this doesn't need attribution to "whose"
+ * ward it is, since it's spending the pooled value at cast time, not
+ * reacting to a future absorb event.
+ *
+ * `fraction` (0-1) is expected to vary by rarity tier rather than needing
+ * a separate "consume everything" flag: a low fraction (common/uncommon)
+ * spends a modest slice and leaves meaningful shield behind; a high
+ * fraction (rare, up to and including 1.0) naturally consumes nearly or
+ * exactly the whole shield as the cost of the bigger payout -- the
+ * "large percentage -> ward consumed" behavior falls out of the same
+ * field, not a second mechanic. A fraction of 0 (or an empty shield) is
+ * a natural, harmless no-op, same as every other zero-amount payload.
+ * Conversion is 1:1 (amount spent == amount credited) for this first
+ * draft -- fraction itself is the only tuning knob, not a separate
+ * multiplier on top of it.
+ */
+export interface WardBashPayload {
+  kind: 'wardBash';
+  fraction: number;
+}
+
 // --- Root (3) ---
 export interface InstantManipulationPayload {
   kind: 'instantManipulation';
@@ -312,6 +393,9 @@ export type PayloadEffect =
   | WardPayload
   | HotPayload
   | CleansePayload
+  | WardCounterPayload
+  | DrainingHotPayload
+  | WardBashPayload
   | InstantManipulationPayload
   | CribbageLayerManipulationPayload
   | ScheduledSabotagePayload

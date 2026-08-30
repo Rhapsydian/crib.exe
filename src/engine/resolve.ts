@@ -64,6 +64,12 @@ export interface ActiveTick {
    * per-tick-instance, unlike Failsafe Cascade's per-fight one-shot
    * (tracked via the usual passiveState flag instead). */
   redundantTickUsed?: boolean;
+  /** DrainingHotPayload only (session 40 continued, Encryption offense
+   * part 2/3) -- set only for a hots-list tick cast via drainingHot,
+   * never for a plain hot or any dots-list tick. applyTickPush checks
+   * this alongside its existing reduceWinGauge call, crediting this
+   * fraction of the same tick amount to the caster too. */
+  selfCreditRatio?: number;
 }
 
 export interface LoadoutEntry {
@@ -459,6 +465,10 @@ const FEEDBACK_LOOP_AMPLIFICATION_AMOUNT = 0.15;
 // real weight. Neither lever alone reached StS's ascension-0 9-15% band;
 // halving both together landed at 13.7%.
 const RETURN_TO_SENDER_RATIO = 0.25;
+// WardCounterPayload's own armed ratio lives in passiveState (not a new
+// CombatSideState field -- see the payload's own doc comment for why),
+// keyed per side by this string constant.
+const WARD_COUNTER_RATIO_KEY = 'ward-counter:ratio';
 
 /** Breacher's Foothold: the first time the player's own gauge reaches
  * 50% of its threshold this combat, a one-time symmetric bonus -- X% of
@@ -566,6 +576,21 @@ function applySleeperCellPassive(combatState: CombatState, casterSide: PlayerInd
 function applyReturnToSenderPassive(combatState: CombatState, shieldOwnerSide: PlayerIndex, absorbed: number): CombatState {
   if (absorbed <= 0 || shieldOwnerSide !== 0 || !hasMod(combatState, 'return-to-sender')) return combatState;
   return creditWinGauge(combatState, 0, absorbed * RETURN_TO_SENDER_RATIO);
+}
+
+/** WardCounterPayload's own spend (session 40 continued, Encryption
+ * offense part 1/3) -- generic side-vs-side version of the passive
+ * above, gated by whether `shieldOwnerSide` has an armed wardCounter
+ * ratio in passiveState (any side, not Ghost-only, no ownedModIds check
+ * at all -- this is a real payload effect, not a Mod). Coexists cleanly
+ * with Return to Sender: both can fire off the same absorb event, since
+ * they're independent gates (a Mod check here, a passiveState check
+ * there) crediting the same gauge, not mutually exclusive. */
+function applyWardCounter(combatState: CombatState, shieldOwnerSide: PlayerIndex, absorbed: number): CombatState {
+  if (absorbed <= 0) return combatState;
+  const ratio = passiveStat(combatState, shieldOwnerSide, WARD_COUNTER_RATIO_KEY);
+  if (ratio <= 0) return combatState;
+  return creditWinGauge(combatState, shieldOwnerSide, absorbed * ratio);
 }
 
 /** Return to Sender, reworked (session 25): the Ward-absorb hook above
@@ -1138,6 +1163,7 @@ function resolvePayloadCore(
       const sides = replaceSide(incoming.combatState.sides, target, sideState);
       let state = { ...incoming.combatState, sides };
       state = applyReturnToSenderPassive(state, target, absorbed);
+      state = applyWardCounter(state, target, absorbed);
       return creditWinGauge(state, caster, remaining);
     }
     case 'piercing': {
@@ -1231,6 +1257,57 @@ function resolvePayloadCore(
       // path separately, and "generated" reads fine as "committed," not
       // strictly "already realized."
       return creditMitigationBanked({ ...combatState, sides }, caster, payload.amountPerTick * payload.duration);
+    }
+    case 'wardCounter': {
+      // Encryption offense, part 1/3 (session 40 continued) -- adds to
+      // wardShield exactly like plain ward, then arms this side's
+      // counter ratio via passiveState (not a new CombatSideState field
+      // -- wardShield is pooled, not per-casting-subroutine, so this can
+      // only ever mean "this side's ward," the same scope Return to
+      // Sender already uses). The most recently fired wardCounter's
+      // ratio simply overwrites any previously armed value -- not
+      // additive. See directBurst's own case below for where this is
+      // actually spent, on the *target* side's future absorbs.
+      const casterState = combatState.sides[caster];
+      const sides = replaceSide(combatState.sides, caster, { ...casterState, wardShield: casterState.wardShield + payload.amount });
+      const withShield = { ...combatState, sides };
+      const armed = setPassiveStat(withShield, caster, WARD_COUNTER_RATIO_KEY, payload.ratio);
+      return creditMitigationBanked(armed, caster, payload.amount);
+    }
+    case 'drainingHot': {
+      // Encryption offense, part 2/3 (session 40 continued) -- same
+      // hots-list shape as plain hot, plus selfCreditRatio on the tick
+      // record itself (ActiveTick's own new field) so applyTickPush can
+      // credit the caster alongside its existing opponent-reduction,
+      // every tick.
+      const casterState = combatState.sides[caster];
+      const hots = [
+        ...casterState.hots,
+        {
+          amountPerTick: payload.amountPerTick,
+          cadence: payload.cadence,
+          remainingDuration: payload.duration,
+          casterSide: caster,
+          pointsPerTick: payload.pointsPerTick,
+          accumulatedPoints: 0,
+          selfCreditRatio: payload.ratio,
+        },
+      ];
+      const sides = replaceSide(combatState.sides, caster, { ...casterState, hots });
+      return creditMitigationBanked({ ...combatState, sides }, caster, payload.amountPerTick * payload.duration);
+    }
+    case 'wardBash': {
+      // Encryption offense, part 3/3 (session 40 continued) -- "Ward
+      // Bash": spends `fraction` of the caster's *current* wardShield
+      // for an equal-sized instant credit. No mitigationBanked credit
+      // here (unlike wardCounter/drainingHot/plain ward/hot) -- this
+      // doesn't generate new mitigation, it converts existing shield
+      // into offense. A fraction of 0, or an already-empty shield, is a
+      // harmless no-op (spent 0, creditWinGauge's own amount<=0 guard).
+      const casterState = combatState.sides[caster];
+      const spent = casterState.wardShield * payload.fraction;
+      const sides = replaceSide(combatState.sides, caster, { ...casterState, wardShield: casterState.wardShield - spent });
+      return creditWinGauge({ ...combatState, sides }, caster, spent);
     }
     case 'cleanse': {
       const casterState = combatState.sides[caster];
@@ -1531,7 +1608,12 @@ function applyTickPush(combatState: CombatState, tick: ActiveTick, listKey: 'dot
     listKey === 'hots'
       ? reduceWinGauge(amplified.combatState, opponentOf(tick.casterSide), amount)
       : creditWinGauge(amplified.combatState, tick.casterSide, amount);
-  const withReturnToSender = applyReturnToSenderTickPassive(state, tick, listKey, amount);
+  // Draining HoT (session 40 continued): a hots-list tick cast via
+  // drainingHot also credits the caster directly, on top of the
+  // reduceWinGauge above -- both effects fire every tick, not a split.
+  const withDrain =
+    listKey === 'hots' && tick.selfCreditRatio ? creditWinGauge(state, tick.casterSide, amount * tick.selfCreditRatio) : state;
+  const withReturnToSender = applyReturnToSenderTickPassive(withDrain, tick, listKey, amount);
   const withSleeperCell = applySleeperCellPassive(withReturnToSender, tick.casterSide, listKey === 'dots');
   const withEnemyTick = applyEnemyOnTickPassives(withSleeperCell, tick, listKey, amount);
   return applyModOnTickPassives(withEnemyTick, tick, listKey);

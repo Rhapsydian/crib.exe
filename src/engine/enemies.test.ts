@@ -25,7 +25,11 @@ import {
  * section), fixed via a neutral-piece retrofit.
  */
 
-const CREDIT_CAPABLE_PAYLOAD_KINDS = new Set(['directBurst', 'piercing', 'chainFinisherScaling', 'riskRewardBurst', 'dot']);
+// wardCounter/drainingHot/wardBash (session 40 continued, Encryption
+// offense) added to the credit-capable set alongside the original 5 --
+// Encryption previously had none at all, the Neutral Archetype's whole
+// reason for existing (see this file's own header above).
+const CREDIT_CAPABLE_PAYLOAD_KINDS = new Set(['directBurst', 'piercing', 'chainFinisherScaling', 'riskRewardBurst', 'dot', 'wardCounter', 'drainingHot', 'wardBash']);
 
 describe('ENEMY_ROSTER structural integrity', () => {
   it('has exactly 32 enemies: 12 regular, 8 elite, 12 gatekeeper', () => {

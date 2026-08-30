@@ -98,9 +98,25 @@ function transformPayloadMagnitude(payload: PayloadEffect, transform: (amount: n
       return { ...payload, baseAmount: transform(payload.baseAmount) };
     case 'dot':
     case 'hot':
+    case 'drainingHot':
       return { ...payload, amountPerTick: transform(payload.amountPerTick) };
+    case 'wardCounter':
+      // Encryption offense (session 40 continued) -- amount transforms
+      // exactly like plain ward's own case above; ratio is a conversion
+      // fraction, not a raw magnitude, and deliberately untouched here
+      // (same reasoning wardBash's fraction is excluded entirely, below).
+      return { ...payload, amount: transform(payload.amount) };
     case 'debuff':
       return { ...payload, magnitude: transform(payload.magnitude) };
+    case 'wardBash':
+      // fraction is a 0-1 share of the caster's *current* wardShield,
+      // not an absolute amount -- multiplying it by a magnitudeScaler or
+      // additively bumping it via Merge would push it outside 0-1 and
+      // has no sensible meaning here. Deliberately excluded, same
+      // default: null fallback every other non-magnitude payload
+      // (cleanse, cribbageLayerManipulation, scheduledSabotage, etc.)
+      // already gets.
+      return null;
     default:
       return null;
   }

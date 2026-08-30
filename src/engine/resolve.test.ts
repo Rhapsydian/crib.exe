@@ -1132,6 +1132,26 @@ describe('mitigationBanked accumulator (session 28, Circuit Breaker)', () => {
     expect(afterHot.sides[0].loadout[0].state.accumulatedProgress).toBe(12);
   });
 
+  it('wardCounter/drainingHot (session 40 continued) credit mitigationBanked exactly like their plain ward/hot counterparts; wardBash does not', () => {
+    const watcher = definition('breaker', { kind: 'accumulator', metric: 'mitigationBanked', threshold: 100 }, { kind: 'directBurst', amount: 1 });
+    const afterWardCounter = resolvePayload({ kind: 'wardCounter', amount: 5, ratio: 0.2 }, 'encryption', createCombatState([watcher], [], [12, 12]), 0);
+    expect(afterWardCounter.sides[0].loadout[0].state.accumulatedProgress).toBe(5);
+
+    const afterDrainingHot = resolvePayload(
+      { kind: 'drainingHot', amountPerTick: 3, cadence: 'castersTurnPulse', duration: 4, ratio: 0.2 },
+      'encryption',
+      createCombatState([watcher], [], [12, 12]),
+      0,
+    );
+    expect(afterDrainingHot.sides[0].loadout[0].state.accumulatedProgress).toBe(12); // amountPerTick * duration, same as plain hot
+
+    // wardBash spends existing shield rather than generating new mitigation.
+    let state = resolvePayload({ kind: 'ward', amount: 20 }, 'encryption', createCombatState([watcher], [], [12, 12]), 0);
+    expect(state.sides[0].loadout[0].state.accumulatedProgress).toBe(20); // the plain ward cast above banked its own 20
+    state = resolvePayload({ kind: 'wardBash', fraction: 0.5 }, 'encryption', state, 0);
+    expect(state.sides[0].loadout[0].state.accumulatedProgress).toBe(20); // unchanged by the bash itself
+  });
+
   it('does not credit the opponent\'s mitigationBanked accumulator, and ignores non-mitigation payloads', () => {
     const watcher = definition('breaker', { kind: 'accumulator', metric: 'mitigationBanked', threshold: 100 }, { kind: 'directBurst', amount: 1 });
     const state = createCombatState([], [watcher], [12, 12]);
@@ -1636,5 +1656,89 @@ describe('adjustSideWinThreshold (session 40 dynamic-hook primitive)', () => {
     const state = createCombatState([], [], [12, 12], undefined, [50, 50]);
     expect(adjustSideWinThreshold(state, 0, 0, 10)).toBe(state);
     expect(adjustSideWinThreshold(state, 0, -5, 10)).toBe(state);
+  });
+});
+
+describe('Encryption offense (session 40 continued) -- wardCounter/drainingHot/wardBash', () => {
+  describe('wardCounter', () => {
+    it('adds to wardShield exactly like plain ward', () => {
+      const state = resolvePayload({ kind: 'wardCounter', amount: 6, ratio: 0.2 }, 'encryption', createCombatState([], [], [12, 12]), 0);
+      expect(state.sides[0].wardShield).toBe(6);
+    });
+
+    it('arms a credit on the next absorb, for any side (no class/Mod gating, unlike Return to Sender)', () => {
+      let state = resolvePayload({ kind: 'wardCounter', amount: 20, ratio: 0.2 }, 'encryption', createCombatState([], [], [12, 12]), 0);
+      const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 1); // enemy attacks, fully absorbed
+      expect(result.sides[0].wardShield).toBe(10); // 20 - 10 absorbed
+      expect(result.sides[0].winGauge.progress).toBe(2); // 10 absorbed * 0.2 ratio
+    });
+
+    it('keeps crediting on later absorbs too -- not one-shot', () => {
+      let state = resolvePayload({ kind: 'wardCounter', amount: 20, ratio: 0.5 }, 'encryption', createCombatState([], [], [12, 12]), 0);
+      state = resolvePayload({ kind: 'directBurst', amount: 4 }, 'exploit', state, 1);
+      state = resolvePayload({ kind: 'directBurst', amount: 4 }, 'exploit', state, 1);
+      expect(state.sides[0].winGauge.progress).toBe(4); // (4 + 4) absorbed * 0.5
+    });
+
+    it("a later wardCounter's ratio overwrites the armed value, not additive", () => {
+      let state = resolvePayload({ kind: 'wardCounter', amount: 10, ratio: 0.5 }, 'encryption', createCombatState([], [], [12, 12]), 0);
+      state = resolvePayload({ kind: 'wardCounter', amount: 10, ratio: 0.1 }, 'encryption', state, 0);
+      const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 1);
+      expect(result.sides[0].winGauge.progress).toBe(1); // 10 absorbed * 0.1 (the latest ratio), not 0.5
+    });
+
+    it('does not credit the side whose ward did not absorb anything', () => {
+      let state = resolvePayload({ kind: 'wardCounter', amount: 20, ratio: 0.5 }, 'encryption', createCombatState([], [], [12, 12]), 1); // enemy arms its own counter
+      const result = resolvePayload({ kind: 'directBurst', amount: 10 }, 'exploit', state, 0); // side 0 attacks into it
+      expect(result.sides[0].winGauge.progress).toBe(0); // side 0's hit got absorbed by side 1's ward, not side 0's own
+      expect(result.sides[1].winGauge.progress).toBe(5); // 10 absorbed * 0.5, credited to side 1 (the shield owner)
+    });
+
+  });
+
+  describe('drainingHot', () => {
+    it('reduces the opponent and credits the caster on the same tick', () => {
+      let state = resolvePayload({ kind: 'drainingHot', amountPerTick: 8, cadence: 'castersTurnPulse', duration: 3, ratio: 0.25 }, 'encryption', createCombatState([], [], [12, 12]), 0);
+      state = resolvePayload({ kind: 'directBurst', amount: 20 }, 'exploit', state, 1); // enemy banks progress to reduce
+      state = tickCastersTurnPulse(state, 0);
+      expect(state.sides[1].winGauge.progress).toBe(12); // 20 - 8 reduced
+      expect(state.sides[0].winGauge.progress).toBe(2); // 8 * 0.25 ratio credited to the caster
+    });
+
+    it('keeps crediting every tick, not just the first', () => {
+      let state = resolvePayload({ kind: 'drainingHot', amountPerTick: 4, cadence: 'castersTurnPulse', duration: 3, ratio: 0.5 }, 'encryption', createCombatState([], [], [12, 12]), 0);
+      state = tickCastersTurnPulse(state, 0);
+      state = tickCastersTurnPulse(state, 0);
+      expect(state.sides[0].winGauge.progress).toBe(4); // 2 ticks * (4 * 0.5)
+    });
+
+    it('a plain hot (no ratio) never credits the caster', () => {
+      let state = resolvePayload({ kind: 'hot', amountPerTick: 8, cadence: 'castersTurnPulse', duration: 3 }, 'encryption', createCombatState([], [], [12, 12]), 0);
+      state = tickCastersTurnPulse(state, 0);
+      expect(state.sides[0].winGauge.progress).toBe(0);
+    });
+  });
+
+  describe('wardBash', () => {
+    it('spends the given fraction of current wardShield and credits the caster 1:1', () => {
+      let state = resolvePayload({ kind: 'ward', amount: 20 }, 'encryption', createCombatState([], [], [12, 12]), 0);
+      const result = resolvePayload({ kind: 'wardBash', fraction: 0.4 }, 'encryption', state, 0);
+      expect(result.sides[0].wardShield).toBe(12); // 20 - (20 * 0.4)
+      expect(result.sides[0].winGauge.progress).toBe(8); // 20 * 0.4
+    });
+
+    it('a fraction of 1.0 consumes the entire shield -- the "large percentage" cost falls out naturally', () => {
+      let state = resolvePayload({ kind: 'ward', amount: 15 }, 'encryption', createCombatState([], [], [12, 12]), 0);
+      const result = resolvePayload({ kind: 'wardBash', fraction: 1.0 }, 'encryption', state, 0);
+      expect(result.sides[0].wardShield).toBe(0);
+      expect(result.sides[0].winGauge.progress).toBe(15);
+    });
+
+    it('is a harmless no-op against an empty shield', () => {
+      const state = createCombatState([], [], [12, 12]);
+      const result = resolvePayload({ kind: 'wardBash', fraction: 0.5 }, 'encryption', state, 0);
+      expect(result.sides[0].wardShield).toBe(0);
+      expect(result.sides[0].winGauge.progress).toBe(0);
+    });
   });
 });
