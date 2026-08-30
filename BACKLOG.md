@@ -39,6 +39,24 @@ setting outliers aside for review. **User's own stated intent: "I'll
 start the full audit in the next session"** -- Phase 1 (the player pool)
 is the concrete next step, not a fork to ask about.
 
+**Flagged to-do before the roadmap's own final phase (the heavy
+analysis/ablation pass) starts running a lot of sweeps**: the diagnostic
+scripts (`sweep.ts`, `gatekeeper-check.ts`, `layer-funnel.ts`,
+`cribbage-skill-matrix.ts`, `occurrence-frequency.ts`) are all
+single-threaded, running every seed/class/gatekeeper combination
+sequentially, even though each one is fully independent -- an
+embarrassingly parallel workload currently left on one core. Parallelize
+via Node's `worker_threads` before that final phase's much larger sweeps
+begin, not urgent for the smaller pool/enemy/Mod/class passes before it.
+Session 39's own background-task friction (a 300-seed sweep that looked
+stalled for 15+ minutes in the background actually finished in 33
+seconds run directly in the foreground -- a harness scheduling quirk on
+long backgrounded calls, not an engine problem) is a separate, already-
+worked-around issue; parallelizing the scripts themselves is the real
+fix for wall-clock time, and would also reduce how often that harness
+friction gets triggered in the first place (shorter foreground runs need
+less babysitting).
+
 **Older context, current as of the archetype-design arc's close (before the
 validation sample)**:
 independent per-side gauge/win thresholds landed first (checkpoints A-F,
