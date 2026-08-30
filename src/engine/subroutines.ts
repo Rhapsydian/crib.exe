@@ -62,8 +62,29 @@ const CAPPED = { common: 7, uncommon: 11, rare: 18 };
 // CAPPED below, which are player-content power-tier tuning and stay
 // private/uncoupled from the enemy-only catalog on purpose.
 export const BREACH_CONTAINMENT_THRESHOLD = { low: 40, high: 60 };
+// gaugeFillAbove (session 40 continued: confirmed, not just banked as
+// "unconfirmed" — real fire-frequency instrumentation against Incident
+// Response, session 40's own gatekeeper balance pass) reads the
+// InitiativeGauge (resolve.ts's buildTriggerContext:
+// `gaugeFillFraction: enemy.gauge.progress / enemy.gauge.threshold`) —
+// the turn-cadence meter, which cycles/resets on every crossing
+// (gauges.ts's addPoints: "overshoot carries into the next cycle"), not
+// a monotonic win-progress signal. "Above 50%" (or even 75%) of a gauge
+// that fills and resets every turn or two is true roughly every other
+// turn by construction — not rare, not escalating, not "opponent about
+// to win." Priority Override and Sinkhole (below) both use this
+// condition too, but their own design intent is genuinely *about* enemy
+// tempo/cadence (Priority Override primes Precision Strike often, by
+// design, mirroring Primed's own frequent-proc identity; Sinkhole's
+// "catch-up" framing is literally "when the enemy's about to get a
+// turn, accelerate my own") — left untouched, this condition's actual
+// behavior fits what they're for. Honeypot and Vulnerability Scan
+// (below) were each authored as a rare, late-game reactive punish —
+// exactly the framing gaugeFillAbove can't deliver — migrated to
+// breachContainmentAbove instead (already used by Fail-Secure/
+// Escalating Response/Intercept in enemy-subroutines.ts for the
+// identical reason).
 export const GAUGE_FILL_FRACTION = 0.5;
-export const HOT_GAUGE_FILL_FRACTION = 0.75; // Vulnerability Scan's edge-triggered rare — see resolve.test.ts's Reactive coverage for why this is fine at a high fraction.
 
 // ---------------------------------------------------------------------
 // Neutral archetype (9) — session 28's `/decision-session`, DESIGN.md's
@@ -599,7 +620,13 @@ export const EXPLOIT_RARES: SubroutineDefinition[] = [
     id: 'vulnerability-scan',
     name: 'Vulnerability Scan',
     archetype: 'exploit',
-    trigger: { kind: 'enemyState', condition: 'gaugeFillAbove', fraction: HOT_GAUGE_FILL_FRACTION },
+    // gaugeFillAbove -> breachContainmentAbove (session 40 continued —
+    // see GAUGE_FILL_FRACTION's own header comment above for why): this
+    // was authored as a rare, late-game "opponent's about to win, punish
+    // them" reactive piercing burst, but gaugeFillAbove can't deliver
+    // that framing. High threshold for the same late-punish timing the
+    // original HOT_GAUGE_FILL_FRACTION intended.
+    trigger: { kind: 'enemyState', condition: 'breachContainmentAbove', value: BREACH_CONTAINMENT_THRESHOLD.high },
     payload: { kind: 'piercing', amount: RARE.burst },
     tags: ['piercing'],
     reactive: true,
@@ -817,9 +844,21 @@ export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
     id: 'honeypot',
     name: 'Honeypot',
     archetype: 'encryption',
-    trigger: { kind: 'enemyState', condition: 'gaugeFillAbove', fraction: GAUGE_FILL_FRACTION },
+    // gaugeFillAbove -> breachContainmentAbove (session 40 continued --
+    // see GAUGE_FILL_FRACTION's own header comment above for why): a
+    // proactive "ward up before things get dangerous" defensive
+    // reaction, same low-threshold early-warning framing as Fail-Secure
+    // (enemy-subroutines.ts). Also gained reactive:true here -- it was
+    // missing entirely, a second, compounding bug: a non-reactive
+    // enemyState trigger re-arms every evaluation pass while its
+    // condition holds, refiring every remaining turn rather than once
+    // per real renewed crossing (see enemy-subroutines.ts's own
+    // Escalating Response/Fail-Secure comments for the same structural
+    // requirement).
+    trigger: { kind: 'enemyState', condition: 'breachContainmentAbove', value: BREACH_CONTAINMENT_THRESHOLD.low },
     payload: { kind: 'ward', amount: CAPPED.uncommon },
     tags: [],
+    reactive: true,
   },
   {
     id: 'sinkhole',
