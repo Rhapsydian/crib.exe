@@ -829,6 +829,28 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     payload: { kind: 'instantCounterPush', amount: 2 },
     tags: ['daemon'],
   },
+  {
+    // Content-validation sample (session 40 continued, Archetype
+    // Win-Condition Audit) -- wardCounter's own smallest, most-common
+    // exposure: fires on every fifteen, arming a modest counter ratio.
+    id: 'intrusion-alarm',
+    name: 'Intrusion Alarm',
+    archetype: 'encryption',
+    trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
+    payload: { kind: 'wardCounter', amount: CAPPED.common, ratio: 0.1 },
+    tags: ['firewall'],
+  },
+  {
+    // Content-validation sample -- wardBash at a low, common-tier
+    // fraction: spends a modest slice of the shield, leaves most of it
+    // intact for continued defense.
+    id: 'quick-patch',
+    name: 'Quick Patch',
+    archetype: 'encryption',
+    trigger: { kind: 'occurrence', category: 'pair', variation: 'instant' },
+    payload: { kind: 'wardBash', fraction: 0.25 },
+    tags: ['piercing'],
+  },
 ];
 
 export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
@@ -885,6 +907,17 @@ export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
     tags: ['firewall'],
     reactive: true,
   },
+  {
+    // Content-validation sample -- drainingHot at uncommon tier, same
+    // occurrence:run,scaling trigger shape as Redundant Backup above (a
+    // real sibling, not a new pattern).
+    id: 'honeytoken',
+    name: 'Honeytoken',
+    archetype: 'encryption',
+    trigger: { kind: 'occurrence', category: 'run', variation: 'scaling', cap: UNCOMMON.cap },
+    payload: { kind: 'drainingHot', amountPerTick: UNCOMMON.tick, cadence: 'castersTurnPulse', duration: UNCOMMON.duration, ratio: 0.15 },
+    tags: ['daemon'],
+  },
 ];
 
 export const ENCRYPTION_RARES: SubroutineDefinition[] = [
@@ -915,6 +948,45 @@ export const ENCRYPTION_RARES: SubroutineDefinition[] = [
     trigger: { kind: 'chained', afterSubroutineId: 'patch' },
     payload: { kind: 'cleanse' },
     tags: ['worm'],
+  },
+  {
+    // Content-validation sample -- wardCounter at rare tier, paired with
+    // a heat-fluctuating selfState trigger (same reactive:true need as
+    // Air Gap above, for the same reason: re-arms on each new crossing
+    // rather than latching once and staying ready forever).
+    id: 'deep-packet-inspection',
+    name: 'Deep Packet Inspection',
+    archetype: 'encryption',
+    trigger: { kind: 'selfState', condition: 'heatAbove', value: RARE.heat },
+    payload: { kind: 'wardCounter', amount: CAPPED.rare, ratio: 0.2 },
+    tags: ['firewall'],
+    reactive: true,
+  },
+  {
+    // Content-validation sample -- drainingHot at rare tier, same
+    // accumulator:suitTally/globalPulse shape as Cold Storage above but
+    // watching a different suit (suit 1, not Cold Storage's suit 2) so
+    // the two don't compete for the same tally.
+    id: 'honeynet',
+    name: 'Honeynet',
+    archetype: 'encryption',
+    trigger: { kind: 'accumulator', metric: 'suitTally', suit: 1, threshold: RARE.threshold },
+    payload: { kind: 'drainingHot', amountPerTick: RARE.tick + 2, cadence: 'globalPulse', duration: RARE.duration, pointsPerTick: RARE.pointsPerTick, ratio: 0.2 },
+    tags: ['daemon'],
+    togglable: true,
+  },
+  {
+    // Content-validation sample -- wardBash at a high, rare-tier
+    // fraction: the "large percentage -> ward consumed" behavior the
+    // payload's own design was built around, paired with a reactive
+    // late-game punish trigger matching Zero Trust's own shape above.
+    id: 'scorched-earth',
+    name: 'Scorched Earth',
+    archetype: 'encryption',
+    trigger: { kind: 'enemyState', condition: 'breachContainmentAbove', value: BREACH_CONTAINMENT_THRESHOLD.high },
+    payload: { kind: 'wardBash', fraction: 0.85 },
+    tags: ['piercing'],
+    reactive: true,
   },
 ];
 
@@ -994,6 +1066,18 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     tags: ['daemon'],
     firesAt: 'onDealt',
   },
+  {
+    // Content-validation sample (session 40 continued, Archetype
+    // Win-Condition Audit) -- sessionHijack's own smallest, most-common
+    // exposure: fires on every fifteen, same trigger shape Intrusion
+    // Alarm (Encryption) uses for the same reason.
+    id: 'packet-injection',
+    name: 'Packet Injection',
+    archetype: 'root',
+    trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
+    payload: { kind: 'sessionHijack', amount: COMMON.burst },
+    tags: [],
+  },
 ];
 
 export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
@@ -1055,6 +1139,33 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     tags: [],
     firesAt: 'onCribSelected',
   },
+  {
+    // Content-validation sample -- sessionHijack at uncommon tier, same
+    // occurrence:run,threshold shape Supply Route above uses.
+    id: 'man-in-the-browser',
+    name: 'Man-in-the-Browser',
+    archetype: 'root',
+    trigger: { kind: 'occurrence', category: 'run', variation: 'threshold', bankTarget: UNCOMMON.bankTarget },
+    payload: { kind: 'sessionHijack', amount: UNCOMMON.burst },
+    tags: [],
+  },
+  {
+    // Content-validation sample -- "Crib Trap," the user's own
+    // motivating example for handOutcome: gain progress when the enemy
+    // scores a crib hand greater than 4. Real frequency data
+    // (scripts/occurrence-frequency.ts, 300 games/skill=0.85, 2715
+    // hands) puts crib score at mean=4.62/p50=4 -- "greater than 4" is
+    // roughly "an above-median crib," not a rare event, which fits an
+    // uncommon-tier piece that fires reasonably often for a modest
+    // payoff (see Perfect Hand, ROOT_RARES, for the genuinely rare
+    // version of the same mechanism).
+    id: 'crib-trap',
+    name: 'Crib Trap',
+    archetype: 'root',
+    trigger: { kind: 'handOutcome', phase: 'crib', side: 'enemy', comparison: 'above', value: 4 },
+    payload: { kind: 'directBurst', amount: UNCOMMON.burst },
+    tags: ['trap'],
+  },
 ];
 
 export const ROOT_RARES: SubroutineDefinition[] = [
@@ -1097,6 +1208,53 @@ export const ROOT_RARES: SubroutineDefinition[] = [
     trigger: { kind: 'chained', afterSubroutineId: 'cron-job' },
     payload: { kind: 'cribbageLayerManipulation', action: 'forceDiscard' },
     tags: ['worm'],
+  },
+  {
+    // Content-validation sample -- "Royal Exploit," the user's own
+    // motivating example for rareOccurrence: a genuine reactive payoff
+    // when *either* side lands a pair royal or better. Real frequency
+    // data (scripts/occurrence-frequency.ts) confirms magnitude>=6 (a
+    // Pair occurrence's own points, n*(n-1)) captures the real rare tail
+    // -- pair-royal-or-better is only 8.8% of all pair occurrences
+    // (0.6/2715 hands hit magnitude 6, 13/2715 hit magnitude 12). Pairs
+    // with sessionHijack rather than directBurst, showing the two new
+    // Root mechanisms compose with each other, not just with old
+    // payload kinds.
+    id: 'royal-exploit',
+    name: 'Royal Exploit',
+    archetype: 'root',
+    trigger: { kind: 'rareOccurrence', category: 'pair', minMagnitude: 6, watchSide: 'either' },
+    payload: { kind: 'sessionHijack', amount: RARE.burst },
+    tags: ['piercing'],
+  },
+  {
+    // Content-validation sample -- a second rareOccurrence example on a
+    // different category, to prove the mechanism generalizes beyond
+    // "pair." Real data: a Run occurrence's own magnitude is runLength *
+    // duplicate-count-product (scoring.ts's runEvents) -- magnitude>=8
+    // (an 8+-point run: a "double run of 4," "triple run of 3," or
+    // better) is a genuinely rare 7.8% of all run occurrences, roughly
+    // matching Royal Exploit's own rarity band above. Composes with
+    // directBurst instead of sessionHijack, for variety.
+    id: 'grand-slam',
+    name: 'Grand Slam',
+    archetype: 'root',
+    trigger: { kind: 'rareOccurrence', category: 'run', minMagnitude: 8, watchSide: 'own' },
+    payload: { kind: 'directBurst', amount: RARE.burst },
+    tags: ['piercing'],
+  },
+  {
+    // Content-validation sample -- "Perfect Hand," the genuinely rare
+    // counterpart to Crib Trap (ROOT_UNCOMMONS): rewards the caster's
+    // own exceptional hand instead of punishing the enemy's decent crib.
+    // Real data puts dealerHandScore/nonDealerHandScore at p95 ~16 --
+    // "greater than 16" is a real top-5% hand, not just above average.
+    id: 'perfect-hand',
+    name: 'Perfect Hand',
+    archetype: 'root',
+    trigger: { kind: 'handOutcome', phase: 'hand', side: 'own', comparison: 'above', value: 16 },
+    payload: { kind: 'sessionHijack', amount: RARE.burst },
+    tags: ['trap'],
   },
 ];
 

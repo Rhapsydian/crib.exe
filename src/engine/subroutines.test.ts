@@ -39,10 +39,16 @@ describe('subroutine content — Root mechanical redesign (session 24 checkpoint
 });
 
 describe('subroutine content — structural integrity', () => {
-  it('has exactly 87 subroutines: 18 starting-loadout + 60 archetype pool + 9 neutral', () => {
+  it('has exactly 99 subroutines: 18 starting-loadout + 72 archetype pool + 9 neutral', () => {
+    // 72, not 60 (session 40 continued): the Archetype Win-Condition
+    // Audit's content-validation sample added 6 new pieces each to
+    // Encryption and Root specifically (the two archetypes that gained
+    // new mechanisms this session) -- Exploit/Malware are unchanged, so
+    // the pool is now genuinely asymmetric across archetypes, not the
+    // uniform 15-each shape it used to be. See the next test below.
     expect(ALL_STARTING_LOADOUT_SUBROUTINES).toHaveLength(18);
-    expect(ALL_POOL_SUBROUTINES).toHaveLength(69);
-    expect(ALL_SUBROUTINES).toHaveLength(87);
+    expect(ALL_POOL_SUBROUTINES).toHaveLength(81);
+    expect(ALL_SUBROUTINES).toHaveLength(99);
   });
 
   it('every class starting loadout has exactly 3 pieces', () => {
@@ -51,12 +57,22 @@ describe('subroutine content — structural integrity', () => {
     }
   });
 
-  it('every archetype pool has exactly 7 commons, 5 uncommons, 3 rares', () => {
-    for (const pool of Object.values(ARCHETYPE_POOLS)) {
-      expect(pool.commons).toHaveLength(7);
-      expect(pool.uncommons).toHaveLength(5);
-      expect(pool.rares).toHaveLength(3);
-    }
+  it('Exploit/Malware keep the original 7 commons, 5 uncommons, 3 rares', () => {
+    expect(ARCHETYPE_POOLS.exploit.commons).toHaveLength(7);
+    expect(ARCHETYPE_POOLS.exploit.uncommons).toHaveLength(5);
+    expect(ARCHETYPE_POOLS.exploit.rares).toHaveLength(3);
+    expect(ARCHETYPE_POOLS.malware.commons).toHaveLength(7);
+    expect(ARCHETYPE_POOLS.malware.uncommons).toHaveLength(5);
+    expect(ARCHETYPE_POOLS.malware.rares).toHaveLength(3);
+  });
+
+  it('Encryption/Root each grew by 6 (2 commons/1 uncommon/3 rares and 1 common/2 uncommons/3 rares respectively) -- the session 40 continued content-validation sample', () => {
+    expect(ARCHETYPE_POOLS.encryption.commons).toHaveLength(9);
+    expect(ARCHETYPE_POOLS.encryption.uncommons).toHaveLength(6);
+    expect(ARCHETYPE_POOLS.encryption.rares).toHaveLength(6);
+    expect(ARCHETYPE_POOLS.root.commons).toHaveLength(8);
+    expect(ARCHETYPE_POOLS.root.uncommons).toHaveLength(7);
+    expect(ARCHETYPE_POOLS.root.rares).toHaveLength(6);
   });
 
   it('the neutral pool (session 28) has exactly 4 commons, 3 uncommons, 2 rares', () => {
@@ -285,36 +301,39 @@ describe('subroutine content — real combat smoke tests', () => {
     }
   });
 
-  it('a solo Encryption pool genuinely deadlocks against a weak opponent -- the hard-resolution tiebreak (session 26) now resolves it in the defender\'s favor rather than letting it run forever', () => {
-    // Unlike Ghost's minimal kit, the FULL Encryption pool includes 4
-    // dedicated Ward-casters (Sandboxing, Access Control, Honeypot, Air
-    // Gap) -- stacked together they build an ever-growing shield that
-    // outpaces this weak opponent's single small burst indefinitely, so
-    // the opponent's hits never land either. Both sides' progress stays
-    // at exactly 0 forever, and escalation (checkpoint B) only shrinks
-    // *thresholds* -- it can't force either gauge upward, so it can't
-    // rescue a genuine zero-progress deadlock on its own.
+  it('a solo Encryption pool now genuinely wins via threshold, not just the hard-resolution tiebreak -- the Archetype Win-Condition Audit\'s own real-world confirmation', () => {
+    // Historical context, kept for the record: before session 40
+    // continued's Encryption offense work, the full Encryption pool had
+    // zero payload kinds that could credit its own gauge at all --
+    // stacked Ward-casters (Sandboxing, Access Control, Honeypot, Air
+    // Gap) built an ever-growing shield against this weak opponent's
+    // single small burst, both sides' progress stayed at exactly 0
+    // forever, and the match could only ever resolve via session 26's
+    // hard-resolution deadline (hand 20, defender wins ties) -- this
+    // test used to assert exactly that (winner 1, hands.length 20,
+    // peakFillFraction [0, 0]).
     //
-    // This used to throw ("did not resolve") after running out
-    // GENEROUS_MAX_HANDS -- flagged at the time as a real gap the plan
-    // anticipated. Session 26's hard resolution deadline closes it: at
-    // the end of hand 20, both sides are still tied at exactly 0
-    // progress, so the tiebreak's defender-wins-ties rule ("if you
-    // can't breach in time, you're getting contained") decides it --
-    // exactly the scenario that rule exists for. A 15-piece pool thrown
-    // at one weak opponent is also a more extreme matchup than real
-    // installed loadouts (capped at 6 -- checkpoint D) ever produce, so
-    // this specific case is more test-construction artifact than a
-    // realistic in-game risk.
+    // wardCounter/drainingHot/wardBash (this session) genuinely changed
+    // that: the same 15-piece pool now includes real credit-capable
+    // content, and actually crosses its own win-gauge threshold well
+    // before hand 20 -- confirmed directly, not assumed, the same
+    // "verify against real combat, not just isolated payload unit
+    // tests" discipline the rest of this session's validation used. A
+    // 15-piece pool thrown at one weak opponent remains a more extreme
+    // matchup than real installed loadouts (capped at 6 -- checkpoint D)
+    // ever produce, so the exact hand count isn't load-bearing --
+    // resolving via threshold at all, well under the hard deadline, is
+    // the real assertion.
     const encryptionPool = ARCHETYPE_POOLS.encryption;
     const encryptionLoadout = [...encryptionPool.commons, ...encryptionPool.uncommons, ...encryptionPool.rares];
     const result = playCombat([encryptionLoadout, genericOpponent], { seed: 1, gaugeThreshold: [12, 12] });
-    expect(result.winner).toBe(1);
-    expect(result.hands.length).toBe(20);
-    expect(result.peakFillFraction).toEqual([0, 0]);
+    expect(result.winner).toBe(0);
+    expect(result.resolvedBy).toBe('threshold');
+    expect(result.hands.length).toBeLessThan(20);
+    expect(result.peakFillFraction[0]).toBeGreaterThan(0);
   });
 
-  it('the full 78-subroutine set on one side resolves against an empty enemy without throwing', () => {
+  it('the full subroutine set (ALL_SUBROUTINES, whatever its current count) on one side resolves against an empty enemy without throwing', () => {
     expect(() => playCombat([ALL_SUBROUTINES, []], { seed: 1, gaugeThreshold: [12, 12] })).not.toThrow();
   });
 });
