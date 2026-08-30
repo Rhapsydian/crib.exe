@@ -98,11 +98,12 @@ export interface AlwaysTrigger {
  * it is -- no `reactive` flag needed, this trigger family doesn't go
  * through the normal ready-flag pipeline at all. `minMagnitude` is what
  * makes "rare" real rather than aspirational: a Pair occurrence's own
- * magnitude is 2 for a bare pair, 3 for pair royal, 4 for double pair
- * royal (DESIGN.md's Pair category), so `minMagnitude: 3` genuinely
- * means "pair royal or better," not "any pair." Pairs with any existing
- * credit-capable payload (sessionHijack, directBurst, etc.) -- no new
- * payload kind needed, the novelty is entirely in the trigger.
+ * magnitude is real *points*, not a count-of-a-kind (scoring.ts's
+ * pairEvents/pegging.ts's own breakdown: n*(n-1) -- 2 for a bare pair, 6
+ * for pair royal, 12 for double pair royal), so `minMagnitude: 6`
+ * genuinely means "pair royal or better," not "any pair." Pairs with any
+ * existing credit-capable payload (sessionHijack, directBurst, etc.) --
+ * no new payload kind needed, the novelty is entirely in the trigger.
  */
 export interface RareOccurrenceTrigger {
   kind: 'rareOccurrence';

@@ -682,10 +682,11 @@ real new tooling to get a native win condition at all — see the new
   a qualifying occurrence happens, bypassing the normal ready-flag/
   turn-gate pipeline entirely (no `reactive` flag needed — this family
   doesn't use that machinery at all, it's evaluated directly inside
-  combat's own per-occurrence loop). "Royal pair" (magnitude ≥ 3) is
-  genuinely rare, not just a flavorful name — Pair's own magnitude is
-  already 2/3/4 for pair/pair-royal/double-pair-royal, so the floor does
-  real work.
+  combat's own per-occurrence loop). "Royal pair" (magnitude ≥ 6) is
+  genuinely rare, not just a flavorful name — a Pair occurrence's
+  magnitude is real points (n×(n−1)), not a count-of-a-kind: already
+  2/6/12 for pair/pair-royal/double-pair-royal, so the floor does real
+  work.
 - **Hand-outcome triggers** ("Crib Trap," Root-native, session 40
   continued) — watch one phase's own aggregate total for a just-resolved
   hand (crib, either side's kept hand, or pegging score), read directly

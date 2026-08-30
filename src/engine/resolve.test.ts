@@ -1778,66 +1778,66 @@ describe('Root offense (session 40 continued) -- sessionHijack', () => {
 
 describe('Root offense (session 40 continued) -- rareOccurrence trigger', () => {
   it("fires on a matching category at/above minMagnitude, watchSide 'own'", () => {
-    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'own' }, { kind: 'sessionHijack', amount: 5 }, { archetype: 'root' });
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 6, watchSide: 'own' }, { kind: 'sessionHijack', amount: 5 }, { archetype: 'root' });
     let state = resolvePayload({ kind: 'directBurst', amount: 20 }, 'exploit', createCombatState([watcher], [], [12, 12]), 1); // enemy banks progress to steal
-    const result = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 3 }); // pair royal, cast by side 0
+    const result = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 6 }); // pair royal, cast by side 0
     expect(result.events).toHaveLength(1);
     expect(result.combatState.sides[0].winGauge.progress).toBe(5);
   });
 
   it('does not fire below minMagnitude -- a bare pair does not count as "royal"', () => {
-    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'own' }, { kind: 'sessionHijack', amount: 5 }, { archetype: 'root' });
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 6, watchSide: 'own' }, { kind: 'sessionHijack', amount: 5 }, { archetype: 'root' });
     const state = createCombatState([watcher], [], [12, 12]);
     const result = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 2 }); // bare pair
     expect(result.events).toHaveLength(0);
   });
 
   it('does not fire for a non-matching category', () => {
-    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'own' }, { kind: 'sessionHijack', amount: 5 }, { archetype: 'root' });
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 6, watchSide: 'own' }, { kind: 'sessionHijack', amount: 5 }, { archetype: 'root' });
     const state = createCombatState([watcher], [], [12, 12]);
     const result = fireRareOccurrenceSubroutines(state, 0, { category: 'run', player: 0, magnitude: 4 });
     expect(result.events).toHaveLength(0);
   });
 
   it("watchSide 'own' ignores the opponent's own occurrence", () => {
-    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'own' }, { kind: 'sessionHijack', amount: 5 }, { archetype: 'root' });
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 6, watchSide: 'own' }, { kind: 'sessionHijack', amount: 5 }, { archetype: 'root' });
     const state = createCombatState([watcher], [], [12, 12]);
-    const result = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 1, magnitude: 3 }); // the enemy's own pair royal
+    const result = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 1, magnitude: 6 }); // the enemy's own pair royal
     expect(result.events).toHaveLength(0);
   });
 
   it("watchSide 'enemy' fires only for the opponent's occurrence, not the caster's own", () => {
-    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'enemy' }, { kind: 'directBurst', amount: 5 }, { archetype: 'root' });
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 6, watchSide: 'enemy' }, { kind: 'directBurst', amount: 5 }, { archetype: 'root' });
     const state = createCombatState([watcher], [], [12, 12]);
-    const ownOccurrence = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 3 });
+    const ownOccurrence = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 6 });
     expect(ownOccurrence.events).toHaveLength(0);
-    const enemyOccurrence = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 1, magnitude: 3 });
+    const enemyOccurrence = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 1, magnitude: 6 });
     expect(enemyOccurrence.events).toHaveLength(1);
   });
 
   it("watchSide 'either' fires regardless of which side scored it", () => {
-    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'either' }, { kind: 'directBurst', amount: 5 }, { archetype: 'root' });
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 6, watchSide: 'either' }, { kind: 'directBurst', amount: 5 }, { archetype: 'root' });
     const state = createCombatState([watcher], [], [12, 12]);
-    expect(fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 3 }).events).toHaveLength(1);
-    expect(fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 1, magnitude: 3 }).events).toHaveLength(1);
+    expect(fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 6 }).events).toHaveLength(1);
+    expect(fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 1, magnitude: 6 }).events).toHaveLength(1);
   });
 
   it('respects maxFiresPerCombat', () => {
     const watcher = definition(
       'watcher',
-      { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'either' },
+      { kind: 'rareOccurrence', category: 'pair', minMagnitude: 6, watchSide: 'either' },
       { kind: 'directBurst', amount: 5 },
       { archetype: 'root', maxFiresPerCombat: 1 },
     );
     let state = createCombatState([watcher], [], [12, 12]);
-    const first = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 3 });
+    const first = fireRareOccurrenceSubroutines(state, 0, { category: 'pair', player: 0, magnitude: 6 });
     expect(first.events).toHaveLength(1);
-    const second = fireRareOccurrenceSubroutines(first.combatState, 0, { category: 'pair', player: 0, magnitude: 3 });
+    const second = fireRareOccurrenceSubroutines(first.combatState, 0, { category: 'pair', player: 0, magnitude: 6 });
     expect(second.events).toHaveLength(0);
   });
 
   it('never becomes ready via the normal turn-gated pipeline -- isReady/refreshTriggerReadiness never latch it', () => {
-    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 3, watchSide: 'either' }, { kind: 'directBurst', amount: 5 }, { archetype: 'root' });
+    const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 6, watchSide: 'either' }, { kind: 'directBurst', amount: 5 }, { archetype: 'root' });
     let state = createCombatState([watcher], [], [12, 12]);
     state = refreshTriggerReadiness(state, 0);
     const fired = fireReadySubroutines(state, 0, { isDealer: true });
