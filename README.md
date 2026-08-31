@@ -141,6 +141,21 @@ and the gatekeeper roster, each its own session, finishing with a heavy
 ablation-driven balance pass to pick the best-fitting subset of an
 intentionally over-generated gatekeeper pool.
 
+**The Player Pool Expansion is now complete** (scoped session 41,
+implemented session 42) — the first phase of the user's own multi-session
+audit-and-roughly-double program above. The player-facing subroutine pool
+grew 81 → 138 pieces (all subroutines 99 → 156): Exploit and Malware +15
+each, Encryption/Root/Neutral +9 each, all four real archetypes converging
+on ~30 pieces apiece. A real structural bug was fixed along the way —
+`ChainedTrigger` (session 41's own audit found it) widened from a single
+specific-subroutine-id reference to a 3-way match (id/archetype/tag), since
+id-based chaining left pool content permanently dead for any class that
+didn't happen to own that exact starting piece; all 7 pre-existing chains
+converted. A 6th tag (`direct`) was added and every previously-untagged
+piece retagged, now an enforced invariant. No magnitude/balance tuning was
+done — that's the explicit next phase, once the roster's other pools (enemy,
+Mods, classes, gatekeepers) get the same audit-and-expand treatment.
+
 See `DESIGN.md` for the full design, `BACKLOG.md` for the phased
 implementation roadmap and next-session pointer, and `session-logs/` for a
 per-session record of decisions and results.
@@ -149,7 +164,7 @@ Domain: `cribexe.com` (registered available, not yet purchased).
 
 ## Engine
 
-- `npm test` — run the Vitest suite (611 tests as of session 40).
+- `npm test` — run the Vitest suite (617 tests as of session 42).
 - `npm run check` — type-check (`svelte-check` + `tsc`).
 - `npm run sweep -- run|enemy ...` — balance/regression sweep harness (see
   `scripts/sweep.ts`); used throughout Phase 5 to tune with real numbers
