@@ -7,9 +7,11 @@ import {
   buyCheapestAffordable,
   rerollIfNothingAffordable,
   REROLL_COST,
+  synergyAwareShopStrategy,
   type ShopOffering,
 } from './shop';
 import { rarityOf } from './rewards';
+import type { Archetype, SubroutineDefinition } from './subroutine-types';
 
 function playerState(data: number): RunPlayerState {
   return {
@@ -126,5 +128,49 @@ describe('buyCheapestAffordable', () => {
 
   it('declines on an empty offering list', () => {
     expect(buyCheapestAffordable([], playerState(1000))).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint B) -- the Shop
+// half of the acquisition ladder. The ladder itself is exercised in
+// depth by loadout.test.ts; what's tested here is specifically the Shop
+// wrapper's own added behavior: affordability filtering in front of it.
+// ---------------------------------------------------------------------
+
+function typedPiece(id: string, archetype: Archetype, payload: SubroutineDefinition['payload']): SubroutineDefinition {
+  return { id, name: id, archetype, trigger: { kind: 'always' }, payload, tags: [] };
+}
+
+function offering(piece: SubroutineDefinition, cost: number): ShopOffering {
+  return { piece, cost };
+}
+
+describe('synergyAwareShopStrategy', () => {
+  it('applies the ladder among affordable offerings, not the cheapest', () => {
+    // Breacher (exploit+encryption). The off-archetype common is
+    // cheapest, so buyCheapestAffordable would take it; the ladder
+    // prefers the on-archetype credit-gap filler instead.
+    const cheapOff = offering(typedPiece('cheap-off', 'malware', { kind: 'directBurst', amount: 2 }), 20);
+    const gapFiller = offering(typedPiece('gap-filler', 'encryption', { kind: 'wardCounter', amount: 3, ratio: 0.2 }), 60);
+    const state = playerState(100);
+    expect(buyCheapestAffordable([cheapOff, gapFiller], state)?.piece.id).toBe('cheap-off');
+    expect(synergyAwareShopStrategy([cheapOff, gapFiller], state)?.piece.id).toBe('gap-filler');
+  });
+
+  it('never picks an unaffordable offering, even when it ranks highest', () => {
+    const cheapOff = offering(typedPiece('cheap-off', 'malware', { kind: 'directBurst', amount: 2 }), 20);
+    const gapFiller = offering(typedPiece('gap-filler', 'encryption', { kind: 'wardCounter', amount: 3, ratio: 0.2 }), 60);
+    const state = playerState(25); // can afford only the off-archetype common
+    expect(synergyAwareShopStrategy([cheapOff, gapFiller], state)?.piece.id).toBe('cheap-off');
+  });
+
+  it('declines when nothing on the slate is affordable', () => {
+    const pricey = offering(typedPiece('pricey', 'exploit', { kind: 'directBurst', amount: 9 }), 150);
+    expect(synergyAwareShopStrategy([pricey], playerState(10))).toBeNull();
+  });
+
+  it('declines on an empty slate', () => {
+    expect(synergyAwareShopStrategy([], playerState(500))).toBeNull();
   });
 });

@@ -7,6 +7,7 @@ import type { ModDefinition, ModId } from './mod-types';
 import { modPoolForClass } from './mods';
 import type { BurnerDefinition, BurnerId } from './burner-types';
 import { generalBurnerPool } from './burners';
+import { bestByLadder } from './loadout';
 
 /**
  * Shop wiring (Phase 4 checkpoint F): spends Data on a specific pick,
@@ -316,3 +317,31 @@ export type ShopBurnerStrategy = (availableBurnerIds: BurnerId[], playerState: R
 
 /** Default until a script actually wants to spend a shop Burner. */
 export const neverActivateShopBurner: ShopBurnerStrategy = () => null;
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46) -- the Shop halves of the
+// three acquisition ladders. Each mirrors its reward-side counterpart
+// exactly, with one extra step in front: the existing affordability
+// filter runs *before* the ladder, not instead of it, so a script never
+// "prefers" something it can't buy and never falls back to declining
+// while something affordable is still on the slate. Opt-in only; the
+// buyCheapestAffordable* defaults stay in place for every existing
+// caller and test.
+// ---------------------------------------------------------------------
+
+/** Checkpoint B's Shop half, paired with loadout.ts's
+ * synergyAwareAcquisition -- same 3-rung ladder (credit-gap -> archetype
+ * -> rarity), applied to whatever this visit's slate can actually
+ * afford. Note the ladder's rarity rung and the Shop's own price scaling
+ * pull the same direction here (rarer costs more), so on a tight budget
+ * this naturally lands on the best affordable piece rather than the
+ * cheapest one. */
+export const synergyAwareShopStrategy: ShopStrategy = (offerings, playerState) => {
+  const affordable = offerings.filter((offering) => offering.cost <= playerState.data);
+  if (affordable.length === 0) return null;
+  const best = bestByLadder(
+    affordable.map((offering) => offering.piece),
+    playerState,
+  );
+  return affordable.find((offering) => offering.piece.id === best?.id) ?? null;
+};

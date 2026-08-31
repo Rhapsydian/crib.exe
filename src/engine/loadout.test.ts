@@ -1,7 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import type { RunPlayerState } from './run';
 import { hasCreditCapablePiece, type Archetype, type SubroutineDefinition } from './subroutine-types';
-import { installSubroutine, uninstallSubroutine, reorderInstalled, acquireSubroutine, alwaysAcquireFirst, INSTALLED_SLOT_CAP } from './loadout';
+import {
+  installSubroutine,
+  uninstallSubroutine,
+  reorderInstalled,
+  acquireSubroutine,
+  alwaysAcquireFirst,
+  INSTALLED_SLOT_CAP,
+  fillsCreditGap,
+  ladderRank,
+  synergyAwareAcquisition,
+} from './loadout';
 
 function piece(id: string): SubroutineDefinition {
   return { id, name: id, archetype: 'exploit', trigger: { kind: 'always' }, payload: { kind: 'directBurst', amount: 1 }, tags: [] };
@@ -161,5 +171,77 @@ describe('hasCreditCapablePiece', () => {
 
   it('is false for an empty loadout', () => {
     expect(hasCreditCapablePiece([], 'root')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------
+// Checkpoint B -- the synergy-aware acquisition ladder.
+// ---------------------------------------------------------------------
+
+/** Breacher's own two specializations are exploit + encryption
+ * (classes.ts), so 'malware'/'root' are the off-archetype cases in every
+ * test below. Real pool ids are used wherever a test depends on the
+ * rarity rung, since rarityOf() derives rarity structurally from which
+ * subroutines.ts array a piece lives in -- an invented id would silently
+ * read as 'common'. */
+function breacherState(installedLoadout: SubroutineDefinition[]): RunPlayerState {
+  return playerState(installedLoadout, []);
+}
+
+describe('ladderRank / synergyAwareAcquisition', () => {
+  it('credit-gap outranks a higher-rarity off-archetype option', () => {
+    // The ladder's whole reason for being a ladder rather than a
+    // weighted sum: no rarity edge, however large, outvotes rung 1.
+    const gapFiller = typedPiece('fuzzer', 'encryption', { kind: 'wardCounter', amount: 3, ratio: 0.2 });
+    const shinyButOff = typedPiece('supply-chain-compromise', 'malware', { kind: 'directBurst', amount: 9 });
+    const state = breacherState([]); // no credit-capable encryption piece installed
+    expect(synergyAwareAcquisition([shinyButOff, gapFiller], state)?.id).toBe('fuzzer');
+  });
+
+  it('stops preferring a piece once that archetype gap is already closed', () => {
+    const another = typedPiece('fuzzer', 'encryption', { kind: 'wardCounter', amount: 3, ratio: 0.2 });
+    const shinyButOff = typedPiece('supply-chain-compromise', 'malware', { kind: 'directBurst', amount: 9 });
+    // Same two options, but Encryption already credits -- rung 1 ties,
+    // so rung 2 (on-archetype) decides, still landing on the Encryption
+    // piece but now for a different reason.
+    const closed = breacherState([typedPiece('installed-enc', 'encryption', { kind: 'wardBash', fraction: 0.4 })]);
+    expect(ladderRank(another, closed).creditGap).toBe(1);
+    expect(synergyAwareAcquisition([shinyButOff, another], closed)?.id).toBe('fuzzer');
+  });
+
+  it('a defensive-only on-archetype piece does not count as filling the gap', () => {
+    const wardOnly = typedPiece('ward-only', 'encryption', { kind: 'ward', amount: 4 });
+    expect(fillsCreditGap(wardOnly, breacherState([]))).toBe(false);
+  });
+
+  it('ranks on-archetype above neutral above off-archetype', () => {
+    const state = breacherState([]);
+    const on = typedPiece('on', 'exploit', { kind: 'ward', amount: 1 });
+    const neutral = typedPiece('neutral', 'neutral', { kind: 'ward', amount: 1 });
+    const off = typedPiece('off', 'root', { kind: 'ward', amount: 1 });
+    expect(ladderRank(on, state).archetype).toBe(0);
+    expect(ladderRank(neutral, state).archetype).toBe(1);
+    expect(ladderRank(off, state).archetype).toBe(2);
+    expect(synergyAwareAcquisition([off, neutral, on], state)?.id).toBe('on');
+  });
+
+  it('breaks a full tie by rarity, preferring the rarer piece', () => {
+    // Both on-archetype exploit, both credit-capable, and Exploit's gap
+    // is already closed by the installed piece -- so only rung 3 is live.
+    const state = breacherState([typedPiece('installed-exp', 'exploit', { kind: 'directBurst', amount: 2 })]);
+    const common = typedPiece('fuzzer', 'exploit', { kind: 'directBurst', amount: 3 });
+    const rare = typedPiece('supply-chain-compromise', 'exploit', { kind: 'directBurst', amount: 3 });
+    expect(synergyAwareAcquisition([common, rare], state)?.id).toBe('supply-chain-compromise');
+  });
+
+  it('falls to the earliest option when ranks tie exactly, matching alwaysAcquireFirst', () => {
+    const state = breacherState([]);
+    const first = typedPiece('first', 'root', { kind: 'ward', amount: 1 });
+    const second = typedPiece('second', 'root', { kind: 'ward', amount: 1 });
+    expect(synergyAwareAcquisition([first, second], state)?.id).toBe('first');
+  });
+
+  it('returns null for an empty slate', () => {
+    expect(synergyAwareAcquisition([], breacherState([]))).toBeNull();
   });
 });

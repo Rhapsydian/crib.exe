@@ -1,5 +1,7 @@
-import type { SubroutineDefinition } from './subroutine-types';
+import { CREDIT_CAPABLE_PAYLOAD_KINDS, hasCreditCapablePiece, type Archetype, type SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
+import { CLASS_DEFINITIONS } from './classes';
+import { rarityOf, type Rarity } from './rewards';
 
 /**
  * Bench & installed-loadout management (Phase 4 checkpoint D): a
@@ -104,3 +106,102 @@ export function acquireSubroutine(playerState: RunPlayerState, piece: Subroutine
   const withBench = { ...playerState, bench: [...playerState.bench, piece] };
   return installSubroutine(withBench, piece.id, slotCap);
 }
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint B) -- the
+// synergy-aware acquisition ladder. Every scripted run before this used
+// alwaysAcquireFirst, which makes a sweep unable to distinguish a real
+// class-balance problem from the AI simply never making a good pick (see
+// DESIGN.md's "Gameplay Simulation Heuristics" section for the full
+// reasoning). Deliberately a *lexicographic priority ladder*, not a
+// numeric weighted score: there's no calibration target for "is a rare
+// off-archetype piece better than a common on-archetype one" the way
+// ai.ts's skill dial has exact Cribbage EV to calibrate against, so an
+// explicit ordered tie-break is honest where tuned weights would be
+// false precision. Same no-weights shape opportunisticTraversal already
+// uses to resolve its own priorities.
+//
+// This ladder is shared, not private: shop.ts (the Shop half of the same
+// decision), merge.ts (checkpoint E's Merge target) and this file's own
+// checkpoint G swap-out all rank subroutines the same way rather than
+// each inventing a second scoring shape.
+// ---------------------------------------------------------------------
+
+/** One subroutine's position on the ladder, as a lexicographically
+ * comparable tuple -- lower is better at every position, so a plain
+ * element-by-element comparison resolves the whole ladder (see
+ * compareLadderRanks). Kept as an explicit named type rather than a bare
+ * number[] so the three rungs stay legible at the call sites that read
+ * them. */
+export interface LadderRank {
+  /** 0 when this piece fills a credit-gap, 1 when it doesn't -- rung 1,
+   * the highest-priority consideration. */
+  creditGap: 0 | 1;
+  /** 0 on-archetype, 1 neutral/universal, 2 off-archetype -- rung 2. */
+  archetype: 0 | 1 | 2;
+  /** 0 rare, 1 uncommon, 2 common -- rung 3, the tie-break. */
+  rarity: 0 | 1 | 2;
+}
+
+const RARITY_LADDER_POSITION: Record<Rarity, 0 | 1 | 2> = { rare: 0, uncommon: 1, common: 2 };
+
+/** Whether acquiring `piece` would close a real credit-gap: the piece
+ * belongs to one of the class's own 2 specializations, it can actually
+ * credit a win gauge, and the installed loadout has no such piece in
+ * that archetype yet. All three conditions matter -- a credit-capable
+ * piece in an archetype the class doesn't specialize in isn't filling a
+ * gap worth prioritizing (it's off-archetype content the class will
+ * rarely lean on), and a defensive-only piece can't close the gap in the
+ * first place, which is exactly the structural hole session 40 existed
+ * to fix. */
+export function fillsCreditGap(piece: SubroutineDefinition, playerState: RunPlayerState): boolean {
+  const classArchetypes: readonly Archetype[] = CLASS_DEFINITIONS[playerState.classId].archetypes;
+  if (!classArchetypes.includes(piece.archetype)) return false;
+  if (!CREDIT_CAPABLE_PAYLOAD_KINDS.has(piece.payload.kind)) return false;
+  return !hasCreditCapablePiece(playerState.installedLoadout, piece.archetype);
+}
+
+/** Ranks one piece on the 3-rung ladder. Neutral sits deliberately
+ * *between* on- and off-archetype: a neutral piece is suit-independent
+ * by construction (see subroutine-types.ts's Archetype comment), so it's
+ * always live for this class, where an off-archetype piece is content
+ * the class's own two specializations won't reinforce. */
+export function ladderRank(piece: SubroutineDefinition, playerState: RunPlayerState): LadderRank {
+  const classArchetypes: readonly Archetype[] = CLASS_DEFINITIONS[playerState.classId].archetypes;
+  const archetype: 0 | 1 | 2 = classArchetypes.includes(piece.archetype) ? 0 : piece.archetype === 'neutral' ? 1 : 2;
+  return {
+    creditGap: fillsCreditGap(piece, playerState) ? 0 : 1,
+    archetype,
+    rarity: RARITY_LADDER_POSITION[rarityOf(piece.id)],
+  };
+}
+
+/** Lexicographic comparison, `Array.prototype.sort`-shaped: negative
+ * when `a` ranks better than `b`. Rungs are compared in declaration
+ * order and the first difference wins outright -- that "first difference
+ * wins" is the whole point of a ladder over a weighted sum, where a
+ * large enough rarity edge could otherwise outvote a credit-gap. */
+export function compareLadderRanks(a: LadderRank, b: LadderRank): number {
+  return a.creditGap - b.creditGap || a.archetype - b.archetype || a.rarity - b.rarity;
+}
+
+/** Picks the best of `options` by the ladder, or null when there's
+ * nothing to pick from. Ties (identical rank tuples) fall to the
+ * earliest option, matching alwaysAcquireFirst's own bias and keeping
+ * the choice deterministic for a given offered slate. Never declines an
+ * offer -- neither does alwaysAcquireFirst, and "should a scripted
+ * player ever refuse a free piece" is a separate question this
+ * checkpoint doesn't open. */
+export function bestByLadder(options: SubroutineDefinition[], playerState: RunPlayerState): SubroutineDefinition | null {
+  if (options.length === 0) return null;
+  return options.reduce((best, option) =>
+    compareLadderRanks(ladderRank(option, playerState), ladderRank(best, playerState)) < 0 ? option : best,
+  );
+}
+
+/** The synergy-aware half of session 46's "smart player" profile,
+ * paired with shop.ts's synergyAwareShopStrategy (they resolve the same
+ * decision against two different offer shapes). Opt-in only --
+ * alwaysAcquireFirst stays playRun's default for every existing caller
+ * and test. */
+export const synergyAwareAcquisition: AcquisitionStrategy = (options, playerState) => bestByLadder(options, playerState);
