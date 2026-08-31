@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { RunPlayerState } from './run';
-import { hasCreditCapablePiece, type Archetype, type SubroutineDefinition } from './subroutine-types';
+import { playRun, opportunisticTraversal, type RunPlayerState } from './run';
+import { hasCreditCapablePiece, type Archetype, type SubroutineDefinition, type Tag } from './subroutine-types';
 import {
   installSubroutine,
   uninstallSubroutine,
@@ -11,6 +11,8 @@ import {
   fillsCreditGap,
   ladderRank,
   synergyAwareAcquisition,
+  synergyAwareReorder,
+  keepAcquisitionOrder,
 } from './loadout';
 
 function piece(id: string): SubroutineDefinition {
@@ -299,5 +301,156 @@ describe('fillsCreditGap -- neutral handling (session 46)', () => {
   it('an off-archetype credit-capable piece still never fills a gap', () => {
     const offArchetype = typedPiece('root-hit', 'root', { kind: 'sessionHijack', amount: 3 });
     expect(fillsCreditGap(offArchetype, wardenState([]))).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------
+// Checkpoint F -- loadout reorder.
+// ---------------------------------------------------------------------
+
+function chainedPiece(id: string, trigger: SubroutineDefinition['trigger'], archetype: Archetype = 'exploit', tags: Tag[] = []): SubroutineDefinition {
+  return { id, name: id, archetype, trigger, payload: { kind: 'directBurst', amount: 1 }, tags };
+}
+
+function finisher(id: string, archetype: Archetype = 'exploit'): SubroutineDefinition {
+  return {
+    id,
+    name: id,
+    archetype,
+    trigger: { kind: 'always' },
+    payload: { kind: 'chainFinisherScaling', baseAmount: 2, perPriorFire: 1 },
+    tags: [],
+  };
+}
+
+const order = (state: RunPlayerState): string[] => state.installedLoadout.map((p) => p.id);
+
+describe('synergyAwareReorder -- prerequisites before dependents', () => {
+  it('moves an afterSubroutineId prerequisite before its dependent', () => {
+    const state = playerState([chainedPiece('dependent', { kind: 'chained', afterSubroutineId: 'prereq' }), piece('prereq')], []);
+    expect(order(synergyAwareReorder(state))).toEqual(['prereq', 'dependent']);
+  });
+
+  it('moves an afterArchetype prerequisite before its dependent', () => {
+    // The variant that actually has content -- 9 pool pieces chain this
+    // way, versus 0 on afterSubroutineId.
+    const state = playerState(
+      [chainedPiece('needs-malware', { kind: 'chained', afterArchetype: 'malware' }), chainedPiece('a-malware-piece', { kind: 'always' }, 'malware')],
+      [],
+    );
+    expect(order(synergyAwareReorder(state))).toEqual(['a-malware-piece', 'needs-malware']);
+  });
+
+  it('moves an afterTag prerequisite before its dependent', () => {
+    const state = playerState(
+      [chainedPiece('needs-worm', { kind: 'chained', afterTag: 'worm' }), chainedPiece('a-worm', { kind: 'always' }, 'malware', ['worm'])],
+      [],
+    );
+    expect(order(synergyAwareReorder(state))).toEqual(['a-worm', 'needs-worm']);
+  });
+
+  it('leaves an order alone when the chain is already satisfied earlier', () => {
+    const state = playerState(
+      [chainedPiece('a-malware-piece', { kind: 'always' }, 'malware'), chainedPiece('needs-malware', { kind: 'chained', afterArchetype: 'malware' })],
+      [],
+    );
+    expect(order(synergyAwareReorder(state))).toEqual(['a-malware-piece', 'needs-malware']);
+  });
+
+  it('leaves a chained piece alone when nothing installed satisfies it', () => {
+    const state = playerState([piece('other'), chainedPiece('orphan', { kind: 'chained', afterArchetype: 'root' })], []);
+    expect(order(synergyAwareReorder(state))).toEqual(['other', 'orphan']);
+  });
+
+  it('terminates on a chain cycle rather than spinning', () => {
+    // A-after-B and B-after-A is expressible in the type system; an
+    // unsatisfiable chain is dead content however it's ordered, so the
+    // rule just needs to stop.
+    const state = playerState(
+      [chainedPiece('a', { kind: 'chained', afterSubroutineId: 'b' }), chainedPiece('b', { kind: 'chained', afterSubroutineId: 'a' })],
+      [],
+    );
+    expect(order(synergyAwareReorder(state))).toHaveLength(2);
+  });
+});
+
+describe('synergyAwareReorder -- finishers last', () => {
+  it('moves a chainFinisherScaling piece to the end', () => {
+    const state = playerState([finisher('big-finish'), piece('a'), piece('b')], []);
+    expect(order(synergyAwareReorder(state))).toEqual(['a', 'b', 'big-finish']);
+  });
+
+  it('keeps multiple finishers in their existing relative order', () => {
+    const state = playerState([finisher('first-finisher'), piece('a'), finisher('second-finisher')], []);
+    expect(order(synergyAwareReorder(state))).toEqual(['a', 'first-finisher', 'second-finisher']);
+  });
+
+  it('sends a finisher last even when it is another piece\'s prerequisite', () => {
+    // The deliberate conflict resolution: pass 2 wins, because a
+    // finisher's whole payoff is positional in a way a chained
+    // trigger's is not.
+    const state = playerState([chainedPiece('dependent', { kind: 'chained', afterSubroutineId: 'fin' }), finisher('fin')], []);
+    expect(order(synergyAwareReorder(state))).toEqual(['dependent', 'fin']);
+  });
+
+  it('is idempotent -- running it twice changes nothing further', () => {
+    // This is what lets run.ts apply it once per node rather than at
+    // every individual acquisition call site.
+    const state = playerState(
+      [finisher('fin'), chainedPiece('needs-malware', { kind: 'chained', afterArchetype: 'malware' }), chainedPiece('mal', { kind: 'always' }, 'malware')],
+      [],
+    );
+    const once = synergyAwareReorder(state);
+    expect(order(synergyAwareReorder(once))).toEqual(order(once));
+  });
+
+  it('is a no-op on a loadout with no chains and no finishers', () => {
+    const state = playerState([piece('a'), piece('b'), piece('c')], []);
+    expect(order(synergyAwareReorder(state))).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('reorderStrategy wiring (checkpoint F)', () => {
+  it('playRun calls the reorder strategy after each resolved encounter', () => {
+    let calls = 0;
+    playRun({
+      seed: 0,
+      classId: 'breacher',
+      traversalStrategy: opportunisticTraversal,
+      reorderStrategy: (state) => {
+        calls++;
+        return state;
+      },
+    });
+    expect(calls).toBeGreaterThan(0);
+  });
+
+  it('defaults to keepAcquisitionOrder -- unchanged behavior when omitted', () => {
+    const withDefault = playRun({ seed: 3, classId: 'breacher', traversalStrategy: opportunisticTraversal });
+    const withExplicit = playRun({
+      seed: 3,
+      classId: 'breacher',
+      traversalStrategy: opportunisticTraversal,
+      reorderStrategy: keepAcquisitionOrder,
+    });
+    expect(withDefault.outcome).toBe(withExplicit.outcome);
+    expect(withDefault.layersCompleted).toBe(withExplicit.layersCompleted);
+  });
+
+  it('a real run with synergyAwareReorder leaves every finisher trailing', () => {
+    // End-to-end: whatever the run actually acquired, the invariant the
+    // rule exists to enforce holds on the final loadout.
+    const result = playRun({
+      seed: 0,
+      classId: 'breacher',
+      traversalStrategy: opportunisticTraversal,
+      acquisitionStrategy: synergyAwareAcquisition,
+      reorderStrategy: synergyAwareReorder,
+    });
+    const loadout = result.playerState.installedLoadout;
+    const firstFinisher = loadout.findIndex((p) => p.payload.kind === 'chainFinisherScaling');
+    if (firstFinisher !== -1) {
+      expect(loadout.slice(firstFinisher).every((p) => p.payload.kind === 'chainFinisherScaling')).toBe(true);
+    }
   });
 });

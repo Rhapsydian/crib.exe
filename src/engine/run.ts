@@ -7,7 +7,15 @@ import { resolveEncounter, alwaysFirstEventChoice, type EncounterOutcome, type E
 import { addHeat, HEAT_MAX, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
-import { acquireSubroutine, alwaysAcquireFirst, installGrantedSubroutine, INSTALLED_SLOT_CAP, type AcquisitionStrategy } from './loadout';
+import {
+  acquireSubroutine,
+  alwaysAcquireFirst,
+  installGrantedSubroutine,
+  keepAcquisitionOrder,
+  INSTALLED_SLOT_CAP,
+  type AcquisitionStrategy,
+  type ReorderStrategy,
+} from './loadout';
 import {
   mergeSubroutine,
   pickMergeTarget,
@@ -452,6 +460,13 @@ export interface RunOptions {
    * resolveEncounter. Defaults to pickMergeTarget, unchanged behavior
    * for every existing caller. */
   mergeTargetStrategy?: MergeTargetStrategy;
+  /** How the installed loadout is reordered after each node's encounter
+   * fully resolves (session 46, Gameplay Simulation Heuristics
+   * checkpoint F) -- firing order is a real lever (see loadout.ts's
+   * reorderInstalled) that no script has ever pulled. Defaults to
+   * keepAcquisitionOrder, i.e. exactly what every run did before this
+   * option existed. */
+  reorderStrategy?: ReorderStrategy;
   /** Observational only -- called once per gatekeeper fight, right
    * before it resolves, with the player's real accumulated state at
    * that moment (session 39: the "realistic difficulty" diagnostic
@@ -481,6 +496,7 @@ export function playRun(options: RunOptions): RunResult {
     installedSlotCap = INSTALLED_SLOT_CAP,
     safehouseStrategy = preferMergeWhenAvailable,
     mergeTargetStrategy = pickMergeTarget,
+    reorderStrategy = keepAcquisitionOrder,
     shopStrategy = buyCheapestAffordable,
     shopRerollStrategy = rerollIfNothingAffordable,
     modShopStrategy = buyCheapestAffordableMod,
@@ -720,6 +736,18 @@ export function playRun(options: RunOptions): RunResult {
       }
       if (outcome.eventGrant?.mod) playerState = acquireMod(playerState, outcome.eventGrant.mod);
       if (outcome.eventGrant?.burner) playerState = acquireBurner(playerState, outcome.eventGrant.burner);
+      // Loadout reorder (session 46, checkpoint F) -- applied once here,
+      // after the whole resolution block, rather than at each of the four
+      // places above that can change installedLoadout (reward pick, Shop
+      // purchase, Event grant, and acquireMod's own granted-subroutine
+      // insert). The rule is a pure idempotent function of the loadout,
+      // so one call after the last change is equivalent to four calls
+      // interleaved with them, and it can't miss a path a future
+      // acquisition route might add. Between-fights only, per DESIGN.md's
+      // "mid-combat's only lever is Togglable" rule -- this sits after
+      // this node's encounter has fully resolved and before the next
+      // node's, which is exactly that window.
+      playerState = reorderStrategy(playerState);
       log.push({ type: 'encounter', layerIndex, nodeId: node.id, nodeType: node.type, outcome, heatAfter: heat });
 
       if (outcome.quarantined) {

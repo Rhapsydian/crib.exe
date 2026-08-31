@@ -1,4 +1,10 @@
-import { CREDIT_CAPABLE_PAYLOAD_KINDS, hasCreditCapablePiece, type Archetype, type SubroutineDefinition } from './subroutine-types';
+import {
+  CREDIT_CAPABLE_PAYLOAD_KINDS,
+  hasCreditCapablePiece,
+  type Archetype,
+  type SubroutineDefinition,
+  type TriggerFamily,
+} from './subroutine-types';
 import type { RunPlayerState } from './run';
 import { CLASS_DEFINITIONS, type ClassId } from './classes';
 import { rarityOf, type Rarity } from './rewards';
@@ -243,3 +249,98 @@ export function bestByLadder(options: SubroutineDefinition[], playerState: RunPl
  * alwaysAcquireFirst stays playRun's default for every existing caller
  * and test. */
 export const synergyAwareAcquisition: AcquisitionStrategy = (options, playerState) => bestByLadder(options, playerState);
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint F) -- loadout
+// reorder. reorderInstalled has existed since Phase 4 with a doc comment
+// stressing that firing order is "a real lever, not cosmetic," and
+// nothing has ever called it -- not even a legal-not-good default. This
+// is the first decision-maker for it.
+//
+// A fully general optimizer (searching permutations against simulated
+// outcomes) was considered and rejected by session 45 as its own
+// research project. This is a fixed rule reusing the ChainedTrigger
+// classification the engine already carries.
+//
+// Two passes, in order:
+//   1. **Prerequisites before dependents.** Same-turn firing resolves
+//      top-to-bottom (resolve.ts), so a chained piece only credits this
+//      turn if whatever it chains off fired earlier in the same pass --
+//      otherwise it waits for the next turn, or never fires at all.
+//   2. **Chain finishers last.** A chainFinisherScaling payload scales
+//      with how many pieces already fired this turn, so it wants to be
+//      as late in the order as possible.
+//
+// Pass 2 deliberately wins where the two conflict (a finisher that is
+// also some other piece's prerequisite): its whole payoff is positional
+// in a way a chained trigger's is not.
+//
+// Scope note, measured rather than assumed: session 45's spec wrote pass
+// 1 against ChainedTrigger's `afterSubroutineId` variant only, but *no*
+// piece in the game uses it -- session 42's pool expansion converted
+// every chain to `afterArchetype`/`afterTag` because id-pairs can't be
+// guaranteed to co-occur in a run. Pass 1 handles all three variants
+// (decided live with the user), so it covers the 14 real chained pieces
+// instead of zero. The id variant is kept because it stays correct and
+// becomes live the moment a matched-pair Event or starting kit uses it.
+// ---------------------------------------------------------------------
+
+/** A full-loadout transform rather than a choice between options -- the
+ * first strategy type in this project with nothing to pick from, so it
+ * takes and returns RunPlayerState directly. */
+export type ReorderStrategy = (playerState: RunPlayerState) => RunPlayerState;
+
+/** The default: acquisition order, i.e. exactly what every run has done
+ * until now. Named rather than left implicit so the option's default is
+ * greppable alongside alwaysAcquireFirst and friends. */
+export const keepAcquisitionOrder: ReorderStrategy = (playerState) => playerState;
+
+/** Whether `piece` satisfies `trigger`'s chain condition -- the same
+ * three match modes ChainedTrigger itself defines. */
+function satisfiesChain(trigger: Extract<TriggerFamily, { kind: 'chained' }>, piece: SubroutineDefinition): boolean {
+  if ('afterSubroutineId' in trigger) return piece.id === trigger.afterSubroutineId;
+  if ('afterArchetype' in trigger) return piece.archetype === trigger.afterArchetype;
+  return piece.tags.includes(trigger.afterTag);
+}
+
+/** Reorders the installed loadout per this section's two passes. Pure,
+ * and idempotent -- running it twice changes nothing the second time,
+ * which is what lets run.ts apply it once per node rather than at every
+ * individual acquisition call site. */
+export const synergyAwareReorder: ReorderStrategy = (playerState) => {
+  let state = playerState;
+
+  // Pass 1. Each iteration fixes at most one violation and restarts, so
+  // the bound is generous rather than tight; the cap exists because a
+  // chain cycle (A after B, B after A) is expressible in the type system
+  // and would otherwise spin forever. A cycle simply stops early with
+  // the order it has reached -- an unsatisfiable chain is dead content
+  // regardless of how it's ordered.
+  const maxPasses = state.installedLoadout.length * state.installedLoadout.length + 1;
+  for (let pass = 0; pass < maxPasses; pass++) {
+    const loadout = state.installedLoadout;
+    let movedSomething = false;
+    for (let i = 0; i < loadout.length; i++) {
+      const trigger = loadout[i].trigger;
+      if (trigger.kind !== 'chained') continue;
+      // Already satisfied by something earlier in the order -- nothing to do.
+      if (loadout.slice(0, i).some((earlier) => satisfiesChain(trigger, earlier))) continue;
+      const laterIndex = loadout.findIndex((candidate, index) => index > i && satisfiesChain(trigger, candidate));
+      if (laterIndex === -1) continue; // nothing installed satisfies it at all
+      state = reorderInstalled(state, laterIndex, i);
+      movedSomething = true;
+      break;
+    }
+    if (!movedSomething) break;
+  }
+
+  // Pass 2. Moving each finisher to the end in its existing relative
+  // order leaves the finishers trailing in that same relative order.
+  const finisherIds = state.installedLoadout.filter((piece) => piece.payload.kind === 'chainFinisherScaling').map((piece) => piece.id);
+  for (const id of finisherIds) {
+    const from = state.installedLoadout.findIndex((piece) => piece.id === id);
+    if (from !== -1) state = reorderInstalled(state, from, state.installedLoadout.length - 1);
+  }
+
+  return state;
+};
