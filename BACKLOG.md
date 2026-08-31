@@ -14,7 +14,20 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Session 40 close-out update (most current)**: the content-validation
+**Session 41 close-out update (most current)**: scoped and planned Phase
+1 of the user's own multi-session pool-expansion program (audit and
+roughly double the player-facing subroutine pool) via `/decision-session`
+-- no code, no `subroutines.ts` data written. Full content plan (57 new
+pieces across 5 pools, a `ChainedTrigger` redesign, a 6th tag, a tag
+retrofit across 38 existing untagged pieces, and a starting-loadout
+quality review) is in this file's own "Player Pool Expansion --
+Implementation" section, below, and in `DESIGN.md`'s new "Player Pool
+Expansion" section. **The user's own next step**: a future `/dev-session`
+implements the checkpoints below (A-H) -- author the real data, convert
+the 7 existing chains, retrofit tags, update structural-count tests.
+Full detail in `session-logs/session-41-2026-08-31.md`.
+
+**Session 40 close-out update**: the content-validation
 sample is done -- 12 new pool pieces (6 Encryption, 6 Root, 2 per new
 mechanism), grounded in a new permanent tool
 (`scripts/occurrence-frequency.ts`, real raw-Cribbage occurrence-
@@ -3524,3 +3537,244 @@ sequenced after, not part of it. No real Mod ships using checkpoint D's
 hook -- the mechanism is proven, not used. Regular/elite per-layer
 threshold scaling (the magnitude-style formula) is flagged as a real,
 separate future question, not decided here.
+
+## Player Pool Expansion — Implementation (session 41, `/decision-session`)
+
+Phase 1 of the user's own multi-session program: audit and roughly
+double the player-facing subroutine pool (57 new pieces), fix a real
+structural bug found along the way (`chained` triggers keyed to a
+specific subroutine id), add a 6th tag, and retrofit tag coverage across
+the existing pool. Same category as sessions 15/17/19/21/27/33/37/40 --
+scoped and planned this session, implemented by a future `/dev-session`.
+Full narrative and reasoning in `DESIGN.md`'s new "Player Pool Expansion"
+section and `session-logs/session-41-2026-08-31.md`; this section is the
+concrete checkpoint spec + full content list.
+
+**Target sizes** (parity, not independent doubling -- see `DESIGN.md`):
+
+| Pool | Before | Commons | Uncommons | Rares | After |
+|---|---|---|---|---|---|
+| Exploit | 15 | +7 | +5 | +3 | 30 |
+| Malware | 15 | +7 | +5 | +3 | 30 |
+| Encryption | 21 | +5 | +4 | +0 | 30 |
+| Root | 21 | +6 | +3 | +0 | 30 |
+| Neutral | 9 | +4 | +3 | +2 | 18 |
+
+Total: 57 new pieces (81 → 138 pool pieces, 18 class-starting-loadout
+pieces unaffected in count, reviewed separately below).
+
+### Checkpoint A — `ChainedTrigger` redesign
+
+`subroutine-types.ts`'s `ChainedTrigger` (`{ kind: 'chained',
+afterSubroutineId: string }`) widens to a union: keep
+`afterSubroutineId` (now reserved for guaranteed-co-presence contexts --
+a class's own starting loadout, or a future Event-grants-a-pair
+mechanism -- unused by any pool content after this pass), add
+`{ kind: 'chained', afterArchetype: Archetype }` and
+`{ kind: 'chained', afterTag: Tag }`. Same underlying "what's fired this
+turn, in order" state the engine already tracks for id-matching; the
+match predicate widens from `id === X` to `archetype === X` /
+`tags.includes(X)`. No new state, no timing-window change (still "fired
+earlier in the current turn's own sequence," not cumulative across the
+whole fight).
+
+**Migrate all 7 existing chained pieces** (not just the 3 structurally
+broken ones -- see `DESIGN.md` for why the other 4 carry real run-to-run
+risk too, even though they're pool-to-pool):
+
+| Piece | Pool | Old (`afterSubroutineId`) | New |
+|---|---|---|---|
+| Drive-By Exploit | Exploit uncommon | `precision-strike` (Operator-exclusive) | `afterArchetype: 'exploit'` |
+| Chain Infection | Malware uncommon | `silent-worm` (Saboteur-exclusive) | `afterArchetype: 'malware'` |
+| Kernel Exploit | Root uncommon | `priority-override` (Operator-exclusive) | `afterArchetype: 'root'` (also drop the now-invalid `targetSubroutineId: 'precision-strike'` on its own payload, or repoint to a generic target) |
+| Ransomware Cascade | Malware rare | `fork-bomb` | `afterArchetype: 'malware'` |
+| Sinkhole | Encryption uncommon | `access-control` | `afterArchetype: 'encryption'` |
+| Full Rollback | Encryption rare | `patch` | `afterTag: 'firewall'` |
+| Full System Compromise | Root rare | `cron-job` | `afterArchetype: 'root'` |
+
+**Kernel Exploit needs a second look during authoring**: its payload
+(`instantManipulation`, `target: 'subroutineProgress'`,
+`targetSubroutineId: 'precision-strike'`) directly references the same
+now-dead id its old trigger did -- the trigger fix alone doesn't repoint
+the payload. Since Kernel Exploit is a pool piece with no guaranteed
+partner, `subroutineProgress`'s own id-target restriction (file header:
+"only makes sense when that id is guaranteed present") means this
+payload needs to change target (e.g. to `suitTally`, ARP Spoof's own
+fix for the identical problem) rather than just get a new trigger.
+
+### Checkpoint B — Tag type + retrofit
+
+`subroutine-types.ts`'s `Tag` type gains `'direct'`:
+`'trap' | 'piercing' | 'firewall' | 'worm' | 'daemon' | 'direct'`.
+
+Apply the tagging convention (`DESIGN.md`'s Subroutine tags section) to
+all 38 existing untagged pieces:
+
+- **Direct**: Fuzzer, Race Condition, Off-By-One, Privilege Escalation
+  (Exploit); Botnet (Malware); Basic Auth, Checksum, Two-Factor
+  (Encryption); Port Forward, Packet Sniffer, ARP Spoof, Directory
+  Traversal, Packet Injection, DNS Poisoning, Backchannel,
+  Zero-Knowledge Exploit (Root); Elevated Session, Checksum Match,
+  Overclock (Neutral); Buffer Overflow, Session Lock, Payload Drop,
+  Priority Override (starting loadouts)
+- **Daemon**: Credential Stuffing (Exploit); Steady Drip, Circuit
+  Breaker (Neutral)
+- **Trap**: Buffer Overrun, Watering Hole (Exploit); Rate Limiting
+  (Encryption); Supply Route, Man-in-the-Browser (Root); Uptime,
+  Watchdog Timer (Neutral)
+- **Firewall**: Sandboxing, Access Control, Honeypot (Encryption)
+- **Daemon + Firewall**: Steganography (Ghost starting loadout --
+  accumulator trigger *and* Ward payload, the one existing piece that
+  genuinely earns both)
+
+Plus tag corrections on this session's own 57-piece draft where the
+convention wasn't applied consistently the first pass (see the full
+per-pool lists below for final tags -- corrected from the conversational
+draft: Jackpot/Zero-Click Exploit/Full Compromise gain +Trap, Cascading
+Failure gains +Daemon, Session Timeout gains +Trap, Isolation Chamber
+gains +Worm, Heartbeat Monitor gains +Firewall, Digital Plague's
+mistaken Worm corrected to Trap).
+
+Verification: a real test asserting every `ALL_SUBROUTINES` entry has
+`tags.length >= 1` except any deliberately-flagged exception (none
+currently anticipated) -- turns "most if not all tagged" into an
+enforced invariant, not just a one-time cleanup.
+
+### Checkpoints C-G — Author the 57 new pieces
+
+One checkpoint per pool (Exploit, Malware, Encryption, Root, Neutral),
+each: add the pieces below to the relevant `*_COMMONS`/`*_UNCOMMONS`/
+`*_RARES` array, sized off the existing `COMMON`/`UNCOMMON`/`RARE`/
+`CAPPED` magnitude tiers (no new numeric tier needed), update
+`ARCHETYPE_POOLS`'s aggregate counts and any structural-count tests
+(`subroutines.test.ts`, mirroring session 40's own "intentionally
+asymmetric pool shape" test update). Payloads reuse existing kinds only
+(session 41's "reuse before inventing" call, live-confirmed) -- no new
+`SubroutineDefinition` payload variants needed for this pass.
+
+**His Heels constraint** (see `DESIGN.md` for the frequency data and
+reasoning): Instant-variation only, rare-tier only, exactly one piece
+total across all 57 -- **Doomsday Clock** (Malware rare, below). Any
+other His Heels use considered during authoring should be rejected or
+bumped to this same standard, not added as a second instance.
+
+#### Checkpoint C — Exploit +15 (7 common / 5 uncommon / 3 rare)
+
+| Name | Trigger | Payload | Tags | Rarity |
+|---|---|---|---|---|
+| SSH Bruteforce | occurrence: hisNobs, instant | directBurst | direct | common |
+| Deuces Wild | occurrence: pair, threshold(2) | directBurst | trap | common |
+| Rainbow Table | occurrence: run, instant | directBurst | direct | common |
+| Drone Recon | occurrence: flush, threshold(2) | directBurst | trap | common |
+| Skimmer | enemyState: hasDebuff (any) | directBurst | direct | common |
+| Dictionary Attack | occurrence: thirtyOne, threshold(2) | directBurst | trap | common |
+| Doorknob Rattle | occurrence: go, threshold(2) | directBurst | trap | common |
+| Jackpot | occurrence: hisNobs, scaling(cap 3) | piercing | piercing, trap | uncommon |
+| Race to the Bottom | enemyState: breachContainmentBelow | riskRewardBurst | direct | uncommon |
+| Botnet Recruiter | chained: afterTag daemon | directBurst | worm | uncommon |
+| Turbo Mode | selfState: isNonDealer | riskRewardBurst | direct | uncommon |
+| Smash and Grab | occurrence: pair, scaling(cap 3) | directBurst | trap | uncommon |
+| Zero-Click Exploit | occurrence: hisNobs, threshold(3) | piercing | piercing, trap | rare |
+| Full Compromise | occurrence: run, scaling(cap) | piercing | piercing, trap | rare |
+| Botnet Herder | chained: afterArchetype malware | chainFinisherScaling | worm | rare |
+
+#### Checkpoint D — Malware +15 (7 common / 5 uncommon / 3 rare)
+
+| Name | Trigger | Payload | Tags | Rarity |
+|---|---|---|---|---|
+| Cache Poisoning | occurrence: fifteen, threshold(4) | debuff: corrupted | trap | common |
+| Dead Man's Switch | occurrence: hisNobs, instant | debuff: choked | direct | common |
+| Rootkit | occurrence: thirtyOne, instant | dot (caster pulse) | daemon | common |
+| Backdoor Shell | occurrence: go, instant | debuff: throttled | direct | common |
+| Cryptojacker | accumulator: suitTally (new slot) | dot (caster pulse) | daemon | common |
+| Drive-By Download | occurrence: flush, instant | dot (global pulse) | daemon | common |
+| Sleeper Agent | selfState: isDealer | dot (caster pulse) | daemon | common |
+| Zombie Network | occurrence: pair, threshold(2) | debuff: corrupted | trap | uncommon |
+| Supply Chain Malware | occurrence: run, instant | dot (global pulse) | daemon | uncommon |
+| Data Exfiltration | enemyState: breachContainmentAbove, reactive | debuff: choked | direct | uncommon |
+| Fileless Malware | chained: afterTag daemon | dot (caster pulse) | daemon, worm | uncommon |
+| Insider Threat | accumulator: suitTally (another new slot) | debuff: throttled | daemon | uncommon |
+| Doomsday Clock | occurrence: hisHeels, **instant** | dot (global pulse) | daemon | rare |
+| Cascading Failure | chained: afterArchetype malware | dot (global pulse) | worm, daemon | rare |
+| Digital Plague | occurrence: pair, scaling(cap) | debuff: corrupted | trap | rare |
+
+Existing chains **Chain Infection** and **Ransomware Cascade** convert
+per checkpoint A's table above.
+
+#### Checkpoint E — Encryption +9 (5 common / 4 uncommon / 0 rare)
+
+| Name | Trigger | Payload | Tags | Rarity |
+|---|---|---|---|---|
+| Secure Boot | occurrence: thirtyOne, instant | instantCounterPush | direct | common |
+| Rate Shaping | occurrence: go, instant | ward | firewall | common |
+| Key Rotation | occurrence: hisNobs, instant | cleanse | firewall | common |
+| Fail2Ban | enemyState: hasDebuff (any) | instantCounterPush | direct | common |
+| Heartbeat Monitor | accumulator: points (new threshold) | ward | daemon, firewall | common |
+| Circuit Isolation | enemyState: breachContainmentBelow | ward | firewall | uncommon |
+| Session Timeout | occurrence: hisNobs, threshold(2) | wardCounter | firewall, trap | uncommon |
+| Air-Gapped Vault | accumulator: suitTally (new slot) | hot | daemon | uncommon |
+| Isolation Chamber | chained: afterTag firewall | ward | firewall, worm | uncommon |
+
+Existing chains **Sinkhole** and **Full Rollback** convert per checkpoint
+A's table above.
+
+#### Checkpoint F — Root +9 (6 common / 3 uncommon / 0 rare)
+
+| Name | Trigger | Payload | Tags | Rarity |
+|---|---|---|---|---|
+| Traceroute | occurrence: thirtyOne, instant | instantManipulation: enemyGauge | direct | common |
+| Broadcast Storm | occurrence: go, instant | instantManipulation: ownGauge | direct | common |
+| Social Engineering | occurrence: hisNobs, instant | instantManipulation: suitTally | direct | common |
+| Cold Call | selfState: heatBelow | instantManipulation: ownGauge | direct | common |
+| Lurker | selfState: isNonDealer | instantManipulation: enemyGauge | direct | common |
+| Payload Delivery | accumulator: suitTally (new slot) | instantManipulation: ownGauge | daemon | common |
+| Honey Trap | occurrence: flush, scaling(cap) | instantManipulation: suitTally | trap | uncommon |
+| Wiretap | handOutcome: pegging, enemy, above 6 (real p90) | sessionHijack | trap | uncommon |
+| Ghost Protocol | chained: afterArchetype root | instantManipulation: enemyGaugeThreshold | worm | uncommon |
+
+Existing chains **Kernel Exploit** and **Full System Compromise** convert
+per checkpoint A's table above (Kernel Exploit also needs its payload's
+`targetSubroutineId` repointed, see checkpoint A).
+
+Note: **Broadcast Storm** was drafted in conversation as "Ping Sweep" --
+renamed before authoring, that id already belongs to Operator's starting
+loadout.
+
+#### Checkpoint G — Neutral +9 (4 common / 3 uncommon / 2 rare)
+
+| Name | Trigger | Payload | Tags | Rarity |
+|---|---|---|---|---|
+| Ping | occurrence: pair, instant | directBurst | direct | common |
+| Status Check | selfState: isNonDealer | directBurst | direct | common |
+| Cache Hit | occurrence: flush, instant | directBurst | direct | common |
+| Failover | enemyState: breachContainmentBelow | directBurst | direct | common |
+| Redundant Node | selfState: heatBelow | directBurst | direct | uncommon |
+| Load Balancer | occurrence: hisNobs, instant | directBurst | direct | uncommon |
+| Mirror Server | chained: afterTag daemon | directBurst | worm | uncommon |
+| Failsafe Cluster | enemyState: hasDebuff (any) | directBurst | direct | rare |
+| Redundant Array | accumulator: points (rare threshold) | chainFinisherScaling | worm | rare |
+
+### Checkpoint H — Starting-loadout tags + verification
+
+Retag the 5 untagged starting-loadout pieces per checkpoint B's list
+above (Buffer Overflow, Session Lock, Payload Drop, Priority Override →
+Direct; Steganography → Daemon + Firewall). No other starting-loadout
+changes -- session 41's structural review found no bugs there (see
+`DESIGN.md`).
+
+Full suite green, `npm run check` clean, structural-count tests updated
+for the new pool sizes (mirrors session 40's own "intentionally
+asymmetric pool shape" precedent). A same-seed regression sweep is
+**not** expected to be byte-identical here, unlike session 40's
+plumbing-only checkpoint F -- new content genuinely changes what's
+drawable, so a full 6-class balance sweep (the natural next step after
+this lands, likely its own session per the roadmap) is the real
+verification, not a zero-change check.
+
+**Not done this session**: no code, no `subroutines.ts` data -- scoping
+and planning only, same as every session in this list. No magnitude
+tuning beyond the existing `COMMON`/`UNCOMMON`/`RARE`/`CAPPED` tier
+constants (real balance is explicitly the later "heavy final analysis
+pass" phase of the user's own roadmap). Enemy pool, Mods, the full class
+audit, and the gatekeeper roster all remain untouched, per the roadmap's
+own sequencing.

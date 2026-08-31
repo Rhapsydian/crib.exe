@@ -668,7 +668,18 @@ real new tooling to get a native win condition at all — see the new
   protective trigger for a protective archetype.
 - **Chained triggers** (universal) — a subroutine's firing can feed a
   later one's enable condition. Not tied to one archetype; any
-  archetype's subroutines can chain into each other.
+  archetype's subroutines can chain into each other. **Redesigned session
+  41**: matches by *archetype* or *tag* of whatever fired earlier this
+  turn, never a specific subroutine id, for any pool content — acquisition
+  (shop slate, combat rewards) never guarantees a player draws both halves
+  of a specific pair in the same run, so a pool piece keyed to one exact
+  id can go permanently or run-to-run dead (the exact bug found in Drive-
+  By Exploit, Chain Infection, and 5 other existing pieces this session —
+  see BACKLOG.md's session 41 write-up for the full list and conversions).
+  Id-based chaining is kept as a type option, reserved for contexts that
+  *do* guarantee co-presence — a class's own fixed starting loadout, or a
+  future mechanism (e.g. an Event) that grants a matched pair at once —
+  but no pool content uses it.
 - **Always triggers** (universal) — no real condition, fires every turn
   that side gets. Informally called **"Cantrip"** subroutines — meant to
   be low-power, not heavy hitters: guarantees something always happens
@@ -721,21 +732,53 @@ together subroutines from completely different archetypes into one
 build-around theme, giving the game a second, independent deckbuilding
 axis alongside class choice.
 
-Five starting tags (extensible later, not a fixed exhaustive taxonomy —
-grows the same way the subroutine pool itself grows over time):
+Six tags (extensible later, not a fixed exhaustive taxonomy — grows the
+same way the subroutine pool itself grows over time; **Direct** added
+session 41, see below):
 
 - **Trap** — delayed/scheduled: fires now, resolves later (Root's
   scheduled sabotage; Threshold/Scaling Occurrence subroutines that
-  spring after banking).
-- **Backdoor** — bypasses normal rules or counters (Exploit's piercing
-  burst; anything that ignores mitigation outright).
+  spring after banking; Hand-outcome-triggered subroutines, since they
+  watch a whole hand's aggregate rather than firing on the spot).
+- **Piercing** — bypasses normal rules or counters (Exploit's piercing
+  burst; anything that ignores mitigation outright; also Rare-occurrence-
+  triggered subroutines, since that family bypasses the normal ready-
+  gate/turn-flow pipeline the same structural way — a session 39 naming
+  note: this tag is called `piercing` in code, not `backdoor` as an
+  earlier draft of this section said; corrected here rather than
+  reconciled toward the stale doc name, since renaming the live `Tag`
+  type has a real migration cost the doc string doesn't).
 - **Firewall** — reactive/defensive, responds to being attacked
-  (Encryption's ward; Enemy-state-triggered defensive effects).
+  (Encryption's ward/ward-family payloads and cleanse; Enemy-state-
+  triggered defensive effects).
 - **Worm** — chains or propagates (Chained-trigger subroutines; effects
   that feed or buff other subroutines in the sequence).
-- **Daemon** — persistent/background/ongoing (Accumulator-triggered,
-  DoT/HoT, Always/Cantrip subroutines) — the literal computing term for a
-  background process, a precise fit for the setting.
+- **Daemon** — persistent/background/ongoing (Accumulator- or Always-
+  triggered subroutines; DoT/HoT/draining-HoT payloads) — the literal
+  computing term for a background process, a precise fit for the setting.
+- **Direct** (session 41) — immediate, single-shot, no delay and no
+  persistence: a plain burst/manipulation/counter-push/one-shot debuff
+  fired on a simple trigger, with none of the other five tags' mechanism
+  in play. Added specifically to close a real coverage gap found during
+  the session 41 audit — over a third of the pool (38 of 99 pieces at the
+  time) carried no tag at all, and nearly all of them were exactly this
+  shape: a plain immediate effect that didn't fit Trap/Piercing/Firewall/
+  Worm/Daemon without stretching what those already mean. Completes a
+  clean timing axis the other tags already implied: Trap fires later,
+  Daemon fires repeatedly, Direct fires once, now.
+
+**Tagging convention (session 41)**: a subroutine's tag(s) come from its
+trigger shape and/or its payload shape independently, and can stack when
+both genuinely apply (e.g. an accumulator-triggered Ward subroutine is
+both Daemon and Firewall) — trigger shape: `accumulator`/`always` →
+Daemon; Threshold/Scaling Occurrence or `handOutcome` → Trap;
+`rareOccurrence` → Piercing; payload shape: `piercing`/`wardBash` →
+Piercing; `ward`/`wardCounter`/`cleanse` → Firewall; `dot`/`hot`/
+`drainingHot` → Daemon; `chained` → Worm. Neither applies → Direct. The
+goal, per the user's own framing: most if not all subroutines should
+carry at least one tag, so passive items (which hook into tags, not
+individual subroutine ids — the whole reason this axis exists) have real
+surface to build against.
 
 A subroutine can carry **multiple tags** when it genuinely fits more than
 one (e.g. a Root scheduled-sabotage effect that also chains into another
@@ -940,6 +983,96 @@ authored using any of the six new mechanisms yet — this is shape only,
 same discipline as Mods/Burners/Events before their own content passes.
 The broader attrition finding above (escalation's own timeline vs. how
 fast real fights actually resolve) is flagged, not investigated further.
+
+### Player Pool Expansion (session 41, `/decision-session`)
+
+The first phase of the user's own multi-session program (audit and
+roughly double the player-facing subroutine pool, then the enemy pool,
+then Mods, then a full class audit, then the gatekeeper roster, finishing
+with a heavy ablation-driven balance pass — see `BACKLOG.md`'s top "NEXT
+SESSION" section for the complete roadmap). This session scoped and
+planned only — see `BACKLOG.md`'s own session 41 entry for the full
+57-piece content plan; no code or real `subroutines.ts` data was written.
+
+**Target sizes — parity, not independent doubling**: all four real
+archetypes converge on the same new size (~30 each: 14 commons/10
+uncommons/6 rares), rather than each doubling from wherever it happened
+to sit after session 40's audit already grew Encryption/Root
+asymmetrically. Exploit and Malware (untouched since session 22, still
+15 each) get the larger addition (+15 each); Encryption and Root
+(already at 21 each after session 40's six new mechanisms) only need +9
+each. Neutral, an intentionally small universal fallback pool rather than
+one of the four specializations, also roughly doubles (9 → 18) at the
+user's own direction, not left flat.
+
+**Design principle confirmed live**: fill real, empirically-identified
+coverage gaps using *existing* payload/trigger/tag primitives before
+inventing new ones for Exploit/Malware (whose payload catalogs, at 4 and
+2 kinds respectively, are much thinner than Encryption's 7 or Root's 6) —
+matches the project's standing "reuse before inventing" principle from
+the win-condition audit itself. Overlap in individual trigger or payload
+usage across pieces is explicitly fine; a subroutine only needs a
+*unique combination* of trigger and payload to earn its slot, not a
+wholly unused axis. Real audit finding driving most of the new content:
+**His Nobs and His Heels were used by zero subroutines** across the
+entire 90-piece pool that existed before this session, despite being 2
+of the 8 documented Occurrence categories.
+
+**His Heels needs a real constraint, not just "use it now and then"**:
+real frequency data (`scripts/occurrence-frequency.ts`, 300 games) puts
+it at 0.076/hand — the rarest occurrence category in the game, roughly on
+par with the pair-royal-or-better/8+-point-run "rare tail" session 40
+already calibrated rare-tier Root content against — and, unlike every
+other Occurrence category, it's **entirely outside either player's
+control** (the cut card, no discard/pegging decision touches it),
+breaking the design reason the whole Occurrence family exists ("ties
+subroutine identity most directly to real Cribbage skill"). A Threshold-
+or Scaling-variation His Heels piece would be functional dead content —
+expected occurrences per side in a real ~2-5 hand fight is roughly 0.2.
+**Rule going forward**: His Heels content is Instant-variation only,
+rare-tier only, and sparing (one piece per pass, not spread across
+rarities) — a rare, uncontrollable, big-if-it-happens swing, not
+something to build reliable strategy around.
+
+**Chained trigger, redesigned** (see the Trigger catalog's own Chained
+entry, above, for the full mechanism) — the user's own catch, prompted by
+finding that 3 existing pool pieces (Drive-By Exploit, Chain Infection, a
+Root uncommon) were permanently dead for 5 of 6 classes, chained off a
+class-exclusive starting-loadout id no other class could ever acquire.
+The fix generalizes further than just those 3: **any** id-based chain in
+pool content carries real run-to-run dead-content risk, since nothing in
+the acquisition system guarantees a player draws both halves of a
+specific pair in one run — so all 7 existing chains (including the 4
+that were pool-to-pool and technically "safe" today) convert to
+archetype/tag matching during authoring, not just the 3 broken ones.
+
+**Tags — a 6th tag, Direct, added** (see the Subroutine tags section,
+above, for the full definition and the applied tagging convention) — the
+user's own goal: most if not all subroutines should carry at least one
+tag, since passives hook into tags rather than individual ids. Audit
+found 38 of 99 existing pieces (38%) untagged; applying the new rule
+resolves all 38, plus corrects several under-tagged pieces in this
+session's own 57-piece draft, without leaving any genuinely ambiguous
+cases.
+
+**Starting-loadout quality pass**: all 18 class-starting pieces reviewed
+for the same structural issues found in the pool — none found. Both
+existing same-loadout self-references (Background Process→Time Bomb for
+Saboteur, Priority Override→Precision Strike for Operator) are the safe
+case (both pieces guaranteed present in the same fixed kit), unlike the 3
+broken pool chains above. 5 of 18 carried no tag — folded into the tag
+retrofit above rather than handled separately. A real numeric balance
+pass on Saboteur/Operator/Warden's starting kits (unlike Breacher/
+Blackhat/Ghost, never individually audited) is explicitly out of scope
+here — that's the "full class audit" the user already sequenced as its
+own later phase in the roadmap.
+
+**Explicitly not done this session**: no `subroutines.ts` data written,
+no `ChainedTrigger`/`Tag` type changes made in code — this is shape and
+content-plan only, same discipline as every prior scoping session. A
+future `/dev-session` authors the real 57 pieces, converts the 7 existing
+chains, retrofits tags across the pool, and updates the structural-count
+tests, per `BACKLOG.md`'s checkpoint spec.
 
 ### Mods (session 30, `/decision-session`)
 
