@@ -4,9 +4,9 @@ import type { ClassId } from './classes';
 import type { Rng } from './rng';
 import { rarityOf, rewardPoolForClass, type Rarity } from './rewards';
 import type { ModDefinition, ModId } from './mod-types';
-import { modPoolForClass } from './mods';
+import { bestModByLadder, modPoolForClass } from './mods';
 import type { BurnerDefinition, BurnerId } from './burner-types';
-import { generalBurnerPool } from './burners';
+import { bestBurnerByLadder, generalBurnerPool } from './burners';
 import { bestByLadder } from './loadout';
 
 /**
@@ -344,4 +344,30 @@ export const synergyAwareShopStrategy: ShopStrategy = (offerings, playerState) =
     playerState,
   );
   return affordable.find((offering) => offering.piece.id === best?.id) ?? null;
+};
+
+/** Checkpoint C's Shop half, paired with mods.ts's
+ * synergyAwareModAcquisition -- 2 rungs (archetype -> rarity), applied
+ * to whatever this visit's Mod slate can afford. */
+export const synergyAwareModShopStrategy: ModShopStrategy = (offerings, playerState) => {
+  const affordable = offerings.filter((offering) => offering.cost <= playerState.data);
+  if (affordable.length === 0) return null;
+  const best = bestModByLadder(
+    affordable.map((offering) => offering.mod),
+    playerState,
+  );
+  return affordable.find((offering) => offering.mod.id === best?.id) ?? null;
+};
+
+/** Checkpoint D's Shop half, paired with burners.ts's
+ * synergyAwareBurnerAcquisition -- rarity only, applied to whatever this
+ * visit's Burner slate can afford. Since the Burner slate's own prices
+ * scale with rarity, this reliably spends up to the budget rather than
+ * hoarding Data, which is the intended contrast with
+ * buyCheapestAffordableBurner. */
+export const synergyAwareBurnerShopStrategy: BurnerShopStrategy = (offerings, playerState) => {
+  const affordable = offerings.filter((offering) => offering.cost <= playerState.data);
+  if (affordable.length === 0) return null;
+  const best = bestBurnerByLadder(affordable.map((offering) => offering.burner));
+  return affordable.find((offering) => offering.burner.id === best?.id) ?? null;
 };

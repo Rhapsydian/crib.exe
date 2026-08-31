@@ -20,8 +20,15 @@ import {
   neverActivateShopBurner,
   type ShopBurnerStrategy,
   type BurnerShopStrategy,
+  synergyAwareBurnerShopStrategy,
 } from './shop';
-import { BURNER_DEFINITIONS, BURNER_CAP, drawBurnerRewardOptions, alwaysAcquireFirstBurner } from './burners';
+import {
+  BURNER_DEFINITIONS,
+  BURNER_CAP,
+  drawBurnerRewardOptions,
+  alwaysAcquireFirstBurner,
+  synergyAwareBurnerAcquisition,
+} from './burners';
 
 /**
  * Burners verification (Phase 5 checkpoint J): every new strategy type
@@ -343,5 +350,57 @@ describe('Burners smoke test -- a full run with Burners carried and used across 
     );
     const mapActivations = result.log.filter((e) => e.type === 'mapBurnerActivated');
     expect(combatActivations.length + mapActivations.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint D) -- the
+// Burner acquisition ladder. A single rung (rarity), since
+// BurnerDefinition carries no archetype and a consumable never sits in
+// the loadout for a credit-gap check to read.
+// ---------------------------------------------------------------------
+
+describe('synergyAwareBurnerAcquisition / synergyAwareBurnerShopStrategy', () => {
+  const common = BURNER_DEFINITIONS['flash-drive']; // common
+  const uncommon = BURNER_DEFINITIONS['emp-charge']; // uncommon
+  const rare = BURNER_DEFINITIONS['skeleton-key']; // rare
+
+  function stateWithData(data: number): RunPlayerState {
+    return { ...createInitialPlayerState('breacher'), data };
+  }
+
+  it('picks the rarest offered Burner', () => {
+    expect(synergyAwareBurnerAcquisition([common, rare, uncommon], stateWithData(0))?.id).toBe('skeleton-key');
+  });
+
+  it('falls to the earliest option when rarities tie, matching alwaysAcquireFirstBurner', () => {
+    const alsoCommon = BURNER_DEFINITIONS['recon-ping']; // common
+    expect(synergyAwareBurnerAcquisition([common, alsoCommon], stateWithData(0))?.id).toBe('flash-drive');
+  });
+
+  it('declines an empty slate', () => {
+    expect(synergyAwareBurnerAcquisition([], stateWithData(0))).toBeNull();
+  });
+
+  it('buys the rarest affordable Burner, unlike buyCheapestAffordableBurner', () => {
+    const offerings = [
+      { burner: common, cost: 15 },
+      { burner: rare, cost: 120 },
+    ];
+    const state = stateWithData(200);
+    expect(buyCheapestAffordableBurner(offerings, state)?.burner.id).toBe('flash-drive');
+    expect(synergyAwareBurnerShopStrategy(offerings, state)?.burner.id).toBe('skeleton-key');
+  });
+
+  it('never buys an unaffordable Burner', () => {
+    const offerings = [
+      { burner: common, cost: 15 },
+      { burner: rare, cost: 120 },
+    ];
+    expect(synergyAwareBurnerShopStrategy(offerings, stateWithData(20))?.burner.id).toBe('flash-drive');
+  });
+
+  it('declines when nothing is affordable', () => {
+    expect(synergyAwareBurnerShopStrategy([{ burner: rare, cost: 120 }], stateWithData(5))).toBeNull();
   });
 });

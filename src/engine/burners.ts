@@ -2,6 +2,7 @@ import type { BurnerDefinition, BurnerId } from './burner-types';
 import type { Rarity } from './rewards';
 import type { Rng } from './rng';
 import type { RunPlayerState } from './run';
+import { rarityLadderPosition } from './loadout';
 
 /**
  * Burner content (Phase 5 checkpoint A): the 8 validated Burners from
@@ -171,3 +172,36 @@ export function drawBurnerRewardOptions(rng: Rng): BurnerDefinition[] {
   const weighted = pool.map((burner) => ({ burner, weight: BURNER_REWARD_WEIGHTS[burner.rarity] }));
   return weightedSampleBurnersWithoutReplacement(weighted, BURNER_REWARD_OPTIONS_COUNT, rng);
 }
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint D) -- the
+// Burner half of the acquisition ladder, paired with shop.ts's
+// synergyAwareBurnerShopStrategy. A single rung: BurnerDefinition has no
+// archetype field at all (Burners are archetype-agnostic by design,
+// DESIGN.md) and a one-shot consumable never sits in the loadout, so
+// neither the credit-gap nor the archetype rung has anything to read.
+// Rarity alone is what's left, which makes this less a "ladder" than the
+// honest floor of one -- kept in the same shape as the other two so the
+// synergy profile wires up uniformly.
+//
+// Note this ranks by rarity, NOT by which context a Burner serves
+// (combat/map/shop). Whether a script should prefer, say, a map Burner
+// while a gatekeeper is unreachable is a real question, but it depends
+// on run state a reward-time acquisition strategy doesn't see, and
+// session 45 explicitly deferred hoarding/reservation logic pending
+// sweep evidence it would matter.
+// ---------------------------------------------------------------------
+
+/** Picks the rarest offered Burner, or null when there's nothing to
+ * pick from. Ties fall to the earliest option, matching
+ * alwaysAcquireFirstBurner's own bias. */
+export function bestBurnerByLadder(options: BurnerDefinition[]): BurnerDefinition | null {
+  if (options.length === 0) return null;
+  return options.reduce((best, option) =>
+    rarityLadderPosition(option.rarity) < rarityLadderPosition(best.rarity) ? option : best,
+  );
+}
+
+/** Opt-in only -- alwaysAcquireFirstBurner stays playRun's default for
+ * every existing caller and test. */
+export const synergyAwareBurnerAcquisition: BurnerAcquisitionStrategy = (options) => bestBurnerByLadder(options);

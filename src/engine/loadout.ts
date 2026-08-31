@@ -1,6 +1,6 @@
 import { CREDIT_CAPABLE_PAYLOAD_KINDS, hasCreditCapablePiece, type Archetype, type SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
-import { CLASS_DEFINITIONS } from './classes';
+import { CLASS_DEFINITIONS, type ClassId } from './classes';
 import { rarityOf, type Rarity } from './rewards';
 
 /**
@@ -145,6 +145,29 @@ export interface LadderRank {
 
 const RARITY_LADDER_POSITION: Record<Rarity, 0 | 1 | 2> = { rare: 0, uncommon: 1, common: 2 };
 
+/** Rung 3's position for a rarity -- rarer is better. Exported so the
+ * Mod and Burner ladders (checkpoints C/D) break their own ties the same
+ * way rather than each restating the ordering. */
+export function rarityLadderPosition(rarity: Rarity): 0 | 1 | 2 {
+  return RARITY_LADDER_POSITION[rarity];
+}
+
+/** Rung 2's position for an archetype, shared by all three item ladders.
+ * 0 on-archetype, 1 universal, 2 off-archetype.
+ *
+ * Two different things map onto the middle position, for the same
+ * reason. A `neutral` subroutine is suit-independent by construction, so
+ * it's always live for any class; a Mod with **no** archetype field at
+ * all (the archetype-agnostic majority of the Mod pool) is universal in
+ * exactly the same sense. Neither is as good as content reinforcing one
+ * of the class's own 2 specializations, but both beat content the class
+ * will rarely lean on. */
+export function archetypeLadderPosition(archetype: Archetype | undefined, classId: ClassId): 0 | 1 | 2 {
+  if (archetype === undefined || archetype === 'neutral') return 1;
+  const classArchetypes: readonly Archetype[] = CLASS_DEFINITIONS[classId].archetypes;
+  return classArchetypes.includes(archetype) ? 0 : 2;
+}
+
 /** Whether acquiring `piece` would close a real credit-gap -- i.e. give
  * the class a way to actually push toward a threshold win somewhere it
  * currently can't. A defensive-only piece can never qualify, whatever
@@ -184,12 +207,10 @@ export function fillsCreditGap(piece: SubroutineDefinition, playerState: RunPlay
  * always live for this class, where an off-archetype piece is content
  * the class's own two specializations won't reinforce. */
 export function ladderRank(piece: SubroutineDefinition, playerState: RunPlayerState): LadderRank {
-  const classArchetypes: readonly Archetype[] = CLASS_DEFINITIONS[playerState.classId].archetypes;
-  const archetype: 0 | 1 | 2 = classArchetypes.includes(piece.archetype) ? 0 : piece.archetype === 'neutral' ? 1 : 2;
   return {
     creditGap: fillsCreditGap(piece, playerState) ? 0 : 1,
-    archetype,
-    rarity: RARITY_LADDER_POSITION[rarityOf(piece.id)],
+    archetype: archetypeLadderPosition(piece.archetype, playerState.classId),
+    rarity: rarityLadderPosition(rarityOf(piece.id)),
   };
 }
 

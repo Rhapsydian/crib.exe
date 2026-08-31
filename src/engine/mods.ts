@@ -6,6 +6,7 @@ import type { Rarity } from './rewards';
 import type { Rng } from './rng';
 import type { RunPlayerState } from './run';
 import { mergeSubroutine } from './merge';
+import { archetypeLadderPosition, rarityLadderPosition } from './loadout';
 
 /**
  * Mod content (Phase 5 checkpoints D/H): the 6 class-exclusive starting
@@ -469,3 +470,57 @@ export function applyOnModAcquiredMods(playerState: RunPlayerState, acquiredModI
   }
   return state;
 }
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint C) -- the Mod
+// half of the acquisition ladder, paired with shop.ts's
+// synergyAwareModShopStrategy. Deliberately 2 rungs, not the
+// subroutine ladder's 3: there is no credit-capable classification for
+// Mods at all, and building one would mean auditing every Mod's hook
+// body against what it does to a win gauge -- a real side-project,
+// explicitly deferred by session 45's design pass rather than
+// half-guessed here.
+//
+// Worth knowing when reading a sweep: the archetype rung separates the
+// 2-4 targeted Mods in a class's pool from the 28 archetype-agnostic
+// ones, but never actually sees an off-archetype Mod -- modPoolForClass
+// already excludes those outright (session 30's "targeted archetype
+// exclusion"). The off-archetype position is kept anyway, since the
+// ladder shouldn't silently depend on a pool-construction detail that
+// lives in another function.
+// ---------------------------------------------------------------------
+
+/** One Mod's position on the 2-rung ladder -- same lower-is-better
+ * convention as loadout.ts's LadderRank. */
+export interface ModLadderRank {
+  archetype: 0 | 1 | 2;
+  rarity: 0 | 1 | 2;
+}
+
+/** `archetype` is optional on ModDefinition -- absent means the Mod
+ * isn't tied to any one archetype, which archetypeLadderPosition maps
+ * onto the same middle rung as a neutral subroutine. */
+export function modLadderRank(mod: ModDefinition, playerState: RunPlayerState): ModLadderRank {
+  return {
+    archetype: archetypeLadderPosition(mod.archetype, playerState.classId),
+    rarity: rarityLadderPosition(mod.rarity),
+  };
+}
+
+export function compareModLadderRanks(a: ModLadderRank, b: ModLadderRank): number {
+  return a.archetype - b.archetype || a.rarity - b.rarity;
+}
+
+/** Picks the best Mod by the ladder, or null when there's nothing to
+ * pick from. Ties fall to the earliest option, matching
+ * alwaysAcquireFirstMod's own bias. */
+export function bestModByLadder(options: ModDefinition[], playerState: RunPlayerState): ModDefinition | null {
+  if (options.length === 0) return null;
+  return options.reduce((best, option) =>
+    compareModLadderRanks(modLadderRank(option, playerState), modLadderRank(best, playerState)) < 0 ? option : best,
+  );
+}
+
+/** Opt-in only -- alwaysAcquireFirstMod stays playRun's default for
+ * every existing caller and test. */
+export const synergyAwareModAcquisition: ModAcquisitionStrategy = (options, playerState) => bestModByLadder(options, playerState);

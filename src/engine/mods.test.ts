@@ -27,8 +27,10 @@ import {
   shopModifiersForOwnedMods,
   applyOnSubroutineAcquiredMods,
   applyOnModAcquiredMods,
+  synergyAwareModAcquisition,
 } from './mods';
-import { shopOfferingsForClass, modOfferingsForClass } from './shop';
+import { shopOfferingsForClass, modOfferingsForClass, synergyAwareModShopStrategy, type ModOffering } from './shop';
+import type { ModDefinition } from './mod-types';
 
 /**
  * Mods verification (Phase 5 checkpoint I): every one of the 12 hook
@@ -519,5 +521,79 @@ describe('Mods smoke test -- a full run with several Mods active together', () =
     // Backdoor Access's granted piece genuinely lives inside it.
     expect(result.playerState.installedLoadout.some((p) => p.id === 'backdoor-access')).toBe(true);
     expect(result.playerState.grantedByMod['backdoor-access']).toBe('backdoor-access');
+  });
+});
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint C) -- the Mod
+// acquisition ladder. 2 rungs: archetype, then rarity.
+// ---------------------------------------------------------------------
+
+describe('synergyAwareModAcquisition', () => {
+  // Warden specializes in malware + encryption (classes.ts).
+  function wardenState(): RunPlayerState {
+    return createInitialPlayerState('warden');
+  }
+
+  function mod(id: string, rarity: 'common' | 'uncommon' | 'rare', archetype?: 'malware' | 'root'): ModDefinition {
+    return { id: id as ModDefinition['id'], name: id, rarity, effectKind: 'hook', archetype };
+  }
+
+  it('prefers an on-archetype Mod over a rarer universal one', () => {
+    // Rung 1 decides outright -- the rarity edge never gets consulted,
+    // which is the point of a ladder over a weighted score.
+    const onArchetype = mod('on-common', 'common', 'malware');
+    const universalRare = mod('universal-rare', 'rare');
+    expect(synergyAwareModAcquisition([universalRare, onArchetype], wardenState())?.id).toBe('on-common');
+  });
+
+  it('prefers a universal Mod over an off-archetype one', () => {
+    const universal = mod('universal', 'common');
+    const offArchetype = mod('off', 'common', 'root');
+    expect(synergyAwareModAcquisition([offArchetype, universal], wardenState())?.id).toBe('universal');
+  });
+
+  it('breaks a same-archetype tie by rarity', () => {
+    const common = mod('u-common', 'common');
+    const rare = mod('u-rare', 'rare');
+    expect(synergyAwareModAcquisition([common, rare], wardenState())?.id).toBe('u-rare');
+  });
+
+  it('falls to the earliest option on an exact tie, matching alwaysAcquireFirstMod', () => {
+    const first = mod('first', 'uncommon');
+    const second = mod('second', 'uncommon');
+    expect(synergyAwareModAcquisition([first, second], wardenState())?.id).toBe('first');
+  });
+
+  it('declines an empty slate', () => {
+    expect(synergyAwareModAcquisition([], wardenState())).toBeNull();
+  });
+});
+
+describe('synergyAwareModShopStrategy', () => {
+  function offering(mod: ModDefinition, cost: number): ModOffering {
+    return { mod, cost };
+  }
+  function mod(id: string, rarity: 'common' | 'uncommon' | 'rare', archetype?: 'malware' | 'root'): ModDefinition {
+    return { id: id as ModDefinition['id'], name: id, rarity, effectKind: 'hook', archetype };
+  }
+  function wardenStateWithData(data: number): RunPlayerState {
+    return { ...createInitialPlayerState('warden'), data };
+  }
+
+  it('applies the ladder among affordable offerings', () => {
+    const cheapUniversal = offering(mod('cheap-universal', 'common'), 25);
+    const onArchetype = offering(mod('on-archetype', 'common', 'malware'), 25);
+    expect(synergyAwareModShopStrategy([cheapUniversal, onArchetype], wardenStateWithData(100))?.mod.id).toBe('on-archetype');
+  });
+
+  it('never picks an unaffordable offering, even when it ranks highest', () => {
+    const cheapUniversal = offering(mod('cheap-universal', 'common'), 25);
+    const pricyOnArchetype = offering(mod('pricy-on', 'rare', 'malware'), 175);
+    expect(synergyAwareModShopStrategy([cheapUniversal, pricyOnArchetype], wardenStateWithData(30))?.mod.id).toBe('cheap-universal');
+  });
+
+  it('declines when nothing is affordable', () => {
+    expect(synergyAwareModShopStrategy([offering(mod('pricy', 'rare'), 175)], wardenStateWithData(10))).toBeNull();
   });
 });
