@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import { createNode } from './map-types';
-import type { SubroutineDefinition } from './subroutine-types';
+import { CREDIT_CAPABLE_PAYLOAD_KINDS, type SubroutineDefinition } from './subroutine-types';
 import {
   ENEMY_ROSTER,
   eligibleEnemies,
@@ -25,21 +25,12 @@ import {
  * section), fixed via a neutral-piece retrofit.
  */
 
-// wardCounter/drainingHot/wardBash (session 40 continued, Encryption
-// offense) added to the credit-capable set alongside the original 5 --
-// Encryption previously had none at all, the Neutral Archetype's whole
-// reason for existing (see this file's own header above).
-const CREDIT_CAPABLE_PAYLOAD_KINDS = new Set([
-  'directBurst',
-  'piercing',
-  'chainFinisherScaling',
-  'riskRewardBurst',
-  'dot',
-  'wardCounter',
-  'drainingHot',
-  'wardBash',
-  'sessionHijack', // Root offense (session 40 continued)
-]);
+// The credit-capable classification this file's own structural rule
+// checks used to live here as a private const. Session 46 (Gameplay
+// Simulation Heuristics checkpoint A) promoted it into
+// subroutine-types.ts, since the player-side acquisition ladder needs
+// the same classification in production code -- imported above rather
+// than kept as a second copy about to drift.
 
 describe('ENEMY_ROSTER structural integrity', () => {
   it('has exactly 32 enemies: 12 regular, 8 elite, 12 gatekeeper', () => {

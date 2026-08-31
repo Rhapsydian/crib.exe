@@ -515,6 +515,32 @@ export type PayloadEffect =
   | RevealOpponentKeptHandPayload
   | ForceDiscardCardPayload;
 
+/** Which PayloadEffect kinds actually credit a win-gauge -- i.e. push
+ * the caster toward their own threshold win rather than only
+ * manipulating, revealing, warding, or debuffing. Lived as a private
+ * const inside enemies.test.ts until session 46's Gameplay Simulation
+ * Heuristics work needed the same classification in production code
+ * (loadout.ts's credit-gap ladder step), so it's promoted here beside
+ * PayloadEffect itself rather than duplicated a second time. The test
+ * that originally owned it now imports it -- one source of truth.
+ *
+ * Note the asymmetry this deliberately encodes: `ward`/`hot`/`cleanse`
+ * are Encryption's *defensive* payloads and credit nothing; session
+ * 40's `wardCounter`/`drainingHot`/`wardBash`/`sessionHijack` are the
+ * Encryption/Root pieces that do credit, which is exactly the gap that
+ * session motivated fixing. */
+export const CREDIT_CAPABLE_PAYLOAD_KINDS: ReadonlySet<PayloadEffect['kind']> = new Set<PayloadEffect['kind']>([
+  'directBurst',
+  'piercing',
+  'chainFinisherScaling',
+  'riskRewardBurst',
+  'dot',
+  'wardCounter',
+  'drainingHot',
+  'wardBash',
+  'sessionHijack', // Root offense (session 40 continued)
+]);
+
 export interface SubroutineDefinition {
   id: string;
   name: string;
@@ -582,3 +608,20 @@ export interface SubroutineDefinition {
  * after both sides have discarded (the crib now exists), before the
  * cut. 'onPlayPhaseStart': after the cut, before the first peg play. */
 export type HandLifecycleMoment = 'onDealt' | 'onCribSelected' | 'onPlayPhaseStart';
+
+/** Whether `loadout` already contains a piece of `archetype` that can
+ * credit the win gauge (session 46, Gameplay Simulation Heuristics
+ * checkpoint A) -- the primitive behind the acquisition ladder's
+ * credit-gap step: a class whose own installed kit has no credit-capable
+ * Encryption piece should prefer an offered Encryption piece that is one
+ * over anything else, since without it that half of the class's
+ * specialization can never actually push toward a threshold win. Mirrors
+ * enemies.test.ts's own long-standing "every enemy needs a credit-capable
+ * payload" structural rule, applied to the player side.
+ *
+ * Note this checks the *installed* loadout specifically at every call
+ * site -- a benched piece isn't evaluated in a fight, so it doesn't
+ * close a gap. */
+export function hasCreditCapablePiece(loadout: SubroutineDefinition[], archetype: Archetype): boolean {
+  return loadout.some((piece) => piece.archetype === archetype && CREDIT_CAPABLE_PAYLOAD_KINDS.has(piece.payload.kind));
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { RunPlayerState } from './run';
-import type { SubroutineDefinition } from './subroutine-types';
+import { hasCreditCapablePiece, type Archetype, type SubroutineDefinition } from './subroutine-types';
 import { installSubroutine, uninstallSubroutine, reorderInstalled, acquireSubroutine, alwaysAcquireFirst, INSTALLED_SLOT_CAP } from './loadout';
 
 function piece(id: string): SubroutineDefinition {
@@ -123,5 +123,43 @@ describe('alwaysAcquireFirst', () => {
   it('declines when nothing is offered', () => {
     const state = playerState([], []);
     expect(alwaysAcquireFirst([], state)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46) -- checkpoint A's shared
+// credit-capable classification. Lives here rather than in its own
+// subroutine-types.test.ts because it exists purely as the acquisition
+// ladder's own primitive, and the ladder tests it feeds are in this file.
+// ---------------------------------------------------------------------
+
+/** Like `piece` above, but lets a test pin the two fields the ladder
+ * actually reads (archetype, payload kind) instead of the fixed
+ * exploit/directBurst default. */
+function typedPiece(id: string, archetype: Archetype, payload: SubroutineDefinition['payload']): SubroutineDefinition {
+  return { id, name: id, archetype, trigger: { kind: 'always' }, payload, tags: [] };
+}
+
+describe('hasCreditCapablePiece', () => {
+  it('is true when the loadout has a credit-capable piece of that archetype', () => {
+    const loadout = [typedPiece('burst', 'encryption', { kind: 'wardCounter', amount: 3, ratio: 0.2 })];
+    expect(hasCreditCapablePiece(loadout, 'encryption')).toBe(true);
+  });
+
+  it('is false when the only piece of that archetype is defensive-only', () => {
+    // The exact gap session 40 existed to fix: a pure `ward` piece is
+    // Encryption content that can never push toward a threshold win.
+    const loadout = [typedPiece('shield', 'encryption', { kind: 'ward', amount: 4 })];
+    expect(hasCreditCapablePiece(loadout, 'encryption')).toBe(false);
+  });
+
+  it('is archetype-scoped -- a credit-capable Exploit piece does not close an Encryption gap', () => {
+    const loadout = [typedPiece('hit', 'exploit', { kind: 'directBurst', amount: 5 })];
+    expect(hasCreditCapablePiece(loadout, 'exploit')).toBe(true);
+    expect(hasCreditCapablePiece(loadout, 'encryption')).toBe(false);
+  });
+
+  it('is false for an empty loadout', () => {
+    expect(hasCreditCapablePiece([], 'root')).toBe(false);
   });
 });
