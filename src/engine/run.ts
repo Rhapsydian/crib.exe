@@ -15,6 +15,7 @@ import {
   INSTALLED_SLOT_CAP,
   type AcquisitionStrategy,
   type ReorderStrategy,
+  type SubroutineAcquirer,
 } from './loadout';
 import {
   mergeSubroutine,
@@ -467,6 +468,14 @@ export interface RunOptions {
    * keepAcquisitionOrder, i.e. exactly what every run did before this
    * option existed. */
   reorderStrategy?: ReorderStrategy;
+  /** How an acquired subroutine is applied (session 46, Gameplay
+   * Simulation Heuristics checkpoint G) -- acquireSubroutine benches a
+   * piece forever once the loadout is full, acquireSubroutineWithSwap
+   * evicts the weakest installed piece when the new one outranks it.
+   * Defaults to acquireSubroutine, unchanged behavior for every existing
+   * caller. Applies to all three acquisition routes below (reward pick,
+   * Shop purchase, Event grant). */
+  subroutineAcquirer?: SubroutineAcquirer;
   /** Observational only -- called once per gatekeeper fight, right
    * before it resolves, with the player's real accumulated state at
    * that moment (session 39: the "realistic difficulty" diagnostic
@@ -497,6 +506,7 @@ export function playRun(options: RunOptions): RunResult {
     safehouseStrategy = preferMergeWhenAvailable,
     mergeTargetStrategy = pickMergeTarget,
     reorderStrategy = keepAcquisitionOrder,
+    subroutineAcquirer = acquireSubroutine,
     shopStrategy = buyCheapestAffordable,
     shopRerollStrategy = rerollIfNothingAffordable,
     modShopStrategy = buyCheapestAffordableMod,
@@ -691,7 +701,7 @@ export function playRun(options: RunOptions): RunResult {
       if (outcome.rewardOptions.length > 0) {
         const picked = acquisitionStrategy(outcome.rewardOptions, playerState);
         if (picked) {
-          playerState = acquireSubroutine(playerState, picked, installedSlotCap);
+          playerState = subroutineAcquirer(playerState, picked, installedSlotCap);
           // Salvage Protocol (checkpoint E) -- checked against every
           // acquired piece, reward or Shop alike, per its own no-op guards.
           playerState = applyOnSubroutineAcquiredMods(playerState, picked);
@@ -714,7 +724,7 @@ export function playRun(options: RunOptions): RunResult {
       if (outcome.rerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.rerollCost };
       if (outcome.shopPurchase) {
         playerState = { ...playerState, data: playerState.data - outcome.shopPurchase.cost };
-        playerState = acquireSubroutine(playerState, outcome.shopPurchase.piece, installedSlotCap);
+        playerState = subroutineAcquirer(playerState, outcome.shopPurchase.piece, installedSlotCap);
         playerState = applyOnSubroutineAcquiredMods(playerState, outcome.shopPurchase.piece);
       }
       if (outcome.modRerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.modRerollCost };
@@ -731,7 +741,7 @@ export function playRun(options: RunOptions): RunResult {
       // outright -- no acquisitionStrategy step, unlike the *RewardOptions
       // fields above (those are offered choices; this isn't).
       if (outcome.eventGrant?.subroutine) {
-        playerState = acquireSubroutine(playerState, outcome.eventGrant.subroutine, installedSlotCap);
+        playerState = subroutineAcquirer(playerState, outcome.eventGrant.subroutine, installedSlotCap);
         playerState = applyOnSubroutineAcquiredMods(playerState, outcome.eventGrant.subroutine);
       }
       if (outcome.eventGrant?.mod) playerState = acquireMod(playerState, outcome.eventGrant.mod);

@@ -375,10 +375,43 @@ export const synergyAwareReorder: ReorderStrategy = (playerState) => {
 // eviction without a special case.
 // ---------------------------------------------------------------------
 
+/** How a run applies an acquired subroutine. Both acquireSubroutine
+ * (bench-forever when full) and acquireSubroutineWithSwap satisfy it, so
+ * playRun can be handed either without either function knowing about the
+ * other -- the same pluggable shape every other decision in this engine
+ * uses. */
+export type SubroutineAcquirer = (playerState: RunPlayerState, piece: SubroutineDefinition, slotCap: number) => RunPlayerState;
+
 /** Ranks `piece` as if the installed loadout were `loadoutWithoutPiece`.
  * See this section's header for why the counterfactual matters. */
 function swapRank(piece: SubroutineDefinition, playerState: RunPlayerState, loadoutWithoutPiece: SubroutineDefinition[]): LadderRank {
   return ladderRank(piece, { ...playerState, installedLoadout: loadoutWithoutPiece });
+}
+
+/** Compares two pieces for the swap decision on the first two rungs
+ * only, deliberately ignoring rarity.
+ *
+ * Measured, not assumed. rarityOf() reports 'common' for every one of
+ * the 18 class starting-loadout pieces -- not because they're weak, but
+ * because they carry no authored rarity at all (rewards.ts derives
+ * rarity structurally from which pool array a piece lives in, and
+ * starting pieces live in none). Including the rarity rung therefore
+ * parked every hand-designed starting piece at the bottom of the
+ * eviction order, and a session-46 ablation sweep measured the result:
+ * 73% of starting-loadout pieces were dismantled for whatever the pool
+ * happened to offer, dropping the full synergy profile to 10/240 wins
+ * against the dumb baseline's own 26/240. Dropping this one rung took it
+ * to 47/240.
+ *
+ * The underlying rule is the same one checkpoint E's Merge ladder
+ * already follows: rarity is a statement about how a piece is
+ * *distributed*, not how good it is in a loadout, and it's only
+ * meaningful for pieces that were actually authored into a rarity tier.
+ * It stays on the acquisition ladder, where every option genuinely comes
+ * from a pool, and stays off both decisions that rank pieces already
+ * owned. */
+function compareSwapRanks(a: LadderRank, b: LadderRank): number {
+  return a.creditGap - b.creditGap || a.archetype - b.archetype;
 }
 
 /** acquireSubroutine's behavior, plus a swap-out step when the loadout
@@ -408,7 +441,7 @@ export function acquireSubroutineWithSwap(
   const worst = evictable.reduce((worstSoFar, installed) => {
     const withoutInstalled = playerState.installedLoadout.filter((other) => other.id !== installed.id);
     const withoutWorst = playerState.installedLoadout.filter((other) => other.id !== worstSoFar.id);
-    return compareLadderRanks(swapRank(installed, playerState, withoutInstalled), swapRank(worstSoFar, playerState, withoutWorst)) > 0
+    return compareSwapRanks(swapRank(installed, playerState, withoutInstalled), swapRank(worstSoFar, playerState, withoutWorst)) > 0
       ? installed
       : worstSoFar;
   });
@@ -417,8 +450,12 @@ export function acquireSubroutineWithSwap(
   const candidateRank = swapRank(piece, playerState, playerState.installedLoadout);
   const worstRank = swapRank(worst, playerState, withoutWorst);
   // Strictly better, not merely equal -- a tie isn't worth the churn of
-  // benching a piece that's already doing its job.
-  if (compareLadderRanks(candidateRank, worstRank) >= 0) return acquireSubroutine(playerState, piece, slotCap); // benches it
+  // benching a piece that's already doing its job. With rarity off the
+  // comparison this is a genuinely high bar: a candidate has to close a
+  // credit-gap the incumbent doesn't, or be on-archetype where the
+  // incumbent isn't. That's intended -- an installed piece is a known
+  // quantity and the loadout is the run's whole engine.
+  if (compareSwapRanks(candidateRank, worstRank) >= 0) return acquireSubroutine(playerState, piece, slotCap); // benches it
 
   const evicted = uninstallSubroutine(playerState, worst.id);
   const withCandidateBenched = { ...evicted, bench: [...evicted.bench, piece] };

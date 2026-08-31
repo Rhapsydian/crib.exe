@@ -22,7 +22,7 @@
  * repro, the same way this file's own predecessor bug was found.
  *
  * Usage:
- *   npx tsx scripts/sweep.ts run [--classes=breacher,ghost] [--seeds=200] [--traversal=beeline|explore|opportunistic] [--playerSkill=0.85] [--out=file.jsonl]
+ *   npx tsx scripts/sweep.ts run [--classes=breacher,ghost] [--seeds=200] [--traversal=beeline|explore|opportunistic] [--acquisition=floor|synergy] [--playerSkill=0.85] [--out=file.jsonl]
  *   npx tsx scripts/sweep.ts enemy --enemy=ghost-in-the-machine [--vs=blackhat] [--seeds=200] [--out=file.jsonl]
  *
  * `run` sweeps playRun() outcome distribution per class (RunOutcome +
@@ -34,6 +34,17 @@
  * opportunisticSafehouseStrategy (beeline/explore keep the old
  * preferMergeWhenAvailable default), since the two were designed as one
  * coherent player profile, not independent dials.
+ * `--acquisition` (session 46) selects the acquisition/Shop/Event/Burner
+ * heuristic profile: `floor` (default) keeps the legal-not-good defaults
+ * every sweep before session 46 ran on -- alwaysAcquireFirst,
+ * buyCheapestAffordable, alwaysFirstEventChoice, and Burners never
+ * activated at all -- while `synergy` wires in the whole checkpoint B-I
+ * heuristic layer (profiles.ts's SYNERGY_AWARE_PROFILE). Independent of
+ * and combinable with `--traversal`: the two are separate dials on
+ * purpose, so a before/after can isolate which half moved a number.
+ * Comparing the two is the entire point of the exercise -- a floor sweep
+ * can't distinguish a real class-balance problem from the AI never using
+ * half its own toolkit.
  * `enemy` sweeps a direct playCombat() between one named enemy
  * (enemies.ts) and one class's real starting kit, real game settings
  * (gaugeThreshold 8, winThreshold 50), reporting threshold vs.
@@ -46,6 +57,7 @@ import { playCombat } from '../src/engine/combat';
 import { CLASS_STARTING_LOADOUTS } from '../src/engine/subroutines';
 import { ENEMY_ROSTER } from '../src/engine/enemies';
 import { preferMergeWhenAvailable, opportunisticSafehouseStrategy, type SafehouseStrategy } from '../src/engine/merge';
+import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
 import type { ClassId } from '../src/engine/classes';
 
 const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
@@ -65,6 +77,15 @@ const SAFEHOUSE_STRATEGIES: Record<string, SafehouseStrategy> = {
   beeline: preferMergeWhenAvailable,
   explore: preferMergeWhenAvailable,
   opportunistic: opportunisticSafehouseStrategy,
+};
+
+// `floor` is spelled out as an explicit empty override rather than left
+// implicit, so `--acquisition=floor` and omitting the flag entirely are
+// visibly the same run and neither silently drifts if playRun's own
+// defaults ever change.
+const ACQUISITION_PROFILES: Record<string, Partial<Parameters<typeof playRun>[0]>> = {
+  floor: {},
+  synergy: SYNERGY_AWARE_PROFILE,
 };
 
 function parseArgs(argv: string[]): Record<string, string> {
@@ -99,8 +120,15 @@ function sweepRun(args: Record<string, string>): void {
   const traversalStrategy = TRAVERSAL_STRATEGIES[traversalName];
   const safehouseStrategy = SAFEHOUSE_STRATEGIES[traversalName];
   const playerSkill = args.playerSkill === undefined ? PLAYER_SKILL : Number(args.playerSkill);
+  const acquisitionName = args.acquisition ?? 'floor';
+  const acquisitionProfile = ACQUISITION_PROFILES[acquisitionName];
   if (!traversalStrategy) {
     throw new Error(`sweep.ts run: unknown --traversal="${traversalName}" (expected one of: ${Object.keys(TRAVERSAL_STRATEGIES).join(', ')})`);
+  }
+  if (!acquisitionProfile) {
+    throw new Error(
+      `sweep.ts run: unknown --acquisition="${acquisitionName}" (expected one of: ${Object.keys(ACQUISITION_PROFILES).join(', ')})`,
+    );
   }
   if (outFile) writeFileSync(outFile, ''); // truncate/create fresh
 
@@ -108,17 +136,28 @@ function sweepRun(args: Record<string, string>): void {
     const outcomes: Record<RunOutcome, number> = { victory: 0, heatMaxed: 0, quarantined: 0, noRouteRemains: 0 };
     let layersSum = 0;
     for (let seed = 0; seed < seeds; seed++) {
-      const result = playRun({ seed, classId, traversalStrategy, safehouseStrategy, playerSkill });
+      // Profile first, then the per-run knobs -- traversal/safehouse are
+      // the separate --traversal dial and must not be overwritten by the
+      // acquisition profile (which deliberately sets neither).
+      const result = playRun({ ...acquisitionProfile, seed, classId, traversalStrategy, safehouseStrategy, playerSkill });
       outcomes[result.outcome]++;
       layersSum += result.layersCompleted;
       emit(
-        JSON.stringify({ mode: 'run', classId, seed, traversal: traversalName, outcome: result.outcome, layersCompleted: result.layersCompleted }),
+        JSON.stringify({
+          mode: 'run',
+          classId,
+          seed,
+          traversal: traversalName,
+          acquisition: acquisitionName,
+          outcome: result.outcome,
+          layersCompleted: result.layersCompleted,
+        }),
         outFile,
       );
     }
     const total = seeds;
     console.log(
-      `\n${classId.padEnd(10)} [${traversalName}] victory=${outcomes.victory}/${total} (${((outcomes.victory / total) * 100).toFixed(1)}%)  heatMaxed=${outcomes.heatMaxed}  quarantined=${outcomes.quarantined}  noRoute=${outcomes.noRouteRemains}  avgLayers=${(layersSum / total).toFixed(2)}\n`,
+      `\n${classId.padEnd(10)} [${traversalName}/${acquisitionName}] victory=${outcomes.victory}/${total} (${((outcomes.victory / total) * 100).toFixed(1)}%)  heatMaxed=${outcomes.heatMaxed}  quarantined=${outcomes.quarantined}  noRoute=${outcomes.noRouteRemains}  avgLayers=${(layersSum / total).toFixed(2)}\n`,
     );
   }
 }

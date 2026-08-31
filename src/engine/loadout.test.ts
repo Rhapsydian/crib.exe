@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { playRun, opportunisticTraversal, type RunPlayerState } from './run';
+import { rarityOf } from './rewards';
 import { hasCreditCapablePiece, type Archetype, type SubroutineDefinition, type Tag } from './subroutine-types';
 import {
   installSubroutine,
@@ -546,5 +547,34 @@ describe('acquireSubroutineWithSwap', () => {
     const strong = typedPiece('strong', 'exploit', CREDIT);
     expect(acquireSubroutine(state, strong, 2).installedLoadout.map((p) => p.id)).toEqual(['a', 'b']);
     expect(acquireSubroutineWithSwap(state, strong, 2).installedLoadout.map((p) => p.id)).toContain('strong');
+  });
+});
+
+describe('acquireSubroutineWithSwap -- rarity is not an eviction criterion (session 46 regression)', () => {
+  const CREDIT = { kind: 'directBurst', amount: 3 } as const;
+
+  it('does not evict an incumbent merely because the candidate is rarer', () => {
+    // The bug this guards: rarityOf() reports 'common' for all 18 class
+    // starting-loadout pieces because they carry no authored rarity at
+    // all, not because they are weak. With rarity on the eviction
+    // comparison that parked every hand-designed starting piece at the
+    // bottom of the order, and an ablation sweep measured 73% of them
+    // being dismantled for pool pieces -- dropping the full synergy
+    // profile below the dumb baseline it was built to beat.
+    const state = playerState([typedPiece('buffer-overflow', 'exploit', CREDIT)], []);
+    const rarerSameRungs = typedPiece('supply-chain-compromise', 'exploit', CREDIT);
+    expect(rarityOf('supply-chain-compromise')).toBe('rare');
+    expect(rarityOf('buffer-overflow')).toBe('common'); // unauthored, not weak
+    const result = acquireSubroutineWithSwap(state, rarerSameRungs, 1);
+    expect(result.installedLoadout.map((p) => p.id)).toEqual(['buffer-overflow']);
+    expect(result.bench.map((p) => p.id)).toEqual(['supply-chain-compromise']);
+  });
+
+  it('still evicts on a genuine credit-gap or archetype improvement', () => {
+    // The bar is higher, not gone -- an off-archetype incumbent still
+    // loses to an on-archetype candidate of identical rarity.
+    const state = playerState([typedPiece('off-arch', 'root', CREDIT)], []);
+    const result = acquireSubroutineWithSwap(state, typedPiece('on-arch', 'exploit', CREDIT), 1);
+    expect(result.installedLoadout.map((p) => p.id)).toEqual(['on-arch']);
   });
 });

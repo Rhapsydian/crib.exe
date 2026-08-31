@@ -32,15 +32,33 @@
  * even drawn, or how the rest of a run's difficulty compares).
  *
  * Usage:
- *   npx tsx scripts/layer-funnel.ts [--classes=breacher,ghost] [--seeds=600] [--playerSkill=0.85] [--excludeGatekeeper=firewall-prime] [--out=file.jsonl]
+ * `--acquisition` (session 46) selects the acquisition/Shop/Event/Burner
+ * heuristic profile, exactly as scripts/sweep.ts's own flag does:
+ * `floor` (default) keeps the legal-not-good defaults every funnel run
+ * before session 46 used, `synergy` wires in the whole checkpoint B-I
+ * layer (profiles.ts's SYNERGY_AWARE_PROFILE). Reading the funnel with
+ * both is how "does the smart player die in a different place, or just
+ * less often" gets answered.
+ *
+ * Usage:
+ *   npx tsx scripts/layer-funnel.ts [--classes=breacher,ghost] [--seeds=600] [--acquisition=floor|synergy] [--playerSkill=0.85] [--excludeGatekeeper=firewall-prime] [--out=file.jsonl]
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { playRun, opportunisticTraversal } from '../src/engine/run';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
+import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
 import type { ClassId } from '../src/engine/classes';
 import type { EnemyId } from '../src/engine/enemies';
 
 const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
+
+// Mirrors scripts/sweep.ts's own map -- see this file's header. `floor`
+// is an explicit empty override so omitting the flag and passing
+// --acquisition=floor are visibly the same run.
+const ACQUISITION_PROFILES: Record<string, Partial<Parameters<typeof playRun>[0]>> = {
+  floor: {},
+  synergy: SYNERGY_AWARE_PROFILE,
+};
 const LAYER_COUNT = 4;
 // Session 39: the player's own standing default for full-run diagnostics
 // -- anchored to the hardest real enemy skill in the game (layer-4
@@ -71,9 +89,17 @@ const classes = args.classes ? (args.classes.split(',') as ClassId[]) : ALL_CLAS
 const seeds = Number(args.seeds ?? 600);
 const playerSkill = args.playerSkill === undefined ? PLAYER_SKILL : Number(args.playerSkill);
 const excludedGatekeeperIds = args.excludeGatekeeper ? [args.excludeGatekeeper as EnemyId] : undefined;
+const acquisitionName = args.acquisition ?? 'floor';
+const acquisitionProfile = ACQUISITION_PROFILES[acquisitionName];
+if (!acquisitionProfile) {
+  throw new Error(
+    `layer-funnel.ts: unknown --acquisition="${acquisitionName}" (expected one of: ${Object.keys(ACQUISITION_PROFILES).join(', ')})`,
+  );
+}
 const outFile = args.out;
 if (outFile) writeFileSync(outFile, '');
 
+console.log(`[acquisition=${acquisitionName}]`);
 console.log(
   'class'.padEnd(10),
   'n'.padEnd(6),
@@ -84,10 +110,20 @@ for (const classId of classes) {
   const reachedLayer = new Array(LAYER_COUNT).fill(0);
   let victories = 0;
   for (let seed = 0; seed < seeds; seed++) {
-    const result = playRun({ seed, classId, traversalStrategy: opportunisticTraversal, safehouseStrategy: opportunisticSafehouseStrategy, playerSkill, excludedGatekeeperIds });
+    // Profile first -- traversal/safehouse are this script's own fixed
+    // opportunistic pairing and must not be overwritten by it.
+    const result = playRun({
+      ...acquisitionProfile,
+      seed,
+      classId,
+      traversalStrategy: opportunisticTraversal,
+      safehouseStrategy: opportunisticSafehouseStrategy,
+      playerSkill,
+      excludedGatekeeperIds,
+    });
     for (let i = 0; i < LAYER_COUNT; i++) if (result.layersCompleted >= i + 1) reachedLayer[i]++;
     if (result.outcome === 'victory') victories++;
-    emit(JSON.stringify({ classId, seed, outcome: result.outcome, layersCompleted: result.layersCompleted }), outFile);
+    emit(JSON.stringify({ classId, seed, acquisition: acquisitionName, outcome: result.outcome, layersCompleted: result.layersCompleted }), outFile);
   }
 
   if (reachedLayer[LAYER_COUNT - 1] !== victories) {
