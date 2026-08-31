@@ -125,6 +125,13 @@ describe('contextual evaluators', () => {
     expect(evaluateEnemyState({ kind: 'enemyState', condition: 'hasDebuff', debuffId: 'stunned' }, ctx)).toBe(false);
   });
 
+  it('evaluateEnemyState hasDebuff:any (session 41) matches any active debuff, not one specific kind', () => {
+    const debuffed: EnemyStateContext = { breachContainment: 30, gaugeFillFraction: 0.8, activeDebuffIds: ['throttled'] };
+    const clean: EnemyStateContext = { breachContainment: 30, gaugeFillFraction: 0.8, activeDebuffIds: [] };
+    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'hasDebuff', debuffId: 'any' }, debuffed)).toBe(true);
+    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'hasDebuff', debuffId: 'any' }, clean)).toBe(false);
+  });
+
   it('evaluateChained (afterSubroutineId) fires only once the referenced subroutine has fired this turn', () => {
     const trigger = { kind: 'chained' as const, afterSubroutineId: 'sub-a' };
     expect(evaluateChained(trigger, [])).toBe(false);

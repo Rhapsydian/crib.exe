@@ -263,6 +263,7 @@ export function evaluateEnemyState(trigger: EnemyStateTrigger, context: EnemySta
     case 'gaugeFillAbove':
       return context.gaugeFillFraction > trigger.fraction;
     case 'hasDebuff':
+      if (trigger.debuffId === 'any') return context.activeDebuffIds.length > 0;
       return context.activeDebuffIds.includes(trigger.debuffId);
   }
 }

@@ -74,7 +74,13 @@ export type EnemyStateTrigger =
   | { kind: 'enemyState'; condition: 'breachContainmentBelow'; value: number }
   | { kind: 'enemyState'; condition: 'breachContainmentAbove'; value: number }
   | { kind: 'enemyState'; condition: 'gaugeFillAbove'; fraction: number }
-  | { kind: 'enemyState'; condition: 'hasDebuff'; debuffId: string };
+  /** `'any'` (session 41) is a wildcard sentinel -- matches the enemy
+   * carrying *any* active debuff, regardless of kind, rather than one
+   * specific DebuffKind. Every hasDebuff piece before this session
+   * hardcoded a single kind ('corrupted'); the pool-expansion pass wanted
+   * a generic "enemy is currently debuffed" condition for Exploit/Neutral
+   * pieces that don't care which debuff landed. */
+  | { kind: 'enemyState'; condition: 'hasDebuff'; debuffId: string | 'any' };
 
 export type SelfStateTrigger =
   | { kind: 'selfState'; condition: 'heatAbove'; value: number }

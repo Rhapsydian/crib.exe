@@ -39,16 +39,13 @@ describe('subroutine content — Root mechanical redesign (session 24 checkpoint
 });
 
 describe('subroutine content — structural integrity', () => {
-  it('has exactly 99 subroutines: 18 starting-loadout + 72 archetype pool + 9 neutral', () => {
-    // 72, not 60 (session 40 continued): the Archetype Win-Condition
-    // Audit's content-validation sample added 6 new pieces each to
-    // Encryption and Root specifically (the two archetypes that gained
-    // new mechanisms this session) -- Exploit/Malware are unchanged, so
-    // the pool is now genuinely asymmetric across archetypes, not the
-    // uniform 15-each shape it used to be. See the next test below.
+  it('has exactly 114 subroutines: 18 starting-loadout + 87 archetype pool + 9 neutral (in progress, session 41 checkpoint C)', () => {
+    // 87, not 72 (session 41 checkpoint C): Exploit grew +15 (14 commons/
+    // 10 uncommons/6 rares). Malware/Encryption/Root/Neutral land in
+    // checkpoints D-G; these numbers keep moving until checkpoint H.
     expect(ALL_STARTING_LOADOUT_SUBROUTINES).toHaveLength(18);
-    expect(ALL_POOL_SUBROUTINES).toHaveLength(81);
-    expect(ALL_SUBROUTINES).toHaveLength(99);
+    expect(ALL_POOL_SUBROUTINES).toHaveLength(96);
+    expect(ALL_SUBROUTINES).toHaveLength(114);
   });
 
   it('every class starting loadout has exactly 3 pieces', () => {
@@ -57,10 +54,13 @@ describe('subroutine content — structural integrity', () => {
     }
   });
 
-  it('Exploit/Malware keep the original 7 commons, 5 uncommons, 3 rares', () => {
-    expect(ARCHETYPE_POOLS.exploit.commons).toHaveLength(7);
-    expect(ARCHETYPE_POOLS.exploit.uncommons).toHaveLength(5);
-    expect(ARCHETYPE_POOLS.exploit.rares).toHaveLength(3);
+  it('Exploit grew to 14 commons/10 uncommons/6 rares (session 41 checkpoint C: +7/+5/+3)', () => {
+    expect(ARCHETYPE_POOLS.exploit.commons).toHaveLength(14);
+    expect(ARCHETYPE_POOLS.exploit.uncommons).toHaveLength(10);
+    expect(ARCHETYPE_POOLS.exploit.rares).toHaveLength(6);
+  });
+
+  it('Malware still keeps the original 7 commons, 5 uncommons, 3 rares (checkpoint D not yet landed)', () => {
     expect(ARCHETYPE_POOLS.malware.commons).toHaveLength(7);
     expect(ARCHETYPE_POOLS.malware.uncommons).toHaveLength(5);
     expect(ARCHETYPE_POOLS.malware.rares).toHaveLength(3);

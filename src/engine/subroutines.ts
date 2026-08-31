@@ -493,7 +493,7 @@ export const CLASS_STARTING_LOADOUTS = {
 } as const;
 
 // ---------------------------------------------------------------------
-// Exploit archetype pool (15) — session 21+.
+// Exploit archetype pool (30, session 21+ / session 41's +15).
 // ---------------------------------------------------------------------
 
 export const EXPLOIT_COMMONS: SubroutineDefinition[] = [
@@ -553,6 +553,65 @@ export const EXPLOIT_COMMONS: SubroutineDefinition[] = [
     payload: { kind: 'directBurst', amount: 2 },
     tags: ['daemon'],
   },
+  // --- Session 41 pool expansion (+7) ---
+  {
+    id: 'ssh-bruteforce',
+    name: 'SSH Bruteforce',
+    archetype: 'exploit',
+    trigger: { kind: 'occurrence', category: 'hisNobs', variation: 'instant' },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'deuces-wild',
+    name: 'Deuces Wild',
+    archetype: 'exploit',
+    trigger: { kind: 'occurrence', category: 'pair', variation: 'threshold', bankTarget: COMMON.bankTarget },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: ['trap'],
+  },
+  {
+    id: 'rainbow-table',
+    name: 'Rainbow Table',
+    archetype: 'exploit',
+    trigger: { kind: 'occurrence', category: 'run', variation: 'instant' },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'drone-recon',
+    name: 'Drone Recon',
+    archetype: 'exploit',
+    trigger: { kind: 'occurrence', category: 'flush', variation: 'threshold', bankTarget: COMMON.bankTarget },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: ['trap'],
+  },
+  {
+    id: 'skimmer',
+    name: 'Skimmer',
+    archetype: 'exploit',
+    // hasDebuff: 'any' (session 41) -- fires off the enemy carrying any
+    // active debuff at all, not one specific kind.
+    trigger: { kind: 'enemyState', condition: 'hasDebuff', debuffId: 'any' },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'dictionary-attack',
+    name: 'Dictionary Attack',
+    archetype: 'exploit',
+    trigger: { kind: 'occurrence', category: 'thirtyOne', variation: 'threshold', bankTarget: COMMON.bankTarget },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: ['trap'],
+  },
+  {
+    id: 'doorknob-rattle',
+    name: 'Doorknob Rattle',
+    archetype: 'exploit',
+    trigger: { kind: 'occurrence', category: 'go', variation: 'threshold', bankTarget: COMMON.bankTarget },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: ['trap'],
+  },
 ];
 
 export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
@@ -600,6 +659,50 @@ export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
     // none of the other 5 mechanisms.
     tags: ['direct'],
   },
+  // --- Session 41 pool expansion (+5) ---
+  {
+    id: 'jackpot',
+    name: 'Jackpot',
+    archetype: 'exploit',
+    // Scaling cap held at 3, below UNCOMMON.cap (4) -- His Nobs is a
+    // scarcer occurrence than Flush/Pair, so a lower cap keeps the bank
+    // reachable in a real match (session 41's spec).
+    trigger: { kind: 'occurrence', category: 'hisNobs', variation: 'scaling', cap: 3 },
+    payload: { kind: 'piercing', amount: UNCOMMON.burst },
+    tags: ['piercing', 'trap'],
+  },
+  {
+    id: 'race-to-the-bottom',
+    name: 'Race to the Bottom',
+    archetype: 'exploit',
+    trigger: { kind: 'enemyState', condition: 'breachContainmentBelow', value: BREACH_CONTAINMENT_THRESHOLD.low },
+    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, heatCost: 3 },
+    tags: ['direct'],
+  },
+  {
+    id: 'botnet-recruiter',
+    name: 'Botnet Recruiter',
+    archetype: 'exploit',
+    trigger: { kind: 'chained', afterTag: 'daemon' },
+    payload: { kind: 'directBurst', amount: UNCOMMON.burst },
+    tags: ['worm'],
+  },
+  {
+    id: 'turbo-mode',
+    name: 'Turbo Mode',
+    archetype: 'exploit',
+    trigger: { kind: 'selfState', condition: 'isNonDealer' },
+    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, heatCost: 3 },
+    tags: ['direct'],
+  },
+  {
+    id: 'smash-and-grab',
+    name: 'Smash and Grab',
+    archetype: 'exploit',
+    trigger: { kind: 'occurrence', category: 'pair', variation: 'scaling', cap: UNCOMMON.cap },
+    payload: { kind: 'directBurst', amount: UNCOMMON.burst },
+    tags: ['trap'],
+  },
 ];
 
 export const EXPLOIT_RARES: SubroutineDefinition[] = [
@@ -634,6 +737,33 @@ export const EXPLOIT_RARES: SubroutineDefinition[] = [
     payload: { kind: 'piercing', amount: RARE.burst },
     tags: ['piercing'],
     reactive: true,
+  },
+  // --- Session 41 pool expansion (+3) ---
+  {
+    id: 'zero-click-exploit',
+    name: 'Zero-Click Exploit',
+    archetype: 'exploit',
+    // Threshold held at 3, below RARE.bankTarget (4) -- same His Nobs
+    // scarcity reasoning as Jackpot above.
+    trigger: { kind: 'occurrence', category: 'hisNobs', variation: 'threshold', bankTarget: 3 },
+    payload: { kind: 'piercing', amount: RARE.burst },
+    tags: ['piercing', 'trap'],
+  },
+  {
+    id: 'full-compromise',
+    name: 'Full Compromise',
+    archetype: 'exploit',
+    trigger: { kind: 'occurrence', category: 'run', variation: 'scaling', cap: RARE.cap },
+    payload: { kind: 'piercing', amount: RARE.burst },
+    tags: ['piercing', 'trap'],
+  },
+  {
+    id: 'botnet-herder',
+    name: 'Botnet Herder',
+    archetype: 'exploit',
+    trigger: { kind: 'chained', afterArchetype: 'malware' },
+    payload: { kind: 'chainFinisherScaling', baseAmount: RARE.burst - 4, perPriorFire: 5 },
+    tags: ['worm'],
   },
 ];
 
