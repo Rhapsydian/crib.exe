@@ -20,6 +20,7 @@ import {
   type SubroutineRuntimeState,
   type TriggerContext,
   type ScoringOccurrence,
+  type FiredSubroutineInfo,
 } from './triggers';
 import { createInitiativeGauge, createDuelGauge, addDuelProgress, reduceDuelProgress, shrinkDuelThreshold, type InitiativeGauge, type DuelGauge } from './gauges';
 import { bestCardToForce } from './ai';
@@ -1485,7 +1486,7 @@ function resolvePayloadCore(
 export function buildTriggerContext(
   combatState: CombatState,
   side: PlayerIndex,
-  firedSubroutineIdsThisTurn: ReadonlySet<string>,
+  firedThisTurn: readonly FiredSubroutineInfo[],
   isDealer: boolean,
 ): TriggerContext {
   const own = combatState.sides[side];
@@ -1506,7 +1507,7 @@ export function buildTriggerContext(
       gaugeFillFraction: enemy.gauge.progress / enemy.gauge.threshold,
       activeDebuffIds: enemy.debuffs.map((d) => d.debuffId),
     },
-    firedSubroutineIdsThisTurn,
+    firedThisTurn,
   };
 }
 
@@ -1525,15 +1526,15 @@ export function buildTriggerContext(
  *
  * Safe and cheap to call after any state change that could affect a
  * condition: a gauge update, a payload resolution (Heat/win-gauge/
- * debuffs), or a new hand's dealer becoming known. firedSubroutineIdsThisTurn
- * is irrelevant here (chained/always aren't touched) so an empty set is
+ * debuffs), or a new hand's dealer becoming known. firedThisTurn is
+ * irrelevant here (chained/always aren't touched) so an empty list is
  * passed to buildTriggerContext.
  */
 export function refreshTriggerReadiness(combatState: CombatState, handDealer: PlayerIndex): CombatState {
   let state = combatState;
   for (const side of [0, 1] as PlayerIndex[]) {
     const sideState = state.sides[side];
-    const context = buildTriggerContext(state, side, EMPTY_FIRED_SET, side === handDealer);
+    const context = buildTriggerContext(state, side, EMPTY_FIRED, side === handDealer);
     const loadout = sideState.loadout.map((entry) => {
       const trigger = entry.definition.trigger;
       if (trigger.kind !== 'selfState' && trigger.kind !== 'enemyState') return entry;
@@ -1554,7 +1555,7 @@ export function refreshTriggerReadiness(combatState: CombatState, handDealer: Pl
   return state;
 }
 
-const EMPTY_FIRED_SET: ReadonlySet<string> = new Set();
+const EMPTY_FIRED: readonly FiredSubroutineInfo[] = [];
 
 /**
  * Fires every subroutine whose `ready` flag just flipped false→true
@@ -1924,7 +1925,7 @@ export function fireReadySubroutines(
 ): { combatState: CombatState; events: FireEvent[] } {
   let state = combatState;
   const events: FireEvent[] = [];
-  const firedIds = new Set<string>();
+  const firedThisTurn: FiredSubroutineInfo[] = [];
   const loadoutLength = state.sides[side].loadout.length;
 
   for (let i = 0; i < loadoutLength; i++) {
@@ -1932,14 +1933,14 @@ export function fireReadySubroutines(
     // firesAt-tagged entries only ever fire via fireHandLifecycleSubroutines
     // below, never via the normal turn-gate.
     if (entry.definition.firesAt) continue;
-    const triggerContext = buildTriggerContext(state, side, firedIds, selfContext.isDealer);
+    const triggerContext = buildTriggerContext(state, side, firedThisTurn, selfContext.isDealer);
     if (!isReady(entry.definition, entry.state, triggerContext)) continue;
     if (!entry.state.toggledOn) continue;
 
     const fireEffect = payloadForFire(entry);
     state = resolvePayload(fireEffect, entry.definition.archetype, state, side, { priorFireCountThisTurn: events.length }, entry.definition);
     events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
-    firedIds.add(entry.definition.id);
+    firedThisTurn.push({ id: entry.definition.id, archetype: entry.definition.archetype, tags: entry.definition.tags });
     state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state));
   }
 
@@ -1956,7 +1957,7 @@ export function fireReadySubroutines(
  * -- most `firesAt` content is expected to use `{ kind: 'always' }` so
  * it's simply always armed, but nothing stops a more conditional
  * trigger from gating one. Mirrors fireReadySubroutines' shape closely,
- * minus per-pass chained-trigger bookkeeping (EMPTY_FIRED_SET) -- a
+ * minus per-pass chained-trigger bookkeeping (EMPTY_FIRED) -- a
  * hand-lifecycle moment isn't "anyone's turn," so chaining within the
  * same pass isn't a concept that applies here yet.
  */
@@ -1975,7 +1976,7 @@ export function fireHandLifecycleSubroutines(
   for (let i = 0; i < loadoutLength; i++) {
     const entry = state.sides[side].loadout[i];
     if (entry.definition.firesAt !== moment) continue;
-    const triggerContext = buildTriggerContext(state, side, EMPTY_FIRED_SET, selfContext.isDealer);
+    const triggerContext = buildTriggerContext(state, side, EMPTY_FIRED, selfContext.isDealer);
     if (!isReady(entry.definition, entry.state, triggerContext)) continue;
     if (!entry.state.toggledOn) continue;
 

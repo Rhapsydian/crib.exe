@@ -584,7 +584,7 @@ export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
     id: 'drive-by-exploit',
     name: 'Drive-By Exploit',
     archetype: 'exploit',
-    trigger: { kind: 'chained', afterSubroutineId: 'precision-strike' },
+    trigger: { kind: 'chained', afterArchetype: 'exploit' },
     payload: { kind: 'piercing', amount: UNCOMMON.burst },
     tags: ['worm', 'piercing'],
   },
@@ -725,7 +725,7 @@ export const MALWARE_UNCOMMONS: SubroutineDefinition[] = [
     id: 'chain-infection',
     name: 'Chain Infection',
     archetype: 'malware',
-    trigger: { kind: 'chained', afterSubroutineId: 'silent-worm' },
+    trigger: { kind: 'chained', afterArchetype: 'malware' },
     payload: { kind: 'debuff', debuffId: 'throttled', magnitude: UNCOMMON.debuffMag, duration: UNCOMMON.debuffDur },
     tags: ['worm'],
   },
@@ -753,7 +753,7 @@ export const MALWARE_RARES: SubroutineDefinition[] = [
     id: 'ransomware-cascade',
     name: 'Ransomware Cascade',
     archetype: 'malware',
-    trigger: { kind: 'chained', afterSubroutineId: 'fork-bomb' },
+    trigger: { kind: 'chained', afterArchetype: 'malware' },
     payload: { kind: 'dot', amountPerTick: RARE.tick + 3, cadence: 'globalPulse', duration: RARE.duration, pointsPerTick: RARE.pointsPerTick },
     tags: ['worm'],
   },
@@ -886,7 +886,7 @@ export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
     id: 'sinkhole',
     name: 'Sinkhole',
     archetype: 'encryption',
-    trigger: { kind: 'chained', afterSubroutineId: 'access-control' },
+    trigger: { kind: 'chained', afterArchetype: 'encryption' },
     payload: { kind: 'cleanse' },
     tags: ['worm'],
   },
@@ -945,7 +945,7 @@ export const ENCRYPTION_RARES: SubroutineDefinition[] = [
     archetype: 'encryption',
     // Simplified from "removes all active debuffs" -- Cleanse only
     // removes one, see file header.
-    trigger: { kind: 'chained', afterSubroutineId: 'patch' },
+    trigger: { kind: 'chained', afterTag: 'firewall' },
     payload: { kind: 'cleanse' },
     tags: ['worm'],
   },
@@ -1097,11 +1097,15 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     id: 'kernel-exploit',
     name: 'Kernel Exploit',
     archetype: 'root',
-    // Feeds back into what triggered it -- safe self-reference since the
-    // Chained trigger already hard-depends on priority-override being
-    // present, same reasoning as Rootkit Deployment's suit-tally loop.
-    trigger: { kind: 'chained', afterSubroutineId: 'priority-override' },
-    payload: { kind: 'instantManipulation', target: 'subroutineProgress', amount: 3, targetSubroutineId: 'priority-override' },
+    // Session 41: was chained after priority-override (an Operator-
+    // exclusive starting piece) with a matching subroutineProgress
+    // payload targeting it -- both pool-content dead weight for 5 of 6
+    // classes, since nothing guarantees a player ever owns that specific
+    // id. Trigger widened to afterArchetype; payload retargeted to
+    // suitTally, same fix ARP Spoof already uses for the identical
+    // no-guaranteed-target problem (see file header).
+    trigger: { kind: 'chained', afterArchetype: 'root' },
+    payload: { kind: 'instantManipulation', target: 'suitTally', amount: 3 },
     tags: ['worm'],
   },
   {
@@ -1205,7 +1209,7 @@ export const ROOT_RARES: SubroutineDefinition[] = [
     // zero-knowledge-exploit's surgical forceDiscardCard, not redundant
     // with it.
     archetype: 'root',
-    trigger: { kind: 'chained', afterSubroutineId: 'cron-job' },
+    trigger: { kind: 'chained', afterArchetype: 'root' },
     payload: { kind: 'cribbageLayerManipulation', action: 'forceDiscard' },
     tags: ['worm'],
   },

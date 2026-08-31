@@ -76,12 +76,22 @@ export type SelfStateTrigger =
   | { kind: 'selfState'; condition: 'isDealer' }
   | { kind: 'selfState'; condition: 'isNonDealer' };
 
-/** References another subroutine in the same loadout by id — that
- * subroutine firing feeds this one's condition. */
-export interface ChainedTrigger {
-  kind: 'chained';
-  afterSubroutineId: string;
-}
+/** References something that fired earlier in the same turn's own
+ * resolution pass, feeding this one's condition. Three match modes
+ * (session 41's redesign): `afterSubroutineId` (a specific piece, by id)
+ * stays reserved for contexts that guarantee both halves are present
+ * together — a class's own starting loadout, or a future Event that
+ * grants a matched pair at once — since nothing in the acquisition system
+ * (shop slate, combat rewards) guarantees a player ever draws a specific
+ * id-pair together in one run. Pool content instead matches on
+ * `afterArchetype` (any piece of that archetype fired) or `afterTag` (any
+ * piece carrying that tag fired) — broader, so a chained pool piece can
+ * never end up permanently dead for classes that don't own its old
+ * id-specific partner. */
+export type ChainedTrigger =
+  | { kind: 'chained'; afterSubroutineId: string }
+  | { kind: 'chained'; afterArchetype: Archetype }
+  | { kind: 'chained'; afterTag: Tag };
 
 /** No real condition — fires every turn that side gets ("Cantrip"). */
 export interface AlwaysTrigger {

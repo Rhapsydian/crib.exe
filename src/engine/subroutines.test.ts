@@ -95,10 +95,10 @@ describe('subroutine content — structural integrity', () => {
     }
   });
 
-  it('every Chained trigger references a real subroutine id', () => {
+  it('every Chained trigger with an afterSubroutineId references a real subroutine id', () => {
     const ids = new Set(ALL_SUBROUTINES.map((s) => s.id));
     for (const sub of ALL_SUBROUTINES) {
-      if (sub.trigger.kind === 'chained') {
+      if (sub.trigger.kind === 'chained' && 'afterSubroutineId' in sub.trigger) {
         expect(ids.has(sub.trigger.afterSubroutineId)).toBe(true);
       }
     }

@@ -3,11 +3,13 @@ import type { HandScoreEvent } from './scoring';
 import type { Suit } from './cards';
 import type {
   AlwaysTrigger,
+  Archetype,
   ChainedTrigger,
   EnemyStateTrigger,
   OccurrenceCategory,
   SelfStateTrigger,
   SubroutineDefinition,
+  Tag,
 } from './subroutine-types';
 
 /**
@@ -265,10 +267,21 @@ export function evaluateEnemyState(trigger: EnemyStateTrigger, context: EnemySta
   }
 }
 
-/** A chained subroutine becomes ready the moment the subroutine it
- * references fires, within the same turn's resolution pass. */
-export function evaluateChained(trigger: ChainedTrigger, firedSubroutineIdsThisTurn: ReadonlySet<string>): boolean {
-  return firedSubroutineIdsThisTurn.has(trigger.afterSubroutineId);
+/** What's needed to evaluate any of ChainedTrigger's three match modes
+ * against a piece that fired earlier in the current turn's own pass. */
+export interface FiredSubroutineInfo {
+  id: string;
+  archetype: Archetype;
+  tags: Tag[];
+}
+
+/** A chained subroutine becomes ready the moment something matching its
+ * chosen match mode (id / archetype / tag — session 41) fires, within the
+ * same turn's resolution pass. */
+export function evaluateChained(trigger: ChainedTrigger, firedThisTurn: readonly FiredSubroutineInfo[]): boolean {
+  if ('afterSubroutineId' in trigger) return firedThisTurn.some((f) => f.id === trigger.afterSubroutineId);
+  if ('afterArchetype' in trigger) return firedThisTurn.some((f) => f.archetype === trigger.afterArchetype);
+  return firedThisTurn.some((f) => f.tags.includes(trigger.afterTag));
 }
 
 export function evaluateAlways(_trigger: AlwaysTrigger): boolean {
@@ -278,7 +291,7 @@ export function evaluateAlways(_trigger: AlwaysTrigger): boolean {
 export interface TriggerContext {
   self: SelfStateContext;
   enemy: EnemyStateContext;
-  firedSubroutineIdsThisTurn: ReadonlySet<string>;
+  firedThisTurn: readonly FiredSubroutineInfo[];
 }
 
 /** The single entry point turn-resolution logic (Checkpoint E) uses to
@@ -311,7 +324,7 @@ export function isReady(
     case 'enemyState':
       return state.ready;
     case 'chained':
-      return evaluateChained(trigger, context.firedSubroutineIdsThisTurn);
+      return evaluateChained(trigger, context.firedThisTurn);
     case 'always':
       return evaluateAlways(trigger);
     case 'rareOccurrence':

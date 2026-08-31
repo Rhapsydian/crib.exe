@@ -31,7 +31,7 @@ function definitionWith(trigger: TriggerFamily): SubroutineDefinition {
 const emptyContext: TriggerContext = {
   self: { heat: 0, isDealer: false },
   enemy: { breachContainment: 50, gaugeFillFraction: 0, activeDebuffIds: [] },
-  firedSubroutineIdsThisTurn: new Set(),
+  firedThisTurn: [],
 };
 
 describe('updateSubroutineState — accumulator', () => {
@@ -125,10 +125,22 @@ describe('contextual evaluators', () => {
     expect(evaluateEnemyState({ kind: 'enemyState', condition: 'hasDebuff', debuffId: 'stunned' }, ctx)).toBe(false);
   });
 
-  it('evaluateChained fires only once the referenced subroutine has fired this turn', () => {
+  it('evaluateChained (afterSubroutineId) fires only once the referenced subroutine has fired this turn', () => {
     const trigger = { kind: 'chained' as const, afterSubroutineId: 'sub-a' };
-    expect(evaluateChained(trigger, new Set())).toBe(false);
-    expect(evaluateChained(trigger, new Set(['sub-a']))).toBe(true);
+    expect(evaluateChained(trigger, [])).toBe(false);
+    expect(evaluateChained(trigger, [{ id: 'sub-a', archetype: 'exploit', tags: [] }])).toBe(true);
+  });
+
+  it('evaluateChained (afterArchetype) fires once any piece of that archetype has fired this turn', () => {
+    const trigger = { kind: 'chained' as const, afterArchetype: 'malware' as const };
+    expect(evaluateChained(trigger, [{ id: 'sub-a', archetype: 'exploit', tags: [] }])).toBe(false);
+    expect(evaluateChained(trigger, [{ id: 'sub-b', archetype: 'malware', tags: [] }])).toBe(true);
+  });
+
+  it('evaluateChained (afterTag) fires once any piece carrying that tag has fired this turn', () => {
+    const trigger = { kind: 'chained' as const, afterTag: 'daemon' as const };
+    expect(evaluateChained(trigger, [{ id: 'sub-a', archetype: 'exploit', tags: ['worm'] }])).toBe(false);
+    expect(evaluateChained(trigger, [{ id: 'sub-b', archetype: 'exploit', tags: ['daemon'] }])).toBe(true);
   });
 
   it('evaluateAlways is always true', () => {
@@ -164,7 +176,7 @@ describe('isReady dispatcher', () => {
     expect(
       isReady(chainedDef, createInitialState(), {
         ...emptyContext,
-        firedSubroutineIdsThisTurn: new Set(['other-sub']),
+        firedThisTurn: [{ id: 'other-sub', archetype: 'exploit', tags: [] }],
       }),
     ).toBe(true);
   });
