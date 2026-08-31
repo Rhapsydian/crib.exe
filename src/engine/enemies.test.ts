@@ -61,6 +61,13 @@ describe('ENEMY_ROSTER structural integrity', () => {
     }
   });
 
+  // Session 43's decision-session reconfirmed this as a standing design
+  // rule, not just a one-off regression guard: every enemy loadout needs a
+  // credit-capable payload, UNLESS the enemy is explicitly designed to
+  // stall to the hand-20 attrition resolution instead (the user's own
+  // amendment). No enemy currently uses that exemption -- if a future
+  // session authors a genuine stall-design enemy, exempt it here by id
+  // rather than loosening the check for everyone.
   it("every enemy has at least one payload kind capable of crediting its own win-gauge -- the session 28 regression guard (9 enemies originally had none: Legacy Firewall, Access Gate, Hardened Workstation, Zero Trust Node, Backchannel Handler, Firewall Prime, Ghost Process, Null Session, Ghost in the Machine)", () => {
     for (const enemy of ENEMY_ROSTER) {
       const canCredit = enemy.loadout.some((piece) => CREDIT_CAPABLE_PAYLOAD_KINDS.has(piece.payload.kind));

@@ -317,6 +317,22 @@ export function isReady(
   state: SubroutineRuntimeState,
   context: TriggerContext,
 ): boolean {
+  // maxFiresPerCombat (session 39) was only ever enforced on the reactive
+  // selfState/enemyState path (resolve.ts) and the rareOccurrence/
+  // handOutcome paths (fireRareOccurrenceSubroutines/
+  // fireHandOutcomeSubroutines) -- SubroutineDefinition's own doc comment
+  // flagged this as a known gap ("not yet checked for accumulator/
+  // occurrence trigger re-arming; extend there too if a future piece
+  // needs the same cap on a non-reactive trigger"). Session 43 hit it for
+  // real: an occurrence:threshold gatekeeper piece with an uncapped
+  // permanent-threshold-raise payload turned out to be a genuine runaway
+  // spiral over a long fight (found via a real regression sweep, not
+  // theorized) once maxFiresPerCombat alone on the definition didn't
+  // actually stop it. Checked here, the one real choke point every normal
+  // (non-reactive, non-rareOccurrence/handOutcome) firing path already
+  // funnels through, so the cap now applies uniformly regardless of
+  // trigger kind instead of needing a bespoke check per family.
+  if (definition.maxFiresPerCombat !== undefined && state.fireCount >= definition.maxFiresPerCombat) return false;
   const trigger = definition.trigger;
   switch (trigger.kind) {
     case 'accumulator':

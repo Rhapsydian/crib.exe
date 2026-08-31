@@ -51,6 +51,24 @@ const ENEMY_RARE = { tick: 2, duration: 5, pointsPerTick: 8 };
 // shared constant once one consumer needs independent tuning).
 const STACK_OVERFLOW_BURST = 5; // TBD/playtesting
 
+// Gatekeeper thematic-piece pass (session 43's own decision-session): a new
+// design rule confirmed live -- every gatekeeper (not elite/regular, which
+// stay pure magnitude-scaled "stronger commons" by deliberate design) gets
+// at least one bespoke, highly thematic piece, unless its own design is to
+// win by stalling to the hand-20 attrition resolution instead. Checked
+// coverage first: only Firewall Prime/Kernel Panic/Ghost in the Machine
+// already had one (each a side effect of an earlier dead-content fix), so
+// the other 9 gatekeepers get a new piece here -- Quarantine Ward and
+// Zero-Sum get two each, since both share Kernel Panic's exact pre-fix
+// problem (suitTally-threshold/occurrence-threshold pieces too slow to
+// bank in a realistically short fight) confirmed directly against
+// subroutines.ts before designing the fix, not assumed. Every new piece
+// below reuses an existing trigger/payload mechanism (no engine changes
+// needed) and either ties into its gatekeeper's own passive or fixes a
+// concrete finding from that check -- not filled in to hit a quota.
+const QUICK_DRAW_BURST = 5; // TBD/playtesting -- decoupled per this file's own STACK_OVERFLOW_BURST precedent
+const REDISTRIBUTION_HIJACK = 8; // TBD/playtesting
+
 export const ENEMY_ONLY_SUBROUTINES: SubroutineDefinition[] = [
   {
     id: 'memory-leak',
@@ -194,6 +212,223 @@ export const ENEMY_ONLY_SUBROUTINES: SubroutineDefinition[] = [
     trigger: { kind: 'occurrence', category: 'pair', variation: 'instant' },
     payload: { kind: 'piercing', amount: STACK_OVERFLOW_BURST },
     tags: ['piercing'],
+  },
+  {
+    id: 'escort-out',
+    name: 'Escort Out',
+    archetype: 'encryption',
+    // The Concierge -- front-desk/bouncer identity: it lets mitigation
+    // pile up while it verifies you, then walks you right back out once
+    // it's banked enough of it. Same mitigationBanked mechanism as
+    // Circuit Breaker (subroutines.ts, threshold 10), tuned down for a
+    // layer-1 kit fed by only two mitigation sources (Patch/Full Rollback).
+    trigger: { kind: 'accumulator', metric: 'mitigationBanked', threshold: 8 },
+    payload: { kind: 'instantCounterPush', amount: 6 },
+    tags: ['firewall'],
+  },
+  {
+    id: 'orphaned-thread',
+    name: 'Orphaned Thread',
+    archetype: 'root',
+    // Ghost Process -- a background process nobody's tracking anymore,
+    // lingering through repeated exchanges and quietly making the job
+    // harder each time it's noticed again.
+    //
+    // Real regression found this session, through two failed attempts, not
+    // guessed right the first time: the original design used
+    // instantManipulation/enemyGaugeThreshold (a permanent raise to the
+    // *InitiativeGauge* threshold -- resolve.ts's instantManipulation
+    // case -- whose own default, GAUGE_THRESHOLD, is only 8, encounters.ts
+    // -- not the 50-point win gauge, as Tripwire/Ghost Protocol's own
+    // precedent amounts of 5/8 might suggest at a glance). Even after
+    // capping fires (which needed its own engine fix -- see triggers.ts's
+    // isReady, maxFiresPerCombat was previously unenforced on this trigger
+    // kind) and cutting the amount, a direct sweepEnemy check
+    // (scripts/sweep.ts, starting-kit Breacher) still only won 9/100
+    // against Ghost Process, a real outlier next to a Layer-1 sibling's
+    // 93/100. First redesign attempt (an uncapped, refiring 'throttled'
+    // debuff) made it *worse* (9/100 -> 3/100) -- checked why rather than
+    // guessing again: applyThrottled (resolve.ts) ignores the debuff's own
+    // `magnitude` entirely, applying a flat THROTTLED_REDUCTION(4)/floor(1)
+    // to every scoring event for as long as *any* throttled instance is
+    // active, so a refiring, uncapped source keeps the player throttled
+    // for a large fraction of a long fight regardless of the magnitude
+    // field I'd set. Capped to a single application (maxFiresPerCombat:1)
+    // -- a real but bounded "occasional hiccup," not sustained pressure.
+    trigger: { kind: 'occurrence', category: 'go', variation: 'threshold', bankTarget: 3 },
+    payload: { kind: 'debuff', debuffId: 'throttled', magnitude: 3, duration: 2 },
+    tags: ['trap'],
+    maxFiresPerCombat: 1,
+  },
+  {
+    id: 'escalation-path',
+    name: 'Escalation Path',
+    archetype: 'exploit',
+    // Incident Response -- correction, mid-session: my original design
+    // claimed Highest Bidder ("chain-finisher pieces get a bonus per
+    // Exploit already fired") had nothing to buff. Wrong -- re-reading its
+    // actual loadout, supply-chain-compromise AND zero-day-chain are
+    // *both* already chainFinisherScaling pieces (subroutines.ts), so the
+    // passive was never dead. A third escalating piece, chained directly
+    // off any Exploit fire (meaning it could itself chain right off either
+    // of those two), would have compounded into a real snowball on top of
+    // an already-live mechanic, not fixed a gap. Redesigned onto a plain,
+    // non-escalating burst on a category its kit doesn't otherwise cover
+    // (fifteen -- the single most frequent occurrence, ~5.3/hand per
+    // scripts/occurrence-frequency.ts) instead.
+    trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
+    payload: { kind: 'directBurst', amount: ENEMY_UNCOMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'contagion-protocol',
+    name: 'Contagion Protocol',
+    archetype: 'malware',
+    // The Quarantine Ward -- replaces Epidemic (same suitTally-threshold
+    // dead-trigger problem confirmed directly from subroutines.ts, the
+    // Kernel Panic diagnosis before Memory Corruption's own fix). Also
+    // unblocks the ward's own pre-existing Total Quarantine passive
+    // ("every tick nudges its own gauge forward" -- resolve.ts's
+    // tickBonus/nudgeInitiative, EP_SMALL=2 per tick), which structurally
+    // couldn't fire at all while its DoT/HoT never cast -- a real,
+    // never-before-tested interaction, not a new one I introduced.
+    //
+    // Real regression found via sweepEnemy even after cutting Cryo Lock's
+    // own trigger down (see that piece's own note): Contagion Protocol
+    // ALONE, paired with the now-finally-live Total Quarantine passive,
+    // still held starting-kit Breacher to 0/100. `globalPulse` cadence
+    // ticks off *combined* points from both sides regardless of whose
+    // turn it is, so the initiative-nudge fired far more often than the
+    // Ward's own actual turn frequency would otherwise allow -- a
+    // tempo-multiplier effectively decoupled from turn economy. Switched
+    // to `castersTurnPulse` (ticks only on the Ward's own turns), which
+    // ties the nudge's own frequency back to how often it's already
+    // getting to act, closing the decoupled-amplification loop rather
+    // than just further cutting the DoT's own magnitude.
+    trigger: { kind: 'always' },
+    payload: { kind: 'dot', amountPerTick: ENEMY_RARE.tick, cadence: 'castersTurnPulse', duration: ENEMY_RARE.duration },
+    tags: ['daemon'],
+  },
+  {
+    id: 'cryo-lock',
+    name: 'Cryo Lock',
+    archetype: 'encryption',
+    // The Quarantine Ward -- replaces Cold Storage, same original diagnosis
+    // as Contagion Protocol above (its sibling suitTally-threshold piece).
+    // "Freeze the intrusion in place" fits a containment ward better than
+    // Cold Storage's original flavor did anyway.
+    //
+    // NOT Always, unlike Contagion Protocol -- a real regression found via
+    // sweepEnemy (scripts/sweep.ts): two simultaneous Always-triggered
+    // ticks (a DoT and a HoT, both live from turn 1) is Kernel Panic's own
+    // shape, but Kernel Panic is a Layer-4 boss (magnitudeScaler 1.9); the
+    // same treatment on a Layer-2 gatekeeper (1.3) took starting-kit
+    // Breacher's win rate to 0/100, a real outlier next to Zero-Sum's own
+    // 79/100 at the same layer. Left real but attainable instead --
+    // accumulator:points is a common, fast-filling metric (unlike the
+    // original's dead suitTally), so this still fires reliably within a
+    // real fight, just not unconditionally from the first turn. Also
+    // switched to castersTurnPulse, same Total Quarantine
+    // decoupled-amplification fix as Contagion Protocol above -- the
+    // passive's tickBonus applies to hots exactly like dots
+    // (resolve.ts).
+    trigger: { kind: 'accumulator', metric: 'points', threshold: 10 },
+    payload: { kind: 'hot', amountPerTick: ENEMY_RARE.tick + 4, cadence: 'castersTurnPulse', duration: ENEMY_RARE.duration },
+    tags: ['daemon'],
+  },
+  {
+    id: 'quick-draw',
+    name: 'Quick Draw',
+    archetype: 'exploit',
+    // Zero-Sum -- replaces Total Pwnage (occurrence:pair,threshold,
+    // bankTarget:4 -- the identical dead-trigger shape Kernel Panic's own
+    // Total Pwnage had before Stack Overflow's fix, confirmed from
+    // subroutines.ts, not assumed). Also makes Primed to Strike ("each
+    // Root fire lowers the cost of its own next Exploit fire") a reliable
+    // payoff instead of a passive that rarely gets to matter -- Zero-Sum's
+    // only other Exploit piece was this same dead one.
+    trigger: { kind: 'occurrence', category: 'pair', variation: 'instant' },
+    payload: { kind: 'piercing', amount: QUICK_DRAW_BURST },
+    tags: ['piercing'],
+  },
+  {
+    id: 'redistribution',
+    name: 'Redistribution',
+    archetype: 'root',
+    // Zero-Sum -- replaces Dead Drop (occurrence:flush,threshold,
+    // bankTarget:3, essentially never banks in a real fight -- flush-6+ is
+    // ~0.13/hand per scripts/occurrence-frequency.ts, and threshold-3
+    // needs three of those). sessionHijack (session 40's genuine two-sided
+    // transfer -- steals opponent progress, credits your own) is the
+    // literal mechanical definition of "zero-sum," a stronger thematic fit
+    // than Dead Drop's original scheduled-sabotage flavor for this
+    // specific gatekeeper.
+    trigger: { kind: 'occurrence', category: 'flush', variation: 'instant' },
+    payload: { kind: 'sessionHijack', amount: REDISTRIBUTION_HIJACK },
+    tags: ['direct'],
+  },
+  {
+    id: 'system-meltdown',
+    name: 'System Meltdown',
+    archetype: 'malware',
+    // Total Compromise -- ties directly into its own Cascading Failure
+    // passive ("once DoTs have ticked 3 times combined, all gain a
+    // permanent tick-magnitude boost"): a DoT that casts itself off the
+    // back of any other daemon-tagged fire literally cascades, compounding
+    // toward that threshold faster the more of its own kit has already
+    // gone off.
+    trigger: { kind: 'chained', afterTag: 'daemon' },
+    payload: { kind: 'dot', amountPerTick: ENEMY_COMMON.tick, cadence: 'castersTurnPulse', duration: ENEMY_COMMON.duration },
+    tags: ['worm'],
+  },
+  {
+    id: 'behavioral-model',
+    name: 'Behavioral Model',
+    archetype: 'exploit',
+    // Adaptive Threat -- reads the player's own current debuff state and
+    // presses the advantage the instant it's carrying any of Adaptive
+    // Threat's own effects, the same "adapts to what you just did" shape
+    // its Adaptive Defense passive already has for cleanses. Reuses the
+    // hasDebuff:'any' wildcard (session 41-42's own addition) in a fresh
+    // enemy-authored context rather than a new mechanism.
+    trigger: { kind: 'enemyState', condition: 'hasDebuff', debuffId: 'any' },
+    payload: { kind: 'directBurst', amount: ENEMY_UNCOMMON.burst },
+    tags: [],
+    reactive: true,
+  },
+  {
+    id: 'undetected',
+    name: 'Undetected',
+    archetype: 'root',
+    // Silent Corruption -- stays hidden until a genuinely exceptional play
+    // happens, from either side, then the corruption nobody noticed starts
+    // spreading. minMagnitude:6 (double run or better) grounded against
+    // real data (scripts/occurrence-frequency.ts): run-magnitude-6+ is
+    // ~0.43/hand per side, ~0.6-0.8/hand combined watching both sides --
+    // rare enough to read as a real "exceptional play" trigger, not dead
+    // content the way an ungrounded guess risks (the project's own
+    // repeated His Heels/Wiretap lesson).
+    trigger: { kind: 'rareOccurrence', category: 'run', minMagnitude: 6, watchSide: 'either' },
+    payload: { kind: 'dot', amountPerTick: ENEMY_RARE.tick, cadence: 'castersTurnPulse', duration: ENEMY_RARE.duration },
+    tags: ['daemon'],
+  },
+  {
+    id: 'impersonation',
+    name: 'Impersonation',
+    archetype: 'encryption',
+    // Null Session -- the run's final-layer capstone: once it's absorbed
+    // enough of the player's own probing (mitigationBanked, fed alongside
+    // its existing Circuit Breaker off the same accumulator -- real
+    // in-kit synergy, not just a bolt-on), it starts posing as a
+    // legitimate authenticated session, turning your own attempts into its
+    // access. wardCounter (session 40's generalization of Ghost's Return
+    // to Sender) is the literal mechanical shape of "your probing now
+    // credits me." ratio 0.15, below Return to Sender's own 0.25 per that
+    // payload's own doc comment -- this is a kit bonus, not a whole win
+    // condition the way Ghost's Mod is.
+    trigger: { kind: 'accumulator', metric: 'mitigationBanked', threshold: 14 },
+    payload: { kind: 'wardCounter', amount: 6, ratio: 0.15 },
+    tags: ['firewall'],
   },
   {
     id: 'memory-corruption',

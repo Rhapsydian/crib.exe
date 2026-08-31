@@ -1092,6 +1092,99 @@ future `/dev-session` authors the real 57 pieces, converts the 7 existing
 chains, retrofits tags across the pool, and updates the structural-count
 tests, per `BACKLOG.md`'s checkpoint spec.
 
+### Enemy Pool Expansion (session 43, `/decision-session`, designed and implemented same-session) ✅ complete
+
+Phase 2 of the user's own multi-session roadmap. Explored the actual
+engine first (`enemies.ts`, `enemy-subroutines.ts`, `subroutine-types.ts`)
+rather than proposing content cold, confirming what's structurally
+unavailable to enemies: anything Heat-gated (enemies never accumulate
+Heat) and `gaugeFillAbove` (reads the cyclical InitiativeGauge, not real
+win-progress — already known from the player-pool audit, session 40).
+Scope confirmed live: grow `enemy-subroutines.ts` itself (the bespoke
+enemy-only catalog, 8 pieces at the time, every one born as a one-off
+dead-content patch) into real intentional content, reserved strictly for
+mechanics no player-facing piece could use (option (a) of two considered
+— the alternative, enemy-exclusive *flavor* content with nothing
+structurally enemy-specific about it, was rejected as re-opening the
+player-pool-size scope just closed out last session).
+
+Two new standing design rules confirmed live and recorded above (Enemy
+Design's tier-authoring section): every **gatekeeper** needs at least one
+bespoke, highly thematic piece (not elite/regular, which stay pure
+magnitude-scaled by deliberate design); every **enemy** needs a
+credit-capable payload unless explicitly designed to stall to the hand-20
+resolution (the user's own amendment to the pre-existing session-28 rule).
+Checking real coverage found only 3 of 12 gatekeepers already had a
+bespoke piece (each a side effect of an earlier dead-content fix) — the
+other 9 got one this session (Quarantine Ward and Zero-Sum got two each,
+since both were found to share Kernel Panic's exact pre-fix suitTally/
+occurrence-threshold dead-trigger problem, confirmed directly against
+`subroutines.ts` before designing a fix, not assumed). 11 new pieces
+total in `enemy-subroutines.ts`; Epidemic/Cold Storage (Quarantine Ward)
+and Total Pwnage/Dead Drop (Zero-Sum) replaced outright rather than
+supplemented.
+
+**A real, multi-round balance regression found and fixed via direct
+measurement, not guessed at**: the first version of three new pieces
+broke a real full-run integration test (`run.test.ts`, a 50-seed sweep
+that must find at least one victory) down to 0/50. Root causes, each
+confirmed with `scripts/sweep.ts`'s `enemy` mode before and after fixing:
+
+- **Orphaned Thread (Ghost Process)** originally raised the *enemy's own
+  target's* `InitiativeGauge` threshold permanently and uncapped
+  (`instantManipulation`/`enemyGaugeThreshold`) — that gauge's real
+  default is only 8 (`encounters.ts`'s `GAUGE_THRESHOLD`), not the
+  50-point win gauge Tripwire/Ghost Protocol's own precedent amounts might
+  suggest at a glance, and `maxFiresPerCombat` turned out to be
+  unenforced for this trigger kind entirely (a real, separate engine gap
+  — see below). A first retune (lower amount, add the cap) still only
+  scored 9/100 in isolation; redesigned onto a capped, temporary
+  `throttled` debuff instead of a permanent structural change — safer
+  against the same runaway-over-a-long-fight shape.
+- **Escalation Path (Incident Response)** was designed on a false premise
+  — Highest Bidder's passive ("chain-finisher pieces get a bonus per
+  Exploit fired") was assumed dead, but Incident Response's existing kit
+  already has two real `chainFinisherScaling` pieces. A third, chained
+  directly off any Exploit fire, would have compounded a live mechanic,
+  not fixed a gap. Redesigned onto a plain, non-escalating burst.
+  (Separately, isolating this piece surfaced a genuine *pre-existing*
+  finding, out of this session's scope to fix: Incident Response's
+  baseline win rate, with none of this session's content at all, is only
+  6/100 — a real outlier the roadmap's later "full class audit"/"heavy
+  final analysis pass" phases should pick up.)
+- **Contagion Protocol/Cryo Lock (Quarantine Ward)** unblocked the ward's
+  own pre-existing Total Quarantine passive ("every tick nudges its own
+  gauge forward") for the first time ever — it had never fired in
+  practice while Epidemic/Cold Storage were dead. `globalPulse` cadence
+  (ticks off combined points from both sides, independent of whose turn
+  it is) decoupled the nudge from real turn economy, amplifying it far
+  past what the passive was ever tested against. Switched to
+  `castersTurnPulse` (ties the nudge back to the Ward's own actual turn
+  frequency) and gave Cryo Lock a real, attainable (not suitTally-dead)
+  gating condition instead of also being unconditional from turn 1.
+
+**A real engine gap fixed along the way**: `maxFiresPerCombat`
+(`SubroutineDefinition`) was only ever enforced on the reactive
+selfState/enemyState path and the rareOccurrence/handOutcome paths — its
+own doc comment flagged this as known but undone. Extended `triggers.ts`'s
+`isReady` (the one real choke point every normal firing path already
+funnels through) to check it universally, closing the gap for every
+trigger kind rather than adding another bespoke check.
+
+**Verification**: 617/617 tests passing (from 617, net-zero since this
+session added both new content and the invariant-doc pass — no structural
+count changed), `npm run check` clean. `run.test.ts`'s full-run sweep
+passes again. A fresh 6-class real-condition smoke sweep (40 seeds each,
+`opportunistic` traversal) showed no hangs/crashes and a plausible spread
+(7.5%-32.5%, consistent with prior sessions' known per-class ordering —
+Breacher/Blackhat weakest, Ghost strongest under this traversal). The
+isolated bare-starting-kit `sweepEnemy` check (no layer-magnitude scaling
+applied) still reads 0/100 against Quarantine Ward specifically — flagged
+as a likely mismatched signal for a Layer-2 gatekeeper tested at Layer-1
+power with no scaling, not re-chased further once the real, representative
+full-run test passed; worth real magnitude-scaled verification in a
+future balance-focused session rather than assumed fixed.
+
 ### Mods (session 30, `/decision-session`)
 
 crib.exe's answer to StS relics: permanent, always-on effects the player
@@ -1600,6 +1693,28 @@ investment:
   the layer it's presented at. This is the tier that earns full
   per-layer separation — there's exactly one gatekeeper node per layer,
   so a dedicated stable per layer is natural, not overbuilt.
+
+**Every gatekeeper needs at least one bespoke, highly thematic piece**
+(session 43) — not elite or regular, which stay deliberately pure
+magnitude-scaled "stronger commons" (the tier-authoring split above), a
+distinction that holds structurally: gatekeepers are a fixed, single
+per-layer assignment (`eligibleEnemies`'s exact-match rule), while
+regular/elite are a floor an identity can recur across several layers
+from (`magnitudeScalerFor` computes their difficulty live for exactly
+this reason — a stored bespoke value wouldn't make sense for something
+that shows up at more than one layer). A one-off, heavily authored piece
+fits a single-appearance boss; it fights against a recurring one. As of
+session 43 all 12 gatekeepers satisfy this (`enemy-subroutines.ts`, 9
+gatekeeper-specific pieces added that session, joining 3 that already had
+one as a side effect of earlier dead-content fixes).
+
+**Every enemy needs at least one payload that credits its own win-gauge,
+unless it's explicitly designed to win by stalling to the hand-20
+attrition resolution instead** (the user's own amendment to the rule
+above, session 43) — codified as `enemies.test.ts`'s own standing
+regression guard (originally a session-28 one-off fix for 9 enemies that
+shipped with none; now a documented design rule with a real, if currently
+unused, exemption path for a future intentional stall-design identity).
 
 **Opening punching bags**: the first **1-3 combats of the run**, full
 stop — a run-order counter, not a layer-position or node-position rule.

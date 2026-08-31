@@ -265,7 +265,11 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   // fight at its own layer, is an obvious first candidate to dial back
   // rather than leaving at the layer-1 baseline).
   // Layer 1 -- perimeter/DMZ
-  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'encryption'], minLayer: 1, loadout: [pool('total-pwnage'), pool('patch'), pool('full-rollback'), pool('privilege-escalation')], passiveIds: ['reception-protocol'], magnitudeScaler: 1.0 },
+  // Session 43 decision-session: added Escort Out (enemy-subroutines.ts),
+  // the gatekeeper's own required bespoke thematic piece (new "every
+  // gatekeeper needs one, unless it's a deliberate stall-to-20 design"
+  // rule).
+  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'encryption'], minLayer: 1, loadout: [pool('total-pwnage'), pool('patch'), pool('full-rollback'), pool('privilege-escalation'), pool('escort-out')], passiveIds: ['reception-protocol'], magnitudeScaler: 1.0 },
   // Session 28 retrofit: an all-mitigation gatekeeper -- Circuit
   // Breaker (neutral rare) is a near-perfect thematic fit for the
   // roster's purest defensive identity, converting exactly the
@@ -318,22 +322,54 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   // Session 28 retrofit: cron-job/full-system-compromise/dns-poisoning
   // are all denial/manipulation, zero credit -- Watchdog Timer (neutral
   // rare, occurrence:go, scaling) added: "keep calling Go, it corners you."
-  { id: 'ghost-process', name: 'Ghost Process', tier: 'gatekeeper', archetypes: ['root'], minLayer: 1, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('dns-poisoning'), pool('watchdog-timer')], passiveIds: ['digital-ghost'], magnitudeScaler: 1.0 },
+  // Session 43: added Orphaned Thread (enemy-subroutines.ts), its required
+  // bespoke thematic piece.
+  { id: 'ghost-process', name: 'Ghost Process', tier: 'gatekeeper', archetypes: ['root'], minLayer: 1, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('dns-poisoning'), pool('watchdog-timer'), pool('orphaned-thread')], passiveIds: ['digital-ghost'], magnitudeScaler: 1.0 },
   // Layer 2 -- internal LAN
-  { id: 'incident-response', name: 'Incident Response', tier: 'gatekeeper', archetypes: ['exploit'], minLayer: 2, loadout: [pool('supply-chain-compromise'), pool('vulnerability-scan'), pool('zero-day-chain')], passiveIds: ['highest-bidder'], magnitudeScaler: 1.3 },
-  { id: 'the-quarantine-ward', name: 'The Quarantine Ward', tier: 'gatekeeper', archetypes: ['malware', 'encryption'], minLayer: 2, loadout: [pool('epidemic'), pool('cold-storage'), pool('slowloris')], passiveIds: ['total-quarantine'], magnitudeScaler: 1.3 },
-  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['root', 'exploit'], minLayer: 2, loadout: [pool('supply-route'), pool('dead-drop'), pool('total-pwnage')], passiveIds: ['primed-to-strike'], magnitudeScaler: 1.3 },
+  // Session 43: added Escalation Path (enemy-subroutines.ts) -- its own
+  // Highest Bidder passive ("chain-finisher pieces get a bonus per Exploit
+  // fired") had nothing to buff before this, a real dead-passive finding,
+  // not just the required bespoke piece.
+  { id: 'incident-response', name: 'Incident Response', tier: 'gatekeeper', archetypes: ['exploit'], minLayer: 2, loadout: [pool('supply-chain-compromise'), pool('vulnerability-scan'), pool('zero-day-chain'), pool('escalation-path')], passiveIds: ['highest-bidder'], magnitudeScaler: 1.3 },
+  // Session 43: Epidemic/Cold Storage replaced outright (not just
+  // supplemented) -- both share Kernel Panic's exact pre-fix suitTally-
+  // threshold dead-trigger problem, confirmed directly against
+  // subroutines.ts before designing Contagion Protocol/Cryo Lock
+  // (enemy-subroutines.ts) as like-for-like Always-triggered fixes. Also
+  // unblocks this gatekeeper's own Total Quarantine passive, which needs
+  // real ticks to fire off at all.
+  { id: 'the-quarantine-ward', name: 'The Quarantine Ward', tier: 'gatekeeper', archetypes: ['malware', 'encryption'], minLayer: 2, loadout: [pool('contagion-protocol'), pool('cryo-lock'), pool('slowloris')], passiveIds: ['total-quarantine'], magnitudeScaler: 1.3 },
+  // Session 43: Total Pwnage/Dead Drop replaced outright, same reasoning
+  // as Quarantine Ward above -- both were confirmed dead/near-dead
+  // (occurrence-threshold pieces that essentially never bank in a real
+  // fight). Quick Draw also makes Primed to Strike's Root-fire-cheapens-
+  // next-Exploit-fire synergy reliable, since Total Pwnage was its only
+  // Exploit piece and rarely fired to begin with.
+  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['root', 'exploit'], minLayer: 2, loadout: [pool('supply-route'), pool('redistribution'), pool('quick-draw')], passiveIds: ['primed-to-strike'], magnitudeScaler: 1.3 },
   // Layer 3 -- secured subnet
-  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['malware'], minLayer: 3, loadout: [pool('fork-bomb'), pool('ransomware-cascade'), pool('total-compromise')], passiveIds: ['cascading-failure'], magnitudeScaler: 1.6 },
-  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['exploit', 'malware'], minLayer: 3, loadout: [pool('vulnerability-scan'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['adaptive-defense'], magnitudeScaler: 1.6 },
-  { id: 'silent-corruption', name: 'Silent Corruption', tier: 'gatekeeper', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('rootkit-deployment'), pool('epidemic'), pool('supply-route')], passiveIds: ['total-corruption'], magnitudeScaler: 1.6 },
+  // Session 43: added System Meltdown (enemy-subroutines.ts), which ties
+  // directly into its own Cascading Failure passive rather than just
+  // satisfying the bespoke-piece rule generically.
+  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['malware'], minLayer: 3, loadout: [pool('fork-bomb'), pool('ransomware-cascade'), pool('total-compromise'), pool('system-meltdown')], passiveIds: ['cascading-failure'], magnitudeScaler: 1.6 },
+  // Session 43: added Behavioral Model (enemy-subroutines.ts).
+  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['exploit', 'malware'], minLayer: 3, loadout: [pool('vulnerability-scan'), pool('polymorphic-worm'), pool('spyware'), pool('behavioral-model')], passiveIds: ['adaptive-defense'], magnitudeScaler: 1.6 },
+  // Session 43: added Undetected (enemy-subroutines.ts); rootkit-
+  // deployment/epidemic left as-is (unlike Quarantine Ward's identical
+  // trigger shape) -- this gatekeeper's own Total Corruption passive
+  // already speeds up suitTally accumulation 50%, real in-kit
+  // compensation the Ward never had, so its suitTally pieces weren't
+  // treated as broken here.
+  { id: 'silent-corruption', name: 'Silent Corruption', tier: 'gatekeeper', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('rootkit-deployment'), pool('epidemic'), pool('supply-route'), pool('undetected')], passiveIds: ['total-corruption'], magnitudeScaler: 1.6 },
   // Layer 4 -- core
   // Session 28 retrofit: air-gap was already dead weight (its reactive
   // trigger needs the caster's own Heat above a threshold, and enemies
   // have no Heat source) on top of the kit's zero-credit problem --
   // swapped for Circuit Breaker (neutral rare), the run's real
   // final-boss layer earning the strongest fix.
-  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('circuit-breaker')], passiveIds: ['null-session-passive'], magnitudeScaler: 1.9, winThreshold: 65 },
+  // Session 43: added Impersonation (enemy-subroutines.ts) -- feeds off
+  // the same mitigationBanked accumulator as its existing Circuit Breaker,
+  // real in-kit synergy rather than an unrelated bolt-on.
+  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('circuit-breaker'), pool('impersonation')], passiveIds: ['null-session-passive'], magnitudeScaler: 1.9, winThreshold: 65 },
   { id: 'kernel-panic', name: 'Kernel Panic', tier: 'gatekeeper', archetypes: ['exploit', 'malware', 'encryption'], minLayer: 4, loadout: [pool('stack-overflow'), pool('memory-corruption'), pool('failsafe-reboot')], passiveIds: ['redundant-kernel'], magnitudeScaler: 1.9 },
   // Session 28 retrofit: same pure recon/denial trio as its Layer 1
   // echo, Ghost Process -- Watchdog Timer again (deliberate reuse,

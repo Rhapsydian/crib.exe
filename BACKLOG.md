@@ -14,7 +14,32 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Session 42 close-out update (most current)**: implemented all 8 of
+**Session 43 close-out update (most current)**: Phase 2 of the roadmap
+(enemy pool expansion) done, designed and implemented same-session via
+`/decision-session`. Two new standing design rules confirmed live and
+recorded in `DESIGN.md`'s Enemy Design section: every gatekeeper needs at
+least one bespoke, highly thematic piece (not elite/regular, which stay
+pure magnitude-scaled "stronger commons" by deliberate design); every
+enemy needs a credit-capable payload unless explicitly designed to stall
+to hand-20 (amends the pre-existing session-28 rule). 11 new pieces in
+`enemy-subroutines.ts` across the 9 gatekeepers that lacked a bespoke
+piece (Quarantine Ward/Zero-Sum got two each, replacing dead pre-existing
+content). Found and fixed a real regression along the way (three of the
+first-draft pieces collapsed `run.test.ts`'s full-run sweep to 0/50
+victories) via direct `scripts/sweep.ts enemy` measurement, not guessing
+-- see `DESIGN.md`'s new "Enemy Pool Expansion" section for the full
+diagnosis writeup, including a real engine gap fixed along the way
+(`maxFiresPerCombat` was unenforced for most trigger kinds, now checked
+universally in `triggers.ts`'s `isReady`) and one pre-existing finding
+surfaced but explicitly not fixed this session (Incident Response's own
+baseline win rate, untouched by anything this session added, is only
+6/100 -- flagged for the roadmap's later balance-focused phases). 617/617
+tests passing, `npm run check` clean, a fresh 6-class real-condition smoke
+sweep ran clean. Not pushed -- user hasn't been asked yet this session.
+Full detail in `session-logs/session-43-2026-08-31.md` (not yet written --
+write at close-out).
+
+**Session 42 close-out update**: implemented all 8 of
 session 41's Player Pool Expansion checkpoints (A-H), one at a time with
 verification + a commit after each. `ChainedTrigger` widened to a 3-way
 union (id/archetype/tag matching), all 7 existing chains converted; a 6th
@@ -76,6 +101,11 @@ tests, ablating each gatekeeper) to pick the best-fitting 3 per layer,
 setting outliers aside for review. **User's own stated intent: "I'll
 start the full audit in the next session"** -- Phase 1 (the player pool)
 is the concrete next step, not a fork to ask about.
+
+**Phase 1 (player pool) ✅ done, sessions 41-42. Phase 2 (enemy pool) ✅
+done, session 43** -- see `DESIGN.md`'s "Enemy Pool Expansion" section.
+Phase 3 (Mod pool, same audit-and-roughly-double treatment) is the
+concrete next step.
 
 **Flagged to-do before the roadmap's own final phase (the heavy
 analysis/ablation pass) starts running a lot of sweeps**: the diagnostic

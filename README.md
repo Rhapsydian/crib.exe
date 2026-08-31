@@ -156,6 +156,19 @@ piece retagged, now an enforced invariant. No magnitude/balance tuning was
 done — that's the explicit next phase, once the roster's other pools (enemy,
 Mods, classes, gatekeepers) get the same audit-and-expand treatment.
 
+**The Enemy Pool Expansion is now complete** (session 43, designed and
+implemented same-session) — Phase 2 of the same program. Two new standing
+design rules: every gatekeeper needs at least one bespoke, highly thematic
+piece (elite/regular stay pure magnitude-scaled "stronger commons" by
+design); every enemy needs a credit-capable payload unless explicitly
+designed to stall to the hand-20 resolution. 11 new pieces in
+`enemy-subroutines.ts` gave all 12 gatekeepers a real bespoke piece (up
+from 3). A real regression (three first-draft pieces collapsed a full-run
+integration test to 0/50 victories) was found and fixed via direct
+`scripts/sweep.ts enemy` measurement, along with a genuine engine gap
+(`maxFiresPerCombat` was unenforced for most trigger kinds). See
+`DESIGN.md`'s "Enemy Pool Expansion" section for the full writeup.
+
 See `DESIGN.md` for the full design, `BACKLOG.md` for the phased
 implementation roadmap and next-session pointer, and `session-logs/` for a
 per-session record of decisions and results.
@@ -164,7 +177,7 @@ Domain: `cribexe.com` (registered available, not yet purchased).
 
 ## Engine
 
-- `npm test` — run the Vitest suite (617 tests as of session 42).
+- `npm test` — run the Vitest suite (617 tests as of session 43).
 - `npm run check` — type-check (`svelte-check` + `tsc`).
 - `npm run sweep -- run|enemy ...` — balance/regression sweep harness (see
   `scripts/sweep.ts`); used throughout Phase 5 to tune with real numbers
