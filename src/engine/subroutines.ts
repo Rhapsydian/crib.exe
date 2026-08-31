@@ -338,7 +338,7 @@ export const BREACHER_LOADOUT: SubroutineDefinition[] = [
     // tweak, confirmed deliberately rather than defaulted to.
     trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
     payload: { kind: 'directBurst', amount: COMMON.burst },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'session-lock',
@@ -349,7 +349,7 @@ export const BREACHER_LOADOUT: SubroutineDefinition[] = [
     // introductory class.
     trigger: { kind: 'selfState', condition: 'isDealer' },
     payload: { kind: 'instantCounterPush', amount: CAPPED.common },
-    tags: [],
+    tags: ['direct'],
   },
   {
     // Session 29 replacement for Steady Hand: Breacher's suppression pair
@@ -400,7 +400,7 @@ export const BLACKHAT_LOADOUT: SubroutineDefinition[] = [
     // Noise's own fix below -- see BACKLOG.md's Blackhat Heat-fragility
     // writeup for the full candidate comparison.
     payload: { kind: 'riskRewardBurst', amount: COMMON.burst + 2, heatCost: 3 },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'logic-bomb',
@@ -479,7 +479,7 @@ export const OPERATOR_LOADOUT: SubroutineDefinition[] = [
     archetype: 'root',
     trigger: { kind: 'enemyState', condition: 'gaugeFillAbove', fraction: GAUGE_FILL_FRACTION },
     payload: { kind: 'instantManipulation', target: 'subroutineProgress', amount: 3, targetSubroutineId: 'precision-strike' },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'ping-sweep',
@@ -538,7 +538,7 @@ export const GHOST_LOADOUT: SubroutineDefinition[] = [
     archetype: 'encryption',
     trigger: { kind: 'accumulator', metric: 'points', threshold: COMMON.threshold },
     payload: { kind: 'ward', amount: CAPPED.common },
-    tags: [],
+    tags: ['daemon', 'firewall'],
   },
   {
     // Session 26: replaces Kill Switch -- same denial effect and tag,

@@ -14,7 +14,35 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Session 41 close-out update (most current)**: scoped and planned Phase
+**Session 42 close-out update (most current)**: implemented all 8 of
+session 41's Player Pool Expansion checkpoints (A-H), one at a time with
+verification + a commit after each. `ChainedTrigger` widened to a 3-way
+union (id/archetype/tag matching), all 7 existing chains converted; a 6th
+tag (`direct`) added and every previously-untagged piece (38 pool + 5
+starting-loadout) retagged; all 57 new pieces authored across Exploit
+(+15), Malware (+15, incl. Doomsday Clock's sanctioned His Heels use),
+Encryption (+9), Root (+9), Neutral (+9) -- pool 81 -> 138, all
+subroutines 99 -> 156. Along the way: added a `hasDebuff: 'any'` wildcard
+match mode (two spec pieces needed it, didn't exist); caught and fixed a
+piece the spec's own retrofit list missed (Payload Multiplier, untagged);
+verified Wiretap's pegging-score threshold against real frequency data
+rather than trusting the spec's claim blind (confirmed exact). One
+user-caught error mid-session: checkpoint G's Cache Hit/Load Balancer
+were wrongly "corrected" off occurrence:flush/hisNobs on a misreading of
+the Neutral archetype's suit-independence rule (the actual rule is no
+*specific* suit index, not "avoid suit-scored categories" -- reverted,
+and the stale doc text that caused the misreading fixed in both
+`DESIGN.md` and this file). 617/617 tests passing, `npm run check`
+clean, an 80-game smoke sweep (4 classes x 20 seeds) ran clean with no
+hangs/crashes. **Not done, deliberately**: no magnitude/balance tuning
+beyond existing tier constants -- a fresh 6-class balance sweep with the
+new content live is the natural next step (the "middle-ground traversal"
+milestone this project keeps returning to), or the next roadmap phase
+(enemy pool, mindful not to use trigger families unavailable to enemies)
+-- ask rather than assume. Full detail in
+`session-logs/session-42-2026-08-31.md`.
+
+**Session 41 close-out update**: scoped and planned Phase
 1 of the user's own multi-session pool-expansion program (audit and
 roughly double the player-facing subroutine pool) via `/decision-session`
 -- no code, no `subroutines.ts` data written. Full content plan (57 new
@@ -22,10 +50,7 @@ pieces across 5 pools, a `ChainedTrigger` redesign, a 6th tag, a tag
 retrofit across 38 existing untagged pieces, and a starting-loadout
 quality review) is in this file's own "Player Pool Expansion --
 Implementation" section, below, and in `DESIGN.md`'s new "Player Pool
-Expansion" section. **The user's own next step**: a future `/dev-session`
-implements the checkpoints below (A-H) -- author the real data, convert
-the 7 existing chains, retrofit tags, update structural-count tests.
-Full detail in `session-logs/session-41-2026-08-31.md`.
+Expansion" section. Full detail in `session-logs/session-41-2026-08-31.md`.
 
 **Session 40 close-out update**: the content-validation
 sample is done -- 12 new pool pieces (6 Encryption, 6 Root, 2 per new
@@ -3540,17 +3565,22 @@ hook -- the mechanism is proven, not used. Regular/elite per-layer
 threshold scaling (the magnitude-style formula) is flagged as a real,
 separate future question, not decided here.
 
-## Player Pool Expansion — Implementation (session 41, `/decision-session`)
+## Player Pool Expansion — Implementation ✅ complete (scoped session 41, implemented session 42)
 
 Phase 1 of the user's own multi-session program: audit and roughly
 double the player-facing subroutine pool (57 new pieces), fix a real
 structural bug found along the way (`chained` triggers keyed to a
 specific subroutine id), add a 6th tag, and retrofit tag coverage across
 the existing pool. Same category as sessions 15/17/19/21/27/33/37/40 --
-scoped and planned this session, implemented by a future `/dev-session`.
+scoped and planned session 41, implemented via `/dev-session` session 42
+(checkpoints A-H, one at a time with verification + a commit after each).
 Full narrative and reasoning in `DESIGN.md`'s new "Player Pool Expansion"
-section and `session-logs/session-41-2026-08-31.md`; this section is the
-concrete checkpoint spec + full content list.
+section, `session-logs/session-41-2026-08-31.md` (scoping) and
+`session-logs/session-42-2026-08-31.md` (implementation); this section
+is the concrete checkpoint spec + full content list (still accurate as
+executed, aside from the Cache Hit/Load Balancer trigger-category
+correction noted inline below and the `hasDebuff: 'any'` addition not
+originally called out as a type change).
 
 **Target sizes** (parity, not independent doubling -- see `DESIGN.md`):
 

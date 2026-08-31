@@ -999,15 +999,18 @@ same discipline as Mods/Burners/Events before their own content passes.
 The broader attrition finding above (escalation's own timeline vs. how
 fast real fights actually resolve) is flagged, not investigated further.
 
-### Player Pool Expansion (session 41, `/decision-session`)
+### Player Pool Expansion (scoped session 41, implemented session 42) ✅ complete
 
 The first phase of the user's own multi-session program (audit and
 roughly double the player-facing subroutine pool, then the enemy pool,
 then Mods, then a full class audit, then the gatekeeper roster, finishing
 with a heavy ablation-driven balance pass — see `BACKLOG.md`'s top "NEXT
-SESSION" section for the complete roadmap). This session scoped and
-planned only — see `BACKLOG.md`'s own session 41 entry for the full
-57-piece content plan; no code or real `subroutines.ts` data was written.
+SESSION" section for the complete roadmap). Session 41 scoped and
+planned only; session 42 implemented all 8 checkpoints (A-H) — see
+`BACKLOG.md`'s "Player Pool Expansion — Implementation" section for the
+full 57-piece content plan and its execution notes. Pool 81 -> 138, all
+subroutines 99 -> 156, magnitude tuning deliberately left to a later
+balance-pass session.
 
 **Target sizes — parity, not independent doubling**: all four real
 archetypes converge on the same new size (~30 each: 14 commons/10

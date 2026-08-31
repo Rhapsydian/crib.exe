@@ -88,6 +88,12 @@ describe('subroutine content — structural integrity', () => {
     }
   });
 
+  it('every subroutine carries at least one tag (session 41 checkpoint H, closing the retrofit)', () => {
+    for (const sub of ALL_SUBROUTINES) {
+      expect(sub.tags.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
   it('every id is globally unique', () => {
     const ids = ALL_SUBROUTINES.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
