@@ -151,7 +151,7 @@ export const NEUTRAL_COMMONS: SubroutineDefinition[] = [
     archetype: 'neutral',
     trigger: { kind: 'selfState', condition: 'isDealer' },
     payload: { kind: 'directBurst', amount: COMMON.burst },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'checksum-match',
@@ -159,7 +159,7 @@ export const NEUTRAL_COMMONS: SubroutineDefinition[] = [
     archetype: 'neutral',
     trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
     payload: { kind: 'directBurst', amount: COMMON.burst },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'steady-drip',
@@ -167,7 +167,7 @@ export const NEUTRAL_COMMONS: SubroutineDefinition[] = [
     archetype: 'neutral',
     trigger: { kind: 'accumulator', metric: 'points', threshold: COMMON.threshold },
     payload: { kind: 'directBurst', amount: COMMON.burst },
-    tags: [],
+    tags: ['daemon'],
   },
 ];
 
@@ -190,7 +190,7 @@ export const NEUTRAL_UNCOMMONS: SubroutineDefinition[] = [
     archetype: 'neutral',
     trigger: { kind: 'selfState', condition: 'heatAbove', value: UNCOMMON.heat },
     payload: { kind: 'directBurst', amount: UNCOMMON.burst },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'uptime',
@@ -198,7 +198,7 @@ export const NEUTRAL_UNCOMMONS: SubroutineDefinition[] = [
     archetype: 'neutral',
     trigger: { kind: 'occurrence', category: 'thirtyOne', variation: 'threshold', bankTarget: UNCOMMON.bankTarget },
     payload: { kind: 'directBurst', amount: UNCOMMON.burst },
-    tags: [],
+    tags: ['trap'],
   },
 ];
 
@@ -214,7 +214,7 @@ export const NEUTRAL_RARES: SubroutineDefinition[] = [
     archetype: 'neutral',
     trigger: { kind: 'accumulator', metric: 'mitigationBanked', threshold: RARE.threshold },
     payload: { kind: 'directBurst', amount: RARE.burst + 3 },
-    tags: [],
+    tags: ['daemon'],
   },
   {
     id: 'watchdog-timer',
@@ -222,7 +222,7 @@ export const NEUTRAL_RARES: SubroutineDefinition[] = [
     archetype: 'neutral',
     trigger: { kind: 'occurrence', category: 'go', variation: 'scaling', cap: RARE.cap },
     payload: { kind: 'directBurst', amount: RARE.burst + 2 },
-    tags: [],
+    tags: ['trap'],
   },
 ];
 
@@ -503,7 +503,7 @@ export const EXPLOIT_COMMONS: SubroutineDefinition[] = [
     archetype: 'exploit',
     trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
     payload: { kind: 'directBurst', amount: COMMON.burst },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'race-condition',
@@ -511,7 +511,7 @@ export const EXPLOIT_COMMONS: SubroutineDefinition[] = [
     archetype: 'exploit',
     trigger: { kind: 'occurrence', category: 'go', variation: 'instant' },
     payload: { kind: 'directBurst', amount: COMMON.burst },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'off-by-one',
@@ -519,7 +519,7 @@ export const EXPLOIT_COMMONS: SubroutineDefinition[] = [
     archetype: 'exploit',
     trigger: { kind: 'occurrence', category: 'thirtyOne', variation: 'instant' },
     payload: { kind: 'directBurst', amount: COMMON.burst },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'credential-stuffing',
@@ -527,7 +527,7 @@ export const EXPLOIT_COMMONS: SubroutineDefinition[] = [
     archetype: 'exploit',
     trigger: { kind: 'accumulator', metric: 'points', threshold: COMMON.threshold },
     payload: { kind: 'directBurst', amount: COMMON.burst },
-    tags: [],
+    tags: ['daemon'],
   },
   {
     id: 'port-scan',
@@ -543,7 +543,7 @@ export const EXPLOIT_COMMONS: SubroutineDefinition[] = [
     archetype: 'exploit',
     trigger: { kind: 'selfState', condition: 'isDealer' },
     payload: { kind: 'directBurst', amount: COMMON.burst },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'script-kiddie',
@@ -570,7 +570,7 @@ export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
     archetype: 'exploit',
     trigger: { kind: 'occurrence', category: 'run', variation: 'threshold', bankTarget: UNCOMMON.bankTarget },
     payload: { kind: 'directBurst', amount: UNCOMMON.burst },
-    tags: [],
+    tags: ['trap'],
   },
   {
     id: 'watering-hole',
@@ -578,7 +578,7 @@ export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
     archetype: 'exploit',
     trigger: { kind: 'occurrence', category: 'flush', variation: 'scaling', cap: UNCOMMON.cap },
     payload: { kind: 'directBurst', amount: UNCOMMON.burst },
-    tags: [],
+    tags: ['trap'],
   },
   {
     id: 'drive-by-exploit',
@@ -594,7 +594,11 @@ export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
     archetype: 'exploit',
     trigger: { kind: 'selfState', condition: 'heatAbove', value: UNCOMMON.heat },
     payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, heatCost: 3 },
-    tags: [],
+    // Session 41's own retrofit list missed this piece (37 named vs. the
+    // real 38 untagged) -- Direct per the same reasoning as its sibling
+    // Payload Drop (starting loadout): immediate single-shot risk/reward,
+    // none of the other 5 mechanisms.
+    tags: ['direct'],
   },
 ];
 
@@ -684,7 +688,7 @@ export const MALWARE_COMMONS: SubroutineDefinition[] = [
     archetype: 'malware',
     trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
     payload: { kind: 'debuff', debuffId: 'choked', magnitude: COMMON.debuffMag, duration: COMMON.debuffDur },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'corrupted-cache',
@@ -779,7 +783,7 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     archetype: 'encryption',
     trigger: { kind: 'selfState', condition: 'isDealer' },
     payload: { kind: 'instantCounterPush', amount: CAPPED.common },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'checksum',
@@ -787,7 +791,7 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     archetype: 'encryption',
     trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
     payload: { kind: 'instantCounterPush', amount: CAPPED.common },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'patch',
@@ -803,7 +807,7 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     archetype: 'encryption',
     trigger: { kind: 'occurrence', category: 'pair', variation: 'instant' },
     payload: { kind: 'ward', amount: CAPPED.common },
-    tags: [],
+    tags: ['firewall'],
   },
   {
     id: 'two-factor',
@@ -811,7 +815,7 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     archetype: 'encryption',
     trigger: { kind: 'selfState', condition: 'heatBelow', value: COMMON.heat },
     payload: { kind: 'instantCounterPush', amount: CAPPED.common },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'access-control',
@@ -819,7 +823,7 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     archetype: 'encryption',
     trigger: { kind: 'selfState', condition: 'isNonDealer' },
     payload: { kind: 'ward', amount: CAPPED.common },
-    tags: [],
+    tags: ['firewall'],
   },
   {
     id: 'patch-notes',
@@ -860,7 +864,7 @@ export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
     archetype: 'encryption',
     trigger: { kind: 'occurrence', category: 'flush', variation: 'threshold', bankTarget: UNCOMMON.bankTarget },
     payload: { kind: 'instantCounterPush', amount: CAPPED.uncommon },
-    tags: [],
+    tags: ['trap'],
   },
   {
     id: 'honeypot',
@@ -879,7 +883,7 @@ export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
     // requirement).
     trigger: { kind: 'enemyState', condition: 'breachContainmentAbove', value: BREACH_CONTAINMENT_THRESHOLD.low },
     payload: { kind: 'ward', amount: CAPPED.uncommon },
-    tags: [],
+    tags: ['firewall'],
     reactive: true,
   },
   {
@@ -1001,7 +1005,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     archetype: 'root',
     trigger: { kind: 'enemyState', condition: 'breachContainmentBelow', value: BREACH_CONTAINMENT_THRESHOLD.low },
     payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: COMMON.burst },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'packet-sniffer',
@@ -1012,7 +1016,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     // gauge instead of denying theirs.
     trigger: { kind: 'enemyState', condition: 'gaugeFillAbove', fraction: GAUGE_FILL_FRACTION },
     payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'arp-spoof',
@@ -1021,7 +1025,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     trigger: { kind: 'enemyState', condition: 'hasDebuff', debuffId: 'corrupted' },
     // Generic suitTally target, not subroutineProgress -- see file header.
     payload: { kind: 'instantManipulation', target: 'suitTally', amount: 1 },
-    tags: [],
+    tags: ['direct'],
   },
   {
     id: 'cron-job',
@@ -1052,7 +1056,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     // recon quality to real Cribbage's own dealer-advantage flavor.
     trigger: { kind: 'selfState', condition: 'isDealer' },
     payload: { kind: 'revealOpponentKeptHand' },
-    tags: [],
+    tags: ['direct'],
     firesAt: 'onPlayPhaseStart',
   },
   {
@@ -1076,7 +1080,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     archetype: 'root',
     trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
     payload: { kind: 'sessionHijack', amount: COMMON.burst },
-    tags: [],
+    tags: ['direct'],
   },
 ];
 
@@ -1090,7 +1094,7 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     // caster's own initiative gauge instead of denying theirs.
     trigger: { kind: 'enemyState', condition: 'breachContainmentAbove', value: BREACH_CONTAINMENT_THRESHOLD.high },
     payload: { kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: UNCOMMON.burst },
-    tags: [],
+    tags: ['direct'],
     reactive: true,
   },
   {
@@ -1114,7 +1118,7 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     archetype: 'root',
     trigger: { kind: 'occurrence', category: 'run', variation: 'scaling', cap: UNCOMMON.cap },
     payload: { kind: 'instantManipulation', target: 'suitTally', amount: 2 },
-    tags: [],
+    tags: ['trap'],
   },
   {
     id: 'dead-drop',
@@ -1140,7 +1144,7 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     // running hot.
     trigger: { kind: 'selfState', condition: 'heatAbove', value: UNCOMMON.heat },
     payload: { kind: 'revealCrib' },
-    tags: [],
+    tags: ['direct'],
     firesAt: 'onCribSelected',
   },
   {
@@ -1151,7 +1155,7 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     archetype: 'root',
     trigger: { kind: 'occurrence', category: 'run', variation: 'threshold', bankTarget: UNCOMMON.bankTarget },
     payload: { kind: 'sessionHijack', amount: UNCOMMON.burst },
-    tags: [],
+    tags: ['trap'],
   },
   {
     // Content-validation sample -- "Crib Trap," the user's own
@@ -1195,7 +1199,7 @@ export const ROOT_RARES: SubroutineDefinition[] = [
     // "the instant armed."
     trigger: { kind: 'enemyState', condition: 'hasDebuff', debuffId: 'corrupted' },
     payload: { kind: 'forceDiscardCard' },
-    tags: [],
+    tags: ['direct'],
     firesAt: 'onDealt',
   },
   {

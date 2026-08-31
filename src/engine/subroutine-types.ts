@@ -35,7 +35,13 @@ export const SUIT_ARCHETYPES: Record<Suit, SuitedArchetype> = {
   3: 'root',
 };
 
-export type Tag = 'trap' | 'piercing' | 'firewall' | 'worm' | 'daemon';
+/** 'direct' (session 41): immediate, single-shot, none of the other 5
+ * mechanisms -- added after counting real tag coverage found no tag for
+ * the single most common shape in the pool (38% of the 99 pre-session-41
+ * pieces carried no tag at all, and a first-pass draft of the 57 new
+ * pieces was worse). Deliberately its own tag rather than stretching an
+ * existing one, which would have diluted what that tag means. */
+export type Tag = 'trap' | 'piercing' | 'firewall' | 'worm' | 'daemon' | 'direct';
 
 /** The 8 session-5 occurrence categories, unified across the pegging
  * play phase and the show/count phase. */
