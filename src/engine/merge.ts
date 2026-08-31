@@ -1,6 +1,8 @@
 import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
 import type { RunPlayerState } from './run';
 import { HEAT_HIGH_FRACTION, HEAT_MAX } from './heat';
+import { CREDIT_CAPABLE_PAYLOAD_KINDS } from './subroutine-types';
+import { archetypeLadderPosition } from './loadout';
 
 /**
  * Duplicate material & Merge (Phase 4 checkpoint E): acquiring an
@@ -233,6 +235,14 @@ export const opportunisticSafehouseStrategy: SafehouseStrategy = (playerState, h
   return preferMergeWhenAvailable(playerState, heat);
 };
 
+/** Which id a 'merge' Safehouse action spends itself on. Promoted to a
+ * real pluggable strategy type in session 46 (checkpoint E) -- until
+ * then this secondary choice was hardcoded at encounters.ts's own
+ * Safehouse case, since Rest-vs-Merge was DESIGN.md's named trade-off
+ * and this wasn't. A null return means "nothing worth merging," which
+ * resolveEncounter treats as a fall-back to Rest. */
+export type MergeTargetStrategy = (playerState: RunPlayerState) => string | null;
+
 /** Which id to spend Merge on, when a script chose 'merge' -- the id
  * with the most banked material (ties broken by insertion order). Not
  * exposed as its own pluggable strategy; Rest-vs-Merge is DESIGN.md's
@@ -244,4 +254,93 @@ export function pickMergeTarget(playerState: RunPlayerState): string | null {
   if (entries.length === 0) return null;
   entries.sort((a, b) => b[1] - a[1]);
   return entries[0][0];
+}
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint E) -- a
+// synergy-aware Merge target, alongside pickMergeTarget rather than
+// replacing it (every existing caller and test stays on the
+// legal-not-good default).
+//
+// Session 45's spec said "reuse checkpoint B's ladder, with banked
+// material demoted to the tie-break." Implementing it surfaced a real
+// wrinkle the spec hadn't hit: loadout.ts's fillsCreditGap *inverts*
+// when applied to a Merge candidate. It asks "would acquiring this close
+// an open gap?", so an installed credit-capable piece scores as NOT
+// filling a gap (it already closed its own), while a benched one in a
+// gap archetype scores as filling it -- even though merging a benched
+// piece upgrades something that never fires. Reused literally, the
+// ladder would rank benched pieces above installed ones, which is
+// backwards for this decision.
+//
+// So this ladder keeps the *spirit* of that rung (prefer strengthening
+// something that can actually push toward a win) while ordering on what
+// a Merge decision actually turns on. Rungs, in order:
+//   1. installed before benched -- an upgrade only pays off on a piece
+//      that fires. This is the rung the naive reuse got backwards.
+//   2. credit-capable before defensive-only -- upgrading a ward makes
+//      losing slower; upgrading a wardCounter makes winning likelier.
+//   3. on-archetype before universal before off-archetype -- shared with
+//      the other two ladders via archetypeLadderPosition.
+//   4. most banked material -- today's entire criterion, demoted to the
+//      tie-break exactly as the spec intended.
+//
+// Rarity is deliberately absent: unlike an acquisition, the base piece
+// is already owned, and its rarity says nothing about what one more
+// rank is worth.
+// ---------------------------------------------------------------------
+
+/** Every owned copy of `id`, installed or benched -- Merge upgrades
+ * whichever exists (mergeSubroutine touches both). */
+function ownedPiece(playerState: RunPlayerState, id: string): { piece: SubroutineDefinition; installed: boolean } | null {
+  const installed = playerState.installedLoadout.find((piece) => piece.id === id);
+  if (installed) return { piece: installed, installed: true };
+  const benched = playerState.bench.find((piece) => piece.id === id);
+  if (benched) return { piece: benched, installed: false };
+  return null;
+}
+
+/** Which banked ids are actually worth spending a Safehouse visit on.
+ * Filters two ways the legal-not-good default does not:
+ *
+ * - **rank-capped ids**, which mergeSubroutine refuses outright
+ *   (`rank >= MERGE_RANK_CAP` returns the state unchanged). pickMergeTarget
+ *   happily returns one, and resolveEncounter then burns the whole visit
+ *   on a no-op -- no Merge *and* no Rest. Declining instead lets the
+ *   Safehouse fall back to Rest, which is strictly better.
+ * - **ids with no owned copy at all**, which mergeSubroutine also
+ *   refuses. Defensive: material is only ever banked by acquiring a
+ *   duplicate of something owned, so this shouldn't arise. */
+function mergeableIds(playerState: RunPlayerState): string[] {
+  return Object.entries(playerState.material)
+    .filter(([id, count]) => count > 0 && (playerState.rank[id] ?? 0) < MERGE_RANK_CAP && ownedPiece(playerState, id) !== null)
+    .map(([id]) => id);
+}
+
+/** Synergy-aware Merge target -- see this section's header for the rung
+ * order and why it isn't a literal reuse of the acquisition ladder.
+ * Returns null when nothing is worth merging, which resolveEncounter
+ * already treats as "fall back to Rest." */
+export function synergyAwareMergeTarget(playerState: RunPlayerState): string | null {
+  const candidates = mergeableIds(playerState);
+  if (candidates.length === 0) return null;
+
+  const rankOf = (id: string): [number, number, number, number] => {
+    const owned = ownedPiece(playerState, id)!;
+    return [
+      owned.installed ? 0 : 1,
+      CREDIT_CAPABLE_PAYLOAD_KINDS.has(owned.piece.payload.kind) ? 0 : 1,
+      archetypeLadderPosition(owned.piece.archetype, playerState.classId),
+      -(playerState.material[id] ?? 0), // negated: more banked material is better
+    ];
+  };
+
+  return candidates.reduce((best, id) => {
+    const a = rankOf(id);
+    const b = rankOf(best);
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return a[i] < b[i] ? id : best;
+    }
+    return best; // exact tie -- keep the earlier id, matching pickMergeTarget's insertion-order bias
+  });
 }

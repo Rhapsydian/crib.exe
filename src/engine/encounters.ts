@@ -9,7 +9,7 @@ import { playLowestLegal, type PlayStrategy } from './pegging';
 import { heatFromLoss } from './heat';
 import { drawRewardOptions, drawUpgradedRewardOptions, rewardPoolForClass, rarityOf, type RewardTier, type Rarity } from './rewards';
 import { dataForTier } from './data';
-import { pickMergeTarget, preferMergeWhenAvailable, type SafehouseStrategy } from './merge';
+import { pickMergeTarget, preferMergeWhenAvailable, type MergeTargetStrategy, type SafehouseStrategy } from './merge';
 import {
   pickRegularOrEliteEnemy,
   gatekeeperEnemyForNode,
@@ -478,6 +478,15 @@ export function resolveEncounter(
    * See strategiesForFight's doc comment for the "never interlocked"
    * rule this exists to enforce. */
   playerSkill?: number,
+  /** Which banked id a 'merge' Safehouse action spends itself on
+   * (session 46, Gameplay Simulation Heuristics checkpoint E) -- same
+   * append-at-the-end treatment as every prior checkpoint's new param.
+   * Defaults to pickMergeTarget, the legal-not-good behavior this call
+   * site hardcoded before now. Note the Safehouse case below already
+   * falls back to Rest on a null return, so a strategy that declines
+   * (merge.ts's synergyAwareMergeTarget does, for a rank-capped id)
+   * recovers the visit rather than wasting it. */
+  mergeTargetStrategy: MergeTargetStrategy = pickMergeTarget,
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
@@ -492,7 +501,7 @@ export function resolveEncounter(
       // the strategy chose 'merge' but nothing is actually banked to
       // spend -- 'merge' with no material would otherwise waste the
       // visit entirely.
-      const targetId = safehouseStrategy(playerState, currentHeat) === 'merge' ? pickMergeTarget(playerState) : null;
+      const targetId = safehouseStrategy(playerState, currentHeat) === 'merge' ? mergeTargetStrategy(playerState) : null;
       if (targetId) {
         return {
           newState: 'inert',

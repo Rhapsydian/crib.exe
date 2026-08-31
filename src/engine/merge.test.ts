@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { RunPlayerState } from './run';
-import type { SubroutineDefinition } from './subroutine-types';
+import { playRun, opportunisticTraversal, type RunPlayerState } from './run';
+import type { Archetype, SubroutineDefinition } from './subroutine-types';
 import {
   easeTriggerCondition,
   mergeSubroutine,
@@ -10,6 +10,7 @@ import {
   scaledPayloadMagnitude,
   decayedPayloadMagnitude,
   MERGE_RANK_CAP,
+  synergyAwareMergeTarget,
 } from './merge';
 import { HEAT_HIGH_FRACTION, HEAT_MAX } from './heat';
 
@@ -257,5 +258,130 @@ describe('pickMergeTarget', () => {
   it('returns null when nothing is banked', () => {
     expect(pickMergeTarget(playerState({ material: {} }))).toBeNull();
     expect(pickMergeTarget(playerState({ material: { a: 0 } }))).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint E) -- the
+// synergy-aware Merge target.
+// ---------------------------------------------------------------------
+
+function mergePiece(id: string, archetype: Archetype, payload: SubroutineDefinition['payload']): SubroutineDefinition {
+  return { id, name: id, archetype, trigger: { kind: 'always' }, payload, tags: [] };
+}
+
+const CREDIT = { kind: 'directBurst', amount: 3 } as const;
+const DEFENSIVE = { kind: 'ward', amount: 3 } as const;
+
+describe('synergyAwareMergeTarget', () => {
+  it('prefers an installed piece over a benched one with more banked material', () => {
+    // Rung 1, and the case a literal reuse of the acquisition ladder
+    // would have gotten backwards -- merging a benched piece upgrades
+    // something that never fires.
+    const state = playerState({
+      installedLoadout: [mergePiece('installed', 'exploit', CREDIT)],
+      bench: [mergePiece('benched', 'exploit', CREDIT)],
+      material: { installed: 1, benched: 5 },
+    });
+    expect(pickMergeTarget(state)).toBe('benched'); // the old criterion
+    expect(synergyAwareMergeTarget(state)).toBe('installed');
+  });
+
+  it('prefers a credit-capable installed piece over a defensive-only one', () => {
+    const state = playerState({
+      installedLoadout: [mergePiece('ward', 'encryption', DEFENSIVE), mergePiece('hit', 'exploit', CREDIT)],
+      material: { ward: 3, hit: 1 },
+    });
+    expect(pickMergeTarget(state)).toBe('ward');
+    expect(synergyAwareMergeTarget(state)).toBe('hit');
+  });
+
+  it('prefers on-archetype when installed and credit-capability tie', () => {
+    // Breacher: exploit + encryption, so 'root' is off-archetype.
+    const state = playerState({
+      installedLoadout: [mergePiece('off', 'root', CREDIT), mergePiece('on', 'exploit', CREDIT)],
+      material: { off: 2, on: 1 },
+    });
+    expect(synergyAwareMergeTarget(state)).toBe('on');
+  });
+
+  it('falls back to banked material count as the tie-break', () => {
+    const state = playerState({
+      installedLoadout: [mergePiece('a', 'exploit', CREDIT), mergePiece('b', 'exploit', CREDIT)],
+      material: { a: 1, b: 4 },
+    });
+    expect(synergyAwareMergeTarget(state)).toBe('b');
+  });
+
+  it('skips a rank-capped id the default would waste the visit on', () => {
+    // mergeSubroutine refuses a rank-capped id outright, so
+    // pickMergeTarget's answer here resolves to a no-op Safehouse visit
+    // -- no Merge and no Rest. Declining lets it fall back to Rest.
+    const state = playerState({
+      installedLoadout: [mergePiece('capped', 'exploit', CREDIT)],
+      material: { capped: 5 },
+      rank: { capped: MERGE_RANK_CAP },
+    });
+    expect(pickMergeTarget(state)).toBe('capped');
+    expect(mergeSubroutine(state, 'capped')).toEqual(state); // the wasted visit
+    expect(synergyAwareMergeTarget(state)).toBeNull();
+  });
+
+  it('still picks a mergeable id when another owned id is rank-capped', () => {
+    const state = playerState({
+      installedLoadout: [mergePiece('capped', 'exploit', CREDIT), mergePiece('open', 'exploit', CREDIT)],
+      material: { capped: 9, open: 1 },
+      rank: { capped: MERGE_RANK_CAP },
+    });
+    expect(synergyAwareMergeTarget(state)).toBe('open');
+  });
+
+  it('returns null when nothing is banked', () => {
+    expect(synergyAwareMergeTarget(playerState())).toBeNull();
+  });
+
+  it('ignores banked material for an id that is no longer owned', () => {
+    const state = playerState({ material: { ghost: 3 } });
+    expect(synergyAwareMergeTarget(state)).toBeNull();
+  });
+});
+
+describe('mergeTargetStrategy wiring (checkpoint E)', () => {
+  it('playRun routes the Safehouse Merge choice through the option', () => {
+    // The threading this checkpoint added: resolveEncounter hardcoded
+    // pickMergeTarget before now, so a custom strategy had no way in.
+    // Asserting it is actually consulted, not merely accepted.
+    // opportunisticTraversal actually pulls toward Safehouses, and an
+    // always-Merge SafehouseStrategy guarantees the target choice is
+    // reached -- preferMergeWhenAvailable returns 'rest' with nothing
+    // banked, which short-circuits the call entirely.
+    const seen: RunPlayerState[] = [];
+    const spy = (playerState: RunPlayerState): string | null => {
+      seen.push(playerState);
+      return pickMergeTarget(playerState);
+    };
+    playRun({
+      seed: 0,
+      classId: 'breacher',
+      traversalStrategy: opportunisticTraversal,
+      safehouseStrategy: () => 'merge',
+      mergeTargetStrategy: spy,
+    });
+    expect(seen.length).toBeGreaterThan(0);
+  });
+
+  it('defaults to pickMergeTarget when the option is omitted', () => {
+    // Same seed, no strategy passed -- unchanged behavior for every
+    // existing caller is the whole point of the append-at-the-end
+    // default.
+    const withDefault = playRun({ seed: 7, classId: 'breacher', safehouseStrategy: preferMergeWhenAvailable });
+    const withExplicit = playRun({
+      seed: 7,
+      classId: 'breacher',
+      safehouseStrategy: preferMergeWhenAvailable,
+      mergeTargetStrategy: pickMergeTarget,
+    });
+    expect(withDefault.outcome).toBe(withExplicit.outcome);
+    expect(withDefault.layersCompleted).toBe(withExplicit.layersCompleted);
   });
 });

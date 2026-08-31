@@ -8,7 +8,15 @@ import { addHeat, HEAT_MAX, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
 import { acquireSubroutine, alwaysAcquireFirst, installGrantedSubroutine, INSTALLED_SLOT_CAP, type AcquisitionStrategy } from './loadout';
-import { mergeSubroutine, preferMergeWhenAvailable, opportunisticSafehouseStrategy, MATERIAL_HIGH_THRESHOLD, type SafehouseStrategy } from './merge';
+import {
+  mergeSubroutine,
+  pickMergeTarget,
+  preferMergeWhenAvailable,
+  opportunisticSafehouseStrategy,
+  MATERIAL_HIGH_THRESHOLD,
+  type MergeTargetStrategy,
+  type SafehouseStrategy,
+} from './merge';
 import {
   buyCheapestAffordable,
   rerollIfNothingAffordable,
@@ -438,6 +446,12 @@ export interface RunOptions {
    * isolate whether it's a difficulty outlier vs. its layer-mates.
    * Undefined/empty changes nothing, the default. */
   excludedGatekeeperIds?: EnemyId[];
+  /** Which banked id a 'merge' Safehouse action spends itself on
+   * (session 46, Gameplay Simulation Heuristics checkpoint E) -- until
+   * that checkpoint this was hardcoded to pickMergeTarget inside
+   * resolveEncounter. Defaults to pickMergeTarget, unchanged behavior
+   * for every existing caller. */
+  mergeTargetStrategy?: MergeTargetStrategy;
   /** Observational only -- called once per gatekeeper fight, right
    * before it resolves, with the player's real accumulated state at
    * that moment (session 39: the "realistic difficulty" diagnostic
@@ -466,6 +480,7 @@ export function playRun(options: RunOptions): RunResult {
     burnerAcquisitionStrategy = alwaysAcquireFirstBurner,
     installedSlotCap = INSTALLED_SLOT_CAP,
     safehouseStrategy = preferMergeWhenAvailable,
+    mergeTargetStrategy = pickMergeTarget,
     shopStrategy = buyCheapestAffordable,
     shopRerollStrategy = rerollIfNothingAffordable,
     modShopStrategy = buyCheapestAffordableMod,
@@ -629,6 +644,7 @@ export function playRun(options: RunOptions): RunResult {
         burnerActivationStrategies,
         heat,
         playerSkill,
+        mergeTargetStrategy,
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
