@@ -1481,6 +1481,131 @@ all exist and agree with each other — the strongest signal yet that a
 future engineering-scoping session could turn this into real
 implementation checkpoints without the session-17-style rescope risk.
 
+### Mod Pool Expansion (session 44, `/decision-session`, designed and implemented same-session) ✅ complete
+
+Phase 3 of the user's own multi-session roadmap (player pool ✅ sessions
+41-42 → enemy pool ✅ session 43 → **Mods** → full class audit →
+gatekeeper roster → heavy final ablation pass). Scope resolved live:
+design this session, decide on implementation timing separately once the
+content plan exists — deliberately not assumed either way going in,
+unlike session 43's same-session treatment of the smaller enemy pass.
+
+**A real migration inconsistency found and fixed along the way, unrelated
+to new content**: `createCombatState` (`resolve.ts`) folds each class's
+starting-passive Mod into `ownedModIds` specifically so `hasMod` dispatch
+works for all 6 class-exclusive Mods (session 30's stated migration).
+Four of the six (Sleeper Cell, Zero Day, Feedback Loop, Return to Sender)
+actually use `hasMod`. **Foothold and Primed never were migrated** —
+`applyFootholdBonus`/`applyPrimedPassive` still gated on
+`combatState.classId !== 'breacher'/'operator'` directly, the pre-Mod-
+system session-11/25 check. Behaviorally inert today (class↔Mod
+ownership is 1:1 by construction, so both checks agree in every real game
+state) but real inconsistency — fixed by swapping both to `hasMod`, zero
+behavior change, 617/617 tests still pass, confirmed rather than assumed
+safe (every test exercising these two goes through `createCombatState`,
+which already performs the fold).
+
+**Two real coverage gaps found by re-reading the hook dispatch code, not
+assumed from prior docs**: plain `onTick` (distinct from
+`onTickExpiring`) has zero Mod content — `resolve.ts`'s own
+`applyModOnTickPassives` comment admits it's "wired in now regardless so
+the hook point genuinely exists for future content," and nothing ever
+used it. Separately, session 31 named three intended uses for
+`onEncounterResolved` (Heat mitigation, bonus Data, reward-altering) but
+the session-32 draft only ever shipped the latter two (Petty Cache,
+Black Budget) — Heat mitigation was never actually exercised.
+
+**Curses/negative-effect Mods — punted a fourth time, but for a real
+reason this time** rather than left drifting: bundled with whatever
+future session finally designs Event nodes, since an event-choice reward
+is the most natural acquisition channel for a deliberately-bad option
+(mirrors StS's own Necronomicon/Cursed Key/Sozu, each arriving through a
+specific channel, never the general relic pool) — mixing an undecided
+acquisition mechanism into a volume-expansion pass would repeat the
+session-17 "shape before content" ordering mistake. Relatedly, Events
+still don't grant Mods at all despite session 30 naming that as "a
+probable third channel" — confirmed still true by checking
+`events.ts`/`event-types.ts` directly — parked as its own future item
+rather than folded in here, for the same reason: this phase audits
+existing Mod *content*, not Events integration.
+
+**Target: double each rarity tier** (7→14 commons, 6→12 uncommons,
+4→8 rares — 17 new pieces exactly matching the existing 17, 23→40 general
++ class-exclusive total). Composition principles, in order of priority:
+close the two real gaps above; author the 3 archetype-sibling Amplifiers
+the session-32 table explicitly flagged as implied-but-undrafted
+(Exploit/Encryption/Root, alongside the existing Malware one); give every
+other single-instance hook a second example, each with a genuinely
+different shape rather than a reskin (e.g. First Contact pulls the
+*enemy's* gauge on `onGaugeCross50` where Early Momentum pushes the
+player's own); extend the "first archetype-X subroutine acquired is
+upgraded" pattern Salvage Protocol established, Amplifier-sibling style,
+to a second archetype (Fast Learner, Root). One rare opportunistically
+reuses session 40's new **Session Hijack** payload (Session Hijack Relay,
+reactive-subroutine bucket) — not sought out as a target, since Mods are
+"universal by default" and an archetype-specific payload narrows a Mod's
+own audience the same way Malware Amplifier already does, but a natural
+fit once the reactive-subroutine bucket (which just wraps a real
+`SubroutineDefinition` wholesale) made it a zero-new-engine-work option.
+
+| Rarity | Name (working) | Hook / mechanism | Effect |
+|---|---|---|---|
+| Common | Cold Boot | `onCombatStart` | Start every fight with a small direct burst on the enemy — offense twin to Warm Boot's Ward |
+| Common | Quiet Hours | `onMove` | Small Data trickle every few moves — economy-flavored vs. Light Footing's Heat-flavored |
+| Common | Surge Protector | `onIncomingDirectBurst` | Bigger mitigation than Static Shield's, but only the first incoming direct burst each fight (redesigned during implementation — see below) — conditional vs. unconditional |
+| Common | First Contact | `onGaugeCross50` | First time the enemy's own gauge crosses halfway, small pull on their progress — defensive pull vs. Early Momentum's offensive push |
+| Common | Petty Theft | `onEncounterResolved` | Small flat Data bonus, regular fights only — fills the gap between Petty Cache (any win) and Black Budget (elite/gatekeeper only) |
+| Common | Boot Sector | reactive-subroutine bucket | Tiny direct-burst reactive subroutine, Always-triggered — proves the bucket works at common rarity, not just Rootkit Persistence's rare tier |
+| Common | Init Script | `onModAcquired` | First Mod acquired beyond the class-exclusive one grants a one-time Data bonus — one-time reward vs. Backup Generator's permanent stat raise |
+| Uncommon | Exploit Amplifier | `onFire` (archetype) | Malware Amplifier's effect, Exploit-flavored |
+| Uncommon | Encryption Amplifier | `onFire` (archetype) | Same, Encryption-flavored |
+| Uncommon | Root Amplifier | `onFire` (archetype) | Same, Root-flavored |
+| Uncommon | Fast Learner | `onSubroutineAcquired` | First Root subroutine acquired each run is upgraded once — Salvage Protocol's sibling |
+| Uncommon | Threshold Exploit | `onTriggerEvaluate` | Occurrence-Threshold/Scaling subroutines need 1 fewer banked occurrence to fire — Exploit's primary trigger family vs. Overclocked Accumulator's Malware-primary one |
+| Uncommon | Scrap Merchant | `onShopSlateGenerated` | Shop always offers one extra uncommon option — Bulk Buyer's sibling, adds tier granularity |
+| Rare | Redline | `onTick` | Every DoT tick you apply also credits a small amount directly to your own gauge — closes the zero-content gap |
+| Rare | Heat Sink | `onEncounterResolved` | Elite/gatekeeper wins refund a flat amount of Heat — closes the missing "Heat mitigation" use case |
+| Rare | Backdoor Access | `onModAcquired`, granted-subroutine | Neutral-archetype, Occurrence-triggered granted subroutine (always-slotted, cap-exempt) — Auxiliary Process's sibling with a different trigger family (was Always-only) |
+| Rare | Session Hijack Relay | reactive-subroutine bucket | Root-flavored, uses session 40's Session Hijack payload (two-sided gauge transfer), small/Always-triggered |
+
+All magnitudes TBD/playtesting placeholders, same discipline as every
+other numeric constant in this project. Every one of the 12 hook points
+and both engine buckets now has ≥2 real examples for the first time.
+
+**Implemented same session, the user's own call once the design draft
+landed** (mirroring session 43's enemy-pool treatment, not session
+41/42's split): all 17 pieces authored in `mods.ts`/`mod-types.ts`,
+every combat-scoped hook wired in `resolve.ts`, run-scoped hooks in
+`mods.ts`/`run.ts`/`encounters.ts`, `triggers.ts`'s `updateSubroutineState`
+extended for Threshold Exploit's own reduction (a flat fraction off
+Occurrence-Threshold's integer `bankTarget`, not a reuse of Accumulator's
+multiply-a-raw-magnitude shape — the two families needed genuinely
+different math), and `shop.ts`'s three offering functions gained a
+parallel `extraUncommons` parameter alongside the existing `extraCommons`
+for Scrap Merchant.
+
+**One real design correction made during implementation, not assumed
+safe from the draft alone**: Surge Protector's draft called for
+conditioning its bigger mitigation on the player's own Heat sitting
+below half of max — but `CombatState` has no Heat field at all (Heat is
+a between-fights resource tracked in `RunPlayerState`, never threaded
+into combat), so a Heat-conditional check would have meant a real
+architecture change just for one Mod. Redesigned to a per-fight one-shot
+instead (first incoming direct burst each fight, not every one) —
+conditional on timing rather than a resource, staying inside existing
+`passiveStat`/`setPassiveStat` machinery with zero new engine surface,
+while still landing a genuinely different shape from Static Shield's
+unconditional-every-hit style.
+
+**Verification**: 638/638 tests passing (21 new, including a structural
+pool-size guard confirming 14/12/8 by rarity, 34 general + 6
+class-exclusive = 40 total), `npm run check` clean, a fresh 6-class
+smoke sweep (40 seeds each, `opportunistic` traversal) ran clean with a
+7.5%-25% spread consistent with this project's known per-class ordering.
+
+**Explicitly not done**: no curses, no Events-Mod integration — both
+parked per the live decisions above.
+
 ### Burners (session 36, `/decision-session`)
 
 crib.exe's answer to StS Potions: single-use, **player-activated-at-will**

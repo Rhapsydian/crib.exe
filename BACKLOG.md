@@ -14,7 +14,34 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Session 43 close-out update (most current)**: Phase 2 of the roadmap
+**Session 44 update (most current)**: Phase 3 of the roadmap (Mod pool
+expansion) designed and implemented same-session via `/decision-session`
+— the user's own call once the design draft landed, mirroring session
+43's enemy-pool treatment. Fixed a real migration inconsistency along the
+way: Foothold/Primed (2 of the 6 class-exclusive Mods) never actually
+migrated onto the `hasMod` dispatch session 30 claimed all 6 used, still
+gating on `combatState.classId` directly — behaviorally inert (class↔Mod
+ownership is 1:1 by construction) but real inconsistency, fixed with zero
+behavior change. Curses/negative-effect Mods punted a fourth time, now
+explicitly bundled with a future Events-design session rather than left
+drifting. 17 new pieces authored (`mods.ts`/`mod-types.ts`), doubling
+every rarity tier (7/6/4 → 14/12/8, 23→40 general+class-exclusive Mods),
+closing two real hook-coverage gaps found this session — `onTick` had
+zero content (Redline), `onEncounterResolved`'s "Heat mitigation" use
+case was never exercised (Heat Sink) — plus the 3 Malware Amplifier
+archetype siblings the session-32 draft flagged as undrafted, and a new
+`extraUncommons` shop-slate lever (Scrap Merchant) alongside the existing
+`extraCommons` one. One real design correction made mid-implementation:
+Surge Protector's Heat-conditional draft didn't fit (`CombatState` has no
+Heat field at all), redesigned to a per-fight one-shot instead — see
+`DESIGN.md`'s "Mod Pool Expansion" section for the full write-up. 638/638
+tests passing (21 new, including a structural pool-size guard), `npm run
+check` clean, a fresh 6-class smoke sweep (40 seeds each, `opportunistic`
+traversal) ran clean with a 7.5%-25% spread. Not pushed — user hasn't
+been asked yet this session. See `session-logs/session-44-2026-08-31.md`
+for the full write-up (once written at close-out).
+
+**Session 43 close-out update**: Phase 2 of the roadmap
 (enemy pool expansion) done, designed and implemented same-session via
 `/decision-session`. Two new standing design rules confirmed live and
 recorded in `DESIGN.md`'s Enemy Design section: every gatekeeper needs at
@@ -103,8 +130,8 @@ start the full audit in the next session"** -- Phase 1 (the player pool)
 is the concrete next step, not a fork to ask about.
 
 **Phase 1 (player pool) ✅ done, sessions 41-42. Phase 2 (enemy pool) ✅
-done, session 43** -- see `DESIGN.md`'s "Enemy Pool Expansion" section.
-Phase 3 (Mod pool, same audit-and-roughly-double treatment) is the
+done, session 43. Phase 3 (Mod pool) ✅ done, session 44** -- see
+`DESIGN.md`'s "Mod Pool Expansion" section. The full class audit is the
 concrete next step.
 
 **Flagged to-do before the roadmap's own final phase (the heavy

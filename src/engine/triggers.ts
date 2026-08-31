@@ -202,6 +202,14 @@ export function updateSubroutineState(
   occurrence: ScoringOccurrence,
   side: PlayerIndex,
   thresholdMultiplier: number = 1,
+  /** Threshold Exploit's onTriggerEvaluate hook (session 44) -- a flat
+   * fraction shaved off an Occurrence-Threshold trigger's own bankTarget,
+   * floored at 1 (a subroutine can never need *zero* banked occurrences).
+   * Independent from thresholdMultiplier above, which only ever applies
+   * to Accumulator's raw-magnitude threshold -- Occurrence's bankTarget
+   * is a small integer count, a different shape that needs its own
+   * reduction rather than reusing the multiplier verbatim. */
+  occurrenceBankTargetReduction: number = 0,
 ): SubroutineRuntimeState {
   if (occurrence.player !== side) return state;
   const trigger = definition.trigger;
@@ -223,7 +231,9 @@ export function updateSubroutineState(
       trigger.variation === 'scaling'
         ? Math.min(state.bankedOccurrences + 1, trigger.cap)
         : state.bankedOccurrences + 1;
-    const ready = trigger.variation === 'threshold' ? bankedOccurrences >= trigger.bankTarget : true;
+    const effectiveBankTarget =
+      trigger.variation === 'threshold' ? Math.max(1, Math.round(trigger.bankTarget * (1 - occurrenceBankTargetReduction))) : 0;
+    const ready = trigger.variation === 'threshold' ? bankedOccurrences >= effectiveBankTarget : true;
     return { ...state, bankedOccurrences, ready: state.ready || ready };
   }
 

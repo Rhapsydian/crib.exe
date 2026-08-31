@@ -56,6 +56,64 @@ export const BLACK_BUDGET_UPGRADE_CHANCE = 0.25;
  * here. */
 export const TAGGED_FIRMWARE_TAG = 'daemon' as const;
 
+// ---------------------------------------------------------------------
+// Mod Pool Expansion (session 44) -- 17 new pieces, doubling every
+// rarity tier (7/6/4 -> 14/12/8). Magnitudes all TBD/playtesting, same
+// discipline as the original 17. Constants kept independent per-Mod even
+// where a value happens to match an existing one (e.g. Threshold
+// Exploit's reduction vs. Overclocked Accumulator's) -- this project's
+// own decoupling precedent (sessions 39/43), since two Mods tuned
+// independently shouldn't accidentally share a knob.
+// ---------------------------------------------------------------------
+
+export const QUIET_HOURS_MOVE_INTERVAL = 3;
+export const QUIET_HOURS_DATA_BONUS = 2;
+export const PETTY_THEFT_DATA_BONUS = 3;
+export const INIT_SCRIPT_DATA_BONUS = 5;
+export const THRESHOLD_EXPLOIT_REDUCTION = 0.15; // fraction off Occurrence-Threshold's bankTarget
+export const HEAT_SINK_HEAT_REFUND = 10;
+
+/** Boot Sector's granted reactive-subroutine content -- a common-rarity
+ * sibling proving the reactive-subroutine bucket works below rare (session
+ * 32 only ever exercised it at rare, via Rootkit Persistence). */
+const BOOT_SECTOR_SUBROUTINE: SubroutineDefinition = {
+  id: 'boot-sector',
+  name: 'Boot Sector',
+  archetype: 'neutral',
+  trigger: { kind: 'always' },
+  payload: { kind: 'directBurst', amount: MOD_SMALL },
+  tags: ['daemon'],
+};
+
+/** Session Hijack Relay's granted reactive-subroutine content -- Root-
+ * flavored, opportunistically reusing session 40's new `sessionHijack`
+ * payload (a genuine two-sided gauge transfer) rather than inventing new
+ * engine work, since the reactive-subroutine bucket just wraps a real
+ * SubroutineDefinition wholesale. */
+const SESSION_HIJACK_RELAY_SUBROUTINE: SubroutineDefinition = {
+  id: 'session-hijack-relay',
+  name: 'Session Hijack Relay',
+  archetype: 'root',
+  trigger: { kind: 'always' },
+  payload: { kind: 'sessionHijack', amount: MOD_SMALL },
+  tags: ['daemon'],
+};
+
+/** Backdoor Access's granted, always-slotted subroutine -- Auxiliary
+ * Process's sibling (session 32/checkpoint F's grantedSubroutine
+ * mechanism), Neutral-archetype for the same class-exclusion-dodge
+ * reasoning, but Occurrence-triggered (Instant, Fifteen) rather than
+ * Always -- gives the granted-subroutine mechanism a second trigger
+ * family example. */
+const BACKDOOR_ACCESS_SUBROUTINE: SubroutineDefinition = {
+  id: 'backdoor-access',
+  name: 'Backdoor Access',
+  archetype: 'neutral',
+  trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
+  payload: { kind: 'directBurst', amount: MOD_SMALL },
+  tags: ['daemon'],
+};
+
 /** Rootkit Persistence's granted reactive-subroutine content (session
  * 32: "a real SubroutineDefinition, fires outside the loadout... Root-
  * flavored, Always-triggered, small manipulation effect every turn").
@@ -129,6 +187,48 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
   },
   'failsafe-cascade': { id: 'failsafe-cascade', name: 'Failsafe Cascade', rarity: 'rare', effectKind: 'hook' },
   'black-budget': { id: 'black-budget', name: 'Black Budget', rarity: 'rare', effectKind: 'hook' },
+
+  // --- Mod Pool Expansion (session 44): Common (+7) ---
+  'cold-boot': { id: 'cold-boot', name: 'Cold Boot', rarity: 'common', effectKind: 'hook' },
+  'quiet-hours': { id: 'quiet-hours', name: 'Quiet Hours', rarity: 'common', effectKind: 'hook' },
+  'surge-protector': { id: 'surge-protector', name: 'Surge Protector', rarity: 'common', effectKind: 'hook' },
+  'first-contact': { id: 'first-contact', name: 'First Contact', rarity: 'common', effectKind: 'hook' },
+  'petty-theft': { id: 'petty-theft', name: 'Petty Theft', rarity: 'common', effectKind: 'hook' },
+  'boot-sector': {
+    id: 'boot-sector',
+    name: 'Boot Sector',
+    rarity: 'common',
+    effectKind: 'reactiveSubroutine',
+    reactiveSubroutine: BOOT_SECTOR_SUBROUTINE,
+  },
+  'init-script': { id: 'init-script', name: 'Init Script', rarity: 'common', effectKind: 'hook' },
+
+  // --- Mod Pool Expansion (session 44): Uncommon (+6) ---
+  'exploit-amplifier': { id: 'exploit-amplifier', name: 'Exploit Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'exploit' },
+  'encryption-amplifier': { id: 'encryption-amplifier', name: 'Encryption Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'encryption' },
+  'root-amplifier': { id: 'root-amplifier', name: 'Root Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'root' },
+  'fast-learner': { id: 'fast-learner', name: 'Fast Learner', rarity: 'uncommon', effectKind: 'hook' },
+  'threshold-exploit': { id: 'threshold-exploit', name: 'Threshold Exploit', rarity: 'uncommon', effectKind: 'hook' },
+  'scrap-merchant': { id: 'scrap-merchant', name: 'Scrap Merchant', rarity: 'uncommon', effectKind: 'hook' },
+
+  // --- Mod Pool Expansion (session 44): Rare (+4) ---
+  redline: { id: 'redline', name: 'Redline', rarity: 'rare', effectKind: 'hook' },
+  'heat-sink': { id: 'heat-sink', name: 'Heat Sink', rarity: 'rare', effectKind: 'hook' },
+  'backdoor-access': {
+    id: 'backdoor-access',
+    name: 'Backdoor Access',
+    rarity: 'rare',
+    effectKind: 'hook',
+    grantedSubroutine: BACKDOOR_ACCESS_SUBROUTINE,
+  },
+  'session-hijack-relay': {
+    id: 'session-hijack-relay',
+    name: 'Session Hijack Relay',
+    rarity: 'rare',
+    effectKind: 'reactiveSubroutine',
+    archetype: 'root',
+    reactiveSubroutine: SESSION_HIJACK_RELAY_SUBROUTINE,
+  },
 };
 
 /** The general Mod pool -- every Mod except the 6 class-exclusive
@@ -236,6 +336,24 @@ export function applyOnMoveMods(ownedModIds: ModId[], heatCost: number): number 
   return Math.max(0, heatCost - LIGHT_FOOTING_HEAT_DISCOUNT);
 }
 
+/** Quiet Hours's onMove hook (session 44) -- separate from
+ * applyOnMoveMods above since it needs playerState (a running move
+ * counter, Data to credit) rather than just transforming the flat Heat
+ * cost. Counter lives in modRunState, same per-run scratch convention
+ * Salvage Protocol/Fast Learner/Init Script all use. */
+export function applyQuietHoursMod(playerState: RunPlayerState): RunPlayerState {
+  if (!playerState.ownedModIds.includes('quiet-hours')) return playerState;
+  const moves = (playerState.modRunState['quiet-hours:moves'] ?? 0) + 1;
+  if (moves < QUIET_HOURS_MOVE_INTERVAL) {
+    return { ...playerState, modRunState: { ...playerState.modRunState, 'quiet-hours:moves': moves } };
+  }
+  return {
+    ...playerState,
+    data: playerState.data + QUIET_HOURS_DATA_BONUS,
+    modRunState: { ...playerState.modRunState, 'quiet-hours:moves': 0 },
+  };
+}
+
 /** Petty Cache/Black Budget's onEncounterResolved hook -- called from
  * encounters.ts's resolveFight right before returning a win outcome
  * (session 31: reward computation is already independent of combat-
@@ -251,24 +369,36 @@ export function applyOnWinEncounterResolvedMods(
   kind: 'regular' | 'elite' | 'gatekeeper',
   rng: Rng,
   drawUpgraded: (rng: Rng) => SubroutineDefinition[],
-): { dataAwarded: number; rewardOptions: SubroutineDefinition[] } {
+): { dataAwarded: number; rewardOptions: SubroutineDefinition[]; heatRefund: number } {
   let data = dataAwarded;
   let options = rewardOptions;
+  let heatRefund = 0;
   if (ownedModIds.includes('petty-cache')) data += PETTY_CACHE_DATA_BONUS;
+  if (kind === 'regular' && ownedModIds.includes('petty-theft')) data += PETTY_THEFT_DATA_BONUS;
   if (kind !== 'regular' && ownedModIds.includes('black-budget') && rng.next() < BLACK_BUDGET_UPGRADE_CHANCE) {
     options = drawUpgraded(rng);
   }
-  return { dataAwarded: data, rewardOptions: options };
+  // Heat Sink (session 44): the first of the 17-piece expansion to
+  // exercise onEncounterResolved's third named use case (session 31:
+  // "Heat mitigation, bonus Data, and reward-altering") -- Petty
+  // Cache/Petty Theft cover Data, Black Budget covers reward-altering,
+  // nothing covered Heat until now.
+  if (kind !== 'regular' && ownedModIds.includes('heat-sink')) heatRefund = HEAT_SINK_HEAT_REFUND;
+  return { dataAwarded: data, rewardOptions: options, heatRefund };
 }
 
 /** Vendor Discount/Bulk Buyer's onShopSlateGenerated hook -- called from
  * encounters.ts's shop case before either slate is generated, feeding
  * shop.ts's shopOfferingsForClass/modOfferingsForClass their
  * discount/extra-slot parameters. */
-export function shopModifiersForOwnedMods(ownedModIds: ModId[]): { discountFraction: number; extraCommons: number } {
+export function shopModifiersForOwnedMods(ownedModIds: ModId[]): { discountFraction: number; extraCommons: number; extraUncommons: number } {
   return {
     discountFraction: ownedModIds.includes('vendor-discount') ? VENDOR_DISCOUNT_FRACTION : 0,
     extraCommons: ownedModIds.includes('bulk-buyer') ? 1 : 0,
+    // Scrap Merchant (session 44): Bulk Buyer's sibling, one tier up --
+    // gives the onShopSlateGenerated hook tier granularity it didn't have
+    // before (only a common-slot lever existed).
+    extraUncommons: ownedModIds.includes('scrap-merchant') ? 1 : 0,
   };
 }
 
@@ -283,12 +413,35 @@ export function shopModifiersForOwnedMods(ownedModIds: ModId[]): { discountFract
  * consumes the material back to 0, same as a real duplicate-triggered
  * Merge would. */
 export function applyOnSubroutineAcquiredMods(playerState: RunPlayerState, acquired: SubroutineDefinition): RunPlayerState {
-  if (!playerState.ownedModIds.includes('salvage-protocol')) return playerState;
-  if (acquired.archetype !== 'malware') return playerState;
-  if ((playerState.modRunState['salvage-protocol:used'] ?? 0) > 0) return playerState;
+  let state = playerState;
+  state = applyFirstArchetypeUpgradeMod(state, acquired, 'salvage-protocol', 'malware');
+  // Fast Learner (session 44): Salvage Protocol's sibling, extending the
+  // same "first archetype-X subroutine acquired is upgraded once" pattern
+  // to a second archetype -- the same per-archetype scaling the Amplifier
+  // family already uses (Malware Amplifier -> Exploit/Encryption/Root
+  // Amplifier).
+  state = applyFirstArchetypeUpgradeMod(state, acquired, 'fast-learner', 'root');
+  return state;
+}
+
+/** Shared shape behind Salvage Protocol/Fast Learner -- the first
+ * subroutine of `archetype` acquired each run is immediately upgraded
+ * once, gated by owning `modId`. Reuses merge.ts's real, tested upgrade
+ * path the same way the original Salvage Protocol did (synthetically
+ * banking 1 material for the freshly-acquired piece then immediately
+ * spending it). */
+function applyFirstArchetypeUpgradeMod(
+  playerState: RunPlayerState,
+  acquired: SubroutineDefinition,
+  modId: ModId,
+  archetype: SubroutineDefinition['archetype'],
+): RunPlayerState {
+  if (!playerState.ownedModIds.includes(modId)) return playerState;
+  if (acquired.archetype !== archetype) return playerState;
+  if ((playerState.modRunState[`${modId}:used`] ?? 0) > 0) return playerState;
   const withMaterial = { ...playerState, material: { ...playerState.material, [acquired.id]: (playerState.material[acquired.id] ?? 0) + 1 } };
   const merged = mergeSubroutine(withMaterial, acquired.id);
-  return { ...merged, modRunState: { ...merged.modRunState, 'salvage-protocol:used': 1 } };
+  return { ...merged, modRunState: { ...merged.modRunState, [`${modId}:used`]: 1 } };
 }
 
 /** Backup Generator's onModAcquired hook -- called from run.ts's playRun
@@ -297,6 +450,22 @@ export function applyOnSubroutineAcquiredMods(playerState: RunPlayerState, acqui
  * (installGrantedSubroutine), called separately from the same call
  * site -- this function only covers the non-loadout side effect. */
 export function applyOnModAcquiredMods(playerState: RunPlayerState, acquiredModId: ModId): RunPlayerState {
-  if (acquiredModId !== 'backup-generator') return playerState;
-  return { ...playerState, maxHeatBonus: playerState.maxHeatBonus + BACKUP_GENERATOR_HEAT_BONUS };
+  let state = playerState;
+  if (acquiredModId === 'backup-generator') {
+    state = { ...state, maxHeatBonus: state.maxHeatBonus + BACKUP_GENERATOR_HEAT_BONUS };
+  }
+  // Init Script (session 44): a second onModAcquired example with a
+  // one-time-reward shape (vs. Backup Generator's permanent stat raise).
+  // "The first Mod acquired beyond the class-exclusive one" -- guarded by
+  // acquiredModId !== 'init-script' itself so owning Init Script and
+  // then acquiring it a second time is structurally impossible anyway
+  // (uniqueness, session 30), but kept explicit for clarity.
+  if (
+    state.ownedModIds.includes('init-script') &&
+    acquiredModId !== 'init-script' &&
+    (state.modRunState['init-script:used'] ?? 0) === 0
+  ) {
+    state = { ...state, data: state.data + INIT_SCRIPT_DATA_BONUS, modRunState: { ...state.modRunState, 'init-script:used': 1 } };
+  }
+  return state;
 }

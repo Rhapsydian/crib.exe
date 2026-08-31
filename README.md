@@ -13,9 +13,10 @@ class starting loadouts + a real 32-enemy roster across 4 layers, every
 tier now eligible from layer 1 onward), and verified by an automated test
 suite, `src/engine/`. Phase 5 (content, balance, and polish) is in
 progress — the Enemy Library and Neutral Archetype are built; **Mods**
-(crib.exe's StS-relic equivalent) shipped: 23 real Mods (the 6 class
-starting passives, migrated onto the same infrastructure, plus 17 new
-ones), all 12 hook points wired into combat/loadout/acquisition/Shop; and
+(crib.exe's StS-relic equivalent) shipped: 40 real Mods (the 6 class
+starting passives, migrated onto the same infrastructure, plus 34 general-
+pool Mods after session 44's Mod Pool Expansion doubled the original 17),
+all 12 hook points wired into combat/loadout/acquisition/Shop; and
 **Burners + Events** shipped: 8 single-use, player-activated Burners
 (combat/map/shop contexts, including reopening a previously closed map
 node) and 8 narrative Event vignettes (risk-tiered choices, optional
@@ -169,6 +170,27 @@ integration test to 0/50 victories) was found and fixed via direct
 (`maxFiresPerCombat` was unenforced for most trigger kinds). See
 `DESIGN.md`'s "Enemy Pool Expansion" section for the full writeup.
 
+**The Mod Pool Expansion is now complete** (session 44, designed and
+implemented same-session) — Phase 3 of the same program. The general Mod
+pool doubled every rarity tier (7/6/4 → 14/12/8, 23 → 40 Mods total with
+the 6 class-exclusive starting passives). Closed two real hook-coverage
+gaps found this session: plain `onTick` had zero content (fixed by
+Redline) and `onEncounterResolved`'s "Heat mitigation" use case, named
+back at the hook catalog's own design session, had never been exercised
+(fixed by Heat Sink). Authored the 3 archetype-sibling Amplifiers the
+original content-validation table flagged as implied but undrafted
+(Exploit/Encryption/Root, alongside the existing Malware one), and gave
+the Shop slate a new `extraUncommons` lever (Scrap Merchant) alongside
+the existing `extraCommons` one (Bulk Buyer). A real migration
+inconsistency was fixed along the way, unrelated to new content: 2 of the
+6 class-exclusive Mods (Foothold, Primed) had never actually migrated
+onto the `hasMod` dispatch the other 4 use, still gating on `classId`
+directly — behaviorally inert but real inconsistency, fixed with zero
+behavior change. Curses/negative-effect Mods were punted a fourth time,
+now explicitly bundled with a future Events-design session rather than
+left drifting. See `DESIGN.md`'s "Mod Pool Expansion" section for the
+full writeup.
+
 See `DESIGN.md` for the full design, `BACKLOG.md` for the phased
 implementation roadmap and next-session pointer, and `session-logs/` for a
 per-session record of decisions and results.
@@ -177,7 +199,7 @@ Domain: `cribexe.com` (registered available, not yet purchased).
 
 ## Engine
 
-- `npm test` — run the Vitest suite (617 tests as of session 43).
+- `npm test` — run the Vitest suite (638 tests as of session 44).
 - `npm run check` — type-check (`svelte-check` + `tsc`).
 - `npm run sweep -- run|enemy ...` — balance/regression sweep harness (see
   `scripts/sweep.ts`); used throughout Phase 5 to tune with real numbers

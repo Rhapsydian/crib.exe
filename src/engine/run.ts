@@ -33,6 +33,7 @@ import type { ModDefinition, ModId } from './mod-types';
 import {
   MOD_DEFINITIONS,
   applyOnMoveMods,
+  applyQuietHoursMod,
   applyOnSubroutineAcquiredMods,
   applyOnModAcquiredMods,
   alwaysAcquireFirstMod,
@@ -584,6 +585,7 @@ export function playRun(options: RunOptions): RunResult {
       // same floored-at-0 treatment applyOnMoveMods already gives Light
       // Footing (a move can never refund Heat, only discount/waive it).
       const moveHeatCost = freeMoveActivated ? 0 : applyOnMoveMods(playerState.ownedModIds, moveResult.heatCost);
+      playerState = applyQuietHoursMod(playerState); // session 44: Data trickle every QUIET_HOURS_MOVE_INTERVAL moves
       const maxHeat = HEAT_MAX + playerState.maxHeatBonus; // Backup Generator (checkpoint E)
       const afterMove = addHeat(heat, moveHeatCost, maxHeat);
       heat = afterMove.heat;

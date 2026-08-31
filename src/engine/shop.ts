@@ -74,16 +74,24 @@ function sampleDistinct<T>(items: T[], count: number, rng: Rng): T[] {
 }
 
 /** The Shop's slate for one visit: 3 commons (+ `extraCommons`, Bulk
- * Buyer, Mods checkpoint E/H), 1 uncommon, and one more slot that's a
- * coin flip between another uncommon or a rare -- a fixed-size random
- * subset of the class's reward pool, not the whole thing (that would
- * make Data a non-choice once a player could afford everything).
- * Re-rolled fresh from `rng` each visit. `discountFraction` (Vendor
- * Discount) is applied per-offering via shopCostOf. */
-export function shopOfferingsForClass(classId: ClassId, rng: Rng, extraCommons = 0, discountFraction = 0, rarityFloor?: Rarity): ShopOffering[] {
+ * Buyer, Mods checkpoint E/H), 1 uncommon (+ `extraUncommons`, Scrap
+ * Merchant, session 44), and one more slot that's a coin flip between
+ * another uncommon or a rare -- a fixed-size random subset of the
+ * class's reward pool, not the whole thing (that would make Data a
+ * non-choice once a player could afford everything). Re-rolled fresh
+ * from `rng` each visit. `discountFraction` (Vendor Discount) is applied
+ * per-offering via shopCostOf. */
+export function shopOfferingsForClass(
+  classId: ClassId,
+  rng: Rng,
+  extraCommons = 0,
+  extraUncommons = 0,
+  discountFraction = 0,
+  rarityFloor?: Rarity,
+): ShopOffering[] {
   const byRarity = poolByRarity(classId);
   const commons = sampleDistinct(byRarity.common, SHOP_COMMON_SLOTS + extraCommons, rng);
-  const uncommon = sampleDistinct(byRarity.uncommon, 1, rng);
+  const uncommon = sampleDistinct(byRarity.uncommon, 1 + extraUncommons, rng);
 
   // Insider Tip (Burners checkpoint E): a 'rare' floor forces the
   // wildcard slot to be rare outright instead of the normal 50/50 coin
@@ -134,12 +142,13 @@ export function modOfferingsForClass(
   ownedModIds: ModId[],
   rng: Rng,
   extraCommons = 0,
+  extraUncommons = 0,
   discountFraction = 0,
   rarityFloor?: Rarity,
 ): ModOffering[] {
   const byRarity = modPoolByRarity(classId, ownedModIds);
   const commons = sampleDistinct(byRarity.common, SHOP_COMMON_SLOTS + extraCommons, rng);
-  const uncommon = sampleDistinct(byRarity.uncommon, 1, rng);
+  const uncommon = sampleDistinct(byRarity.uncommon, 1 + extraUncommons, rng);
 
   // See shopOfferingsForClass's own comment -- same Insider Tip treatment.
   const wildcardTier: Rarity = rarityFloor === 'rare' ? 'rare' : rng.next() < 0.5 ? 'uncommon' : 'rare';
@@ -192,13 +201,14 @@ export function burnerOfferingsForClass(
   classId: ClassId,
   rng: Rng,
   extraCommons = 0,
+  extraUncommons = 0,
   discountFraction = 0,
   rarityFloor?: Rarity,
 ): BurnerOffering[] {
   // classId is unused -- see this section's header comment.
   const byRarity = burnerPoolByRarity();
   const commons = sampleDistinct(byRarity.common, SHOP_COMMON_SLOTS + extraCommons, rng);
-  const uncommon = sampleDistinct(byRarity.uncommon, 1, rng);
+  const uncommon = sampleDistinct(byRarity.uncommon, 1 + extraUncommons, rng);
 
   // See shopOfferingsForClass's own comment -- same Insider Tip treatment.
   const wildcardTier: Rarity = rarityFloor === 'rare' ? 'rare' : rng.next() < 0.5 ? 'uncommon' : 'rare';

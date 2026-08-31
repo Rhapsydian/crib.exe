@@ -285,7 +285,7 @@ function resolveFight(
     );
     return {
       newState: 'inert',
-      heatDelta: result.playerHeatGenerated,
+      heatDelta: result.playerHeatGenerated - modified.heatRefund, // Failover (session 44); addHeat already floors at 0 (proven by Rest's own negative heatDelta)
       quarantined: false,
       rewardTier,
       dataAwarded: modified.dataAwarded,
@@ -552,26 +552,29 @@ export function resolveEncounter(
       // subroutine-only. A Burner coupon's discount doesn't stack with
       // Vendor Discount (the larger of the two applies, not a compounded
       // multiply -- see burners.ts's shopModifiersForActivatedBurner).
-      const { discountFraction: modDiscountFraction, extraCommons } = shopModifiersForOwnedMods(playerState.ownedModIds);
+      const { discountFraction: modDiscountFraction, extraCommons, extraUncommons } = shopModifiersForOwnedMods(playerState.ownedModIds);
       const discountFraction = Math.max(modDiscountFraction, burnerModifiers.discountFraction);
       const rarityFloor = burnerModifiers.rarityFloor;
       const rerollCostThisVisit = burnerModifiers.freeReroll ? 0 : REROLL_COST;
-      const firstSlate = shopOfferingsForClass(playerState.classId, rng, extraCommons, discountFraction, rarityFloor);
+      const firstSlate = shopOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor);
       // "Once": the reroll strategy is only ever asked against the
       // first slate, never against a slate it already produced.
       const rerolled = playerState.data >= REROLL_COST && shopRerollStrategy(firstSlate, playerState);
-      const offerings = rerolled ? shopOfferingsForClass(playerState.classId, rng, extraCommons, discountFraction, rarityFloor) : firstSlate;
+      const offerings = rerolled
+        ? shopOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
+        : firstSlate;
       const rerollCost = rerolled ? rerollCostThisVisit : 0;
 
       // The Mod slate (session 30: "two independent slates in one Shop
       // visit... both spending from the same Data pool") -- its own
       // separately-generated, separately-rerollable draw. Insider Tip's
       // rarityFloor/Loyalty Token's freeReroll apply here too -- a
-      // Burner coupon is Shop-wide, same as Vendor Discount/Bulk Buyer.
-      const firstModSlate = modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, discountFraction, rarityFloor);
+      // Burner coupon is Shop-wide, same as Vendor Discount/Bulk Buyer/
+      // Scrap Merchant (session 44).
+      const firstModSlate = modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, extraUncommons, discountFraction, rarityFloor);
       const modRerolled = playerState.data >= REROLL_COST && modShopRerollStrategy(firstModSlate, playerState);
       const modOfferings = modRerolled
-        ? modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, discountFraction, rarityFloor)
+        ? modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
         : firstModSlate;
       const modRerollCost = modRerolled ? rerollCostThisVisit : 0;
 
@@ -579,10 +582,10 @@ export function resolveEncounter(
       // same shape/reroll treatment as the Mod slate above. classId is
       // accepted for call-site symmetry only (burnerOfferingsForClass is
       // archetype-agnostic, see shop.ts's own header).
-      const firstBurnerSlate = burnerOfferingsForClass(playerState.classId, rng, extraCommons, discountFraction, rarityFloor);
+      const firstBurnerSlate = burnerOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor);
       const burnerSlateRerolled = playerState.data >= REROLL_COST && burnerShopRerollStrategy(firstBurnerSlate, playerState);
       const burnerOfferingsSlate = burnerSlateRerolled
-        ? burnerOfferingsForClass(playerState.classId, rng, extraCommons, discountFraction, rarityFloor)
+        ? burnerOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
         : firstBurnerSlate;
       const burnerRerollCost = burnerSlateRerolled ? rerollCostThisVisit : 0;
 

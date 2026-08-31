@@ -27,6 +27,7 @@ import {
   applyModGaugeCross50Passives,
   applyModOnCombatStartPassives,
   accumulatorThresholdMultiplier,
+  occurrenceThresholdReduction,
   applyFootholdBonus,
   applyThrottled,
   clearHandKnowledge,
@@ -202,6 +203,7 @@ function applyOccurrenceToState(combatState: CombatState, occurrence: ScoringOcc
         occurrence,
         side as PlayerIndex,
         accumulatorThresholdMultiplier(combatState, side as PlayerIndex),
+        occurrenceThresholdReduction(combatState, side as PlayerIndex),
       ),
     })),
   })) as [CombatSideState, CombatSideState];

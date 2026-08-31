@@ -6,7 +6,7 @@ import type { ClassId } from './classes';
 import { CLASS_DEFINITIONS } from './classes';
 import type { EnemyPassiveId } from './enemies';
 import type { ModId } from './mod-types';
-import { reactiveModSubroutines, MOD_SMALL, MOD_MEDIUM, OVERCLOCKED_ACCUMULATOR_REDUCTION, TAGGED_FIRMWARE_TAG } from './mods';
+import { reactiveModSubroutines, MOD_SMALL, MOD_MEDIUM, OVERCLOCKED_ACCUMULATOR_REDUCTION, THRESHOLD_EXPLOIT_REDUCTION, TAGGED_FIRMWARE_TAG } from './mods';
 import type { BurnerId } from './burner-types';
 import { easeTriggerCondition, improvedPayloadMagnitude, decayedPayloadMagnitude } from './merge';
 import {
@@ -486,7 +486,7 @@ const WARD_COUNTER_RATIO_KEY = 'ward-counter:ratio';
  * state-changing step, since a crossing can come from any payload kind
  * or tick, not just one. */
 export function applyFootholdBonus(combatState: CombatState): CombatState {
-  if (combatState.classId !== 'breacher' || combatState.passiveTriggered) return combatState;
+  if (!hasMod(combatState, 'foothold') || combatState.passiveTriggered) return combatState;
   const playerGauge = combatState.sides[0].winGauge;
   if (playerGauge.progress < playerGauge.threshold / 2) return combatState;
   const bonus = playerGauge.threshold * FOOTHOLD_BONUS_FRACTION;
@@ -515,7 +515,7 @@ export function applyFootholdBonus(combatState: CombatState): CombatState {
  * still applies in that case, same "has nothing to boost against some
  * shapes" behavior the original had. */
 function applyPrimedPassive(combatState: CombatState, firedArchetype: Archetype, caster: PlayerIndex): CombatState {
-  if (firedArchetype !== 'root' || caster !== 0 || combatState.classId !== 'operator') {
+  if (firedArchetype !== 'root' || caster !== 0 || !hasMod(combatState, 'primed')) {
     return combatState;
   }
   const sideState = combatState.sides[0];
@@ -1021,6 +1021,8 @@ export function applyEnemyGaugeCross50Passives(combatState: CombatState): Combat
 // ---------------------------------------------------------------------
 
 const MOD_EARLY_MOMENTUM_AMOUNT = MOD_SMALL; // TBD/playtesting
+const MOD_FIRST_CONTACT_AMOUNT = MOD_SMALL; // TBD/playtesting -- session 44
+const REDLINE_TICK_CREDIT = MOD_SMALL; // TBD/playtesting -- session 44
 
 /** Overclocked Accumulator's onTriggerEvaluate hook (the 12th hook,
  * session 32) -- the effective threshold multiplier fed into
@@ -1033,24 +1035,57 @@ export function accumulatorThresholdMultiplier(combatState: CombatState, side: P
   return side === 0 && hasMod(combatState, 'overclocked-accumulator') ? 1 - OVERCLOCKED_ACCUMULATOR_REDUCTION : 1;
 }
 
-/** Warm Boot's onCombatStart hook -- called once per fight from
- * combat.ts's playCombat, right after createCombatState, before the
- * first hand. */
-export function applyModOnCombatStartPassives(combatState: CombatState): CombatState {
-  if (!hasMod(combatState, 'warm-boot')) return combatState;
-  const sideState = combatState.sides[0];
-  return { ...combatState, sides: replaceSide(combatState.sides, 0, { ...sideState, wardShield: sideState.wardShield + MOD_SMALL }) };
+/** Threshold Exploit's onTriggerEvaluate hook (session 44) -- Occurrence-
+ * Threshold's sibling to accumulatorThresholdMultiplier above, for
+ * Exploit's own primary trigger family rather than Malware's. Occurrence
+ * bankTarget is a small integer count, not a raw magnitude, so this
+ * reduces the target directly (floored at 1, a subroutine can never need
+ * *zero* banked occurrences) rather than reusing Accumulator's
+ * multiply-a-threshold shape verbatim -- triggers.ts's updateSubroutineState
+ * applies it. */
+export function occurrenceThresholdReduction(combatState: CombatState, side: PlayerIndex): number {
+  return side === 0 && hasMod(combatState, 'threshold-exploit') ? THRESHOLD_EXPLOIT_REDUCTION : 0;
 }
 
-/** Early Momentum's onGaugeCross50 hook -- called from combat.ts's
- * step() alongside applyEnemyGaugeCross50Passives/applyFootholdBonus. A
- * push only (session 32: "small one-time push"), not Foothold's
- * push+pull shape. */
+/** Warm Boot/Cold Boot's onCombatStart hook -- called once per fight from
+ * combat.ts's playCombat, right after createCombatState, before the
+ * first hand. Cold Boot (session 44) is Warm Boot's offense twin -- a
+ * small direct credit to the player's own gauge instead of a Ward. */
+export function applyModOnCombatStartPassives(combatState: CombatState): CombatState {
+  let state = combatState;
+  if (hasMod(state, 'warm-boot')) {
+    const sideState = state.sides[0];
+    state = { ...state, sides: replaceSide(state.sides, 0, { ...sideState, wardShield: sideState.wardShield + MOD_SMALL }) };
+  }
+  if (hasMod(state, 'cold-boot')) {
+    state = creditWinGauge(state, 0, MOD_SMALL);
+  }
+  return state;
+}
+
+/** Early Momentum/First Contact's onGaugeCross50 hook -- called from
+ * combat.ts's step() alongside applyEnemyGaugeCross50Passives/
+ * applyFootholdBonus. Early Momentum is a push only (session 32: "small
+ * one-time push"), not Foothold's push+pull shape. First Contact
+ * (session 44) is the defensive counterpart: watches the *enemy's* own
+ * gauge crossing halfway instead of the player's, and pulls rather than
+ * pushes -- its own independent one-shot flag, since it can trigger in
+ * the same fight as Early Momentum off a different gauge crossing. */
 export function applyModGaugeCross50Passives(combatState: CombatState): CombatState {
-  if (!hasMod(combatState, 'early-momentum') || passiveStat(combatState, 0, 'early-momentum:fired') > 0) return combatState;
-  const gauge = combatState.sides[0].winGauge;
-  if (gauge.progress < gauge.threshold * EP_GAUGE_CROSS_FRACTION) return combatState;
-  return creditWinGauge(setPassiveStat(combatState, 0, 'early-momentum:fired', 1), 0, MOD_EARLY_MOMENTUM_AMOUNT);
+  let state = combatState;
+  if (hasMod(state, 'early-momentum') && passiveStat(state, 0, 'early-momentum:fired') === 0) {
+    const gauge = state.sides[0].winGauge;
+    if (gauge.progress >= gauge.threshold * EP_GAUGE_CROSS_FRACTION) {
+      state = creditWinGauge(setPassiveStat(state, 0, 'early-momentum:fired', 1), 0, MOD_EARLY_MOMENTUM_AMOUNT);
+    }
+  }
+  if (hasMod(state, 'first-contact') && passiveStat(state, 0, 'first-contact:fired') === 0) {
+    const enemyGauge = state.sides[1].winGauge;
+    if (enemyGauge.progress >= enemyGauge.threshold * EP_GAUGE_CROSS_FRACTION) {
+      state = reduceWinGauge(setPassiveStat(state, 0, 'first-contact:fired', 1), 1, MOD_FIRST_CONTACT_AMOUNT);
+    }
+  }
+  return state;
 }
 
 /** Tagged Firmware/Malware Amplifier's onFire hook -- called from
@@ -1059,7 +1094,10 @@ export function applyModGaugeCross50Passives(combatState: CombatState): CombatSt
  * have the full SubroutineDefinition on hand (every real fire path);
  * resolvePendingSabotage's wrapped-effect replay doesn't carry one, so
  * Tagged Firmware (which needs `.tags`) simply can't fire from a
- * sabotage replay -- Malware Amplifier (archetype-only) still can. */
+ * sabotage replay -- Malware Amplifier (archetype-only) still can.
+ * Exploit/Encryption/Root Amplifier (session 44) are Malware Amplifier's
+ * implied siblings (session 32's own content table flagged them as
+ * undrafted), same shape, one per archetype. */
 function applyModOnFirePassives(combatState: CombatState, archetype: Archetype, caster: PlayerIndex, firingDefinition?: SubroutineDefinition): CombatState {
   if (caster !== 0) return combatState;
   let state = combatState;
@@ -1069,27 +1107,48 @@ function applyModOnFirePassives(combatState: CombatState, archetype: Archetype, 
   if (hasMod(state, 'malware-amplifier') && archetype === 'malware') {
     state = creditWinGauge(state, 0, MOD_MEDIUM);
   }
+  if (hasMod(state, 'exploit-amplifier') && archetype === 'exploit') {
+    state = creditWinGauge(state, 0, MOD_MEDIUM);
+  }
+  if (hasMod(state, 'encryption-amplifier') && archetype === 'encryption') {
+    state = creditWinGauge(state, 0, MOD_MEDIUM);
+  }
+  if (hasMod(state, 'root-amplifier') && archetype === 'root') {
+    state = creditWinGauge(state, 0, MOD_MEDIUM);
+  }
   return state;
 }
 
-/** Static Shield's onIncomingDirectBurst hook -- called from
- * resolvePayloadCore's 'directBurst' case, checked before shield
- * absorption (same as Stubborn Default), but uncapped -- mitigates
- * every incoming hit, not just the first. */
+/** Static Shield/Surge Protector's onIncomingDirectBurst hook -- called
+ * from resolvePayloadCore's 'directBurst' case, checked before shield
+ * absorption (same as Stubborn Default). Static Shield is small but
+ * unconditional, mitigating every incoming hit. Surge Protector (session
+ * 44) is bigger but conditional on *timing* rather than a resource --
+ * only the first incoming direct burst each fight (CombatState has no
+ * Heat field at all; Heat is a between-fights resource tracked in
+ * RunPlayerState, so a Heat-conditional check doesn't belong at this
+ * layer) -- both can apply to the same hit, Static Shield first since
+ * it's the more common effect. */
 function applyModIncomingDirectBurstPassives(combatState: CombatState, target: PlayerIndex, amount: number): { combatState: CombatState; amount: number } {
-  if (target !== 0 || !hasMod(combatState, 'static-shield')) return { combatState, amount };
-  return { combatState, amount: Math.max(0, amount - MOD_SMALL) };
+  if (target !== 0) return { combatState, amount };
+  let state = combatState;
+  let remaining = amount;
+  if (hasMod(state, 'static-shield')) remaining = Math.max(0, remaining - MOD_SMALL);
+  if (hasMod(state, 'surge-protector') && passiveStat(state, 0, 'surge-protector:used') === 0) {
+    remaining = Math.max(0, remaining - MOD_MEDIUM);
+    state = setPassiveStat(state, 0, 'surge-protector:used', 1);
+  }
+  return { combatState: state, amount: remaining };
 }
 
 /** Dispatches every registered onTick passive -- Mods' sibling to
  * applyEnemyOnTickPassives, called from the same applyTickPush site.
- * No current Mod content hooks plain onTick (only onTickExpiring, via
- * Redundant Ticks/Failsafe Cascade below) -- wired in now regardless so
- * the hook point genuinely exists for future content, same "deliberately
- * a starting catalog, not a closed one" treatment session 31 gave the
- * whole catalog. */
-function applyModOnTickPassives(combatState: CombatState, _tick: ActiveTick, _listKey: 'dots' | 'hots'): CombatState {
-  return combatState;
+ * Redline (session 44) is the first Mod content to hook plain `onTick`
+ * (distinct from onTickExpiring, below) -- session 31 wired the hook in
+ * ahead of any real content ever using it. */
+function applyModOnTickPassives(combatState: CombatState, tick: ActiveTick, _listKey: 'dots' | 'hots'): CombatState {
+  if (tick.casterSide !== 0 || !hasMod(combatState, 'redline')) return combatState;
+  return creditWinGauge(combatState, 0, REDLINE_TICK_CREDIT);
 }
 
 /** Redundant Ticks/Failsafe Cascade's onTickExpiring hook -- called from

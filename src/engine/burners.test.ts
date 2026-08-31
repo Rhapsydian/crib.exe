@@ -222,7 +222,7 @@ describe('Shop-context activation (coupon) -- ShopBurnerStrategy', () => {
   });
 
   it('Insider Tip forces the shop wildcard slot to rare', () => {
-    const withFloor = shopOfferingsForClass('breacher', createRng(2), 0, 0, 'rare');
+    const withFloor = shopOfferingsForClass('breacher', createRng(2), 0, 0, 0, 'rare');
     const wildcard = withFloor[withFloor.length - 1];
     expect(wildcard.cost).toBeGreaterThan(0);
 

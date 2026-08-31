@@ -8,9 +8,10 @@ import type { Rarity } from './rewards';
  * split, no ordering, no cap (DESIGN.md's Mods section, "Ownership").
  *
  * One id per Mod -- the 6 class-exclusive starting passives (session 11,
- * migrated onto this infrastructure by checkpoint D) plus the 17
- * validated Mods (session 32's content-validation table, authored for
- * real by checkpoint H).
+ * migrated onto this infrastructure by checkpoint D), the 17 validated
+ * Mods (session 32's content-validation table, authored for real by
+ * checkpoint H), and 17 more from the Mod Pool Expansion (session 44),
+ * doubling the general pool to 34.
  */
 export type ModId =
   // Class-exclusive starting passives (checkpoint D)
@@ -39,7 +40,27 @@ export type ModId =
   | 'auxiliary-process'
   | 'rootkit-persistence'
   | 'failsafe-cascade'
-  | 'black-budget';
+  | 'black-budget'
+  // Common (Mod Pool Expansion, session 44, +7)
+  | 'cold-boot'
+  | 'quiet-hours'
+  | 'surge-protector'
+  | 'first-contact'
+  | 'petty-theft'
+  | 'boot-sector'
+  | 'init-script'
+  // Uncommon (Mod Pool Expansion, session 44, +6)
+  | 'exploit-amplifier'
+  | 'encryption-amplifier'
+  | 'root-amplifier'
+  | 'fast-learner'
+  | 'threshold-exploit'
+  | 'scrap-merchant'
+  // Rare (Mod Pool Expansion, session 44, +4)
+  | 'redline'
+  | 'heat-sink'
+  | 'backdoor-access'
+  | 'session-hijack-relay';
 
 /**
  * Two engine mechanisms, split by effect shape (session 30) -- not a
