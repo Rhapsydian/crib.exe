@@ -768,7 +768,7 @@ export const EXPLOIT_RARES: SubroutineDefinition[] = [
 ];
 
 // ---------------------------------------------------------------------
-// Malware archetype pool (15) — session 21+.
+// Malware archetype pool (30, session 21+ / session 41's +15).
 // ---------------------------------------------------------------------
 
 export const MALWARE_COMMONS: SubroutineDefinition[] = [
@@ -828,6 +828,66 @@ export const MALWARE_COMMONS: SubroutineDefinition[] = [
     payload: { kind: 'dot', amountPerTick: COMMON.tick, cadence: 'castersTurnPulse', duration: COMMON.duration },
     tags: ['daemon'],
   },
+  // --- Session 41 pool expansion (+7) ---
+  {
+    id: 'cache-poisoning',
+    name: 'Cache Poisoning',
+    archetype: 'malware',
+    // Threshold held at 4, above COMMON.bankTarget (2) -- Fifteen is
+    // common enough that the default bank would fire almost every hand,
+    // out of step with a debuff's own DESIGN.md-intended pacing.
+    trigger: { kind: 'occurrence', category: 'fifteen', variation: 'threshold', bankTarget: 4 },
+    payload: { kind: 'debuff', debuffId: 'corrupted', magnitude: COMMON.debuffMag, duration: COMMON.debuffDur },
+    tags: ['trap'],
+  },
+  {
+    id: 'dead-mans-switch',
+    name: "Dead Man's Switch",
+    archetype: 'malware',
+    trigger: { kind: 'occurrence', category: 'hisNobs', variation: 'instant' },
+    payload: { kind: 'debuff', debuffId: 'choked', magnitude: COMMON.debuffMag, duration: COMMON.debuffDur },
+    tags: ['direct'],
+  },
+  {
+    id: 'rootkit',
+    name: 'Rootkit',
+    archetype: 'malware',
+    trigger: { kind: 'occurrence', category: 'thirtyOne', variation: 'instant' },
+    payload: { kind: 'dot', amountPerTick: COMMON.tick, cadence: 'castersTurnPulse', duration: COMMON.duration },
+    tags: ['daemon'],
+  },
+  {
+    id: 'backdoor-shell',
+    name: 'Backdoor Shell',
+    archetype: 'malware',
+    trigger: { kind: 'occurrence', category: 'go', variation: 'instant' },
+    payload: { kind: 'debuff', debuffId: 'throttled', magnitude: COMMON.debuffMag, duration: COMMON.debuffDur },
+    tags: ['direct'],
+  },
+  {
+    id: 'cryptojacker',
+    name: 'Cryptojacker',
+    archetype: 'malware',
+    trigger: { kind: 'accumulator', metric: 'suitTally', suit: 1, threshold: COMMON.threshold },
+    payload: { kind: 'dot', amountPerTick: COMMON.tick, cadence: 'castersTurnPulse', duration: COMMON.duration },
+    tags: ['daemon'],
+  },
+  {
+    id: 'drive-by-download',
+    name: 'Drive-By Download',
+    archetype: 'malware',
+    trigger: { kind: 'occurrence', category: 'flush', variation: 'instant' },
+    payload: { kind: 'dot', amountPerTick: COMMON.tick, cadence: 'globalPulse', duration: COMMON.duration, pointsPerTick: COMMON.pointsPerTick },
+    tags: ['daemon'],
+  },
+  {
+    id: 'sleeper-agent',
+    name: 'Sleeper Agent',
+    archetype: 'malware',
+    trigger: { kind: 'selfState', condition: 'isDealer' },
+    payload: { kind: 'dot', amountPerTick: COMMON.tick, cadence: 'castersTurnPulse', duration: COMMON.duration },
+    tags: ['daemon'],
+  },
 ];
 
 export const MALWARE_UNCOMMONS: SubroutineDefinition[] = [
@@ -871,6 +931,53 @@ export const MALWARE_UNCOMMONS: SubroutineDefinition[] = [
     payload: { kind: 'dot', amountPerTick: UNCOMMON.tick, cadence: 'globalPulse', duration: UNCOMMON.duration, pointsPerTick: UNCOMMON.pointsPerTick },
     tags: ['daemon'],
   },
+  // --- Session 41 pool expansion (+5) ---
+  {
+    id: 'zombie-network',
+    name: 'Zombie Network',
+    archetype: 'malware',
+    // Threshold held at 2, below UNCOMMON.bankTarget (3) -- spec's own
+    // explicit "(2)" call.
+    trigger: { kind: 'occurrence', category: 'pair', variation: 'threshold', bankTarget: 2 },
+    payload: { kind: 'debuff', debuffId: 'corrupted', magnitude: UNCOMMON.debuffMag, duration: UNCOMMON.debuffDur },
+    tags: ['trap'],
+  },
+  {
+    id: 'supply-chain-malware',
+    name: 'Supply Chain Malware',
+    archetype: 'malware',
+    trigger: { kind: 'occurrence', category: 'run', variation: 'instant' },
+    payload: { kind: 'dot', amountPerTick: UNCOMMON.tick, cadence: 'globalPulse', duration: UNCOMMON.duration, pointsPerTick: UNCOMMON.pointsPerTick },
+    tags: ['daemon'],
+  },
+  {
+    id: 'data-exfiltration',
+    name: 'Data Exfiltration',
+    archetype: 'malware',
+    // Grab-and-go framing: the enemy's own containment running high means
+    // they're close to breaching, the moment worth stealing data before
+    // it's over.
+    trigger: { kind: 'enemyState', condition: 'breachContainmentAbove', value: BREACH_CONTAINMENT_THRESHOLD.high },
+    payload: { kind: 'debuff', debuffId: 'choked', magnitude: UNCOMMON.debuffMag, duration: UNCOMMON.debuffDur },
+    tags: ['direct'],
+    reactive: true,
+  },
+  {
+    id: 'fileless-malware',
+    name: 'Fileless Malware',
+    archetype: 'malware',
+    trigger: { kind: 'chained', afterTag: 'daemon' },
+    payload: { kind: 'dot', amountPerTick: UNCOMMON.tick, cadence: 'castersTurnPulse', duration: UNCOMMON.duration },
+    tags: ['daemon', 'worm'],
+  },
+  {
+    id: 'insider-threat',
+    name: 'Insider Threat',
+    archetype: 'malware',
+    trigger: { kind: 'accumulator', metric: 'suitTally', suit: 2, threshold: UNCOMMON.threshold },
+    payload: { kind: 'debuff', debuffId: 'throttled', magnitude: UNCOMMON.debuffMag, duration: UNCOMMON.debuffDur },
+    tags: ['daemon'],
+  },
 ];
 
 export const MALWARE_RARES: SubroutineDefinition[] = [
@@ -899,6 +1006,39 @@ export const MALWARE_RARES: SubroutineDefinition[] = [
     payload: { kind: 'dot', amountPerTick: RARE.tick, cadence: 'globalPulse', duration: RARE.duration, pointsPerTick: RARE.pointsPerTick },
     tags: ['daemon'],
     reactive: true,
+  },
+  // --- Session 41 pool expansion (+3) ---
+  {
+    id: 'doomsday-clock',
+    name: 'Doomsday Clock',
+    archetype: 'malware',
+    // The only His Heels piece in the whole 57-piece pass (session 41's
+    // spec): real frequency data (scripts/occurrence-frequency.ts) puts
+    // His Heels at 0.076/hand, the rarest category in the game -- Instant
+    // variation only, rare tier only, exactly this one instance, or a
+    // Threshold/Scaling piece here would be functionally dead content.
+    trigger: { kind: 'occurrence', category: 'hisHeels', variation: 'instant' },
+    payload: { kind: 'dot', amountPerTick: RARE.tick, cadence: 'globalPulse', duration: RARE.duration, pointsPerTick: RARE.pointsPerTick },
+    tags: ['daemon'],
+  },
+  {
+    id: 'cascading-failure',
+    name: 'Cascading Failure',
+    archetype: 'malware',
+    trigger: { kind: 'chained', afterArchetype: 'malware' },
+    payload: { kind: 'dot', amountPerTick: RARE.tick, cadence: 'globalPulse', duration: RARE.duration, pointsPerTick: RARE.pointsPerTick },
+    tags: ['worm', 'daemon'],
+  },
+  {
+    id: 'digital-plague',
+    name: 'Digital Plague',
+    archetype: 'malware',
+    trigger: { kind: 'occurrence', category: 'pair', variation: 'scaling', cap: RARE.cap },
+    payload: { kind: 'debuff', debuffId: 'corrupted', magnitude: RARE.debuffMag, duration: RARE.debuffDur },
+    // Trap, not Worm -- session 41's own correction to its first-pass
+    // draft (a scaling-bank occurrence piece with no chain/propagation of
+    // its own is Trap's shape, not Worm's).
+    tags: ['trap'],
   },
 ];
 

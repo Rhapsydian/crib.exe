@@ -39,13 +39,14 @@ describe('subroutine content — Root mechanical redesign (session 24 checkpoint
 });
 
 describe('subroutine content — structural integrity', () => {
-  it('has exactly 114 subroutines: 18 starting-loadout + 87 archetype pool + 9 neutral (in progress, session 41 checkpoint C)', () => {
-    // 87, not 72 (session 41 checkpoint C): Exploit grew +15 (14 commons/
-    // 10 uncommons/6 rares). Malware/Encryption/Root/Neutral land in
-    // checkpoints D-G; these numbers keep moving until checkpoint H.
+  it('has exactly 129 subroutines: 18 starting-loadout + 102 archetype pool + 9 neutral (in progress, session 41 checkpoint D)', () => {
+    // 102, not 87 (session 41 checkpoint D): Malware grew +15 (14
+    // commons/10 uncommons/6 rares) on top of checkpoint C's Exploit +15.
+    // Encryption/Root/Neutral land in checkpoints E-G; these numbers keep
+    // moving until checkpoint H.
     expect(ALL_STARTING_LOADOUT_SUBROUTINES).toHaveLength(18);
-    expect(ALL_POOL_SUBROUTINES).toHaveLength(96);
-    expect(ALL_SUBROUTINES).toHaveLength(114);
+    expect(ALL_POOL_SUBROUTINES).toHaveLength(111);
+    expect(ALL_SUBROUTINES).toHaveLength(129);
   });
 
   it('every class starting loadout has exactly 3 pieces', () => {
@@ -60,10 +61,10 @@ describe('subroutine content — structural integrity', () => {
     expect(ARCHETYPE_POOLS.exploit.rares).toHaveLength(6);
   });
 
-  it('Malware still keeps the original 7 commons, 5 uncommons, 3 rares (checkpoint D not yet landed)', () => {
-    expect(ARCHETYPE_POOLS.malware.commons).toHaveLength(7);
-    expect(ARCHETYPE_POOLS.malware.uncommons).toHaveLength(5);
-    expect(ARCHETYPE_POOLS.malware.rares).toHaveLength(3);
+  it('Malware grew to 14 commons/10 uncommons/6 rares (session 41 checkpoint D: +7/+5/+3)', () => {
+    expect(ARCHETYPE_POOLS.malware.commons).toHaveLength(14);
+    expect(ARCHETYPE_POOLS.malware.uncommons).toHaveLength(10);
+    expect(ARCHETYPE_POOLS.malware.rares).toHaveLength(6);
   });
 
   it('Encryption/Root each grew by 6 (2 commons/1 uncommon/3 rares and 1 common/2 uncommons/3 rares respectively) -- the session 40 continued content-validation sample', () => {
