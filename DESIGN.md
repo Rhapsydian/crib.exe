@@ -830,12 +830,15 @@ shared toolbox everyone can draw from equally (session 7's originally-
 mentioned-but-never-built "universal pool" concept, now actually real).
 
 **Mechanism**: neutral pieces are built exclusively from trigger
-families that don't depend on suit-tally accumulation or the two
-suit-dependent occurrence categories (Flush, His Nobs) — Always/Cantrip,
-Self-state, and every *other* occurrence category (fifteen, pair, run,
-thirty-one, go, his heels) are already suit-independent in this engine
-(they score off rank/count, not suit), so the neutral catalog draws
-from those freely. Chained triggers are deliberately avoided for
+families that don't pin the piece to one specific suit — the actual line
+is suit-tally accumulation, whose trigger requires a fixed `suit:` index
+(0-3) chosen at authoring time, tying that piece to one archetype's own
+suit whether or not the caster's kit has any affinity for it. Every
+occurrence category, Flush and His Nobs included, is fine: scoring "a
+flush" or "his nobs" fires on any suit, referencing no specific suit
+index at all, same as fifteen/pair/run/thirty-one/go/his heels scoring
+off rank or count. So the neutral catalog draws freely from all 8
+occurrence categories, not 6. Chained triggers are deliberately avoided for
 neutral content specifically (a chain needs a *specific* prerequisite
 subroutine id present in the same kit, which a piece meant to drop into
 *any* kit can't assume).
@@ -871,9 +874,10 @@ become a legitimate path to victory instead of asking those archetypes
 to borrow Exploit's identity just to have any offense at all.
 
 **Session 41 grew this pool +9** (8 common / 6 uncommon / 4 rare total,
-part of the wider Player Pool Expansion below), keeping the same
-suit-independence rule this section establishes. One judgment call worth
-recording: Mirror Server (`chained: afterTag daemon`) is the first
+part of the wider Player Pool Expansion below), including Cache Hit
+(Flush) and Load Balancer (His Nobs) — both fine under the mechanism
+above, no specific suit referenced. One judgment call worth recording:
+Mirror Server (`chained: afterTag daemon`) is the first
 Neutral piece to use a Chained trigger, previously avoided here entirely
 because id-based chaining needs a *specific* prerequisite no universal
 piece can assume is present. Session 41's own `afterTag`/`afterArchetype`

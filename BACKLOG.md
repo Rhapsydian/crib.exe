@@ -2435,11 +2435,13 @@ Resolved by designing a **Neutral Archetype** -- full writeup in
 Meta-Progression). Summary: a genuine 5th `Archetype` value (not one of
 the 4 reused for flavor -- naturally exempt from every archetype-gated
 passive check, and correctly has no suit affiliation, since Cribbage
-only has 4 real suits). Built entirely from trigger families that don't
-depend on suit (Always/Cantrip, Self-state, every occurrence category
-except the two that are inherently suit-based -- Flush, His Nobs), so
-these pieces can drop into *any* kit, including a pure-Encryption/Root
-one, without borrowing another archetype's identity. A small, 9-piece
+only has 4 real suits). Built entirely from trigger families that don't pin the piece to one
+specific suit (Always/Cantrip, Self-state, every occurrence category --
+Flush and His Nobs score off *any* suit, referencing no specific suit
+index, so they're fine too; only suit-tally accumulation, whose trigger
+requires a fixed suit index, is actually excluded), so these pieces can
+drop into *any* kit, including a pure-Encryption/Root one, without
+borrowing another archetype's identity. A small, 9-piece
 catalog (4 common/3 uncommon/2 rare, far smaller than each real
 archetype's 7/5/3 on purpose) -- see `DESIGN.md` for the full table.
 The rare **Circuit Breaker** is the capstone: converts the caster's own
@@ -3746,10 +3748,10 @@ loadout.
 |---|---|---|---|---|
 | Ping | occurrence: pair, instant | directBurst | direct | common |
 | Status Check | selfState: isNonDealer | directBurst | direct | common |
-| Cache Hit | occurrence: run, instant (was flush -- corrected during authoring, suit-dependent, violates the Neutral archetype's own suit-independence rule) | directBurst | direct | common |
+| Cache Hit | occurrence: flush, instant | directBurst | direct | common |
 | Failover | enemyState: breachContainmentBelow | directBurst | direct | common |
 | Redundant Node | selfState: heatBelow | directBurst | direct | uncommon |
-| Load Balancer | occurrence: thirtyOne, instant (was hisNobs -- corrected during authoring, same suit-independence rule as Cache Hit) | directBurst | direct | uncommon |
+| Load Balancer | occurrence: hisNobs, instant | directBurst | direct | uncommon |
 | Mirror Server | chained: afterTag daemon | directBurst | worm | uncommon |
 | Failsafe Cluster | enemyState: hasDebuff (any) | directBurst | direct | rare |
 | Redundant Array | accumulator: points (rare threshold) | chainFinisherScaling | worm | rare |

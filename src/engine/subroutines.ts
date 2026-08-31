@@ -90,21 +90,20 @@ export const GAUGE_FILL_FRACTION = 0.5;
 // Neutral archetype (18: 9 session 28, +9 session 41) — session 28's `/decision-session`, DESIGN.md's
 // "Neutral Archetype". A genuine 5th Archetype value, not one of the 4
 // real ones reused for flavor — built entirely from trigger families
-// that don't depend on suit (Always, self-state, every occurrence
-// category except the two that are inherently suit-based: Flush, His
-// Nobs), so these pieces can drop into *any* kit, including a pure
-// Encryption/Root one, without borrowing another archetype's identity.
+// that don't pin the piece to one specific suit (Always, self-state,
+// every occurrence category -- Flush and His Nobs included, since firing
+// off "a flush happened"/"his nobs happened" doesn't reference any
+// particular suit index, unlike suitTally's own required `suit:` field),
+// so these pieces can drop into *any* kit, including a pure Encryption/
+// Root one, without borrowing another archetype's identity.
 // Deliberately small (8 common/6 uncommon/4 rare, session 41's own +4/
 // +3/+2 parity growth) next to each real archetype's 14/10/6 — this
 // exists to patch a structural gap (only Exploit's direct-damage kinds
 // and Malware's DoT ever credit a side's own win-gauge; every
 // Encryption/Root payload only denies or manipulates), not to become a
-// 5th full content pillar. The suit-independence rule above still
-// applies to the +9 -- Load Balancer/Cache Hit were corrected off
-// occurrence:hisNobs/flush before authoring (see their own comments
-// below); Mirror Server's afterTag chaining is a deliberate, reasoned
-// exception to the old "no chained triggers" line, not an oversight
-// (see its own comment). Defined here,
+// 5th full content pillar. Mirror Server's afterTag chaining is a
+// deliberate, reasoned exception to the old "no chained triggers" line,
+// not an oversight (see its own comment). Defined here,
 // ahead of the class starting loadouts below, so Ghost's own Cantrip
 // retrofit sits next to (but is NOT the same object as) NEUTRAL_COMMONS'
 // own Always-triggered common -- same precedent every real archetype
@@ -196,13 +195,7 @@ export const NEUTRAL_COMMONS: SubroutineDefinition[] = [
     id: 'cache-hit',
     name: 'Cache Hit',
     archetype: 'neutral',
-    // Session 41's own draft used occurrence:flush -- corrected before
-    // authoring: Flush is one of the two occurrence categories the
-    // Neutral archetype is specifically built to avoid (suit-dependent,
-    // see this file's own Neutral header comment and DESIGN.md's
-    // "Mechanism" paragraph), same reasoning as Load Balancer below.
-    // Run is suit-independent and unused elsewhere in this pool.
-    trigger: { kind: 'occurrence', category: 'run', variation: 'instant' },
+    trigger: { kind: 'occurrence', category: 'flush', variation: 'instant' },
     payload: { kind: 'directBurst', amount: COMMON.burst },
     tags: ['direct'],
   },
@@ -258,11 +251,7 @@ export const NEUTRAL_UNCOMMONS: SubroutineDefinition[] = [
     id: 'load-balancer',
     name: 'Load Balancer',
     archetype: 'neutral',
-    // Session 41's own draft used occurrence:hisNobs -- corrected before
-    // authoring, same Neutral suit-independence rule as Cache Hit above.
-    // Thirty-One is suit-independent; Uptime above already uses it at
-    // Threshold variation, this uses Instant, a real distinct identity.
-    trigger: { kind: 'occurrence', category: 'thirtyOne', variation: 'instant' },
+    trigger: { kind: 'occurrence', category: 'hisNobs', variation: 'instant' },
     payload: { kind: 'directBurst', amount: UNCOMMON.burst },
     tags: ['direct'],
   },
