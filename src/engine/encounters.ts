@@ -6,7 +6,7 @@ import { playCombat, type BurnerActivationStrategy } from './combat';
 import { discardSkillStrategy, pegSkillStrategy } from './ai';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
-import { heatFromLoss } from './heat';
+import { heatFromLoss, HEAT_MAX } from './heat';
 import { drawRewardOptions, drawUpgradedRewardOptions, rewardPoolForClass, rarityOf, type RewardTier, type Rarity } from './rewards';
 import { dataForTier } from './data';
 import { pickMergeTarget, preferMergeWhenAvailable, type MergeTargetStrategy, type SafehouseStrategy } from './merge';
@@ -50,7 +50,7 @@ import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersFor
 import type { BurnerId, BurnerDefinition } from './burner-types';
 import { BURNER_DEFINITIONS, shopModifiersForActivatedBurner, drawBurnerRewardOptions, generalBurnerPool } from './burners';
 import type { ClassId } from './classes';
-import type { EventDefinition, EventChoice, Grant } from './event-types';
+import type { EventDefinition, EventChoice, EventRiskTier, Grant } from './event-types';
 import { EVENT_ROSTER } from './events';
 
 /**
@@ -358,11 +358,81 @@ function resolveFight(
 /** Decides which of an Event's choices a script takes -- mirrors
  * ShopStrategy/AcquisitionStrategy's "legal-not-good scripted decision"
  * shape, but picks from a fixed list rather than an offered slate. */
-export type EventChoiceStrategy = (event: EventDefinition, playerState: RunPlayerState) => EventChoice;
+export type EventChoiceStrategy = (event: EventDefinition, playerState: RunPlayerState, heat: number) => EventChoice;
 
 /** Legal-not-good default: always takes the first listed choice, no
- * risk/reward judgment. */
+ * risk/reward judgment. Ignores `heat`, same as beelineToGatekeeper
+ * ignores TraversalStrategy's own -- a function with fewer declared
+ * params still satisfies the wider type, so this stays valid unchanged. */
 export const alwaysFirstEventChoice: EventChoiceStrategy = (event) => event.choices[0];
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint I) -- a real
+// risk-tolerance heuristic for Event choices.
+//
+// Deliberately its own heuristic rather than the item ladder used by
+// every other acquisition decision this session added: an Event choice
+// is a risk-tiered narrative option, not an item, so credit-gap /
+// archetype / rarity mean nothing here.
+//
+// Shaped as a factory rather than a constant, mirroring ai.ts's
+// discardSkillStrategy(skill) -- the established way this codebase makes
+// a strategy configurable. Config is explicit named parameters rather
+// than a single continuous "risk appetite" dial, for the same reason the
+// ladder beat numeric weights: a continuous scalar would need a
+// calibration target that doesn't exist.
+//
+// `heat` was added to EventChoiceStrategy for this checkpoint. The type
+// only ever received (event, playerState), so gambleSafetyMargin had
+// nothing to check -- resolveEncounter already had currentHeat in hand
+// and simply wasn't passing it. Exactly the precedent SafehouseStrategy
+// set when it gained its own heat param; every existing implementation
+// stays valid.
+// ---------------------------------------------------------------------
+
+export interface EventRiskConfig {
+  /** The riskiest tier this profile will ever take. */
+  maxRiskTier: EventRiskTier;
+  /** Heat ceiling, as a fraction of this run's own max Heat, above which
+   * a gamble-tier choice is refused however permissive maxRiskTier is.
+   * Reuses the Heat safety-reserve framing opportunisticSafehouseStrategy
+   * and opportunisticTraversal already share, so the profile has one
+   * notion of "safe enough to take a risk" rather than two. */
+  gambleSafetyMargin: number;
+}
+
+/** Higher index is riskier -- and, per DESIGN.md's Events section, gates
+ * a higher reward ceiling, which is what makes "take the riskiest
+ * allowed tier" the right default shape rather than a reckless one. */
+const RISK_TIER_ORDER: EventRiskTier[] = ['transparent', 'visibleOdds', 'gamble'];
+
+/** Picks the highest-reward-ceiling choice this profile's risk tolerance
+ * permits. Falls back to the first listed choice if an Event somehow
+ * offers nothing at or under the cap -- every shipped Event has at least
+ * one transparent choice, so this is defensive rather than expected. */
+export function synergyAwareEventChoice(config: EventRiskConfig): EventChoiceStrategy {
+  return (event, playerState, heat) => {
+    const maxIndex = RISK_TIER_ORDER.indexOf(config.maxRiskTier);
+    const heatCeiling = config.gambleSafetyMargin * (HEAT_MAX + playerState.maxHeatBonus);
+    const gambleAllowed = heat < heatCeiling;
+
+    const permitted = event.choices.filter((choice) => {
+      const tierIndex = RISK_TIER_ORDER.indexOf(choice.riskTier);
+      if (tierIndex > maxIndex) return false;
+      // A gamble can end a run outright (bonusFight, heatDelta), so the
+      // safety reserve overrides the tier cap rather than combining with
+      // it -- being *allowed* to gamble isn't the same as it being a
+      // sane moment to.
+      if (choice.riskTier === 'gamble' && !gambleAllowed) return false;
+      return true;
+    });
+    if (permitted.length === 0) return event.choices[0];
+
+    return permitted.reduce((best, choice) =>
+      RISK_TIER_ORDER.indexOf(choice.riskTier) > RISK_TIER_ORDER.indexOf(best.riskTier) ? choice : best,
+    );
+  };
+}
 
 /** Rolls one of a choice's weighted outcomes against `rng` -- a
  * `transparent` choice's single outcome (probability 1) always "rolls"
@@ -640,7 +710,7 @@ export function resolveEncounter(
       // apply here: an Event, like a regular/elite fight, is one-and-
       // done, never needing a stable identity across revisits).
       const eventDef = EVENT_ROSTER[rng.nextInt(EVENT_ROSTER.length)];
-      const choice = eventChoiceStrategy(eventDef, playerState);
+      const choice = eventChoiceStrategy(eventDef, playerState, currentHeat);
       const { effect } = rollWeightedOutcome(choice.outcomes, rng);
 
       const eventGrant: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition } = {};

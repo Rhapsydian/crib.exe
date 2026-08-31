@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import { createNode } from './map-types';
-import { resolveEncounter, alwaysFirstEventChoice, type EventChoiceStrategy } from './encounters';
+import { resolveEncounter, alwaysFirstEventChoice, synergyAwareEventChoice, type EventChoiceStrategy } from './encounters';
 import { createInitialPlayerState, playRun, type RunPlayerState } from './run';
 import { EVENT_ROSTER } from './events';
-import type { EventChoice } from './event-types';
+import type { EventChoice, EventDefinition } from './event-types';
+import { HEAT_MAX } from './heat';
 
 /**
  * Events verification (Phase 5 checkpoint J): the roster's own content
@@ -78,7 +79,7 @@ describe('EVENT_ROSTER content shape', () => {
 describe('EventChoiceStrategy', () => {
   it('alwaysFirstEventChoice (the default) always takes choices[0]', () => {
     for (const event of EVENT_ROSTER) {
-      expect(alwaysFirstEventChoice(event, playerWith({}))).toBe(event.choices[0]);
+      expect(alwaysFirstEventChoice(event, playerWith({}), 0)).toBe(event.choices[0]);
     }
   });
 
@@ -381,5 +382,112 @@ describe('Events smoke test -- a full run resolving Events with real choices', (
     const mapActivations = result.log.filter((e) => e.type === 'mapBurnerActivated');
     const shopActivations = result.log.filter((e) => e.type === 'encounter' && e.outcome.shopBurnerUsed !== null);
     expect(combatActivations.length + mapActivations.length + shopActivations.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint I) -- the
+// risk-tolerance Event heuristic.
+// ---------------------------------------------------------------------
+
+describe('synergyAwareEventChoice', () => {
+  /** A hand-built Event carrying one choice of each tier, listed
+   * riskiest-first so a strategy that merely takes choices[0] can't pass
+   * these by accident. */
+  const allTiers: EventDefinition = {
+    id: 'test-event',
+    name: 'Test Event',
+    choices: [
+      { id: 'gamble', label: 'gamble', riskTier: 'gamble', outcomes: [{ probability: 1, effect: {} }] },
+      { id: 'odds', label: 'odds', riskTier: 'visibleOdds', outcomes: [{ probability: 1, effect: {} }] },
+      { id: 'safe', label: 'safe', riskTier: 'transparent', outcomes: [{ probability: 1, effect: {} }] },
+    ],
+  };
+
+  it('takes the riskiest choice its cap permits', () => {
+    const strategy = synergyAwareEventChoice({ maxRiskTier: 'visibleOdds', gambleSafetyMargin: 0.5 });
+    expect(strategy(allTiers, playerWith({}), 0).id).toBe('odds');
+  });
+
+  it('takes a gamble when the cap allows it and Heat is low', () => {
+    const strategy = synergyAwareEventChoice({ maxRiskTier: 'gamble', gambleSafetyMargin: 0.5 });
+    expect(strategy(allTiers, playerWith({}), 0).id).toBe('gamble');
+  });
+
+  it('refuses a gamble once Heat is above the safety margin, even with the cap wide open', () => {
+    // The safety reserve overrides the tier cap: being allowed to gamble
+    // is not the same as it being a sane moment to.
+    const strategy = synergyAwareEventChoice({ maxRiskTier: 'gamble', gambleSafetyMargin: 0.5 });
+    expect(strategy(allTiers, playerWith({}), HEAT_MAX * 0.6).id).toBe('odds');
+  });
+
+  it('scales the safety margin with a raised max Heat (Backup Generator)', () => {
+    // 59 Heat is over half of 100 but under half of 120, so the same
+    // absolute Heat is unsafe at base max Heat and safe for a player
+    // carrying Backup Generator's +20. The ceiling itself is exclusive
+    // -- Heat exactly at the margin counts as unsafe, matching
+    // opportunisticSafehouseStrategy's own `>=` reading of "Heat high."
+    const strategy = synergyAwareEventChoice({ maxRiskTier: 'gamble', gambleSafetyMargin: 0.5 });
+    expect(strategy(allTiers, playerWith({}), 59).id).toBe('odds');
+    expect(strategy(allTiers, playerWith({ maxHeatBonus: 20 }), 59).id).toBe('gamble');
+    expect(strategy(allTiers, playerWith({ maxHeatBonus: 20 }), 60).id).toBe('odds');
+  });
+
+  it('never exceeds a transparent-only cap', () => {
+    const strategy = synergyAwareEventChoice({ maxRiskTier: 'transparent', gambleSafetyMargin: 1 });
+    expect(strategy(allTiers, playerWith({}), 0).id).toBe('safe');
+  });
+
+  it('handles every shipped Event without exceeding its cap', () => {
+    const strategy = synergyAwareEventChoice({ maxRiskTier: 'visibleOdds', gambleSafetyMargin: 0.5 });
+    for (const event of EVENT_ROSTER) {
+      const picked = strategy(event, playerWith({}), 0);
+      expect(event.choices).toContain(picked);
+      expect(picked.riskTier).not.toBe('gamble');
+    }
+  });
+
+  it('falls back to the first choice when nothing is permitted', () => {
+    // Defensive -- every shipped Event has a transparent choice, so this
+    // shape can't arise from real content.
+    const gambleOnly: EventDefinition = { ...allTiers, choices: [allTiers.choices[0]] };
+    const strategy = synergyAwareEventChoice({ maxRiskTier: 'gamble', gambleSafetyMargin: 0.5 });
+    expect(strategy(gambleOnly, playerWith({}), HEAT_MAX).id).toBe('gamble');
+  });
+});
+
+describe('eventChoiceStrategy heat threading (checkpoint I)', () => {
+  it('resolveEncounter passes the run\'s current Heat through to the strategy', () => {
+    // The signature widening this checkpoint added: EventChoiceStrategy
+    // only ever received (event, playerState), so gambleSafetyMargin had
+    // nothing to check even though resolveEncounter already had the
+    // value in hand.
+    const seen: number[] = [];
+    const spy: EventChoiceStrategy = (event, _playerState, heat) => {
+      seen.push(heat);
+      return event.choices[0];
+    };
+    resolveEncounter(
+      createNode('e', 'event'),
+      createRng(1),
+      playerWith({}),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      1,
+      0,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      spy,
+      undefined,
+      42, // currentHeat
+    );
+    expect(seen).toEqual([42]);
   });
 });
