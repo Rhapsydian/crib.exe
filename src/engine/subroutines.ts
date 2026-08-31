@@ -1043,7 +1043,7 @@ export const MALWARE_RARES: SubroutineDefinition[] = [
 ];
 
 // ---------------------------------------------------------------------
-// Encryption archetype pool (15) — session 21+.
+// Encryption archetype pool (30: 15 session 21+, +6 session 40, +9 session 41).
 // ---------------------------------------------------------------------
 
 export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
@@ -1125,6 +1125,55 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     payload: { kind: 'wardBash', fraction: 0.25 },
     tags: ['piercing'],
   },
+  // --- Session 41 pool expansion (+5) ---
+  {
+    id: 'secure-boot',
+    name: 'Secure Boot',
+    archetype: 'encryption',
+    trigger: { kind: 'occurrence', category: 'thirtyOne', variation: 'instant' },
+    payload: { kind: 'instantCounterPush', amount: CAPPED.common },
+    tags: ['direct'],
+  },
+  {
+    id: 'rate-shaping',
+    name: 'Rate Shaping',
+    archetype: 'encryption',
+    trigger: { kind: 'occurrence', category: 'go', variation: 'instant' },
+    payload: { kind: 'ward', amount: CAPPED.common },
+    tags: ['firewall'],
+  },
+  {
+    id: 'key-rotation',
+    name: 'Key Rotation',
+    archetype: 'encryption',
+    trigger: { kind: 'occurrence', category: 'hisNobs', variation: 'instant' },
+    payload: { kind: 'cleanse' },
+    tags: ['firewall'],
+  },
+  {
+    id: 'fail2ban',
+    name: 'Fail2Ban',
+    archetype: 'encryption',
+    // hasDebuff: 'any' (session 41, added checkpoint C) -- fires off the
+    // enemy carrying any active debuff at all.
+    trigger: { kind: 'enemyState', condition: 'hasDebuff', debuffId: 'any' },
+    payload: { kind: 'instantCounterPush', amount: CAPPED.common },
+    tags: ['direct'],
+  },
+  {
+    id: 'heartbeat-monitor',
+    name: 'Heartbeat Monitor',
+    archetype: 'encryption',
+    // Renamed before authoring (session 41): the conversational draft's
+    // "Watchdog Timer" duplicated the existing Neutral rare of the same
+    // name.
+    // Threshold held at 4, below COMMON.threshold (6) -- a steady
+    // low-bar defensive tick, distinct from Patch's own points-threshold
+    // piece.
+    trigger: { kind: 'accumulator', metric: 'points', threshold: 4 },
+    payload: { kind: 'ward', amount: CAPPED.common },
+    tags: ['daemon', 'firewall'],
+  },
 ];
 
 export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
@@ -1191,6 +1240,53 @@ export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
     trigger: { kind: 'occurrence', category: 'run', variation: 'scaling', cap: UNCOMMON.cap },
     payload: { kind: 'drainingHot', amountPerTick: UNCOMMON.tick, cadence: 'castersTurnPulse', duration: UNCOMMON.duration, ratio: 0.15 },
     tags: ['daemon'],
+  },
+  // --- Session 41 pool expansion (+4) ---
+  {
+    id: 'circuit-isolation',
+    name: 'Circuit Isolation',
+    archetype: 'encryption',
+    // An early insurance-policy ward: arms while the enemy is still
+    // behind (same low threshold Port Forward reads offensively), so
+    // defense is already up well before it's actually needed. reactive:
+    // true for the same "don't refire every remaining turn" reason
+    // Honeypot/Air Gap need it (see Honeypot's own comment above).
+    trigger: { kind: 'enemyState', condition: 'breachContainmentBelow', value: BREACH_CONTAINMENT_THRESHOLD.low },
+    payload: { kind: 'ward', amount: CAPPED.uncommon },
+    tags: ['firewall'],
+    reactive: true,
+  },
+  {
+    id: 'session-timeout',
+    name: 'Session Timeout',
+    archetype: 'encryption',
+    // Threshold held at 2, below UNCOMMON.bankTarget (3) -- spec's own
+    // explicit "(2)" call.
+    trigger: { kind: 'occurrence', category: 'hisNobs', variation: 'threshold', bankTarget: 2 },
+    payload: { kind: 'wardCounter', amount: CAPPED.uncommon, ratio: 0.15 },
+    // Firewall + Trap (session 41's own correction to its first-pass
+    // draft): a counter-ward armed off a banked occurrence is both a
+    // defensive mechanism and delayed/conditional in the Trap sense.
+    tags: ['firewall', 'trap'],
+  },
+  {
+    id: 'air-gapped-vault',
+    name: 'Air-Gapped Vault',
+    archetype: 'encryption',
+    trigger: { kind: 'accumulator', metric: 'suitTally', suit: 2, threshold: UNCOMMON.threshold },
+    payload: { kind: 'hot', amountPerTick: UNCOMMON.tick, cadence: 'castersTurnPulse', duration: UNCOMMON.duration },
+    tags: ['daemon'],
+  },
+  {
+    id: 'isolation-chamber',
+    name: 'Isolation Chamber',
+    archetype: 'encryption',
+    trigger: { kind: 'chained', afterTag: 'firewall' },
+    payload: { kind: 'ward', amount: CAPPED.uncommon },
+    // Firewall + Worm (session 41's own correction to its first-pass
+    // draft): Worm for the chain/propagation itself, Firewall for what
+    // it actually does.
+    tags: ['firewall', 'worm'],
   },
 ];
 
