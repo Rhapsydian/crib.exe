@@ -1781,6 +1781,153 @@ rest of the pool. Full implementation-facing checkpoint spec in
 `BACKLOG.md`'s new "Burners + Events Implementation" write-up under
 Phase 5.
 
+### Gameplay Simulation Heuristics (session 45, `/decision-session`)
+
+Every script-driven run (`playRun()`, `scripts/sweep.ts`, `scripts/
+layer-funnel.ts`) has always resolved acquisition/Shop/Event/Burner
+decisions via deliberately "legal-not-good" defaults —
+`alwaysAcquireFirst`, `buyCheapestAffordable`, `alwaysFirstEventChoice`,
+and Burners going entirely unused (every activation point defaults to a
+`never*` no-op). This was flagged as a real gap back at session 34's
+Mods-sweep follow-up ("Not yet done: a synergy-aware acquisition/Shop
+strategy") and never picked up. It resurfaced this session while
+grounding the still-open "full class audit" (`BACKLOG.md`'s roadmap) in
+fresh sweep data — a floor-heuristic sweep can't tell a real structural
+class problem from an artifact of the AI never using half its own
+toolkit. Session 45 designs (not implements) a full "smart" heuristic
+layer across every decision point a scripted run makes.
+
+**No engine gap drives this** — every existing `*Strategy` type already
+receives the full `RunPlayerState` (classId, installedLoadout, bench,
+ownedModIds, material, carriedBurnerIds), so this is new strategy
+*content*, exactly the same shape as session 39's `opportunisticTraversal`/
+`opportunisticSafehouseStrategy` pair, not a type-system change.
+
+**Ladder, not weights.** The first real design fork: a numeric weighted
+score (archetype match worth N points, rarity worth M, etc.) needs a real
+calibration target to set N/M against, the way `ai.ts`'s skill dial
+calibrates against exact Cribbage EV (`cribbage-skill-matrix.ts`) — there
+is no equivalent ground truth for "is a rare off-archetype piece better
+than a common on-archetype one." Chose a **lexicographic priority ladder**
+instead — an explicit ordered tie-break, not a tuned score — matching how
+`opportunisticTraversal` itself already resolves its own priority (fights,
+then Heat/material, then Data, then Event) without any numeric weights.
+Nothing here needs "tuning" in the calibration sense; correctness is
+checked with hand-built unit-test scenarios, and a before/after sweep
+validates that it actually helps, rather than searching for better
+numbers.
+
+**The ladder is genuinely different depth per item type**, since the
+underlying types aren't uniform:
+- **Subroutine** (reward + Shop): `archetype: Archetype` field, rarity is
+  a separate `rarityOf(id)` lookup (`rewards.ts`), and the existing
+  `CREDIT_CAPABLE_PAYLOAD_KINDS` classification (checks `payload.kind`,
+  today a private const duplicated inside `enemies.test.ts`) makes
+  credit-gap detection cheap. Full 3-step ladder: **(1) prefer an option
+  that fills a credit-gap** — the class's own installed loadout has no
+  credit-capable piece in the archetype the option belongs to — **(2)
+  prefer on-archetype over universal/neutral over off-archetype**, **(3)
+  break ties by rarity**.
+- **Mod** (reward + Shop): `rarity` is a direct field; `archetype` is
+  *optional* (many Mods are archetype-agnostic by design). No existing
+  classification for "does this Mod credit the gauge" — building one
+  means auditing every Mod's hook body, a real side-project on its own
+  scale. 2-step ladder: **archetype match → rarity**. Credit-gap
+  classification for Mods explicitly deferred, not built this session.
+- **Burner** (reward + Shop): `rarity` only — no archetype field exists
+  on `BurnerDefinition` at all, and Burners are one-shot consumables, not
+  permanent gauge-touching pieces, so credit-gap doesn't apply either.
+  1-step ladder: **rarity only**.
+
+**Event choice gets its own heuristic, not the item ladder.** Event
+choices are risk-tiered narrative options (`transparent`/`visibleOdds`/
+`gamble`), not items with archetype/rarity — credit-gap and archetype
+match don't mean anything here. Designed as a **configurable factory
+function**, `synergyAwareEventChoice(config): EventChoiceStrategy`,
+mirroring `ai.ts`'s `discardSkillStrategy(skill): DiscardStrategy`
+factory pattern (the established way this codebase makes a strategy
+configurable — `opportunisticTraversal`, by contrast, is a hardcoded
+constant with no dial). Config is **explicit named parameters, not a
+continuous dial** — `{ maxRiskTier: 'transparent' | 'visibleOdds' |
+'gamble', gambleSafetyMargin: number }` — for the same reason the ladder
+beat numeric weights: a continuous risk-tolerance scalar has no
+calibration target either. `maxRiskTier` caps what a profile will ever
+pick; `gambleSafetyMargin` reuses the Heat/material safety-reserve
+framing `opportunisticSafehouseStrategy` already established, so both
+heuristics share one notion of "safe enough to take a risk" instead of
+inventing a second one.
+
+**Burner activation was a total blank** — not just legal-not-good, but
+entirely unused: `neverActivateMapBurner`, `neverActivateShopBurner`, and
+combat falling through to `playCombat`'s own `[neverActivateBurner,
+neverActivateBurner]` are the *only* strategies that exist anywhere in
+production code. With only 8 Burners total across 3 contexts, a single
+generic "worth activating" scorer doesn't fit — designed as **per-effect-
+kind dispatch** instead, each with its own small condition, reusing
+existing primitives rather than inventing new ones:
+- `reopenClosedNode` (Skeleton Key): gate on session 20's
+  `gatekeeperReachable()` — reopen only when actually needed to keep the
+  gatekeeper reachable, not just whenever carried.
+- `freeMove` (Ghost Protocol): unconditional whenever a move would
+  otherwise cost Heat — close to strictly beneficial, no real judgment
+  call.
+- `revealUpcoming` (Recon Ping): unconditional, immediate — purely
+  informational for a scripted player, nothing downstream changes from
+  knowing it, so there's nothing to gate on.
+- Shop coupons (`discount`/`freeReroll`/`rarityFloor`): folded into the
+  Shop strategy's own decision — spent when doing so changes the
+  purchase outcome, not a separate standalone check.
+- Combat (`flash-drive`/`emp-charge`): **unconditional on first own-turn
+  opportunity each fight** — considered reserving them for harder
+  (elite/gatekeeper) fights instead, but hoarding logic is a genuinely
+  separate, second-order heuristic on top of activation itself; shipping
+  the simple version and revisiting only if sweep data shows hoarding
+  would matter. User's own framing: "any use is better than no use."
+
+**Merge-target selection reuses the ladder rather than inventing a
+second scoring shape.** `pickMergeTarget()` (`merge.ts`) today picks
+whichever owned duplicate has the most banked material — no synergy
+awareness at all. Extends to use the same credit-gap → archetype ladder
+as the primary sort, with banked-material count demoted to the tie-break.
+
+**Loadout reorder and swap-out are the two genuinely new mechanisms** —
+no strategy type or decision-maker exists for either today.
+`reorderInstalled()` (`loadout.ts`) is a real engine primitive whose own
+doc comment stresses firing order is "a real lever, not cosmetic" (it
+drives chain-finisher-scaling payoffs and Primed/Sleeper Cell's "first X
+fires" targeting), but **no script has ever called it** — not even a
+legal-not-good default. A fully general reorder optimizer (searching
+permutations against simulated outcomes) was considered and rejected as
+its own research project; instead, a **fixed rule reusing the existing
+`ChainedTrigger` classification** (`{kind:'chained', afterSubroutineId |
+afterArchetype | afterTag}`, session 42's redesign): for any installed
+piece whose trigger is `{afterSubroutineId: X}`, place X (if installed)
+before it, since same-turn firing resolves top-to-bottom and the
+prerequisite should credit the same turn, not the next one; place any
+`chainFinisherScaling`-payload piece last, since it counts pieces that
+already fired earlier that same turn. `afterArchetype`/`afterTag`
+variants match a category, not a specific installed piece, so they don't
+participate in this ordering rule. Everything else keeps acquisition
+order.
+
+Separately, **`acquireSubroutine()` (`loadout.ts`) has no swap-out path
+at all** — once `installedLoadout` is at the slot cap, a newly-owned
+piece just sits on the bench forever; only Merge (upgrading a piece
+already installed) can improve the active kit after that point. New
+behavior, used only by the smart-acquisition profile (not a change to
+`acquireSubroutine`'s own existing legal-not-good behavior, which every
+current test/caller depends on): when the loadout is full, compare the
+new candidate against the ladder-ranking of everything currently
+installed, and swap in the new piece if it outranks the worst-ranked
+installed piece.
+
+**Explicitly not done this session**: no code, no new files — shape and
+design only, same discipline as every prior scoping session. Full
+implementation-facing checkpoint spec (real function/file names, cited
+against the current codebase) is in `BACKLOG.md`'s new "Gameplay
+Simulation Heuristics — Implementation" write-up under Phase 5, for a
+future `/dev-session`.
+
 ## Enemy Design
 
 **Session 27** replaced the placeholder enemy model with a real design,

@@ -14,7 +14,37 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
-**Session 44 update (most current)**: Phase 3 of the roadmap (Mod pool
+**Session 45 update (most current)**: a `/decision-session` detour from
+the roadmap's own next phase (the full class audit) — started scoping
+the audit, ran a fresh baseline sweep (150 seeds/class, 0.85 player
+skill, `opportunistic` traversal — real numbers, since everything on disk
+predated sessions 38/40-44) and found the picture had flipped from every
+prior baseline: Ghost is now the *strongest* class (27.3%) despite still
+having zero native credit-capable Root/Encryption pieces, and Blackhat
+(no Encryption/Root exposure at all, outside the audit's own "5 of 6"
+scope) is now the *worst* by a wide margin (9.3%, 39/150 heat-maxed vs.
+0-2 for every other class) — session 38's Heat-fragility fix has
+regressed since the Phase 1/2 pool expansions. Before acting on that
+data, realized the sweep methodology itself was the real blocker: every
+scripted run has always used "legal-not-good" acquisition/Shop/Event
+defaults, and Burners/Merge/reorder are effectively or entirely unused —
+a floor-heuristic sweep can't separate a real class problem from the AI
+never using half its own toolkit. Pivoted the session to designing a
+full synergy-aware heuristic layer instead (banked as a gap since session
+34, never picked up) — see `DESIGN.md`'s new "Gameplay Simulation
+Heuristics" section and `BACKLOG.md`'s new "Gameplay Simulation
+Heuristics — Implementation" write-up (checkpoints A-J) for the complete
+design and spec. Scope grew live from "an acquisition ladder" to also
+cover Merge-target selection, loadout reorder (a real engine primitive,
+`reorderInstalled`, that no script has ever called), swap-out on a full
+loadout (didn't exist at all), and Burner activation (also didn't exist
+at all — every activation point defaults to never-fire). Docs-only
+session, no code — a future `/dev-session` implements checkpoints A-J,
+then the full class audit resumes with real (not floor) simulation data.
+Not pushed — not asked this session. See `session-logs/
+session-45-2026-08-31.md` for the full write-up.
+
+**Session 44 update**: Phase 3 of the roadmap (Mod pool
 expansion) designed and implemented same-session via `/decision-session`
 — the user's own call once the design draft landed, mirroring session
 43's enemy-pool treatment. Fixed a real migration inconsistency along the
@@ -3867,3 +3897,173 @@ constants (real balance is explicitly the later "heavy final analysis
 pass" phase of the user's own roadmap). Enemy pool, Mods, the full class
 audit, and the gatekeeper roster all remain untouched, per the roadmap's
 own sequencing.
+
+## Gameplay Simulation Heuristics — Implementation (session 45, `/decision-session`)
+
+Checkpointed implementation spec, same category as sessions 15/17/19/21/
+27/33/37/41 — scoped and designed live this session, implementation left
+for a future `/dev-session`. Full design writeup and reasoning in
+`DESIGN.md`'s new "Gameplay Simulation Heuristics" section; this is the
+implementation-facing breakdown, every checkpoint cited against the real
+current codebase (`loadout.ts`, `mods.ts`, `burners.ts`, `shop.ts`,
+`merge.ts`, `encounters.ts`, `combat.ts`, `run.ts`, `subroutine-types.ts`,
+`enemies.test.ts`), not proposed cold.
+
+**Why this exists**: every scripted run has always used deliberately
+"legal-not-good" defaults (`alwaysAcquireFirst`, `buyCheapestAffordable`,
+`alwaysFirstEventChoice`, Burners entirely unused) — banked as a real gap
+since session 34's Mods-sweep follow-up, never picked up. Resurfaced this
+session while grounding the roadmap's next phase (the full class audit)
+in fresh sweep data: a floor-heuristic sweep can't distinguish a real
+class-balance problem from the AI simply never using half its own
+toolkit (Burners, Merge, reorder). No engine gap drives any of this —
+every `*Strategy` type already receives the full `RunPlayerState` — so
+every checkpoint below is new strategy *content*, the same shape as
+session 39's `opportunisticTraversal`/`opportunisticSafehouseStrategy`.
+
+**Design decided live, not re-litigated here** (see `DESIGN.md` for full
+reasoning): a lexicographic priority ladder, not numeric weights (no
+calibration target exists for weights, unlike the skill dial's real EV
+target); the ladder is genuinely different depth per item type (3-step
+Subroutine, 2-step Mod, 1-step Burner); Event choice gets its own
+risk-tolerance heuristic, not the item ladder; Burner activation is
+per-effect-kind dispatch, not a generic scorer; Merge reuses the ladder;
+reorder is a fixed chain-classification rule, not a permutation search;
+swap-out is new behavior scoped to the smart-acquisition profile only,
+not a change to `acquireSubroutine`'s existing default.
+
+- **Checkpoint A — Shared credit-capable classification**: promote
+  `CREDIT_CAPABLE_PAYLOAD_KINDS` (currently a private const duplicated
+  inside `enemies.test.ts`) into a real exported const in
+  `subroutine-types.ts`, alongside `PayloadEffect`. Update
+  `enemies.test.ts` to import it instead of defining its own copy --
+  zero behavior change, just one source of truth instead of a second one
+  about to be created. Add a small helper, e.g. `hasCreditCapablePiece
+  (loadout: SubroutineDefinition[], archetype: Archetype): boolean`, for
+  checking whether an owned/considered loadout already has a
+  credit-capable piece in a given archetype -- the primitive checkpoint
+  B's credit-gap step needs.
+
+- **Checkpoint B — Subroutine acquisition + Shop ladder**: new
+  `synergyAwareAcquisition: AcquisitionStrategy` (`loadout.ts`, next to
+  `alwaysAcquireFirst`) and `synergyAwareShopStrategy: ShopStrategy`
+  (`shop.ts`, next to `buyCheapestAffordable`). Both: (1) among options
+  that would fill a credit-gap (per checkpoint A's helper, checked
+  against `CLASS_DEFINITIONS[playerState.classId].archetypes`), prefer
+  those; (2) else prefer on-archetype (matches one of the class's own 2
+  specializations) over universal/neutral over off-archetype; (3) break
+  ties via `rarityOf(id)` (`rewards.ts`). Shop version respects the
+  existing affordability filter (`buyCheapestAffordable`'s own pattern)
+  before applying the ladder, not instead of it.
+
+- **Checkpoint C — Mod acquisition + Shop ladder**: new
+  `synergyAwareModAcquisition: ModAcquisitionStrategy` (`mods.ts`) and
+  `synergyAwareModShopStrategy: ModShopStrategy` (`shop.ts`). 2-step:
+  archetype match (`ModDefinition.archetype`, optional -- absent means
+  neutral-equivalent, treated as universal) -> `rarity` (direct field).
+  No credit-gap step -- explicitly deferred, no classification exists for
+  Mods.
+
+- **Checkpoint D — Burner acquisition + Shop ladder**: new
+  `synergyAwareBurnerAcquisition: BurnerAcquisitionStrategy`
+  (`burners.ts`) and `synergyAwareBurnerShopStrategy: BurnerShopStrategy`
+  (`shop.ts`). 1-step: `rarity` only -- `BurnerDefinition` has no
+  archetype field and no credit concept.
+
+- **Checkpoint E — Merge-target selection**: extend `merge.ts` with a new
+  `synergyAwareMergeTarget(playerState): string | null` alongside the
+  existing `pickMergeTarget` (kept, not replaced -- existing callers/
+  tests stay on the legal-not-good default). Same ladder as checkpoint B
+  (credit-gap -> archetype), banked-material count (today's whole
+  criterion) demoted to the tie-break. Wiring: `encounters.ts`'s
+  `resolveEncounter` hardcodes the `pickMergeTarget` call at its
+  `'safehouse'` case (line ~495) -- needs a new optional
+  `mergeTargetStrategy` parameter (append-at-the-end, defaults to
+  `pickMergeTarget`, matching every other parameter this function has
+  accumulated the same way) threaded from `RunOptions` down through
+  `playRun`.
+
+- **Checkpoint F — Loadout reorder**: new `ReorderStrategy` type (no
+  precedent exists -- first strategy type with no options to choose
+  between, just a full-loadout transform) and `synergyAwareReorder
+  (playerState): RunPlayerState` (`loadout.ts`, built on the existing
+  `reorderInstalled` primitive, never called by anything today). Rule:
+  for each installed piece whose `trigger` is `{kind: 'chained',
+  afterSubroutineId: X}`, if X is also installed and currently ordered
+  after this piece, move X before it (same-turn top-to-bottom firing
+  should let the prerequisite credit this turn, not next). Then move any
+  piece whose `payload.kind === 'chainFinisherScaling'` to the end.
+  `afterArchetype`/`afterTag` chained variants don't participate (no
+  single specific installed piece to order against). Call site: after
+  every acquisition-driven change to `installedLoadout` in `run.ts`'s
+  resolution flow (reward pick, Shop purchase, granted-subroutine
+  install) -- between-fights only, per `DESIGN.md`'s own "mid-combat's
+  only lever is Togglable" rule.
+
+- **Checkpoint G — Swap-out on a full loadout**: new
+  `acquireSubroutineWithSwap(playerState, piece, slotCap):
+  RunPlayerState` (`loadout.ts`), used only by the smart-acquisition
+  profile wired in checkpoint J -- `acquireSubroutine`'s own existing
+  behavior (bench-forever when full) stays untouched as the default for
+  every existing caller/test. When `installSubroutine` would no-op due
+  to the cap, rank `installedLoadout` via checkpoint B's ladder and, if
+  `piece` outranks the worst-ranked installed member, uninstall that
+  member (`uninstallSubroutine`) and install `piece` instead; otherwise
+  fall back to benching it, same as today.
+
+- **Checkpoint H — Burner activation strategies**: per-effect-kind
+  dispatch, no generic scorer.
+  - `synergyAwareCombatBurnerActivation: BurnerActivationStrategy`
+    (`combat.ts`) -- activates the first available combat-context Burner
+    (`flash-drive`/`emp-charge`) on the first own-turn opportunity each
+    fight, unconditional (no hoarding logic this pass).
+  - `synergyAwareMapBurnerStrategy: MapBurnerStrategy` (`run.ts`) --
+    `reopenClosedNode` (Skeleton Key) only when `gatekeeperReachable()`
+    (session 20, already exported) would otherwise fail without it;
+    `freeMove` (Ghost Protocol) whenever the pending move would cost
+    Heat; `revealUpcoming` (Recon Ping) unconditionally, first
+    opportunity.
+  - Shop coupons folded into checkpoint B's `synergyAwareShopStrategy`
+    itself, not a separate strategy: spend a carried `discount`/
+    `rarityFloor`/`freeReroll` Burner when doing so changes that visit's
+    purchase outcome.
+
+- **Checkpoint I — Event choice heuristic**: new factory function
+  `synergyAwareEventChoice(config: { maxRiskTier: 'transparent' |
+  'visibleOdds' | 'gamble'; gambleSafetyMargin: number }):
+  EventChoiceStrategy` (`encounters.ts`, next to
+  `alwaysFirstEventChoice`), mirroring `ai.ts`'s `discardSkillStrategy
+  (skill): DiscardStrategy` factory shape. Picks the highest-tier choice
+  at or under `maxRiskTier`; a `gamble`-tier choice is only ever taken
+  when the same Heat/material safety-reserve check
+  `opportunisticSafehouseStrategy`/`opportunisticTraversal` already use
+  clears `gambleSafetyMargin`.
+
+- **Checkpoint J — CLI wiring + verification**: thread every new
+  strategy through `RunOptions`/`playRun` (append-at-the-end, defaults
+  unchanged, same pattern every prior checkpoint in this project has
+  used). Add one new bundled CLI preset to `scripts/sweep.ts` and
+  `scripts/layer-funnel.ts`, e.g. `--acquisition=synergy` (mirrors
+  `--traversal=opportunistic`'s bundling precedent -- one coherent "smart
+  player" profile wiring checkpoints B-I together), independent of and
+  combinable with the existing `--traversal` flag. Existing dumb defaults
+  (`alwaysAcquireFirst`, etc.) stay the default for every other caller
+  and test -- this is additive, not a behavior change to anything
+  existing. New tests per checkpoint: hand-built scenarios asserting the
+  ladder picks the expected option (incl. a case where credit-gap
+  outranks a higher-rarity off-archetype option), `gatekeeperReachable`-
+  gated reopen fires only when needed, reorder places a chain
+  prerequisite before its dependent and a finisher last, swap-out
+  replaces the correct worst-ranked piece. Full suite green, `npm run
+  check` clean. Real verification: a fresh 6-class sweep + layer-funnel
+  pass comparing the dumb baseline against the new `synergy` profile --
+  this is the actual point of the whole exercise, directly answering the
+  full class audit's need for realistic (not floor) simulation data.
+
+**Explicitly out of scope this session**: Mod-level credit-gap
+classification (flagged, deferred); combat-Burner hoarding/reservation
+logic (flagged, deferred pending sweep evidence it'd matter); any
+magnitude/balance tuning informed by the resulting sweep data (that's
+the full class audit itself, next up once this lands). No code written
+this session -- scope and design only, same discipline as every prior
+scoping session in this list.
