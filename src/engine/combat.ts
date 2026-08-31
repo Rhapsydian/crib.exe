@@ -732,3 +732,37 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   // its own) -- not a real safety net anymore.
   throw new Error('playCombat: unreachable -- HARD_RESOLUTION_HAND always forces a result before this point');
 }
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint H) -- the
+// combat-context half of Burner activation. Before this, Burners were
+// not merely used badly by scripted runs but never used at all:
+// neverActivateBurner here, neverActivateMapBurner in run.ts and
+// neverActivateShopBurner in shop.ts were the only strategies that
+// existed anywhere in production code, so any sweep measuring class
+// balance was measuring a player with a third of their toolkit
+// permanently switched off.
+//
+// Deliberately unconditional on the first own-turn opportunity, with no
+// hoarding logic. Reserving combat Burners for elite/gatekeeper fights
+// was considered and explicitly deferred by session 45 -- it's a
+// second-order heuristic layered on top of activation itself, and worth
+// building only if sweep data shows it matters. The user's own framing
+// for shipping the simple version: "any use is better than no use."
+// ---------------------------------------------------------------------
+
+/** Activates the first available combat-context Burner each turn the
+ * player gets. Side 1 (the enemy) has no Burner economy at all and
+ * always declines, matching the tuple's own documented contract.
+ *
+ * availableBurnerIds is this combat's carried inventory minus copies
+ * already spent (combat.ts's own remainingBurnerIds bookkeeping), so
+ * "first available" naturally spends one per turn until they run out
+ * rather than trying to fire the same one repeatedly. Map- and
+ * shop-context Burners are filtered out here: they're carried in the
+ * same inventory but have no combatEffect to resolve. */
+export const synergyAwareCombatBurnerActivation: BurnerActivationStrategy = (ctx) => {
+  if (ctx.side !== 0) return null;
+  const combatBurner = ctx.availableBurnerIds.find((id) => BURNER_DEFINITIONS[id].contexts.includes('combat'));
+  return combatBurner ?? null;
+};

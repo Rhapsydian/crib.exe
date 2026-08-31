@@ -824,3 +824,64 @@ function reconstructPath(cameFrom: Map<string, string>, fromId: string, toId: st
   }
   return path.reverse();
 }
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint H) -- the
+// map-context half of Burner activation. Per-effect-kind dispatch, not a
+// generic "is this worth using" scorer: with only 3 map Burners, each
+// with a genuinely different shape of payoff, a shared scoring function
+// would be inventing a common currency that doesn't exist.
+//
+// Priority when more than one is carried runs from run-ending to
+// cosmetic: Skeleton Key first (it's the only one that can save a run
+// outright), then Ghost Protocol (Heat is the run-ending resource), then
+// Recon Ping.
+// ---------------------------------------------------------------------
+
+/** Whether reopening `nodeId` would restore a route to this layer's
+ * gatekeeper -- checked per candidate rather than reopening whichever
+ * closed node happens to be listed first, since most closed nodes won't
+ * be the one that severed the route. */
+function reopeningRestoresRoute(graph: LayerGraph, fromNodeId: string, nodeId: string): boolean {
+  return gatekeeperReachable(reopenNode(graph, nodeId), fromNodeId);
+}
+
+/** The map half of session 46's "smart player" profile. Opt-in only --
+ * neverActivateMapBurner stays playRun's default. */
+export const synergyAwareMapBurnerStrategy: MapBurnerStrategy = (ctx) => {
+  const carries = (id: BurnerId): boolean => ctx.availableBurnerIds.includes(id);
+
+  // Skeleton Key: strictly gated on actually needing it. Reopening a
+  // node while the gatekeeper is still reachable spends a rare Burner to
+  // buy nothing, so this fires only once the route is genuinely severed
+  // -- and only on a node that actually restores it. run.ts calls this
+  // before its own no-route-remains check precisely so this can happen
+  // while the run is still alive (checkpoint J of the Burners work).
+  if (carries('skeleton-key') && !gatekeeperReachable(ctx.graph, ctx.position.nodeId)) {
+    const rescuer = ctx.closedNodeIds.find((nodeId) => reopeningRestoresRoute(ctx.graph, ctx.position.nodeId, nodeId));
+    if (rescuer) return { burnerId: 'skeleton-key', targetNodeId: rescuer };
+  }
+
+  // Ghost Protocol: the spec's condition is "whenever the pending move
+  // would cost Heat," which is checkable here even though the move
+  // itself hasn't been chosen yet -- the cost is flat per move
+  // (HEAT_PER_MOVE) and the only thing that changes it is a standing Mod
+  // (Light Footing), both readable from ctx. So this correctly declines
+  // to burn a Burner for a move that was already free.
+  if (carries('ghost-protocol') && applyOnMoveMods(ctx.playerState.ownedModIds, HEAT_PER_MOVE) > 0) {
+    return { burnerId: 'ghost-protocol' };
+  }
+
+  // Recon Ping: activated unconditionally, but not for the reason
+  // session 45's design assumed. Its revealUpcoming effect is a
+  // documented no-op in this engine -- there's no fog-of-war for a
+  // script to reveal into, every node's type is already visible to
+  // traversalStrategy via `graph` (see run.ts's own call site comment).
+  // The real payoff is inventory hygiene: BURNER_CAP is 3 and
+  // acquireBurner declines outright once full, so a dead Recon Ping
+  // squatting in the inventory blocks acquiring a Burner that does
+  // something. Spending it frees the slot.
+  if (carries('recon-ping')) return { burnerId: 'recon-ping' };
+
+  return null;
+};

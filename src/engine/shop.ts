@@ -371,3 +371,46 @@ export const synergyAwareBurnerShopStrategy: BurnerShopStrategy = (offerings, pl
   const best = bestBurnerByLadder(affordable.map((offering) => offering.burner));
   return affordable.find((offering) => offering.burner.id === best?.id) ?? null;
 };
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint H) -- spending
+// a carried "coupon" Burner on a Shop visit, the third and last context
+// Burners were never used in.
+//
+// Session 45's design said to spend one "when doing so changes that
+// visit's purchase outcome." That can't be read literally at this call
+// site: resolveEncounter asks this *before* either slate is generated
+// (mirroring Vendor Discount's own onShopSlateGenerated timing), so
+// there are no offerings to compare against -- only how much Data is in
+// hand. The thresholds below are the honest approximation of that
+// intent, and are TBD/playtesting like every other numeric constant
+// here.
+//
+// Priority runs from largest to smallest effect on what this visit can
+// actually buy.
+// ---------------------------------------------------------------------
+
+/** Spends a carried coupon Burner when this visit's Data makes it pay:
+ *
+ * - **Insider Tip** (forces the wildcard slot to rare) only once a rare
+ *   is genuinely affordable -- forcing a rare you can't buy converts the
+ *   slate's most flexible slot into a guaranteed dead one, strictly
+ *   worse than not spending it.
+ * - **Stolen Coupon** (25% off everything) once anything at all is
+ *   affordable, since a discount only pays on a visit that buys.
+ * - **Loyalty Token** (free reroll) when the reroll itself is otherwise
+ *   unaffordable -- exactly when a bad slate would otherwise be stuck.
+ *
+ * Nothing is spent on a visit too poor to buy anything, where all three
+ * would be pure waste. */
+export const synergyAwareShopBurnerStrategy: ShopBurnerStrategy = (availableBurnerIds, playerState) => {
+  const carries = (id: BurnerId): boolean => availableBurnerIds.includes(id);
+  const data = playerState.data;
+
+  if (carries('insider-tip') && data >= SHOP_COST_BY_RARITY.rare) return 'insider-tip';
+  if (carries('stolen-coupon') && data >= SHOP_COST_BY_RARITY.common) return 'stolen-coupon';
+  if (carries('loyalty-token') && data >= SHOP_COST_BY_RARITY.common && data < REROLL_COST + SHOP_COST_BY_RARITY.common) {
+    return 'loyalty-token';
+  }
+  return null;
+};
