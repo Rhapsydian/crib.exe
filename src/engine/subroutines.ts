@@ -1361,7 +1361,7 @@ export const ENCRYPTION_RARES: SubroutineDefinition[] = [
 ];
 
 // ---------------------------------------------------------------------
-// Root archetype pool (15) — session 21+.
+// Root archetype pool (30: 15 session 21+, +6 session 40, +9 session 41).
 // ---------------------------------------------------------------------
 
 export const ROOT_COMMONS: SubroutineDefinition[] = [
@@ -1447,6 +1447,58 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
     payload: { kind: 'sessionHijack', amount: COMMON.burst },
     tags: ['direct'],
+  },
+  // --- Session 41 pool expansion (+6) ---
+  {
+    id: 'traceroute',
+    name: 'Traceroute',
+    archetype: 'root',
+    trigger: { kind: 'occurrence', category: 'thirtyOne', variation: 'instant' },
+    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: COMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'broadcast-storm',
+    name: 'Broadcast Storm',
+    archetype: 'root',
+    // Renamed before authoring (session 41): the conversational draft's
+    // "Ping Sweep" id already belongs to Operator's starting loadout.
+    trigger: { kind: 'occurrence', category: 'go', variation: 'instant' },
+    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'social-engineering',
+    name: 'Social Engineering',
+    archetype: 'root',
+    trigger: { kind: 'occurrence', category: 'hisNobs', variation: 'instant' },
+    // Generic suitTally target, not subroutineProgress -- see file header.
+    payload: { kind: 'instantManipulation', target: 'suitTally', amount: 1 },
+    tags: ['direct'],
+  },
+  {
+    id: 'cold-call',
+    name: 'Cold Call',
+    archetype: 'root',
+    trigger: { kind: 'selfState', condition: 'heatBelow', value: COMMON.heat },
+    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'lurker',
+    name: 'Lurker',
+    archetype: 'root',
+    trigger: { kind: 'selfState', condition: 'isNonDealer' },
+    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: COMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'payload-delivery',
+    name: 'Payload Delivery',
+    archetype: 'root',
+    trigger: { kind: 'accumulator', metric: 'suitTally', suit: 3, threshold: COMMON.threshold },
+    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
+    tags: ['daemon'],
   },
 ];
 
@@ -1539,6 +1591,35 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     trigger: { kind: 'handOutcome', phase: 'crib', side: 'enemy', comparison: 'above', value: 4 },
     payload: { kind: 'directBurst', amount: UNCOMMON.burst },
     tags: ['trap'],
+  },
+  // --- Session 41 pool expansion (+3) ---
+  {
+    id: 'honey-trap',
+    name: 'Honey Trap',
+    archetype: 'root',
+    trigger: { kind: 'occurrence', category: 'flush', variation: 'scaling', cap: UNCOMMON.cap },
+    payload: { kind: 'instantManipulation', target: 'suitTally', amount: 2 },
+    tags: ['trap'],
+  },
+  {
+    // Real frequency data (scripts/occurrence-frequency.ts, 300 games/
+    // skill=0.85): per-side pegging score p90 is exactly 6 -- "above 6"
+    // is a genuine top-10% pegging performance, verified against the
+    // spec's own claim rather than trusted blind.
+    id: 'wiretap',
+    name: 'Wiretap',
+    archetype: 'root',
+    trigger: { kind: 'handOutcome', phase: 'pegging', side: 'enemy', comparison: 'above', value: 6 },
+    payload: { kind: 'sessionHijack', amount: UNCOMMON.burst },
+    tags: ['trap'],
+  },
+  {
+    id: 'ghost-protocol',
+    name: 'Ghost Protocol',
+    archetype: 'root',
+    trigger: { kind: 'chained', afterArchetype: 'root' },
+    payload: { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: UNCOMMON.burst },
+    tags: ['worm'],
   },
 ];
 

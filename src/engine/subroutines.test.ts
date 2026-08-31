@@ -39,14 +39,14 @@ describe('subroutine content — Root mechanical redesign (session 24 checkpoint
 });
 
 describe('subroutine content — structural integrity', () => {
-  it('has exactly 138 subroutines: 18 starting-loadout + 111 archetype pool + 9 neutral (in progress, session 41 checkpoint E)', () => {
-    // 111, not 102 (session 41 checkpoint E): Encryption grew +9 (14
-    // commons/10 uncommons/6 rares) on top of checkpoints C/D's Exploit/
-    // Malware +15 each. Root/Neutral land in checkpoints F-G; these
-    // numbers keep moving until checkpoint H.
+  it('has exactly 147 subroutines: 18 starting-loadout + 120 archetype pool + 9 neutral (in progress, session 41 checkpoint F)', () => {
+    // 120, not 111 (session 41 checkpoint F): Root grew +9 (14 commons/
+    // 10 uncommons/6 rares) on top of checkpoints C/D/E's Exploit/
+    // Malware/Encryption. Neutral lands in checkpoint G; these numbers
+    // keep moving until checkpoint H.
     expect(ALL_STARTING_LOADOUT_SUBROUTINES).toHaveLength(18);
-    expect(ALL_POOL_SUBROUTINES).toHaveLength(120);
-    expect(ALL_SUBROUTINES).toHaveLength(138);
+    expect(ALL_POOL_SUBROUTINES).toHaveLength(129);
+    expect(ALL_SUBROUTINES).toHaveLength(147);
   });
 
   it('every class starting loadout has exactly 3 pieces', () => {
@@ -73,9 +73,9 @@ describe('subroutine content — structural integrity', () => {
     expect(ARCHETYPE_POOLS.encryption.rares).toHaveLength(6);
   });
 
-  it('Root still keeps its session-40 8 commons/7 uncommons/6 rares (checkpoint F not yet landed)', () => {
-    expect(ARCHETYPE_POOLS.root.commons).toHaveLength(8);
-    expect(ARCHETYPE_POOLS.root.uncommons).toHaveLength(7);
+  it('Root grew to 14 commons/10 uncommons/6 rares (session 40 +6, session 41 checkpoint F +6/+3/+0)', () => {
+    expect(ARCHETYPE_POOLS.root.commons).toHaveLength(14);
+    expect(ARCHETYPE_POOLS.root.uncommons).toHaveLength(10);
     expect(ARCHETYPE_POOLS.root.rares).toHaveLength(6);
   });
 
