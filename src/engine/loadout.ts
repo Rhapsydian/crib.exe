@@ -344,3 +344,83 @@ export const synergyAwareReorder: ReorderStrategy = (playerState) => {
 
   return state;
 };
+
+// ---------------------------------------------------------------------
+// Gameplay Simulation Heuristics (session 46, checkpoint G) -- swap-out
+// on a full loadout. acquireSubroutine has no swap path at all: once
+// installedLoadout hits the cap, every newly-owned piece sits on the
+// bench forever, and only Merge (upgrading something already installed)
+// can improve the active kit after that point. That's a real ceiling on
+// how good a scripted run's loadout can get, and it's been there since
+// Phase 4.
+//
+// New behavior, deliberately NOT a change to acquireSubroutine itself --
+// every existing caller and test depends on bench-forever, and moving
+// that default would shift every sweep baseline on disk.
+//
+// The subtle part is which installed piece to evict, and the acquisition
+// ladder can't be used directly to answer it. ladderRank's credit-gap
+// rung asks "would acquiring this close an open gap?", which reads
+// backwards for a piece that is already installed: the class's only
+// credit-capable Encryption piece scores as NOT filling a gap, precisely
+// because it is the thing filling it. Ranked naively, that piece looks
+// cheap to evict, and a swap could reopen the very gap rung 1 exists to
+// close -- the same inversion checkpoint E hit with Merge targets.
+//
+// Fixed by evaluating every piece counterfactually, against the loadout
+// *without* it. For a candidate that means the current loadout (so it
+// reduces to plain fillsCreditGap); for an installed piece it means
+// "would removing this open a gap?" One predicate, one scale, both sides
+// comparable -- so a sole credit provider is correctly protected from
+// eviction without a special case.
+// ---------------------------------------------------------------------
+
+/** Ranks `piece` as if the installed loadout were `loadoutWithoutPiece`.
+ * See this section's header for why the counterfactual matters. */
+function swapRank(piece: SubroutineDefinition, playerState: RunPlayerState, loadoutWithoutPiece: SubroutineDefinition[]): LadderRank {
+  return ladderRank(piece, { ...playerState, installedLoadout: loadoutWithoutPiece });
+}
+
+/** acquireSubroutine's behavior, plus a swap-out step when the loadout
+ * is full: rank every evictable installed piece counterfactually, and if
+ * `piece` outranks the worst of them, uninstall that one and install
+ * `piece` instead. Falls back to benching when it doesn't -- same result
+ * as acquireSubroutine, just arrived at deliberately.
+ *
+ * Mod-granted entries are excluded from eviction: they're cap-exempt and
+ * removal-locked (uninstallSubroutine refuses them outright), so evicting
+ * one silently fails and would waste the acquisition. */
+export function acquireSubroutineWithSwap(
+  playerState: RunPlayerState,
+  piece: SubroutineDefinition,
+  slotCap: number = INSTALLED_SLOT_CAP,
+): RunPlayerState {
+  const alreadyOwned =
+    playerState.installedLoadout.some((owned) => owned.id === piece.id) || playerState.bench.some((owned) => owned.id === piece.id);
+  if (alreadyOwned) return acquireSubroutine(playerState, piece, slotCap);
+
+  // Room to spare -- nothing to decide, this is plain acquisition.
+  if (cappedInstalledCount(playerState) < slotCap) return acquireSubroutine(playerState, piece, slotCap);
+
+  const evictable = playerState.installedLoadout.filter((installed) => !playerState.grantedByMod[installed.id]);
+  if (evictable.length === 0) return acquireSubroutine(playerState, piece, slotCap); // benches it
+
+  const worst = evictable.reduce((worstSoFar, installed) => {
+    const withoutInstalled = playerState.installedLoadout.filter((other) => other.id !== installed.id);
+    const withoutWorst = playerState.installedLoadout.filter((other) => other.id !== worstSoFar.id);
+    return compareLadderRanks(swapRank(installed, playerState, withoutInstalled), swapRank(worstSoFar, playerState, withoutWorst)) > 0
+      ? installed
+      : worstSoFar;
+  });
+
+  const withoutWorst = playerState.installedLoadout.filter((other) => other.id !== worst.id);
+  const candidateRank = swapRank(piece, playerState, playerState.installedLoadout);
+  const worstRank = swapRank(worst, playerState, withoutWorst);
+  // Strictly better, not merely equal -- a tie isn't worth the churn of
+  // benching a piece that's already doing its job.
+  if (compareLadderRanks(candidateRank, worstRank) >= 0) return acquireSubroutine(playerState, piece, slotCap); // benches it
+
+  const evicted = uninstallSubroutine(playerState, worst.id);
+  const withCandidateBenched = { ...evicted, bench: [...evicted.bench, piece] };
+  return installSubroutine(withCandidateBenched, piece.id, slotCap);
+}

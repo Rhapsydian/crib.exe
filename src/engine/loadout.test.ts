@@ -13,6 +13,7 @@ import {
   synergyAwareAcquisition,
   synergyAwareReorder,
   keepAcquisitionOrder,
+  acquireSubroutineWithSwap,
 } from './loadout';
 
 function piece(id: string): SubroutineDefinition {
@@ -452,5 +453,98 @@ describe('reorderStrategy wiring (checkpoint F)', () => {
     if (firstFinisher !== -1) {
       expect(loadout.slice(firstFinisher).every((p) => p.payload.kind === 'chainFinisherScaling')).toBe(true);
     }
+  });
+});
+
+// ---------------------------------------------------------------------
+// Checkpoint G -- swap-out on a full loadout.
+// ---------------------------------------------------------------------
+
+describe('acquireSubroutineWithSwap', () => {
+  const CREDIT = { kind: 'directBurst', amount: 3 } as const;
+  const DEFENSIVE = { kind: 'ward', amount: 3 } as const;
+
+  it('behaves exactly like acquireSubroutine when there is room', () => {
+    const state = playerState([piece('a')], []);
+    expect(acquireSubroutineWithSwap(state, piece('new'), 6)).toEqual(acquireSubroutine(state, piece('new'), 6));
+  });
+
+  it('banks Merge material for an already-owned id, same as acquireSubroutine', () => {
+    const state = playerState([piece('a')], []);
+    expect(acquireSubroutineWithSwap(state, piece('a'), 6).material.a).toBe(1);
+  });
+
+  it('evicts the worst-ranked installed piece when the candidate outranks it', () => {
+    // Breacher: exploit + encryption. The off-archetype root piece is
+    // the weakest thing installed; an on-archetype candidate displaces it.
+    const state = playerState(
+      [typedPiece('keep-exploit', 'exploit', CREDIT), typedPiece('weak-root', 'root', DEFENSIVE)],
+      [],
+    );
+    const result = acquireSubroutineWithSwap(state, typedPiece('new-exploit', 'exploit', CREDIT), 2);
+    expect(result.installedLoadout.map((p) => p.id)).toEqual(['keep-exploit', 'new-exploit']);
+    expect(result.bench.map((p) => p.id)).toEqual(['weak-root']);
+  });
+
+  it('benches the candidate when it does not outrank anything installed', () => {
+    const state = playerState(
+      [typedPiece('strong-a', 'exploit', CREDIT), typedPiece('strong-b', 'encryption', CREDIT)],
+      [],
+    );
+    const result = acquireSubroutineWithSwap(state, typedPiece('weak-root', 'root', DEFENSIVE), 2);
+    expect(result.installedLoadout.map((p) => p.id)).toEqual(['strong-a', 'strong-b']);
+    expect(result.bench.map((p) => p.id)).toEqual(['weak-root']);
+  });
+
+  it('does not evict the sole credit-capable piece of an archetype', () => {
+    // The inversion this checkpoint had to work around. 'lone-enc' is
+    // the only thing crediting Encryption; ranked by the plain
+    // acquisition ladder it scores as "fills no gap" -- precisely
+    // because it is what fills it -- and would look cheap to evict.
+    // Counterfactual ranking protects it, so the lower-value defensive
+    // exploit piece goes instead.
+    const state = playerState(
+      [typedPiece('lone-enc', 'encryption', CREDIT), typedPiece('spare-exploit', 'exploit', DEFENSIVE)],
+      [],
+    );
+    const result = acquireSubroutineWithSwap(state, typedPiece('new-exploit', 'exploit', CREDIT), 2);
+    expect(result.installedLoadout.map((p) => p.id)).toContain('lone-enc');
+    expect(result.bench.map((p) => p.id)).toEqual(['spare-exploit']);
+  });
+
+  it('never evicts a Mod-granted piece, even when it ranks worst', () => {
+    // Granted entries are cap-exempt and removal-locked
+    // (uninstallSubroutine refuses them outright), so evicting one
+    // silently fails and would waste the acquisition entirely.
+    // 'granted-junk' is off-archetype and defensive -- the weakest thing
+    // installed, and what a naive worst-ranked search would reach for --
+    // so the evictable 'weak-root' has to go instead.
+    const state = {
+      ...playerState([typedPiece('granted-junk', 'root', DEFENSIVE), typedPiece('weak-root', 'root', DEFENSIVE)], []),
+      grantedByMod: { 'granted-junk': 'some-mod' },
+    };
+    const result = acquireSubroutineWithSwap(state, typedPiece('strong-exploit', 'exploit', CREDIT), 1);
+    expect(result.installedLoadout.map((p) => p.id)).toEqual(['granted-junk', 'strong-exploit']);
+    expect(result.bench.map((p) => p.id)).toEqual(['weak-root']);
+  });
+
+  it('declines the swap when the only evictable piece is a sole credit provider it cannot beat', () => {
+    // Cap-exempt granted entries mean the evictable set can be a single
+    // piece that is load-bearing -- benching the candidate is correct.
+    const state = {
+      ...playerState([typedPiece('granted-junk', 'root', DEFENSIVE), typedPiece('lone-exploit', 'exploit', CREDIT)], []),
+      grantedByMod: { 'granted-junk': 'some-mod' },
+    };
+    const result = acquireSubroutineWithSwap(state, typedPiece('another-exploit', 'exploit', CREDIT), 1);
+    expect(result.installedLoadout.map((p) => p.id)).toEqual(['granted-junk', 'lone-exploit']);
+    expect(result.bench.map((p) => p.id)).toEqual(['another-exploit']);
+  });
+
+  it('leaves acquireSubroutine itself unchanged -- bench-forever stays the default', () => {
+    const full = [typedPiece('a', 'root', DEFENSIVE), typedPiece('b', 'root', DEFENSIVE)];
+    const state = playerState(full, []);
+    const strong = typedPiece('strong', 'exploit', CREDIT);
+    expect(acquireSubroutine(state, strong, 2).installedLoadout.map((p) => p.id)).toEqual(['a', 'b']);
+    expect(acquireSubroutineWithSwap(state, strong, 2).installedLoadout.map((p) => p.id)).toContain('strong');
   });
 });
