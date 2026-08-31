@@ -87,18 +87,24 @@ export const BREACH_CONTAINMENT_THRESHOLD = { low: 40, high: 60 };
 export const GAUGE_FILL_FRACTION = 0.5;
 
 // ---------------------------------------------------------------------
-// Neutral archetype (9) — session 28's `/decision-session`, DESIGN.md's
+// Neutral archetype (18: 9 session 28, +9 session 41) — session 28's `/decision-session`, DESIGN.md's
 // "Neutral Archetype". A genuine 5th Archetype value, not one of the 4
 // real ones reused for flavor — built entirely from trigger families
 // that don't depend on suit (Always, self-state, every occurrence
 // category except the two that are inherently suit-based: Flush, His
 // Nobs), so these pieces can drop into *any* kit, including a pure
 // Encryption/Root one, without borrowing another archetype's identity.
-// Deliberately small (4 common/3 uncommon/2 rare) next to each real
-// archetype's 7/5/3 — this exists to patch a structural gap (only
-// Exploit's direct-damage kinds and Malware's DoT ever credit a side's
-// own win-gauge; every Encryption/Root payload only denies or
-// manipulates), not to become a 5th full content pillar. Defined here,
+// Deliberately small (8 common/6 uncommon/4 rare, session 41's own +4/
+// +3/+2 parity growth) next to each real archetype's 14/10/6 — this
+// exists to patch a structural gap (only Exploit's direct-damage kinds
+// and Malware's DoT ever credit a side's own win-gauge; every
+// Encryption/Root payload only denies or manipulates), not to become a
+// 5th full content pillar. The suit-independence rule above still
+// applies to the +9 -- Load Balancer/Cache Hit were corrected off
+// occurrence:hisNobs/flush before authoring (see their own comments
+// below); Mirror Server's afterTag chaining is a deliberate, reasoned
+// exception to the old "no chained triggers" line, not an oversight
+// (see its own comment). Defined here,
 // ahead of the class starting loadouts below, so Ghost's own Cantrip
 // retrofit sits next to (but is NOT the same object as) NEUTRAL_COMMONS'
 // own Always-triggered common -- same precedent every real archetype
@@ -169,6 +175,45 @@ export const NEUTRAL_COMMONS: SubroutineDefinition[] = [
     payload: { kind: 'directBurst', amount: COMMON.burst },
     tags: ['daemon'],
   },
+  // --- Session 41 pool expansion (+4) ---
+  {
+    id: 'ping',
+    name: 'Ping',
+    archetype: 'neutral',
+    trigger: { kind: 'occurrence', category: 'pair', variation: 'instant' },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'status-check',
+    name: 'Status Check',
+    archetype: 'neutral',
+    trigger: { kind: 'selfState', condition: 'isNonDealer' },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'cache-hit',
+    name: 'Cache Hit',
+    archetype: 'neutral',
+    // Session 41's own draft used occurrence:flush -- corrected before
+    // authoring: Flush is one of the two occurrence categories the
+    // Neutral archetype is specifically built to avoid (suit-dependent,
+    // see this file's own Neutral header comment and DESIGN.md's
+    // "Mechanism" paragraph), same reasoning as Load Balancer below.
+    // Run is suit-independent and unused elsewhere in this pool.
+    trigger: { kind: 'occurrence', category: 'run', variation: 'instant' },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'failover',
+    name: 'Failover',
+    archetype: 'neutral',
+    trigger: { kind: 'enemyState', condition: 'breachContainmentBelow', value: BREACH_CONTAINMENT_THRESHOLD.low },
+    payload: { kind: 'directBurst', amount: COMMON.burst },
+    tags: ['direct'],
+  },
 ];
 
 export const NEUTRAL_UNCOMMONS: SubroutineDefinition[] = [
@@ -200,6 +245,42 @@ export const NEUTRAL_UNCOMMONS: SubroutineDefinition[] = [
     payload: { kind: 'directBurst', amount: UNCOMMON.burst },
     tags: ['trap'],
   },
+  // --- Session 41 pool expansion (+3) ---
+  {
+    id: 'redundant-node',
+    name: 'Redundant Node',
+    archetype: 'neutral',
+    trigger: { kind: 'selfState', condition: 'heatBelow', value: UNCOMMON.heat },
+    payload: { kind: 'directBurst', amount: UNCOMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'load-balancer',
+    name: 'Load Balancer',
+    archetype: 'neutral',
+    // Session 41's own draft used occurrence:hisNobs -- corrected before
+    // authoring, same Neutral suit-independence rule as Cache Hit above.
+    // Thirty-One is suit-independent; Uptime above already uses it at
+    // Threshold variation, this uses Instant, a real distinct identity.
+    trigger: { kind: 'occurrence', category: 'thirtyOne', variation: 'instant' },
+    payload: { kind: 'directBurst', amount: UNCOMMON.burst },
+    tags: ['direct'],
+  },
+  {
+    id: 'mirror-server',
+    name: 'Mirror Server',
+    archetype: 'neutral',
+    // Chained triggers were previously banned outright for Neutral
+    // content (DESIGN.md: a piece meant to drop into *any* kit can't
+    // assume a *specific* subroutine id is present) -- but that objection
+    // is about id-based chaining specifically. afterTag (this session's
+    // own checkpoint A redesign) fires off *any* daemon-tagged piece
+    // firing this turn, not one guaranteed id, so it doesn't carry the
+    // portability problem the ban was written against.
+    trigger: { kind: 'chained', afterTag: 'daemon' },
+    payload: { kind: 'directBurst', amount: UNCOMMON.burst },
+    tags: ['worm'],
+  },
 ];
 
 export const NEUTRAL_RARES: SubroutineDefinition[] = [
@@ -223,6 +304,25 @@ export const NEUTRAL_RARES: SubroutineDefinition[] = [
     trigger: { kind: 'occurrence', category: 'go', variation: 'scaling', cap: RARE.cap },
     payload: { kind: 'directBurst', amount: RARE.burst + 2 },
     tags: ['trap'],
+  },
+  // --- Session 41 pool expansion (+2) ---
+  {
+    id: 'failsafe-cluster',
+    name: 'Failsafe Cluster',
+    archetype: 'neutral',
+    // hasDebuff: 'any' (session 41, added checkpoint C) -- fires off the
+    // enemy carrying any active debuff at all.
+    trigger: { kind: 'enemyState', condition: 'hasDebuff', debuffId: 'any' },
+    payload: { kind: 'directBurst', amount: RARE.burst + 2 },
+    tags: ['direct'],
+  },
+  {
+    id: 'redundant-array',
+    name: 'Redundant Array',
+    archetype: 'neutral',
+    trigger: { kind: 'accumulator', metric: 'points', threshold: RARE.threshold },
+    payload: { kind: 'chainFinisherScaling', baseAmount: RARE.burst - 4, perPriorFire: 5 },
+    tags: ['worm'],
   },
 ];
 

@@ -3746,10 +3746,10 @@ loadout.
 |---|---|---|---|---|
 | Ping | occurrence: pair, instant | directBurst | direct | common |
 | Status Check | selfState: isNonDealer | directBurst | direct | common |
-| Cache Hit | occurrence: flush, instant | directBurst | direct | common |
+| Cache Hit | occurrence: run, instant (was flush -- corrected during authoring, suit-dependent, violates the Neutral archetype's own suit-independence rule) | directBurst | direct | common |
 | Failover | enemyState: breachContainmentBelow | directBurst | direct | common |
 | Redundant Node | selfState: heatBelow | directBurst | direct | uncommon |
-| Load Balancer | occurrence: hisNobs, instant | directBurst | direct | uncommon |
+| Load Balancer | occurrence: thirtyOne, instant (was hisNobs -- corrected during authoring, same suit-independence rule as Cache Hit) | directBurst | direct | uncommon |
 | Mirror Server | chained: afterTag daemon | directBurst | worm | uncommon |
 | Failsafe Cluster | enemyState: hasDebuff (any) | directBurst | direct | rare |
 | Redundant Array | accumulator: points (rare threshold) | chainFinisherScaling | worm | rare |

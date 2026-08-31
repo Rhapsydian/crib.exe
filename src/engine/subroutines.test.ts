@@ -39,14 +39,14 @@ describe('subroutine content — Root mechanical redesign (session 24 checkpoint
 });
 
 describe('subroutine content — structural integrity', () => {
-  it('has exactly 147 subroutines: 18 starting-loadout + 120 archetype pool + 9 neutral (in progress, session 41 checkpoint F)', () => {
-    // 120, not 111 (session 41 checkpoint F): Root grew +9 (14 commons/
-    // 10 uncommons/6 rares) on top of checkpoints C/D/E's Exploit/
-    // Malware/Encryption. Neutral lands in checkpoint G; these numbers
-    // keep moving until checkpoint H.
+  it('has exactly 156 subroutines: 18 starting-loadout + 120 archetype pool + 18 neutral (session 41 checkpoints C-G, final size)', () => {
+    // 138 total pool (120 archetype + 18 neutral), up from 81 pre-session-
+    // 41 -- all 57 new pieces now authored (Exploit/Malware/Encryption/
+    // Root +15/+15/+9/+9, Neutral +9). Checkpoint H retags the 5
+    // remaining starting-loadout pieces but doesn't change any count.
     expect(ALL_STARTING_LOADOUT_SUBROUTINES).toHaveLength(18);
-    expect(ALL_POOL_SUBROUTINES).toHaveLength(129);
-    expect(ALL_SUBROUTINES).toHaveLength(147);
+    expect(ALL_POOL_SUBROUTINES).toHaveLength(138);
+    expect(ALL_SUBROUTINES).toHaveLength(156);
   });
 
   it('every class starting loadout has exactly 3 pieces', () => {
@@ -79,10 +79,10 @@ describe('subroutine content — structural integrity', () => {
     expect(ARCHETYPE_POOLS.root.rares).toHaveLength(6);
   });
 
-  it('the neutral pool (session 28) has exactly 4 commons, 3 uncommons, 2 rares', () => {
-    expect(NEUTRAL_POOL.commons).toHaveLength(4);
-    expect(NEUTRAL_POOL.uncommons).toHaveLength(3);
-    expect(NEUTRAL_POOL.rares).toHaveLength(2);
+  it('the neutral pool grew to 8 commons/6 uncommons/4 rares (session 28 base 4/3/2, session 41 checkpoint G +4/+3/+2)', () => {
+    expect(NEUTRAL_POOL.commons).toHaveLength(8);
+    expect(NEUTRAL_POOL.uncommons).toHaveLength(6);
+    expect(NEUTRAL_POOL.rares).toHaveLength(4);
     for (const piece of [...NEUTRAL_POOL.commons, ...NEUTRAL_POOL.uncommons, ...NEUTRAL_POOL.rares]) {
       expect(piece.archetype).toBe('neutral');
     }

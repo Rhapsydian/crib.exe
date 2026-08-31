@@ -870,6 +870,17 @@ Encryption/Root's actual identity *is* denial — this lets that identity
 become a legitimate path to victory instead of asking those archetypes
 to borrow Exploit's identity just to have any offense at all.
 
+**Session 41 grew this pool +9** (8 common / 6 uncommon / 4 rare total,
+part of the wider Player Pool Expansion below), keeping the same
+suit-independence rule this section establishes. One judgment call worth
+recording: Mirror Server (`chained: afterTag daemon`) is the first
+Neutral piece to use a Chained trigger, previously avoided here entirely
+because id-based chaining needs a *specific* prerequisite no universal
+piece can assume is present. Session 41's own `afterTag`/`afterArchetype`
+match modes (Player Pool Expansion, Chained-triggers) don't have that
+problem — they fire off *any* matching piece, not a guaranteed id — so
+the original objection doesn't apply to them.
+
 **Retrofit, this session**: Ghost's Cantrip (Low Profile) is replaced
 by Idle Process — Cantrips were already established (session 4) as
 universal/cross-cutting rather than archetype-exclusive, so a neutral
