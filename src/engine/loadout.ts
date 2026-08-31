@@ -145,19 +145,36 @@ export interface LadderRank {
 
 const RARITY_LADDER_POSITION: Record<Rarity, 0 | 1 | 2> = { rare: 0, uncommon: 1, common: 2 };
 
-/** Whether acquiring `piece` would close a real credit-gap: the piece
- * belongs to one of the class's own 2 specializations, it can actually
- * credit a win gauge, and the installed loadout has no such piece in
- * that archetype yet. All three conditions matter -- a credit-capable
- * piece in an archetype the class doesn't specialize in isn't filling a
- * gap worth prioritizing (it's off-archetype content the class will
- * rarely lean on), and a defensive-only piece can't close the gap in the
- * first place, which is exactly the structural hole session 40 existed
- * to fix. */
+/** Whether acquiring `piece` would close a real credit-gap -- i.e. give
+ * the class a way to actually push toward a threshold win somewhere it
+ * currently can't. A defensive-only piece can never qualify, whatever
+ * its archetype: that inability is exactly the structural hole session
+ * 40 existed to fix.
+ *
+ * Neutral is handled deliberately, not incidentally (session 46, after
+ * measuring): a neutral piece is suit-independent by construction and
+ * therefore always live for every class, so it closes *any* of the
+ * class's open gaps rather than one specific archetype's. That matters
+ * because 4 of the 6 classes start a run with a credit-capable piece
+ * missing in one of their own two specializations (Saboteur/Operator:
+ * root; Warden: encryption; Ghost: both), which is the very gap session
+ * 28's Neutral Archetype was created to be able to fill.
+ *
+ * Note this does NOT let neutral outrank on-archetype content: a
+ * credit-capable neutral piece and a credit-capable on-archetype piece
+ * both land on rung 1, and rung 2 then resolves the tie toward
+ * on-archetype. Neutral only wins when nothing on-archetype is on offer.
+ *
+ * An off-archetype piece never fills a gap -- it's content the class's
+ * own two specializations won't reinforce, so prioritizing it would be
+ * chasing a gap the class was never built to cover. */
 export function fillsCreditGap(piece: SubroutineDefinition, playerState: RunPlayerState): boolean {
-  const classArchetypes: readonly Archetype[] = CLASS_DEFINITIONS[playerState.classId].archetypes;
-  if (!classArchetypes.includes(piece.archetype)) return false;
   if (!CREDIT_CAPABLE_PAYLOAD_KINDS.has(piece.payload.kind)) return false;
+  const classArchetypes: readonly Archetype[] = CLASS_DEFINITIONS[playerState.classId].archetypes;
+  if (piece.archetype === 'neutral') {
+    return classArchetypes.some((archetype) => !hasCreditCapablePiece(playerState.installedLoadout, archetype));
+  }
+  if (!classArchetypes.includes(piece.archetype)) return false;
   return !hasCreditCapablePiece(playerState.installedLoadout, piece.archetype);
 }
 

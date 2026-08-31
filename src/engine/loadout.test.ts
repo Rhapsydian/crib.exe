@@ -245,3 +245,59 @@ describe('ladderRank / synergyAwareAcquisition', () => {
     expect(synergyAwareAcquisition([], breacherState([]))).toBeNull();
   });
 });
+
+describe('fillsCreditGap -- neutral handling (session 46)', () => {
+  // Warden specializes in malware + encryption and ships with no
+  // credit-capable Encryption piece (classes.ts) -- one of the 4 classes
+  // that starts a run with a real gap, which is what makes this rung
+  // live rather than theoretical.
+  function wardenState(installedLoadout: SubroutineDefinition[]): RunPlayerState {
+    return { ...playerState(installedLoadout, []), classId: 'warden' };
+  }
+
+  const creditCapableNeutral = typedPiece('neutral-hit', 'neutral', { kind: 'directBurst', amount: 4 });
+
+  it('a credit-capable neutral piece fills an open gap in either specialization', () => {
+    // malware credits (starting kit), encryption does not -- one open
+    // gap is enough for a suit-independent piece to be worth prioritizing.
+    const state = wardenState([typedPiece('mal', 'malware', { kind: 'dot', amountPerTick: 2, cadence: 'globalPulse', duration: 3, pointsPerTick: 4 })]);
+    expect(fillsCreditGap(creditCapableNeutral, state)).toBe(true);
+  });
+
+  it('stops filling a gap once both specializations already credit', () => {
+    const state = wardenState([
+      typedPiece('mal', 'malware', { kind: 'dot', amountPerTick: 2, cadence: 'globalPulse', duration: 3, pointsPerTick: 4 }),
+      typedPiece('enc', 'encryption', { kind: 'wardCounter', amount: 3, ratio: 0.2 }),
+    ]);
+    expect(fillsCreditGap(creditCapableNeutral, state)).toBe(false);
+  });
+
+  it('a defensive-only neutral piece never fills a gap', () => {
+    const defensiveNeutral = typedPiece('neutral-ward', 'neutral', { kind: 'ward', amount: 3 });
+    expect(fillsCreditGap(defensiveNeutral, wardenState([]))).toBe(false);
+  });
+
+  it('does not let neutral outrank an on-archetype piece that fills the same gap', () => {
+    // Both reach rung 1; rung 2 resolves toward on-archetype. This is
+    // the specific worry that made neutral-on-rung-1 look risky -- it
+    // does not actually materialize.
+    const state = wardenState([typedPiece('mal', 'malware', { kind: 'dot', amountPerTick: 2, cadence: 'globalPulse', duration: 3, pointsPerTick: 4 })]);
+    const onArchetype = typedPiece('enc-hit', 'encryption', { kind: 'wardCounter', amount: 3, ratio: 0.2 });
+    expect(fillsCreditGap(onArchetype, state)).toBe(true);
+    expect(fillsCreditGap(creditCapableNeutral, state)).toBe(true);
+    expect(synergyAwareAcquisition([creditCapableNeutral, onArchetype], state)?.id).toBe('enc-hit');
+  });
+
+  it('but neutral wins over a defensive-only on-archetype piece', () => {
+    // The outcome that was backwards before this change: a credit-starved
+    // class preferring a piece that can never push toward a win.
+    const state = wardenState([typedPiece('mal', 'malware', { kind: 'dot', amountPerTick: 2, cadence: 'globalPulse', duration: 3, pointsPerTick: 4 })]);
+    const defensiveOnArchetype = typedPiece('enc-ward', 'encryption', { kind: 'ward', amount: 4 });
+    expect(synergyAwareAcquisition([defensiveOnArchetype, creditCapableNeutral], state)?.id).toBe('neutral-hit');
+  });
+
+  it('an off-archetype credit-capable piece still never fills a gap', () => {
+    const offArchetype = typedPiece('root-hit', 'root', { kind: 'sessionHijack', amount: 3 });
+    expect(fillsCreditGap(offArchetype, wardenState([]))).toBe(false);
+  });
+});

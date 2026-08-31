@@ -4067,3 +4067,56 @@ magnitude/balance tuning informed by the resulting sweep data (that's
 the full class audit itself, next up once this lands). No code written
 this session -- scope and design only, same discipline as every prior
 scoping session in this list.
+
+## Neutral pool is unreachable through acquisition (found session 46)
+
+**Real bug, user-confirmed unintended.** All 18 `NEUTRAL_POOL` pieces
+(`subroutines.ts` -- `background-task`, `circuit-breaker`,
+`failsafe-cluster`, `load-balancer`, ...) appear in **no class's reward
+or Shop pool at all**. `rewards.ts`'s `rewardPoolForClass` builds from
+`ARCHETYPE_POOLS` only -- the class's own 2 archetype pools, its starting
+loadout, and the universal Cantrips from its other 2 archetypes --
+and `NEUTRAL_POOL` is deliberately kept out of `ARCHETYPE_POOLS`. Since
+the Shop slate (`shop.ts`'s `poolByRarity`) and Event subroutine grants
+(`encounters.ts`'s `resolveSubroutineGrant`) both derive from
+`rewardPoolForClass`, every acquisition path inherits the exclusion.
+
+Measured this session while checking how often the new acquisition
+ladder's archetype rung actually fires:
+
+| | off-archetype | neutral |
+|---|---|---|
+| Reward options (3000 draws/class, standard tier) | 5.1% | **0.0%** |
+| Shop slate entries (3000 visits/class) | 3.7% | **0.0%** |
+
+Ghost is the only class showing any neutral at all (2.6%), and that is
+`idle-process` -- already in its own starting loadout, so drawing it
+banks Merge material rather than offering a new piece. The single
+acquisition path to any neutral piece anywhere in the game is one
+`specific` Event grant: `the-whistleblower` hands out `checksum-match`.
+
+`rewards.ts`'s own comment flags the exclusion as banked rather than
+intended ("real acquisition -- whether/how neutral pieces enter reward
+pools -- is still banked", session 28), so this is a known-unfinished
+edge, not a regression. Confirmed as unintended by the user in session
+46.
+
+**Fix, deferred to its own session** (user's call: after the Gameplay
+Simulation Heuristics checkpoints land, so the sweep baseline doesn't
+move underneath the dumb-vs-synergy comparison those checkpoints exist
+to enable). Not a one-liner -- adding 18 pieces to every class's pool
+is a real balance change: it dilutes on-archetype draw odds for all 6
+classes at once, and needs its own before/after sweep. Open questions
+for that session: do neutral pieces enter at full weight or a reduced
+one; do they enter the Shop slate as well as combat rewards; does the
+existing `rarityOf` weighting need adjusting once the pool grows
+120 -> 138.
+
+**Already handled, not blocked on the fix**: session 46's acquisition
+ladder ranks neutral correctly today (rung 2, between on- and
+off-archetype), and `fillsCreditGap` treats a credit-capable neutral
+piece as closing any of the class's own open credit-gaps -- decided live
+with the user after measuring that 4 of 6 classes (Saboteur/Operator:
+root; Warden: encryption; Ghost: both) start a run with such a gap. So
+the heuristic layer is already correct for neutral content and starts
+exercising it the moment the pool fix lands.
