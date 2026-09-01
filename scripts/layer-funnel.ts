@@ -44,7 +44,7 @@
  *   npx tsx scripts/layer-funnel.ts [--classes=breacher,ghost] [--seeds=600] [--acquisition=floor|synergy] [--playerSkill=0.85] [--excludeGatekeeper=firewall-prime] [--out=file.jsonl]
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
-import { playRun, opportunisticTraversal } from '../src/engine/run';
+import { playRun, opportunisticTraversal, summarizeRunLoadout } from '../src/engine/run';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
 import type { ClassId } from '../src/engine/classes';
@@ -123,7 +123,19 @@ for (const classId of classes) {
     });
     for (let i = 0; i < LAYER_COUNT; i++) if (result.layersCompleted >= i + 1) reachedLayer[i]++;
     if (result.outcome === 'victory') victories++;
-    emit(JSON.stringify({ classId, seed, acquisition: acquisitionName, outcome: result.outcome, layersCompleted: result.layersCompleted }), outFile);
+    emit(
+      JSON.stringify({
+        classId,
+        seed,
+        acquisition: acquisitionName,
+        outcome: result.outcome,
+        layersCompleted: result.layersCompleted,
+        // See scripts/sweep.ts's own note -- same per-run holdings, so a
+        // funnel run answers loadout questions without a second sweep.
+        loadout: summarizeRunLoadout(result.playerState),
+      }),
+      outFile,
+    );
   }
 
   if (reachedLayer[LAYER_COUNT - 1] !== victories) {

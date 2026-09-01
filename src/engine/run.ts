@@ -178,6 +178,55 @@ export interface RunResult {
   playerState: RunPlayerState;
 }
 
+/** A flat, JSON-friendly view of a finished run's player state --
+ * everything a balance query needs about what the run actually ended up
+ * holding, and nothing that isn't serializable (SubroutineDefinition
+ * carries nested trigger/payload objects that would bloat a JSONL line
+ * without adding anything a "which runs had X" query can use).
+ *
+ * Session 46: added because sweeps recorded outcome and layersCompleted
+ * only, so "how many winning runs included subroutine X" wasn't
+ * answerable from anything on disk -- it needed a bespoke script every
+ * time, which is exactly the throwaway-scratch pattern scripts/sweep.ts
+ * itself was written to end.
+ *
+ * `installed` is ordered, since firing order is a real lever
+ * (loadout.ts's reorderInstalled) and session 46's reorder strategy
+ * changes it -- so the order here is itself a measurable outcome, not
+ * incidental. `rank` records Merge level per id; ids are stable across
+ * Merges (mergeSubroutine upgrades in place, preserving id), so a
+ * ranked piece still matches a plain "did this run have X" query. */
+export interface RunLoadoutSummary {
+  installed: string[];
+  bench: string[];
+  /** Merge rank per subroutine id, omitting unranked (rank-0) pieces. */
+  rank: Record<string, number>;
+  /** Banked duplicate material per id, omitting zero counts. */
+  material: Record<string, number>;
+  mods: string[];
+  burners: string[];
+  /** Which installed ids came from a Mod grant rather than acquisition --
+   * they're cap-exempt and removal-locked, so they shouldn't be read as
+   * evidence the run chose them. */
+  grantedByMod: string[];
+}
+
+/** Derives a RunLoadoutSummary from a finished run's player state. Pure
+ * and cheap -- callers that don't want it simply don't call it. */
+export function summarizeRunLoadout(playerState: RunPlayerState): RunLoadoutSummary {
+  const nonZero = (record: Record<string, number>): Record<string, number> =>
+    Object.fromEntries(Object.entries(record).filter(([, value]) => value > 0));
+  return {
+    installed: playerState.installedLoadout.map((piece) => piece.id),
+    bench: playerState.bench.map((piece) => piece.id),
+    rank: nonZero(playerState.rank),
+    material: nonZero(playerState.material),
+    mods: [...playerState.ownedModIds],
+    burners: [...playerState.carriedBurnerIds],
+    grantedByMod: Object.keys(playerState.grantedByMod),
+  };
+}
+
 /** Decides the next node to move to, given the current layer graph,
  * position, and Heat. Must always return a node in legalMoves(graph,
  * position) -- "legal-not-good," the same contract as Phase 1/2's

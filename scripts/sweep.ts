@@ -52,7 +52,15 @@
  * 9 credit-incapable-enemy retrofits this session.
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
-import { playRun, beelineToGatekeeper, exploreThenGatekeeper, opportunisticTraversal, type RunOutcome, type TraversalStrategy } from '../src/engine/run';
+import {
+  playRun,
+  beelineToGatekeeper,
+  exploreThenGatekeeper,
+  opportunisticTraversal,
+  summarizeRunLoadout,
+  type RunOutcome,
+  type TraversalStrategy,
+} from '../src/engine/run';
 import { playCombat } from '../src/engine/combat';
 import { CLASS_STARTING_LOADOUTS } from '../src/engine/subroutines';
 import { ENEMY_ROSTER } from '../src/engine/enemies';
@@ -151,6 +159,10 @@ function sweepRun(args: Record<string, string>): void {
           acquisition: acquisitionName,
           outcome: result.outcome,
           layersCompleted: result.layersCompleted,
+          // Session 46: the run's actual final holdings, so
+          // "how many winning runs included X" is a query over --out
+          // rather than a bespoke script written from scratch each time.
+          loadout: summarizeRunLoadout(result.playerState),
         }),
         outFile,
       );

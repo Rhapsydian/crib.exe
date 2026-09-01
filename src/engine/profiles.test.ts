@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { SYNERGY_AWARE_PROFILE, SYNERGY_EVENT_RISK } from './profiles';
-import { playRun, opportunisticTraversal } from './run';
+import { createInitialPlayerState, playRun, opportunisticTraversal, summarizeRunLoadout } from './run';
 import { opportunisticSafehouseStrategy } from './merge';
 import { CLASS_DEFINITIONS, type ClassId } from './classes';
 
@@ -114,5 +114,45 @@ describe('SYNERGY_AWARE_PROFILE -- loadout preservation (session 46 regression)'
       }
     }
     expect(kept / total).toBeGreaterThan(0.75);
+  });
+});
+
+describe('summarizeRunLoadout (session 46)', () => {
+  it('captures what a finished run actually held, in a JSON-safe shape', () => {
+    const result = playRun({
+      ...SYNERGY_AWARE_PROFILE,
+      seed: 0,
+      classId: 'breacher',
+      traversalStrategy: opportunisticTraversal,
+      safehouseStrategy: opportunisticSafehouseStrategy,
+    });
+    const summary = summarizeRunLoadout(result.playerState);
+
+    // Ordered, because reorderStrategy makes firing order a real outcome
+    // rather than an artifact of acquisition order.
+    expect(summary.installed).toEqual(result.playerState.installedLoadout.map((p) => p.id));
+    expect(summary.mods).toEqual(result.playerState.ownedModIds);
+    // Survives a JSON round-trip -- the whole point is a JSONL line.
+    expect(JSON.parse(JSON.stringify(summary))).toEqual(summary);
+  });
+
+  it('omits zero-valued rank and material entries rather than emitting noise', () => {
+    const summary = summarizeRunLoadout({
+      ...createInitialPlayerState('breacher'),
+      rank: { ranked: 2, unranked: 0 },
+      material: { banked: 1, spent: 0 },
+    });
+    expect(summary.rank).toEqual({ ranked: 2 });
+    expect(summary.material).toEqual({ banked: 1 });
+  });
+
+  it('reports Mod-granted installed ids separately from chosen ones', () => {
+    // A granted piece is cap-exempt and removal-locked, so counting it
+    // as evidence the run "picked" that subroutine would be wrong.
+    const summary = summarizeRunLoadout({
+      ...createInitialPlayerState('ghost'),
+      grantedByMod: { 'some-piece': 'auxiliary-process' },
+    });
+    expect(summary.grantedByMod).toEqual(['some-piece']);
   });
 });
