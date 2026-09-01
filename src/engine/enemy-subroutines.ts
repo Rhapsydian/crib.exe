@@ -356,9 +356,7 @@ export const ENEMY_ONLY_SUBROUTINES: SubroutineDefinition[] = [
     trigger: { kind: 'always' },
     payload: { kind: 'dot', amountPerTick: ENEMY_RARE.tick, cadence: 'castersTurnPulse', duration: ENEMY_RARE.duration },
     tags: ['daemon'],
-    // The Quarantine Ward hunts by spreading containment outward, lighting
-    // the intruder up as it sweeps.
-    tracePressure: HUNTER_TRACE_PRESSURE,
+
   },
   {
     id: 'cryo-lock',
@@ -386,6 +384,21 @@ export const ENEMY_ONLY_SUBROUTINES: SubroutineDefinition[] = [
     trigger: { kind: 'accumulator', metric: 'points', threshold: 10 },
     payload: { kind: 'hot', amountPerTick: ENEMY_RARE.tick + 4, cadence: 'castersTurnPulse', duration: ENEMY_RARE.duration },
     tags: ['daemon'],
+    // The Quarantine Ward's Trace pressure lives here, on an
+    // accumulator, and NOT on Contagion Protocol (session 47 correction).
+    // Contagion Protocol is an `always` trigger, so pressure there fired
+    // every enemy turn -- ~12.7 times a fight, ~25 Trace, a quarter of the
+    // whole run Heat budget from one encounter. A gatekeeper ablation
+    // measured it as the layer-2 difficulty spike (+8.4pp pass rate when
+    // the Ward was removed) while Incident Response, whose pressure sits
+    // on a conditional occurrence trigger, measured neutral. Trace
+    // pressure belongs on conditional triggers; cadence matters more than
+    // the per-fire number.
+    //
+    // Note magnitudeScaler cannot moderate this -- scaledEnemyLoadout
+    // scales payload magnitude only, so tracePressure is outside the
+    // per-gatekeeper difficulty dial entirely.
+    tracePressure: HUNTER_TRACE_PRESSURE,
   },
   {
     id: 'quick-draw',

@@ -349,7 +349,18 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   // fight). Quick Draw also makes Primed to Strike's Root-fire-cheapens-
   // next-Exploit-fire synergy reliable, since Total Pwnage was its only
   // Exploit piece and rarely fired to begin with.
-  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['root', 'exploit'], minLayer: 2, loadout: [pool('supply-route'), pool('redistribution'), pool('quick-draw')], passiveIds: ['primed-to-strike'], magnitudeScaler: 1.3 },
+  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['root', 'exploit'], minLayer: 2, loadout: [pool('packet-injection'), pool('redistribution'), pool('quick-draw')], passiveIds: ['primed-to-strike'], magnitudeScaler: 1.3 },
+  // Zero-Sum, session 47: swapped Supply Route -> Packet Injection. A
+  // gatekeeper ablation measured Zero-Sum as layer 2's *easy* draw --
+  // removing it cost 12.1pp of pass rate across all six classes, the
+  // largest effect of the three, because it was propping the layer up.
+  // Supply Route manipulates its own suitTally, a player-facing utility
+  // that does essentially nothing offensive for an enemy, leaving the kit
+  // with one dead piece and its only real threat (Redistribution's
+  // sessionHijack) gated behind a flush -- one of the rarest occurrences
+  // in Cribbage. Packet Injection is the same archetype and also
+  // credit-capable, but triggers on fifteens, so the kit finally has
+  // reliable offense instead of a rare spike.
   // Layer 3 -- secured subnet
   // Session 43: added System Meltdown (enemy-subroutines.ts), which ties
   // directly into its own Cascading Failure passive rather than just

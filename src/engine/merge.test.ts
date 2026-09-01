@@ -355,18 +355,24 @@ describe('mergeTargetStrategy wiring (checkpoint E)', () => {
     // always-Merge SafehouseStrategy guarantees the target choice is
     // reached -- preferMergeWhenAvailable returns 'rest' with nothing
     // banked, which short-circuits the call entirely.
+    // Scans seeds rather than pinning one: whether a given run reaches a
+    // Safehouse at all depends on map generation, and content changes move
+    // which seeds do. The assertion is that playRun consults the strategy
+    // when a Merge is chosen, not that seed N happens to route past one.
     const seen: RunPlayerState[] = [];
     const spy = (playerState: RunPlayerState): string | null => {
       seen.push(playerState);
       return pickMergeTarget(playerState);
     };
-    playRun({
-      seed: 0,
-      classId: 'breacher',
-      traversalStrategy: opportunisticTraversal,
-      safehouseStrategy: () => 'merge',
-      mergeTargetStrategy: spy,
-    });
+    for (let seed = 0; seed < 40 && seen.length === 0; seed++) {
+      playRun({
+        seed,
+        classId: 'breacher',
+        traversalStrategy: opportunisticTraversal,
+        safehouseStrategy: () => 'merge',
+        mergeTargetStrategy: spy,
+      });
+    }
     expect(seen.length).toBeGreaterThan(0);
   });
 

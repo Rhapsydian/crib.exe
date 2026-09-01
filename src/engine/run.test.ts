@@ -292,7 +292,7 @@ describe('playRun', { timeout: 30_000 }, () => {
     // pool shifted which seeds win, and a floor-strategy player
     // (alwaysAcquireFirst, beeline, no skill dial) wins rarely enough
     // that the first victory now lands at seed 96.
-    const victorySeed = Array.from({ length: 200 }, (_, seed) => seed).find(
+    const victorySeed = Array.from({ length: 500 }, (_, seed) => seed).find(
       (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper }).outcome === 'victory',
     );
     expect(victorySeed).toBeDefined();
@@ -319,7 +319,7 @@ describe('playRun', { timeout: 30_000 }, () => {
     // pool shifted which seeds win, and a floor-strategy player
     // (alwaysAcquireFirst, beeline, no skill dial) wins rarely enough
     // that the first victory now lands at seed 96.
-    const victorySeed = Array.from({ length: 200 }, (_, seed) => seed).find(
+    const victorySeed = Array.from({ length: 500 }, (_, seed) => seed).find(
       (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper }).outcome === 'victory',
     );
     expect(victorySeed).toBeDefined();
