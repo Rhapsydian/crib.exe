@@ -1030,16 +1030,18 @@ describe("Choked -- temporary gauge-threshold bump", () => {
     state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 2 }, 'malware', state, 0);
     expect(state.sides[1].gauge.threshold).toBe(9);
     // Haste (ownGaugeThreshold) then lowers side 1's own threshold by 8,
-    // floored at 1 -- exactly the real Ghost in the Machine/Blackhat
-    // sequence (Botnet's Choked, then DNS Poisoning's Haste).
+    // floored at MIN_INITIATIVE_THRESHOLD -- exactly the real Ghost in the
+    // Machine/Blackhat sequence (Botnet's Choked, then DNS Poisoning's
+    // Haste). Session 47 raised that floor 1 -> 4; what this regression
+    // actually protects is "never at or below 0", not the literal value.
     state = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 8 }, 'root', state, 1);
-    expect(state.sides[1].gauge.threshold).toBe(1);
+    expect(state.sides[1].gauge.threshold).toBe(4);
     // Choked's own naive reversal (threshold - 5) would land on -4
     // without the floor -- and a threshold at or below 0 hangs
     // gauges.ts's addPoints forever the next time any points are scored.
     state = tickDebuffDurations(state);
     state = tickDebuffDurations(state); // duration 2 -> 1 -> 0, expires
-    expect(state.sides[1].gauge.threshold).toBe(1);
+    expect(state.sides[1].gauge.threshold).toBe(4);
     expect(state.sides[1].gauge.threshold).toBeGreaterThan(0);
   });
 
@@ -1047,9 +1049,9 @@ describe("Choked -- temporary gauge-threshold bump", () => {
     let state = createCombatState([], [], [4, 4]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 10 }, 'malware', state, 0);
     state = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 8 }, 'root', state, 1);
-    expect(state.sides[1].gauge.threshold).toBe(1);
+    expect(state.sides[1].gauge.threshold).toBe(4); // MIN_INITIATIVE_THRESHOLD, raised 1 -> 4 in session 47
     const cleansed = resolvePayload({ kind: 'cleanse', debuffId: 'choked' }, 'encryption', state, 1);
-    expect(cleansed.sides[1].gauge.threshold).toBe(1);
+    expect(cleansed.sides[1].gauge.threshold).toBe(4);
     expect(cleansed.sides[1].gauge.threshold).toBeGreaterThan(0);
   });
 });

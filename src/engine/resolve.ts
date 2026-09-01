@@ -368,7 +368,28 @@ const THROTTLED_FLOOR = 1; // y -- TBD/playtesting
  * Choked's natural expiry reverted its own original bump unconditionally,
  * landing exactly on 0 and spinning addPoints forever. TBD/playtesting
  * beyond that hard floor. */
-const MIN_INITIATIVE_THRESHOLD = 1;
+/**
+ * Floor for any reduction to a side's own initiative-gauge threshold.
+ *
+ * Raised 1 -> 4 in session 47. The original 1 was chosen purely to keep
+ * gauges.ts's addPoints (`while progress >= threshold`) from looping
+ * forever on a threshold of 0 -- it prevented the crash without asking
+ * what the value should actually be. At 1, every single point scored
+ * grants a turn, which is 8x tempo against the base GAUGE_THRESHOLD of
+ * 8, and session 47's loop detector caught it twice in real sweeps: one
+ * side taking 53 and then 201 consecutive turns without the opponent
+ * acting. The second occurrence aborted a gatekeeper-ablation run
+ * outright, so this had gone from a balance smell to actively corrupting
+ * measurement.
+ *
+ * 4 caps the effect at 2x tempo. That matters more than it looks,
+ * because the game's only threshold-reducing piece (DNS Poisoning)
+ * reduces by 8 -- the whole base threshold -- so a single fire always
+ * lands exactly on this floor. The floor IS the effect's magnitude, and
+ * "halve your initiative threshold" is a strong uncommon rather than a
+ * runaway.
+ */
+const MIN_INITIATIVE_THRESHOLD = 4;
 
 /** Throttled (a debuff kind) dents points about to be credited to a
  * side's gauge -- a flat reduction with a floor, clamped so it can
