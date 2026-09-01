@@ -1,4 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { rewardPoolForClass } from './rewards';
+import { CLASS_DEFINITIONS, type ClassId } from './classes';
+
+const ALL_CLASS_IDS: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
 import {
   ALL_SUBROUTINES,
   ALL_STARTING_LOADOUT_SUBROUTINES,
@@ -364,6 +368,68 @@ describe('Trace cadence (session 47 structural guard)', () => {
     for (const piece of ALL_SUBROUTINES) {
       if (piece.trigger.kind !== 'always') continue;
       expect(piece.traceCost ?? 0, `${piece.id} is \`always\`-triggered and carries traceCost`).toBe(0);
+    }
+  });
+});
+
+describe('dead-content guards (session 47)', () => {
+  // Session 47 found two pump pieces that did nothing, both sitting in a
+  // class's *starting* loadout, so two of six classes opened every run
+  // with a dead card. The mechanic was fixed (triggers.ts's
+  // advanceTowardFiring), but the recurring failure is that nothing
+  // checked. These are the checks.
+
+  const byId = new Map(ALL_SUBROUTINES.map((p) => [p.id, p]));
+
+  /** Pumps whose target genuinely cannot be advanced -- an enemyState
+   * trigger is a live condition with nothing to bank, so no mechanic
+   * change can help it. Fixing this one needs a content decision
+   * (re-point the pump, or change the target's trigger), deliberately
+   * left open rather than quietly patched. */
+  const KNOWN_UNADVANCEABLE = new Set(['background-process']);
+
+  it('every progress-pump targets a piece that can actually be advanced', () => {
+    for (const piece of ALL_SUBROUTINES) {
+      const payload = piece.payload;
+      if (payload.kind !== 'instantManipulation' || payload.target !== 'subroutineProgress') continue;
+      if (KNOWN_UNADVANCEABLE.has(piece.id)) continue;
+      const target = byId.get(payload.targetSubroutineId ?? '');
+      expect(target, `${piece.id} pumps '${payload.targetSubroutineId}', which does not exist`).toBeDefined();
+      expect(
+        ['accumulator', 'occurrence'].includes(target!.trigger.kind),
+        `${piece.id} pumps '${target!.id}', whose ${target!.trigger.kind} trigger cannot be advanced -- the pump is inert`,
+      ).toBe(true);
+    }
+  });
+
+  it('no payload carries a zero magnitude', () => {
+    for (const piece of ALL_SUBROUTINES) {
+      const payload = piece.payload as unknown as Record<string, unknown>;
+      for (const field of ['amount', 'amountPerTick', 'baseAmount', 'magnitude']) {
+        if (!(field in payload)) continue;
+        expect(payload[field], `${piece.id}: ${field} is ${payload[field]}`).toBeTruthy();
+      }
+    }
+  });
+
+  it('no chained piece is left without a possible partner in its own class pool', () => {
+    // Session 42 redesigned ChainedTrigger to archetype/tag matching for
+    // exactly this reason -- an id-paired chain can go permanently dead
+    // for a class that never draws its partner.
+    for (const classId of ALL_CLASS_IDS) {
+      const reachable = [...rewardPoolForClass(classId), ...CLASS_DEFINITIONS[classId].startingLoadout];
+      for (const piece of reachable) {
+        const trigger = piece.trigger;
+        if (trigger.kind !== 'chained') continue;
+        const hasPartner = reachable.some(
+          (other) =>
+            other.id !== piece.id &&
+            (('afterSubroutineId' in trigger && other.id === trigger.afterSubroutineId) ||
+              ('afterArchetype' in trigger && other.archetype === trigger.afterArchetype) ||
+              ('afterTag' in trigger && other.tags.includes(trigger.afterTag))),
+        );
+        expect(hasPartner, `${classId}/${piece.id}: chained trigger has no possible partner in this class's pool`).toBe(true);
+      }
     }
   });
 });

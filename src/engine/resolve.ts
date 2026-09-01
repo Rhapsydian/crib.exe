@@ -21,6 +21,7 @@ import {
   type TriggerContext,
   type ScoringOccurrence,
   type FiredSubroutineInfo,
+  advanceTowardFiring,
 } from './triggers';
 import { createInitiativeGauge, createDuelGauge, addDuelProgress, reduceDuelProgress, shrinkDuelThreshold, type InitiativeGauge, type DuelGauge } from './gauges';
 import { bestCardToForce } from './ai';
@@ -1539,10 +1540,10 @@ function resolvePayloadCore(
         if (index === -1) return combatState;
         const entry = casterState.loadout[index];
         const loadout = casterState.loadout.slice();
-        loadout[index] = {
-          ...entry,
-          state: { ...entry.state, accumulatedProgress: entry.state.accumulatedProgress + amount },
-        };
+        // Session 47: was a raw write to accumulatedProgress, which only
+        // accumulator triggers read -- see advanceTowardFiring's own
+        // comment for why that made every pump piece in the game inert.
+        loadout[index] = { ...entry, state: advanceTowardFiring(entry.state, entry.definition, amount) };
         const sides = replaceSide(combatState.sides, caster, { ...casterState, loadout });
         return { ...combatState, sides };
       }

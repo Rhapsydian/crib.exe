@@ -347,6 +347,61 @@ export interface TriggerContext {
  * fixes this by latching `ready` the moment the condition is ever true
  * -- the same "banked, not re-checked" semantics accumulator/occurrence
  * already had. */
+/**
+ * Advances a subroutine toward firing by `amount`, the way a *pump* piece
+ * (instantManipulation -> subroutineProgress) is meant to: Operator's
+ * Priority Override feeding Precision Strike, Saboteur's Background
+ * Process feeding Time Bomb.
+ *
+ * Session 47 bug fix. resolve.ts previously wrote straight to
+ * `accumulatedProgress`, which ONLY accumulator triggers ever read -- so
+ * both pump pieces in the entire game were completely inert, and both sit
+ * in a class's starting loadout. Two of six classes had been playing with
+ * a dead piece in their opening kit. Fixed at the mechanic rather than
+ * the two call sites, so a future pump aimed at any bankable trigger just
+ * works.
+ *
+ * What "advance" means per family, mirroring updateSubroutineState's own
+ * banking rules so a pump and a real scoring event agree:
+ *   - accumulator: bank raw progress, and latch ready on reaching the
+ *     threshold. The old code banked but never re-checked ready, so even
+ *     an accumulator target only woke up on its next real occurrence.
+ *   - occurrence 'threshold'/'scaling': bank whole occurrences (respecting
+ *     the scaling cap), latching ready exactly as a real one would.
+ *   - occurrence 'instant': there is nothing to bank -- the piece fires on
+ *     the event itself -- so a pump simply readies it.
+ *   - selfState/enemyState/chained/always: readiness is a live condition
+ *     or a same-turn reference, not a bank, so there is nothing a pump can
+ *     advance. Deliberately a no-op rather than a forced fire; making
+ *     these fire on demand would let a pump bypass the condition that
+ *     defines them.
+ *   - rareOccurrence/handOutcome: bypass the readiness pipeline entirely
+ *     (see isReady), so likewise a no-op.
+ */
+export function advanceTowardFiring(
+  state: SubroutineRuntimeState,
+  definition: SubroutineDefinition,
+  amount: number,
+): SubroutineRuntimeState {
+  if (amount <= 0) return state;
+  const trigger = definition.trigger;
+
+  if (trigger.kind === 'accumulator') {
+    const accumulatedProgress = state.accumulatedProgress + amount;
+    return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold };
+  }
+
+  if (trigger.kind === 'occurrence') {
+    if (trigger.variation === 'instant') return { ...state, ready: true };
+    const bankedOccurrences =
+      trigger.variation === 'scaling' ? Math.min(state.bankedOccurrences + amount, trigger.cap) : state.bankedOccurrences + amount;
+    const ready = trigger.variation === 'threshold' ? bankedOccurrences >= trigger.bankTarget : true;
+    return { ...state, bankedOccurrences, ready: state.ready || ready };
+  }
+
+  return state;
+}
+
 export function isReady(
   definition: SubroutineDefinition,
   state: SubroutineRuntimeState,
