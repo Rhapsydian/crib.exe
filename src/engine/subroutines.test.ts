@@ -351,3 +351,19 @@ describe('subroutine content — real combat smoke tests', () => {
     expect(() => playCombat([ALL_SUBROUTINES, []], { seed: 1, gaugeThreshold: [12, 12] })).not.toThrow();
   });
 });
+
+describe('Trace cadence (session 47 structural guard)', () => {
+  it('no `always`-triggered piece carries a Trace cost', () => {
+    // Learned twice the hard way in one session. An `always` trigger
+    // fires ~12.7 times per fight, so even traceCost 1 is ~13 Trace --
+    // against a run Heat budget of 100 of which ~60% is already spent on
+    // movement. Static Noise did this to Blackhat (60% of runs ending
+    // heat-maxed) and Contagion Protocol did it to The Quarantine Ward,
+    // making it layer 2's difficulty spike. Trace costs belong on
+    // conditional triggers, where cadence is bounded by real play.
+    for (const piece of ALL_SUBROUTINES) {
+      if (piece.trigger.kind !== 'always') continue;
+      expect(piece.traceCost ?? 0, `${piece.id} is \`always\`-triggered and carries traceCost`).toBe(0);
+    }
+  });
+});

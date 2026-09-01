@@ -466,10 +466,18 @@ export const BLACKHAT_LOADOUT: SubroutineDefinition[] = [
     // riskRewardBurst for it, not an intended part of its "always fires"
     // identity.
     payload: { kind: 'riskRewardBurst', amount: 3 },
-    // Session 47: a cantrip named *static noise* that generated none.
-    // 1 rather than EXPLOIT_TRACE_COST because an `always` trigger fires
-    // ~12.7 times a fight -- this is a constant hum, not a spike.
-    traceCost: 1,
+    // Session 47, and then reverted the same session: giving this a
+    // traceCost of 1 was thematically tidy (a cantrip named *static
+    // noise* that generated none) and mechanically a disaster. An
+    // `always` trigger fires ~12.7 times a fight, so "a constant hum"
+    // was ~13 Trace per fight from turn one -- and this sits in
+    // Blackhat's starting loadout, the one class with no access to any
+    // Trace reducer (all three are encryption/root). Blackhat measured
+    // 4.58 installed traceCost per run against 0.33-0.85 for every other
+    // class, 91.7 average final Heat against a cap of 100, and 60% of its
+    // runs ending heat-maxed. Cadence, not the per-fire number, is what
+    // makes a Trace cost expensive -- see subroutines.test.ts's structural
+    // guard forbidding this combination.
     tags: ['daemon'],
   },
 ];
