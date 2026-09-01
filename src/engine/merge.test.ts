@@ -54,18 +54,18 @@ describe('easeTriggerCondition', () => {
     expect(easeTriggerCondition(trigger, 2)).toBe(trigger); // same reference -- true no-op
   });
 
-  it('lowers a Self-state heatAbove value, floored at 0', () => {
-    expect(easeTriggerCondition({ kind: 'selfState', condition: 'heatAbove', value: 1 }, 5)).toEqual({
+  it('lowers a Self-state traceAbove value, floored at 0', () => {
+    expect(easeTriggerCondition({ kind: 'selfState', condition: 'traceAbove', value: 1 }, 5)).toEqual({
       kind: 'selfState',
-      condition: 'heatAbove',
+      condition: 'traceAbove',
       value: 0,
     });
   });
 
-  it('raises a Self-state heatBelow value', () => {
-    expect(easeTriggerCondition({ kind: 'selfState', condition: 'heatBelow', value: 10 }, 2)).toEqual({
+  it('raises a Self-state traceBelow value', () => {
+    expect(easeTriggerCondition({ kind: 'selfState', condition: 'traceBelow', value: 10 }, 2)).toEqual({
       kind: 'selfState',
-      condition: 'heatBelow',
+      condition: 'traceBelow',
       value: 12,
     });
   });

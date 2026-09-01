@@ -46,7 +46,40 @@ Two deliberately separate resources, not one shared health stat:
   outright. **A second, independent accumulation source (session 19)**:
   every map-node move costs a flat amount of Heat (also TBD/playtesting),
   regardless of direction or destination — see Map & Run Structure's
-  free-roam movement model.
+  free-roam movement model. **A third source (session 47)**: Trace
+  carried out of a fight, below.
+- **Trace** (session 47) — in-fight noise, and the *only* Heat-adjacent
+  quantity that exists inside combat. It starts at 0 every fight, is
+  raised by subroutines that make noise (Exploit's risk/reward bursts
+  most steeply — that tradeoff is the archetype's identity), lowered by
+  subroutines that cover your tracks, and **converts to Heat when the
+  fight ends**. So Trace is not a second resource competing with Heat;
+  it is the fight's pending contribution to it, and reducing Trace
+  before the fight ends genuinely denies the run that Heat.
+
+  Trace exists as a named concept because the engine already had this
+  accumulator and called it `heat`, which caused real bugs: the
+  `heatAbove`/`heatBelow` triggers read it while their names, thresholds
+  and content all implied run Heat, leaving `heatBelow` true at the start
+  of essentially every fight and `heatAbove` near-dead (session 46
+  diagnosis).
+
+  **Why triggers read Trace and not run Heat.** Run Heat cannot change
+  during a fight — nothing inside combat touches it — so a run-Heat
+  condition would be a constant for a fight's whole duration, which is
+  exactly the "always fires or never fires" degeneracy the split is meant
+  to remove. Trace moves mid-fight, so a threshold on it is a real,
+  evolving state: `traceBelow` reads as *"while I'm still quiet"* and
+  `traceAbove` as *"once I've made noise"*. A piece that both reads and
+  writes Trace self-limits — it fires until it makes itself too loud —
+  which is a player-visible, thematically legible limiter that also
+  interacts with Trace reduction, unlike a hard per-combat fire cap.
+  Adapting a loadout to the *run's* Heat level remains a real design
+  space, but it belongs to between-fights loadout choices rather than
+  per-turn triggers.
+
+  **Trace is player-only**, like Heat itself (session 43: "risk has no
+  enemy-side analog at all"). Enemies never accumulate it.
 - **Breach/Containment** — an in-combat-only pair of independent
   per-side gauges (session 22+ redesign — originally a single shared
   push/pull meter, revisited once that design proved to be the root

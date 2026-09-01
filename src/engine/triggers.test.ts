@@ -29,7 +29,7 @@ function definitionWith(trigger: TriggerFamily): SubroutineDefinition {
 }
 
 const emptyContext: TriggerContext = {
-  self: { heat: 0, isDealer: false },
+  self: { trace: 0, isDealer: false },
   enemy: { breachContainment: 50, gaugeFillFraction: 0, activeDebuffIds: [] },
   firedThisTurn: [],
 };
@@ -108,10 +108,10 @@ describe('resetAfterFire', () => {
 });
 
 describe('contextual evaluators', () => {
-  it('evaluateSelfState checks heat and dealer conditions', () => {
-    const ctx: SelfStateContext = { heat: 10, isDealer: true };
-    expect(evaluateSelfState({ kind: 'selfState', condition: 'heatAbove', value: 5 }, ctx)).toBe(true);
-    expect(evaluateSelfState({ kind: 'selfState', condition: 'heatBelow', value: 5 }, ctx)).toBe(false);
+  it('evaluateSelfState checks Trace and dealer conditions', () => {
+    const ctx: SelfStateContext = { trace: 10, isDealer: true };
+    expect(evaluateSelfState({ kind: 'selfState', condition: 'traceAbove', value: 5 }, ctx)).toBe(true);
+    expect(evaluateSelfState({ kind: 'selfState', condition: 'traceBelow', value: 5 }, ctx)).toBe(false);
     expect(evaluateSelfState({ kind: 'selfState', condition: 'isDealer' }, ctx)).toBe(true);
     expect(evaluateSelfState({ kind: 'selfState', condition: 'isNonDealer' }, ctx)).toBe(false);
   });
@@ -170,7 +170,7 @@ describe('isReady dispatcher', () => {
     const latched = { ...notReady, ready: true };
     // Passing a context where the condition is true no longer matters --
     // isReady only reads the banked flag for this family now.
-    expect(isReady(selfDef, notReady, { ...emptyContext, self: { heat: 0, isDealer: true } })).toBe(false);
+    expect(isReady(selfDef, notReady, { ...emptyContext, self: { trace: 0, isDealer: true } })).toBe(false);
     expect(isReady(selfDef, latched, emptyContext)).toBe(true);
   });
 

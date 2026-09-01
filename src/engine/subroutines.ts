@@ -232,7 +232,7 @@ export const NEUTRAL_UNCOMMONS: SubroutineDefinition[] = [
     id: 'overclock',
     name: 'Overclock',
     archetype: 'neutral',
-    trigger: { kind: 'selfState', condition: 'heatAbove', value: UNCOMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.heat },
     payload: { kind: 'directBurst', amount: UNCOMMON.burst },
     tags: ['direct'],
   },
@@ -249,7 +249,7 @@ export const NEUTRAL_UNCOMMONS: SubroutineDefinition[] = [
     id: 'redundant-node',
     name: 'Redundant Node',
     archetype: 'neutral',
-    trigger: { kind: 'selfState', condition: 'heatBelow', value: UNCOMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceBelow', value: UNCOMMON.heat },
     payload: { kind: 'directBurst', amount: UNCOMMON.burst },
     tags: ['direct'],
   },
@@ -401,11 +401,11 @@ export const BLACKHAT_LOADOUT: SubroutineDefinition[] = [
     name: 'Payload Drop',
     archetype: 'exploit',
     trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
-    // heatCost 4 -> 3 (balance pass, session 38/checkpoint-J follow-up):
+    // traceCost 4 -> 3 (balance pass, session 38/checkpoint-J follow-up):
     // empirically swept against explore-heavy play alongside Static
     // Noise's own fix below -- see BACKLOG.md's Blackhat Heat-fragility
     // writeup for the full candidate comparison.
-    payload: { kind: 'riskRewardBurst', amount: COMMON.burst + 2, heatCost: 3 },
+    payload: { kind: 'riskRewardBurst', amount: COMMON.burst + 2, traceCost: 3 },
     tags: ['direct'],
   },
   {
@@ -421,8 +421,8 @@ export const BLACKHAT_LOADOUT: SubroutineDefinition[] = [
     name: 'Static Noise',
     archetype: 'exploit',
     trigger: { kind: 'always' },
-    // heatCost 1 -> 0 (balance pass): an Always-triggered Cantrip fires
-    // essentially every turn, so any nonzero heatCost here multiplies
+    // traceCost 1 -> 0 (balance pass): an Always-triggered Cantrip fires
+    // essentially every turn, so any nonzero traceCost here multiplies
     // directly with fight length/count -- empirically the dominant driver
     // of Blackhat's explore-mode Heat fragility (a 2% explore win rate,
     // 65.5% heat-outs), far more than Payload Drop's own reduction above.
@@ -430,7 +430,7 @@ export const BLACKHAT_LOADOUT: SubroutineDefinition[] = [
     // also be a guaranteed Heat tax -- that was a side effect of reusing
     // riskRewardBurst for it, not an intended part of its "always fires"
     // identity.
-    payload: { kind: 'riskRewardBurst', amount: 3, heatCost: 0 },
+    payload: { kind: 'riskRewardBurst', amount: 3, traceCost: 0 },
     tags: ['daemon'],
   },
 ];
@@ -746,8 +746,8 @@ export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
     id: 'payload-multiplier',
     name: 'Payload Multiplier',
     archetype: 'exploit',
-    trigger: { kind: 'selfState', condition: 'heatAbove', value: UNCOMMON.heat },
-    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, heatCost: 3 },
+    trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.heat },
+    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, traceCost: 3 },
     // Session 41's own retrofit list missed this piece (37 named vs. the
     // real 38 untagged) -- Direct per the same reasoning as its sibling
     // Payload Drop (starting loadout): immediate single-shot risk/reward,
@@ -771,7 +771,7 @@ export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
     name: 'Race to the Bottom',
     archetype: 'exploit',
     trigger: { kind: 'enemyState', condition: 'breachContainmentBelow', value: BREACH_CONTAINMENT_THRESHOLD.low },
-    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, heatCost: 3 },
+    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, traceCost: 3 },
     tags: ['direct'],
   },
   {
@@ -787,7 +787,7 @@ export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
     name: 'Turbo Mode',
     archetype: 'exploit',
     trigger: { kind: 'selfState', condition: 'isNonDealer' },
-    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, heatCost: 3 },
+    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, traceCost: 3 },
     tags: ['direct'],
   },
   {
@@ -919,7 +919,7 @@ export const MALWARE_COMMONS: SubroutineDefinition[] = [
     id: 'corrupted-cache',
     name: 'Corrupted Cache',
     archetype: 'malware',
-    trigger: { kind: 'selfState', condition: 'heatAbove', value: COMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceAbove', value: COMMON.heat },
     payload: { kind: 'dot', amountPerTick: COMMON.tick, cadence: 'castersTurnPulse', duration: COMMON.duration },
     tags: ['daemon'],
   },
@@ -1178,7 +1178,7 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     id: 'two-factor',
     name: 'Two-Factor',
     archetype: 'encryption',
-    trigger: { kind: 'selfState', condition: 'heatBelow', value: COMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceBelow', value: COMMON.heat },
     payload: { kind: 'instantCounterPush', amount: CAPPED.common },
     tags: ['direct'],
   },
@@ -1320,7 +1320,7 @@ export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
     id: 'air-gap',
     name: 'Air Gap',
     archetype: 'encryption',
-    trigger: { kind: 'selfState', condition: 'heatAbove', value: UNCOMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.heat },
     payload: { kind: 'ward', amount: CAPPED.common },
     tags: ['firewall'],
     reactive: true,
@@ -1422,7 +1422,7 @@ export const ENCRYPTION_RARES: SubroutineDefinition[] = [
     id: 'deep-packet-inspection',
     name: 'Deep Packet Inspection',
     archetype: 'encryption',
-    trigger: { kind: 'selfState', condition: 'heatAbove', value: RARE.heat },
+    trigger: { kind: 'selfState', condition: 'traceAbove', value: RARE.heat },
     payload: { kind: 'wardCounter', amount: CAPPED.rare, ratio: 0.2 },
     tags: ['firewall'],
     reactive: true,
@@ -1575,7 +1575,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     id: 'cold-call',
     name: 'Cold Call',
     archetype: 'root',
-    trigger: { kind: 'selfState', condition: 'heatBelow', value: COMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceBelow', value: COMMON.heat },
     payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
     tags: ['direct'],
   },
@@ -1655,7 +1655,7 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     // stays a documented no-op. Reveals the crib right after it's
     // selected, before it's scored, while the caster's own Heat is
     // running hot.
-    trigger: { kind: 'selfState', condition: 'heatAbove', value: UNCOMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.heat },
     payload: { kind: 'revealCrib' },
     tags: ['direct'],
     firesAt: 'onCribSelected',

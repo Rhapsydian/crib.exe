@@ -85,18 +85,18 @@ describe('playCombat', () => {
       name: 'a',
       archetype: 'exploit',
       trigger: { kind: 'always' },
-      payload: { kind: 'riskRewardBurst', amount: 20, heatCost: 4 },
+      payload: { kind: 'riskRewardBurst', amount: 20, traceCost: 4 },
       tags: [],
     };
     const result = playCombat([[riskyPlayer], []], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.winner).toBe(0);
-    expect(result.playerHeatGenerated).toBeGreaterThan(0);
-    expect(result.playerHeatGenerated % 4).toBe(0);
+    expect(result.traceGenerated).toBeGreaterThan(0);
+    expect(result.traceGenerated % 4).toBe(0);
   });
 
   it('reports zero player Heat generated when nothing costs Heat', () => {
     const result = playCombat([[alwaysBurst('a', 20)], []], { seed: 1, gaugeThreshold: [5, 5] });
-    expect(result.playerHeatGenerated).toBe(0);
+    expect(result.traceGenerated).toBe(0);
   });
 
   it('cribbageLayerManipulation markSuit credits a suitTally Accumulator through the full pipeline', () => {

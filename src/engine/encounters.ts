@@ -285,7 +285,7 @@ function resolveFight(
     );
     return {
       newState: 'inert',
-      heatDelta: result.playerHeatGenerated - modified.heatRefund, // Failover (session 44); addHeat already floors at 0 (proven by Rest's own negative heatDelta)
+      heatDelta: result.traceGenerated - modified.heatRefund, // Failover (session 44); addHeat already floors at 0 (proven by Rest's own negative heatDelta)
       quarantined: false,
       rewardTier,
       dataAwarded: modified.dataAwarded,
@@ -328,7 +328,7 @@ function resolveFight(
   }
   return {
     newState: 'closed',
-    heatDelta: heatFromLoss(kind, result.peakFillFraction[0]) + result.playerHeatGenerated,
+    heatDelta: heatFromLoss(kind, result.peakFillFraction[0]) + result.traceGenerated,
     quarantined: false,
     rewardTier: 'none',
     dataAwarded: 0,

@@ -146,11 +146,15 @@ export interface CombatResult {
    * "how close did this side get before the match ended," used by Phase 3's
    * Heat formula for margin-of-loss. Index 0 is the player's own peak. */
   peakFillFraction: [number, number];
-  /** Heat the player side (side 0) accumulated in-combat from
-   * riskRewardBurst payloads -- CombatSideState.heat resets each combat,
-   * so the outer run orchestrator needs this surfaced to fold it into
-   * persistent run Heat, same reason peakFillFraction exists. */
-  playerHeatGenerated: number;
+  /** Trace the player side (side 0) accumulated during this fight --
+   * raised by riskRewardBurst payloads' traceCost, lowered by
+   * traceReduction. CombatSideState.trace resets each combat, so the
+   * outer run orchestrator needs this surfaced to fold it into
+   * persistent run Heat, same reason peakFillFraction exists. This IS
+   * the Trace-to-Heat conversion: encounters.ts adds it to heatDelta.
+   * Side 1 never accumulates Trace -- Heat is player-only (session 43).
+   */
+  traceGenerated: number;
   /** How the match actually ended (session 27, checkpoint E): 'threshold'
    * -- a side genuinely crossed its own win-gauge threshold, the normal
    * way. 'attrition' -- neither side had, by HARD_RESOLUTION_HAND, so
@@ -162,7 +166,7 @@ export interface CombatResult {
    * defender to have any win-gauge progress at all. */
   resolvedBy: 'threshold' | 'attrition';
   /** Which carried Burner(s) side 0 actually activated this combat --
-   * Phase 5 Burners checkpoint B, mirroring playerHeatGenerated's own
+   * Phase 5 Burners checkpoint B, mirroring traceGenerated's own
    * three-hop pattern (combat.ts -> encounters.ts's EncounterOutcome ->
    * run.ts, which removes these from RunPlayerState.carriedBurnerIds
    * once the fight resolves). Always empty until checkpoint C's
@@ -413,7 +417,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     log,
     hands,
     peakFillFraction,
-    playerHeatGenerated: combatState.sides[0].heat,
+    traceGenerated: combatState.sides[0].trace,
     resolvedBy,
     burnersUsedThisCombat,
   });
@@ -637,7 +641,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     // here, before anything else in this new hand happens. advance()
     // afterward also covers the new hand's dealer: self-state's
     // isDealer/isNonDealer needs a chance to latch even in the unlikely
-    // case nothing else in this hand touches Heat/Breach-Containment/
+    // case nothing else in this hand touches Trace/Breach-Containment/
     // gauges before this side's own turn.
     winner = step(advance(tickDebuffDurations(resolvePendingSabotage(combatState)), hand.dealer, log));
     if (winner !== null) return finish(winner);

@@ -83,8 +83,8 @@ export type EnemyStateTrigger =
   | { kind: 'enemyState'; condition: 'hasDebuff'; debuffId: string | 'any' };
 
 export type SelfStateTrigger =
-  | { kind: 'selfState'; condition: 'heatAbove'; value: number }
-  | { kind: 'selfState'; condition: 'heatBelow'; value: number }
+  | { kind: 'selfState'; condition: 'traceAbove'; value: number }
+  | { kind: 'selfState'; condition: 'traceBelow'; value: number }
   | { kind: 'selfState'; condition: 'isDealer' }
   | { kind: 'selfState'; condition: 'isNonDealer' };
 
@@ -200,7 +200,7 @@ export interface ChainFinisherScalingPayload {
 export interface RiskRewardBurstPayload {
   kind: 'riskRewardBurst';
   amount: number;
-  heatCost: number;
+  traceCost: number;
 }
 
 // --- Malware (2) ---
@@ -432,18 +432,21 @@ export interface ScheduledSabotagePayload {
 }
 
 /**
- * Reduces the caster's own in-combat Heat (CombatSideState.heat -- the
- * risk/reward-burst accumulator surfaced via CombatResult.
- * playerHeatGenerated), floored so it can't go below a set point.
+ * Reduces the caster's own Trace (CombatSideState.trace -- this fight's
+ * accumulated noise, surfaced via CombatResult.traceGenerated and folded
+ * into run Heat when the fight ends), floored so it can't go below a set
+ * point. Reducing Trace before it converts is the "cover your tracks on
+ * the way out" mechanic -- an in-fight action with an out-of-fight
+ * payoff.
  * Session 21+ content pass: no archetype's documented payload catalog
  * includes a heat-reduction effect (Exploit's risk/reward burst only
- * *costs* Heat), but Ghost's *Low Profile* starting Cantrip needs one --
+ * *costs* Trace), but Ghost's *Low Profile* starting Cantrip needed one --
  * reusing an Exploit-flavored payload would be thematically wrong for a
  * class with zero Exploit access. Filed under Root (Ghost's other
  * archetype), matching Root's own "any piece of the system" framing.
  */
-export interface SelfHeatReductionPayload {
-  kind: 'selfHeatReduction';
+export interface TraceReductionPayload {
+  kind: 'traceReduction';
   amount: number;
   floor: number;
 }
@@ -509,7 +512,7 @@ export type PayloadEffect =
   | InstantManipulationPayload
   | CribbageLayerManipulationPayload
   | ScheduledSabotagePayload
-  | SelfHeatReductionPayload
+  | TraceReductionPayload
   | RevealOpponentHandPayload
   | RevealCribPayload
   | RevealOpponentKeptHandPayload

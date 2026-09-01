@@ -98,40 +98,40 @@ describe("resolvePayload — offense credits the caster's own gauge", () => {
 
   it("riskRewardBurst credits the caster's own gauge and costs Heat", () => {
     const state = createCombatState([], [], [12, 12]);
-    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 6, heatCost: 3 }, 'exploit', state, 0);
+    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 6, traceCost: 3 }, 'exploit', state, 0);
     expect(result.sides[0].winGauge.progress).toBe(6);
-    expect(result.sides[0].heat).toBe(3);
+    expect(result.sides[0].trace).toBe(3);
   });
 
   it('chainFinisherScaling/riskRewardBurst are not shield-checked (matches pre-redesign scope -- only directBurst ever was)', () => {
     let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'ward', amount: 999 }, 'encryption', state, 1);
-    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10, heatCost: 0 }, 'exploit', state, 0);
+    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10, traceCost: 0 }, 'exploit', state, 0);
     expect(result.sides[0].winGauge.progress).toBe(10); // shield never checked
   });
 });
 
-describe('selfHeatReduction', () => {
+describe('traceReduction', () => {
   it("reduces the caster's own Heat, floored", () => {
     let state = createCombatState([], [], [12, 12]);
-    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, heatCost: 5 }, 'exploit', state, 0);
-    const result = resolvePayload({ kind: 'selfHeatReduction', amount: 3, floor: 1 }, 'root', state, 0);
-    expect(result.sides[0].heat).toBe(2);
+    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, traceCost: 5 }, 'exploit', state, 0);
+    const result = resolvePayload({ kind: 'traceReduction', amount: 3, floor: 1 }, 'root', state, 0);
+    expect(result.sides[0].trace).toBe(2);
   });
 
   it('never reduces Heat below the floor', () => {
     let state = createCombatState([], [], [12, 12]);
-    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, heatCost: 2 }, 'exploit', state, 0);
-    const result = resolvePayload({ kind: 'selfHeatReduction', amount: 10, floor: 1 }, 'root', state, 0);
-    expect(result.sides[0].heat).toBe(1);
+    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, traceCost: 2 }, 'exploit', state, 0);
+    const result = resolvePayload({ kind: 'traceReduction', amount: 10, floor: 1 }, 'root', state, 0);
+    expect(result.sides[0].trace).toBe(1);
   });
 
   it('is halved by Corrupted like any other magnitude', () => {
     let state = createCombatState([], [], [12, 12]);
-    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, heatCost: 10 }, 'exploit', state, 0);
+    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, traceCost: 10 }, 'exploit', state, 0);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
-    const result = resolvePayload({ kind: 'selfHeatReduction', amount: 4, floor: 0 }, 'root', state, 0);
-    expect(result.sides[0].heat).toBe(8); // 10 - (4 * 0.5)
+    const result = resolvePayload({ kind: 'traceReduction', amount: 4, floor: 0 }, 'root', state, 0);
+    expect(result.sides[0].trace).toBe(8); // 10 - (4 * 0.5)
   });
 });
 
@@ -383,7 +383,7 @@ describe('forceDiscardCard payload (session 24 checkpoint D)', () => {
 });
 
 describe('refreshTriggerReadiness', () => {
-  const selfHeatAbove = definition('self', { kind: 'selfState', condition: 'heatAbove', value: 5 }, { kind: 'directBurst', amount: 1 });
+  const selfHeatAbove = definition('self', { kind: 'selfState', condition: 'traceAbove', value: 5 }, { kind: 'directBurst', amount: 1 });
   const enemyGaugeFillAbove = definition(
     'enemy',
     { kind: 'enemyState', condition: 'gaugeFillAbove', fraction: 0.5 },
@@ -396,20 +396,20 @@ describe('refreshTriggerReadiness', () => {
     state = refreshTriggerReadiness(state, 0);
     expect(state.sides[0].loadout[0].state.ready).toBe(false);
 
-    state = { ...state, sides: [{ ...state.sides[0], heat: 10 }, state.sides[1]] as typeof state.sides };
+    state = { ...state, sides: [{ ...state.sides[0], trace: 10 }, state.sides[1]] as typeof state.sides };
     state = refreshTriggerReadiness(state, 0);
     expect(state.sides[0].loadout[0].state.ready).toBe(true);
   });
 
   it('stays latched even after the underlying condition reverts to false (the actual bug fix)', () => {
     let state = createCombatState([selfHeatAbove], [], [12, 12]);
-    state = { ...state, sides: [{ ...state.sides[0], heat: 10 }, state.sides[1]] as typeof state.sides };
+    state = { ...state, sides: [{ ...state.sides[0], trace: 10 }, state.sides[1]] as typeof state.sides };
     state = refreshTriggerReadiness(state, 0);
     expect(state.sides[0].loadout[0].state.ready).toBe(true);
 
     // Heat drops back below the threshold -- a live re-check would say
     // "not ready" again, but the latch must survive.
-    state = { ...state, sides: [{ ...state.sides[0], heat: 0 }, state.sides[1]] as typeof state.sides };
+    state = { ...state, sides: [{ ...state.sides[0], trace: 0 }, state.sides[1]] as typeof state.sides };
     state = refreshTriggerReadiness(state, 0);
     expect(state.sides[0].loadout[0].state.ready).toBe(true);
   });
@@ -444,14 +444,14 @@ describe('refreshTriggerReadiness', () => {
   describe('Reactive edge-triggering', () => {
     const reactiveHeatAbove = definition(
       'reactive-self',
-      { kind: 'selfState', condition: 'heatAbove', value: 5 },
+      { kind: 'selfState', condition: 'traceAbove', value: 5 },
       { kind: 'directBurst', amount: 3 },
       { reactive: true },
     );
 
-    function withHeat(state: ReturnType<typeof createCombatState>, side: 0 | 1, heat: number) {
+    function withHeat(state: ReturnType<typeof createCombatState>, side: 0 | 1, trace: number) {
       const sides = state.sides.slice() as typeof state.sides;
-      sides[side] = { ...sides[side], heat };
+      sides[side] = { ...sides[side], trace };
       return { ...state, sides };
     }
 
@@ -503,7 +503,7 @@ describe('refreshTriggerReadiness', () => {
     describe('maxFiresPerCombat (session 39)', () => {
       const cappedReactive = definition(
         'capped-reactive',
-        { kind: 'selfState', condition: 'heatAbove', value: 5 },
+        { kind: 'selfState', condition: 'traceAbove', value: 5 },
         { kind: 'directBurst', amount: 3 },
         { reactive: true, maxFiresPerCombat: 2 },
       );
@@ -567,7 +567,7 @@ describe('refreshTriggerReadiness', () => {
     describe('magnitudeDecayPerFire (session 39, Firewall Prime\'s Zero Trust redesign)', () => {
       const decayingReactive = definition(
         'decaying-reactive',
-        { kind: 'selfState', condition: 'heatAbove', value: 5 },
+        { kind: 'selfState', condition: 'traceAbove', value: 5 },
         { kind: 'instantCounterPush', amount: 18 },
         { reactive: true, magnitudeDecayPerFire: 4, magnitudeFloor: 4 },
       );
@@ -927,9 +927,9 @@ describe("Corrupted -- reduces the debuffed side's own payload magnitude", () =>
   it("does not reduce riskRewardBurst's Heat cost, only its magnitude", () => {
     let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1);
-    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10, heatCost: 6 }, 'exploit', state, 0);
+    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10, traceCost: 6 }, 'exploit', state, 0);
     expect(result.sides[0].winGauge.progress).toBe(5);
-    expect(result.sides[0].heat).toBe(6); // unreduced
+    expect(result.sides[0].trace).toBe(6); // unreduced
   });
 
   it('halves a dot tick from a corrupted caster, re-checked at tick time', () => {
@@ -1281,28 +1281,28 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
   describe('Zero Day (Blackhat)', () => {
     it('waives Heat cost for the first Heat-costing Exploit fire', () => {
       const state = createCombatState([], [], [12, 12], 'blackhat');
-      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 4 }, 'exploit', state, 0);
-      expect(result.sides[0].heat).toBe(0);
+      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, traceCost: 4 }, 'exploit', state, 0);
+      expect(result.sides[0].trace).toBe(0);
       expect(result.passiveTriggered).toBe(true);
     });
 
     it('costs Heat normally on the second Heat-costing Exploit fire', () => {
       let state = createCombatState([], [], [12, 12], 'blackhat');
-      state = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 4 }, 'exploit', state, 0);
-      state = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 4 }, 'exploit', state, 0);
-      expect(state.sides[0].heat).toBe(4);
+      state = resolvePayload({ kind: 'riskRewardBurst', amount: 5, traceCost: 4 }, 'exploit', state, 0);
+      state = resolvePayload({ kind: 'riskRewardBurst', amount: 5, traceCost: 4 }, 'exploit', state, 0);
+      expect(state.sides[0].trace).toBe(4);
     });
 
     it('does not consume the passive on a zero-cost fire', () => {
       const state = createCombatState([], [], [12, 12], 'blackhat');
-      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 0 }, 'exploit', state, 0);
+      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, traceCost: 0 }, 'exploit', state, 0);
       expect(result.passiveTriggered).toBe(false);
     });
 
     it('does not apply for a different class', () => {
       const state = createCombatState([], [], [12, 12], 'breacher');
-      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, heatCost: 4 }, 'exploit', state, 0);
-      expect(result.sides[0].heat).toBe(4);
+      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, traceCost: 4 }, 'exploit', state, 0);
+      expect(result.sides[0].trace).toBe(4);
     });
   });
 
@@ -1434,28 +1434,28 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
       expect(result.sides[0].loadout[0].definition.payload).toEqual({ kind: 'directBurst', amount: 6.5 }); // + PRIMED_MAGNITUDE_BONUS (1.5)
     });
 
-    it('eases a Self-state heatAbove Exploit subroutine (lowers the bar)', () => {
+    it('eases a Self-state traceAbove Exploit subroutine (lowers the bar)', () => {
       const exploitPiece = definition(
         'exploit-piece',
-        { kind: 'selfState', condition: 'heatAbove', value: 10 },
+        { kind: 'selfState', condition: 'traceAbove', value: 10 },
         { kind: 'directBurst', amount: 5 },
         { archetype: 'exploit' },
       );
       const state = createCombatState([exploitPiece], [], [12, 12], 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
-      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'selfState', condition: 'heatAbove', value: 8 });
+      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'selfState', condition: 'traceAbove', value: 8 });
     });
 
-    it('eases a Self-state heatBelow Exploit subroutine (raises the bar)', () => {
+    it('eases a Self-state traceBelow Exploit subroutine (raises the bar)', () => {
       const exploitPiece = definition(
         'exploit-piece',
-        { kind: 'selfState', condition: 'heatBelow', value: 10 },
+        { kind: 'selfState', condition: 'traceBelow', value: 10 },
         { kind: 'directBurst', amount: 5 },
         { archetype: 'exploit' },
       );
       const state = createCombatState([exploitPiece], [], [12, 12], 'operator');
       const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGauge', amount: 1 }, 'root', state, 0);
-      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'selfState', condition: 'heatBelow', value: 12 });
+      expect(result.sides[0].loadout[0].definition.trigger).toEqual({ kind: 'selfState', condition: 'traceBelow', value: 12 });
     });
 
     it('still boosts payload magnitude even when the trigger has no reducible knob', () => {

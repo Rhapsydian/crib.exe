@@ -89,7 +89,15 @@ export interface CombatSideState {
    * reduces it, applied to the opponent's CombatSideState.winGauge, not
    * this one. */
   winGauge: DuelGauge;
-  heat: number;
+  /** Trace: noise generated *within this fight only* (session 47).
+   * Starts at 0 every combat, raised by riskRewardBurst payloads'
+   * traceCost, lowered by traceReduction, and surfaced at combat end as
+   * CombatResult.traceGenerated, which encounters.ts folds into the
+   * run's persistent Heat. It is NOT a second Heat pool -- it is this
+   * fight's pending contribution to the one Heat, which is exactly what
+   * the old name `heat` obscured. Enemies never accumulate Trace (side 1
+   * stays 0); Heat is a player-only run-level resource. */
+  trace: number;
   loadout: LoadoutEntry[];
   debuffs: ActiveDebuff[];
   /** Accumulating shield (Ward payloads add to it) -- absorbs the
@@ -204,7 +212,7 @@ export function createCombatSideState(definitions: SubroutineDefinition[], gauge
   return {
     gauge: createInitiativeGauge(gaugeThreshold),
     winGauge: createDuelGauge(winThreshold),
-    heat: 0,
+    trace: 0,
     loadout: definitions.map((definition) => ({ definition, state: createInitialState() })),
     debuffs: [],
     wardShield: 0,
@@ -723,7 +731,7 @@ function everyFireBonusCapped(combatState: CombatState, id: EnemyPassiveId, arch
  * (armed when the player's own gauge crosses 50%), Hold the Line (armed
  * when this enemy's own gauge crosses 50%), and Total Access (armed
  * right after a Root fire -- "guaranteed free" reinterpreted as "next
- * fire gets a bonus," since enemies have no Heat cost to waive). */
+ * fire gets a bonus," since enemies have no Trace cost to waive). */
 function armPendingBonus(combatState: CombatState, id: EnemyPassiveId): CombatState {
   return setPassiveStat(combatState, 1, `${id}:pending`, 1);
 }
@@ -1241,11 +1249,11 @@ function resolvePayloadCore(
     case 'riskRewardBurst': {
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
       const casterState = combatState.sides[caster];
-      // Blackhat's Zero Day: the first Heat-costing Exploit fire each
-      // combat waives its Heat cost entirely.
-      const zeroDay = caster === 0 && hasMod(combatState, 'zero-day') && !combatState.passiveTriggered && payload.heatCost > 0;
-      const heat = zeroDay ? casterState.heat : casterState.heat + payload.heatCost;
-      const sides = replaceSide(combatState.sides, caster, { ...casterState, heat });
+      // Blackhat's Zero Day: the first Trace-costing Exploit fire each
+      // combat waives its Trace cost entirely.
+      const zeroDay = caster === 0 && hasMod(combatState, 'zero-day') && !combatState.passiveTriggered && payload.traceCost > 0;
+      const trace = zeroDay ? casterState.trace : casterState.trace + payload.traceCost;
+      const sides = replaceSide(combatState.sides, caster, { ...casterState, trace });
       const state = { ...combatState, sides, passiveTriggered: zeroDay || combatState.passiveTriggered };
       return creditWinGauge(state, caster, amount);
     }
@@ -1503,11 +1511,11 @@ function resolvePayloadCore(
         ...combatState,
         pendingSabotage: [...combatState.pendingSabotage, { casterSide: caster, archetype, effect: payload.effect }],
       };
-    case 'selfHeatReduction': {
+    case 'traceReduction': {
       const casterState = combatState.sides[caster];
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
-      const heat = Math.max(payload.floor, casterState.heat - amount);
-      const sides = replaceSide(combatState.sides, caster, { ...casterState, heat });
+      const trace = Math.max(payload.floor, casterState.trace - amount);
+      const sides = replaceSide(combatState.sides, caster, { ...casterState, trace });
       return { ...combatState, sides };
     }
     // Recon (session 24 checkpoint C): firesAt-only, no-op unless
@@ -1560,7 +1568,7 @@ export function buildTriggerContext(
   // inversion, since this is now symmetric by construction.
   const enemyFillPercent = (enemy.winGauge.progress / enemy.winGauge.threshold) * 100;
   return {
-    self: { heat: own.heat, isDealer },
+    self: { trace: own.trace, isDealer },
     enemy: {
       breachContainment: enemyFillPercent,
       gaugeFillFraction: enemy.gauge.progress / enemy.gauge.threshold,

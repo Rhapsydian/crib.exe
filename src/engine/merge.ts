@@ -40,10 +40,10 @@ export function easeTriggerCondition(trigger: TriggerFamily, amount: number): Tr
   if (trigger.kind === 'occurrence' && trigger.variation === 'threshold') {
     return { ...trigger, bankTarget: Math.max(1, trigger.bankTarget - amount) };
   }
-  if (trigger.kind === 'selfState' && trigger.condition === 'heatAbove') {
+  if (trigger.kind === 'selfState' && trigger.condition === 'traceAbove') {
     return { ...trigger, value: Math.max(0, trigger.value - amount) };
   }
-  if (trigger.kind === 'selfState' && trigger.condition === 'heatBelow') {
+  if (trigger.kind === 'selfState' && trigger.condition === 'traceBelow') {
     return { ...trigger, value: trigger.value + amount };
   }
   return trigger;
@@ -89,7 +89,7 @@ function transformPayloadMagnitude(payload: PayloadEffect, transform: (amount: n
     case 'riskRewardBurst':
     case 'instantCounterPush':
     case 'instantManipulation':
-    case 'selfHeatReduction':
+    case 'traceReduction':
     case 'sessionHijack':
     case 'ward':
       // Breach/Containment redesign (session 22+): Ward became an

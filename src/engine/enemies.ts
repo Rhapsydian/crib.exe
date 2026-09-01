@@ -242,7 +242,7 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   { id: 'zero-day-broker', name: 'Zero-Day Broker', tier: 'elite', archetypes: ['exploit'], minLayer: 1, loadout: [pool('zero-day-chain'), pool('buffer-overrun'), pool('fracture-point')], passiveIds: ['fresh-exploit'] },
   { id: 'ransomware-deployment', name: 'Ransomware Deployment', tier: 'elite', archetypes: ['malware'], minLayer: 1, loadout: [pool('fork-bomb'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['escalating-demand'] },
   // Session 28 retrofit: an all-mitigation Elite kit (same structural
-  // gap) -- Overclock (neutral uncommon, selfState:heatAbove) added as
+  // gap) -- Overclock (neutral uncommon, selfState:traceAbove) added as
   // a 4th piece, "pushed to its limits, it strikes back."
   { id: 'zero-trust-node', name: 'Zero Trust Node', tier: 'elite', archetypes: ['encryption'], minLayer: 1, loadout: [pool('rate-limiting'), pool('honeypot'), pool('redundant-backup'), pool('escalating-response')], passiveIds: ['no-exceptions'] },
   { id: 'compromised-ad-server', name: 'Compromised Ad Server', tier: 'elite', archetypes: ['exploit', 'malware'], minLayer: 2, loadout: [pool('watering-hole'), pool('polymorphic-worm'), pool('off-by-one')], passiveIds: ['infection-vector'] },
@@ -298,7 +298,7 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
     loadout: [
       { ...pool('zero-trust'), id: 'zero-trust-firewall-prime', magnitudeDecayPerFire: 1, magnitudeFloor: 10 },
       // Was Air Gap, session 39's original dead-piece finding (selfState:
-      // heatAbove, unreachable -- enemies never accumulate Heat). Replaced
+      // traceAbove, unreachable -- enemies never accumulate Heat). Replaced
       // with Fail-Secure (enemy-subroutines.ts), a genuinely enemy-viable
       // Ward-caster -- which also resurrects `no-way-in` below: that
       // passive only ever re-casts a just-fired Ward, and Air Gap being

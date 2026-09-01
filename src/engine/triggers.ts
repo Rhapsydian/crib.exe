@@ -241,7 +241,9 @@ export function updateSubroutineState(
 }
 
 export interface SelfStateContext {
-  heat: number;
+  /** Trace -- in-fight noise, not the run's Heat. See
+   * resolve.ts's CombatSideState.trace. */
+  trace: number;
   isDealer: boolean;
 }
 
@@ -253,10 +255,10 @@ export interface EnemyStateContext {
 
 export function evaluateSelfState(trigger: SelfStateTrigger, context: SelfStateContext): boolean {
   switch (trigger.condition) {
-    case 'heatAbove':
-      return context.heat > trigger.value;
-    case 'heatBelow':
-      return context.heat < trigger.value;
+    case 'traceAbove':
+      return context.trace > trigger.value;
+    case 'traceBelow':
+      return context.trace < trigger.value;
     case 'isDealer':
       return context.isDealer;
     case 'isNonDealer':

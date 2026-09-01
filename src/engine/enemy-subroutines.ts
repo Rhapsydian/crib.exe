@@ -18,7 +18,7 @@ import { BREACH_CONTAINMENT_THRESHOLD } from './subroutines';
  * all (the only Heat-raising pool piece, Payload Multiplier, requires
  * Heat already above threshold to fire in the first place -- no pool
  * piece can ever be the first mover), so every enemy-held selfState:
- * heatAbove trigger is unconditionally dead. These 5 pieces are direct,
+ * traceAbove trigger is unconditionally dead. These 5 pieces are direct,
  * theme-appropriate replacements for the 5 dead pieces that audit found
  * (7 dead instances across the roster, since two of the five -- Air Gap
  * and Backchannel -- were each shared by two enemies).
@@ -87,8 +87,8 @@ export const ENEMY_ONLY_SUBROUTINES: SubroutineDefinition[] = [
     name: 'Fracture Point',
     archetype: 'exploit',
     // Replaces Payload Multiplier on Zero-Day Broker. The original
-    // doubly coupled itself to Heat (a heatAbove trigger AND its own
-    // riskRewardBurst payload's extra heatCost) -- "risk" has no
+    // doubly coupled itself to Heat (a traceAbove trigger AND its own
+    // riskRewardBurst payload's extra traceCost) -- "risk" has no
     // enemy-side analog at all (Heat is a player-only run-level
     // resource), so this drops the risk/reward mechanic entirely rather
     // than forcing it onto a condition enemies structurally can't have.
