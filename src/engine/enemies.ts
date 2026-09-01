@@ -217,10 +217,14 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   // Task (neutral common) gives it a small, real, unconditional credit.
   { id: 'legacy-firewall', name: 'Legacy Firewall', tier: 'regular', archetypes: ['encryption'], minLayer: 1, loadout: [pool('basic-auth'), pool('checksum'), pool('background-task')], passiveIds: ['stubborn-default'] },
   // Session 28 retrofit: same structural gap as Legacy Firewall --
-  // two-factor/sandboxing are both pure mitigation. Checksum Match
-  // (neutral common, occurrence:fifteen) instead of Background Task for
-  // roster variety (see Legacy Firewall's own note).
-  { id: 'access-gate', name: 'Access Gate', tier: 'regular', archetypes: ['encryption'], minLayer: 2, loadout: [pool('two-factor'), pool('sandboxing'), pool('checksum-match')], passiveIds: ['locked-down'] },
+  // challenge-response/sandboxing are both pure mitigation. Checksum
+  // Match (neutral common, occurrence:fifteen) instead of Background Task
+  // for roster variety (see Legacy Firewall's own note).
+  // Session 47: Two-Factor -> Challenge-Response. Two-Factor gates on
+  // `traceBelow`, and an enemy's Trace is permanently 0 by design, so it
+  // fired unconditionally every fight -- see enemy-subroutines.ts's
+  // Challenge-Response entry.
+  { id: 'access-gate', name: 'Access Gate', tier: 'regular', archetypes: ['encryption'], minLayer: 2, loadout: [pool('challenge-response'), pool('sandboxing'), pool('checksum-match')], passiveIds: ['locked-down'] },
   { id: 'drive-by-kit', name: 'Drive-By Kit', tier: 'regular', archetypes: ['exploit', 'malware'], minLayer: 1, loadout: [pool('off-by-one'), pool('ransomware')], passiveIds: ['smash-and-grab'] },
   { id: 'rogue-endpoint', name: 'Rogue Endpoint', tier: 'regular', archetypes: ['exploit', 'malware'], minLayer: 2, loadout: [pool('credential-stuffing'), pool('trojan'), pool('race-condition')], passiveIds: ['opportunist'] },
   { id: 'patch-runner', name: 'Patch Runner', tier: 'regular', archetypes: ['exploit', 'encryption'], minLayer: 1, loadout: [pool('port-scan'), pool('patch')], passiveIds: ['cover-your-tracks'] },
@@ -230,7 +234,7 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   // this kit had no credit-capable piece either -- swapped for Steady
   // Drip (neutral common, accumulator:points) rather than adding a 4th
   // piece, keeping Regular's 1-3-subroutine sizing.
-  { id: 'hardened-workstation', name: 'Hardened Workstation', tier: 'regular', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [pool('sandboxing'), pool('two-factor'), pool('steady-drip')], passiveIds: ['grinds-you-down'] },
+  { id: 'hardened-workstation', name: 'Hardened Workstation', tier: 'regular', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [pool('sandboxing'), pool('challenge-response'), pool('steady-drip')], passiveIds: ['grinds-you-down'] },
 
   // --- Elite (8) -- 3+ subroutines, mostly uncommons ---
   // Session 35: widened from minLayer 2 to 1 -- the 3 single-archetype

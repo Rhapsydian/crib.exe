@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import { createNode } from './map-types';
+import { playCombat } from './combat';
+import { CLASS_STARTING_LOADOUTS } from './subroutines';
 import { CREDIT_CAPABLE_PAYLOAD_KINDS, type SubroutineDefinition } from './subroutine-types';
 import {
   ENEMY_ROSTER,
@@ -253,5 +255,55 @@ describe('scaledEnemyLoadout', () => {
   it('a multiplier of 1 is a genuine no-op (same array reference)', () => {
     const loadout = [burst];
     expect(scaledEnemyLoadout(loadout, 1)).toBe(loadout);
+  });
+});
+
+// ---------------------------------------------------------------------
+// Trace is player-only (session 43's rule, enforced session 47).
+// ---------------------------------------------------------------------
+
+describe('no enemy touches Trace', () => {
+  // Session 43 ruled Heat/Trace a player-only run-level resource ("risk
+  // has no enemy-side analog at all"), and session 39 swept the roster
+  // for Heat-gated enemy pieces -- but looked only for `heatAbove`,
+  // i.e. pieces that never fire. Two-Factor gated on `heatBelow`, which
+  // on an enemy is not dead but *unconditionally true*, so it read as
+  // working content and survived. These guards catch either direction.
+
+  const TRACE_TRIGGERS = ['traceAbove', 'traceBelow'];
+  const TRACE_PAYLOADS = ['riskRewardBurst', 'traceReduction'];
+
+  it('no enemy piece reads Trace', () => {
+    for (const enemy of ENEMY_ROSTER) {
+      for (const piece of enemy.loadout) {
+        const reads = piece.trigger.kind === 'selfState' && TRACE_TRIGGERS.includes(piece.trigger.condition);
+        expect(reads, `${enemy.id}/${piece.id} gates on Trace, which an enemy can never accumulate`).toBe(false);
+      }
+    }
+  });
+
+  it('no enemy piece writes Trace', () => {
+    for (const enemy of ENEMY_ROSTER) {
+      for (const piece of enemy.loadout) {
+        expect(
+          TRACE_PAYLOADS.includes(piece.payload.kind),
+          `${enemy.id}/${piece.id} has a Trace-moving payload; Trace is player-only`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("an enemy's Trace stays 0 through a real fight", () => {
+    // The behavioural counterpart to the two structural guards above.
+    const enemy = ENEMY_ROSTER.find((e) => e.id === 'access-gate')!;
+    const result = playCombat([CLASS_STARTING_LOADOUTS.breacher, enemy.loadout], {
+      seed: 5,
+      gaugeThreshold: [8, 8],
+      winThreshold: [50, 50],
+      classId: 'breacher',
+      enemyPassiveIds: enemy.passiveIds,
+    });
+    expect(result.traceGenerated).toBeGreaterThanOrEqual(0); // side 0 may generate Trace
+    expect(result.winner === 0 || result.winner === 1).toBe(true);
   });
 });

@@ -162,6 +162,36 @@ export const ENEMY_ONLY_SUBROUTINES: SubroutineDefinition[] = [
     reactive: true,
   },
   {
+    id: 'challenge-response',
+    name: 'Challenge-Response',
+    archetype: 'encryption',
+    // Replaces Two-Factor on Access Gate and Hardened Workstation
+    // (session 47), completing the audit this file's own header
+    // describes. That audit (session 39) swept the roster for
+    // Heat-gated enemy triggers and replaced 5 pieces -- but it looked
+    // only for `heatAbove`. Two-Factor gates on `heatBelow`, and since an
+    // enemy's Trace is permanently 0 (no enemy piece raises it, by
+    // design -- Trace is player-only), that condition is not dead but
+    // *unconditionally true*: it read as working content precisely
+    // because it always fired, which is exactly why it survived a sweep
+    // looking for pieces that never fire.
+    //
+    // "Challenge-response" is the real authentication term Two-Factor was
+    // gesturing at, so the flavor survives the swap intact.
+    //
+    // breachContainmentBelow keeps Two-Factor's actual intent -- defend
+    // hardest while the intruder is still unproven -- on a signal an
+    // enemy can genuinely read, and one that *moves*: it holds from the
+    // first hand and shuts off once the player's win-gauge passes the low
+    // threshold. That self-limiting early window is the behavior
+    // Two-Factor's `traceBelow` was reaching for and never delivered.
+    // Same real win-gauge signal (not the cyclical InitiativeGauge) that
+    // Escalating Response's own comment above explains at length.
+    trigger: { kind: 'enemyState', condition: 'breachContainmentBelow', value: BREACH_CONTAINMENT_THRESHOLD.low },
+    payload: { kind: 'instantCounterPush', amount: ENEMY_CAPPED.common },
+    tags: ['direct'],
+  },
+  {
     id: 'intercept',
     name: 'Intercept',
     archetype: 'root',
