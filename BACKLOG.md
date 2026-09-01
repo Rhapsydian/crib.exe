@@ -14,6 +14,49 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
+**Session 47 update (most current)**: a `/decision-session` that grew
+into the Trace system, three engine bugs, a roster balance pass, and
+finally the discovery that the balance pass had been measured through a
+broken instrument. 748 -> 774 tests, `npm run check` clean, not pushed.
+Full detail in `session-logs/session-47-2026-09-01.md`.
+
+**Shipped**: the in-combat accumulator is now **Trace** (converts to Heat
+at fight end, documented in `DESIGN.md`'s Resources section), with
+generators in every archetype that reads it, reducers authored for the
+first time, and enemy `tracePressure` on thematic hunters. Engine fixes:
+`pointsCooldown` plus a loud turn-loop detector, `MIN_INITIATIVE_THRESHOLD`
+1 -> 4, `subroutineProgress` actually advancing a piece, and swap-out no
+longer evicting starting kits.
+
+**THE FINDING THAT SHOULD SHAPE NEXT SESSION.** Ghost measured worst at
+8.0% under `--acquisition=synergy` but **24.7% under `--acquisition=floor`**
+-- the "smart" heuristic made it three times worse. Cause:
+`acquireSubroutineWithSwap` ranked installed pieces on the acquisition
+ladder alone, and `ward` is not in `CREDIT_CAPABLE_PAYLOAD_KINDS`, so
+Ghost's Steganography was evicted in 72% of runs while Return to Sender's
+only reachable hook is ward absorption. The ladder was discarding the
+class's own engine. Fixed (`2e2116d`) and guarded by a test.
+
+**Consequence: most of session 47's balance work is calibrated against a
+broken measuring instrument and should be revisited, not trusted.**
+Specifically Saboteur's `silent-worm` nerf (applied at a measured 24.7%,
+now 30.0% *with* the nerf in place) and the layer-2 gatekeeper changes
+(Quarantine Ward's trigger, Zero-Sum's piece swap and 1.45 scaler), all
+measured while three classes were being suppressed by eviction.
+
+**Post-fix baseline, 150 seeds, `--acquisition=synergy`** (synergy now
+beats floor for every class for the first time): Ghost 32.7, Saboteur
+30.0, Operator 23.3, Blackhat 21.3, Breacher 15.3, Warden 10.7. Against
+the user's 10-20% target that is four classes *above* the band, with
+Warden alone at the bottom. **A fresh balance pass is the user's own
+stated next session.**
+
+Also open: the turn-economy tuning dial (its own section below);
+`GAUGE_THRESHOLD`/`WIN_THRESHOLD` never re-validated since Phase 4's
+dummy loadouts; Blackhat reaching 8 Trace generators and 0 reducers;
+Saboteur's Time Bomb trigger; the full class audit, now genuinely
+unblocked.
+
 **Session 46 update (most current)**: a `/dev-session` that implemented
 all of session 45's Gameplay Simulation Heuristics spec (checkpoints
 A-J), one checkpoint per commit with a pause each. The whole heuristic
