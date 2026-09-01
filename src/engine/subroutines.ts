@@ -487,7 +487,16 @@ export const SABOTEUR_LOADOUT: SubroutineDefinition[] = [
     id: 'silent-worm',
     name: 'Silent Worm',
     archetype: 'malware',
-    trigger: { kind: 'accumulator', metric: 'points', threshold: COMMON.threshold },
+    // Session 47: COMMON.threshold (6) -> UNCOMMON.threshold (8). Silent
+    // Worm is Saboteur's engine -- it appears in 27 of 32 winning Saboteur
+    // runs -- and re-pointing Background Process's pump onto it (same
+    // session) put the class 4.7pp above the target band. Slowing the
+    // charge is the gentlest lever that moderates the engine itself
+    // rather than the pump feeding it, and it uses an existing tier
+    // constant rather than inventing a number. Deliberately class-facing:
+    // the starting loadout is the only tuning surface that touches one
+    // class alone, since every archetype pool is shared by three.
+    trigger: { kind: 'accumulator', metric: 'points', threshold: UNCOMMON.threshold },
     // Simplified: DESIGN.md also has this "feed a Root subroutine's
     // condition each tick" — not representable by one payload, see file
     // header. Background Process below covers the same "corrupt and
