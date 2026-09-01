@@ -4187,9 +4187,22 @@ root; Warden: encryption; Ghost: both) start a run with such a gap. So
 the heuristic layer is already correct for neutral content and starts
 exercising it the moment the pool fix lands.
 
-## Heat-conditional triggers read the wrong quantity (found session 46)
+## Heat-conditional triggers read the wrong quantity ✅ FIXED (found session 46, fixed session 47 as Trace)
 
-**Real bug, blocking the full class audit.** `triggers.ts`'s
+**FIXED, session 47** -- the in-combat accumulator was renamed **Trace**
+and given its own identity (`DESIGN.md`'s Resources section): it
+accumulates within a fight and converts to Heat when the fight ends.
+Triggers now read Trace deliberately rather than by accident, and run
+Heat is never threaded into combat at all -- it cannot change during a
+fight, so a run-Heat condition would be a per-fight constant, exactly the
+always/never degeneracy the split exists to remove. Generators were
+spread to every archetype that reads Trace, reducers authored for the
+first time (the payload kind had existed, unit-tested, with zero content
+since session 28), and enemies gained `tracePressure` so being hunted
+raises the player's Trace. The `cold-call` hang it surfaced is fixed
+separately -- see "Turn economy has no tuning dial" below.
+
+**Original diagnosis, kept for the record.** `triggers.ts`'s
 `evaluateSelfState` resolves `heatAbove`/`heatBelow` against
 `SelfStateContext.heat`, which `resolve.ts` populates from
 `CombatSideState.heat` (`self: { heat: own.heat, isDealer }`). That field
@@ -4248,3 +4261,93 @@ specifically):
   worth fixing on its own, independent of which Heat the trigger reads?
 - Does anything need to guard against a non-terminating fight in general,
   now that one has been demonstrated reachable?
+
+## Turn economy has no tuning dial (found session 47)
+
+**The missing lever.** This engine's difficulty lives substantially in
+*turn economy*, and every tuning tool the project has -- `magnitudeScaler`
+(per-gatekeeper, session 39), payload `amount`/`amountPerTick`, the tier
+constants in `subroutines.ts` -- targets **damage**. A tempo outlier
+therefore cannot be tuned at all; it can only be fixed by rewriting
+content.
+
+Session 47 hit this four separate times:
+
+1. **Cold Call's self-Haste** -- `instantManipulation` -> `ownGauge` with
+   no clamp. Merge lifted it to the initiative threshold, one fire bought
+   a whole turn, and grants compounded into a 4GB heap. Fixed with
+   `pointsCooldown` (content) plus a loop detector (engine).
+2. **`MIN_INITIATIVE_THRESHOLD` at 1** -- every point scored granted a
+   turn, 8x tempo against the base threshold of 8. Raised to 4. Notably,
+   this was a bigger *enemy* buff than a player one: DNS Poisoning sits in
+   three enemies' fixed loadouts but only three classes can draw it, so
+   fixing it raised player win rates across the board.
+3. **DNS Poisoning's magnitude is `UNCOMMON.burst` (8)** -- a *damage*
+   constant spent as a *threshold reduction*, and the base threshold is
+   also 8, so one fire always lands exactly on the floor whatever the
+   floor is. A units mismatch, deliberately left alone so the floor change
+   could be measured on its own. Still open.
+4. **The Quarantine Ward** -- see below.
+
+### The Quarantine Ward, and why four fixes barely moved it
+
+Gatekeeper ablation measured it as layer 2's difficulty spike (removing it
+lifted the layer's mean pass rate by 8.4pp). Four changes across session
+47 took that to **5.7pp** -- roughly 1pp of improvement for four content
+changes:
+
+- moved its `tracePressure` off Contagion Protocol's `always` trigger
+  (which had been firing ~12.7x/fight, ~25 Trace, a quarter of the whole
+  run Heat budget from one encounter) onto Cryo Lock's accumulator;
+- `magnitudeScaler` 1.3 -> 1.15, then **reverted** -- provably inert: a
+  test at 0.4, a 65% cut, moved the layer's pass rate by 0.8pp, and three
+  ablation runs spanning the change produced byte-identical columns;
+- Contagion Protocol's trigger `always` -> `occurrence:fifteen`.
+
+**Root cause, still unfixed**: the `total-quarantine` passive nudges the
+Ward's initiative on **every DoT *or HoT* tick** (`resolve.ts`'s
+`tickBonus(..., { nudgeInitiative: true })`). The nudge is a flat
+`EP_SMALL` per tick, so it is independent of tick magnitude -- which is
+exactly why scaling damage does nothing. Cutting Contagion Protocol's
+refresh rate only closed **one of two tick feeds**; Cryo Lock's
+5-duration HoT still supplies the other. It is a tick-count-driven tempo
+engine with redundant feeds.
+
+### Proposed: a per-enemy initiative-threshold override
+
+Mirrors `magnitudeScaler`'s shape. `gaugeThresholdFor(tier)`
+(`enemies.ts`) is currently tier-only, so every gatekeeper acts on the
+same cadence regardless of how much tempo its kit manufactures.
+
+Preferred over a literal "tempo scaler" multiplier on nudges, which would
+be indirect and would miss Haste and threshold manipulation entirely. A
+threshold override is **one number that directly means "how often this
+enemy gets a turn"**, and it composes with everything -- nudges, Haste,
+`ownGaugeThreshold` reduction all feed the same gauge, so one dial
+captures all of them rather than patching each mechanism separately.
+
+Open questions for that session:
+
+- Per-enemy override, or per-tier baseline plus per-enemy delta?
+- Should the player side get the same treatment (a class-level initiative
+  threshold), or does that belong to meta-progression instead?
+- Does `WIN_THRESHOLD` (50) need revisiting alongside it? Both it and
+  `GAUGE_THRESHOLD` were tuned in Phase 4 against flat dummy loadouts that
+  no longer exist, and `encounters.ts`'s own comment still says
+  "Still genuinely open" -- see below.
+
+### Related: GAUGE_THRESHOLD / WIN_THRESHOLD were never re-validated
+
+`GAUGE_THRESHOLD = 8` and `WIN_THRESHOLD = 50` were tuned in Phase 4
+checkpoint E against the *old flat single-burst-per-tier dummy loadouts*.
+Phase 5 checkpoint C replaced those with the real 32-enemy roster and
+deferred retuning to checkpoint E, which per session 39's audit never
+actually re-validated them -- it focused on enemy magnitudes and
+structural bugs. The code comment at `encounters.ts` still reads "Still
+genuinely open."
+
+Flagged by the user in session 47: 8 is roughly a decent Cribbage hand
+score, and may be low. `scripts/occurrence-frequency.ts` already produces
+real score-distribution data and is the tool for answering it properly.
+Worth doing in the same session as the tempo dial, since initiative
+threshold and gauge threshold are the same number for the player.
