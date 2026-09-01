@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { playRun, opportunisticTraversal, type RunPlayerState } from './run';
 import { rarityOf } from './rewards';
+import { CLASS_DEFINITIONS } from './classes';
 import { hasCreditCapablePiece, type Archetype, type SubroutineDefinition, type Tag } from './subroutine-types';
 import {
   installSubroutine,
@@ -576,5 +577,39 @@ describe('acquireSubroutineWithSwap -- rarity is not an eviction criterion (sess
     const state = playerState([typedPiece('off-arch', 'root', CREDIT)], []);
     const result = acquireSubroutineWithSwap(state, typedPiece('on-arch', 'exploit', CREDIT), 1);
     expect(result.installedLoadout.map((p) => p.id)).toEqual(['on-arch']);
+  });
+});
+
+describe('acquireSubroutineWithSwap -- starting kits are never evicted (session 47 regression)', () => {
+  const CREDIT = { kind: 'directBurst', amount: 3 } as const;
+
+  it("does not evict a class's starting piece, even when it ranks worst", () => {
+    // The bug this guards, measured: Ghost's Steganography is a `ward`,
+    // which is not in CREDIT_CAPABLE_PAYLOAD_KINDS, so it ranked bottom
+    // and was swapped out in 72% of runs (42/150 kept). Return to
+    // Sender's primary hook is ward absorption, so evicting the ward left
+    // the class passive with nothing to fire on -- turning Ghost from the
+    // best class under the legal-not-good defaults (24.7%) into the worst
+    // under the synergy profile (8.0%).
+    const ghostKit = CLASS_DEFINITIONS.ghost.startingLoadout;
+    const state = { ...playerState([...ghostKit], []), classId: 'ghost' as const };
+    const strongOffer = typedPiece('supply-chain-compromise', 'encryption', CREDIT);
+    const result = acquireSubroutineWithSwap(state, strongOffer, ghostKit.length);
+    for (const starting of ghostKit) {
+      expect(result.installedLoadout.map((p) => p.id), `${starting.id} was evicted`).toContain(starting.id);
+    }
+    expect(result.bench.map((p) => p.id)).toEqual(['supply-chain-compromise']);
+  });
+
+  it('still evicts a non-starting piece that the candidate outranks', () => {
+    // The protection is scoped to starting kits, not a blanket freeze --
+    // acquired pieces remain swappable.
+    const ghostKit = CLASS_DEFINITIONS.ghost.startingLoadout;
+    const acquired = typedPiece('weak-acquired', 'exploit', { kind: 'ward', amount: 1 });
+    const state = { ...playerState([...ghostKit, acquired], []), classId: 'ghost' as const };
+    const strongOffer = typedPiece('strong-enc', 'encryption', CREDIT);
+    const result = acquireSubroutineWithSwap(state, strongOffer, ghostKit.length + 1);
+    expect(result.installedLoadout.map((p) => p.id)).toContain('strong-enc');
+    expect(result.bench.map((p) => p.id)).toEqual(['weak-acquired']);
   });
 });

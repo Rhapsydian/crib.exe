@@ -435,7 +435,26 @@ export function acquireSubroutineWithSwap(
   // Room to spare -- nothing to decide, this is plain acquisition.
   if (cappedInstalledCount(playerState) < slotCap) return acquireSubroutine(playerState, piece, slotCap);
 
-  const evictable = playerState.installedLoadout.filter((installed) => !playerState.grantedByMod[installed.id]);
+  // A class's starting kit is never evicted (session 47). The ladder can
+  // only see payload kinds, so it cannot tell that a piece is load-bearing
+  // for the class's own passive -- and it got this catastrophically wrong
+  // for Ghost. `ward` is not credit-capable, so Steganography ranked
+  // bottom and was swapped out in 72% of runs; Return to Sender's primary
+  // hook is ward absorption, so throwing the ward away left the passive
+  // with nothing to fire on and turned Ghost from the best class under the
+  // legal-not-good defaults (24.7%) into the worst under this profile
+  // (8.0%). Starting loadouts are hand-designed and frequently
+  // load-bearing in ways a payload-kind ladder cannot infer, so they are
+  // protected wholesale rather than case by case.
+  //
+  // A deliberately blunt rule: there are surely starting pieces a strong
+  // enough offer *should* displace, and this forgoes those. That is the
+  // cheaper error -- benching a good acquisition costs one slot, while
+  // evicting a class's engine costs the run.
+  const startingIds = new Set(CLASS_DEFINITIONS[playerState.classId].startingLoadout.map((piece) => piece.id));
+  const evictable = playerState.installedLoadout.filter(
+    (installed) => !playerState.grantedByMod[installed.id] && !startingIds.has(installed.id),
+  );
   if (evictable.length === 0) return acquireSubroutine(playerState, piece, slotCap); // benches it
 
   const worst = evictable.reduce((worstSoFar, installed) => {
