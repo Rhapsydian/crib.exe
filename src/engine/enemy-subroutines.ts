@@ -353,7 +353,15 @@ export const ENEMY_ONLY_SUBROUTINES: SubroutineDefinition[] = [
     // ties the nudge's own frequency back to how often it's already
     // getting to act, closing the decoupled-amplification loop rather
     // than just further cutting the DoT's own magnitude.
-    trigger: { kind: 'always' },
+    // Session 47: was `always`. That refreshed this 5-duration DoT every
+    // single turn, and the Ward's own Total Quarantine passive nudges its
+    // initiative on every DoT/HoT tick -- so a constant refresh became a
+    // self-feeding turn-economy engine, which is what made this gatekeeper
+    // layer 2's difficulty spike. Magnitude was not the lever: a test at
+    // scaler 0.4 (a 65% cut) moved the layer's pass rate by 0.8pp. Cadence
+    // was. An occurrence trigger keeps the contagion pressure real while
+    // giving the DoT genuine downtime between refreshes.
+    trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
     payload: { kind: 'dot', amountPerTick: ENEMY_RARE.tick, cadence: 'castersTurnPulse', duration: ENEMY_RARE.duration },
     tags: ['daemon'],
 
