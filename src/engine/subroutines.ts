@@ -114,10 +114,16 @@ export const GAUGE_FILL_FRACTION = 0.5;
 // global-id-uniqueness invariant (subroutines.test.ts) the instant a
 // class's starting kit and the pool both listed it.
 //
-// Not yet wired into rewardPoolForClass/universalCantrips or
-// ARCHETYPE_POOLS (rewards.ts, buildRarityById) — real acquisition
-// (how a class/enemy actually gets one) is explicitly banked, not
-// resolved this session, per DESIGN.md.
+// Session 46: NEUTRAL_POOL is now included in rewardPoolForClass
+// (rewards.ts) at full weight, for every class and every rarity — so
+// combat rewards, the Shop slate and Event grants all offer these,
+// since all three derive from that one function. It stays out of
+// ARCHETYPE_POOLS itself (no suit, no class specializes in it) and out
+// of universalCantrips (which reads ARCHETYPE_POOLS' own commons).
+// The "acquisition is explicitly banked" note this comment used to
+// carry had outlived the decision behind it: measured in session 46,
+// all 18 pieces were unreachable through every acquisition path, which
+// was a bug rather than gating.
 // ---------------------------------------------------------------------
 
 /** Ghost's new Cantrip (session 28), replacing Low Profile — deliberately

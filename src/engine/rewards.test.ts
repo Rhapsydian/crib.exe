@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import { rarityOf, rewardPoolForClass, drawRewardOptions, REWARD_OPTIONS_COUNT } from './rewards';
+import { NEUTRAL_POOL } from './subroutines';
+import type { ClassId } from './classes';
 
 describe('rarityOf', () => {
   it('looks up a known common/uncommon/rare pool piece correctly', () => {
@@ -89,5 +91,61 @@ describe('drawRewardOptions', () => {
       return rares;
     };
     expect(countRares('better')).toBeGreaterThan(countRares('standard'));
+  });
+});
+
+describe('rewardPoolForClass -- Neutral pool acquisition (session 46 regression)', () => {
+  const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
+  const neutralIds = [...NEUTRAL_POOL.commons, ...NEUTRAL_POOL.uncommons, ...NEUTRAL_POOL.rares].map((p) => p.id);
+
+  it('every Neutral piece is reachable by every class, at every rarity', () => {
+    // The bug: all 18 Neutral pieces were absent from every class's pool
+    // since session 28, so no combat reward, Shop slate or Event grant
+    // could ever offer one -- 18 authored pieces with no way into a run
+    // but a single scripted Event grant.
+    expect(neutralIds).toHaveLength(18);
+    for (const classId of ALL_CLASSES) {
+      const pool = new Set(rewardPoolForClass(classId).map((p) => p.id));
+      for (const id of neutralIds) {
+        expect(pool.has(id), `${id} unreachable for ${classId}`).toBe(true);
+      }
+    }
+  });
+
+  it('does not disturb what the pool already contained', () => {
+    const pool = rewardPoolForClass('breacher').map((p) => p.id);
+    expect(pool).toContain('buffer-overflow'); // own starting piece
+    expect(pool).toContain('fuzzer'); // own archetype common
+    expect(pool).toContain('adware'); // other-archetype Cantrip
+    expect(pool).not.toContain('ransomware'); // off-archetype non-Cantrip, still excluded
+    expect(pool).not.toContain('payload-drop'); // another class's starting piece
+  });
+
+  it('still has no duplicate ids after the merge', () => {
+    for (const classId of ALL_CLASSES) {
+      const pool = rewardPoolForClass(classId).map((p) => p.id);
+      expect(new Set(pool).size).toBe(pool.length);
+    }
+  });
+
+  it('leaves the rarity distribution essentially unchanged', () => {
+    // Neutral's own 8/6/4 split is near-proportional to the 28/20/12 a
+    // class's two archetype pools contribute, so no reweighting was
+    // needed -- this pins that rather than leaving it as a claim.
+    const pool = rewardPoolForClass('breacher');
+    const share = (rarity: string) => pool.filter((p) => rarityOf(p.id) === rarity).length / pool.length;
+    expect(share('rare')).toBeGreaterThan(0.15);
+    expect(share('rare')).toBeLessThan(0.25);
+  });
+
+  it('actually offers Neutral pieces through a real draw', () => {
+    // Reachable-in-principle isn't the same as drawn in practice.
+    const rng = createRng(11);
+    const neutral = new Set(neutralIds);
+    let sawNeutral = false;
+    for (let i = 0; i < 500 && !sawNeutral; i++) {
+      sawNeutral = drawRewardOptions('breacher', 'standard', rng).some((p) => neutral.has(p.id));
+    }
+    expect(sawNeutral).toBe(true);
   });
 });

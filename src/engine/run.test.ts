@@ -286,7 +286,13 @@ describe('playRun', { timeout: 30_000 }, () => {
   });
 
   it('a victorious run clears all 4 layers, matching layersCompleted to the log', () => {
-    const victorySeed = Array.from({ length: 50 }, (_, seed) => seed).find(
+    // Scans a wide seed range because the point is "find a victorious
+    // run and check its shape," not "seed N wins." Widened from 50 in
+    // session 46: adding the 18 Neutral pieces to every class's reward
+    // pool shifted which seeds win, and a floor-strategy player
+    // (alwaysAcquireFirst, beeline, no skill dial) wins rarely enough
+    // that the first victory now lands at seed 96.
+    const victorySeed = Array.from({ length: 200 }, (_, seed) => seed).find(
       (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper }).outcome === 'victory',
     );
     expect(victorySeed).toBeDefined();
@@ -307,7 +313,13 @@ describe('playRun', { timeout: 30_000 }, () => {
   });
 
   it('onBeforeGatekeeperFight (session 39) fires once per gatekeeper fight with the real accumulated state at that moment', () => {
-    const victorySeed = Array.from({ length: 50 }, (_, seed) => seed).find(
+    // Scans a wide seed range because the point is "find a victorious
+    // run and check its shape," not "seed N wins." Widened from 50 in
+    // session 46: adding the 18 Neutral pieces to every class's reward
+    // pool shifted which seeds win, and a floor-strategy player
+    // (alwaysAcquireFirst, beeline, no skill dial) wins rarely enough
+    // that the first victory now lands at seed 96.
+    const victorySeed = Array.from({ length: 200 }, (_, seed) => seed).find(
       (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper }).outcome === 'victory',
     );
     expect(victorySeed).toBeDefined();

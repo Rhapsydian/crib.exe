@@ -24,10 +24,11 @@ export type RewardTier = 'none' | 'standard' | 'better';
 
 function buildRarityById(): Record<string, Rarity> {
   const map: Record<string, Rarity> = {};
-  // NEUTRAL_POOL (session 28) included here for correct rarity
-  // reporting even though it stays out of ARCHETYPE_POOLS proper --
-  // real acquisition (whether/how neutral pieces enter reward pools)
-  // is still banked, but rarityOf() should never be wrong about one.
+  // NEUTRAL_POOL stays out of ARCHETYPE_POOLS proper (it has no suit and
+  // no class specializes in it) but is included here, and since session
+  // 46 in rewardPoolForClass below too -- the "real acquisition is still
+  // banked" note this comment used to carry turned out to describe a bug
+  // rather than a decision, and is resolved.
   for (const pool of [...Object.values(ARCHETYPE_POOLS), NEUTRAL_POOL]) {
     for (const piece of pool.commons) map[piece.id] = 'common';
     for (const piece of pool.uncommons) map[piece.id] = 'uncommon';
@@ -77,8 +78,27 @@ export function rewardPoolForClass(classId: ClassId): SubroutineDefinition[] {
   });
   const otherCantrips = universalCantrips().filter((piece) => !ownArchetypes.has(piece.archetype));
 
+  // The whole Neutral pool, every class, every rarity (session 46). It
+  // had been unreachable through *any* acquisition path since session 28
+  // -- absent from combat rewards, the Shop slate and Event grants alike,
+  // since all three derive from this one function -- leaving 18 authored
+  // pieces with no way into a run but a single scripted Event grant. That
+  // was a real bug rather than a deliberate gating: the archetype exists
+  // precisely as "a small, shared toolbox anyone can draw from"
+  // (subroutine-types.ts's Archetype comment).
+  //
+  // Enters at full weight, no special-casing. drawRewardOptions weights
+  // purely by rarity, and NEUTRAL_POOL's own 8/6/4 split is near-
+  // proportional to the 28/20/12 a class's two archetype pools already
+  // contribute, so the rarity distribution barely shifts -- measured at
+  // +0.1pp on a standard-tier rare draw and +0.5pp on a better-tier one.
+  // A reduced weight was considered and rejected: it would need
+  // per-piece weighting machinery that doesn't exist, set by a number
+  // with no calibration target behind it.
+  const neutralPool = [...NEUTRAL_POOL.commons, ...NEUTRAL_POOL.uncommons, ...NEUTRAL_POOL.rares];
+
   const seen = new Set<string>();
-  const combined = [...classDef.startingLoadout, ...ownPools, ...otherCantrips];
+  const combined = [...classDef.startingLoadout, ...ownPools, ...otherCantrips, ...neutralPool];
   return combined.filter((piece) => (seen.has(piece.id) ? false : (seen.add(piece.id), true)));
 }
 
