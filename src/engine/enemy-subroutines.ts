@@ -49,6 +49,21 @@ const ENEMY_RARE = { tick: 2, duration: 5, pointsPerTick: 8 };
 // every single pair occurrence instead of once per rare condition,
 // mirroring session 39's Zero-Sum/Operator decoupling precedent (split a
 // shared constant once one consumer needs independent tuning).
+/**
+ * Trace inflicted on the player per fire, for enemies whose fiction is
+ * actively hunting the intruder (session 47). Only ever on *bespoke*
+ * enemy pieces in this file, never on shared pool pieces -- a pool
+ * piece's definition is the same object the player can draw, and a player
+ * raising an enemy's Trace is meaningless (enemies have none).
+ *
+ * Deliberately not universal: which enemy you face is meant to be a real
+ * threat characteristic, so the hunters are loud and the stealth
+ * gatekeepers (Ghost Process, Null Session, Silent Corruption) carry none
+ * at all -- an enemy that generates no Trace is its own kind of signal.
+ * TBD/playtesting.
+ */
+const HUNTER_TRACE_PRESSURE = 2;
+
 const STACK_OVERFLOW_BURST = 5; // TBD/playtesting
 
 // Gatekeeper thematic-piece pass (session 43's own decision-session): a new
@@ -309,6 +324,9 @@ export const ENEMY_ONLY_SUBROUTINES: SubroutineDefinition[] = [
     trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
     payload: { kind: 'directBurst', amount: ENEMY_UNCOMMON.burst },
     tags: ['direct'],
+    // Incident Response is the alarm itself responding -- escalating an
+    // incident is precisely the act of making the intruder visible.
+    tracePressure: HUNTER_TRACE_PRESSURE,
   },
   {
     id: 'contagion-protocol',
@@ -338,6 +356,9 @@ export const ENEMY_ONLY_SUBROUTINES: SubroutineDefinition[] = [
     trigger: { kind: 'always' },
     payload: { kind: 'dot', amountPerTick: ENEMY_RARE.tick, cadence: 'castersTurnPulse', duration: ENEMY_RARE.duration },
     tags: ['daemon'],
+    // The Quarantine Ward hunts by spreading containment outward, lighting
+    // the intruder up as it sweeps.
+    tracePressure: HUNTER_TRACE_PRESSURE,
   },
   {
     id: 'cryo-lock',
@@ -425,6 +446,9 @@ export const ENEMY_ONLY_SUBROUTINES: SubroutineDefinition[] = [
     payload: { kind: 'directBurst', amount: ENEMY_UNCOMMON.burst },
     tags: [],
     reactive: true,
+    // Adaptive Threat is actively building a profile of the player --
+    // being modelled is being seen.
+    tracePressure: HUNTER_TRACE_PRESSURE,
   },
   {
     id: 'undetected',

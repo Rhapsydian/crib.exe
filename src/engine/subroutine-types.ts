@@ -654,6 +654,25 @@ export interface SubroutineDefinition {
    * (resolve.ts) -- that hook reads this field, so it now covers every
    * archetype's noisy pieces rather than only Exploit's bursts. */
   traceCost?: number;
+  /** Trace this piece inflicts on its OPPONENT each time it fires
+   * (session 47) -- the mirror of traceCost, which charges the caster.
+   *
+   * Enemy-side content. Trace remains player-only as a *resource*
+   * (session 43: enemies have no Heat of their own and accumulate
+   * nothing), but an enemy actively hunting you can still make YOU
+   * visible -- that is a threat, like a debuff, not an enemy resource.
+   * An enemy carrying this raises the player's Trace, which converts to
+   * run Heat when the fight ends, so a long fight against something loud
+   * is genuinely expensive at the run level.
+   *
+   * Deliberately a side-effect field rather than its own payload kind, so
+   * an enemy's existing attacks simply become noisy without spending a
+   * loadout slot on it -- a hunter should be dangerous *and* loud, not
+   * loud instead of dangerous.
+   *
+   * On a player piece this is inert: the enemy side has no Trace to
+   * raise. enemies.test.ts guards the intended direction. */
+  tracePressure?: number;
 }
 
 /** The three real Cribbage lifecycle moments a `firesAt` subroutine can

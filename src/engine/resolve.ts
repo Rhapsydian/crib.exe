@@ -1220,6 +1220,29 @@ function applyTraceCost(
   return { ...combatState, sides, passiveTriggered: zeroDay || combatState.passiveTriggered };
 }
 
+/**
+ * Applies the firing piece's Trace *pressure* to the other side (session
+ * 47) -- an enemy actively hunting the player makes the player visible.
+ *
+ * Separate from applyTraceCost above because it targets the opponent, not
+ * the caster, and is deliberately NOT waived by Zero Day: that passive
+ * waives the cost of the player's own noisy fire, and has nothing to say
+ * about an enemy raising the alarm. The player's own Trace reducers are
+ * the counterplay here.
+ */
+function applyTracePressure(
+  combatState: CombatState,
+  caster: PlayerIndex,
+  firingDefinition: SubroutineDefinition | undefined,
+): CombatState {
+  const pressure = firingDefinition?.tracePressure ?? 0;
+  if (pressure <= 0) return combatState;
+  const target = (1 - caster) as PlayerIndex;
+  const targetState = combatState.sides[target];
+  const sides = replaceSide(combatState.sides, target, { ...targetState, trace: targetState.trace + pressure });
+  return { ...combatState, sides };
+}
+
 export function resolvePayload(
   payload: PayloadEffect,
   archetype: Archetype,
@@ -1235,7 +1258,7 @@ export function resolvePayload(
 ): CombatState {
   // Charged before the payload resolves, matching the ordering the
   // riskRewardBurst case used when it owned this logic itself.
-  const charged = applyTraceCost(combatState, caster, firingDefinition);
+  const charged = applyTracePressure(applyTraceCost(combatState, caster, firingDefinition), caster, firingDefinition);
   const base = resolvePayloadCore(payload, archetype, charged, caster, context);
   const withPrimed = applyPrimedPassive(base, archetype, caster);
   const withEnemy = applyEnemyOnFirePassives(withPrimed, payload, archetype, caster);

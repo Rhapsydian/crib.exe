@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import { createNode } from './map-types';
 import { playCombat } from './combat';
-import { CLASS_STARTING_LOADOUTS } from './subroutines';
+import { CLASS_STARTING_LOADOUTS, ALL_POOL_SUBROUTINES, ALL_SUBROUTINES } from './subroutines';
 import { CREDIT_CAPABLE_PAYLOAD_KINDS, type SubroutineDefinition } from './subroutine-types';
 import {
   ENEMY_ROSTER,
@@ -290,6 +290,37 @@ describe('no enemy touches Trace', () => {
           `${enemy.id}/${piece.id} has a Trace-moving payload; Trace is player-only`,
         ).toBe(false);
       }
+    }
+  });
+
+  it('Trace pressure is enemy-only, and never on a shared pool piece', () => {
+    // Session 47: enemies may now raise the PLAYER's Trace (a threat, like
+    // a debuff) while still having none of their own. The constraint that
+    // matters is where it lives -- a pool piece's definition is the same
+    // object the player can draw, and a player raising an enemy's Trace is
+    // meaningless, so pressure belongs only on bespoke enemy pieces.
+    const poolIds = new Set(ALL_POOL_SUBROUTINES.map((p) => p.id));
+    for (const enemy of ENEMY_ROSTER) {
+      for (const piece of enemy.loadout) {
+        if (!piece.tracePressure) continue;
+        expect(poolIds.has(piece.id), `${enemy.id}/${piece.id} carries tracePressure but is a shared pool piece`).toBe(false);
+      }
+    }
+  });
+
+  it('no player-side piece carries Trace pressure, which would be inert', () => {
+    for (const piece of ALL_SUBROUTINES) {
+      expect(piece.tracePressure ?? 0, `${piece.id} has tracePressure; enemies have no Trace to raise`).toBe(0);
+    }
+  });
+
+  it('the stealth gatekeepers stay silent', () => {
+    // An enemy that generates no Trace is its own kind of signal -- these
+    // three are deliberately quiet, and that is content, not an omission.
+    for (const id of ['ghost-process', 'null-session', 'silent-corruption']) {
+      const enemy = ENEMY_ROSTER.find((e) => e.id === id)!;
+      const total = enemy.loadout.reduce((sum, p) => sum + (p.tracePressure ?? 0), 0);
+      expect(total, `${id} should generate no Trace pressure`).toBe(0);
     }
   });
 

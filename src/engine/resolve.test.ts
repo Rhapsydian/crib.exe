@@ -1967,3 +1967,49 @@ describe('Root offense (session 40 continued) -- handOutcome trigger ("Crib Trap
     expect(fired.events).toHaveLength(0);
   });
 });
+
+describe('tracePressure (session 47)', () => {
+  /** A bespoke enemy-style piece that makes the *player* visible. */
+  function hunter(pressure: number): SubroutineDefinition {
+    return {
+      id: 'hunter',
+      name: 'Hunter',
+      archetype: 'exploit',
+      trigger: { kind: 'always' },
+      payload: { kind: 'directBurst', amount: 1 },
+      tags: [],
+      tracePressure: pressure,
+    };
+  }
+
+  it("raises the OPPONENT's Trace, not the caster's", () => {
+    const state = createCombatState([], [], [12, 12]);
+    // Side 1 (the enemy) fires; side 0 (the player) gets the Trace.
+    const result = resolvePayload({ kind: 'directBurst', amount: 1 }, 'exploit', state, 1, undefined, hunter(2));
+    expect(result.sides[0].trace).toBe(2);
+    expect(result.sides[1].trace).toBe(0);
+  });
+
+  it('stacks across fires, so a long fight against a hunter is expensive', () => {
+    let state = createCombatState([], [], [12, 12]);
+    for (let i = 0; i < 4; i++) {
+      state = resolvePayload({ kind: 'directBurst', amount: 1 }, 'exploit', state, 1, undefined, hunter(2));
+    }
+    expect(state.sides[0].trace).toBe(8);
+  });
+
+  it('is not waived by Zero Day, which only excuses the player\'s own noise', () => {
+    const state = createCombatState([], [], [12, 12], 'blackhat');
+    const result = resolvePayload({ kind: 'directBurst', amount: 1 }, 'exploit', state, 1, undefined, hunter(2));
+    expect(result.sides[0].trace).toBe(2);
+    expect(result.passiveTriggered).toBe(false); // the passive is untouched, still available
+  });
+
+  it('is counterplayable -- the player can shed inflicted Trace', () => {
+    let state = createCombatState([], [], [12, 12]);
+    state = resolvePayload({ kind: 'directBurst', amount: 1 }, 'exploit', state, 1, undefined, hunter(6));
+    expect(state.sides[0].trace).toBe(6);
+    state = resolvePayload({ kind: 'traceReduction', amount: 4, floor: 0 }, 'encryption', state, 0);
+    expect(state.sides[0].trace).toBe(2);
+  });
+});
