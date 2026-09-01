@@ -53,6 +53,17 @@ import type { SubroutineDefinition } from './subroutine-types';
 // TBD/playtesting, same treatment as every other constant here.
 const HASTE_POINTS_COOLDOWN = 15;
 
+// Trace costs (session 47). Anchored to a measured budget: HEAT_MAX is
+// 100, an average run ends around 38, and ~75% of all Heat gain is
+// movement at HEAT_PER_MOVE 2 -- so 1 Trace is worth about half a map
+// move. Exploit pays the most by design (the user's own framing: the
+// tradeoff is the archetype's identity); every other archetype makes
+// noise as a small side-effect of its own normal work.
+// TBD/playtesting, same treatment as every other constant here.
+const EXPLOIT_TRACE_COST = 3;
+const LOUD_TRACE_COST = 2; // noisy non-Exploit pieces, and the self-limiting pairings
+const FAINT_TRACE_COST = 1; // frequent or incidental noise
+
 const COMMON = { burst: 5, tick: 2, pointsPerTick: 8, threshold: 6, bankTarget: 2, cap: 3, duration: 3, trace: 8, debuffMag: 3, debuffDur: 2 };
 const UNCOMMON = { burst: 8, tick: 3, pointsPerTick: 8, threshold: 8, bankTarget: 3, cap: 4, duration: 4, trace: 10, debuffMag: 4, debuffDur: 3 };
 const RARE = { burst: 13, tick: 5, pointsPerTick: 8, threshold: 10, bankTarget: 4, cap: 5, duration: 5, trace: 12, debuffMag: 6, debuffDur: 3 };
@@ -414,7 +425,8 @@ export const BLACKHAT_LOADOUT: SubroutineDefinition[] = [
     // empirically swept against explore-heavy play alongside Static
     // Noise's own fix below -- see BACKLOG.md's Blackhat Heat-fragility
     // writeup for the full candidate comparison.
-    payload: { kind: 'riskRewardBurst', amount: COMMON.burst + 2, traceCost: 3 },
+    payload: { kind: 'riskRewardBurst', amount: COMMON.burst + 2 },
+    traceCost: EXPLOIT_TRACE_COST,
     tags: ['direct'],
   },
   {
@@ -439,7 +451,11 @@ export const BLACKHAT_LOADOUT: SubroutineDefinition[] = [
     // also be a guaranteed Heat tax -- that was a side effect of reusing
     // riskRewardBurst for it, not an intended part of its "always fires"
     // identity.
-    payload: { kind: 'riskRewardBurst', amount: 3, traceCost: 0 },
+    payload: { kind: 'riskRewardBurst', amount: 3 },
+    // Session 47: a cantrip named *static noise* that generated none.
+    // 1 rather than EXPLOIT_TRACE_COST because an `always` trigger fires
+    // ~12.7 times a fight -- this is a constant hum, not a spike.
+    traceCost: 1,
     tags: ['daemon'],
   },
 ];
@@ -756,7 +772,8 @@ export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
     name: 'Payload Multiplier',
     archetype: 'exploit',
     trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.trace },
-    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, traceCost: 3 },
+    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2 },
+    traceCost: EXPLOIT_TRACE_COST,
     // Session 41's own retrofit list missed this piece (37 named vs. the
     // real 38 untagged) -- Direct per the same reasoning as its sibling
     // Payload Drop (starting loadout): immediate single-shot risk/reward,
@@ -780,7 +797,8 @@ export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
     name: 'Race to the Bottom',
     archetype: 'exploit',
     trigger: { kind: 'enemyState', condition: 'breachContainmentBelow', value: BREACH_CONTAINMENT_THRESHOLD.low },
-    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, traceCost: 3 },
+    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2 },
+    traceCost: EXPLOIT_TRACE_COST,
     tags: ['direct'],
   },
   {
@@ -796,7 +814,8 @@ export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
     name: 'Turbo Mode',
     archetype: 'exploit',
     trigger: { kind: 'selfState', condition: 'isNonDealer' },
-    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, traceCost: 3 },
+    payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2 },
+    traceCost: EXPLOIT_TRACE_COST,
     tags: ['direct'],
   },
   {

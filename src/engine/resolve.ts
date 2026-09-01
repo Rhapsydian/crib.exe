@@ -1191,6 +1191,35 @@ function applyModOnTickExpiringPassives(
  * resolvePayloadCore (the actual per-payload-kind switch) with Primed,
  * the one passive hook that applies generically by archetype rather
  * than by a specific payload kind -- see the passives block above. */
+/**
+ * Charges the firing piece's own Trace cost to its side (session 47).
+ *
+ * Applied centrally, at the single point every real fire funnels through,
+ * rather than inside one payload's case -- Trace is a property of the
+ * piece, so an alarm, a broadcast storm and a risk/reward burst all pay
+ * the same way. Deliberately keyed off `firingDefinition`, which
+ * resolvePendingSabotage's replay does NOT pass: a sabotage resolving
+ * later is not the piece firing again, and must not be charged twice.
+ *
+ * Blackhat's Zero Day waives the first Trace-costing fire each combat.
+ * Moving that check here widens it from "Exploit bursts" to "any noisy
+ * piece," which is the correct reading of the passive now that every
+ * archetype can carry Trace costs.
+ */
+function applyTraceCost(
+  combatState: CombatState,
+  caster: PlayerIndex,
+  firingDefinition: SubroutineDefinition | undefined,
+): CombatState {
+  const cost = firingDefinition?.traceCost ?? 0;
+  if (cost <= 0) return combatState;
+  const zeroDay = caster === 0 && hasMod(combatState, 'zero-day') && !combatState.passiveTriggered;
+  const casterState = combatState.sides[caster];
+  const trace = zeroDay ? casterState.trace : casterState.trace + cost;
+  const sides = replaceSide(combatState.sides, caster, { ...casterState, trace });
+  return { ...combatState, sides, passiveTriggered: zeroDay || combatState.passiveTriggered };
+}
+
 export function resolvePayload(
   payload: PayloadEffect,
   archetype: Archetype,
@@ -1204,7 +1233,10 @@ export function resolvePayload(
    * wrapped-effect replay, which only ever captured `archetype`. */
   firingDefinition?: SubroutineDefinition,
 ): CombatState {
-  const base = resolvePayloadCore(payload, archetype, combatState, caster, context);
+  // Charged before the payload resolves, matching the ordering the
+  // riskRewardBurst case used when it owned this logic itself.
+  const charged = applyTraceCost(combatState, caster, firingDefinition);
+  const base = resolvePayloadCore(payload, archetype, charged, caster, context);
   const withPrimed = applyPrimedPassive(base, archetype, caster);
   const withEnemy = applyEnemyOnFirePassives(withPrimed, payload, archetype, caster);
   return applyModOnFirePassives(withEnemy, archetype, caster, firingDefinition);
@@ -1247,15 +1279,11 @@ function resolvePayloadCore(
       return creditWinGauge(combatState, caster, amount);
     }
     case 'riskRewardBurst': {
+      // The Trace cost that used to live here is charged centrally by
+      // applyTraceCost below, since session 47 made it a property of the
+      // firing piece rather than of this one payload kind.
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
-      const casterState = combatState.sides[caster];
-      // Blackhat's Zero Day: the first Trace-costing Exploit fire each
-      // combat waives its Trace cost entirely.
-      const zeroDay = caster === 0 && hasMod(combatState, 'zero-day') && !combatState.passiveTriggered && payload.traceCost > 0;
-      const trace = zeroDay ? casterState.trace : casterState.trace + payload.traceCost;
-      const sides = replaceSide(combatState.sides, caster, { ...casterState, trace });
-      const state = { ...combatState, sides, passiveTriggered: zeroDay || combatState.passiveTriggered };
-      return creditWinGauge(state, caster, amount);
+      return creditWinGauge(combatState, caster, amount);
     }
     case 'dot': {
       const targetState = combatState.sides[target];

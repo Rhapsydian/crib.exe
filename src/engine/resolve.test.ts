@@ -96,39 +96,71 @@ describe("resolvePayload — offense credits the caster's own gauge", () => {
     expect(third.sides[0].winGauge.progress).toBe(8);
   });
 
-  it("riskRewardBurst credits the caster's own gauge and costs Heat", () => {
+  it("riskRewardBurst credits the caster's own gauge, and the firing piece's traceCost is charged", () => {
+    // Session 47: Trace cost moved off the payload onto the definition,
+    // so it is charged centrally for ANY noisy piece rather than only
+    // this payload kind. Passed here as the firingDefinition argument.
     const state = createCombatState([], [], [12, 12]);
-    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 6, traceCost: 3 }, 'exploit', state, 0);
+    const noisy = traceCostingDefinition(3);
+    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 6 }, 'exploit', state, 0, undefined, noisy);
     expect(result.sides[0].winGauge.progress).toBe(6);
     expect(result.sides[0].trace).toBe(3);
+  });
+
+  it('charges traceCost for a non-Exploit payload too -- noise is a property of the piece', () => {
+    const state = createCombatState([], [], [12, 12]);
+    const loudWard = { ...traceCostingDefinition(2), archetype: 'encryption' as const };
+    const result = resolvePayload({ kind: 'ward', amount: 4 }, 'encryption', state, 0, undefined, loudWard);
+    expect(result.sides[0].trace).toBe(2);
+  });
+
+  it('charges nothing for a piece with no traceCost', () => {
+    const state = createCombatState([], [], [12, 12]);
+    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 6 }, 'exploit', state, 0);
+    expect(result.sides[0].trace).toBe(0);
   });
 
   it('chainFinisherScaling/riskRewardBurst are not shield-checked (matches pre-redesign scope -- only directBurst ever was)', () => {
     let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'ward', amount: 999 }, 'encryption', state, 1);
-    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10, traceCost: 0 }, 'exploit', state, 0);
+    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10 }, 'exploit', state, 0);
     expect(result.sides[0].winGauge.progress).toBe(10); // shield never checked
   });
 });
 
+/** A minimal firing definition carrying a Trace cost -- session 47 moved
+ * Trace off the payload and onto the piece, so resolvePayload learns the
+ * cost from its firingDefinition argument. */
+function traceCostingDefinition(traceCost: number): SubroutineDefinition {
+  return {
+    id: 'noisy',
+    name: 'Noisy',
+    archetype: 'exploit',
+    trigger: { kind: 'always' },
+    payload: { kind: 'riskRewardBurst', amount: 1 },
+    tags: [],
+    traceCost,
+  };
+}
+
 describe('traceReduction', () => {
   it("reduces the caster's own Heat, floored", () => {
     let state = createCombatState([], [], [12, 12]);
-    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, traceCost: 5 }, 'exploit', state, 0);
+    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1 }, 'exploit', state, 0, undefined, traceCostingDefinition(5));
     const result = resolvePayload({ kind: 'traceReduction', amount: 3, floor: 1 }, 'root', state, 0);
     expect(result.sides[0].trace).toBe(2);
   });
 
   it('never reduces Heat below the floor', () => {
     let state = createCombatState([], [], [12, 12]);
-    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, traceCost: 2 }, 'exploit', state, 0);
+    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1 }, 'exploit', state, 0, undefined, traceCostingDefinition(2));
     const result = resolvePayload({ kind: 'traceReduction', amount: 10, floor: 1 }, 'root', state, 0);
     expect(result.sides[0].trace).toBe(1);
   });
 
   it('is halved by Corrupted like any other magnitude', () => {
     let state = createCombatState([], [], [12, 12]);
-    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1, traceCost: 10 }, 'exploit', state, 0);
+    state = resolvePayload({ kind: 'riskRewardBurst', amount: 1 }, 'exploit', state, 0, undefined, traceCostingDefinition(10));
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
     const result = resolvePayload({ kind: 'traceReduction', amount: 4, floor: 0 }, 'root', state, 0);
     expect(result.sides[0].trace).toBe(8); // 10 - (4 * 0.5)
@@ -924,10 +956,10 @@ describe("Corrupted -- reduces the debuffed side's own payload magnitude", () =>
     expect(result.sides[0].winGauge.progress).toBe(5);
   });
 
-  it("does not reduce riskRewardBurst's Heat cost, only its magnitude", () => {
+  it("does not reduce a firing piece's Trace cost, only its magnitude", () => {
     let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1);
-    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10, traceCost: 6 }, 'exploit', state, 0);
+    const result = resolvePayload({ kind: 'riskRewardBurst', amount: 10 }, 'exploit', state, 0, undefined, traceCostingDefinition(6));
     expect(result.sides[0].winGauge.progress).toBe(5);
     expect(result.sides[0].trace).toBe(6); // unreduced
   });
@@ -1281,27 +1313,27 @@ describe('starting passives (Phase 4 checkpoint B, retranslated for the Breach/C
   describe('Zero Day (Blackhat)', () => {
     it('waives Heat cost for the first Heat-costing Exploit fire', () => {
       const state = createCombatState([], [], [12, 12], 'blackhat');
-      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, traceCost: 4 }, 'exploit', state, 0);
+      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5 }, 'exploit', state, 0, undefined, traceCostingDefinition(4));
       expect(result.sides[0].trace).toBe(0);
       expect(result.passiveTriggered).toBe(true);
     });
 
     it('costs Heat normally on the second Heat-costing Exploit fire', () => {
       let state = createCombatState([], [], [12, 12], 'blackhat');
-      state = resolvePayload({ kind: 'riskRewardBurst', amount: 5, traceCost: 4 }, 'exploit', state, 0);
-      state = resolvePayload({ kind: 'riskRewardBurst', amount: 5, traceCost: 4 }, 'exploit', state, 0);
+      state = resolvePayload({ kind: 'riskRewardBurst', amount: 5 }, 'exploit', state, 0, undefined, traceCostingDefinition(4));
+      state = resolvePayload({ kind: 'riskRewardBurst', amount: 5 }, 'exploit', state, 0, undefined, traceCostingDefinition(4));
       expect(state.sides[0].trace).toBe(4);
     });
 
     it('does not consume the passive on a zero-cost fire', () => {
       const state = createCombatState([], [], [12, 12], 'blackhat');
-      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, traceCost: 0 }, 'exploit', state, 0);
+      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5 }, 'exploit', state, 0);
       expect(result.passiveTriggered).toBe(false);
     });
 
     it('does not apply for a different class', () => {
       const state = createCombatState([], [], [12, 12], 'breacher');
-      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5, traceCost: 4 }, 'exploit', state, 0);
+      const result = resolvePayload({ kind: 'riskRewardBurst', amount: 5 }, 'exploit', state, 0, undefined, traceCostingDefinition(4));
       expect(result.sides[0].trace).toBe(4);
     });
   });

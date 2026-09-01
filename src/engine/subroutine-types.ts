@@ -197,10 +197,18 @@ export interface ChainFinisherScalingPayload {
   baseAmount: number;
   perPriorFire: number;
 }
+/**
+ * Exploit's signature shape: a big burst whose price is Trace. Session 47
+ * moved the Trace cost itself out to SubroutineDefinition.traceCost, so
+ * every archetype can make noise as a side-effect of its own normal work
+ * rather than needing an Exploit-flavored burst bolted on. What remains
+ * here is the identity: riskRewardBurst is the payload kind that exists
+ * *because* it is paid for, and Exploit carries the steepest costs in the
+ * game by design.
+ */
 export interface RiskRewardBurstPayload {
   kind: 'riskRewardBurst';
   amount: number;
-  traceCost: number;
 }
 
 // --- Malware (2) ---
@@ -628,6 +636,24 @@ export interface SubroutineDefinition {
    * ("a non-scoring play produces no ScoringOccurrence at all"). Ticks
    * only on the owning side's own scoring. */
   pointsCooldown?: number;
+  /** Trace this piece adds to its own side each time it fires (session
+   * 47) -- see resolve.ts's CombatSideState.trace and DESIGN.md's
+   * Resources section. Absent means silent, which is most of the pool.
+   *
+   * A per-piece property rather than one payload's field, because noise
+   * is a property of *what a piece does*, not of one effect shape: an
+   * alarm, a broadcast storm and a ransomware payload are all loud while
+   * having nothing else in common. Keeping it here also means a piece can
+   * both read and write Trace, which is the self-limiting pairing the
+   * design leans on -- e.g. a `traceBelow 8` trigger with traceCost 2
+   * fires about four times and then quiets itself, a limiter the player
+   * can see and can counteract with Trace reduction, unlike an opaque
+   * maxFiresPerCombat.
+   *
+   * Blackhat's Zero Day waives the first Trace-costing fire each combat
+   * (resolve.ts) -- that hook reads this field, so it now covers every
+   * archetype's noisy pieces rather than only Exploit's bursts. */
+  traceCost?: number;
 }
 
 /** The three real Cribbage lifecycle moments a `firesAt` subroutine can

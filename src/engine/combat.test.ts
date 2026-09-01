@@ -86,8 +86,9 @@ describe('playCombat', () => {
       name: 'a',
       archetype: 'exploit',
       trigger: { kind: 'always' },
-      payload: { kind: 'riskRewardBurst', amount: 20, traceCost: 4 },
+      payload: { kind: 'riskRewardBurst', amount: 20 },
       tags: [],
+      traceCost: 4,
     };
     const result = playCombat([[riskyPlayer], []], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.winner).toBe(0);
