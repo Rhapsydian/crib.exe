@@ -512,7 +512,21 @@ export const SABOTEUR_LOADOUT: SubroutineDefinition[] = [
     name: 'Background Process',
     archetype: 'root',
     trigger: { kind: 'always' },
-    payload: { kind: 'instantManipulation', target: 'subroutineProgress', amount: 2, targetSubroutineId: 'time-bomb' },
+    // Session 47: re-pointed from Time Bomb to Silent Worm. The pump was
+    // inert -- Time Bomb's enemyState trigger is a live condition with
+    // nothing to bank, so no amount of progress could advance it, and
+    // Saboteur opened every run with a dead card (see triggers.ts's
+    // advanceTowardFiring for the mechanic fix, which covers accumulator
+    // and occurrence targets but cannot help a live condition).
+    //
+    // Silent Worm is accumulator-triggered (points, threshold 6), so the
+    // pump now genuinely accelerates it, and a background process feeding
+    // the worm reads at least as well as feeding a bomb. The more
+    // thematically correct fix -- making Time Bomb an accumulator, since a
+    // "time bomb" gated on enemy containment is a mismatch regardless --
+    // was considered and left alone: it changes when the piece fires
+    // outright and needs a threshold invented, where this needs neither.
+    payload: { kind: 'instantManipulation', target: 'subroutineProgress', amount: 2, targetSubroutineId: 'silent-worm' },
     tags: ['daemon'],
   },
 ];

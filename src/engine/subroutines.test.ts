@@ -381,12 +381,10 @@ describe('dead-content guards (session 47)', () => {
 
   const byId = new Map(ALL_SUBROUTINES.map((p) => [p.id, p]));
 
-  /** Pumps whose target genuinely cannot be advanced -- an enemyState
-   * trigger is a live condition with nothing to bank, so no mechanic
-   * change can help it. Fixing this one needs a content decision
-   * (re-point the pump, or change the target's trigger), deliberately
-   * left open rather than quietly patched. */
-  const KNOWN_UNADVANCEABLE = new Set(['background-process']);
+  // Session 47: this exemption list is deliberately empty. It held
+  // background-process until that pump was re-pointed from Time Bomb (an
+  // enemyState trigger, unadvanceable by construction) to Silent Worm.
+  const KNOWN_UNADVANCEABLE = new Set<string>();
 
   it('every progress-pump targets a piece that can actually be advanced', () => {
     for (const piece of ALL_SUBROUTINES) {
