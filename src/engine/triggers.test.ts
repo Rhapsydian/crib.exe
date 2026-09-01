@@ -95,10 +95,19 @@ describe('updateSubroutineState — occurrence: scaling', () => {
 
 describe('resetAfterFire', () => {
   it('clears banked/accumulated progress and ready, leaves toggledOn and lastConditionTrue alone, and increments fireCount', () => {
-    const fired = { accumulatedProgress: 7, bankedOccurrences: 2, ready: true, toggledOn: false, lastConditionTrue: true, fireCount: 2 };
+    const fired = {
+      accumulatedProgress: 7,
+      bankedOccurrences: 2,
+      ready: true,
+      toggledOn: false,
+      lastConditionTrue: true,
+      fireCount: 2,
+      cooldownRemaining: 0,
+    };
     expect(resetAfterFire(fired)).toEqual({
       accumulatedProgress: 0,
       bankedOccurrences: 0,
+      cooldownRemaining: 0,
       ready: false,
       toggledOn: false,
       lastConditionTrue: true,
@@ -297,5 +306,62 @@ describe('updateSuitTallyState', () => {
     state = updateSuitTallyState(state, pointsDef, { suit: 1, player: 0 }, 0);
     state = updateSuitTallyState(state, alwaysDef, { suit: 1, player: 0 }, 0);
     expect(state.accumulatedProgress).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------
+// Points cooldown (session 47) -- a per-piece constraint denominated in
+// real scoring, added to stop a tempo-granting piece buying its own next
+// activation. See SubroutineDefinition.pointsCooldown.
+// ---------------------------------------------------------------------
+
+describe('pointsCooldown', () => {
+  const hasted: SubroutineDefinition = {
+    id: 'test-haste',
+    name: 'Test Haste',
+    archetype: 'root',
+    trigger: { kind: 'selfState', condition: 'traceBelow', value: 8 },
+    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: 5 },
+    tags: [],
+    pointsCooldown: 15,
+  };
+  const ctx: TriggerContext = { ...emptyContext };
+  const scored = (magnitude: number): ScoringOccurrence => ({ category: 'fifteen', player: 0, magnitude });
+
+  it('arms the cooldown on fire, blocking a piece that would otherwise be ready', () => {
+    const ready = { ...createInitialState(), ready: true };
+    expect(isReady(hasted, ready, ctx)).toBe(true);
+    const afterFire = resetAfterFire(ready, hasted.pointsCooldown);
+    expect(afterFire.cooldownRemaining).toBe(15);
+    // Even re-latched as ready, the cooldown holds it back.
+    expect(isReady(hasted, { ...afterFire, ready: true }, ctx)).toBe(false);
+  });
+
+  it('ticks down only on the owning side\'s own scoring', () => {
+    let state = resetAfterFire({ ...createInitialState(), ready: true }, hasted.pointsCooldown);
+    state = updateSubroutineState(state, hasted, scored(6), 0);
+    expect(state.cooldownRemaining).toBe(9);
+    // An occurrence scored by the OTHER side does nothing.
+    state = updateSubroutineState(state, hasted, { category: 'fifteen', player: 1, magnitude: 9 }, 0);
+    expect(state.cooldownRemaining).toBe(9);
+  });
+
+  it('clears at zero and lets the piece fire again', () => {
+    let state = resetAfterFire({ ...createInitialState(), ready: true }, hasted.pointsCooldown);
+    state = updateSubroutineState(state, hasted, scored(20), 0); // overshoot floors at 0
+    expect(state.cooldownRemaining).toBe(0);
+    expect(isReady(hasted, { ...state, ready: true }, ctx)).toBe(true);
+  });
+
+  it('is inert for a definition that does not declare one', () => {
+    const plain: SubroutineDefinition = { ...hasted, pointsCooldown: undefined };
+    const afterFire = resetAfterFire({ ...createInitialState(), ready: true }, plain.pointsCooldown);
+    expect(afterFire.cooldownRemaining).toBe(0);
+    expect(isReady(plain, { ...afterFire, ready: true }, ctx)).toBe(true);
+  });
+
+  it('never gates a piece before its first fire', () => {
+    expect(createInitialState().cooldownRemaining).toBe(0);
+    expect(isReady(hasted, { ...createInitialState(), ready: true }, ctx)).toBe(true);
   });
 });

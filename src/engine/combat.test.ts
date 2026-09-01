@@ -4,6 +4,7 @@ import { cardValue } from './cards';
 import type { PlayerIndex } from './game';
 import type { SubroutineDefinition } from './subroutine-types';
 import { playCombat } from './combat';
+import { CLASS_STARTING_LOADOUTS } from './subroutines';
 import { createRng } from './rng';
 import { createDeck, shuffle } from './deck';
 import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardStrategy } from './deal';
@@ -433,5 +434,63 @@ describe('playCombat', () => {
       expect(result.resolvedBy).toBe('attrition');
       expect(result.hands.length).toBe(20); // combat.ts's own HARD_RESOLUTION_HAND
     });
+  });
+});
+
+// ---------------------------------------------------------------------
+// Loop detector (session 47) -- see combat.ts's MAX_CONSECUTIVE_TURNS.
+// ---------------------------------------------------------------------
+
+describe('systemic turn-loop detection', () => {
+  it('throws loudly, with reproducible state, on a self-feeding turn engine', () => {
+    // The exact shape session 47 found: a piece that Hastes its own
+    // initiative gauge by at least the gauge threshold, on a trigger that
+    // is continuously true, and WITHOUT the pointsCooldown that now ships
+    // on the real content. Each fire buys a whole turn, which fires it
+    // again. Left unguarded this reached a 4GB heap.
+    const runaway: SubroutineDefinition = {
+      id: 'runaway-haste',
+      name: 'Runaway Haste',
+      archetype: 'root',
+      trigger: { kind: 'selfState', condition: 'traceBelow', value: 8 },
+      payload: { kind: 'instantManipulation', target: 'ownGauge', amount: 12 },
+      tags: [],
+    };
+    expect(() =>
+      playCombat([[runaway], [runaway]], { seed: 1, gaugeThreshold: [8, 8], winThreshold: [50, 50] }),
+    ).toThrow(/systemic turn loop/);
+  });
+
+  it('names the side, hand, seed and loadout so the case can be reproduced', () => {
+    const runaway: SubroutineDefinition = {
+      id: 'runaway-haste',
+      name: 'Runaway Haste',
+      archetype: 'root',
+      trigger: { kind: 'selfState', condition: 'traceBelow', value: 8 },
+      payload: { kind: 'instantManipulation', target: 'ownGauge', amount: 12 },
+      tags: [],
+    };
+    try {
+      playCombat([[runaway], [runaway]], { seed: 1, gaugeThreshold: [8, 8], winThreshold: [50, 50] });
+      throw new Error('expected the loop detector to fire');
+    } catch (error) {
+      const message = (error as Error).message;
+      expect(message).toContain('seed=1');
+      expect(message).toContain('runaway-haste');
+      expect(message).toMatch(/hand=\d+/);
+      expect(message).toMatch(/gauge=\d+\/\d+/);
+    }
+  });
+
+  it('does not fire on ordinary play', () => {
+    // The whole 748-test suite exercises this implicitly, but pin it
+    // directly: a normal kit against a normal kit must never trip it.
+    expect(() =>
+      playCombat([CLASS_STARTING_LOADOUTS.breacher, CLASS_STARTING_LOADOUTS.ghost], {
+        seed: 3,
+        gaugeThreshold: [8, 8],
+        winThreshold: [50, 50],
+      }),
+    ).not.toThrow();
   });
 });

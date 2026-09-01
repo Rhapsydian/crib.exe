@@ -1657,7 +1657,7 @@ export function fireNewlyReadyReactiveSubroutines(
       const fireEffect = payloadForFire(entry);
       state = resolvePayload(fireEffect, entry.definition.archetype, state, side, { priorFireCountThisTurn: 0 }, entry.definition);
       events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
-      state = updateLoadoutEntryState(state, side, i, resetAfterFire(state.sides[side].loadout[i].state));
+      state = updateLoadoutEntryState(state, side, i, resetAfterFire(state.sides[side].loadout[i].state, entry.definition.pointsCooldown));
     }
   }
   return { combatState: state, events };
@@ -2008,7 +2008,7 @@ export function fireReadySubroutines(
     state = resolvePayload(fireEffect, entry.definition.archetype, state, side, { priorFireCountThisTurn: events.length }, entry.definition);
     events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
     firedThisTurn.push({ id: entry.definition.id, archetype: entry.definition.archetype, tags: entry.definition.tags });
-    state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state));
+    state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state, entry.definition.pointsCooldown));
   }
 
   return { combatState: state, events };
@@ -2057,7 +2057,7 @@ export function fireHandLifecycleSubroutines(
       entry.definition,
     );
     events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
-    state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state));
+    state = updateLoadoutEntryState(state, side, i, resetAfterFire(entry.state, entry.definition.pointsCooldown));
   }
 
   return { combatState: state, events };
@@ -2098,7 +2098,7 @@ export function fireRareOccurrenceSubroutines(
     const fireEffect = payloadForFire(entry);
     state = resolvePayload(fireEffect, entry.definition.archetype, state, side, { priorFireCountThisTurn: events.length }, entry.definition);
     events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
-    state = updateLoadoutEntryState(state, side, i, resetAfterFire(state.sides[side].loadout[i].state));
+    state = updateLoadoutEntryState(state, side, i, resetAfterFire(state.sides[side].loadout[i].state, entry.definition.pointsCooldown));
   }
 
   return { combatState: state, events };
@@ -2145,7 +2145,7 @@ export function fireHandOutcomeSubroutines(
     const fireEffect = payloadForFire(entry);
     state = resolvePayload(fireEffect, entry.definition.archetype, state, side, { priorFireCountThisTurn: events.length }, entry.definition);
     events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
-    state = updateLoadoutEntryState(state, side, i, resetAfterFire(state.sides[side].loadout[i].state));
+    state = updateLoadoutEntryState(state, side, i, resetAfterFire(state.sides[side].loadout[i].state, entry.definition.pointsCooldown));
   }
 
   return { combatState: state, events };

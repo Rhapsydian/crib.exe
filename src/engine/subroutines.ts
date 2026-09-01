@@ -44,9 +44,18 @@ import type { SubroutineDefinition } from './subroutine-types';
 // Magnitude tiers — all TBD/playtesting, see file header.
 // ---------------------------------------------------------------------
 
-const COMMON = { burst: 5, tick: 2, pointsPerTick: 8, threshold: 6, bankTarget: 2, cap: 3, duration: 3, heat: 8, debuffMag: 3, debuffDur: 2 };
-const UNCOMMON = { burst: 8, tick: 3, pointsPerTick: 8, threshold: 8, bankTarget: 3, cap: 4, duration: 4, heat: 10, debuffMag: 4, debuffDur: 3 };
-const RARE = { burst: 13, tick: 5, pointsPerTick: 8, threshold: 10, bankTarget: 4, cap: 5, duration: 5, heat: 12, debuffMag: 6, debuffDur: 3 };
+// Points a self-Haste piece's own side must score before it may fire
+// again (session 47). Denominated in real scoring specifically because a
+// Haste piece cannot manufacture that -- see
+// SubroutineDefinition.pointsCooldown. Sized against a real fight: an
+// always-trigger piece fires ~12.7 times per fight, so a cooldown of 15
+// points meaningfully spaces these out without silencing them.
+// TBD/playtesting, same treatment as every other constant here.
+const HASTE_POINTS_COOLDOWN = 15;
+
+const COMMON = { burst: 5, tick: 2, pointsPerTick: 8, threshold: 6, bankTarget: 2, cap: 3, duration: 3, trace: 8, debuffMag: 3, debuffDur: 2 };
+const UNCOMMON = { burst: 8, tick: 3, pointsPerTick: 8, threshold: 8, bankTarget: 3, cap: 4, duration: 4, trace: 10, debuffMag: 4, debuffDur: 3 };
+const RARE = { burst: 13, tick: 5, pointsPerTick: 8, threshold: 10, bankTarget: 4, cap: 5, duration: 5, trace: 12, debuffMag: 6, debuffDur: 3 };
 
 /** HoT/Instant Counter-Push reduce the *opponent's* gauge directly
  * (resolve.ts) rather than advancing the caster's own -- a fundamentally
@@ -232,7 +241,7 @@ export const NEUTRAL_UNCOMMONS: SubroutineDefinition[] = [
     id: 'overclock',
     name: 'Overclock',
     archetype: 'neutral',
-    trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.trace },
     payload: { kind: 'directBurst', amount: UNCOMMON.burst },
     tags: ['direct'],
   },
@@ -249,7 +258,7 @@ export const NEUTRAL_UNCOMMONS: SubroutineDefinition[] = [
     id: 'redundant-node',
     name: 'Redundant Node',
     archetype: 'neutral',
-    trigger: { kind: 'selfState', condition: 'traceBelow', value: UNCOMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceBelow', value: UNCOMMON.trace },
     payload: { kind: 'directBurst', amount: UNCOMMON.burst },
     tags: ['direct'],
   },
@@ -746,7 +755,7 @@ export const EXPLOIT_UNCOMMONS: SubroutineDefinition[] = [
     id: 'payload-multiplier',
     name: 'Payload Multiplier',
     archetype: 'exploit',
-    trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.trace },
     payload: { kind: 'riskRewardBurst', amount: UNCOMMON.burst + 2, traceCost: 3 },
     // Session 41's own retrofit list missed this piece (37 named vs. the
     // real 38 untagged) -- Direct per the same reasoning as its sibling
@@ -919,7 +928,7 @@ export const MALWARE_COMMONS: SubroutineDefinition[] = [
     id: 'corrupted-cache',
     name: 'Corrupted Cache',
     archetype: 'malware',
-    trigger: { kind: 'selfState', condition: 'traceAbove', value: COMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceAbove', value: COMMON.trace },
     payload: { kind: 'dot', amountPerTick: COMMON.tick, cadence: 'castersTurnPulse', duration: COMMON.duration },
     tags: ['daemon'],
   },
@@ -1178,7 +1187,7 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     id: 'two-factor',
     name: 'Two-Factor',
     archetype: 'encryption',
-    trigger: { kind: 'selfState', condition: 'traceBelow', value: COMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceBelow', value: COMMON.trace },
     payload: { kind: 'instantCounterPush', amount: CAPPED.common },
     tags: ['direct'],
   },
@@ -1320,7 +1329,7 @@ export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
     id: 'air-gap',
     name: 'Air Gap',
     archetype: 'encryption',
-    trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.trace },
     payload: { kind: 'ward', amount: CAPPED.common },
     tags: ['firewall'],
     reactive: true,
@@ -1422,7 +1431,7 @@ export const ENCRYPTION_RARES: SubroutineDefinition[] = [
     id: 'deep-packet-inspection',
     name: 'Deep Packet Inspection',
     archetype: 'encryption',
-    trigger: { kind: 'selfState', condition: 'traceAbove', value: RARE.heat },
+    trigger: { kind: 'selfState', condition: 'traceAbove', value: RARE.trace },
     payload: { kind: 'wardCounter', amount: CAPPED.rare, ratio: 0.2 },
     tags: ['firewall'],
     reactive: true,
@@ -1477,6 +1486,9 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     // gauge instead of denying theirs.
     trigger: { kind: 'enemyState', condition: 'gaugeFillAbove', fraction: GAUGE_FILL_FRACTION },
     payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
+    // Self-Haste, and its trigger can stay continuously true while the
+    // enemy gauge sits above the fraction -- same cooldown as Cold Call.
+    pointsCooldown: HASTE_POINTS_COOLDOWN,
     tags: ['direct'],
   },
   {
@@ -1575,9 +1587,13 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     id: 'cold-call',
     name: 'Cold Call',
     archetype: 'root',
-    trigger: { kind: 'selfState', condition: 'traceBelow', value: COMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceBelow', value: COMMON.trace },
     payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
     tags: ['direct'],
+    // Self-Haste: grants its own side tempo, so without a cooldown it can
+    // buy its own next activation once Merge lifts it to the initiative
+    // threshold (session 47's non-terminating fight).
+    pointsCooldown: HASTE_POINTS_COOLDOWN,
   },
   {
     id: 'lurker',
@@ -1594,6 +1610,11 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     trigger: { kind: 'accumulator', metric: 'suitTally', suit: 3, threshold: COMMON.threshold },
     payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
     tags: ['daemon'],
+    // Self-Haste on a re-arming accumulator -- same cooldown as Cold
+    // Call. (Broadcast Storm is the fourth self-Haste piece and needs no
+    // cooldown: its occurrence:'go' trigger is already bounded by real
+    // pegging events, which a Haste cannot manufacture.)
+    pointsCooldown: HASTE_POINTS_COOLDOWN,
   },
 ];
 
@@ -1655,7 +1676,7 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     // stays a documented no-op. Reveals the crib right after it's
     // selected, before it's scored, while the caster's own Heat is
     // running hot.
-    trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.heat },
+    trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.trace },
     payload: { kind: 'revealCrib' },
     tags: ['direct'],
     firesAt: 'onCribSelected',

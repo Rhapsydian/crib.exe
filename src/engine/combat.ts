@@ -341,6 +341,38 @@ function applyEscalation(combatState: CombatState): CombatState {
 // unreachable defensive bound.
 const HARD_RESOLUTION_HAND = 20;
 
+/**
+ * Consecutive turns one side may take without the other acting before
+ * the fight is declared systemically broken (session 47).
+ *
+ * A turn is normally bought by *scoring*, so one side taking dozens in a
+ * row is not a difficulty outlier -- it means something is granting turns
+ * faster than they are consumed. That is exactly what session 47 found:
+ * Cold Call Hastes its own initiative gauge, and once Merge lifts it to
+ * the gauge threshold one fire buys a whole turn, which fires it again.
+ * Grants compound across occurrences (1, 2, 4, ...) until the process
+ * dies on a 4GB heap.
+ *
+ * Deliberately a **loud, fatal throw rather than a silent cap**. A cap
+ * would convert this class of bug into a quiet dominant strategy and
+ * hide the next one -- and there has already been a next one: session 28
+ * found the Choked/Haste threshold variant the same way. scripts/sweep.ts
+ * documents killing a hung sweep from outside and reading the last
+ * printed line; this turns that into an immediate, located failure with
+ * the state needed to reproduce it.
+ *
+ * Sized to catch *non-termination*, not merely strong tempo. The first
+ * run of this detector immediately found a second, milder degeneracy: a
+ * side whose initiative threshold has been ground down to
+ * MIN_INITIATIVE_THRESHOLD (1) takes a turn per point scored, and was
+ * observed taking 53 in a row. That case still terminates -- it is
+ * bounded by points actually scored in the hand -- so it is a balance
+ * problem, not a hang, and must not be fatal. A true runaway compounds
+ * without bound (the Cold Call case reached a 4GB heap), so it blows
+ * through any threshold set above the bounded cases.
+ */
+const MAX_CONSECUTIVE_TURNS = 200;
+
 /** Forces a winner at the hard resolution deadline (session 27,
  * checkpoint E revision): the defender, side 1, unconditionally --
  * "attrition." Reaching this function at all already means side 0 (the
@@ -401,6 +433,11 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   // assert exact deals/starters against.
   const aiRng = createRng(deriveAiNoiseSeed(seed));
   let dealer: PlayerIndex = startingDealer;
+  // Loop detector bookkeeping (session 47) -- see MAX_CONSECUTIVE_TURNS.
+  // Spans the whole fight rather than resetting per hand: a runaway
+  // compounds across occurrences and hands alike.
+  let consecutiveTurns = 0;
+  let lastTurnSide: PlayerIndex | null = null;
   let scores: [number, number] = [0, 0];
   let combatState = applyModOnCombatStartPassives(
     createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds),
@@ -686,6 +723,22 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
       // fire time.
       winner = step(advance(replaceSideGauge(combatState, occurrence.player, gauge), hand.dealer, log));
       if (winner !== null) return finish(winner);
+
+      if (turnsTriggered > 0) {
+        consecutiveTurns = occurrence.player === lastTurnSide ? consecutiveTurns + turnsTriggered : turnsTriggered;
+        lastTurnSide = occurrence.player;
+        if (consecutiveTurns > MAX_CONSECUTIVE_TURNS) {
+          const side = occurrence.player;
+          const g = combatState.sides[side].gauge;
+          throw new Error(
+            `playCombat: side ${side} has taken ${consecutiveTurns} consecutive turns without the opponent acting -- ` +
+              `a systemic turn loop, not legitimate play (see MAX_CONSECUTIVE_TURNS). ` +
+              `hand=${i} seed=${seed} classId=${classId ?? 'none'} ` +
+              `gauge=${g.progress}/${g.threshold} turnsTriggeredThisOccurrence=${turnsTriggered} ` +
+              `loadout=[${combatState.sides[side].loadout.map((e) => e.definition.id).join(' ')}]`,
+          );
+        }
+      }
 
       for (let turn = 0; turn < turnsTriggered; turn++) {
         // Burner activation (checkpoint C): an "opening move" resolved

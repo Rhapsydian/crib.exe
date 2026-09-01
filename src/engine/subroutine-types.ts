@@ -602,6 +602,32 @@ export interface SubroutineDefinition {
   /** The floor `magnitudeDecayPerFire` decays down to and never below.
    * Ignored (and meaningless) without `magnitudeDecayPerFire` set. */
   magnitudeFloor?: number;
+  /** Points this subroutine's own side must *score* after a fire before
+   * it may fire again (session 47) -- a cooldown denominated in real
+   * Cribbage scoring rather than turns or hands.
+   *
+   * Sits alongside maxFiresPerCombat/magnitudeDecayPerFire as a per-piece
+   * constraint applied *next to* the trigger rather than inside it,
+   * because triggers aren't composable (a piece has exactly one
+   * TriggerFamily) and this has to work with any of them.
+   *
+   * Exists because a piece that grants tempo can otherwise pay for its
+   * own next activation. Session 47 found a real non-terminating fight:
+   * Cold Call (`traceBelow` -> Haste on its own initiative gauge) fires,
+   * grants itself a turn, fires again on that turn, and compounds -- fatal
+   * once Merge lifts its magnitude to the initiative threshold. All four
+   * self-Haste pieces are authored at 5 against a threshold of 8, so
+   * MERGE_MAGNITUDE_BONUS (3) puts them over at rank 1.
+   *
+   * The cooldown is denominated in *scored points* specifically because
+   * that is the one quantity such a piece cannot manufacture: scoring
+   * flows only from occurrencesForHand -> applyOccurrenceToState ->
+   * updateSubroutineState, while Haste writes gauge.progress directly and
+   * never produces a ScoringOccurrence. So the gate can never be fed by
+   * the thing it gates -- the same separation suitTally already relies on
+   * ("a non-scoring play produces no ScoringOccurrence at all"). Ticks
+   * only on the owning side's own scoring. */
+  pointsCooldown?: number;
 }
 
 /** The three real Cribbage lifecycle moments a `firesAt` subroutine can

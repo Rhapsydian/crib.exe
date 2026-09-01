@@ -36,10 +36,17 @@ export interface SubroutineRuntimeState {
    * Tracked for every subroutine unconditionally (cheap), even though
    * only a `maxFiresPerCombat`-bearing definition ever reads it. */
   fireCount: number;
+  /** Points this side must still score before this piece may fire again
+   * (session 47) -- set from SubroutineDefinition.pointsCooldown on each
+   * fire, ticked down by the owning side's own scoring occurrences, and
+   * checked in isReady. 0 means no cooldown outstanding, which is also
+   * the starting state, so a piece is never gated before its first
+   * fire. */
+  cooldownRemaining: number;
 }
 
 export function createInitialState(): SubroutineRuntimeState {
-  return { accumulatedProgress: 0, bankedOccurrences: 0, ready: false, toggledOn: true, lastConditionTrue: false, fireCount: 0 };
+  return { accumulatedProgress: 0, bankedOccurrences: 0, ready: false, toggledOn: true, lastConditionTrue: false, fireCount: 0, cooldownRemaining: 0 };
 }
 
 /** Clears banked/accumulated progress and the ready flag after an actual
@@ -50,9 +57,17 @@ export function createInitialState(): SubroutineRuntimeState {
  * working correctly (resetting it would look like a false→true
  * transition on the very next check if the condition is still true).
  * Does increment `fireCount` — this function is only ever called once a
- * fire has genuinely happened (see its 3 call sites in resolve.ts). */
-export function resetAfterFire(state: SubroutineRuntimeState): SubroutineRuntimeState {
-  return { ...state, accumulatedProgress: 0, bankedOccurrences: 0, ready: false, fireCount: state.fireCount + 1 };
+ * fire has genuinely happened (see its call sites in resolve.ts), and
+ * arms `pointsCooldown` for the same reason. */
+export function resetAfterFire(state: SubroutineRuntimeState, pointsCooldown = 0): SubroutineRuntimeState {
+  return {
+    ...state,
+    accumulatedProgress: 0,
+    bankedOccurrences: 0,
+    ready: false,
+    fireCount: state.fireCount + 1,
+    cooldownRemaining: pointsCooldown,
+  };
 }
 
 /**
@@ -212,6 +227,14 @@ export function updateSubroutineState(
   occurrenceBankTargetReduction: number = 0,
 ): SubroutineRuntimeState {
   if (occurrence.player !== side) return state;
+
+  // Points cooldown (session 47) ticks on this side's own real scoring,
+  // whatever the trigger family -- deliberately ahead of the per-family
+  // branching below, which returns early for kinds that bank nothing.
+  if (state.cooldownRemaining > 0) {
+    state = { ...state, cooldownRemaining: Math.max(0, state.cooldownRemaining - occurrence.magnitude) };
+  }
+
   const trigger = definition.trigger;
 
   if (trigger.kind === 'accumulator') {
@@ -345,6 +368,10 @@ export function isReady(
   // funnels through, so the cap now applies uniformly regardless of
   // trigger kind instead of needing a bespoke check per family.
   if (definition.maxFiresPerCombat !== undefined && state.fireCount >= definition.maxFiresPerCombat) return false;
+  // Points cooldown (session 47) -- checked at the same choke point and
+  // for the same reason as the cap above: it has to hold regardless of
+  // trigger family, and this is where every normal firing path converges.
+  if (state.cooldownRemaining > 0) return false;
   const trigger = definition.trigger;
   switch (trigger.kind) {
     case 'accumulator':
