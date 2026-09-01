@@ -39,14 +39,18 @@ describe('subroutine content — Root mechanical redesign (session 24 checkpoint
 });
 
 describe('subroutine content — structural integrity', () => {
-  it('has exactly 156 subroutines: 18 starting-loadout + 120 archetype pool + 18 neutral (session 41 checkpoints C-G, final size)', () => {
-    // 138 total pool (120 archetype + 18 neutral), up from 81 pre-session-
-    // 41 -- all 57 new pieces now authored (Exploit/Malware/Encryption/
-    // Root +15/+15/+9/+9, Neutral +9). Checkpoint H retags the 5
-    // remaining starting-loadout pieces but doesn't change any count.
+  it('has exactly 157 subroutines: 18 starting-loadout + 121 archetype pool + 18 neutral', () => {
+    // 139 total pool (121 archetype + 18 neutral), up from 81 pre-session-
+    // 41 -- session 41 authored 57 new pieces (Exploit/Malware/Encryption/
+    // Root +15/+15/+9/+9, Neutral +9). Session 47 added one more: Lurker,
+    // the Root common Trace reducer, whose name was freed by renaming the
+    // old enemy-gauge-slow piece to Latency Injection. That leaves Root
+    // with 15 commons against every other archetype's 14 -- a deliberate
+    // asymmetry, since Trace reduction is Root/Ghost-flavoured and had no
+    // content at all before this session.
     expect(ALL_STARTING_LOADOUT_SUBROUTINES).toHaveLength(18);
-    expect(ALL_POOL_SUBROUTINES).toHaveLength(138);
-    expect(ALL_SUBROUTINES).toHaveLength(156);
+    expect(ALL_POOL_SUBROUTINES).toHaveLength(139);
+    expect(ALL_SUBROUTINES).toHaveLength(157);
   });
 
   it('every class starting loadout has exactly 3 pieces', () => {
@@ -73,8 +77,8 @@ describe('subroutine content — structural integrity', () => {
     expect(ARCHETYPE_POOLS.encryption.rares).toHaveLength(6);
   });
 
-  it('Root grew to 14 commons/10 uncommons/6 rares (session 40 +6, session 41 checkpoint F +6/+3/+0)', () => {
-    expect(ARCHETYPE_POOLS.root.commons).toHaveLength(14);
+  it('Root has 15 commons/10 uncommons/6 rares (session 40 +6, session 41 +6/+3/+0, session 47 +1 Lurker)', () => {
+    expect(ARCHETYPE_POOLS.root.commons).toHaveLength(15);
     expect(ARCHETYPE_POOLS.root.uncommons).toHaveLength(10);
     expect(ARCHETYPE_POOLS.root.rares).toHaveLength(6);
   });

@@ -64,6 +64,13 @@ const EXPLOIT_TRACE_COST = 3;
 const LOUD_TRACE_COST = 2; // noisy non-Exploit pieces, and the self-limiting pairings
 const FAINT_TRACE_COST = 1; // frequent or incidental noise
 
+// How much Trace a reducer sheds, by tier (session 47). Sized against
+// what generation actually produces: a Trace-leaning kit makes a handful
+// of noise per fight, so a common reducer roughly cancels one noisy
+// piece's output while the rare wipes a whole fight's worth.
+// TBD/playtesting.
+const TRACE_SHED = { common: 2, uncommon: 4, rare: 8 };
+
 const COMMON = { burst: 5, tick: 2, pointsPerTick: 8, threshold: 6, bankTarget: 2, cap: 3, duration: 3, trace: 8, debuffMag: 3, debuffDur: 2 };
 const UNCOMMON = { burst: 8, tick: 3, pointsPerTick: 8, threshold: 8, bankTarget: 3, cap: 4, duration: 4, trace: 10, debuffMag: 4, debuffDur: 3 };
 const RARE = { burst: 13, tick: 5, pointsPerTick: 8, threshold: 10, bankTarget: 4, cap: 5, duration: 5, trace: 12, debuffMag: 6, debuffDur: 3 };
@@ -208,6 +215,11 @@ export const NEUTRAL_COMMONS: SubroutineDefinition[] = [
     trigger: { kind: 'occurrence', category: 'pair', variation: 'instant' },
     payload: { kind: 'directBurst', amount: COMMON.burst },
     tags: ['direct'],
+    // Neutral's Trace generator (session 47): a ping is a probe that lands
+    // in somebody's logs. Faint, matching neutral's "small shared toolbox"
+    // role -- every class can reach it, so it should not be the loudest
+    // option available.
+    traceCost: FAINT_TRACE_COST,
   },
   {
     id: 'status-check',
@@ -272,6 +284,8 @@ export const NEUTRAL_UNCOMMONS: SubroutineDefinition[] = [
     trigger: { kind: 'selfState', condition: 'traceBelow', value: UNCOMMON.trace },
     payload: { kind: 'directBurst', amount: UNCOMMON.burst },
     tags: ['direct'],
+    // Self-limiting, same shape as Two-Factor (session 47).
+    traceCost: LOUD_TRACE_COST,
   },
   {
     id: 'load-balancer',
@@ -902,6 +916,11 @@ export const MALWARE_COMMONS: SubroutineDefinition[] = [
     trigger: { kind: 'accumulator', metric: 'points', threshold: COMMON.threshold },
     payload: { kind: 'dot', amountPerTick: COMMON.tick, cadence: 'castersTurnPulse', duration: COMMON.duration },
     tags: ['daemon'],
+    // Malware's Trace generator (session 47): ransomware announces itself
+    // by definition -- the one malware family whose entire purpose is to
+    // be noticed. Needed because Malware's only Trace reader (Corrupted
+    // Cache, traceAbove) cannot bootstrap its own condition.
+    traceCost: FAINT_TRACE_COST,
   },
   {
     id: 'trojan',
@@ -1209,6 +1228,11 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     trigger: { kind: 'selfState', condition: 'traceBelow', value: COMMON.trace },
     payload: { kind: 'instantCounterPush', amount: CAPPED.common },
     tags: ['direct'],
+    // Self-limiting (session 47): reads low Trace and raises it, so it
+    // fires a handful of times and quiets itself -- a limiter the player
+    // can see coming and can counteract with a reducer, unlike an opaque
+    // maxFiresPerCombat.
+    traceCost: LOUD_TRACE_COST,
   },
   {
     id: 'access-control',
@@ -1236,6 +1260,11 @@ export const ENCRYPTION_COMMONS: SubroutineDefinition[] = [
     trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
     payload: { kind: 'wardCounter', amount: CAPPED.common, ratio: 0.1 },
     tags: ['firewall'],
+    // Encryption's Trace generator (session 47): an alarm is literally a
+    // noise-maker, so the archetype pays for its counter-attack by
+    // announcing itself. This is what makes Encryption's own traceAbove
+    // pieces reachable for a class with no Exploit access.
+    traceCost: LOUD_TRACE_COST,
   },
   {
     // Content-validation sample -- wardBash at a low, common-tier
@@ -1345,11 +1374,16 @@ export const ENCRYPTION_UNCOMMONS: SubroutineDefinition[] = [
     tags: ['daemon'],
   },
   {
+    // Session 47: was a ward. Air-gapping a machine means physically
+    // disconnecting it, which is a far better fit for shedding Trace than
+    // for absorbing damage -- and it makes the piece self-regulating,
+    // since it arms precisely when you have been too loud and then quiets
+    // you back down. Encryption keeps plenty of wards elsewhere.
     id: 'air-gap',
     name: 'Air Gap',
     archetype: 'encryption',
     trigger: { kind: 'selfState', condition: 'traceAbove', value: UNCOMMON.trace },
-    payload: { kind: 'ward', amount: CAPPED.common },
+    payload: { kind: 'traceReduction', amount: TRACE_SHED.uncommon, floor: 0 },
     tags: ['firewall'],
     reactive: true,
   },
@@ -1424,11 +1458,19 @@ export const ENCRYPTION_RARES: SubroutineDefinition[] = [
     reactive: true,
   },
   {
+    // Session 47: was a HoT (Encryption keeps two others -- Redundant
+    // Backup, Air-Gapped Vault). Taking the data cold means pulling it
+    // offline where nothing can be traced to it, which is the rare-tier
+    // Trace wipe: the biggest single reduction in the game, gated behind
+    // a real suit-tally accumulation. Deliberately picked over Full
+    // Rollback, which reads just as well thematically but sits in The
+    // Concierge's kit -- and Trace is player-only, so an enemy carrying a
+    // Trace payload would be inert content (enemies.test.ts guards this).
     id: 'cold-storage',
     name: 'Cold Storage',
     archetype: 'encryption',
     trigger: { kind: 'accumulator', metric: 'suitTally', suit: 2, threshold: RARE.threshold },
-    payload: { kind: 'hot', amountPerTick: RARE.tick + 4, cadence: 'globalPulse', duration: RARE.duration, pointsPerTick: RARE.pointsPerTick },
+    payload: { kind: 'traceReduction', amount: TRACE_SHED.rare, floor: 0 },
     tags: ['daemon'],
     togglable: true,
   },
@@ -1592,6 +1634,11 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     trigger: { kind: 'occurrence', category: 'go', variation: 'instant' },
     payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
     tags: ['direct'],
+    // Root's Trace generator (session 47): flooding a segment with
+    // broadcast traffic is the noisiest thing in the archetype. Doubles as
+    // a soft limiter on the one self-Haste piece with no pointsCooldown --
+    // its occurrence:'go' trigger is already bounded by real pegging.
+    traceCost: LOUD_TRACE_COST,
   },
   {
     id: 'social-engineering',
@@ -1609,18 +1656,40 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     trigger: { kind: 'selfState', condition: 'traceBelow', value: COMMON.trace },
     payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
     tags: ['direct'],
+    // Self-limiting (session 47): now that it raises the Trace it gates
+    // on, it switches itself off after a few fires. That alone would have
+    // prevented session 46's non-terminating fight; the cooldown below is
+    // the independent, structural guarantee.
+    traceCost: LOUD_TRACE_COST,
     // Self-Haste: grants its own side tempo, so without a cooldown it can
     // buy its own next activation once Merge lifts it to the initiative
     // threshold (session 47's non-terminating fight).
     pointsCooldown: HASTE_POINTS_COOLDOWN,
   },
   {
-    id: 'lurker',
-    name: 'Lurker',
+    // Session 47: renamed from "Lurker", whose name was wanted for the
+    // Root Trace reducer below. Mechanics unchanged -- this always slowed
+    // the *enemy's* tempo from cover, which "injecting latency into their
+    // session" describes far more literally than lurking did.
+    id: 'latency-injection',
+    name: 'Latency Injection',
     archetype: 'root',
     trigger: { kind: 'selfState', condition: 'isNonDealer' },
     payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: COMMON.burst },
     tags: ['direct'],
+  },
+  {
+    // Session 47: Root's common Trace reducer -- go quiet and let the
+    // trail go cold. Cheap and frequent, the entry-level way any Root or
+    // Ghost kit can spend a slot on staying unseen. Reduction happens
+    // before Trace converts to Heat at the end of the fight, so this is
+    // genuinely denying the run that Heat rather than just delaying it.
+    id: 'lurker',
+    name: 'Lurker',
+    archetype: 'root',
+    trigger: { kind: 'selfState', condition: 'isNonDealer' },
+    payload: { kind: 'traceReduction', amount: TRACE_SHED.common, floor: 0 },
+    tags: ['daemon'],
   },
   {
     id: 'payload-delivery',
