@@ -497,7 +497,39 @@ const FEEDBACK_LOOP_AMPLIFICATION_AMOUNT = 0.15;
 // Ghost's kit otherwise has zero reliable win path) was also carrying
 // real weight. Neither lever alone reached StS's ascension-0 9-15% band;
 // halving both together landed at 13.7%.
-const RETURN_TO_SENDER_RATIO = 0.25;
+/**
+ * Return to Sender's conversion rate -- the share of Ghost's mitigation
+ * that redirects into its own progress. Feeds all three of the passive's
+ * hooks: ward absorbs, instantCounterPush reductions, and HoT ticks.
+ *
+ * Session 47: tuning attempted and REVERTED, left at 0.25. Ghost measured
+ * worst in the roster at 8.0%
+ * against a 10-20% target, with the highest noRoute (24/120) and highest
+ * heatMaxed (22/120) of any class -- the signature of a kit that cannot
+ * close, so it grinds, burning moves and exhausting the map. Its
+ * end-of-run credit-capable count was actually the highest sampled, which
+ * puts the weakness squarely in the opening rather than the ceiling.
+ *
+ * Raising this was tried at 0.3 and 0.4 and measured at 9.3% and 8.7%
+ * respectively -- against a baseline of 8.0% with +/-3pp error bars, a 60%
+ * increase to the rate did nothing measurable. Reverted rather than left
+ * as an unearned buff.
+ *
+ * That result is NOT understood, and is worth resolving before anyone
+ * tunes Ghost again. Replacing Steganography's `ward` with `wardCounter`
+ * -- which stacks only +0.10 on what should be the same absorb hook --
+ * measured +8pp in the same harness. Both cannot be true. Either the
+ * absorb hook fires far less often than assumed (so neither ratio matters
+ * much and the wardCounter result was noise), or wardCounter reaches a
+ * path this passive does not. Ghost's real problem is more likely the
+ * opening tempo than the conversion rate: it posts the highest noRoute
+ * and heatMaxed in the roster, the signature of a kit that cannot close
+ * and therefore grinds.
+ *
+ * Exported so tests derive from it rather than pinning the literal, which
+ * is what broke them during this attempt.
+ */
+export const RETURN_TO_SENDER_RATIO = 0.25;
 // WardCounterPayload's own armed ratio lives in passiveState (not a new
 // CombatSideState field -- see the payload's own doc comment for why),
 // keyed per side by this string constant.
