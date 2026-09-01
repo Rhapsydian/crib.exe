@@ -342,14 +342,31 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [
   // (enemy-subroutines.ts) as like-for-like Always-triggered fixes. Also
   // unblocks this gatekeeper's own Total Quarantine passive, which needs
   // real ticks to fire off at all.
-  { id: 'the-quarantine-ward', name: 'The Quarantine Ward', tier: 'gatekeeper', archetypes: ['malware', 'encryption'], minLayer: 2, loadout: [pool('contagion-protocol'), pool('cryo-lock'), pool('slowloris')], passiveIds: ['total-quarantine'], magnitudeScaler: 1.3 },
+  { id: 'the-quarantine-ward', name: 'The Quarantine Ward', tier: 'gatekeeper', archetypes: ['malware', 'encryption'], minLayer: 2, loadout: [pool('contagion-protocol'), pool('cryo-lock'), pool('slowloris')], passiveIds: ['total-quarantine'], magnitudeScaler: 1.15 },
+  // The Quarantine Ward, session 47: 1.3 -> 1.15. Measured as layer 2's
+  // difficulty spike by gatekeeper ablation -- removing it lifted the
+  // layer's mean pass rate by 8.4pp before its Trace pressure was moved
+  // off an `always` trigger, and still by 6.2pp after. The residue is the
+  // kit's shape rather than any one number: Contagion Protocol refreshes
+  // a 5-duration DoT every turn, Cryo Lock self-heals at 6/tick, and
+  // Slowloris throttles the player's own scoring, so you can neither
+  // out-race it nor out-last it. Lowering the scaler is the lever session
+  // 39 built for exactly this, and unlike tracePressure, payload
+  // magnitude IS what it controls.
   // Session 43: Total Pwnage/Dead Drop replaced outright, same reasoning
   // as Quarantine Ward above -- both were confirmed dead/near-dead
   // (occurrence-threshold pieces that essentially never bank in a real
   // fight). Quick Draw also makes Primed to Strike's Root-fire-cheapens-
   // next-Exploit-fire synergy reliable, since Total Pwnage was its only
   // Exploit piece and rarely fired to begin with.
-  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['root', 'exploit'], minLayer: 2, loadout: [pool('packet-injection'), pool('redistribution'), pool('quick-draw')], passiveIds: ['primed-to-strike'], magnitudeScaler: 1.3 },
+  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['root', 'exploit'], minLayer: 2, loadout: [pool('packet-injection'), pool('redistribution'), pool('quick-draw')], passiveIds: ['primed-to-strike'], magnitudeScaler: 1.45 },
+  // Zero-Sum, session 47: 1.3 -> 1.45. The same ablation measured it as
+  // layer 2's *prop* -- removing it cost 12.1pp of pass rate, the largest
+  // single effect of the three, because the layer leans on it being the
+  // easy draw. Swapping Supply Route for Packet Injection recovered some
+  // of that (-9.3pp after), but its remaining pieces are a rare-trigger
+  // sessionHijack and a modest piercing, so it is still a fair kit in a
+  // stable of oppressive ones.
   // Zero-Sum, session 47: swapped Supply Route -> Packet Injection. A
   // gatekeeper ablation measured Zero-Sum as layer 2's *easy* draw --
   // removing it cost 12.1pp of pass rate across all six classes, the
