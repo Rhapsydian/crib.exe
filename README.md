@@ -29,7 +29,17 @@ something to balance away (see Map & Run Structure) — a third scripted
 traversal strategy, **`opportunisticTraversal`**, now actually embodies
 that middle ground (fights first, then Heat/material/Data-driven pulls
 toward Safehouse/Shop/Event, gated by a Heat safety reserve), alongside
-the existing beeline/explore extremes. **The per-class balance pass
+the existing beeline/explore extremes. Session 46 extended the same idea
+to every *other* decision a scripted run makes: a full **synergy-aware
+heuristic layer** (`src/engine/profiles.ts`, selectable as
+`--acquisition=synergy`) covering subroutine/Mod/Burner acquisition and
+Shop purchases via a lexicographic priority ladder, Merge-target choice,
+loadout firing order, swap-out on a full loadout, Burner activation in
+all three contexts, and Event risk tolerance — replacing defaults that
+were deliberately legal-not-good, and Burners that were never activated
+at all. It also fixed a real content bug found while measuring that
+layer: all 18 Neutral-pool subroutines had been unreachable through
+every acquisition path since session 28. **The per-class balance pass
 compared full-run outcomes against a real external target**: Slay the
 Spire's own ascension-0 full-run win rate (9-15% for a new player) was
 adopted as the benchmark. Getting there took several real engine
@@ -199,11 +209,18 @@ Domain: `cribexe.com` (registered available, not yet purchased).
 
 ## Engine
 
-- `npm test` — run the Vitest suite (638 tests as of session 44).
+- `npm test` — run the Vitest suite (748 tests as of session 46).
 - `npm run check` — type-check (`svelte-check` + `tsc`).
 - `npm run sweep -- run|enemy ...` — balance/regression sweep harness (see
   `scripts/sweep.ts`); used throughout Phase 5 to tune with real numbers
   instead of guessing. `run` mode defaults to `--playerSkill=0.85`.
+  `--acquisition=floor|synergy` (session 46) selects the scripted
+  player's decision-making profile: `floor` keeps the legal-not-good
+  defaults every sweep before session 46 used, `synergy` wires in the
+  full heuristic layer (`src/engine/profiles.ts`). Independent of and
+  combinable with `--traversal`. Every per-run JSONL line also records
+  that run's final loadout, so "how many winning runs included X" is a
+  query over `--out` rather than a bespoke script.
 - `npx tsx scripts/gatekeeper-check.ts` — realistic gatekeeper-difficulty
   diagnostic: real accumulated player state from actual runs, fought
   against the real production skill-dial enemy AI, aggregated by

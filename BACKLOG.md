@@ -14,6 +14,59 @@ for Phases 2-5 too, not just Phase 1.
 
 ## NEXT SESSION
 
+**Session 46 update (most current)**: a `/dev-session` that implemented
+all of session 45's Gameplay Simulation Heuristics spec (checkpoints
+A-J), one checkpoint per commit with a pause each. The whole heuristic
+layer now exists and is selectable as `--acquisition=synergy` on both
+`sweep.ts` and `layer-funnel.ts` (bundled in the new
+`src/engine/profiles.ts`). 638 -> 748 tests, `npm run check` clean, not
+pushed.
+
+**Three spec deviations, each measured rather than assumed**: checkpoint
+E's Merge ladder and checkpoint G's swap-out could not reuse checkpoint
+B's ladder directly, because `fillsCreditGap` *inverts* on a piece that
+is already owned (an installed credit-capable piece scores as filling no
+gap, precisely because it is the thing filling it); checkpoint F's
+reorder rule was widened to all three `ChainedTrigger` match modes after
+measuring that *zero* pieces use the `afterSubroutineId` variant the spec
+was written against. Checkpoint I also fixed a real spec gap:
+`EventChoiceStrategy` never received Heat, so `gambleSafetyMargin` had
+nothing to check.
+
+**The smoke sweep earned its place.** The first full-profile run came out
+*worse* than the dumb baseline (10/240 wins vs floor's 26/240). A
+single-strategy ablation isolated swap-out, and the mechanism was
+rarity: `rarityOf()` reports `'common'` for all 18 class starting-loadout
+pieces because they carry no authored rarity at all, so the rarity rung
+parked every hand-designed starting piece at the bottom of the eviction
+order -- 73% of authored kits were being dismantled. Dropping rarity from
+the swap comparison (the same reasoning checkpoint E had already applied
+to Merge) took it to 42/240. Caveat recorded: at 240 runs the standard
+error is ~6 wins, so floor 26 -> synergy 42 is real signal but the
+per-ablation gaps are noise, and swap-out remains the one component with
+no positive evidence.
+
+**Also fixed**: the Neutral pool acquisition bug (its own section below,
+now resolved) and per-run loadout recording in sweep output, so "how many
+winning runs included subroutine X" is a query over `--out` rather than a
+bespoke script.
+
+**BLOCKING THE CLASS AUDIT -- next session's work**: the Heat trigger
+bug found while diagnosing a sweep hang. `selfState`
+`heatAbove`/`heatBelow` evaluate against `CombatSideState.heat`, a
+*per-fight accumulator* (`riskRewardBurst` heat costs, folded into run
+Heat afterwards as `playerHeatGenerated`) rather than the run's actual
+Heat -- which is never passed into `playCombat` at all. So `heatBelow` is
+true at the start of essentially every fight regardless of real run Heat,
+and `heatAbove` is near-dead content, across 9 player pieces and 2 enemy
+instances. See "Heat-conditional triggers read the wrong quantity" below.
+The user is taking this up as a `/decision-session`, which will also
+decide how to handle `cold-call` specifically. The full class audit
+stays next in the roadmap but should wait: it would otherwise be
+measuring content whose triggers don't do what they say.
+
+See `session-logs/session-46-2026-08-31.md` for the full write-up.
+
 **Session 45 update (most current)**: a `/decision-session` detour from
 the roadmap's own next phase (the full class audit) — started scoping
 the audit, ran a fresh baseline sweep (150 seeds/class, 0.85 player
@@ -3898,7 +3951,7 @@ pass" phase of the user's own roadmap). Enemy pool, Mods, the full class
 audit, and the gatekeeper roster all remain untouched, per the roadmap's
 own sequencing.
 
-## Gameplay Simulation Heuristics — Implementation (session 45, `/decision-session`)
+## Gameplay Simulation Heuristics — Implementation ✅ complete (scoped session 45, implemented session 46)
 
 Checkpointed implementation spec, same category as sessions 15/17/19/21/
 27/33/37/41 — scoped and designed live this session, implementation left
@@ -4068,7 +4121,7 @@ the full class audit itself, next up once this lands). No code written
 this session -- scope and design only, same discipline as every prior
 scoping session in this list.
 
-## Neutral pool is unreachable through acquisition (found session 46)
+## Neutral pool is unreachable through acquisition ✅ FIXED (found + fixed session 46)
 
 **Real bug, user-confirmed unintended.** All 18 `NEUTRAL_POOL` pieces
 (`subroutines.ts` -- `background-task`, `circuit-breaker`,
@@ -4101,16 +4154,29 @@ pools -- is still banked", session 28), so this is a known-unfinished
 edge, not a regression. Confirmed as unintended by the user in session
 46.
 
-**Fix, deferred to its own session** (user's call: after the Gameplay
-Simulation Heuristics checkpoints land, so the sweep baseline doesn't
-move underneath the dumb-vs-synergy comparison those checkpoints exist
-to enable). Not a one-liner -- adding 18 pieces to every class's pool
-is a real balance change: it dilutes on-archetype draw odds for all 6
-classes at once, and needs its own before/after sweep. Open questions
-for that session: do neutral pieces enter at full weight or a reduced
-one; do they enter the Shop slate as well as combat rewards; does the
-existing `rarityOf` weighting need adjusting once the pool grows
-120 -> 138.
+**FIXED, session 46** (`7c071bf`), once the heuristic checkpoints had
+landed. `rewardPoolForClass` now includes NEUTRAL_POOL at full weight,
+which fixes all three acquisition routes at once. The three open
+questions this section had flagged were each resolved before
+implementing:
+
+- **Weight: full**, no special-casing. `drawRewardOptions` weights purely
+  by rarity, so this needed no new machinery; a reduced weight would mean
+  building per-piece weighting set by a number with no calibration target
+  behind it.
+- **Scope: everywhere**, because combat rewards, the Shop slate and Event
+  grants all derive from this one function -- restricting it to rewards
+  would have meant *building* divergence machinery to withhold content
+  deliberately, not a real fork.
+- **Rarity reweighting: not needed**, measured rather than assumed.
+  NEUTRAL_POOL's own 8/6/4 split is near-proportional to the 28/20/12 a
+  class's two archetype pools contribute, so a standard-tier rare draw
+  moves 2.1% -> 2.2% and a better-tier one 10.2% -> 10.7%.
+
+Pool goes 65 -> 83 per class. Two `run.test.ts` seed scans were widened
+from 50 to 200 (they search for *any* victorious run to check its shape,
+and the changed draw moved which seeds win). 5 new reachability tests
+guard it.
 
 **Already handled, not blocked on the fix**: session 46's acquisition
 ladder ranks neutral correctly today (rung 2, between on- and
@@ -4120,3 +4186,65 @@ with the user after measuring that 4 of 6 classes (Saboteur/Operator:
 root; Warden: encryption; Ghost: both) start a run with such a gap. So
 the heuristic layer is already correct for neutral content and starts
 exercising it the moment the pool fix lands.
+
+## Heat-conditional triggers read the wrong quantity (found session 46)
+
+**Real bug, blocking the full class audit.** `triggers.ts`'s
+`evaluateSelfState` resolves `heatAbove`/`heatBelow` against
+`SelfStateContext.heat`, which `resolve.ts` populates from
+`CombatSideState.heat` (`self: { heat: own.heat, isDealer }`). That field
+is **not** the run's Heat. It is a per-fight accumulator: it starts at 0
+every combat, `riskRewardBurst` payloads add their `heatCost` to it,
+`selfHeatReduction` subtracts from it, and `playCombat` surfaces the
+total as `playerHeatGenerated`, which `encounters.ts` then folds into
+persistent run Heat via `heatDelta`. Its own doc comment says so
+outright: "resets each combat, so the outer run orchestrator needs this
+surfaced to fold it into persistent run Heat."
+
+There is only one Heat in the design. The bug is that these two trigger
+conditions read this fight's *pending increment* to it instead of the
+resource itself -- and the run's actual Heat is never passed into
+`playCombat` at all, so it isn't even available to read.
+
+**Consequences, systematic rather than incidental:**
+
+- `heatBelow` is true at the start of essentially every fight, for every
+  run, including one sitting at 99/100 Heat.
+- `heatAbove` is close to dead content: the authored thresholds are 8-12,
+  but in-fight generated Heat only moves when a `riskRewardBurst` fires.
+
+**Scope: 9 player pieces + 2 enemy instances.** `heatAbove` --
+`payload-multiplier` (10), `corrupted-cache` (8), `air-gap` (10),
+`deep-packet-inspection` (12), `backchannel` (10), `overclock` (10).
+`heatBelow` -- `two-factor` (8), `cold-call` (8), `redundant-node` (10).
+`two-factor` also appears in `access-gate` and `hardened-workstation`.
+
+**How it surfaced**: a full sweep hung with a 4GB OOM after session 46's
+Neutral-pool fix changed which pieces a seed draws. Diagnosed as
+pre-existing -- the hanging loadout contains no neutral pieces and
+reproduces with zero Mods. Ruled out along the way: the pegging loop
+(instrumented, never exceeded 500 iterations), the map loop (<2000
+iterations), the hand loop (bounded at `HARD_RESOLUTION_HAND` 20), all 13
+Mods, and both carried Burners. Bisected to a single piece: **`cold-call`**
+(`selfState heatBelow 8` -> `instantManipulation ownGauge`, Merge-upgraded
+to amount 11). Reproducible deterministically at seed 0 from a serialized
+state dump.
+
+**Not a `triggers.ts`-only fix.** Run Heat has to be threaded into
+`CombatOptions`/`createCombatState` and passed at `resolveFight`'s
+`playCombat` call site before the trigger can read the right thing.
+
+**Open questions for the decision session** (the user is taking this up
+as a `/decision-session`, which will also settle `cold-call`
+specifically):
+
+- Should these triggers read run Heat, in-fight generated Heat, or should
+  the two conditions be split so both are expressible?
+- Once `heatAbove` actually fires, the 6 pieces gated on it become live
+  content for the first time -- do their thresholds (8-12 against a
+  HEAT_MAX of 100) still mean what their authors intended?
+- `cold-call` specifically: is a self-credit payload re-arming its own
+  `selfState` trigger within one resolution pass a separate engine bug
+  worth fixing on its own, independent of which Heat the trigger reads?
+- Does anything need to guard against a non-terminating fight in general,
+  now that one has been demonstrated reachable?
