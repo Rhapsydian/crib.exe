@@ -1,0 +1,37 @@
+{
+  /*
+   * Type-checking for scripts/ (session 48's instrument audit).
+   *
+   * These five diagnostics -- sweep, layer-funnel, gatekeeper-check,
+   * occurrence-frequency, cribbage-skill-matrix -- were covered by
+   * neither tsconfig.app.json (which includes only src/**) nor
+   * tsconfig.node.json (only vite.config.ts). They were type-checked by
+   * nothing at all, while `npm run check` reported clean.
+   *
+   * That is not a cosmetic gap. These scripts ARE the measurement
+   * instrument for every balance decision in this project, and session
+   * 47's central lesson was that a whole balance pass had been measured
+   * through a broken instrument. Session 48 removed an exported constant
+   * and silently broke two of them; the break was caught by grep, not by
+   * tooling.
+   *
+   * Deliberately NOT folded into tsconfig.node.json: that config uses
+   * `module: nodenext`, which demands explicit .js extensions on relative
+   * imports. These scripts are run by `tsx`, which resolves extensionless
+   * imports the same way the bundler does, so nodenext would report ~25
+   * errors describing a module system these files never actually run
+   * under. Matching the real execution model matters more than reusing a
+   * config file.
+   */
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.scripts.tsbuildinfo",
+    "types": ["node"],
+    /* The checks that catch dead plumbing -- see tsconfig.app.json's own
+     * note for why they belong here rather than only on vite.config.ts. */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["scripts/**/*.ts"]
+}

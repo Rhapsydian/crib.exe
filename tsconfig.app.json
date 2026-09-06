@@ -15,7 +15,21 @@
      */
     "allowJs": true,
     "checkJs": true,
-    "moduleDetection": "force"
+    "moduleDetection": "force",
+    /*
+     * Session 48's instrument audit. These were set on
+     * tsconfig.node.json -- which covers exactly one file, vite.config.ts
+     * -- and not on the config covering the 22,000-line engine. Backwards:
+     * they are the checks that catch dead plumbing, and this project has
+     * accumulated a fair amount of it (an EnemyDefinition threshold
+     * override with zero uses, an exported win-threshold primitive with
+     * zero callers, threshold accessors taking two parameters they never
+     * read). Turning them on cost 9 fixes across the whole codebase, one
+     * of which was a real test-integrity bug -- see burners.test.ts's
+     * full-run smoke test.
+     */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
   "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte"]
 }

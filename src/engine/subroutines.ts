@@ -104,6 +104,27 @@ const CAPPED = { common: 7, uncommon: 11, rare: 18 };
  */
 const TEMPO_MAG = { tiny: 1 / 8, common: 5 / 8, uncommon: 1, rare: 13 / 8 };
 
+/**
+ * Choked's magnitude tier (session 48's instrument audit) -- also a
+ * fraction of a threshold, for the same reason TEMPO_MAG is.
+ *
+ * Choked is the one *debuff* whose magnitude is written straight into an
+ * initiative threshold (resolve.ts raises the target's threshold by it,
+ * then reverses that on expiry or cleanse). It was spending `debuffMag`
+ * (3/4/6) -- a constant shared with Corrupted and Throttled, whose
+ * magnitudes are a power multiplier and a flat point dent respectively,
+ * neither denominated in a threshold at all.
+ *
+ * That made it the last surviving instance of this session's own bug
+ * class, and this session's own casualty: at the old base of 8 a common
+ * Choke was a 37.5% slow, and raising GAUGE_THRESHOLD to 12 silently cut
+ * it to 25% -- exactly the invisible rescale checkpoints A and B existed
+ * to prevent, missed because the scope note listed only
+ * instantManipulation's targets. Derived from `debuffMag / 8` so the
+ * three authored pieces keep the effect they had before the base moved.
+ */
+const CHOKE_MAG = { common: 3 / 8, uncommon: 1 / 2, rare: 3 / 4 };
+
 // Exported (session 39): enemy-subroutines.ts's own enemyState-triggered
 // content shares these same semantic thresholds ("what fraction counts as
 // the player winning") -- a real shared concept, unlike COMMON/UNCOMMON/
@@ -1011,7 +1032,7 @@ export const MALWARE_COMMONS: SubroutineDefinition[] = [
     name: 'Botnet',
     archetype: 'malware',
     trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
-    payload: { kind: 'debuff', debuffId: 'choked', magnitude: COMMON.debuffMag, duration: COMMON.debuffDur },
+    payload: { kind: 'debuff', debuffId: 'choked', magnitude: CHOKE_MAG.common, duration: COMMON.debuffDur },
     tags: ['direct'],
   },
   {
@@ -1039,7 +1060,7 @@ export const MALWARE_COMMONS: SubroutineDefinition[] = [
     name: "Dead Man's Switch",
     archetype: 'malware',
     trigger: { kind: 'occurrence', category: 'hisNobs', variation: 'instant' },
-    payload: { kind: 'debuff', debuffId: 'choked', magnitude: COMMON.debuffMag, duration: COMMON.debuffDur },
+    payload: { kind: 'debuff', debuffId: 'choked', magnitude: CHOKE_MAG.common, duration: COMMON.debuffDur },
     tags: ['direct'],
   },
   {
@@ -1152,7 +1173,7 @@ export const MALWARE_UNCOMMONS: SubroutineDefinition[] = [
     // they're close to breaching, the moment worth stealing data before
     // it's over.
     trigger: { kind: 'enemyState', condition: 'breachContainmentAbove', value: BREACH_CONTAINMENT_THRESHOLD.high },
-    payload: { kind: 'debuff', debuffId: 'choked', magnitude: UNCOMMON.debuffMag, duration: UNCOMMON.debuffDur },
+    payload: { kind: 'debuff', debuffId: 'choked', magnitude: CHOKE_MAG.uncommon, duration: UNCOMMON.debuffDur },
     tags: ['direct'],
     reactive: true,
   },

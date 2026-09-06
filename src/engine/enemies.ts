@@ -564,7 +564,7 @@ export function magnitudeScalerFor(enemy: EnemyDefinition, layerIndex: number, f
  * Regular/elite always return flatDefault unchanged -- no per-layer
  * formula the way magnitude gets one (a real, separate future balance
  * question, out of scope for this plumbing-only session). */
-export function gaugeThresholdFor(enemy: EnemyDefinition, layerIndex: number, fightsResolved: number, flatDefault: number): number {
+export function gaugeThresholdFor(enemy: EnemyDefinition, _layerIndex: number, _fightsResolved: number, flatDefault: number): number {
   // Session 48: multiplicative (gaugeThresholdScaler) rather than the
   // absolute override this used to read, so a tuned gatekeeper keeps
   // tracking GAUGE_THRESHOLD instead of pinning a number that silently
@@ -575,7 +575,7 @@ export function gaugeThresholdFor(enemy: EnemyDefinition, layerIndex: number, fi
   return flatDefault;
 }
 
-export function winThresholdFor(enemy: EnemyDefinition, layerIndex: number, fightsResolved: number, flatDefault: number): number {
+export function winThresholdFor(enemy: EnemyDefinition, _layerIndex: number, _fightsResolved: number, flatDefault: number): number {
   if (enemy.tier === 'gatekeeper') return enemy.winThreshold ?? flatDefault;
   return flatDefault;
 }

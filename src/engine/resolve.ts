@@ -1461,9 +1461,19 @@ function resolvePayloadCore(
       // Choked's threshold bump applies immediately, alongside the
       // debuff record -- tickDebuffDurations reverts it on natural
       // expiry, 'cleanse' below reverts it on early removal.
+      //
+      // Session 48: Choked's magnitude is a *fraction of a threshold*
+      // (CHOKE_MAG), so it resolves through thresholdFraction like every
+      // other threshold write. All three sites -- this raise and its two
+      // reversals -- must resolve the identical number, or the threshold
+      // drifts permanently every time a Choke comes and goes. They do,
+      // because thresholdFraction reads startingThreshold, which is a
+      // fixed snapshot: the same fraction always yields the same
+      // absolute. That symmetry is exactly what the session 28 hang was
+      // about, so it is a safety property here, not just tidiness.
       const gauge =
         payload.debuffId === 'choked'
-          ? { ...targetState.gauge, threshold: targetState.gauge.threshold + payload.magnitude }
+          ? { ...targetState.gauge, threshold: targetState.gauge.threshold + thresholdFraction(combatState, target, payload.magnitude) }
           : targetState.gauge;
       const sides = replaceSide(combatState.sides, target, { ...targetState, debuffs, gauge });
       const withDebuff = { ...combatState, sides };
@@ -1578,7 +1588,13 @@ function resolvePayloadCore(
       // meantime, which would hang gauges.ts's addPoints forever.
       const gauge =
         removed.debuffId === 'choked'
-          ? { ...casterState.gauge, threshold: Math.max(minInitiativeThreshold(combatState, caster), casterState.gauge.threshold - removed.magnitude) }
+          ? {
+              ...casterState.gauge,
+              threshold: Math.max(
+                minInitiativeThreshold(combatState, caster),
+                casterState.gauge.threshold - thresholdFraction(combatState, caster, removed.magnitude),
+              ),
+            }
           : casterState.gauge;
       const sides = replaceSide(combatState.sides, caster, { ...casterState, debuffs, gauge });
       return { ...combatState, sides };
@@ -2038,7 +2054,7 @@ export function tickDebuffDurations(combatState: CombatState): CombatState {
       } else if (debuff.debuffId === 'choked') {
         // Floored at MIN_INITIATIVE_THRESHOLD -- see that constant's own
         // doc comment for the real hang this guards against.
-        gauge = { ...gauge, threshold: Math.max(minInitiativeThreshold(state, side), gauge.threshold - debuff.magnitude) };
+        gauge = { ...gauge, threshold: Math.max(minInitiativeThreshold(state, side), gauge.threshold - thresholdFraction(state, side, debuff.magnitude)) };
       }
     }
     state = { ...state, sides: replaceSide(state.sides, side, { ...sideState, debuffs: remaining, gauge }) };

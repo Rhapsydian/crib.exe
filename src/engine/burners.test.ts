@@ -332,6 +332,17 @@ describe('Combat-reward acquisition -- BurnerAcquisitionStrategy', () => {
 });
 
 describe('Burners smoke test -- a full run with Burners carried and used across every context', () => {
+  // Session 48's instrument audit found this test was not testing what
+  // it said. It asserted `combat + map > 0` -- an OR, satisfied by the
+  // map path alone -- and combat activations were in fact *zero*, so the
+  // combat context had never been exercised end-to-end at all. The cause
+  // was right here: it declared a `combatStrategy` and then passed
+  // `burnerActivationStrategies: undefined`, with a comment claiming
+  // run.ts threads its own combat strategy via encounters.ts. That
+  // comment contradicted the option's own doc -- playRun's
+  // burnerActivationStrategies was added at checkpoint J *specifically
+  // for this test*, and defaults to neverActivateBurner when omitted.
+  // Now actually passed, and the assertion split per context.
   it('resolves headlessly, respecting BURNER_CAP throughout, with real activation in every context', () => {
     const combatStrategy: BurnerActivationStrategy = (ctx) => ctx.availableBurnerIds[0] ?? null;
     const mapStrategy: MapBurnerStrategy = (ctx) => (ctx.availableBurnerIds.length > 0 ? { burnerId: ctx.availableBurnerIds[0], targetNodeId: ctx.closedNodeIds[0] } : null);
@@ -342,7 +353,7 @@ describe('Burners smoke test -- a full run with Burners carried and used across 
       classId: 'breacher',
       layerNodeCounts: [8, 8, 8, 8],
       carriedBurnerIdsOverride: ['flash-drive', 'ghost-protocol', 'stolen-coupon'],
-      burnerActivationStrategies: undefined, // playCombat's own default per-fight -- run.ts threads its own combat-context strategy via encounters.ts, not this field
+      burnerActivationStrategies: [combatStrategy, neverActivateBurner], // side 1 has no Burner economy
       burnerAcquisitionStrategy: alwaysAcquireFirstBurner,
       mapBurnerStrategy: mapStrategy,
       shopBurnerStrategy,
@@ -360,7 +371,8 @@ describe('Burners smoke test -- a full run with Burners carried and used across 
       (e) => e.type === 'encounter' && e.outcome.burnersUsedThisCombat.length > 0,
     );
     const mapActivations = result.log.filter((e) => e.type === 'mapBurnerActivated');
-    expect(combatActivations.length + mapActivations.length).toBeGreaterThan(0);
+    expect(combatActivations.length).toBeGreaterThan(0);
+    expect(mapActivations.length).toBeGreaterThan(0);
   });
 });
 

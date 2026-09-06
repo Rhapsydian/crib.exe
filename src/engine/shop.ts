@@ -199,7 +199,7 @@ function burnerPoolByRarity(): Record<Rarity, BurnerDefinition[]> {
 }
 
 export function burnerOfferingsForClass(
-  classId: ClassId,
+  _classId: ClassId,
   rng: Rng,
   extraCommons = 0,
   extraUncommons = 0,

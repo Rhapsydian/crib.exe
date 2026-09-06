@@ -984,7 +984,7 @@ describe("Corrupted -- reduces the debuffed side's own payload magnitude", () =>
 describe("Choked -- temporary gauge-threshold bump", () => {
   it("raises the target's gauge threshold immediately on application", () => {
     const state = createCombatState([], [], [12, 12]);
-    const result = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 2 }, 'malware', state, 0);
+    const result = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5 / 12, duration: 2 }, 'malware', state, 0);
     expect(result.sides[1].gauge.threshold).toBe(17);
   });
 
@@ -996,7 +996,7 @@ describe("Choked -- temporary gauge-threshold bump", () => {
 
   it('reverts the bump when the debuff expires naturally (tickDebuffDurations)', () => {
     let state = createCombatState([], [], [12, 12]);
-    state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 2 }, 'malware', state, 0);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5 / 12, duration: 2 }, 'malware', state, 0);
     expect(state.sides[1].gauge.threshold).toBe(17);
 
     state = tickDebuffDurations(state); // duration 2 -> 1, still active
@@ -1010,7 +1010,7 @@ describe("Choked -- temporary gauge-threshold bump", () => {
 
   it('reverts the bump when cleansed early, before natural expiry', () => {
     let state = createCombatState([], [], [12, 12]);
-    state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 10 }, 'malware', state, 0);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5 / 12, duration: 10 }, 'malware', state, 0);
     expect(state.sides[1].gauge.threshold).toBe(17);
 
     const cleansed = resolvePayload({ kind: 'cleanse', debuffId: 'choked' }, 'encryption', state, 1);
@@ -1032,7 +1032,7 @@ describe("Choked -- temporary gauge-threshold bump", () => {
     // property itself is covered by its own test below.
     let state = createCombatState([], [], [4, 4]);
     // Choked raises 4 -> 9.
-    state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 2 }, 'malware', state, 0);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5 / 4, duration: 2 }, 'malware', state, 0);
     expect(state.sides[1].gauge.threshold).toBe(9);
     // Haste (ownGaugeThreshold) then lowers side 1's own threshold by 8,
     // floored -- exactly the real Ghost in the Machine/Blackhat sequence
@@ -1051,7 +1051,7 @@ describe("Choked -- temporary gauge-threshold bump", () => {
 
   it('floors the reversal at the fractional floor (early cleanse) -- same regression, the cleanse path', () => {
     let state = createCombatState([], [], [4, 4]);
-    state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 10 }, 'malware', state, 0);
+    state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5 / 4, duration: 10 }, 'malware', state, 0);
     state = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 8 }, 'root', state, 1);
     expect(state.sides[1].gauge.threshold).toBe(1); // 4 * 1/3, clamped to the >= 1 hang guard
     const cleansed = resolvePayload({ kind: 'cleanse', debuffId: 'choked' }, 'encryption', state, 1);

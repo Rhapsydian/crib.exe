@@ -21,7 +21,6 @@ import {
   mergeSubroutine,
   pickMergeTarget,
   preferMergeWhenAvailable,
-  opportunisticSafehouseStrategy,
   MATERIAL_HIGH_THRESHOLD,
   type MergeTargetStrategy,
   type SafehouseStrategy,

@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
 import { createCombatState, resolvePayload, applyEnemyGaugeCross50Passives } from './resolve';
 import type { EnemyPassiveId } from './enemies';
 
@@ -12,9 +11,6 @@ import type { EnemyPassiveId } from './enemies';
  * resolvePayload directly, not a full playCombat run).
  */
 
-function definition(id: string, trigger: TriggerFamily, payload: PayloadEffect, archetype: SubroutineDefinition['archetype'] = 'exploit'): SubroutineDefinition {
-  return { id, name: id, archetype, trigger, payload, tags: [] };
-}
 
 function stateWithEnemyPassives(passiveIds: EnemyPassiveId[], threshold = 100) {
   return createCombatState([], [], [12, 12], undefined, [threshold, threshold], passiveIds);
