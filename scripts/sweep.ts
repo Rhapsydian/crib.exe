@@ -69,6 +69,7 @@ import { ENEMY_ROSTER } from '../src/engine/enemies';
 import { preferMergeWhenAvailable, opportunisticSafehouseStrategy, type SafehouseStrategy } from '../src/engine/merge';
 import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
 import type { ClassId } from '../src/engine/classes';
+import { parseSyntheticGatekeepers, describeSyntheticGatekeepers } from './synthetic-gatekeepers';
 
 const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
 
@@ -141,6 +142,12 @@ function sweepRun(args: Record<string, string>): void {
     );
   }
   if (outFile) writeFileSync(outFile, ''); // truncate/create fresh
+  // Session 49: holds the gatekeeper roster at a controlled per-layer
+  // curve (or pins one gatekeeper) instead of letting the real stable
+  // vary. Any number produced with this set is NOT a plain full-run
+  // metric -- the header below says so on every run that uses it.
+  const gatekeeperOverrides = parseSyntheticGatekeepers(args.syntheticGatekeepers);
+  console.log(describeSyntheticGatekeepers(gatekeeperOverrides));
 
   for (const classId of classes) {
     const outcomes: Record<RunOutcome, number> = { victory: 0, heatMaxed: 0, quarantined: 0, noRouteRemains: 0 };
@@ -149,7 +156,7 @@ function sweepRun(args: Record<string, string>): void {
       // Profile first, then the per-run knobs -- traversal/safehouse are
       // the separate --traversal dial and must not be overwritten by the
       // acquisition profile (which deliberately sets neither).
-      const result = playRun({ ...acquisitionProfile, seed, classId, traversalStrategy, safehouseStrategy, playerSkill });
+      const result = playRun({ ...acquisitionProfile, seed, classId, traversalStrategy, safehouseStrategy, playerSkill, gatekeeperOverrides });
       outcomes[result.outcome]++;
       layersSum += result.layersCompleted;
       emit(
