@@ -139,7 +139,7 @@ for (const classId of classes) {
 
       // The tier is not on the outcome, but BASE * (1 - margin) is
       // invertible whenever margin < 1: recover BASE, then re-price.
-      const margin = Math.max(0, Math.min(1, fight.peakFillFraction));
+      const margin = Math.max(0, Math.min(1, fight.peakFillFraction[0]));
       const base = margin < 0.999 ? charged / (1 - margin) : NaN;
       const tierBase = Number.isFinite(base)
         ? Math.abs(base - BASE_HEAT_BY_TIER.elite) < Math.abs(base - BASE_HEAT_BY_TIER.regular)

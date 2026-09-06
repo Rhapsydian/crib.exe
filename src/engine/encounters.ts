@@ -245,9 +245,21 @@ export interface EncounterOutcome {
    * inside `resolveFight` and thrown away.
    */
   fight?: {
+    /** Which enemy was actually fought -- the run log otherwise records
+     * that a fight happened but not against whom, so any per-enemy
+     * balance question needed a bespoke script. Same rationale as
+     * summarizeRunLoadout (session 46). */
+     enemyId: EnemyId;
+    tier: 'regular' | 'elite' | 'gatekeeper';
     resolvedBy: 'threshold' | 'attrition';
-    /** The player's own peak win-gauge fill (side 0), 0-1. */
-    peakFillFraction: number;
+    /** Both sides' peak win-gauge fill, 0-1. Index 0 is the player's
+     * Breach, index 1 the enemy's Containment. The enemy's peak is how
+     * *close* the fight actually was: a 99% win rate where side 1 never
+     * clears 0.1 is not a fight at all, and win rate alone cannot say
+     * so. */
+    peakFillFraction: [number, number];
+    /** Hands actually played, for the same reason. */
+    hands: number;
   };
   quarantined: boolean;
   rewardTier: RewardTier;
@@ -537,7 +549,7 @@ function resolveFight(
       newState: 'inert',
       heatDelta: result.traceGenerated - modified.heatRefund, // Failover (session 44); addHeat already floors at 0 (proven by Rest's own negative heatDelta)
       heatSources: { ...NO_HEAT_SOURCES, trace: result.traceGenerated, refund: -modified.heatRefund },
-      fight: { resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction[0] },
+      fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, hands: result.hands.length },
       quarantined: false,
       rewardTier,
       dataAwarded: modified.dataAwarded,
@@ -563,7 +575,7 @@ function resolveFight(
       heatDelta: 0,
       // A gatekeeper loss bypasses Heat entirely (heat.ts) -- nothing to attribute.
       heatSources: NO_HEAT_SOURCES,
-      fight: { resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction[0] },
+      fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, hands: result.hands.length },
       quarantined: true,
       rewardTier: 'none',
       dataAwarded: 0,
@@ -595,7 +607,7 @@ function resolveFight(
       attritionLoss: result.resolvedBy === 'threshold' ? 0 : lossHeat,
       trace: result.traceGenerated,
     },
-    fight: { resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction[0] },
+    fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, hands: result.hands.length },
     quarantined: false,
     rewardTier: 'none',
     dataAwarded: 0,
