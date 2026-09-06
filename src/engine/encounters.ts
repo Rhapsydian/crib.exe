@@ -2,7 +2,7 @@ import type { MapNode, NodeState } from './map-types';
 import type { Rng } from './rng';
 import type { SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
-import { playCombat, type BurnerActivationStrategy } from './combat';
+import { playCombat, type BurnerActivationStrategy, type CombatResult } from './combat';
 import { discardSkillStrategy, pegSkillStrategy } from './ai';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
@@ -292,6 +292,68 @@ function strategiesForFight(
   };
 }
 
+/**
+ * Diagnostic-only synthetic gatekeeper (session 49) -- resolves a
+ * gatekeeper fight by a weighted coin instead of playCombat, so
+ * gatekeeper difficulty can be pinned at a known value while something
+ * else is measured.
+ *
+ * Exists because a lost gatekeeper fight returns `quarantined: true`
+ * below and ends the run outright, which makes every layer's population
+ * strictly "whoever beat the previous layer" -- so any per-layer or
+ * per-class number is measured on a cohort pre-selected by exactly the
+ * thing being measured. Setting every layer to `passRate: 1` produces
+ * the first genuinely unfiltered cohort at all four layers; setting a
+ * designed curve holds the roster flat while class balance is read.
+ *
+ * `traceGenerated` is NOT optional on purpose. It feeds Heat on a win
+ * (see the win branch below), and Heat is its own run-ending path, so a
+ * synthetic that silently generated none would lengthen runs for a
+ * reason unrelated to gatekeepers -- the same invisible-second-effect
+ * shape as session 48's `choked` rescale. Measured values at the
+ * standing diagnostic config are ~2.8/2.6/1.2/0.8 by layer (small, but
+ * supply them rather than assume).
+ */
+export interface SyntheticGatekeeper {
+  /** Probability in [0, 1] that the player passes. */
+  passRate: number;
+  /** Trace the real fight would have generated on a win. */
+  traceGenerated: number;
+}
+
+/**
+ * The stub `CombatResult` a synthetic gatekeeper resolves to. Only four
+ * of CombatResult's fields are ever read downstream of the playCombat
+ * call in resolveFight -- winner, traceGenerated, peakFillFraction[0]
+ * and burnersUsedThisCombat -- so the rest are inert placeholders rather
+ * than a fabricated fight record, deliberately: an empty `hands`/`log`
+ * makes it obvious at a glance that no Cribbage was played here, where
+ * plausible-looking fake data would not.
+ *
+ * `seed` is the same `rng.nextInt(2 ** 31)` draw the real path spends on
+ * playCombat, reused as the coin so the synthetic consumes exactly as
+ * much of the run's RNG stream as a real fight does. That keeps a
+ * synthetic run seed-aligned with a real one right up until the first
+ * outcome that genuinely differs (after which the win branch's reward
+ * draws diverge the streams, unavoidably).
+ *
+ * peakFillFraction and a losing traceGenerated are unobservable in
+ * practice -- a gatekeeper loss takes the `quarantined` branch, which
+ * reads neither -- but are set coherently rather than left at zero.
+ */
+function syntheticCombatResult(spec: SyntheticGatekeeper, seed: number): CombatResult {
+  const won = seed / 2 ** 31 < spec.passRate;
+  return {
+    winner: won ? 0 : 1,
+    log: [],
+    hands: [],
+    peakFillFraction: won ? [1, 0] : [0, 1],
+    traceGenerated: won ? spec.traceGenerated : 0,
+    resolvedBy: 'threshold',
+    burnersUsedThisCombat: [],
+  };
+}
+
 function resolveFight(
   kind: FightKind,
   node: MapNode,
@@ -313,6 +375,13 @@ function resolveFight(
    * strategiesForFight's own doc comment. Same append-at-the-end
    * treatment as every prior checkpoint's new param. */
   playerSkill?: number,
+  /** Diagnostic-only (session 49) -- when set AND this is a gatekeeper
+   * fight, the fight resolves by weighted coin instead of playCombat.
+   * See SyntheticGatekeeper above. Deliberately gated on `kind` so an
+   * Event's bonus fight (which routes through this same function) always
+   * resolves for real, whatever the layer's gatekeeper is doing. Same
+   * append-at-the-end treatment as every prior checkpoint's new param. */
+  syntheticGatekeeper?: SyntheticGatekeeper,
 ): EncounterOutcome {
   const enemy = enemyForFight(kind, node, layerIndex, fightNumber, rng, enemyIdOverride);
   const strategies = strategiesForFight(kind, layerIndex, fightNumber, discardStrategies, playStrategies, playerSkill);
@@ -322,19 +391,24 @@ function resolveFight(
   // regular/elite (which can appear at several layers) get a fresh scale
   // each encounter rather than a fixed one.
   const scaledLoadout = scaledEnemyLoadout(enemy.loadout, magnitudeScalerFor(enemy, layerIndex, fightNumber));
-  const result = playCombat([playerState.installedLoadout, scaledLoadout], {
-    seed,
-    ...combatThresholdsFor(playerState, enemy, layerIndex, fightNumber),
-    classId: playerState.classId,
-    enemyPassiveIds: enemy.passiveIds,
-    ownedModIds: playerState.ownedModIds,
-    // Filtered to combat-context Burners only -- a carried map/shop-only
-    // Burner has nothing to activate here (checkpoint C).
-    carriedBurnerIds: playerState.carriedBurnerIds.filter((id) => BURNER_DEFINITIONS[id].contexts.includes('combat')),
-    discardStrategies: strategies.discardStrategies,
-    playStrategies: strategies.playStrategies,
-    burnerActivationStrategies,
-  });
+  // Gated on `kind` so an Event's bonus fight, which reaches this same
+  // function, is never synthesised along with the layer's gatekeeper.
+  const synthetic = kind === 'gatekeeper' ? syntheticGatekeeper : undefined;
+  const result: CombatResult = synthetic
+    ? syntheticCombatResult(synthetic, seed)
+    : playCombat([playerState.installedLoadout, scaledLoadout], {
+        seed,
+        ...combatThresholdsFor(playerState, enemy, layerIndex, fightNumber),
+        classId: playerState.classId,
+        enemyPassiveIds: enemy.passiveIds,
+        ownedModIds: playerState.ownedModIds,
+        // Filtered to combat-context Burners only -- a carried map/shop-only
+        // Burner has nothing to activate here (checkpoint C).
+        carriedBurnerIds: playerState.carriedBurnerIds.filter((id) => BURNER_DEFINITIONS[id].contexts.includes('combat')),
+        discardStrategies: strategies.discardStrategies,
+        playStrategies: strategies.playStrategies,
+        burnerActivationStrategies,
+      });
 
   if (result.winner === 0) {
     const rewardTier: RewardTier = kind === 'regular' ? 'standard' : 'better';
@@ -627,6 +701,13 @@ export function resolveEncounter(
    * (merge.ts's synergyAwareMergeTarget does, for a rank-capped id)
    * recovers the visit rather than wasting it. */
   mergeTargetStrategy: MergeTargetStrategy = pickMergeTarget,
+  /** Diagnostic-only (session 49) -- resolves THIS node's gatekeeper
+   * fight by weighted coin instead of playCombat. See
+   * SyntheticGatekeeper above for why. Reaches only the gatekeeperFight
+   * case below; the Event bonus-fight call site deliberately does not
+   * forward it. Same append-at-the-end treatment as every prior
+   * checkpoint's new param. */
+  syntheticGatekeeper?: SyntheticGatekeeper,
 ): EncounterOutcome {
   switch (node.type) {
     case 'regularFight':
@@ -634,7 +715,7 @@ export function resolveEncounter(
     case 'eliteFight':
       return resolveFight('elite', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies, playerSkill);
     case 'gatekeeperFight':
-      return resolveFight('gatekeeper', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies, playerSkill);
+      return resolveFight('gatekeeper', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies, playerSkill, syntheticGatekeeper);
     case 'safehouse': {
       // DESIGN.md's deliberate Rest-vs-Merge trade-off: one action per
       // visit (the node goes inert either way). Falls back to Rest if

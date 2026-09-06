@@ -1,9 +1,9 @@
 import { createRng } from './rng';
 import { isReachable, neighborsOf, type LayerGraph, type MapNode, type NodeType, type RunPosition } from './map-types';
 import { generateLayer } from './map-gen';
-import { assignGatekeeperEnemy, gatekeeperEnemyForNode, type EnemyDefinition, type EnemyId } from './enemies';
+import { assignGatekeeperEnemy, eligibleEnemies, gatekeeperEnemyForNode, type EnemyDefinition, type EnemyId } from './enemies';
 import { move } from './traversal';
-import { resolveEncounter, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy } from './encounters';
+import { resolveEncounter, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy, type SyntheticGatekeeper } from './encounters';
 import { addHeat, HEAT_MAX, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
@@ -422,6 +422,11 @@ export interface GatekeeperFightContext {
   enemy: EnemyDefinition;
 }
 
+/** One layer's gatekeeper override (session 49) -- see
+ * RunOptions.gatekeeperOverrides. `synthetic` replaces the fight,
+ * `pinned` replaces the draw; neither is ever set by real play. */
+export type GatekeeperOverride = ({ kind: 'synthetic' } & SyntheticGatekeeper) | { kind: 'pinned'; enemyId: EnemyId };
+
 export interface RunOptions {
   seed: number;
   /** Defaults to Breacher, the designed starting/onboarding class
@@ -527,6 +532,24 @@ export interface RunOptions {
    * isolate whether it's a difficulty outlier vs. its layer-mates.
    * Undefined/empty changes nothing, the default. */
   excludedGatekeeperIds?: EnemyId[];
+  /** Per-layer gatekeeper override (session 49), indexed by 0-based
+   * layerIndex the same way `layerNodeCounts` is -- an omitted or
+   * undefined slot is today's behaviour exactly. Diagnostic-only, same
+   * standing as `excludedGatekeeperIds` above, and never set by real
+   * play.
+   *
+   * `synthetic` replaces that layer's gatekeeper FIGHT with a weighted
+   * coin (encounters.ts's SyntheticGatekeeper), leaving the whole
+   * reward/Heat/Mod/Burner pipeline downstream of it untouched.
+   * `pinned` leaves the fight real but forces which member of the
+   * layer's stable is drawn -- the complement of
+   * `excludedGatekeeperIds`, which can only remove. The two compose:
+   * synthesise three layers and pin the fourth to measure one
+   * gatekeeper's cost against a controlled background.
+   *
+   * Any number produced with this set is NOT a plain full-run metric and
+   * must say so when reported -- see README's conventions. */
+  gatekeeperOverrides?: [GatekeeperOverride?, GatekeeperOverride?, GatekeeperOverride?, GatekeeperOverride?];
   /** Which banked id a 'merge' Safehouse action spends itself on
    * (session 46, Gameplay Simulation Heuristics checkpoint E) -- until
    * that checkpoint this was hardcoded to pickMergeTarget inside
@@ -592,6 +615,7 @@ export function playRun(options: RunOptions): RunResult {
     playStrategies,
     playerSkill,
     excludedGatekeeperIds,
+    gatekeeperOverrides,
     onBeforeGatekeeperFight,
   } = options;
 
@@ -636,7 +660,21 @@ export function playRun(options: RunOptions): RunResult {
     // layer numbering is 1-based (minLayer/eligibleEnemies), while this
     // loop's layerIndex is 0-based -- +1 here is the only place that
     // conversion needs to happen.
-    graph = assignGatekeeperEnemy(graph, layerIndex + 1, rng, excludedGatekeeperIds);
+    // Session 49: `pinned` is expressed as an exclusion of the layer's
+    // OTHER stable members, so assignGatekeeperEnemy keeps its single
+    // selection path and enemies.ts gains no new surface. Validated
+    // here rather than left to assignGatekeeperEnemy's own empty-stable
+    // throw, which would report a misleading "no stable defined".
+    const override = gatekeeperOverrides?.[layerIndex];
+    let excludedThisLayer = excludedGatekeeperIds;
+    if (override?.kind === 'pinned') {
+      const stable = eligibleEnemies('gatekeeper', layerIndex + 1).map((e) => e.id);
+      if (!stable.includes(override.enemyId)) {
+        throw new Error(`run.ts: gatekeeperOverrides pinned "${override.enemyId}" at layer ${layerIndex + 1}, whose stable is [${stable.join(', ')}]`);
+      }
+      excludedThisLayer = [...(excludedGatekeeperIds ?? []), ...stable.filter((id) => id !== override.enemyId)];
+    }
+    graph = assignGatekeeperEnemy(graph, layerIndex + 1, rng, excludedThisLayer);
     log.push({ type: 'layerGenerated', layerIndex, nodeCount: graph.nodes.length });
     let position: RunPosition = { layerIndex, nodeId: graph.entryNodeId };
     let layerCleared = false;
@@ -743,6 +781,7 @@ export function playRun(options: RunOptions): RunResult {
         heat,
         playerSkill,
         mergeTargetStrategy,
+        override?.kind === 'synthetic' ? override : undefined,
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };

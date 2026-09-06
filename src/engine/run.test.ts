@@ -10,7 +10,9 @@ import {
   createInitialPlayerState,
   type TraversalStrategy,
   type GatekeeperFightContext,
+  type GatekeeperOverride,
 } from './run';
+import { eligibleEnemies } from './enemies';
 import type { SubroutineDefinition } from './subroutine-types';
 import { BREACHER_LOADOUT } from './subroutines';
 import { INSTALLED_SLOT_CAP } from './loadout';
@@ -400,5 +402,125 @@ describe('playRun', { timeout: 30_000 }, () => {
       expect(quarantineEvent && quarantineEvent.type === 'encounter' ? quarantineEvent.outcome.heatDelta : -1).toBe(0);
     }
     expect(sawQuarantine).toBe(true);
+  });
+});
+
+describe('gatekeeperOverrides (session 49) -- the synthetic gatekeeper diagnostic', () => {
+  const TINY_LAYERS: [number, number, number, number] = [2, 2, 2, 2];
+  const ALWAYS: GatekeeperOverride = { kind: 'synthetic', passRate: 1, traceGenerated: 0 };
+  const NEVER: GatekeeperOverride = { kind: 'synthetic', passRate: 0, traceGenerated: 0 };
+
+  const gatekeeperEntries = (result: ReturnType<typeof playRun>) =>
+    result.log.filter((e) => e.type === 'encounter' && e.nodeType === 'gatekeeperFight');
+
+  it('leaves every run byte-identical when unset', () => {
+    // The guard that matters most: this option must be inert by default.
+    // Proven empirically across 100 seeds x 6 classes at the standing
+    // diagnostic config when it was built; kept here as a cheap
+    // permanent version of the same check.
+    for (let seed = 0; seed < 5; seed++) {
+      expect(playRun({ seed, layerNodeCounts: TINY_LAYERS })).toEqual(playRun({ seed, layerNodeCounts: TINY_LAYERS, gatekeeperOverrides: undefined }));
+    }
+  });
+
+  it('passRate 1 carries a loadout that could never win a real fight past the gatekeeper', () => {
+    // NEGLIGIBLE_LOADOUT reliably LOSES a real gatekeeper fight, so
+    // clearing layer 1 with it is direct proof the fight was synthesised
+    // rather than played -- not merely that an outcome was favourable.
+    let cleared = 0;
+    for (let seed = 0; seed < 10; seed++) {
+      const result = playRun({
+        seed,
+        layerNodeCounts: TINY_LAYERS,
+        installedLoadoutOverride: NEGLIGIBLE_LOADOUT,
+        gatekeeperOverrides: [ALWAYS, ALWAYS, ALWAYS, ALWAYS],
+      });
+      expect(result.outcome).not.toBe('quarantined');
+      if (result.layersCompleted > 0) cleared++;
+    }
+    expect(cleared).toBeGreaterThan(0);
+  });
+
+  it('passRate 0 quarantines a loadout that would reliably win a real fight', () => {
+    // The mirror of the above, and the reason both exist: a one-sided
+    // test could pass because the synthetic did nothing at all.
+    let asserted = 0;
+    for (let seed = 0; seed < 10; seed++) {
+      const result = playRun({
+        seed,
+        layerNodeCounts: TINY_LAYERS,
+        installedLoadoutOverride: OVERWHELMING_LOADOUT,
+        gatekeeperOverrides: [NEVER, NEVER, NEVER, NEVER],
+      });
+      if (result.outcome === 'heatMaxed' || result.outcome === 'noRouteRemains') continue; // died before reaching it
+      expect(result.outcome).toBe('quarantined');
+      expect(result.layersCompleted).toBe(0);
+      asserted++;
+    }
+    // Without this the `continue` above could skip every seed and leave
+    // the test asserting nothing -- the shape session 48's instrument
+    // audit found in burners.test.ts.
+    expect(asserted).toBeGreaterThan(0);
+  });
+
+  it('applies per layer, leaving unset layers on real fights', () => {
+    const result = playRun({
+      seed: 3,
+      layerNodeCounts: TINY_LAYERS,
+      installedLoadoutOverride: NEGLIGIBLE_LOADOUT,
+      gatekeeperOverrides: [ALWAYS],
+    });
+    // Layer 1 is synthesised so it clears; layer 2 is a real fight this
+    // loadout cannot win, so the run cannot get past it.
+    expect(result.layersCompleted).toBe(1);
+  });
+
+  it('folds traceGenerated into the run Heat a synthetic win costs', () => {
+    // Same seed either side, so the RNG stream and any owned heat-sink
+    // refund are identical up to the layer-1 gatekeeper -- the whole
+    // difference in its heatDelta is the trace supplied.
+    const withoutTrace = playRun({ seed: 7, layerNodeCounts: TINY_LAYERS, gatekeeperOverrides: [ALWAYS] });
+    const withTrace = playRun({ seed: 7, layerNodeCounts: TINY_LAYERS, gatekeeperOverrides: [{ kind: 'synthetic', passRate: 1, traceGenerated: 25 }] });
+    const a = gatekeeperEntries(withoutTrace)[0];
+    const b = gatekeeperEntries(withTrace)[0];
+    expect(a && a.type === 'encounter' && b && b.type === 'encounter' ? b.outcome.heatDelta - a.outcome.heatDelta : 0).toBe(25);
+  });
+
+  it('honours the pass rate over a seed sweep, and stays deterministic per seed', () => {
+    const HALF: GatekeeperOverride = { kind: 'synthetic', passRate: 0.5, traceGenerated: 0 };
+    let reached = 0;
+    let passed = 0;
+    for (let seed = 0; seed < 300; seed++) {
+      const result = playRun({ seed, layerNodeCounts: TINY_LAYERS, gatekeeperOverrides: [HALF, HALF, HALF, HALF] });
+      const first = gatekeeperEntries(result)[0];
+      if (!first || first.type !== 'encounter') continue;
+      reached++;
+      if (!first.outcome.quarantined) passed++;
+    }
+    expect(reached).toBeGreaterThan(100);
+    expect(passed / reached).toBeGreaterThan(0.38);
+    expect(passed / reached).toBeLessThan(0.62);
+    expect(playRun({ seed: 11, gatekeeperOverrides: [HALF, HALF, HALF, HALF] })).toEqual(playRun({ seed: 11, gatekeeperOverrides: [HALF, HALF, HALF, HALF] }));
+  });
+
+  it('pins a layer to one real gatekeeper without touching the fight itself', () => {
+    const target = eligibleEnemies('gatekeeper', 1)[0].id;
+    const captures: GatekeeperFightContext[] = [];
+    for (let seed = 0; seed < 20; seed++) {
+      playRun({
+        seed,
+        layerNodeCounts: TINY_LAYERS,
+        gatekeeperOverrides: [{ kind: 'pinned', enemyId: target }],
+        onBeforeGatekeeperFight: (ctx) => captures.push(ctx),
+      });
+    }
+    const layerOne = captures.filter((c) => c.layerIndex === 1);
+    expect(layerOne.length).toBeGreaterThan(0);
+    expect(layerOne.every((c) => c.enemy.id === target)).toBe(true);
+  });
+
+  it('rejects pinning a gatekeeper that is not in that layer stable, naming the stable', () => {
+    const notInLayerOne = eligibleEnemies('gatekeeper', 4)[0].id;
+    expect(() => playRun({ seed: 1, gatekeeperOverrides: [{ kind: 'pinned', enemyId: notInLayerOne }] })).toThrow(/layer 1/);
   });
 });
