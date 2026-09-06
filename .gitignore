@@ -12,8 +12,12 @@ dist
 dist-ssr
 *.local
 
-# scripts/sweep.ts output (--out files) -- generated, not source
-sweep-*.jsonl
+# Diagnostic output (--out files) -- generated, never source.
+# All five scripts in scripts/ accept --out with a caller-chosen
+# filename, so the old sweep-*.jsonl pattern only covered one of them by
+# convention. No .jsonl in this project is ever source, so ignore the
+# extension outright (session 48).
+*.jsonl
 
 # Editor directories and files
 .vscode/*
