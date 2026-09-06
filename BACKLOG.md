@@ -206,6 +206,23 @@ native win conditions were only added in session 40.
   selection of *both* discarded cards rather than one, leaving the
   target's best companion intact. Content authoring, not a new engine
   capability: `ai.ts`'s `bestCardToForce` already generalises.
+- **A "support" subroutine category** (banked session 22, recovered from
+  project memory in session 48 — it had never been written down in the
+  repo). Identified as a real gap while authoring the original 78 pieces:
+  the pool has nothing whose *job* is to buff or enable other
+  subroutines rather than act directly. The `Worm` tag describes chaining
+  and Mods have archetype Amplifiers, but a dedicated category was never
+  designed. Worth revisiting now the pool is 139 pieces.
+- **Enemy-piece acquisition** (banked session 28, same recovery). The 20
+  `ENEMY_ONLY_SUBROUTINES` are unreachable by the player by design.
+  Whether that should stay true — reward-pool or Shop access to some of
+  them — was explicitly banked and never revisited. Note session 46
+  found the Neutral pool had been *accidentally* unreachable for 18
+  sessions, so "unreachable by design" is worth re-confirming rather
+  than assuming.
+- **Rename the `Go` occurrence category to `Last-Card`** (banked session
+  22) — cosmetic, never actioned. Currently only referenced in
+  `docs/roadmap-history.md` and a pegging test.
 - **Resumable orchestration for human-vs-AI play** (session 24) — an
   architecture question, not an AI one. Every `DiscardStrategy`/
   `PlayStrategy` call is synchronous today, so there is no way to
