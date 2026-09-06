@@ -31,7 +31,7 @@
  * modest LAYER_SKILL_STEP).
  *
  * Usage:
- *   npx tsx scripts/gatekeeper-check.ts [--classes=breacher,ghost] [--seeds=300] [--playerSkills=0.85] [--out=file.jsonl]
+ *   npx tsx scripts/gatekeeper-check.ts [--classes=breacher,ghost] [--seeds=300] [--playerSkills=0.85] [--syntheticGatekeepers=1,1,1,1] [--out=file.jsonl]
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { playRun, opportunisticTraversal, type GatekeeperFightContext } from '../src/engine/run';
@@ -42,6 +42,7 @@ import { enemySkill, magnitudeScalerFor, gaugeThresholdFor, winThresholdFor, sca
 import { discardSkillStrategy, pegSkillStrategy } from '../src/engine/ai';
 import { BURNER_DEFINITIONS } from '../src/engine/burners';
 import type { ClassId } from '../src/engine/classes';
+import { parseSyntheticGatekeepers, describeSyntheticGatekeepers } from './synthetic-gatekeepers';
 
 const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
 // Session 39: the player's own standing default for realistic diagnostics
@@ -73,6 +74,15 @@ const seeds = Number(args.seeds ?? 300);
 const playerSkills = (args.playerSkills ?? DEFAULT_PLAYER_SKILL).split(',').map(Number);
 const outFile = args.out;
 if (outFile) writeFileSync(outFile, '');
+// Session 49: the captures below come from real playRun()s, so every
+// layer's cohort is normally "whoever beat the previous layer" -- the
+// population is pre-selected by exactly the trait this script then
+// re-measures. --syntheticGatekeepers=1,1,1,1 removes that filter and
+// gives a genuinely unfiltered cohort at all four layers. Only the
+// capture-generating run is affected; the re-fight below is always
+// against the real gatekeeper.
+const gatekeeperOverrides = parseSyntheticGatekeepers(args.syntheticGatekeepers);
+console.log(describeSyntheticGatekeepers(gatekeeperOverrides));
 
 // key: `${classId}|${enemyId}|${playerSkill}`
 const wins: Record<string, number> = {};
@@ -96,6 +106,7 @@ for (const classId of classes) {
       classId,
       traversalStrategy: opportunisticTraversal,
       safehouseStrategy: opportunisticSafehouseStrategy,
+      gatekeeperOverrides,
       onBeforeGatekeeperFight: (ctx) => captures.push(ctx),
     });
 
