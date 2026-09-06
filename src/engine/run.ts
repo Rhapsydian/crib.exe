@@ -101,6 +101,30 @@ export interface RunPlayerState {
    * (unlike ownedModIds' uniqueness), since a Burner is a consumable
    * item, not a permanent passive. */
   carriedBurnerIds: BurnerId[];
+  /**
+   * Meta-progression sockets for the three combat thresholds (session
+   * 48). All optional and all unset today -- there is no
+   * meta-progression system yet. They exist so that when there is one,
+   * it has somewhere to write, instead of encounters.ts hardcoding the
+   * flat constants at the call site the way it did before.
+   *
+   * The first two are the player's own numbers and are absolute
+   * overrides: nothing else authors a per-encounter value for them, so
+   * there is nothing for an override to erase.
+   *
+   * `containmentThresholdScaler` is deliberately a *multiplier* rather
+   * than an override, because the quantity it modifies is not the
+   * player's -- it is the enemy's own Containment bar, which gatekeepers
+   * already author individually (EnemyDefinition.winThreshold; Null
+   * Session's 65). An absolute player-side override would flatten that
+   * identity to a single number for every enemy in the game. A scaler
+   * composes with it: "every enemy needs 20% more Containment to beat
+   * me" stays true whether the enemy is a regular at 50 or Null Session
+   * at 65.
+   */
+  initiativeThreshold?: number;
+  breachThreshold?: number;
+  containmentThresholdScaler?: number;
 }
 
 export function createInitialPlayerState(classId: ClassId): RunPlayerState {

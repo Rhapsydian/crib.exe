@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import { createNode } from './map-types';
-import { resolveEncounter } from './encounters';
-import type { EnemyId } from './enemies';
+import { resolveEncounter, combatThresholdsFor, GAUGE_THRESHOLD, BREACH_THRESHOLD, CONTAINMENT_THRESHOLD } from './encounters';
+import { ENEMY_ROSTER, type EnemyId } from './enemies';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
 import type { RunPlayerState } from './run';
@@ -84,6 +84,48 @@ function playerWithBurst(amount: number): RunPlayerState {
     carriedBurnerIds: [],
   };
 }
+
+describe('combatThresholdsFor -- the meta-progression sockets (session 48)', () => {
+  const nullSession = ENEMY_ROSTER.find((e) => e.id === 'null-session')!; // authors its own Containment of 65
+  const firewallPrime = ENEMY_ROSTER.find((e) => e.id === 'firewall-prime')!; // no overrides at all
+  const base = playerWithBurst(1);
+
+  it('falls back to the flat constants when nothing is socketed -- the state of every run today', () => {
+    expect(combatThresholdsFor(base, firewallPrime, 1, 5)).toEqual({
+      gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD],
+      winThreshold: [BREACH_THRESHOLD, CONTAINMENT_THRESHOLD],
+    });
+  });
+
+  it("still reads a gatekeeper's own authored Containment when the player has socketed nothing", () => {
+    expect(combatThresholdsFor(base, nullSession, 4, 20).winThreshold).toEqual([BREACH_THRESHOLD, 65]);
+  });
+
+  it('applies the player\'s own initiative and Breach values as absolute overrides', () => {
+    const upgraded: RunPlayerState = { ...base, initiativeThreshold: 9, breachThreshold: 40 };
+    const { gaugeThreshold, winThreshold } = combatThresholdsFor(upgraded, firewallPrime, 1, 5);
+    expect(gaugeThreshold[0]).toBe(9);
+    expect(winThreshold[0]).toBe(40);
+    // Neither touches the enemy's own side of either pair.
+    expect(gaugeThreshold[1]).toBe(GAUGE_THRESHOLD);
+    expect(winThreshold[1]).toBe(CONTAINMENT_THRESHOLD);
+  });
+
+  it('scales Containment rather than overriding it, so a gatekeeper keeps its own identity', () => {
+    // The reason this socket is a multiplier and the other two are not:
+    // Containment is the *enemy's* number, and gatekeepers author it
+    // individually. An absolute player-side override would flatten Null
+    // Session's 65 to the same value every other enemy in the game gets.
+    const defensive: RunPlayerState = { ...base, containmentThresholdScaler: 1.2 };
+    expect(combatThresholdsFor(defensive, firewallPrime, 1, 5).winThreshold[1]).toBe(60); // 50 * 1.2
+    expect(combatThresholdsFor(defensive, nullSession, 4, 20).winThreshold[1]).toBe(78); // 65 * 1.2, identity preserved
+  });
+
+  it('floors a scaled Containment at 1 -- gauges.ts never sees a zero bar', () => {
+    const absurd: RunPlayerState = { ...base, containmentThresholdScaler: 0.001 };
+    expect(combatThresholdsFor(absurd, firewallPrime, 1, 5).winThreshold[1]).toBe(1);
+  });
+});
 
 const OVERWHELMING_PLAYER: RunPlayerState = {
   classId: 'breacher',

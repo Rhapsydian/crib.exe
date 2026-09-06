@@ -37,7 +37,7 @@ import { appendFileSync, writeFileSync } from 'node:fs';
 import { playRun, opportunisticTraversal, type GatekeeperFightContext } from '../src/engine/run';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import { playCombat } from '../src/engine/combat';
-import { GAUGE_THRESHOLD, WIN_THRESHOLD } from '../src/engine/encounters';
+import { GAUGE_THRESHOLD, BREACH_THRESHOLD, CONTAINMENT_THRESHOLD } from '../src/engine/encounters';
 import { enemySkill, magnitudeScalerFor, gaugeThresholdFor, winThresholdFor, scaledEnemyLoadout } from '../src/engine/enemies';
 import { discardSkillStrategy, pegSkillStrategy } from '../src/engine/ai';
 import { BURNER_DEFINITIONS } from '../src/engine/burners';
@@ -119,7 +119,7 @@ for (const classId of classes) {
           // uses, so this diagnostic stays consistent as gatekeeper
           // threshold overrides get authored in a future balance pass.
           gaugeThreshold: [GAUGE_THRESHOLD, gaugeThresholdFor(capture.enemy, capture.layerIndex, capture.fightsResolved, GAUGE_THRESHOLD)],
-          winThreshold: [WIN_THRESHOLD, winThresholdFor(capture.enemy, capture.layerIndex, capture.fightsResolved, WIN_THRESHOLD)],
+          winThreshold: [BREACH_THRESHOLD, winThresholdFor(capture.enemy, capture.layerIndex, capture.fightsResolved, CONTAINMENT_THRESHOLD)],
           classId: capture.playerState.classId,
           enemyPassiveIds: capture.enemy.passiveIds,
           ownedModIds: capture.playerState.ownedModIds,

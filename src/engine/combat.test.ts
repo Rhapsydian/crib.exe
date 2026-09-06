@@ -3,7 +3,7 @@ import type { Card } from './cards';
 import { cardValue } from './cards';
 import type { PlayerIndex } from './game';
 import type { SubroutineDefinition } from './subroutine-types';
-import { playCombat } from './combat';
+import { playCombat, escalationFloorFor, escalationShrinkPerHandFor } from './combat';
 import { CLASS_STARTING_LOADOUTS } from './subroutines';
 import { createRng } from './rng';
 import { createDeck, shuffle } from './deck';
@@ -434,6 +434,44 @@ describe('playCombat', () => {
       expect(result.winner).toBe(1);
       expect(result.resolvedBy).toBe('attrition');
       expect(result.hands.length).toBe(20); // combat.ts's own HARD_RESOLUTION_HAND
+    });
+
+    describe('per-side derivation (session 48)', () => {
+      // The rate and floor used to be flat constants (4/hand, floored at
+      // 10), both silently calibrated against a single shared win
+      // threshold of 50: (50 - 10) / 10 hands = 4. Splitting
+      // BREACH_THRESHOLD from CONTAINMENT_THRESHOLD, and giving
+      // meta-progression a socket to move them independently, made that
+      // assumption unsafe -- so both are now derived per side.
+
+      it('reproduces the old flat constants exactly at the historical shared base of 50', () => {
+        expect(escalationFloorFor(50)).toBe(10);
+        expect(escalationShrinkPerHandFor(50)).toBe(4);
+      });
+
+      it('lands any starting bar on its own floor in exactly the same number of hands', () => {
+        // The property that matters: "reach your floor as the deadline
+        // lands" has to stay true at every value, not just at 50.
+        for (const base of [30, 40, 50, 65, 100]) {
+          const floor = escalationFloorFor(base);
+          const perHand = escalationShrinkPerHandFor(base);
+          expect(base - perHand * 10).toBeCloseTo(floor, 5);
+        }
+      });
+
+      it('gives two sides on different bars the same escalation timeline, not the same rate', () => {
+        // A flat 4/hand against a player bar lowered to 40 would floor at
+        // hand 17 while the enemy's floored at 20 -- a three-hand
+        // sudden-death window handed out as a side effect of an upgrade
+        // that was only meant to lower a number.
+        expect(escalationShrinkPerHandFor(40)).toBeLessThan(escalationShrinkPerHandFor(65));
+        expect(escalationFloorFor(40)).toBeLessThan(escalationFloorFor(65));
+      });
+
+      it('floors at 1 so a tiny starting bar can never produce a zero or negative threshold', () => {
+        expect(escalationFloorFor(1)).toBe(1);
+        expect(escalationShrinkPerHandFor(1)).toBeGreaterThanOrEqual(1);
+      });
     });
   });
 });

@@ -110,7 +110,54 @@ export const GAUGE_THRESHOLD = 12;
 // between tiers to matter. TBD/playtesting, same as every numeric
 // constant in this project, but now grounded in the new model's actual
 // behavior rather than carried over from the old one.
-export const WIN_THRESHOLD = 50;
+//
+// Session 48 split the single WIN_THRESHOLD into the two races it was
+// always seeding. Each side runs its own DuelGauge toward its own win
+// (gauges.ts): side 0's is Breach progress -- the player exploiting the
+// vulnerability -- and side 1's is Containment -- the enemy patching it
+// in time. One constant fed both, which was fine while they could never
+// differ and wrong the moment meta-progression can move them
+// independently. Both still 50, so this is behaviour-neutral today.
+//
+// Lowering BREACH means the player needs less progress to win; raising
+// CONTAINMENT means the enemy needs more. Both are player buffs, pulling
+// in different directions -- an offensive and a defensive upgrade track.
+export const BREACH_THRESHOLD = 50;
+export const CONTAINMENT_THRESHOLD = 50;
+
+/**
+ * Resolves all four per-side combat thresholds for one fight (session
+ * 48) -- the single place the flat constants, a gatekeeper's own
+ * authored values, and the player's meta-progression sockets meet.
+ * Extracted from resolveFight's playCombat call so the socket is
+ * testable without driving a whole stochastic fight to observe it.
+ *
+ * Player side reads its own meta-progression value when set, falling
+ * back to the flat constant. Enemy side resolves per-identity
+ * (gatekeeper-only overrides, falling back to the flat constant) and is
+ * then scaled by the player's Containment upgrade if any -- a
+ * multiplier, so "every enemy needs 20% more Containment to beat me"
+ * composes with Null Session's authored 65 instead of flattening every
+ * enemy in the game to one number. See RunPlayerState's own note.
+ */
+export function combatThresholdsFor(
+  playerState: RunPlayerState,
+  enemy: EnemyDefinition,
+  layerIndex: number,
+  fightNumber: number,
+): { gaugeThreshold: [number, number]; winThreshold: [number, number] } {
+  const containment = winThresholdFor(enemy, layerIndex, fightNumber, CONTAINMENT_THRESHOLD);
+  return {
+    gaugeThreshold: [
+      playerState.initiativeThreshold ?? GAUGE_THRESHOLD,
+      gaugeThresholdFor(enemy, layerIndex, fightNumber, GAUGE_THRESHOLD),
+    ],
+    winThreshold: [
+      playerState.breachThreshold ?? BREACH_THRESHOLD,
+      Math.max(1, Math.round(containment * (playerState.containmentThresholdScaler ?? 1))),
+    ],
+  };
+}
 
 export interface EncounterOutcome {
   newState: NodeState;
@@ -277,11 +324,7 @@ function resolveFight(
   const scaledLoadout = scaledEnemyLoadout(enemy.loadout, magnitudeScalerFor(enemy, layerIndex, fightNumber));
   const result = playCombat([playerState.installedLoadout, scaledLoadout], {
     seed,
-    // Per-side threshold overrides (session 40) -- player side always
-    // the flat constant, enemy side resolved per-identity (gatekeeper-
-    // only override, falls back to the flat constant when unset).
-    gaugeThreshold: [GAUGE_THRESHOLD, gaugeThresholdFor(enemy, layerIndex, fightNumber, GAUGE_THRESHOLD)],
-    winThreshold: [WIN_THRESHOLD, winThresholdFor(enemy, layerIndex, fightNumber, WIN_THRESHOLD)],
+    ...combatThresholdsFor(playerState, enemy, layerIndex, fightNumber),
     classId: playerState.classId,
     enemyPassiveIds: enemy.passiveIds,
     ownedModIds: playerState.ownedModIds,

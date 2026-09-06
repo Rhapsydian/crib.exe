@@ -99,6 +99,14 @@ export interface CombatSideState {
    * reduces it, applied to the opponent's CombatSideState.winGauge, not
    * this one. */
   winGauge: DuelGauge;
+  /** This side's win threshold as it stood at the start of combat
+   * (session 48) -- the win-gauge counterpart to startingThreshold
+   * above, and needed for the same reason: combat.ts's escalation now
+   * derives its per-hand shrink and its floor from each side's own
+   * starting bar rather than from flat constants that silently assumed
+   * both sides began at 50. Never mutated; winGauge.threshold is the one
+   * escalation moves. */
+  startingWinThreshold: number;
   /** Trace: noise generated *within this fight only* (session 47).
    * Starts at 0 every combat, raised by riskRewardBurst payloads'
    * traceCost, lowered by traceReduction, and surfaced at combat end as
@@ -223,6 +231,7 @@ export function createCombatSideState(definitions: SubroutineDefinition[], gauge
     gauge: createInitiativeGauge(gaugeThreshold),
     startingThreshold: gaugeThreshold,
     winGauge: createDuelGauge(winThreshold),
+    startingWinThreshold: winThreshold,
     trace: 0,
     loadout: definitions.map((definition) => ({ definition, state: createInitialState() })),
     debuffs: [],

@@ -294,30 +294,69 @@ function advance(
 // squarely a stalemate rescue for the slow tail, not a broad tempo
 // pacer for the typical case), and shrinks fast enough to reach the
 // floor by hand 20 -- "effectively sudden death" by then, not just a
-// gentle nudge. The shrink rate (4/hand) is calibrated against
-// encounters.ts's real WIN_THRESHOLD (50): (50 - 10 floor) / 10 hands
-// of escalation = 4. Since a side's own banked progress never resets
-// when its threshold shrinks, reaching the floor while either side
-// already has meaningful progress banked resolves the match almost
-// immediately -- that's what makes hand 20 feel like sudden death for
-// most fights. It's not a guarantee on its own, though -- see
-// HARD_RESOLUTION_HAND below for the actual backstop that makes hand
-// 20 a true, unconditional deadline. All TBD/playtesting, same
-// placeholder convention as everywhere else in this project.
+// gentle nudge. Since a side's own banked progress never resets when its
+// threshold shrinks, reaching the floor while either side already has
+// meaningful progress banked resolves the match almost immediately --
+// that's what makes hand 20 feel like sudden death for most fights. It's
+// not a guarantee on its own, though -- see HARD_RESOLUTION_HAND below
+// for the actual backstop that makes hand 20 a true, unconditional
+// deadline. All TBD/playtesting, same placeholder convention as
+// everywhere else in this project.
+//
+// Session 48 made the shrink rate and the floor *derived per side*
+// rather than flat constants. They were 4/hand and 10, both silently
+// calibrated against a single shared win threshold of 50: (50 - 10) / 10
+// hands of escalation = 4. That assumption broke the moment
+// encounters.ts split BREACH_THRESHOLD from CONTAINMENT_THRESHOLD and
+// gave meta-progression a socket to move them independently -- a flat
+// 4/hand against a player bar lowered to 40 would reach the floor at
+// hand 17 while the enemy's reached it at 20, handing out a three-hand
+// sudden-death window as a side effect of an unrelated upgrade. Deriving
+// both from each side's own starting bar reproduces exactly 4 and 10 at
+// 50, and keeps "reach your own floor precisely at the deadline" true at
+// any value either side actually starts from.
 const ESCALATION_START_HAND = 10;
-const ESCALATION_SHRINK_PER_HAND = 4;
-const ESCALATION_MIN_THRESHOLD = 10;
+/** Hands of escalation before a side reaches its own floor --
+ * HARD_RESOLUTION_HAND minus ESCALATION_START_HAND, i.e. the floor is
+ * reached exactly as the deadline lands. */
+const ESCALATION_HANDS = 10;
+/** A side's escalation floor, as a share of its own starting win
+ * threshold -- 1/5 reproduces the old flat 10 against the old shared
+ * base of 50. */
+const ESCALATION_MIN_FRACTION = 1 / 5;
 
-/** Shrinks both sides' own win-gauge thresholds by ESCALATION_SHRINK_PER_HAND,
- * floored at ESCALATION_MIN_THRESHOLD -- never touches progress. Called
- * once per hand once the match has run at least ESCALATION_START_HAND
- * hands, so even a slow trickle of progress eventually crosses the
- * (shrinking) bar. */
+/** A side's own escalation floor. Exported for tests -- the derivation
+ * is the whole point of session 48's change here, and asserting it
+ * directly is far more robust than calibrating a stochastic fight to
+ * straddle it. */
+export function escalationFloorFor(startingWinThreshold: number): number {
+  return Math.max(1, Math.round(startingWinThreshold * ESCALATION_MIN_FRACTION));
+}
+
+/** A side's own per-hand escalation shrink -- whatever rate carries it
+ * from its starting bar to its own floor across exactly
+ * ESCALATION_HANDS. Exported for tests, same reasoning as above. */
+export function escalationShrinkPerHandFor(startingWinThreshold: number): number {
+  return Math.max(1, (startingWinThreshold - escalationFloorFor(startingWinThreshold)) / ESCALATION_HANDS);
+}
+
+/** Shrinks both sides' own win-gauge thresholds toward their own floors,
+ * never touching progress. Called once per hand once the match has run
+ * at least ESCALATION_START_HAND hands, so even a slow trickle of
+ * progress eventually crosses the (shrinking) bar. Each side's rate is
+ * derived from its own starting bar, so a side that starts higher
+ * shrinks faster and still lands on its floor at the same hand -- see
+ * the note above for why that stopped being true with one flat rate. */
 function applyEscalation(combatState: CombatState): CombatState {
-  const sides = combatState.sides.map((sideState) => ({
-    ...sideState,
-    winGauge: shrinkDuelThreshold(sideState.winGauge, ESCALATION_SHRINK_PER_HAND, ESCALATION_MIN_THRESHOLD),
-  })) as [CombatSideState, CombatSideState];
+  const sides = combatState.sides.map((sideState) =>
+    ({
+      ...sideState,
+      winGauge: shrinkDuelThreshold(
+        sideState.winGauge,
+        escalationShrinkPerHandFor(sideState.startingWinThreshold),
+        escalationFloorFor(sideState.startingWinThreshold),
+      ),
+    })) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
 }
 
