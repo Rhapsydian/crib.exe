@@ -2,7 +2,7 @@
 
 What is still to do. Completed work lives in `docs/roadmap-history.md`
 (the full prior contents of this file, moved verbatim in session 48) and
-in `session-logs/`.
+in `docs/session-logs/`.
 
 > **Looking for something that used to be here?** Session 48 moved every
 > completed phase, checkpoint write-up and stacked session update to
@@ -190,11 +190,13 @@ native win conditions were only added in session 40.
   alone because some of those phases still have live forward items here
   and some do not. Resolving them one by one belongs with the restructure.
 - **README.** Reviewed in session 48; see that session's log.
-- **Session-log directories are split.** `docs/session-logs/` holds
-  sessions 1–21; `session-logs/` holds 29–47 plus a combined
-  `00-prior-sessions-1-28.md`. Sessions 22–28 have no individual logs.
-  Consolidating into one directory is cheap and would remove a real
-  "where does this live" question.
+- **Sessions 22–28 have no individual logs.** The directories themselves
+  were consolidated into `docs/session-logs/` in session 48, but that
+  stretch is still covered only by the combined
+  `00-prior-sessions-1-28.md`, which also overlaps the individual logs
+  for 1–21. Low priority — reconstructing them after the fact is
+  probably not worth it — but worth knowing before trusting a gap in the
+  numbering.
 
 ---
 

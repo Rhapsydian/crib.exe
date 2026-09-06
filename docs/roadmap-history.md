@@ -34,15 +34,22 @@ accumulator became Trace in session 47), and constants since retuned
 (`GAUGE_THRESHOLD` was 8 throughout everything below; it is 12 as of
 session 48).
 
-For a specific session's story, prefer `session-logs/` — those are
+For a specific session's story, prefer `docs/session-logs/` — those are
 written as records and stay accurate. Read this when you want to know
 *why* a phase or checkpoint ended up shaped the way it did, and the
 session log alone is not enough.
 
-Note the session logs are currently split across two directories:
-`docs/session-logs/` holds sessions 1–21, `session-logs/` holds 29–47
-plus a combined `00-prior-sessions-1-28.md` summary. Consolidating them
-is an open cleanup item, flagged in `BACKLOG.md`.
+**A note on paths in the archived text below.** Session logs used to live
+in two directories — `docs/session-logs/` for sessions 1–21 and a
+top-level `session-logs/` for 29–47 — and were consolidated into
+`docs/session-logs/` in session 48. The body below is preserved verbatim
+and therefore still writes `session-logs/…` in many places; read those as
+`docs/session-logs/…`. The archive was deliberately not rewritten to fix
+them, because its whole value is being an unedited record.
+
+Sessions 22–28 have no individual logs at all; they are covered only by
+the combined `00-prior-sessions-1-28.md`, which overlaps the individual
+logs for 1–21.
 
 ---
 

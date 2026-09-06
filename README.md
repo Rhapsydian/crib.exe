@@ -103,11 +103,10 @@ That constraint is why the balance tooling above can exist at all.
 | `DESIGN.md` | The settled design — mechanics, archetypes, classes, enemies, resources, and the reasoning behind them |
 | `BACKLOG.md` | What is still to do, and the current balance picture |
 | `docs/roadmap-history.md` | Completed roadmap work and the per-checkpoint record of how it was built |
-| `session-logs/` | Per-session record of decisions and results |
+| `docs/session-logs/` | Per-session record of decisions and results |
 
-Note that session logs are currently split across `session-logs/`
-(29–47) and `docs/session-logs/` (1–21); consolidating them is an open
-item in `BACKLOG.md`.
+Sessions 22–28 have no individual log; that stretch is covered by the
+combined `docs/session-logs/00-prior-sessions-1-28.md`.
 
 ---
 
