@@ -4,11 +4,11 @@
  * caught rather than draining like an HP bar. See DESIGN.md Resources.
  *
  * Two independent accumulation sources: a lost regular/elite fight
- * (heatFromLoss, session 9's margin-of-loss formula, elite costing
- * noticeably more -- higher stakes for a harder, better-rewarded fight)
- * and a flat cost per map move (HEAT_PER_MOVE, session 19's free-roam
- * pressure). Gatekeeper losses bypass Heat entirely -- they go straight
- * to Quarantine -- so heatFromLoss only ever applies to regular/elite.
+ * (heatFromLoss, a flat per-tier charge -- elite costing much more,
+ * higher stakes for a harder, better-rewarded fight) and a flat cost per
+ * map move (HEAT_PER_MOVE, session 19's free-roam pressure). Gatekeeper
+ * losses bypass Heat entirely -- they go straight to Quarantine -- so
+ * heatFromLoss only ever applies to regular/elite.
  */
 
 export const HEAT_MAX = 100; // TBD/playtesting
@@ -42,15 +42,24 @@ export function addHeat(current: number, amount: number, max: number = HEAT_MAX)
 }
 
 /**
- * Heat gained from losing a regular or elite fight, scaled by how close
- * the player got to their own win before the fight ended -- the peak
- * fill-fraction their own win-gauge reached during the match (see
- * CombatResult.peakFillFraction[0], session 22+'s two-gauge redesign;
- * previously derived from the old shared scalar's peak value instead).
- * Getting your own gauge to 80% full before losing costs noticeably less
- * than being dominated from the first hand.
+ * Heat gained from losing a regular or elite fight: a flat charge by
+ * tier, so entering a fight is a legible risk/reward decision -- a
+ * regular costs a chunk, an elite costs much more.
+ *
+ * Session 50 removed the margin-of-loss scaler this used to apply
+ * (`BASE * (1 - peakFillFraction)`, session 9). It discounted a
+ * near-miss loss almost to nothing, which cost more in complexity and
+ * obfuscation than it returned: the player could not see the peak fill
+ * fraction, so the Heat charged for an apparently identical defeat
+ * varied for reasons they had no way to read. It also made the two loss
+ * kinds silently unequal -- attrition losses carry high player gauge
+ * fill by construction, so they were being discounted hardest, which was
+ * an accident of the formula rather than a design intent.
+ *
+ * Measured before removal: it was discounting real loss Heat by roughly
+ * half overall and ~70% for Warden, the class that loses narrowest and
+ * most often.
  */
-export function heatFromLoss(tier: 'regular' | 'elite', peakFillFraction: number): number {
-  const margin = Math.max(0, Math.min(1, peakFillFraction));
-  return Math.round(BASE_HEAT_BY_TIER[tier] * (1 - margin));
+export function heatFromLoss(tier: 'regular' | 'elite'): number {
+  return BASE_HEAT_BY_TIER[tier];
 }

@@ -581,7 +581,7 @@ function resolveFight(
       burnerRerollCost: 0,
     };
   }
-  const lossHeat = heatFromLoss(kind, result.peakFillFraction[0]);
+  const lossHeat = heatFromLoss(kind);
   return {
     newState: 'closed',
     heatDelta: lossHeat + result.traceGenerated,

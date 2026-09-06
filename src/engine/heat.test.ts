@@ -21,27 +21,24 @@ describe('addHeat', () => {
 });
 
 describe('heatFromLoss', () => {
-  // Breach/Containment redesign (session 22+): heatFromLoss now takes the
-  // losing side's own peak win-gauge fill fraction (0-1) directly --
-  // CombatResult.peakFillFraction[0] -- rather than a 0-100 shared-scalar
-  // peak value measured against a center point.
-  it('charges the full tier base when the player made no progress at all', () => {
-    expect(heatFromLoss('regular', 0)).toBe(15);
-    expect(heatFromLoss('elite', 0)).toBe(30);
+  // Session 50 removed the margin-of-loss scaler: the charge is now flat
+  // per tier, so entering a fight is a legible risk/reward decision
+  // rather than one whose cost depends on a peak gauge fill the player
+  // never sees.
+  it('charges a flat tier base, regardless of how the fight went', () => {
+    expect(heatFromLoss('regular')).toBe(15);
+    expect(heatFromLoss('elite')).toBe(30);
   });
 
-  it('charges noticeably less the closer the player got to their own win', () => {
-    const dominated = heatFromLoss('regular', 0);
-    const closeCall = heatFromLoss('regular', 0.9);
-    expect(closeCall).toBeLessThan(dominated);
+  it('costs much more for an elite -- higher stakes for a harder, better-rewarded fight', () => {
+    expect(heatFromLoss('elite')).toBeGreaterThan(heatFromLoss('regular'));
   });
 
-  it('elite costs meaningfully more than regular at the same margin -- higher stakes for a harder, better-rewarded fight', () => {
-    expect(heatFromLoss('elite', 0.3)).toBeGreaterThan(heatFromLoss('regular', 0.3));
-  });
-
-  it('clamps gracefully for out-of-domain fraction values', () => {
-    expect(heatFromLoss('regular', -0.5)).toBe(15); // no negative margin
-    expect(heatFromLoss('regular', 1.5)).toBe(0); // no heat left to charge past full progress
+  it('is a meaningful fraction of the Heat budget, so a loss is a real setback', () => {
+    // A regular loss should cost real progress toward HEAT_MAX, not a
+    // rounding error -- the near-miss scaler used to discount this to
+    // near zero on a close loss.
+    expect(heatFromLoss('regular') / HEAT_MAX).toBeGreaterThan(0.1);
+    expect(heatFromLoss('elite') / HEAT_MAX).toBeGreaterThan(0.25);
   });
 });

@@ -11,11 +11,12 @@
  *
  * Also prices two counterfactuals without changing any content:
  *
- *   --noNearMissScaler   heatFromLoss is BASE * (1 - peakFillFraction),
- *                        so a near-miss loss is nearly free. This reports
- *                        what losses would have cost at flat BASE.
  *   --containmentMult=N  scales Containment-loss Heat only, to size the
  *                        lever before touching heat.ts.
+ *
+ * (--noNearMissScaler was removed in session 50 along with the scaler it
+ * priced -- heatFromLoss is now a flat per-tier charge, so the
+ * counterfactual and the actual are the same number.)
  *
  * Both are arithmetic over `EncounterOutcome.fight`, not re-simulations:
  * they say what the SAME runs would have been charged, which isolates
@@ -54,7 +55,6 @@ const args = parseArgs(process.argv.slice(2));
 const seeds = Number(args.seeds ?? 300);
 const classes = args.classes ? (args.classes.split(',') as ClassId[]) : ALL_CLASSES;
 const acquisition = args.acquisition ?? 'synergy';
-const noNearMiss = args.noNearMissScaler === 'true';
 const containmentMult = Number(args.containmentMult ?? 1);
 
 interface Bucket {
@@ -83,8 +83,20 @@ const empty = (): Bucket => ({
 
 const byClass: Record<string, Bucket> = {};
 
+/** Win/loss per fight tier. A loss is the only encounter that charges
+ * Heat, so "how often is a fight actually lost" is the upstream question
+ * behind every Heat number below. */
+type Tier = 'regular' | 'elite' | 'gatekeeper';
+const fightsByClass: Record<string, Record<Tier, { wins: number; losses: number }>> = {};
+const emptyFights = (): Record<Tier, { wins: number; losses: number }> => ({
+  regular: { wins: 0, losses: 0 },
+  elite: { wins: 0, losses: 0 },
+  gatekeeper: { wins: 0, losses: 0 },
+});
+
 for (const classId of classes) {
   const b = (byClass[classId] = empty());
+  const f = (fightsByClass[classId] = emptyFights());
   for (let seed = 0; seed < seeds; seed++) {
     const result = playRun({
       ...(acquisition === 'synergy' ? SYNERGY_AWARE_PROFILE : {}),
@@ -105,6 +117,11 @@ for (const classId of classes) {
       }
       if (entry.type !== 'encounter') continue;
       const { heatSources: h, fight } = entry.outcome;
+      if (entry.nodeType === 'regularFight' || entry.nodeType === 'eliteFight' || entry.nodeType === 'gatekeeperFight') {
+        const tier: Tier = entry.nodeType === 'regularFight' ? 'regular' : entry.nodeType === 'eliteFight' ? 'elite' : 'gatekeeper';
+        if (entry.outcome.newState === 'inert') f[tier].wins++;
+        else f[tier].losses++;
+      }
       b.containmentLoss += h.containmentLoss;
       b.attritionLoss += h.attritionLoss;
       b.trace += h.trace;
@@ -130,7 +147,7 @@ for (const classId of classes) {
           : BASE_HEAT_BY_TIER.regular
         : BASE_HEAT_BY_TIER.regular;
 
-      const repriced = noNearMiss ? tierBase : tierBase * (1 - margin);
+      const repriced = tierBase; // flat per-tier since session 50
       b.actualLoss += charged;
       b.counterfactualLoss += isContainment ? repriced * containmentMult : repriced;
     }
@@ -140,9 +157,7 @@ for (const classId of classes) {
 const pct = (n: number, d: number) => (d === 0 ? '  n/a' : `${((n / d) * 100).toFixed(1)}%`.padStart(6));
 
 console.log(`\n${seeds} seeds/class, ${acquisition}/opportunistic, skill ${PLAYER_SKILL}, HEAT_MAX ${HEAT_MAX}`);
-if (noNearMiss || containmentMult !== 1) {
-  console.log(`counterfactual: ${noNearMiss ? 'flat BASE (no near-miss scaler)' : 'near-miss scaler kept'}` + (containmentMult !== 1 ? `, containment x${containmentMult}` : ''));
-}
+if (containmentMult !== 1) console.log(`counterfactual: containment x${containmentMult}`);
 
 console.log('\n=== gross Heat IN, per run, by source ===');
 console.log('class        moves    trace  contain  attrit    event  |  total   %moves  %trace  %loss');
@@ -156,6 +171,18 @@ for (const c of classes) {
       `${(b.event / b.runs).toFixed(1).padStart(8)}  | ${(total / b.runs).toFixed(1).padStart(6)}  ` +
       `${pct(b.move, total)}  ${pct(b.trace, total)}  ${pct(loss, total)}`,
   );
+}
+
+console.log('\n=== fight outcomes by tier (a loss is the only thing that charges Heat) ===');
+console.log('class        regular W/L      win%    elite W/L      win%    gatekeeper W/L    win%');
+for (const c of classes) {
+  const f = fightsByClass[c];
+  const row = (t: 'regular' | 'elite' | 'gatekeeper') => {
+    const w = f[t].wins;
+    const l = f[t].losses;
+    return `${String(w) + '/' + String(l)}`.padStart(9) + '  ' + pct(w, w + l);
+  };
+  console.log(`${c.padEnd(11)} ${row('regular')}   ${row('elite')}   ${row('gatekeeper')}`);
 }
 
 console.log('\n=== Heat OUT per run (outflows), and net ===');
@@ -183,7 +210,7 @@ for (const c of classes) {
   );
 }
 
-if (noNearMiss || containmentMult !== 1) {
+if (containmentMult !== 1) {
   console.log('\n=== counterfactual loss Heat (same runs, re-priced) ===');
   console.log('class        actual/run   repriced/run   delta/run   as % of total Heat in');
   for (const c of classes) {

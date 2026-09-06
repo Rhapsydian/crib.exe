@@ -33,13 +33,17 @@ Two deliberately separate resources, not one shared health stat:
   branch-selection friction — rest vs. push forward, risk vs. reward map
   choices. Needs a player-facing note somewhere in the eventual UI/copy
   explaining the "too much heat" idiom the name leans on. **Heat gained
-  on a lost duel** = a base amount set by encounter tier (regular/elite/
-  gatekeeper), adjusted by margin of loss — how close the player's own
-  gauge got to reaching its own win before the match ended, not literal
-  overshoot (a gauge stops mattering the instant either side reaches its
-  own threshold, so there's nothing past it to measure). A fight where
-  the player's own gauge reached 80% of its threshold before losing costs
-  noticeably less Heat than one where it barely moved. Exact numbers
+  on a lost duel** = a flat amount set by encounter tier — a regular loss
+  costs a chunk, an elite loss much more, so choosing to take a fight is
+  a legible risk/reward decision priced by what the fight is worth.
+  Session 50 removed the margin-of-loss adjustment this used to carry
+  (Heat scaled by how close the player's own gauge got to winning). It
+  read well on paper and worked against the resource's own transparency
+  rule below: peak gauge fill is not surfaced to the player, so two
+  apparently identical defeats charged different Heat for reasons they
+  could not see or plan around. It also discounted the two loss kinds
+  unequally by accident — attrition losses carry high player gauge fill
+  by construction, so they were discounted hardest. Exact numbers
   TBD/playtesting, same treatment as other unresolved tuning values. See
   Map & Run Structure for what a lost duel means structurally, including
   why gatekeeper/boss losses bypass Heat entirely and end the run
@@ -1764,8 +1768,9 @@ The house-style default elsewhere in this design is full transparency —
 Heat costs, gauge thresholds, and accumulator bank counts are all stated
 numbers; nothing else in the design hides information from the player.
 `transparent` and `visibleOdds` both preserve that: Heat's entire design
-(the free-roam movement model's flat per-move cost, the margin-of-loss
-formula) depends on the player being able to do real risk math, which a
+(the free-roam movement model's flat per-move cost, the flat per-tier
+loss charge) depends on the player being able to do real risk math,
+which a
 fully hidden outcome would undermine specifically for the one resource
 whose whole point is being reasoned about, not gambled with.
 `gamble`-tier choices are the one deliberate, contained exception —
