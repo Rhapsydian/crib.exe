@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import { createNode } from './map-types';
-import { resolveEncounter, combatThresholdsFor, GAUGE_THRESHOLD, BREACH_THRESHOLD, CONTAINMENT_THRESHOLD } from './encounters';
+import { totalHeatSources, NO_HEAT_SOURCES, resolveEncounter, combatThresholdsFor, GAUGE_THRESHOLD, BREACH_THRESHOLD, CONTAINMENT_THRESHOLD } from './encounters';
 import { ENEMY_ROSTER, type EnemyId } from './enemies';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
-import type { RunPlayerState } from './run';
+import { playRun, opportunisticTraversal, type RunPlayerState } from './run';
+import type { ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
 import { BREACHER_LOADOUT } from './subroutines';
 import { REWARD_OPTIONS_COUNT } from './rewards';
@@ -288,6 +289,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
     expect(outcome).toEqual({
       newState: 'inert',
       heatDelta: -20,
+      heatSources: { ...NO_HEAT_SOURCES, rest: -20 },
       quarantined: false,
       rewardTier: 'none',
       dataAwarded: 0,
@@ -312,6 +314,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
     expect(outcome).toEqual({
       newState: 'inert',
       heatDelta: 0,
+      heatSources: NO_HEAT_SOURCES,
       quarantined: false,
       rewardTier: 'none',
       dataAwarded: 0,
@@ -361,6 +364,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
     expect(outcome).toEqual({
       newState: 'inert',
       heatDelta: 0,
+      heatSources: NO_HEAT_SOURCES,
       quarantined: false,
       rewardTier: 'none',
       dataAwarded: 0,
@@ -423,4 +427,74 @@ describe('resolveEncounter -- non-fight nodes', () => {
   it('throws for a Relay -- it has no encounter to resolve', () => {
     expect(() => resolveEncounter(createNode('n', 'relay'), createRng(1), OVERWHELMING_PLAYER)).toThrow();
   });
+});
+
+describe('heatSources (session 50) -- Heat attribution', () => {
+  it('always sums to heatDelta, across real runs of every class', () => {
+    // The whole type is worthless if the parts do not reconstruct the
+    // whole, so this is asserted over real play rather than unit-built
+    // outcomes -- it has to hold for every construction site including
+    // the ones a hand-written test would not think to reach (Rest, Shop,
+    // an Event carrying a bonus fight).
+    let checked = 0;
+    let sawNonZero = 0;
+    for (const classId of ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'] as ClassId[]) {
+      for (let seed = 0; seed < 15; seed++) {
+        const result = playRun({ seed, classId, playerSkill: 0.85 });
+        for (const entry of result.log) {
+          if (entry.type !== 'encounter') continue;
+          expect(totalHeatSources(entry.outcome.heatSources)).toBe(entry.outcome.heatDelta);
+          checked++;
+          if (entry.outcome.heatDelta !== 0) sawNonZero++;
+        }
+      }
+    }
+    // Non-vacuity: a run of all-zero encounters would satisfy the sum
+    // trivially and prove nothing.
+    expect(checked).toBeGreaterThan(200);
+    expect(sawNonZero).toBeGreaterThan(25);
+  }, 30_000);
+
+  it('splits a lost fight by whether the enemy actually filled Containment', () => {
+    // Counts, not summed Heat. heatFromLoss is BASE * (1 - peakFill), so
+    // a Containment loss the player nearly won charges ZERO Heat -- summing
+    // amounts cannot tell "never happened" from "cost nothing".
+    let containmentLosses = 0;
+    let attritionLosses = 0;
+    for (const classId of ['breacher', 'warden', 'ghost'] as ClassId[]) {
+      for (let seed = 0; seed < 25; seed++) {
+        for (const entry of playRun({ seed, classId, playerSkill: 0.85, traversalStrategy: opportunisticTraversal }).log) {
+          if (entry.type !== 'encounter') continue;
+          const { heatSources, fight } = entry.outcome;
+          // At most one loss bucket can ever be charged per encounter.
+          expect(heatSources.containmentLoss === 0 || heatSources.attritionLoss === 0).toBe(true);
+          if (!fight || entry.outcome.newState !== 'closed') continue; // not a lost regular/elite fight
+          if (fight.resolvedBy === 'threshold') containmentLosses++;
+          else attritionLosses++;
+          // Whichever bucket is charged must match how the fight resolved.
+          const charged = fight.resolvedBy === 'threshold' ? heatSources.attritionLoss : heatSources.containmentLoss;
+          expect(charged).toBe(0);
+        }
+      }
+    }
+    // Deliberately low: lost regular/elite fights are RARE -- most runs end
+    // at a gatekeeper instead. 75 runs yield single digits.
+    expect(containmentLosses + attritionLosses).toBeGreaterThan(5);
+  }, 30_000);
+
+  it('never charges Heat for a gatekeeper loss', () => {
+    // Gatekeeper losses bypass Heat entirely and go to Quarantine
+    // (heat.ts) -- so they must contribute nothing to any bucket.
+    let seen = 0;
+    for (const classId of ['breacher', 'warden'] as ClassId[]) {
+      for (let seed = 0; seed < 40; seed++) {
+        for (const entry of playRun({ seed, classId, playerSkill: 0.85 }).log) {
+          if (entry.type !== 'encounter' || !entry.outcome.quarantined) continue;
+          expect(entry.outcome.heatSources).toEqual(NO_HEAT_SOURCES);
+          seen++;
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+  }, 30_000);
 });

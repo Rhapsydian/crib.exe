@@ -159,9 +159,96 @@ export function combatThresholdsFor(
   };
 }
 
+/**
+ * Where an encounter's `heatDelta` came from (session 50).
+ *
+ * Heat had three inflows and no attribution: a lost regular/elite fight,
+ * Trace carried out of combat, and the per-move cost. Only the last was
+ * separable, because `move` log entries carry their own `heatCost` --
+ * the other two were fused into a single `heatDelta` and could not be
+ * told apart after the fact.
+ *
+ * **Every field sums to `heatDelta`**, and `encounters.test.ts` asserts
+ * exactly that over real runs. Negative fields are outflows.
+ *
+ * The loss split is the point of this type rather than an extra: a fight
+ * lost because the enemy filled its own Containment gauge and a fight
+ * lost to the `HARD_RESOLUTION_HAND` deadline are different events that
+ * currently cost identical Heat (`heatFromLoss` reads neither). Tuning
+ * "Heat from Containment" needs them separated first; `CombatResult`
+ * already knows via `resolvedBy`, but that never used to escape
+ * `combat.ts`.
+ */
+export interface HeatSources {
+  /** A regular/elite fight the enemy won by genuinely filling its own
+   * Containment gauge (`resolvedBy: 'threshold'`). */
+  containmentLoss: number;
+  /** A regular/elite fight lost at the deadline instead -- the enemy
+   * denied a breach without ever filling Containment
+   * (`resolvedBy: 'attrition'`). Same Heat cost today; separated here so
+   * that is a choice rather than an accident. */
+  attritionLoss: number;
+  /** Trace carried out of combat, added on wins and losses alike. */
+  trace: number;
+  /** Negative. `heat-sink`'s refund on an elite/gatekeeper win. */
+  refund: number;
+  /** Negative. Rest at a Safehouse. */
+  rest: number;
+  /** Heat an Event applied directly. An Event's bonus fight is NOT
+   * counted here -- its Heat is folded into the real categories above,
+   * so "Heat from Containment losses" stays true wherever the fight
+   * happened. */
+  event: number;
+}
+
+export const NO_HEAT_SOURCES: HeatSources = {
+  containmentLoss: 0,
+  attritionLoss: 0,
+  trace: 0,
+  refund: 0,
+  rest: 0,
+  event: 0,
+};
+
+export function addHeatSources(a: HeatSources, b: HeatSources): HeatSources {
+  return {
+    containmentLoss: a.containmentLoss + b.containmentLoss,
+    attritionLoss: a.attritionLoss + b.attritionLoss,
+    trace: a.trace + b.trace,
+    refund: a.refund + b.refund,
+    rest: a.rest + b.rest,
+    event: a.event + b.event,
+  };
+}
+
+export function totalHeatSources(s: HeatSources): number {
+  return s.containmentLoss + s.attritionLoss + s.trace + s.refund + s.rest + s.event;
+}
+
 export interface EncounterOutcome {
   newState: NodeState;
   heatDelta: number;
+  /** Attribution for `heatDelta` -- see HeatSources. Required, not
+   * optional, so a new construction site cannot silently report zero. */
+  heatSources: HeatSources;
+  /**
+   * How a real fight at this node resolved (session 50). Absent for any
+   * non-fight node -- absence means "no fight happened", which is why
+   * this is optional where `heatSources` is not.
+   *
+   * Exists because `heatSources` alone cannot answer the questions it
+   * was built for. `heatFromLoss` is `BASE * (1 - peakFillFraction)`, so
+   * a Containment loss the player nearly won charges *zero* Heat and is
+   * indistinguishable, by Heat alone, from a loss that never happened.
+   * Counting loss *kinds* needs `resolvedBy`; costing the near-miss
+   * scaler counterfactually needs `peakFillFraction`. Both were computed
+   * inside `resolveFight` and thrown away.
+   */
+  fight?: {
+    resolvedBy: 'threshold' | 'attrition';
+    /** The player's own peak win-gauge fill (side 0), 0-1. */
+    peakFillFraction: number;
+  };
   quarantined: boolean;
   rewardTier: RewardTier;
   /** Data awarded, tiered via rewardTier (data.ts) -- 0 for any non-win
@@ -449,6 +536,8 @@ function resolveFight(
     return {
       newState: 'inert',
       heatDelta: result.traceGenerated - modified.heatRefund, // Failover (session 44); addHeat already floors at 0 (proven by Rest's own negative heatDelta)
+      heatSources: { ...NO_HEAT_SOURCES, trace: result.traceGenerated, refund: -modified.heatRefund },
+      fight: { resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction[0] },
       quarantined: false,
       rewardTier,
       dataAwarded: modified.dataAwarded,
@@ -472,6 +561,9 @@ function resolveFight(
     return {
       newState: 'unresolved',
       heatDelta: 0,
+      // A gatekeeper loss bypasses Heat entirely (heat.ts) -- nothing to attribute.
+      heatSources: NO_HEAT_SOURCES,
+      fight: { resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction[0] },
       quarantined: true,
       rewardTier: 'none',
       dataAwarded: 0,
@@ -489,9 +581,21 @@ function resolveFight(
       burnerRerollCost: 0,
     };
   }
+  const lossHeat = heatFromLoss(kind, result.peakFillFraction[0]);
   return {
     newState: 'closed',
-    heatDelta: heatFromLoss(kind, result.peakFillFraction[0]) + result.traceGenerated,
+    heatDelta: lossHeat + result.traceGenerated,
+    // resolvedBy 'threshold' on a player loss means the enemy genuinely
+    // filled its own Containment gauge; 'attrition' means it ran out the
+    // HARD_RESOLUTION_HAND clock without ever doing so. heatFromLoss
+    // charges the same for both -- separated here so that stays a choice.
+    heatSources: {
+      ...NO_HEAT_SOURCES,
+      containmentLoss: result.resolvedBy === 'threshold' ? lossHeat : 0,
+      attritionLoss: result.resolvedBy === 'threshold' ? 0 : lossHeat,
+      trace: result.traceGenerated,
+    },
+    fight: { resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction[0] },
     quarantined: false,
     rewardTier: 'none',
     dataAwarded: 0,
@@ -746,6 +850,7 @@ export function resolveEncounter(
         return {
           newState: 'inert',
           heatDelta: 0,
+          heatSources: NO_HEAT_SOURCES,
           quarantined: false,
           rewardTier: 'none',
           dataAwarded: 0,
@@ -766,6 +871,7 @@ export function resolveEncounter(
       return {
         newState: 'inert',
         heatDelta: -REST_HEAT_REDUCTION,
+        heatSources: { ...NO_HEAT_SOURCES, rest: -REST_HEAT_REDUCTION },
         quarantined: false,
         rewardTier: 'none',
         dataAwarded: 0,
@@ -856,6 +962,7 @@ export function resolveEncounter(
       return {
         newState: 'inert',
         heatDelta: 0,
+        heatSources: NO_HEAT_SOURCES,
         quarantined: false,
         rewardTier: 'none',
         dataAwarded: 0,
@@ -913,6 +1020,10 @@ export function resolveEncounter(
       return {
         newState: 'inert',
         heatDelta: (effect.heatDelta ?? 0) + (bonusFightOutcome?.heatDelta ?? 0),
+        // The bonus fight's own Heat keeps its real attribution -- only
+        // the Event's direct heatDelta counts as `event`, so "Heat from
+        // Containment losses" stays true wherever the fight happened.
+        heatSources: addHeatSources(bonusFightOutcome?.heatSources ?? NO_HEAT_SOURCES, { ...NO_HEAT_SOURCES, event: effect.heatDelta ?? 0 }),
         quarantined: false,
         rewardTier: bonusFightOutcome?.rewardTier ?? 'none',
         dataAwarded: (effect.dataDelta ?? 0) + (bonusFightOutcome?.dataAwarded ?? 0),
