@@ -708,7 +708,7 @@ real new tooling to get a native win condition at all — see the new
   of a specific pair in the same run, so a pool piece keyed to one exact
   id can go permanently or run-to-run dead (the exact bug found in Drive-
   By Exploit, Chain Infection, and 5 other existing pieces this session —
-  see BACKLOG.md's session 41 write-up for the full list and conversions).
+  see docs/roadmap-history.md's session 41 write-up for the full list and conversions).
   Id-based chaining is kept as a type option, reserved for contexts that
   *do* guarantee co-presence — a class's own fixed starting loadout, or a
   future mechanism (e.g. an Event) that grants a matched pair at once —
@@ -985,7 +985,7 @@ all. Not acted on this session — flagged here since it bears directly on
 how any future gatekeeper balance pass, or a future escalation-timeline
 retune, should be read.
 
-**The fix, shipped this session** (session log in `BACKLOG.md`'s top
+**The fix, shipped this session** (session log in `docs/roadmap-history.md`'s top
 "NEXT SESSION" section, same "shape now, content later" split every other
 system in this project has used): three new Encryption payload kinds and
 three new Root
@@ -1037,10 +1037,10 @@ fast real fights actually resolve) is flagged, not investigated further.
 The first phase of the user's own multi-session program (audit and
 roughly double the player-facing subroutine pool, then the enemy pool,
 then Mods, then a full class audit, then the gatekeeper roster, finishing
-with a heavy ablation-driven balance pass — see `BACKLOG.md`'s top "NEXT
+with a heavy ablation-driven balance pass — see `docs/roadmap-history.md`'s top "NEXT
 SESSION" section for the complete roadmap). Session 41 scoped and
 planned only; session 42 implemented all 8 checkpoints (A-H) — see
-`BACKLOG.md`'s "Player Pool Expansion — Implementation" section for the
+`docs/roadmap-history.md`'s "Player Pool Expansion — Implementation" section for the
 full 57-piece content plan and its execution notes. Pool 81 -> 138, all
 subroutines 99 -> 156, magnitude tuning deliberately left to a later
 balance-pass session.
@@ -1732,7 +1732,7 @@ new payload kinds needed. Authored and validated an 8-Burner content
 sample against the type system (2 combat, 3 map, 3 shop — one per new
 effect kind, confirming both `MapBurnerEffect` and `ShopBurnerEffect`
 need no changes). Full implementation-facing checkpoint spec (including
-the type system's exact shape) in `BACKLOG.md`'s new "Burners + Events
+the type system's exact shape) in `docs/roadmap-history.md`'s new "Burners + Events
 Implementation" write-up under Phase 5.
 
 ### Events (session 36, `/decision-session`)
@@ -1811,7 +1811,7 @@ not straight to `inert` (no automatic free pass) — matches the
 "recoverable, not automatic" framing this idea was banked under at
 session 9, and keeps a single-use item's power level in line with the
 rest of the pool. Full implementation-facing checkpoint spec in
-`BACKLOG.md`'s new "Burners + Events Implementation" write-up under
+`docs/roadmap-history.md`'s new "Burners + Events Implementation" write-up under
 Phase 5.
 
 ### Gameplay Simulation Heuristics (session 45, `/decision-session`)
@@ -1957,7 +1957,7 @@ installed piece.
 **Explicitly not done this session**: no code, no new files — shape and
 design only, same discipline as every prior scoping session. Full
 implementation-facing checkpoint spec (real function/file names, cited
-against the current codebase) is in `BACKLOG.md`'s new "Gameplay
+against the current codebase) is in `docs/roadmap-history.md`'s new "Gameplay
 Simulation Heuristics — Implementation" write-up under Phase 5, for a
 future `/dev-session`.
 
