@@ -455,7 +455,13 @@ export function eligibleEnemies(tier: EnemyTier, layerIndex: number): EnemyDefin
 // fixed per-layer bosses assigned at map-gen time, and overriding one
 // would contradict that fixed-identity design. TBD/playtesting, same as
 // every other numeric placeholder in this project.
-const OPENER_FIGHT_WINDOW = 3;
+// Exported so diagnostics can segregate opener fights instead of
+// hardcoding the number -- same single-source-of-truth reasoning as
+// GAUGE_THRESHOLD's own export (session 39). Session 50: an
+// opener-window fight uses a REGULAR enemy whatever the node's tier is,
+// so a diagnostic that keys on node tier silently counts easy regulars
+// as elites (23% of them, measured).
+export const OPENER_FIGHT_WINDOW = 3;
 const OPENER_LAYER = 1;
 
 function isOpenerWindow(fightsResolved: number): boolean {

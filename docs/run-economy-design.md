@@ -105,6 +105,64 @@ partial-reset idea belongs — base difficulty stays fully legible, and
 the compromise becomes a difficulty dial instead of a base rule. First
 concrete modifier for the otherwise-undesigned Ascension system.
 
+### D7 — A Safehouse is guaranteed on every layer ✅
+
+`safehouse` is currently 0.15 filler weight, so **25.8 / 20.6 / 20.1 /
+38.0%** of layers generate with none — worst at layer 4, where Heat is
+highest. Once Heat is a tight per-layer budget, "pay it down before the
+gatekeeper" becomes load-bearing, and a posted cost you cannot always pay
+down is worse than an unposted one. Guarantee at least one; count and
+placement TBD.
+
+### D8 — Difficulty comes from trigger FREQUENCY, not payload magnitude ✅
+
+The answer to "what makes a fight hard". Measured, and it overturned two
+prior hypotheses of mine along the way.
+
+Cribbage occurrence rates at the skill levels enemies actually play at:
+
+| skill | fifteen | pair | run | **flush** |
+|---|---|---|---|---|
+| 0.15 (regular) | 4.313 | 2.160 | 0.893 | **0.036** |
+| 0.5 (elite) | 4.613 | 2.319 | 1.081 | **0.053** |
+
+In a 4.1-hand fight a flush trigger fires **0.15 times** — about once
+every seven fights — against ~18 times per fight for a fifteen. A **~120x
+gap**. A flush-triggered enemy piece is effectively a blank slot.
+
+The association holds across the roster: the 8 enemies carrying an
+`occ:flush` trigger average **0.071** enemy peak fill and *every one*
+sits below 0.15, while the 12 without average **0.169**. All five most
+dangerous enemies carry none. Patch Runner is the pure case — half of its
+two-piece kit is a flush trigger, and it measures 0.004 peak with a p90
+of exactly 0.000.
+
+**This is also why `magnitudeScaler` is inert**, in both places it has
+now been measured (session 49's gatekeepers, session 50's regular/elite
+layer ramp): it scales the payload of pieces that never fire, and scaling
+zero gives zero.
+
+Two hypotheses this replaced, both wrong and both worth remembering:
+
+- *"Enemies are harmless because their kits are gated on Cribbage
+  occurrences they cannot hit."* Refuted: r = 0.109 between card-gated
+  fraction and peak fill, and fully card-gated kits scored **higher**
+  (0.169) than ungated ones (0.073). Zero-Day Broker is 3/3 card-gated
+  and second most dangerous. The variable is not *whether* a trigger is
+  card-gated but *how often that specific occurrence happens*.
+- *"Blackout Cell works because it is an attrition kit."* It has the
+  shortest fights of any dangerous enemy (3.3 hands).
+
+**Design consequence, not yet decided:** the layer ramp should probably
+run on trigger *reliability* rather than payload size — deeper enemies
+built from higher-frequency triggers — since that is the axis that
+demonstrably moves outcomes.
+
+**Open:** whether rare-occurrence triggers are equally dead on *player*
+pieces. The player drafts and can build toward a flush, and plays at 0.85
+(0.126/hand), so it is a weaker version of the same problem — but it has
+not been measured.
+
 ## Consequences to work through
 
 - **Total pressure loosens ~4× unless the cap drops.** Four budgets

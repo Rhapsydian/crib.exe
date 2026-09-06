@@ -24,6 +24,7 @@
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { playRun, opportunisticTraversal } from '../src/engine/run';
+import { ENEMY_ROSTER, OPENER_FIGHT_WINDOW } from '../src/engine/enemies';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
 import type { ClassId } from '../src/engine/classes';
@@ -62,6 +63,8 @@ const byEnemy: Record<string, Cell> = {};
 /** Keyed by how many fights the run had already resolved -- the closest
  * available proxy for "how much power has the player accumulated". */
 const byProgress: Record<string, Cell> = {};
+let openerFights = 0;
+let mismatched = 0;
 
 for (const classId of classes) {
   for (let seed = 0; seed < seeds; seed++) {
@@ -81,9 +84,16 @@ for (const classId of classes) {
       const won = entry.outcome.newState === 'inert';
       const idx = fightsSoFar++;
       if (f.tier === 'gatekeeper') continue; // gatekeeper-check.ts owns that tier
+      // f.tier is the NODE's tier. During the opener window
+      // pickRegularOrEliteEnemy returns a regular enemy whatever the node
+      // is, so keying on node tier counts easy regulars as elites -- 23%
+      // of them. Bucket by the enemy's OWN tier, and segregate openers.
+      const enemyTier = ENEMY_ROSTER.find((e) => e.id === f.enemyId)?.tier ?? f.tier;
+      if (idx < OPENER_FIGHT_WINDOW) { openerFights++; continue; }
+      if (enemyTier !== f.tier) mismatched++;
 
       const bucket = idx < 5 ? '00-04' : idx < 10 ? '05-09' : idx < 15 ? '10-14' : idx < 20 ? '15-19' : '20+';
-      for (const c of [bump(byTier, f.tier), bump(byTierLayer, `${f.tier}|L${entry.layerIndex + 1}`), bump(byEnemy, `${f.tier}|${f.enemyId}`), bump(byProgress, `${f.tier}|${bucket}`)]) {
+      for (const c of [bump(byTier, enemyTier), bump(byTierLayer, `${enemyTier}|L${entry.layerIndex + 1}`), bump(byEnemy, `${enemyTier}|${f.enemyId}`), bump(byProgress, `${enemyTier}|${bucket}`)]) {
         if (won) c.wins++;
         else c.losses++;
         c.enemyPeak.push(f.peakFillFraction[1]);
@@ -118,6 +128,7 @@ const header = (title: string) => {
 };
 
 console.log(`\n${seeds} seeds/class x ${classes.length} classes, ${acquisition}/opportunistic, skill ${PLAYER_SKILL}`);
+console.log(`excluded ${openerFights} opener-window fights (deliberately easy regulars, any node tier); ${mismatched} remaining node/enemy tier mismatches`);
 console.log('enemyPk = how full the ENEMY got its Containment gauge (0-1). This is how close the fight was.');
 
 header('by tier');
