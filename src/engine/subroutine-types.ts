@@ -395,6 +395,29 @@ export interface InstantManipulationPayload {
    * slow/haste pair the enemy-facing targets already gave Root --
    * see resolve.ts's instantManipulation case for the mechanics. */
   target: 'enemyGauge' | 'suitTally' | 'subroutineProgress' | 'enemyGaugeThreshold' | 'ownGauge' | 'ownGaugeThreshold';
+  /**
+   * Units depend on `target` — as they always have ('suitTally' has
+   * never meant the same thing as 'enemyGauge'), but session 48 made the
+   * split load-bearing, so it is spelled out here:
+   *
+   * - 'suitTally' / 'subroutineProgress': an absolute count, unchanged.
+   * - 'enemyGauge' / 'ownGauge': a **fraction of a turn**, resolved
+   *   against the affected side's *live* initiative threshold. 1 means
+   *   "a whole turn's worth of gauge progress."
+   * - 'enemyGaugeThreshold' / 'ownGaugeThreshold': a **fraction of a
+   *   threshold**, resolved against the affected side's *starting*
+   *   threshold. 1 means "raise/lower by one whole starting threshold."
+   *
+   * The threshold targets deliberately read the starting snapshot rather
+   * than the live value: resolving a fraction against a value this
+   * payload is itself mutating compounds multiplicatively, so a piece
+   * that fired twice would double a threshold rather than add twice the
+   * same amount, which is not what the flat-amount version did.
+   *
+   * Authored via subroutines.ts's TEMPO_MAG tier, not raw numbers. See
+   * resolve.ts's TEMPO/turnFraction for the reasoning behind
+   * denominating tempo in turns at all.
+   */
   amount: number;
   /** Required when target is 'subroutineProgress'. */
   targetSubroutineId?: string;

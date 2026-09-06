@@ -805,6 +805,15 @@ function turnFraction(combatState: CombatState, side: PlayerIndex, fraction: num
   return Math.max(1, Math.round(combatState.sides[side].gauge.threshold * fraction));
 }
 
+/** As turnFraction, but for payloads that move a *threshold* rather than
+ * progress -- resolved against the side's starting snapshot. A fraction
+ * of the live threshold would compound: a piece raising by "one whole
+ * threshold" twice would take 12 -> 24 -> 48 instead of 12 -> 24 -> 36,
+ * which is not what the flat-amount version it replaces did. */
+function thresholdFraction(combatState: CombatState, side: PlayerIndex, fraction: number): number {
+  return Math.max(1, Math.round(combatState.sides[side].startingThreshold * fraction));
+}
+
 /** Shape 1: first fire matching `wantArchetype` this combat gets a flat
  * bonus credited on top of whatever the fire already did. Used by Lucky
  * Guess (Script Kiddie) and Fresh Exploit (Zero-Day Broker). */
@@ -1583,16 +1592,22 @@ function resolvePayloadCore(
     case 'instantManipulation': {
       const amount = payload.amount * corruptionMultiplier(combatState, caster);
       if (payload.target === 'enemyGauge') {
+        // `amount` is a fraction of a turn (session 48) -- resolved
+        // against the *drained* side's own live threshold, since that's
+        // whose tempo is being denied. See the payload type's own units
+        // note.
         const targetState = combatState.sides[target];
-        const progress = Math.max(0, targetState.gauge.progress - amount);
+        const progress = Math.max(0, targetState.gauge.progress - turnFraction(combatState, target, amount));
         const sides = replaceSide(combatState.sides, target, { ...targetState, gauge: { ...targetState.gauge, progress } });
         return { ...combatState, sides };
       }
       if (payload.target === 'enemyGaugeThreshold') {
         // Permanent, non-expiring -- the counterpart to Malware's
         // temporary 'choked' debuff (see the 'debuff' case above).
+        // `amount` is a fraction of the target's *starting* threshold,
+        // not its live one, so repeated fires add rather than compound.
         const targetState = combatState.sides[target];
-        const gauge = { ...targetState.gauge, threshold: targetState.gauge.threshold + amount };
+        const gauge = { ...targetState.gauge, threshold: targetState.gauge.threshold + thresholdFraction(combatState, target, amount) };
         const sides = replaceSide(combatState.sides, target, { ...targetState, gauge });
         return { ...combatState, sides };
       }
@@ -1607,8 +1622,9 @@ function resolvePayloadCore(
         // a deliberate, documented simplification (this payload resolves
         // from resolvePayload, which has no access to combat.ts's
         // fire-and-check-winner loop to grant an immediate extra turn).
+        // `amount` is a fraction of a turn (session 48).
         const casterState = combatState.sides[caster];
-        const progress = casterState.gauge.progress + amount;
+        const progress = casterState.gauge.progress + turnFraction(combatState, caster, amount);
         const sides = replaceSide(combatState.sides, caster, { ...casterState, gauge: { ...casterState.gauge, progress } });
         return { ...combatState, sides };
       }
@@ -1617,8 +1633,9 @@ function resolvePayloadCore(
         // permanent raise, floored so it can never reach a threshold of
         // 0 (see MIN_INITIATIVE_THRESHOLD_FRACTION's own comment for why
         // that specifically would be unsafe, not just undesirable).
+        // `amount` is a fraction of the caster's *starting* threshold.
         const casterState = combatState.sides[caster];
-        const threshold = Math.max(minInitiativeThreshold(combatState, caster), casterState.gauge.threshold - amount);
+        const threshold = Math.max(minInitiativeThreshold(combatState, caster), casterState.gauge.threshold - thresholdFraction(combatState, caster, amount));
         const sides = replaceSide(combatState.sides, caster, { ...casterState, gauge: { ...casterState.gauge, threshold } });
         return { ...combatState, sides };
       }

@@ -126,7 +126,12 @@ const ROOTKIT_PERSISTENCE_SUBROUTINE: SubroutineDefinition = {
   name: 'Rootkit Persistence',
   archetype: 'root',
   trigger: { kind: 'always' },
-  payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: MOD_SMALL },
+  // A quarter of a turn (session 48). `enemyGauge` amounts are fractions
+  // of a turn, not point counts, so this can no longer share MOD_SMALL
+  // (2) with the genuinely absolute quantities that constant is used for
+  // elsewhere -- 2 against the old threshold of 8 was exactly a quarter
+  // turn, so this is the same effect it has always had.
+  payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: 1 / 4 },
   tags: ['daemon'],
 };
 

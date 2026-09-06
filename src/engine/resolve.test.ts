@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Card } from './cards';
 import { bestCardToForce } from './ai';
-import { NEUTRAL_RARES, BREACHER_LOADOUT } from './subroutines';
+import { NEUTRAL_RARES, BREACHER_LOADOUT, ALL_POOL_SUBROUTINES } from './subroutines';
 import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
 import {
   createCombatState,
@@ -1084,7 +1084,12 @@ describe('instantManipulation -- enemyGaugeThreshold target', () => {
   it("permanently raises the target's gauge threshold, no duration/expiry", () => {
     const state = createCombatState([], [], [12, 12]);
     const result = resolvePayload(
-      { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: 8 },
+      // Session 48: amounts on the four tempo targets are fractions, so
+      // these are written as n/12 against the threshold of 12 to assert
+      // exactly the point values they always did -- these tests are
+      // about the mechanics (raises, never expires, Corrupted scales
+      // it), not about any particular magnitude.
+      { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: 8 / 12 },
       'root',
       state,
       0,
@@ -1096,28 +1101,44 @@ describe('instantManipulation -- enemyGaugeThreshold target', () => {
   it('is reduced by Corrupted like any other instantManipulation amount', () => {
     let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
-    const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: 8 }, 'root', state, 0);
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: 8 / 12 }, 'root', state, 0);
     expect(result.sides[1].gauge.threshold).toBe(16); // 12 + 4 (halved)
+  });
+
+  it('resolves its fraction against the starting threshold, so repeated fires add rather than compound (session 48)', () => {
+    // A fraction of the *live* threshold would take 12 -> 24 -> 48 here,
+    // which is not what the flat-amount version this replaced did. The
+    // startingThreshold snapshot is what keeps it additive.
+    let state = createCombatState([], [], [12, 12]);
+    const whole = { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: 1 } as const;
+    state = resolvePayload(whole, 'root', state, 0);
+    expect(state.sides[1].gauge.threshold).toBe(24);
+    state = resolvePayload(whole, 'root', state, 0);
+    expect(state.sides[1].gauge.threshold).toBe(36);
   });
 });
 
 describe('instantManipulation -- ownGauge/ownGaugeThreshold targets (haste, session 24)', () => {
   it("ownGauge adds directly to the caster's own gauge progress, never the target's", () => {
     const state = createCombatState([], [], [12, 12]);
-    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGauge', amount: 5 }, 'root', state, 0);
+    // Session 48: amounts here are fractions of a turn, written as n/12
+    // against the threshold of 12 so these keep asserting exactly the
+    // point values they always did -- what's under test is the mechanics
+    // (own side only, uncapped overflow, floored, Corrupted-scaled).
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGauge', amount: 5 / 12 }, 'root', state, 0);
     expect(result.sides[0].gauge.progress).toBe(5);
     expect(result.sides[1].gauge.progress).toBe(0);
   });
 
   it("ownGauge can push progress past threshold without clamping -- the overflow is left for the next natural addPoints to carry", () => {
     const state = createCombatState([], [], [12, 12]);
-    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGauge', amount: 20 }, 'root', state, 0);
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGauge', amount: 20 / 12 }, 'root', state, 0);
     expect(result.sides[0].gauge.progress).toBe(20); // uncapped, not wrapped/floored here
   });
 
   it("ownGaugeThreshold permanently lowers the caster's own gauge threshold", () => {
     const state = createCombatState([], [], [12, 12]);
-    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 5 }, 'root', state, 0);
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 5 / 12 }, 'root', state, 0);
     expect(result.sides[0].gauge.threshold).toBe(7);
     expect(result.sides[1].gauge.threshold).toBe(12); // untouched
   });
@@ -1131,8 +1152,24 @@ describe('instantManipulation -- ownGauge/ownGaugeThreshold targets (haste, sess
   it('both haste targets are reduced by Corrupted like any other instantManipulation amount', () => {
     let state = createCombatState([], [], [12, 12]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'corrupted', magnitude: 1, duration: 3 }, 'malware', state, 1); // applies to side 0
-    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGauge', amount: 8 }, 'root', state, 0);
+    const result = resolvePayload({ kind: 'instantManipulation', target: 'ownGauge', amount: 8 / 12 }, 'root', state, 0);
     expect(result.sides[0].gauge.progress).toBe(4); // 8 halved
+  });
+
+  it("dns-poisoning lands above the floor instead of on it -- the point of session 48's re-denomination", () => {
+    // It previously spent UNCOMMON.burst (8) against a base threshold of
+    // 8, so one fire always landed exactly on the reduction floor
+    // whatever that floor was -- the floor *was* the effect. Base 12
+    // alone would not have fixed that (an 8-point cut still floors at
+    // 4). As half a threshold it lands at 6, and only a second fire
+    // reaches the floor.
+    const dnsPoisoning = ALL_POOL_SUBROUTINES.find((s) => s.id === 'dns-poisoning');
+    expect(dnsPoisoning).toBeDefined();
+    let state = createCombatState([], [], [12, 12]);
+    state = resolvePayload(dnsPoisoning!.payload, 'root', state, 0);
+    expect(state.sides[0].gauge.threshold).toBe(6);
+    state = resolvePayload(dnsPoisoning!.payload, 'root', state, 0);
+    expect(state.sides[0].gauge.threshold).toBe(4); // 6 - 6 = 0, floored at 12 * 1/3
   });
 });
 

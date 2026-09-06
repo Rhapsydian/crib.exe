@@ -83,6 +83,27 @@ const RARE = { burst: 13, tick: 5, pointsPerTick: 8, threshold: 10, bankTarget: 
  * (same "defensive numeric knob" shape). */
 const CAPPED = { common: 7, uncommon: 11, rare: 18 };
 
+/**
+ * Tempo tier (session 48) -- for `instantManipulation`'s four
+ * initiative-gauge targets only, which take **fractions of a turn** (or
+ * of a threshold) rather than point counts. See
+ * InstantManipulationPayload's own units note.
+ *
+ * These are literally the `burst` tier above divided by the old
+ * GAUGE_THRESHOLD of 8, so every converted piece keeps exactly the
+ * effect it had before this session: `common` 5/8 of a turn was
+ * COMMON.burst 5 against a threshold of 8, and so on. That is the point
+ * -- the conversion is a units fix, not a balance change, and the 8 -> 12
+ * threshold move is left to be the only thing that actually shifts
+ * numbers.
+ *
+ * Why the burst tier was ever the source is itself the bug being fixed:
+ * `burst` is a *damage* constant, and spending it as a tempo quantity
+ * meant a piece's tempo effect silently rescaled every time the
+ * initiative threshold moved, while its damage did not.
+ */
+const TEMPO_MAG = { tiny: 1 / 8, common: 5 / 8, uncommon: 1, rare: 13 / 8 };
+
 // Exported (session 39): enemy-subroutines.ts's own enemyState-triggered
 // content shares these same semantic thresholds ("what fraction counts as
 // the player winning") -- a real shared concept, unlike COMMON/UNCOMMON/
@@ -512,7 +533,7 @@ export const SABOTEUR_LOADOUT: SubroutineDefinition[] = [
     payload: {
       kind: 'scheduledSabotage',
       resolvesAt: 'nextDeal',
-      effect: { kind: 'instantManipulation', target: 'enemyGauge', amount: COMMON.burst },
+      effect: { kind: 'instantManipulation', target: 'enemyGauge', amount: TEMPO_MAG.common },
     },
     tags: ['trap'],
   },
@@ -562,7 +583,7 @@ export const OPERATOR_LOADOUT: SubroutineDefinition[] = [
     name: 'Ping Sweep',
     archetype: 'root',
     trigger: { kind: 'always' },
-    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: 1 },
+    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: TEMPO_MAG.tiny },
     tags: ['daemon'],
   },
 ];
@@ -629,7 +650,7 @@ export const GHOST_LOADOUT: SubroutineDefinition[] = [
     payload: {
       kind: 'scheduledSabotage',
       resolvesAt: 'nextDeal',
-      effect: { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: COMMON.burst },
+      effect: { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: TEMPO_MAG.common },
     },
     tags: ['trap'],
     reactive: true,
@@ -1566,7 +1587,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     name: 'Port Forward',
     archetype: 'root',
     trigger: { kind: 'enemyState', condition: 'breachContainmentBelow', value: BREACH_CONTAINMENT_THRESHOLD.low },
-    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: COMMON.burst },
+    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: TEMPO_MAG.common },
     tags: ['direct'],
   },
   {
@@ -1577,7 +1598,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     // pulling ahead on tempo, accelerate the caster's own initiative
     // gauge instead of denying theirs.
     trigger: { kind: 'enemyState', condition: 'gaugeFillAbove', fraction: GAUGE_FILL_FRACTION },
-    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
+    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: TEMPO_MAG.common },
     // Self-Haste, and its trigger can stay continuously true while the
     // enemy gauge sits above the fraction -- same cooldown as Cold Call.
     pointsCooldown: HASTE_POINTS_COOLDOWN,
@@ -1597,7 +1618,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     name: 'Cron Job',
     archetype: 'root',
     trigger: { kind: 'accumulator', metric: 'points', threshold: COMMON.threshold },
-    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: COMMON.burst },
+    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: TEMPO_MAG.common },
     tags: ['daemon'],
   },
   {
@@ -1608,7 +1629,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     payload: {
       kind: 'scheduledSabotage',
       resolvesAt: 'nextDeal',
-      effect: { kind: 'instantManipulation', target: 'enemyGauge', amount: COMMON.burst },
+      effect: { kind: 'instantManipulation', target: 'enemyGauge', amount: TEMPO_MAG.common },
     },
     tags: ['trap'],
   },
@@ -1653,7 +1674,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     name: 'Traceroute',
     archetype: 'root',
     trigger: { kind: 'occurrence', category: 'thirtyOne', variation: 'instant' },
-    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: COMMON.burst },
+    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: TEMPO_MAG.common },
     tags: ['direct'],
   },
   {
@@ -1663,7 +1684,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     // Renamed before authoring (session 41): the conversational draft's
     // "Ping Sweep" id already belongs to Operator's starting loadout.
     trigger: { kind: 'occurrence', category: 'go', variation: 'instant' },
-    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
+    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: TEMPO_MAG.common },
     tags: ['direct'],
     // Root's Trace generator (session 47): flooding a segment with
     // broadcast traffic is the noisiest thing in the archetype. Doubles as
@@ -1685,7 +1706,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     name: 'Cold Call',
     archetype: 'root',
     trigger: { kind: 'selfState', condition: 'traceBelow', value: COMMON.trace },
-    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
+    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: TEMPO_MAG.common },
     tags: ['direct'],
     // Self-limiting (session 47): now that it raises the Trace it gates
     // on, it switches itself off after a few fires. That alone would have
@@ -1706,7 +1727,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     name: 'Latency Injection',
     archetype: 'root',
     trigger: { kind: 'selfState', condition: 'isNonDealer' },
-    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: COMMON.burst },
+    payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: TEMPO_MAG.common },
     tags: ['direct'],
   },
   {
@@ -1727,7 +1748,7 @@ export const ROOT_COMMONS: SubroutineDefinition[] = [
     name: 'Payload Delivery',
     archetype: 'root',
     trigger: { kind: 'accumulator', metric: 'suitTally', suit: 3, threshold: COMMON.threshold },
-    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: COMMON.burst },
+    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: TEMPO_MAG.common },
     tags: ['daemon'],
     // Self-Haste on a re-arming accumulator -- same cooldown as Cold
     // Call. (Broadcast Storm is the fourth self-Haste piece and needs no
@@ -1746,7 +1767,18 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     // enemy pulls significantly ahead, permanently speed up the
     // caster's own initiative gauge instead of denying theirs.
     trigger: { kind: 'enemyState', condition: 'breachContainmentAbove', value: BREACH_CONTAINMENT_THRESHOLD.high },
-    payload: { kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: UNCOMMON.burst },
+    // Authored as an explicit half-threshold rather than a TEMPO_MAG
+    // tier (session 48) -- this is the one converted piece whose number
+    // genuinely changes, and it is the piece the whole re-denomination
+    // was for. It previously spent UNCOMMON.burst (8) against a base
+    // threshold of 8, so a single fire always landed exactly on the
+    // reduction floor whatever that floor was: the floor *was* the
+    // effect, and "reduce by 8" and "reduce by 80" were the same piece.
+    // Base 12 alone would not have fixed that -- an 8-point cut still
+    // floors at 4. As half a threshold it lands at 6, above the floor,
+    // and is finally a graded effect that a second fire can build on
+    // (6 -> floor) and that a differently-tuned sibling could undercut.
+    payload: { kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 1 / 2 },
     tags: ['direct'],
     reactive: true,
   },
@@ -1781,7 +1813,7 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     payload: {
       kind: 'scheduledSabotage',
       resolvesAt: 'nextDeal',
-      effect: { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: UNCOMMON.burst },
+      effect: { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: TEMPO_MAG.uncommon },
     },
     tags: ['trap'],
   },
@@ -1853,7 +1885,7 @@ export const ROOT_UNCOMMONS: SubroutineDefinition[] = [
     name: 'Ghost Protocol',
     archetype: 'root',
     trigger: { kind: 'chained', afterArchetype: 'root' },
-    payload: { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: UNCOMMON.burst },
+    payload: { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: TEMPO_MAG.uncommon },
     tags: ['worm'],
   },
 ];
