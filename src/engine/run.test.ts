@@ -486,6 +486,28 @@ describe('gatekeeperOverrides (session 49) -- the synthetic gatekeeper diagnosti
     expect(a && a.type === 'encounter' && b && b.type === 'encounter' ? b.outcome.heatDelta - a.outcome.heatDelta : 0).toBe(25);
   });
 
+  it('samples an empirical trace distribution rather than collapsing it to a mean', () => {
+    // Real gatekeeper trace is skewed (mean ~2.8, median 0), and feeding
+    // the mean as a constant deletes the tail that drives Heat deaths.
+    // The array form must actually spread across the samples, not pick
+    // one deterministically for every fight.
+    const samples = [0, 0, 0, 40];
+    const seen = new Set<number>();
+    for (let seed = 0; seed < 60; seed++) {
+      const result = playRun({
+        seed,
+        layerNodeCounts: TINY_LAYERS,
+        gatekeeperOverrides: [{ kind: 'synthetic', passRate: 1, traceGenerated: samples }],
+      });
+      const first = gatekeeperEntries(result)[0];
+      if (first && first.type === 'encounter') seen.add(first.outcome.heatDelta);
+    }
+    // Both a zero-trace and a tail draw must appear; a single value here
+    // would mean the index is constant and the distribution is fiction.
+    expect(seen.size).toBeGreaterThan(1);
+    expect(Math.max(...seen)).toBeGreaterThan(Math.min(...seen));
+  });
+
   it('honours the pass rate over a seed sweep, and stays deterministic per seed', () => {
     const HALF: GatekeeperOverride = { kind: 'synthetic', passRate: 0.5, traceGenerated: 0 };
     let reached = 0;

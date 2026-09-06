@@ -114,7 +114,13 @@ describe('SYNERGY_AWARE_PROFILE -- loadout preservation (session 46 regression)'
       }
     }
     expect(kept / total).toBeGreaterThan(0.75);
-  });
+    // 60 full runs at floor skill: ~4s on an idle machine, ~6.2s under
+    // load, against vitest's 5s default -- so this passed or failed
+    // depending on what else was running (session 49). The budget is
+    // raised rather than the work reduced; cutting seeds would weaken an
+    // end-to-end guard that exists precisely because the unit tests
+    // could not see the bug it catches.
+  }, 30_000);
 });
 
 describe('summarizeRunLoadout (session 46)', () => {

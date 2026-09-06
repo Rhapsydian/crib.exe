@@ -313,12 +313,22 @@ function strategiesForFight(
  * shape as session 48's `choked` rescale. Measured values at the
  * standing diagnostic config are ~2.8/2.6/1.2/0.8 by layer (small, but
  * supply them rather than assume).
+ *
+ * Prefer the ARRAY form. Real gatekeeper trace is heavily skewed --
+ * mean ~2.8 but median 0 -- so feeding the mean as a constant deletes
+ * the tail that drives Heat deaths: session 49's checkpoint 2 measured
+ * `heatMaxed` falling 12.5% -> 10.5% purely from that. Passing the
+ * empirical samples instead reproduces the distribution, not just its
+ * first moment.
  */
 export interface SyntheticGatekeeper {
   /** Probability in [0, 1] that the player passes. */
   passRate: number;
-  /** Trace the real fight would have generated on a win. */
-  traceGenerated: number;
+  /** Trace the real fight would have generated on a win. A single
+   * number is a fixed value; an array is an empirical sample drawn from
+   * uniformly (see syntheticCombatResult for why that draw costs no
+   * extra RNG). */
+  traceGenerated: number | number[];
 }
 
 /**
@@ -343,12 +353,21 @@ export interface SyntheticGatekeeper {
  */
 function syntheticCombatResult(spec: SyntheticGatekeeper, seed: number): CombatResult {
   const won = seed / 2 ** 31 < spec.passRate;
+  // The trace sample index is derived from `seed` by a multiplicative
+  // hash rather than drawn from the Rng, so supplying an empirical
+  // distribution still costs exactly the one draw a real fight costs and
+  // the "seed-aligned until outcomes differ" property survives. Hashed
+  // rather than taken modulo directly, so the index does not correlate
+  // with the coin, which reads the same integer.
+  const trace = Array.isArray(spec.traceGenerated)
+    ? (spec.traceGenerated[(Math.imul(seed, 2654435761) >>> 0) % spec.traceGenerated.length] ?? 0)
+    : spec.traceGenerated;
   return {
     winner: won ? 0 : 1,
     log: [],
     hands: [],
     peakFillFraction: won ? [1, 0] : [0, 1],
-    traceGenerated: won ? spec.traceGenerated : 0,
+    traceGenerated: won ? trace : 0,
     resolvedBy: 'threshold',
     burnersUsedThisCombat: [],
   };
