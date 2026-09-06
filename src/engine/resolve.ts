@@ -83,6 +83,15 @@ export interface LoadoutEntry {
 
 export interface CombatSideState {
   gauge: InitiativeGauge;
+  /** This side's initiative threshold as it stood at the *start* of
+   * combat, before any in-fight manipulation (session 48). Needed
+   * because the reduction floor is now a fraction rather than a flat
+   * constant (see MIN_INITIATIVE_THRESHOLD_FRACTION): resolving that
+   * fraction against the *live* `gauge.threshold` would make the floor
+   * chase the very value it exists to bound, so it resolves against
+   * this fixed snapshot instead. Never mutated after creation --
+   * `gauge.threshold` is the one that moves. */
+  startingThreshold: number;
   /** This side's own progress toward its own win -- see gauges.ts's
    * DuelGauge. Only this side's own offense ever credits it; nothing
    * else on this side reduces it (that would defeat the point of
@@ -212,6 +221,7 @@ export interface CombatState {
 export function createCombatSideState(definitions: SubroutineDefinition[], gaugeThreshold: number, winThreshold: number): CombatSideState {
   return {
     gauge: createInitiativeGauge(gaugeThreshold),
+    startingThreshold: gaugeThreshold,
     winGauge: createDuelGauge(winThreshold),
     trace: 0,
     loadout: definitions.map((definition) => ({ definition, state: createInitialState() })),
@@ -370,27 +380,38 @@ const THROTTLED_FLOOR = 1; // y -- TBD/playtesting
  * landing exactly on 0 and spinning addPoints forever. TBD/playtesting
  * beyond that hard floor. */
 /**
- * Floor for any reduction to a side's own initiative-gauge threshold.
+ * Floor for any reduction to a side's own initiative-gauge threshold,
+ * expressed as a fraction of that side's own *starting* threshold
+ * (session 48) rather than as a flat point count.
  *
- * Raised 1 -> 4 in session 47. The original 1 was chosen purely to keep
- * gauges.ts's addPoints (`while progress >= threshold`) from looping
- * forever on a threshold of 0 -- it prevented the crash without asking
- * what the value should actually be. At 1, every single point scored
- * grants a turn, which is 8x tempo against the base GAUGE_THRESHOLD of
- * 8, and session 47's loop detector caught it twice in real sweeps: one
- * side taking 53 and then 201 consecutive turns without the opponent
- * acting. The second occurrence aborted a gatekeeper-ablation run
- * outright, so this had gone from a balance smell to actively corrupting
- * measurement.
+ * History: 1 originally (chosen purely to keep gauges.ts's addPoints,
+ * `while progress >= threshold`, from looping forever on a threshold of
+ * 0 -- it prevented the crash without asking what the value should be).
+ * At 1 every single point scored granted a turn, 8x tempo against the
+ * then-base of 8, and session 47's loop detector caught it twice in real
+ * sweeps (one side taking 53 and then 201 consecutive turns), the second
+ * occurrence aborting a gatekeeper-ablation run outright. Raised to a
+ * flat 4 that session, capping the effect at 2x tempo against a base of
+ * 8.
  *
- * 4 caps the effect at 2x tempo. That matters more than it looks,
- * because the game's only threshold-reducing piece (DNS Poisoning)
- * reduces by 8 -- the whole base threshold -- so a single fire always
- * lands exactly on this floor. The floor IS the effect's magnitude, and
- * "halve your initiative threshold" is a strong uncommon rather than a
- * runaway.
+ * Session 48 made it a fraction. 1/3 reproduces exactly the old flat 4
+ * at the new base of 12, so this is not itself a balance change -- but
+ * it means the cap stays a consistent 3x swing at *any* starting
+ * threshold, which is what lets meta-progression lower a player's
+ * points-per-turn cost without silently widening or narrowing the range
+ * every haste effect in the game operates over. See
+ * CombatSideState.startingThreshold for why it resolves against the
+ * snapshot rather than the live threshold.
  */
-const MIN_INITIATIVE_THRESHOLD = 4;
+const MIN_INITIATIVE_THRESHOLD_FRACTION = 1 / 3;
+
+/** The real reduction floor for `side`, per the fraction above. Clamped
+ * to >= 1 unconditionally: the fraction is a design knob, but gauges.ts's
+ * infinite-loop guard is not negotiable, and a small enough starting
+ * threshold would otherwise round the floor to 0. */
+function minInitiativeThreshold(combatState: CombatState, side: PlayerIndex): number {
+  return Math.max(1, Math.round(combatState.sides[side].startingThreshold * MIN_INITIATIVE_THRESHOLD_FRACTION));
+}
 
 /** Throttled (a debuff kind) dents points about to be credited to a
  * side's gauge -- a flat reduction with a floor, clamped so it can
@@ -753,6 +774,37 @@ const EP_LARGE = 7;
 const EP_GROW_CAP = 5;
 const EP_GAUGE_CROSS_FRACTION = 0.5;
 
+/**
+ * Tempo magnitudes (session 48) -- fractions of a *turn*, not point
+ * counts, for anything that manipulates an initiative gauge.
+ *
+ * The EP_* constants above are spent across four unrelated denominators:
+ * the win gauge (threshold 50), ward shields, DoT tick magnitudes, and
+ * -- until this session -- the initiative gauge (threshold 8, now 12).
+ * One "small" therefore meant 25% of a turn in one place and 4% of a win
+ * in another, and every one of those meanings silently rescaled whenever
+ * the initiative threshold moved. The win-gauge/shield/tick uses are
+ * genuinely absolute and keep using EP_*; only the initiative-gauge uses
+ * move here.
+ *
+ * Values reproduce exactly what EP_SMALL/MEDIUM/LARGE meant against the
+ * old base of 8 (2/8, 4/8, 7/8), so session 48's 8 -> 12 change stays a
+ * pure turn-density change rather than also cutting every tempo effect
+ * by a third as a side effect.
+ */
+const TEMPO = { small: 1 / 4, medium: 1 / 2, large: 7 / 8 };
+
+/** Converts a fraction-of-a-turn into real gauge points for `side`,
+ * against that side's *live* threshold -- a quarter turn is a quarter
+ * turn whether or not the side is currently hasted. (Contrast
+ * minInitiativeThreshold above, which deliberately reads the starting
+ * snapshot instead, because a bound that moved with its own target
+ * wouldn't bound anything.) Floored at 1 so a fraction can never round
+ * down into a silent no-op. */
+function turnFraction(combatState: CombatState, side: PlayerIndex, fraction: number): number {
+  return Math.max(1, Math.round(combatState.sides[side].gauge.threshold * fraction));
+}
+
 /** Shape 1: first fire matching `wantArchetype` this combat gets a flat
  * bonus credited on top of whatever the fire already did. Used by Lucky
  * Guess (Script Kiddie) and Fresh Exploit (Zero-Day Broker). */
@@ -819,7 +871,8 @@ function tickBonus(
   state = listKey === 'hots' ? reduceWinGauge(state, 0, magnitude) : creditWinGauge(state, 1, magnitude);
   if (opts?.nudgeInitiative) {
     const sideState = state.sides[1];
-    state = { ...state, sides: replaceSide(state.sides, 1, { ...sideState, gauge: { ...sideState.gauge, progress: sideState.gauge.progress + EP_SMALL } }) };
+    const nudge = turnFraction(state, 1, TEMPO.small);
+    state = { ...state, sides: replaceSide(state.sides, 1, { ...sideState, gauge: { ...sideState.gauge, progress: sideState.gauge.progress + nudge } }) };
   }
   return state;
 }
@@ -887,15 +940,18 @@ function applyEnemyOnFirePassives(combatState: CombatState, payload: PayloadEffe
   state = consumePendingBonus(state, 'adaptive-defense', caster, EP_SMALL);
 
   if (archetype === 'root' && caster === 1) {
-    if (hasEnemyPassive(state, 'digital-ghost')) state = reduceInitiativeGaugeProgress(state, 0, EP_SMALL);
-    if (hasEnemyPassive(state, 'dead-drop-protocol')) state = reduceInitiativeGaugeProgress(state, 0, EP_SMALL);
+    // Tempo drains are denominated in the *drained* side's own turns
+    // (session 48) -- side 0 here, since that's whose gauge is losing
+    // progress, not the caster's.
+    if (hasEnemyPassive(state, 'digital-ghost')) state = reduceInitiativeGaugeProgress(state, 0, turnFraction(state, 0, TEMPO.small));
+    if (hasEnemyPassive(state, 'dead-drop-protocol')) state = reduceInitiativeGaugeProgress(state, 0, turnFraction(state, 0, TEMPO.small));
     if (hasEnemyPassive(state, 'off-the-grid')) {
       const sideState = state.sides[1];
       state = { ...state, sides: replaceSide(state.sides, 1, { ...sideState, wardShield: sideState.wardShield + EP_SMALL }) };
     }
     if (hasEnemyPassive(state, 'sleeper-network')) state = creditWinGauge(state, 1, EP_SMALL);
     if (hasEnemyPassive(state, 'total-access')) {
-      state = reduceInitiativeGaugeProgress(state, 0, EP_LARGE);
+      state = reduceInitiativeGaugeProgress(state, 0, turnFraction(state, 0, TEMPO.large));
       state = armPendingBonus(state, 'total-access');
     }
     if (hasEnemyPassive(state, 'primed-to-strike')) state = applyPrimedForSide1(state);
@@ -1504,7 +1560,7 @@ function resolvePayloadCore(
       // meantime, which would hang gauges.ts's addPoints forever.
       const gauge =
         removed.debuffId === 'choked'
-          ? { ...casterState.gauge, threshold: Math.max(MIN_INITIATIVE_THRESHOLD, casterState.gauge.threshold - removed.magnitude) }
+          ? { ...casterState.gauge, threshold: Math.max(minInitiativeThreshold(combatState, caster), casterState.gauge.threshold - removed.magnitude) }
           : casterState.gauge;
       const sides = replaceSide(combatState.sides, caster, { ...casterState, debuffs, gauge });
       return { ...combatState, sides };
@@ -1559,10 +1615,10 @@ function resolvePayloadCore(
       if (payload.target === 'ownGaugeThreshold') {
         // Haste's other half -- the mirror of enemyGaugeThreshold's
         // permanent raise, floored so it can never reach a threshold of
-        // 0 (see MIN_INITIATIVE_THRESHOLD's own comment for why that
-        // specifically would be unsafe, not just undesirable).
+        // 0 (see MIN_INITIATIVE_THRESHOLD_FRACTION's own comment for why
+        // that specifically would be unsafe, not just undesirable).
         const casterState = combatState.sides[caster];
-        const threshold = Math.max(MIN_INITIATIVE_THRESHOLD, casterState.gauge.threshold - amount);
+        const threshold = Math.max(minInitiativeThreshold(combatState, caster), casterState.gauge.threshold - amount);
         const sides = replaceSide(combatState.sides, caster, { ...casterState, gauge: { ...casterState.gauge, threshold } });
         return { ...combatState, sides };
       }
@@ -1956,7 +2012,7 @@ export function tickDebuffDurations(combatState: CombatState): CombatState {
       } else if (debuff.debuffId === 'choked') {
         // Floored at MIN_INITIATIVE_THRESHOLD -- see that constant's own
         // doc comment for the real hang this guards against.
-        gauge = { ...gauge, threshold: Math.max(MIN_INITIATIVE_THRESHOLD, gauge.threshold - debuff.magnitude) };
+        gauge = { ...gauge, threshold: Math.max(minInitiativeThreshold(state, side), gauge.threshold - debuff.magnitude) };
       }
     }
     state = { ...state, sides: replaceSide(state.sides, side, { ...sideState, debuffs: remaining, gauge }) };

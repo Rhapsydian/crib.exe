@@ -44,6 +44,23 @@ describe('enemy passives -- onFire hook', () => {
     expect(state.sides[0].gauge.progress).toBeLessThan(10);
   });
 
+  it('digital-ghost: the drain is a fraction of a turn, so it rescales with the threshold (session 48)', () => {
+    // Decision 2: tempo effects are denominated in turns, not points.
+    // TEMPO.small is a quarter turn, so the same passive drains 2 against
+    // a threshold of 8 and 3 against 12 -- the player loses the same
+    // *share* of a turn either way, which is what stops a future change
+    // to GAUGE_THRESHOLD (or meta-progression lowering a player's own)
+    // from silently rescaling every tempo effect in the game.
+    const drainAt = (threshold: number): number => {
+      let state = createCombatState([], [], [threshold, threshold], undefined, [100, 100], ['digital-ghost']);
+      state = { ...state, sides: [{ ...state.sides[0], gauge: { ...state.sides[0].gauge, progress: 20 } }, state.sides[1]] as typeof state.sides };
+      state = resolvePayload({ kind: 'instantManipulation', target: 'suitTally', amount: 0 }, 'root', state, 1);
+      return 20 - state.sides[0].gauge.progress;
+    };
+    expect(drainAt(8)).toBe(2); // 8 * 1/4
+    expect(drainAt(12)).toBe(3); // 12 * 1/4
+  });
+
   it('no-way-in: a Ward fire re-casts once more automatically', () => {
     let state = stateWithEnemyPassives(['no-way-in']);
     state = resolvePayload({ kind: 'ward', amount: 6 }, 'encryption', state, 1);

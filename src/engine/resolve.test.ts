@@ -1025,35 +1025,58 @@ describe("Choked -- temporary gauge-threshold bump", () => {
     expect(cleansed.sides[1].gauge.threshold).toBe(12);
   });
 
-  it("floors the reversal at MIN_INITIATIVE_THRESHOLD (natural expiry) -- the session 28 real-hang regression: Haste lowering the same threshold in between must not let Choked's revert push it to 0 or below", () => {
+  it("floors the reversal at the fractional floor (natural expiry) -- the session 28 real-hang regression: Haste lowering the same threshold in between must not let Choked's revert push it to 0 or below", () => {
+    // Starting threshold 4, so session 48's fractional floor
+    // (MIN_INITIATIVE_THRESHOLD_FRACTION, 1/3) rounds to 1 -- this
+    // fixture exercises the hard >= 1 clamp specifically. The scaling
+    // property itself is covered by its own test below.
     let state = createCombatState([], [], [4, 4]);
     // Choked raises 4 -> 9.
     state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 2 }, 'malware', state, 0);
     expect(state.sides[1].gauge.threshold).toBe(9);
     // Haste (ownGaugeThreshold) then lowers side 1's own threshold by 8,
-    // floored at MIN_INITIATIVE_THRESHOLD -- exactly the real Ghost in the
-    // Machine/Blackhat sequence (Botnet's Choked, then DNS Poisoning's
-    // Haste). Session 47 raised that floor 1 -> 4; what this regression
-    // actually protects is "never at or below 0", not the literal value.
+    // floored -- exactly the real Ghost in the Machine/Blackhat sequence
+    // (Botnet's Choked, then DNS Poisoning's Haste). What this regression
+    // actually protects is "never at or below 0", not any literal value.
     state = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 8 }, 'root', state, 1);
-    expect(state.sides[1].gauge.threshold).toBe(4);
+    expect(state.sides[1].gauge.threshold).toBe(1);
     // Choked's own naive reversal (threshold - 5) would land on -4
     // without the floor -- and a threshold at or below 0 hangs
     // gauges.ts's addPoints forever the next time any points are scored.
     state = tickDebuffDurations(state);
     state = tickDebuffDurations(state); // duration 2 -> 1 -> 0, expires
-    expect(state.sides[1].gauge.threshold).toBe(4);
+    expect(state.sides[1].gauge.threshold).toBe(1);
     expect(state.sides[1].gauge.threshold).toBeGreaterThan(0);
   });
 
-  it('floors the reversal at MIN_INITIATIVE_THRESHOLD (early cleanse) -- same regression, the cleanse path', () => {
+  it('floors the reversal at the fractional floor (early cleanse) -- same regression, the cleanse path', () => {
     let state = createCombatState([], [], [4, 4]);
     state = resolvePayload({ kind: 'debuff', debuffId: 'choked', magnitude: 5, duration: 10 }, 'malware', state, 0);
     state = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 8 }, 'root', state, 1);
-    expect(state.sides[1].gauge.threshold).toBe(4); // MIN_INITIATIVE_THRESHOLD, raised 1 -> 4 in session 47
+    expect(state.sides[1].gauge.threshold).toBe(1); // 4 * 1/3, clamped to the >= 1 hang guard
     const cleansed = resolvePayload({ kind: 'cleanse', debuffId: 'choked' }, 'encryption', state, 1);
-    expect(cleansed.sides[1].gauge.threshold).toBe(4);
+    expect(cleansed.sides[1].gauge.threshold).toBe(1);
     expect(cleansed.sides[1].gauge.threshold).toBeGreaterThan(0);
+  });
+
+  it('scales the reduction floor with each side\'s own starting threshold, not a flat constant (session 48)', () => {
+    // The whole point of decision 2/4: meta-progression can lower a
+    // player's points-per-turn cost, and every tempo effect -- including
+    // the bound on how far haste can take them -- rescales with it, so
+    // the in-combat swing range stays a consistent 3x at any starting
+    // value. Side 0 starts at the new base of 12, side 1 at a
+    // meta-progressed 9.
+    let state = createCombatState([], [], [12, 9]);
+    // A reduction far larger than either threshold, so both land on
+    // their own floor rather than on the arithmetic result.
+    state = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 99 }, 'root', state, 0);
+    state = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 99 }, 'root', state, 1);
+    expect(state.sides[0].gauge.threshold).toBe(4); // 12 * 1/3
+    expect(state.sides[1].gauge.threshold).toBe(3); // 9 * 1/3 -- a lower floor, earned
+    // startingThreshold is a fixed snapshot: the floor must not chase
+    // the live threshold down on a second application.
+    state = resolvePayload({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 99 }, 'root', state, 0);
+    expect(state.sides[0].gauge.threshold).toBe(4);
   });
 });
 
