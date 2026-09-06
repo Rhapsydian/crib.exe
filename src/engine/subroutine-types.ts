@@ -422,6 +422,19 @@ export interface InstantManipulationPayload {
   /** Required when target is 'subroutineProgress'. */
   targetSubroutineId?: string;
 }
+
+/** The `instantManipulation` targets whose `amount` is a fraction rather
+ * than an absolute count (session 48). Anything doing *unit-sensitive*
+ * arithmetic on a payload amount -- Merge's flat +3 bonus, the Primed
+ * passives' flat bonuses -- must branch on this, since adding 3 to a
+ * fraction means "plus three whole turns." Multiplicative scaling
+ * (enemies.ts's per-layer difficulty scaler) is unit-agnostic and does
+ * not need to care. */
+const TEMPO_MANIPULATION_TARGETS: readonly string[] = ['enemyGauge', 'ownGauge', 'enemyGaugeThreshold', 'ownGaugeThreshold'];
+
+export function isTempoManipulation(payload: PayloadEffect): boolean {
+  return payload.kind === 'instantManipulation' && TEMPO_MANIPULATION_TARGETS.includes(payload.target);
+}
 /**
  * Manipulates the underlying Cribbage layer itself, not combat state
  * directly. Always resolves at the next deal (like Scheduled Sabotage) —
@@ -646,9 +659,13 @@ export interface SubroutineDefinition {
    * own next activation. Session 47 found a real non-terminating fight:
    * Cold Call (`traceBelow` -> Haste on its own initiative gauge) fires,
    * grants itself a turn, fires again on that turn, and compounds -- fatal
-   * once Merge lifts its magnitude to the initiative threshold. All four
-   * self-Haste pieces are authored at 5 against a threshold of 8, so
-   * MERGE_MAGNITUDE_BONUS (3) puts them over at rank 1.
+   * once Merge lifts its magnitude to the initiative threshold. At the
+   * time, all four self-Haste pieces were authored at 5 against a
+   * threshold of 8, so MERGE_MAGNITUDE_BONUS (3) put them over at rank
+   * 1. Session 48 re-denominated those amounts as fractions of a turn
+   * (5/8) and gave Merge a matching fractional bonus (3/8), so the
+   * arithmetic is unchanged -- rank 1 still reaches a full turn, and
+   * this cooldown is still what stops it compounding.
    *
    * The cooldown is denominated in *scored points* specifically because
    * that is the one quantity such a piece cannot manufacture: scoring

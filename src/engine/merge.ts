@@ -1,7 +1,7 @@
 import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
 import type { RunPlayerState } from './run';
 import { HEAT_HIGH_FRACTION, HEAT_MAX } from './heat';
-import { CREDIT_CAPABLE_PAYLOAD_KINDS } from './subroutine-types';
+import { CREDIT_CAPABLE_PAYLOAD_KINDS, isTempoManipulation } from './subroutine-types';
 import { archetypeLadderPosition } from './loadout';
 
 /**
@@ -15,6 +15,17 @@ import { archetypeLadderPosition } from './loadout';
  */
 
 export const MERGE_MAGNITUDE_BONUS = 3; // TBD/playtesting
+
+/** The initiative threshold every flat magnitude bonus in this project
+ * was implicitly calibrated against, back when tempo amounts were point
+ * counts (session 48 re-denominated them as fractions -- see
+ * subroutine-types.ts's isTempoManipulation). Used only to convert those
+ * flat bonuses into their fractional equivalents, so a merged tempo
+ * piece gains exactly the tempo it always gained. Deliberately a frozen
+ * historical constant, NOT a reference to encounters.ts's live
+ * GAUGE_THRESHOLD: the point of the conversion is to preserve past
+ * behaviour, so it must not move when the live threshold does. */
+const OLD_GAUGE_THRESHOLD = 8;
 const MERGE_TRIGGER_EASE_AMOUNT = 2; // TBD/playtesting
 const MERGE_SCALING_CAP_BONUS = 2; // TBD/playtesting
 export const MERGE_RANK_CAP = 3; // TBD/playtesting, same treatment as the slot cap
@@ -82,13 +93,23 @@ function improveTriggerKnob(trigger: TriggerFamily): TriggerFamily {
  * scaledPayloadMagnitude (multiplicative, session 39's per-layer
  * difficulty scaler) -- factored out so the one big kind-by-kind dispatch
  * only has to exist once. */
-function transformPayloadMagnitude(payload: PayloadEffect, transform: (amount: number) => number): PayloadEffect | null {
+function transformPayloadMagnitude(
+  payload: PayloadEffect,
+  transform: (amount: number) => number,
+  /** Applied instead of `transform` to a tempo-denominated amount (see
+   * isTempoManipulation). Defaults to `transform`, which is correct for
+   * any multiplicative caller -- a multiplier is unit-agnostic. Additive
+   * callers MUST pass a fraction-denominated bonus here, or a flat +3
+   * lands as "plus three whole turns" (session 48). */
+  tempoTransform: (amount: number) => number = transform,
+): PayloadEffect | null {
   switch (payload.kind) {
+    case 'instantManipulation':
+      return { ...payload, amount: (isTempoManipulation(payload) ? tempoTransform : transform)(payload.amount) };
     case 'directBurst':
     case 'piercing':
     case 'riskRewardBurst':
     case 'instantCounterPush':
-    case 'instantManipulation':
     case 'traceReduction':
     case 'sessionHijack':
     case 'ward':
@@ -129,9 +150,23 @@ function transformPayloadMagnitude(payload: PayloadEffect, transform: (amount: n
  * upgrade shape. Exported (session 25) for Operator's reworked Primed
  * passive (`resolve.ts`) to reuse -- the same generic magnitude bump,
  * applied to the caster's next Exploit fire instead of a permanent
- * Merge upgrade. */
-export function improvedPayloadMagnitude(payload: PayloadEffect, amount: number): PayloadEffect | null {
-  return transformPayloadMagnitude(payload, (current) => current + amount);
+ * Merge upgrade.
+ *
+ * `tempoAmount` (session 48) is the same bonus re-denominated for the
+ * tempo-fraction payloads: it defaults to `amount / OLD_GAUGE_THRESHOLD`,
+ * which is exactly what the flat bonus used to be worth in turns back
+ * when tempo amounts were point counts against a threshold of 8. Every
+ * existing caller therefore keeps its historical effect without having
+ * to pass anything. This default is the safe one -- getting it wrong in
+ * the other direction (a flat +3 onto a fraction) means "plus three
+ * whole turns," which is precisely the runaway that session 47's
+ * pointsCooldown was invented to contain. */
+export function improvedPayloadMagnitude(payload: PayloadEffect, amount: number, tempoAmount: number = amount / OLD_GAUGE_THRESHOLD): PayloadEffect | null {
+  return transformPayloadMagnitude(
+    payload,
+    (current) => current + amount,
+    (current) => current + tempoAmount,
+  );
 }
 
 /** Scales a payload's magnitude by a multiplier -- enemies.ts's per-layer

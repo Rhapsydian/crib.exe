@@ -9,6 +9,8 @@ import {
   pickMergeTarget,
   scaledPayloadMagnitude,
   decayedPayloadMagnitude,
+  improvedPayloadMagnitude,
+  MERGE_MAGNITUDE_BONUS,
   MERGE_RANK_CAP,
   synergyAwareMergeTarget,
 } from './merge';
@@ -115,6 +117,39 @@ describe('scaledPayloadMagnitude (session 39, enemies.ts\'s per-layer difficulty
       debuffId: 'throttled',
       magnitude: 6,
       duration: 2,
+    });
+  });
+});
+
+describe('improvedPayloadMagnitude -- tempo amounts are fractions, not point counts (session 48)', () => {
+  it('applies a fraction-denominated bonus to a tempo target, not the flat one', () => {
+    // The flat bonus is 3. Adding it to DNS Poisoning's half-a-threshold
+    // would mean "reduce by three and a half whole thresholds" -- the
+    // exact runaway pointsCooldown exists to contain. It gets 3/8
+    // instead, which is what the flat 3 was worth in turns back when
+    // tempo was denominated in points against a threshold of 8.
+    expect(improvedPayloadMagnitude({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 1 / 2 }, MERGE_MAGNITUDE_BONUS)).toEqual({
+      kind: 'instantManipulation',
+      target: 'ownGaugeThreshold',
+      amount: 1 / 2 + 3 / 8,
+    });
+  });
+
+  it('still applies the flat bonus to the non-tempo instantManipulation targets', () => {
+    // suitTally/subroutineProgress are genuinely absolute counts and did
+    // not change units -- the split has to be per-target, not per-kind.
+    expect(improvedPayloadMagnitude({ kind: 'instantManipulation', target: 'suitTally', amount: 1 }, MERGE_MAGNITUDE_BONUS)).toEqual({
+      kind: 'instantManipulation',
+      target: 'suitTally',
+      amount: 4,
+    });
+  });
+
+  it('leaves multiplicative scaling alone -- a multiplier is unit-agnostic', () => {
+    expect(scaledPayloadMagnitude({ kind: 'instantManipulation', target: 'ownGauge', amount: 1 / 2 }, 2)).toEqual({
+      kind: 'instantManipulation',
+      target: 'ownGauge',
+      amount: 1,
     });
   });
 });

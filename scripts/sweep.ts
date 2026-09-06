@@ -47,7 +47,7 @@
  * half its own toolkit.
  * `enemy` sweeps a direct playCombat() between one named enemy
  * (enemies.ts) and one class's real starting kit, real game settings
- * (gaugeThreshold 8, winThreshold 50), reporting threshold vs.
+ * (encounters.ts's real GAUGE_THRESHOLD/WIN_THRESHOLD), reporting threshold vs.
  * attrition wins on each side -- exactly the shape used to verify the
  * 9 credit-incapable-enemy retrofits this session.
  */
@@ -62,6 +62,7 @@ import {
   type TraversalStrategy,
 } from '../src/engine/run';
 import { playCombat } from '../src/engine/combat';
+import { GAUGE_THRESHOLD, WIN_THRESHOLD } from '../src/engine/encounters';
 import { CLASS_STARTING_LOADOUTS } from '../src/engine/subroutines';
 import { ENEMY_ROSTER } from '../src/engine/enemies';
 import { preferMergeWhenAvailable, opportunisticSafehouseStrategy, type SafehouseStrategy } from '../src/engine/merge';
@@ -190,8 +191,12 @@ function sweepEnemy(args: Record<string, string>): void {
   for (let seed = 0; seed < seeds; seed++) {
     const result = playCombat([CLASS_STARTING_LOADOUTS[classId], enemy.loadout], {
       seed,
-      gaugeThreshold: [8, 8],
-      winThreshold: [50, 50],
+      // Session 48: was hardcoded [8, 8]/[50, 50], which silently
+      // diverged the instant GAUGE_THRESHOLD moved -- `enemy` mode would
+      // have gone on measuring the old value while `run` mode used the
+      // new one. Read the real constants instead.
+      gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD],
+      winThreshold: [WIN_THRESHOLD, WIN_THRESHOLD],
       classId,
       enemyPassiveIds: enemy.passiveIds,
     });

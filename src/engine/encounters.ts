@@ -71,12 +71,39 @@ const REST_HEAT_REDUCTION = 20; // TBD/playtesting
 // retuning against the actual roster was left for this phase's own
 // checkpoint E -- which, per session 39's audit, never actually
 // re-validated these two thresholds themselves (it focused on enemy
-// magnitudes and structural bugs). Still genuinely open. (The third
-// member of this old trio, FIGHT_MAX_HANDS, was removed in session 39 --
-// see combat.ts's HARD_RESOLUTION_HAND.)
+// magnitudes and structural bugs). (The third member of this old trio,
+// FIGHT_MAX_HANDS, was removed in session 39 -- see combat.ts's
+// HARD_RESOLUTION_HAND.)
 // Exported (session 39) so diagnostic scripts can reuse the single real
 // source of truth instead of copying these two numbers by hand.
-export const GAUGE_THRESHOLD = 8;
+//
+// Session 48 finally re-validated it, and raised it 8 -> 12.
+//
+// What 8 actually bought, measured rather than assumed: real per-side
+// Cribbage scoring is ~13.4 pts/hand for a skill-0.85 player and ~12.4
+// for the enemy roster (scripts/occurrence-frequency.ts -- dealer hand
+// 7.94 + crib 4.62 + pegging 2.99, non-dealer 7.74 + 2.99). With
+// overshoot carrying, a threshold of 8 is ~1.6 turns per side per hand,
+// and 3.2-4.6 subroutine *fires* per hand for the player. 12 takes that
+// to ~1.12 turns/hand (player) and ~1.03 (enemy) -- just over one.
+//
+// The tempo *ratio* between the two sides is scale-invariant (both carry
+// overshoot), so outscoring the enemy still buys ~8% more turns at 12
+// exactly as it did at 8 -- good Cribbage play keeps its full edge. Only
+// the absolute count shrinks, ~1.9 -> ~1.4 extra turns over a 15-hand
+// fight.
+//
+// Why raise it at all, then: 8 left threshold-manipulation content
+// nowhere to live. Against a reduction floor at 4, every reducing piece
+// in the game collapsed to "go to the floor" -- there was no granularity
+// to grade content across. 12 against the same floor gives that space a
+// real 3x range, and lets meta-progression sell a lower personal
+// threshold as a meaningful purchase. See session 48's decision record.
+//
+// This IS a global player nerf and is meant to be: four of six classes
+// measured above the 10-20% target band before it. Rebalancing on the
+// post-change numbers is explicitly follow-on work.
+export const GAUGE_THRESHOLD = 12;
 // Same empirical sweep as above -- 50 gave fast (~10-25 hand),
 // consistent convergence across the whole competitive magnitude range
 // while still leaving enough resolution for the amount-differences
