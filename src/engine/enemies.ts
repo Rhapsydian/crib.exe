@@ -149,8 +149,38 @@ export interface EnemyDefinition {
    * (falls back to the flat constant) for most gatekeepers still -- the
    * balance pass this plumbing was built for is ongoing, one layer at a
    * time. */
-  gaugeThreshold?: number;
   winThreshold?: number;
+  /**
+   * Per-gatekeeper tempo dial (session 48) -- multiplies the flat
+   * GAUGE_THRESHOLD to set how often this enemy gets a turn. Replaces
+   * session 40's `gaugeThreshold` absolute override, which no gatekeeper
+   * ever actually used: a stored absolute would pin a number that stops
+   * tracking the base the moment GAUGE_THRESHOLD moves, reintroducing
+   * exactly the units problem this session exists to fix. A multiplier
+   * tracks it. (`winThreshold` above stays absolute -- Null Session's 65
+   * is a real authored value, and the win gauge isn't denominated in
+   * anything that moves.)
+   *
+   * **Polarity is the inverse of magnitudeScaler's** -- this scales the
+   * *threshold*, and a lower threshold means more turns. So < 1 makes an
+   * enemy faster and more dangerous; > 1 slows it down. 1 (or undefined)
+   * is no change.
+   *
+   * Gatekeeper-only, same reasoning as magnitudeScaler: gatekeepers never
+   * repeat across layers, so a stored per-identity value is meaningful in
+   * a way it wouldn't be for regular/elite.
+   *
+   * BACKLOG.md's "Turn economy has no tuning dial" is what this closes:
+   * every prior tuning tool in the project targeted *damage*, so a tempo
+   * outlier could only be fixed by rewriting content. Note the measured
+   * limit, though -- this only moves output for an enemy whose firing is
+   * actually *turn-bound*. It will not move a readiness-bound kit
+   * (Adaptive Threat fires 2.3 times a fight at any threshold, because
+   * its whole loadout chains off a flush) and it will not fix the
+   * Quarantine Ward, whose total-quarantine nudge rides DoT/HoT ticks
+   * and so scales with fight *length* rather than turn count.
+   */
+  gaugeThresholdScaler?: number;
 }
 
 const SUBROUTINE_BY_ID: ReadonlyMap<string, SubroutineDefinition> = new Map(
@@ -524,7 +554,7 @@ export function magnitudeScalerFor(enemy: EnemyDefinition, layerIndex: number, f
   return enemyMagnitudeScaler(layerIndex, fightsResolved);
 }
 
-/** Per-side threshold accessors (session 40) -- the real gaugeThreshold/
+/** Per-side threshold accessors (session 40) -- the real initiative/
  * winThreshold for any enemy encounter, gatekeeper or not. Mirrors
  * magnitudeScalerFor's own shape, with one difference: there's no
  * universal "no override" constant the way magnitude has `1`, since the
@@ -535,7 +565,13 @@ export function magnitudeScalerFor(enemy: EnemyDefinition, layerIndex: number, f
  * formula the way magnitude gets one (a real, separate future balance
  * question, out of scope for this plumbing-only session). */
 export function gaugeThresholdFor(enemy: EnemyDefinition, layerIndex: number, fightsResolved: number, flatDefault: number): number {
-  if (enemy.tier === 'gatekeeper') return enemy.gaugeThreshold ?? flatDefault;
+  // Session 48: multiplicative (gaugeThresholdScaler) rather than the
+  // absolute override this used to read, so a tuned gatekeeper keeps
+  // tracking GAUGE_THRESHOLD instead of pinning a number that silently
+  // stops meaning the same thing when the base moves. Rounded, and
+  // floored at 1 for gauges.ts's addPoints loop guard -- a scaler small
+  // enough to round to 0 would hang the engine.
+  if (enemy.tier === 'gatekeeper') return Math.max(1, Math.round(flatDefault * (enemy.gaugeThresholdScaler ?? 1)));
   return flatDefault;
 }
 

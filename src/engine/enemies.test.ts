@@ -179,33 +179,50 @@ describe('gaugeThresholdFor/winThresholdFor (session 40, per-side threshold plum
   it('session 40 continued (balance pass): Null Session is the first gatekeeper with a real override, needing more of its own win-gauge progress to win (was crushing Saboteur/Warden specifically)', () => {
     const nullSession = ENEMY_ROSTER.find((e) => e.id === 'null-session')!;
     expect(nullSession.winThreshold).toBe(65);
-    expect(nullSession.gaugeThreshold).toBeUndefined();
+    expect(nullSession.gaugeThresholdScaler).toBeUndefined();
   });
 
-  it('every other gatekeeper still leaves both overrides unset -- the balance pass is ongoing, not done', () => {
+  it('every gatekeeper ships with the tempo dial unset -- session 48 delivered the knob, not new tuning', () => {
+    for (const gatekeeper of ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper')) {
+      expect(gatekeeper.gaugeThresholdScaler).toBeUndefined();
+    }
     for (const gatekeeper of ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper' && e.id !== 'null-session')) {
-      expect(gatekeeper.gaugeThreshold).toBeUndefined();
       expect(gatekeeper.winThreshold).toBeUndefined();
     }
   });
 
   it('falls back to flatDefault for a gatekeeper with no override set', () => {
     const firewallPrime = ENEMY_ROSTER.find((e) => e.id === 'firewall-prime')!;
-    expect(gaugeThresholdFor(firewallPrime, firewallPrime.minLayer, 10, 8)).toBe(8);
+    expect(gaugeThresholdFor(firewallPrime, firewallPrime.minLayer, 10, 12)).toBe(12);
     expect(winThresholdFor(firewallPrime, firewallPrime.minLayer, 10, 50)).toBe(50);
   });
 
-  it("reads a gatekeeper's own stored override when set, ignoring flatDefault", () => {
-    const overridden: EnemyDefinition = { ...ENEMY_ROSTER.find((e) => e.id === 'null-session')!, gaugeThreshold: 4, winThreshold: 30 };
-    expect(gaugeThresholdFor(overridden, overridden.minLayer, 10, 8)).toBe(4);
+  it("scales flatDefault by a gatekeeper's own tempo dial when set (session 48)", () => {
+    const nullSession = ENEMY_ROSTER.find((e) => e.id === 'null-session')!;
+    // Inverse polarity to magnitudeScaler: this scales the *threshold*,
+    // so below 1 is a faster, more dangerous enemy.
+    const faster: EnemyDefinition = { ...nullSession, gaugeThresholdScaler: 0.75 };
+    expect(gaugeThresholdFor(faster, faster.minLayer, 10, 12)).toBe(9);
+    const slower: EnemyDefinition = { ...nullSession, gaugeThresholdScaler: 1.5 };
+    expect(gaugeThresholdFor(slower, slower.minLayer, 10, 12)).toBe(18);
+    // Tracks the base rather than pinning a number -- the whole reason
+    // this replaced session 40's absolute override.
+    expect(gaugeThresholdFor(faster, faster.minLayer, 10, 8)).toBe(6);
+    // Rounded, and floored at 1 for gauges.ts's addPoints loop guard.
+    const absurd: EnemyDefinition = { ...nullSession, gaugeThresholdScaler: 0.01 };
+    expect(gaugeThresholdFor(absurd, absurd.minLayer, 10, 12)).toBe(1);
+  });
+
+  it('winThreshold stays an absolute override -- it is not denominated in anything that moves', () => {
+    const overridden: EnemyDefinition = { ...ENEMY_ROSTER.find((e) => e.id === 'null-session')!, winThreshold: 30 };
     expect(winThresholdFor(overridden, overridden.minLayer, 10, 50)).toBe(30);
   });
 
   it('regular/elite always return flatDefault, regardless of layer or fightsResolved -- no per-layer formula unlike magnitude', () => {
     const regular = ENEMY_ROSTER.find((e) => e.tier === 'regular')!;
     const elite = ENEMY_ROSTER.find((e) => e.tier === 'elite')!;
-    expect(gaugeThresholdFor(regular, 1, 0, 8)).toBe(8);
-    expect(gaugeThresholdFor(regular, 4, 10, 8)).toBe(8);
+    expect(gaugeThresholdFor(regular, 1, 0, 12)).toBe(12);
+    expect(gaugeThresholdFor(regular, 4, 10, 12)).toBe(12);
     expect(winThresholdFor(elite, 1, 0, 50)).toBe(50);
     expect(winThresholdFor(elite, 4, 10, 50)).toBe(50);
   });
