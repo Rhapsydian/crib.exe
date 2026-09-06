@@ -29,10 +29,15 @@ What exists, all headless and test-covered:
 | Balance | **in progress** — see `BACKLOG.md` |
 | UI, art | not started |
 
-Balance is the active work and is not settled. Full-run win rates
-currently range from 6.7% to 42.0% across the six classes against a
-10–20% target band, and the per-layer difficulty curve is non-monotonic.
-`BACKLOG.md` has the current numbers and what is being done about them.
+Balance is the active work and is not settled. Full-run win rates range
+from 6.0% to 39.3% across the six classes against a 10–20% target band.
+
+As of session 49 that spread is understood: **hold the gatekeeper roster
+still and it collapses to 11.0pp, with five of six classes inside the
+band** — so roughly two thirds of what reads as class imbalance is
+gatekeeper matchup. The per-layer curve is also non-monotonic, but the
+spike is layer 3 being a free layer (94.5% unfiltered), not layer 2 being
+too hard. `BACKLOG.md` has the numbers and what follows from them.
 
 ## Running it
 
@@ -77,13 +82,46 @@ kit, reporting threshold vs. attrition wins on each side.
 | `npx tsx scripts/occurrence-frequency.ts` | Real Cribbage occurrence frequency and score distributions, outside the roguelite layer — calibrates content thresholds against actual play |
 | `npx tsx scripts/cribbage-skill-matrix.ts` | What a given "player skill" value actually means, as a skill-vs-skill win-rate grid |
 
-Two conventions worth knowing before reading any number these produce.
-Player skill and enemy skill are **structurally decoupled** — the
-diagnostics default to `playerSkill=0.85`, anchored to the hardest real
-enemy's own skill ceiling (0.84) so a mirror match against it is roughly
-fair. And balance metrics are **full-run-derived by default**; anything
-measured from an isolated re-fight instead says so explicitly, because
-the two genuinely disagree.
+### Holding the gatekeepers still
+
+`sweep.ts` and `gatekeeper-check.ts` take
+`--syntheticGatekeepers=<4 slots>`, one per layer, which replaces a
+layer's gatekeeper *fight* with a weighted coin — or pins which member of
+the stable is drawn.
+
+```bash
+npm run sweep -- run --seeds=300 --syntheticGatekeepers=1,1,1,1
+npm run sweep -- run --seeds=300 --syntheticGatekeepers=0.78,0.72,0.66,0.60
+npx tsx scripts/gatekeeper-check.ts --syntheticGatekeepers=1,pin:zero-sum,1,1
+```
+
+It exists because a lost gatekeeper fight ends the run outright, so every
+layer's population is *strictly* "whoever beat the previous layer" — any
+per-layer or per-class number is otherwise measured on a cohort
+pre-selected by the very trait being measured. `1,1,1,1` removes that
+filter; a fixed curve holds the roster still while something else is
+read; `pin:` measures one gatekeeper against a controlled background.
+
+### Four conventions worth knowing before reading any number
+
+1. **Player skill and enemy skill are structurally decoupled** — the
+   diagnostics default to `playerSkill=0.85`, anchored to the hardest
+   real enemy's own skill ceiling (0.84) so a mirror match against it is
+   roughly fair.
+2. **Balance metrics are full-run-derived by default**; anything measured
+   from an isolated re-fight says so explicitly, because the two
+   genuinely disagree.
+3. **Anything measured with `--syntheticGatekeepers` is not a plain
+   full-run metric** and must say so. Those scripts print a provenance
+   line on every run that uses it.
+4. **Aggregating classes over shared seeds does not multiply the
+   sample.** `createRng(seed)` generates the map before any
+   class-dependent divergence, so at a given seed all six classes get the
+   same layout and the same gatekeeper — measured session 49, all six
+   drew the same layer-1 gatekeeper in 400/400 seeds. A six-class
+   aggregate has **~3.5× the variance** of an independent sample of the
+   same size, so its real standard error is roughly **1.9× the naive
+   `sqrt(p(1-p)/n)`**. Per-class numbers are unaffected; prefer them.
 
 ## Architecture
 

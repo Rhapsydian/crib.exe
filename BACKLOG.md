@@ -25,101 +25,156 @@ to. Ignoring that is what took this file to 4,396 lines.
 
 ---
 
-## Current state (end of session 48)
+## Current state (end of session 49)
 
 **Where the project is.** The engine is complete and content-real
-through Phase 5's systems work: Cribbage rules, the combat wrapper, the
-run/map layer, meta-progression, the 32-enemy roster, 138 player-facing
-subroutines, 40 Mods, 8 Burners, 8 Events. 791 tests, `npm run check`
-clean. **There is still no UI** — `npm run dev` serves the default
-Svelte scaffold.
+through Phase 5's systems work. 800 tests, `npm run check` clean.
+**There is still no UI.**
 
-**What session 48 changed.** Turn economy was re-derived from real
-measurement. `GAUGE_THRESHOLD` went 8 → 12 (~1.6 turns per side per hand
-→ ~1.12); every quantity that manipulates an initiative gauge became a
-*fraction* of a turn or of a threshold rather than a point count;
-`WIN_THRESHOLD` split into `BREACH_THRESHOLD` and
-`CONTAINMENT_THRESHOLD`; escalation's shrink and floor now derive per
-side; gatekeepers gained a `gaugeThresholdScaler` tempo dial;
-meta-progression gained sockets on `RunPlayerState`. A separate
-instrument audit closed a type-check gap over `scripts/`.
+**What session 49 did.** Built the *synthetic gatekeeper*
+(`RunOptions.gatekeeperOverrides`, `--syntheticGatekeepers` on
+`sweep.ts` and `gatekeeper-check.ts`) and used it to take three
+measurements. No content or constant was tuned — the picture below is
+diagnosis, and acting on it is the next session's job.
 
-**The single most important number.** Post-change full-run rates, 150
-seeds, `--acquisition=synergy --traversal=opportunistic`, skill 0.85:
-
-| class | before | after |
-|---|---|---|
-| Ghost | 32.7 | **42.0** |
-| Saboteur | 30.0 | 23.3 |
-| Operator | 23.3 | 18.0 |
-| Blackhat | 21.3 | 14.7 |
-| Breacher | 15.3 | 7.3 |
-| Warden | 10.7 | 6.7 |
-
-**Next session is the balance pass**, and it should start from the first
-item below rather than from per-class tuning.
+**The one-sentence finding: the gatekeeper roster — not the classes, and
+not the layer curve — is where the balance problem lives.**
 
 ---
 
 ## Balance — the active arc
 
-### 1. Is `GAUGE_THRESHOLD` an archetype-preference dial?
+### 1. `GAUGE_THRESHOLD` is roster-mediated — RESOLVED
 
-The nerf landed on five classes and **inverted on Ghost**. The tempo
-content is ratio-neutral by construction (`tripwire` went 8→13 and now
-goes 12→20; `ghost-protocol` 8→16 and now 12→24 — the same multiples),
-so the pieces do not explain it.
+Confirmed, and sharper than the hypothesis was. Sweeping 8/12/16 with the
+threshold as the *only* variable, 300 seeds:
 
-Working hypothesis: raising the threshold reduces *total actions for
-both sides*, and a denial/outlast kit benefits from a world with fewer
-actions in it while an offensive kit is the one paying for them. Ghost
-is the denial class. If that holds, this constant can never be a neutral
-difficulty dial — it will always move Ghost opposite to everyone else,
-and the rebalance must not lean on it.
+| class | 8 | 12 | 16 | slope | flat-roster slope |
+|---|---|---|---|---|---|
+| breacher | 12.7 | 6.0 | 5.0 | −7.7 | −2.0 |
+| blackhat | 20.3 | 14.3 | 11.7 | −8.6 | 0.0 |
+| saboteur | 26.7 | 25.0 | 19.7 | −7.0 | +5.0 |
+| operator | 22.0 | 16.7 | 11.3 | −10.7 | −2.4 |
+| warden | 10.3 | 6.0 | 4.7 | −5.6 | −1.7 |
+| **ghost** | 21.3 | 39.3 | 46.7 | **+25.4** | +2.3 |
+| spread | **16.4pp** | 33.3pp | **42.0pp** | | |
 
-**Test it directly before tuning anything else.** Ghost was above
-baseline under both traversals (42.0 opportunistic, 38.0 beeline), so
-this is not a traversal artefact.
+The archetype-preference effect is real, monotonic and large — Ghost
+gains 25.4pp across the range — but it **vanishes against a flat roster**
+(+2.3pp, not significant). So it is not an archetype dial in general; it
+is an archetype × gatekeeper-matchup interaction. The mechanism is the
+one session 48 spotted on the Quarantine Ward: raising the threshold
+lengthens fights, and a denial/outlast kit converts long fights into wins
+against *specific* gatekeepers.
 
-### 2. Dispersion is the real problem, and it got worse
+Two consequences:
 
-Spread went from 22pp (10.7–32.7) to 35.3pp (6.7–42.0). Against the
-10–20% target band: two classes in it, one just above, two below, and
-Ghost at more than double the top. Closing the spread matters more than
-moving the mean.
+- **The threshold is a dispersion dial.** Spread runs 16.4 → 33.3 →
+  42.0pp across 8/12/16. Session 48's 8 → 12 change cost ~17pp of
+  dispersion by itself — knowingly bought, to give threshold-manipulation
+  content room above the floor of 4, but now priced.
+- **Fix the roster and the threshold becomes usable again.** Every
+  flat-roster slope is ≤5pp. Sequencing: roster first, then this constant
+  is available as a difficulty lever.
 
-### 3. The difficulty curve is non-monotonic
+Session 48's own before/after table cannot be read as a threshold
+experiment — its "before" column is the *pre-session-48 engine*, so it
+confounds the threshold with four other checkpoint changes shipped
+alongside it.
 
-`gatekeeper-check.ts`, realistic accumulated power, all classes:
+### 2. Dispersion is a roster problem, not a class problem — REFRAMED
 
-| layer | pass rate |
-|---|---|
-| 1 | 71.7% |
-| 2 | **55.1%** |
-| 3 | 94.6% |
-| 4 | 67.3% |
+Holding the roster at a fixed per-layer curve collapses class spread from
+**33.3pp to 11.0pp** and puts five of six classes inside the 10–20% band:
 
-Layer 2 is the hardest layer in the game and layer 3 the easiest, by
-27pp. The funnel agrees — the collapse is L1→L2 for every class
-(Breacher 70.0% → 21.3%, Warden 65.3% → 18.7%). **Probably fix this
-before per-class tuning**: no amount of class balancing rescues a curve
-that peaks at layer 2.
+| class | real roster | flat roster | delta |
+|---|---|---|---|
+| breacher | 6.0% | 15.7% | +9.7 |
+| blackhat | 14.3% | 12.3% | −2.0 |
+| saboteur | 25.0% | 23.3% | −1.7 |
+| operator | 16.7% | 18.7% | +2.0 |
+| warden | 6.0% | 12.3% | +6.3 |
+| ghost | 39.3% | 16.0% | −23.3 |
 
-### 4. Fight-length dispersion (deferred from session 48)
+Only three classes move significantly (Ghost ~7σ, Breacher ~3σ, Warden
+~2σ); the other three do not move at all. **Roughly two thirds of what
+has been read as class imbalance is gatekeeper matchup.**
 
-Fights run 2.7–16.7 hands against `combat.ts`'s own claimed 10–25, which
-makes every bank/accumulator-shaped trigger silently conditional on
-which enemy was drawn. The 8 → 12 change narrowed it only to ~5×; short
-fights lengthened ~25% while long ones stayed pinned by
-`HARD_RESOLUTION_HAND`. Content-shaped (burst kits vs. grind kits), so
-it needs its own session.
+The decomposition is clean, because the control was run too — a synthetic
+set to today's *measured* rates keeps current difficulty and removes only
+roster variance:
 
-### 5. The full class audit
+- real roster → measured-rate synthetic: 33.3 → 12.5pp (variance)
+- measured-rate → designed monotonic: 12.5 → 11.0pp (curve shape)
 
-Still the roadmap's stated next phase, and now genuinely unblocked (the
-session 47 eviction bug that was suppressing three classes is fixed).
-Five of six classes touch Encryption or Root, the two archetypes whose
-native win conditions were only added in session 40.
+Curve shape buys essentially nothing. **Variance** is what matters.
+
+### 3. The layer curve — the spike is layer 3, not layer 2 — CORRECTED
+
+Measured against a genuinely unfiltered cohort
+(`--syntheticGatekeepers=1,1,1,1`; the plain numbers are
+survivorship-conditioned, because losing a gatekeeper fight ends the run
+and every deeper cohort is therefore pre-selected):
+
+| layer | conditioned | unfiltered |
+|---|---|---|
+| 1 | 71.7% | 71.7% |
+| 2 | 54.9% | 50.7% |
+| 3 | 94.6% | **94.5%** |
+| 4 | 66.9% | 55.0% |
+
+Layers 2 and 4 are comparably hard. **Layer 3 is a 44pp spike of
+easiness**, and its *entire* stable is broken — Total Compromise 87.5%,
+Adaptive Threat 98.0%, Silent Corruption 98.9% — despite carrying the
+highest `magnitudeScaler` in the game (1.6, vs layer 2's 1.3–1.45).
+**Payload magnitude is therefore not what makes a gatekeeper hard**,
+which invalidates the session 39 scaler as the roster's tuning lever.
+
+Worth keeping: survivorship bias only shows up where outcomes are
+*sensitive* to cohort strength. Layer 3 barely moved when de-confounded,
+because a 94.5% fight is insensitive to who fights it; layer 4 moved
+11.9pp. The layers most in need of de-confounding are the ones that
+already look fine.
+
+### 4. The gatekeeper roster — NOW THE LEAD ITEM
+
+Unfiltered win rate per gatekeeper, 300 seeds:
+
+| layer | | | |
+|---|---|---|---|
+| 1 | firewall-prime **40.8** | ghost-process 72.2 | the-concierge **98.0** |
+| 2 | quarantine-ward **30.6** | incident-response 42.2 | zero-sum 76.1 |
+| 3 | total-compromise 87.5 | adaptive-threat **98.0** | silent-corruption **98.9** |
+| 4 | null-session 43.6 | kernel-panic 55.3 | ghost-in-the-machine 67.6 |
+
+**Within-layer spread exceeds between-layer spread** — 57pp at layer 1,
+45pp at layer 2, against 44pp across the whole curve. Which gatekeeper
+you draw matters more than which layer you are on. Three of twelve (The
+Concierge, Adaptive Threat, Silent Corruption) are not fights at all.
+
+The tool exists: `--syntheticGatekeepers=1,pin:<id>,1,1` measures one
+gatekeeper's marginal cost against a controlled background. The roadmap
+schedules the ablation-driven roster pass *last*, behind the class audit;
+session 49 deliberately held that sequencing (decision D1) rather than
+re-ordering on its own findings. **That call is worth revisiting with the
+numbers above in hand.**
+
+### 5. Per-layer difficulty target (new — now in `DESIGN.md`)
+
+`p = 0.78 / 0.72 / 0.66 / 0.60`, monotonically harder, calibrated so the
+mean full-run rate is 16.4%, inside the 10–20% band. The project had no
+numeric per-layer target before this.
+
+### 6. Fight-length dispersion (still deferred from session 48)
+
+Fights run 2.7–16.7 hands against `combat.ts`'s claimed 10–25.
+Content-shaped; needs its own session.
+
+### 7. The full class audit
+
+Still the roadmap's stated next phase. But see item 2 — against a
+controlled roster the classes are already nearly in band, so this should
+be read as "confirm and polish", not "close a 33pp gap".
 
 ---
 
@@ -152,6 +207,23 @@ native win conditions were only added in session 40.
   other.
 
 ---
+
+## Instrument notes (session 49)
+
+- **Aggregating classes over shared seeds does not multiply the sample.**
+  `createRng(seed)` builds the map before any class-dependent divergence,
+  so at one seed all six classes get the same layout and the same
+  gatekeeper (measured: 400/400 seeds). A six-class aggregate carries
+  ~3.5x the variance of an independent sample, so its true SE is ~1.9x
+  the naive `sqrt(p(1-p)/n)`. Per-class numbers are unaffected - prefer
+  them. Now recorded in `README.md`'s conventions.
+- **`encounters.ts:358` credits the Heat refund to "Failover"**, but the
+  code checks the `heat-sink` Mod. Stale comment, one-line fix.
+- **`layer-funnel.ts` does not take `--syntheticGatekeepers`** yet;
+  `sweep.ts` and `gatekeeper-check.ts` do.
+- **`profiles.test.ts`'s loadout-preservation guard** ran 60 full runs
+  against vitest's 5s default and failed whenever the machine was loaded.
+  Given an explicit 30s budget in session 49; the assertion is unchanged.
 
 ## Known content gaps
 

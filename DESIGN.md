@@ -1999,6 +1999,53 @@ investment:
   per-layer separation — there's exactly one gatekeeper node per layer,
   so a dedicated stable per layer is natural, not overbuilt.
 
+**Per-layer difficulty target (session 49).** "Very challenging for the
+layer it's presented at" was, until now, the only statement of intent —
+there was no number for the roster to be tuned toward, and so no way for
+a gatekeeper to be measurably wrong. The target is a **monotonically
+harder** per-layer pass rate:
+
+| layer | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| target pass rate | 0.78 | 0.72 | 0.66 | 0.60 |
+
+Calibrated, not picked: the compound (0.222) times the measured
+non-gatekeeper survival factor puts the mean full-run win rate at 16.4%,
+inside the 10–20% band adopted from Slay the Spire's ascension-0 rate.
+Verified by holding the roster at exactly this curve with
+`--syntheticGatekeepers` (README) and sweeping all six classes.
+
+**What the roster actually does today**, measured against an *unfiltered*
+cohort at every layer (`gatekeeper-check.ts --syntheticGatekeepers=1,1,1,1`,
+300 seeds — the plain numbers are survivorship-conditioned, since losing
+a gatekeeper fight ends the run and every deeper layer's cohort is
+therefore pre-selected):
+
+| layer | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| actual | 71.7% | 50.7% | **94.5%** | 55.0% |
+
+Two problems, and neither is the one previously assumed:
+
+- **Layer 3 is a free layer.** Its whole stable passes at 87.5–98.9%
+  (Total Compromise / Adaptive Threat / Silent Corruption) despite
+  carrying the *highest* `magnitudeScaler` in the game (1.6, against
+  layer 2's 1.3–1.45). Payload magnitude is therefore demonstrably not
+  what makes a gatekeeper hard — which is worth knowing, because the
+  session 39 scaler is the lever the roster has been tuned with.
+- **Which gatekeeper you draw matters more than which layer you're on.**
+  Within-layer spread reaches 57pp at layer 1 (Firewall Prime 40.8% vs
+  The Concierge 98.0%) and 45pp at layer 2 (Quarantine Ward 30.6% vs
+  Zero-Sum 76.1%), against 44pp across the entire layer curve. Holding
+  the roster still collapses class win-rate spread from 33.3pp to 11.0pp
+  and puts five of six classes inside the target band — so roughly
+  two thirds of what has been read as *class* imbalance is gatekeeper
+  matchup.
+
+The per-layer curve above is still the target. But closing the
+*within-layer* spread is the larger lever, and the two should not be
+confused again.
+
 **Every gatekeeper needs at least one bespoke, highly thematic piece**
 (session 43) — not elite or regular, which stay deliberately pure
 magnitude-scaled "stronger commons" (the tier-authoring split above), a
