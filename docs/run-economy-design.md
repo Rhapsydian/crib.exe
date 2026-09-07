@@ -493,9 +493,14 @@ session log; and this document loses the sections that shipped.
 - **Inflow shift still wanted.** Even with resets, if moves stay 57–77%
   of Heat the layer budget is still mostly a movement allowance. Baseline
   fight Trace is what makes it a budget about decisions.
-- **Blackhat gets its Trace forgiven three times.** 59.7 Trace/run and a
-  29.3% `heatMaxed` rate is the class's identity; a reset may defuse it
-  into ordinariness. Measure before committing.
+- **Blackhat's high Heat is intended and must survive the rebalance
+  (user, explicit).** "Blackhat having to be careful with its heat is
+  part of the class identity, so it's expected to be higher." So its 59.7
+  Trace/run and 29.3% `heatMaxed` are a design target, not a defect to
+  fix — but D4's reset forgives that Trace three times per run and may
+  defuse the identity into ordinariness. Measure Blackhat specifically
+  before committing to the reset numbers; it is the class most changed by
+  D4.
 - **Rest near a layer's end becomes dead value.** Mild feel-bad, but also
   a real use-it-or-lose-it decision.
 - **`heat.ts`'s own doc becomes wrong.** It describes Heat as "a
@@ -505,18 +510,33 @@ session log; and this document loses the sections that shipped.
 
 ## Still open
 
+- **Trigger-easing upgrades need re-pointing.** D11's consequence 2, and
+  the last unresolved piece of it: Merge's `easeTriggerCondition`,
+  Operator's Primed passive, `OVERCLOCKED_ACCUMULATOR_REDUCTION` and
+  `THRESHOLD_EXPLOIT_REDUCTION` all mean "fire sooner", which no longer
+  exists. "Merge adds a rider" is the obvious replacement. **Deliberately
+  deferred until after pillar calibration** — a rider cannot be priced as
+  an upgrade until checkpoint 4 says what a rider is worth.
 - **Gatekeeper toll size.** Proposed principle, not yet accepted:
   *optional content carries the steepest prices; mandatory content
-  carries a floor* — so the gatekeeper toll sits below what tier × layer
+  carries a floor* — so the gatekeeper toll sits below what tier x layer
   would extrapolate to, precisely because it cannot be declined.
-- **Fight difficulty.** Trace makes fights attritional but not
-  *losable*. 99.5%/98.0% win rates are untouched by everything above, and
-  the user has said they want real difficulty. Two measurements say
-  magnitude is not the lever; elite Blackout Cell (76.3% win, enemy peak
-  0.452) proves the engine can produce a real fight, so the answer is
-  probably kit shape — not yet investigated.
-- **Regular vs elite targets.** No intended win rates chosen.
-- **Safehouse guarantee**, given 20–38% of layers have none, and a posted
-  cost you cannot always pay down is arguably worse than an unposted one.
+- **Regular vs elite win-rate targets.** None chosen. Now downstream of
+  the pillar calibration rather than a standalone question: the pillars
+  say what a given floor+rider is worth, and the targets say how much to
+  buy.
 - **Safehouse rename.** Network maps do not have safe houses. Candidates:
   Cold Storage, Sandbox, Air-Gapped Host.
+- **Trace-triggered content migration** (from D1). Initialising `trace`
+  above zero ripples into `traceAbove`/`traceBelow` conditions. Largely
+  absorbed by D11, since the whole pool is being re-authored, but the
+  Mods and Burners that read Trace are not.
+
+## Resolved since first draft
+
+- ~~Fight difficulty / "what makes a fight hard".~~ Answered by D8
+  (trigger frequency, not magnitude) and superseded by D11, which removes
+  the premise by making every subroutine fire every turn.
+- ~~Safehouse guarantee.~~ Decided as D7.
+- ~~Whether rare-occurrence triggers are equally dead on player pieces.~~
+  Moot under D11: no trigger gates firing any more, for either side.
