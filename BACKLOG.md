@@ -208,6 +208,38 @@ be read as "confirm and polish", not "close a 33pp gap".
 
 ---
 
+## Dead mechanism: Occurrence `scaling` (session 50)
+
+`DESIGN.md:688` specifies the Scaling occurrence variation as
+"occurrences bank up to a per-subroutine cap, and payload magnitude
+scales with how many were actually banked when it fires." **The scaling
+half was never built.** `bankedOccurrences` is written in `triggers.ts`
+and read nowhere else in the engine, so `variation: 'scaling'` is
+behaviourally identical to `'instant'` — both set `ready: true` on each
+occurrence.
+
+Consequences today:
+
+- Three pool pieces use it and silently behave as plain instant triggers
+  (`go`/`RARE.cap`, `flush`/`UNCOMMON.cap`, `hisNobs`/3).
+- `merge.ts`'s `increasedScalingCap` — documented as "a genuine power
+  improvement" — raises a cap that has no effect. Merge is upgrading a
+  dead knob.
+- It bites hardest exactly where the trigger-pricing problem already
+  does: the flush piece using Scaling was meant to compensate for
+  rarity by scaling up, which is the compensation that turns out never
+  to have existed.
+
+Same class as session 39's dead pieces and session 46's unreachable
+Neutral pool: designed, documented, half-wired, silently inert.
+
+**Do not fix in place.** Session 50's D11
+(`docs/run-economy-design.md`) supersedes Scaling entirely — triggers
+become empowerment rather than gates, so the three pieces are
+re-authoring targets in the rebuild rather than repair targets. Logged
+here because the defect is real and independent of that direction, and
+because `increasedScalingCap` is live misinformation in the meantime.
+
 ## Instrument notes (session 49)
 
 - **Aggregating classes over shared seeds does not multiply the sample.**

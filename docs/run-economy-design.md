@@ -265,6 +265,75 @@ both cases where the interaction *is* the enemy. The table gives an
 expected baseline; the interesting production enemies are the ones that
 deviate from it.
 
+### D11 — Every subroutine has a per-turn effect; triggers EMPOWER ✅
+
+**The largest design decision in the project's history, taken knowingly.**
+Every subroutine gains a baseline per-turn effect. Triggers stop gating
+whether a piece acts and instead add effects and/or increase magnitude.
+Cantrips already work this way and become the template rather than a
+special case (`rewards.ts`: 4 pool-level Always-triggered Cantrips, one
+per archetype; 10 `always` pieces pool-wide).
+
+Rarity therefore gates **amplitude, never existence**. That is what fixes
+the pricing bug at the root instead of patching it per piece: a
+flush-triggered piece is no longer dead 96% of the time, it does its base
+job and spikes on a flush.
+
+The user accepted up front that almost all content is scrapped by this.
+
+**It supersedes D8's proposed fix and the Scaling variation alike.**
+DESIGN.md:688 already specifies Scaling as "occurrences bank up to a
+per-subroutine cap, and payload magnitude scales with how many were
+actually banked when it fires" — but Scaling still gates *firing* on the
+occurrence, so a rare-trigger piece stays mostly dead. D11 decouples the
+two axes: the turn clock decides **whether**, the trigger decides **how
+much**.
+
+#### Consequences that change the rebuild's shape
+
+1. **Output roughly doubles-to-triples unless floors are small.** Today
+   only *ready* pieces fire on a turn; under D11 all 6 installed pieces
+   fire every turn. Anchor: fights currently reach a 50 threshold in ~4.5
+   turns, i.e. ~11 progress per turn across the whole loadout — so the
+   per-piece per-turn floor lands near **1.5–2**, against a current
+   `COMMON.burst` of 5. Floors are roughly a third of today's common
+   burst, with empowerment supplying the variance.
+2. **"Easier to trigger" evaporates as an upgrade axis.** Merge's
+   `easeTriggerCondition`, Operator's Primed passive,
+   `occurrenceBankTargetReduction`, `THRESHOLD_EXPLOIT_REDUCTION` are all
+   "make this fire sooner" — meaningless when everything fires. They need
+   re-pointing to empowerment knobs (lower empowerment threshold, higher
+   cap, bigger rider). This touches Merge, Mods and a class passive, not
+   just the subroutine pool.
+3. **Trigger families change job, and not all map cleanly.**
+   `accumulator` and `occurrence` become charge counters naturally.
+   `selfState: isDealer` is boolean — it becomes a conditional bonus, not
+   a charge. `reactive`, `chained`, `firesAt` and `handOutcome` currently
+   describe *when* a piece fires outside the turn gate; under D11 they
+   have to mean "an extra fire" or "a bonus rider," which is a real
+   semantic decision per family.
+4. **Cooldowns get much stronger.** `pointsCooldown` and
+   `maxFiresPerCombat` now suppress a *guaranteed* floor rather than
+   gating an occasional fire, so their power level changes without any
+   number changing.
+
+#### What is and is not scrapped
+
+Scrapped or re-authored: the 159-piece subroutine pool, and the 32 enemy
+kits built from it. Mostly survives: Events, Burners, and the Mods that
+do not touch trigger-easing. Untouched: the Cribbage engine, map/run
+layer, Heat/Trace economy (D1–D7 above stand independently).
+
+#### This promotes the pillar suite from diagnostic to foundation
+
+With the pool scrapped there is no content to calibrate *against*, and
+the pillars stop being a measuring instrument and become the **authoring
+template**: every production subroutine is a pillar floor plus an
+empowerment rider. The checkpoint plan below gains weight rather than
+losing it, and the "hold the trigger constant, sweep magnitude ×
+frequency" design (D9) is exactly the two-component shape D11 asks
+content to be written in.
+
 ---
 
 ## Implementation plan — diagnostic pillar suite
