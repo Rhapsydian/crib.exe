@@ -126,9 +126,29 @@ Cribbage occurrence rates at the skill levels enemies actually play at:
 | 0.15 (regular) | 4.313 | 2.160 | 0.893 | **0.036** |
 | 0.5 (elite) | 4.613 | 2.319 | 1.081 | **0.053** |
 
-In a 4.1-hand fight a flush trigger fires **0.15 times** — about once
-every seven fights — against ~18 times per fight for a fifteen. A **~120x
-gap**. A flush-triggered enemy piece is effectively a blank slot.
+**Corrected below — the first version of this section overstated the
+gap.** Non-reactive pieces wait for the owning side's next turn
+(`resolve.ts`, "the normal turn-gate"); only `reactive` ones bypass it.
+So an occurrence sets *readiness*, and the turn gate caps actual fires at
+the enemy's own turn rate (~1.03/hand at `GAUGE_THRESHOLD` 12):
+
+| category | occurrences/hand | **effective fires/hand** |
+|---|---|---|
+| fifteen | 4.313 | ~1.03 |
+| pair | 2.160 | ~1.03 |
+| go | 1.795 | ~1.03 |
+| run | 0.893 | ~0.89 |
+| thirtyOne | 0.358 | 0.358 |
+| hisNobs | 0.222 | 0.222 |
+| flush | 0.036 | **0.036** |
+
+The real gap is **~28x**, not 120x, and the turn gate flattens the top
+four categories to roughly the same rate. So the pricing problem is
+narrower and sharper than first stated: fifteen / pair / go / run are
+already near-equivalent in practice, and it is specifically the four
+*rare* categories (thirtyOne, hisNobs, hisHeels, flush) that are
+underpriced. A flush-triggered piece still fires about once every seven
+fights against roughly four times per fight for a fifteen.
 
 The association holds across the roster: the 8 enemies carrying an
 `occ:flush` trigger average **0.071** enemy peak fill and *every one*
@@ -153,15 +173,158 @@ Two hypotheses this replaced, both wrong and both worth remembering:
 - *"Blackout Cell works because it is an attrition kit."* It has the
   shortest fights of any dangerous enemy (3.3 hands).
 
-**Design consequence, not yet decided:** the layer ramp should probably
-run on trigger *reliability* rather than payload size — deeper enemies
-built from higher-frequency triggers — since that is the axis that
-demonstrably moves outcomes.
+**Superseded.** An earlier draft of this section proposed running the
+layer ramp on trigger *reliability* rather than payload size. The user
+pushed back: magnitude was always supposed to be priced against trigger
+frequency, so a reliability ramp routes around a pricing bug instead of
+repairing it. Confirmed in the content — `cache-hit` (flush) and
+`checksum-match` (fifteen) both carry `COMMON.burst: 5` at ~28x
+different fire rates, magnitude is keyed to card *rarity* (drop rate),
+and no such principle appears in `DESIGN.md`. Session 40's
+`occurrence-frequency.ts` calibration did happen, but it tuned trigger
+*thresholds*, not payload magnitudes. See D9/D10 for what replaced
+this.
 
 **Open:** whether rare-occurrence triggers are equally dead on *player*
 pieces. The player drafts and can build toward a flush, and plays at 0.85
 (0.126/hand), so it is a weaker version of the same problem — but it has
 not been measured.
+
+### D9 — Pillar trigger is `always` + `pointsCooldown`, not an occurrence ✅
+
+The frequency dial for the calibration suite. Rejected alternative:
+holding an `occurrence: fifteen, instant` trigger constant across
+pillars.
+
+Why the cooldown wins:
+
+- **Continuous instead of eight scattered points.** Occurrence categories
+  give fixed x-values (0.036 … 4.313, most of them flattened by the turn
+  gate anyway). A cooldown sweeps smoothly.
+- **Low variance.** Fire timing stops being entangled with card luck, so
+  a clean response curve needs far fewer seeds.
+- **Same underlying dependency.** `pointsCooldown` "ticks only on the
+  owning side's own scoring" (`subroutine-types.ts`), which is what an
+  occurrence trigger depends on too — so the mapping between them is
+  natural rather than forced.
+
+Fire rate ≈ `min(turnRate, ownPoints / N)`. Enemies score ~11–12
+points/hand, so the sweep needs roughly **N = 8 → 320**, logarithmically
+spaced:
+
+| N | fires/hand | equivalent to |
+|---|---|---|
+| ~11 | ~1.0 (turn-limited) | fifteen / pair / go |
+| ~30 | 0.37 | thirtyOne |
+| ~50 | 0.22 | hisNobs |
+| ~300 | 0.036 | flush |
+
+**Caveat to validate, not assume:** a cooldown fires *evenly*;
+occurrences fire in *clusters*. Same mean rate, different variance — and
+in a threshold race, burstiness can spike a gauge over the line in a way
+even damage cannot. Validation is cheap and is a checkpoint below.
+
+### D10 — Build the diagnostic pillar suite before reworking enemies ✅
+
+User's call, and it inverts the order the project has used so far:
+production enemies were authored before any instrument existed to say
+what a given win condition is worth. The existing roster is expected to
+be **reworked** on top of the calibrated pillars, so it is deliberately
+*not* being audited or tuned first.
+
+Same move as the synthetic gatekeeper: make the thing you want to
+understand a controlled variable. Seven pillars, each one enemy with
+exactly one piece and no passive:
+
+| pillar | payload | scalar | win condition |
+|---|---|---|---|
+| Burst | `directBurst` | `amount` | credit on trigger |
+| DoT-Turn | `dot` / `castersTurnPulse` | `amountPerTick` | credit per own turn |
+| DoT-Points | `dot` / `globalPulse` | `amountPerTick` | credit per combined points |
+| Suppress | `instantCounterPush` | `amount` | push the player's Breach back |
+| Stall | `ward` | `amount` | absorb, win at `HARD_RESOLUTION_HAND` |
+| Tempo | `instantManipulation` | fraction | slow the player's initiative |
+| Throttle | `debuff: throttled` | `magnitude` | dent the player's scoring as it credits |
+
+They live in a separate `DIAGNOSTIC_ENEMIES` export, **not** in
+`ENEMY_ROSTER`, unreachable in real play and opt-in — same standing as
+the synthetic gatekeeper. Mixing calibration fixtures into a roster
+that is about to be reworked invites exactly the contamination that hit
+this session's own tier labelling.
+
+**Flagged in advance:** `DoT-Points` ticks on points scored by *either*
+side, so the player scoring well accelerates the enemy's clock. That is
+the Quarantine Ward pathology in pure form, and the suite should catch
+that class of design structurally rather than after four content
+patches.
+
+**Compositionality is an assumption, not a property.** Two pillars
+calibrated to 70% each will not compose to a known number — Blackout
+Cell's two passives and the Quarantine Ward's redundant tick feeds are
+both cases where the interaction *is* the enemy. The table gives an
+expected baseline; the interesting production enemies are the ones that
+deviate from it.
+
+---
+
+## Implementation plan — diagnostic pillar suite
+
+Checkpointed, pausing after each. Nothing here touches production content
+or constants; the existing roster is left alone by design (D10).
+
+### Checkpoint 1 — `DIAGNOSTIC_ENEMIES` and its plumbing
+
+- New module exporting the seven pillars, each parameterised by
+  `(scalar, pointsCooldown)` via a factory rather than authored
+  statically — the suite's whole job is to be swept.
+- Every pillar shares the same trigger (`always` + `pointsCooldown`) and
+  carries no passive, so a sweep moves exactly one variable.
+- Reachable only by explicit opt-in; a test asserts no diagnostic id is
+  selectable through `eligibleEnemies` / `pickRegularOrEliteEnemy` /
+  `assignGatekeeperEnemy`.
+- Tests: each pillar fires at the expected rate for a given cooldown;
+  each credits the gauge it claims to; none is reachable in real play.
+
+### Checkpoint 2 — the sweep harness (`scripts/pillar-check.ts`)
+
+- Two-axis sweep, magnitude × cooldown, logarithmic on cooldown
+  (N ≈ 8 → 320).
+- Measured against **real accumulated player state per layer**, captured
+  the way `gatekeeper-check.ts` does it — not a bare starting kit, which
+  is the lesson that script already learned.
+- Reports win rate, enemy peak fill and hands, since win rate alone
+  cannot distinguish "hard fight" from "not a fight" (session 50).
+- States its provenance in output, per README's conventions: these are
+  isolated re-fights against a diagnostic fixture, not full-run metrics.
+
+### Checkpoint 3 — burstiness validation (D9's caveat)
+
+Build one pillar both ways at matched mean fire rate — `thirtyOne,
+instant` versus cooldown ≈ 30 — and compare. Agreement validates the
+cooldown→occurrence mapping the whole calibration rests on. Divergence
+means burstiness is a real second variable, which is worth knowing on its
+own. **This gates checkpoint 4**: if the mapping does not hold, the
+frequency axis needs rethinking before any table is trusted.
+
+### Checkpoint 4 — run the calibration
+
+Produce the two tables: magnitude → win rate per layer, and fire rate →
+win rate. Invert to get the exchange rate between them — the content rule
+that turns out never to have been written, and which prices the **player**
+pool as much as the enemy one.
+
+### Checkpoint 5 — skill sensitivity
+
+Sweep player skill as a third axis and report, per pillar, whether win
+rate moves with it. A pillar that is flat across skill is a design that
+cannot be played around, only built around. This is the structural test
+for the Quarantine Ward pathology.
+
+### Checkpoint 6 — write-up
+
+Settled results move to `DESIGN.md` as the magnitude × trigger-frequency
+pricing rule; `BACKLOG.md` gets the roster rework that follows from it;
+session log; and this document loses the sections that shipped.
 
 ## Consequences to work through
 
