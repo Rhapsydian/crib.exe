@@ -334,6 +334,61 @@ losing it, and the "hold the trigger constant, sweep magnitude ×
 frequency" design (D9) is exactly the two-component shape D11 asks
 content to be written in.
 
+### D12 — Trigger family semantics under D11 ✅
+
+All eight families collapse into three modulator roles: **charge** (bank
+something, spend it as magnitude on the next per-turn fire),
+**condition** (while true, the fire is empowered), and **extra fire** (an
+additional fire outside the turn gate).
+
+| family | role | notes |
+|---|---|---|
+| `always` | none — pure floor | The cantrip. Becomes the pricing baseline for everything else. |
+| `occurrence` | charge | Its three variations dissolve (below) |
+| `accumulator` | charge | Same, counting raw progress; `threshold` becomes the stepped point |
+| `rareOccurrence` | charge, stepped | `minMagnitude` and `watchSide` both survive — watching the *enemy's* scoring stays a distinct signal |
+| `selfState` | condition | `isDealer`/`isNonDealer` gives a half-your-turns rhythm; `traceAbove`/`Below` are build-state conditions |
+| `enemyState` | condition | "empowered as the fight goes badly/well" — meaning unchanged |
+| `handOutcome` | extra fire | A per-*hand* rhythm rather than per-turn; texture worth keeping |
+| `chained` | condition, redefined | See below — the only family that breaks |
+
+**Occurrence's variations dissolve.** `instant`/`threshold`/`scaling`
+were three answers to "when does it fire", a question D11 deletes. Their
+design intents survive as two empowerment shapes: **graded** (magnitude
++= per-charge x charges; `cap` survives from `scaling`) and **stepped**
+(at >=N charges add a distinct effect; `bankTarget` survives from
+`threshold`). Scaling finally does what DESIGN.md:688 always said.
+
+**A rider is one bundle, not several.** A single rider may raise
+magnitude *and* add a mechanic (e.g. also apply a DoT). So a piece is
+**floor + one rider**, even when the rider does two things. This keeps
+pricing tractable: one floor and one rider are each independently
+measurable, where an arbitrary stack of riders would not be.
+
+**`chained` is redefined onto empowerment, not firing.** Under D11
+everything fires every turn, so `afterSubroutineId`/`afterArchetype`/
+`afterTag` all become trivially true and the family would collapse into
+`always`. Instead it becomes a rider condition on *empowerment plus
+ordering* — e.g. "Chain-Exploit: this rider applies if an Exploit
+subroutine executed **empowered** earlier in this turn." That restores
+selectivity, keeps the family's real job (loadout synergy), and preserves
+loadout **ordering** as a live decision, since `fireReadySubroutines`
+sequences by loadout position.
+
+**`reactive` becomes a second payload.** A reactive piece carries a base
+per-turn payload *and* a reactive payload that fires when its reaction
+condition is met. Clean to price separately, and it replaces the old
+meaning ("bypasses the turn gate"), which is no longer distinguishing.
+
+**Open — naming.** A term is needed for the empowered state. `Overclock`
+was proposed; its collisions (a pool subroutine, and the Overclocked
+Accumulator Mod) both sit in the scrap/rework set, but the *metaphor* is
+wrong: overclocking means running **faster**, and D11 fixes the rate at
+one fire per turn while varying **power**. Candidates: **Elevated**
+(exact hacking idiom for "same actor, more privilege"; leans Root-
+flavoured), **Charged** (zero collisions, archetype-neutral, pairs with
+"charges" as the resource), **Leveraged**.
+
 ---
 
 ## Implementation plan — diagnostic pillar suite
