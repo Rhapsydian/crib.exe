@@ -415,9 +415,19 @@ Two consequences worth pricing in:
   only fair if the player can arrange the loadout; there is no UI yet,
   and drag-to-reorder moves from "nice to have" to load-bearing. Log it
   as a UI dependency now rather than discovering it later.
-- **Acquisition stops being a strict upgrade.** Inserting a new piece can
-  break an adjacency chain, so taking a reward becomes a real decision
-  rather than an automatic yes. Judged a feature, not a defect.
+- **The bench gains a real job.** An earlier draft of this said
+  acquisition would start breaking chains. It does not: `install`
+  appends at the *end* of the loadout (`loadout.ts`), so a new piece
+  never inserts mid-chain, and the bench means the player is never forced
+  to install at all. What actually changes is that install-vs-bench
+  becomes an active roster decision rather than overflow handling.
+- **A real `ReorderStrategy` becomes necessary for simulation.** The
+  default is `keepAcquisitionOrder`, documented as "exactly what every
+  run has done until now" — so **no simulated run has ever reordered a
+  loadout**. Adjacency chains would be invisible to every existing
+  diagnostic until a strategy that actually arranges the loadout exists.
+  This is a prerequisite for measuring any chain content, not a polish
+  item.
 
 ---
 
