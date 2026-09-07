@@ -52,7 +52,7 @@ export const PILLAR_IDS = [
   'pillar-dot-turn',
   'pillar-dot-points',
   'pillar-suppress',
-  'pillar-stall',
+  'pillar-drain',
   'pillar-tempo',
   'pillar-throttle',
 ] as const;
@@ -62,7 +62,7 @@ export type DiagnosticEnemyId = (typeof PILLAR_IDS)[number];
 export interface PillarSpec {
   /** The single payload knob under test. Units differ per pillar — gauge
    * points for burst/suppress, points-per-tick for the DoTs, shield for
-   * stall, a fraction of a starting threshold for tempo, and debuff
+   * drain, a fraction of a starting threshold for tempo, and debuff
    * DURATION (not magnitude — see payloadFor) for throttle. */
   scalar: number;
   /** Fires every turn, gated by this many of the caster's OWN scored
@@ -103,8 +103,16 @@ function payloadFor(id: DiagnosticEnemyId, spec: PillarSpec): PayloadEffect {
       };
     case 'pillar-suppress':
       return { kind: 'instantCounterPush', amount: spec.scalar };
-    case 'pillar-stall':
-      return { kind: 'ward', amount: spec.scalar };
+    case 'pillar-drain':
+      // Sustained denial: HoT reduces the OPPONENT's gauge over ticks,
+      // the counterpart to instantCounterPush's one-shot (see
+      // subroutine-types.ts's CAPPED tier note). Replaced a `ward`-based
+      // "Stall" pillar in checkpoint 2: ward absorbs incoming offense
+      // against the warded side, but the player wins by filling their
+      // OWN Breach gauge, which an enemy shield never touches -- so it
+      // measured a flat line at every scalar. Ward is mitigation, not a
+      // win condition, and a pillar has to be a win condition.
+      return { kind: 'hot', amountPerTick: spec.scalar, cadence: 'castersTurnPulse', duration };
     case 'pillar-tempo':
       // Positive raises the PLAYER's initiative threshold (a fraction of
       // their starting threshold), i.e. slows them -- the unambiguous
@@ -129,7 +137,7 @@ const PILLAR_NAMES: Record<DiagnosticEnemyId, string> = {
   'pillar-dot-turn': 'Pillar: DoT (own turn)',
   'pillar-dot-points': 'Pillar: DoT (combined points)',
   'pillar-suppress': 'Pillar: Suppress',
-  'pillar-stall': 'Pillar: Stall',
+  'pillar-drain': 'Pillar: Drain (sustained denial)',
   'pillar-tempo': 'Pillar: Tempo',
   'pillar-throttle': 'Pillar: Throttle',
 };

@@ -134,7 +134,7 @@ describe('diagnostic pillars -- they actually do something in a real fight', () 
   // their enemy peak fill is 0 at every scalar. Measuring them with one
   // metric would have produced a table of zeros that looked like data.
   const CREDIT_PILLARS: DiagnosticEnemyId[] = ['pillar-burst', 'pillar-dot-turn', 'pillar-dot-points'];
-  const DENIAL_PILLARS: DiagnosticEnemyId[] = ['pillar-suppress', 'pillar-stall', 'pillar-tempo', 'pillar-throttle'];
+  const DENIAL_PILLARS: DiagnosticEnemyId[] = ['pillar-suppress', 'pillar-drain', 'pillar-tempo', 'pillar-throttle'];
   const SEEDS = [0, 1, 2, 3, 4, 5, 6, 7];
 
   it('credit pillars: a bigger scalar advances the enemy gauge further', () => {
@@ -148,10 +148,15 @@ describe('diagnostic pillars -- they actually do something in a real fight', () 
     for (const id of DENIAL_PILLARS) {
       const enemyPeak = (scalar: number) => SEEDS.reduce((sum, seed) => sum + fight(id, scalar, seed).peakFillFraction[1], 0);
       const playerPeak = (scalar: number) => SEEDS.reduce((sum, seed) => sum + fight(id, scalar, seed).peakFillFraction[0], 0);
+      const hands = (scalar: number) => SEEDS.reduce((sum, seed) => sum + fight(id, scalar, seed).hands.length, 0);
       // Structural: these win by denial, so the enemy gauge stays empty.
       expect(enemyPeak(12), `${id} credited the enemy gauge`).toBe(0);
-      // Directional: more of the knob means less player progress.
-      expect(playerPeak(14), `${id} did not suppress the player more at a larger scalar`).toBeLessThan(playerPeak(1));
+      // Directional: NOT player peak fill. Peak is a high-water mark, so
+      // pushing a gauge back after it peaked does not lower it, and the
+      // player wins nearly always -- peak is pinned above 1.0 regardless.
+      // Fight LENGTH is what actually responds to a denial knob.
+      expect(hands(120), `${id} did not lengthen the fight at a larger scalar`).toBeGreaterThan(hands(1));
+      void playerPeak;
     }
   });
 });

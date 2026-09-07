@@ -429,6 +429,50 @@ Two consequences worth pricing in:
   This is a prerequisite for measuring any chain content, not a polish
   item.
 
+### D14 — Corrections from building the suite (checkpoint 1-2) ✅
+
+Four things the build found that the design did not anticipate. All are
+corrections to D10's pillar set or to how it must be measured.
+
+1. **The pillars are two families with different success metrics.**
+   *Credit* pillars (Burst, DoT-Turn, DoT-Points) advance the enemy's own
+   Containment gauge. *Denial* pillars never touch it — they suppress the
+   player and win at `HARD_RESOLUTION_HAND`, so their enemy peak fill is
+   0 at every scalar. A one-metric harness would print a table of zeros
+   for four of seven pillars that looked like data.
+
+2. **`ward` is not a win condition, so "Stall" was not a pillar.** Ward
+   absorbs incoming offense against the warded side, but the player wins
+   by filling their **own** Breach gauge, which an enemy shield never
+   touches. Measured flat at ~99% player win across the entire scalar
+   range. Replaced by **Drain** — a `hot` payload, which reduces the
+   *opponent's* gauge over ticks and is the sustained counterpart to
+   `instantCounterPush`'s one-shot. Ward is mitigation; a pillar has to be
+   a win condition.
+
+3. **Peak fill is the wrong metric for denial.** It is a high-water mark,
+   so a gauge pushed back *after* peaking still reads high — and since
+   the player wins nearly always, it is pinned above 1.0 regardless of
+   the knob. Fight **length** and attrition share are what respond.
+
+4. **Credit pillars saturate.** Once the scalar reaches the 50-point
+   Containment threshold, one fire wins outright and the result is
+   decided by who takes the first turn — the win rate flattens near 50%
+   and wobbles with noise. Measured: 100 / 96.8 / 60.3 / 46.0 / 58.7 /
+   49.2 across scalars 10-400. The harness now flags saturation so a
+   sweep cannot read that plateau as a response.
+
+**The big open question this raises for checkpoint 3-4.** Denial pillars
+are close to inert against an accumulated loadout: at scalar **250**,
+Drain never wins at all and Suppress reaches 2.5% attrition wins. Fight
+length does respond (4.2 → 5.5 hands), so they are not broken — but
+denial only wins if it out-paces player generation *continuously*, and
+the turn gate caps a pillar at ~1 fire per turn while six player pieces
+fire every turn. That asymmetry, not magnitude, looks like the binding
+constraint. It needs its own measurement before any denial content is
+priced, and it may be the strongest argument yet for D11: under a
+per-turn model the six-to-one action asymmetry is exactly what changes.
+
 ---
 
 ## Implementation plan — diagnostic pillar suite
