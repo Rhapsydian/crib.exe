@@ -1,3 +1,4 @@
+import type { DiagnosticEnemyId } from './diagnostic-enemies';
 import type { SubroutineDefinition, SuitedArchetype } from './subroutine-types';
 import { ALL_POOL_SUBROUTINES } from './subroutines';
 import { ENEMY_ONLY_SUBROUTINES } from './enemy-subroutines';
@@ -22,7 +23,13 @@ export type EnemyTier = 'regular' | 'elite' | 'gatekeeper';
  * when an enemy is named after its own signature piece -- different
  * keyspaces (ENEMY_DEFINITIONS vs ALL_POOL_SUBROUTINES), never looked up
  * interchangeably. */
+/** Diagnostic pillar ids are part of EnemyId so fixtures type-check
+ * everywhere a real enemy does, while staying absent from ENEMY_ROSTER --
+ * which is what actually makes them unreachable (every selection path
+ * filters that array). Type-only import, so there is no runtime cycle
+ * with diagnostic-enemies.ts. */
 export type EnemyId =
+  | DiagnosticEnemyId
   // Regular (12)
   | 'script-kiddie'
   | 'fuzzer-bot'

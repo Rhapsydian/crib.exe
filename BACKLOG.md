@@ -208,6 +208,32 @@ be read as "confirm and polish", not "close a 33pp gap".
 
 ---
 
+## Dead knob: debuff `magnitude` on two of three kinds (session 50)
+
+`DebuffPayload.magnitude` is authored on every debuff piece in the pool
+and is read for **only one** of the three debuff kinds.
+
+- **`throttled`** — `applyThrottled` (`resolve.ts`) checks the debuff's
+  *presence* with `.some()` and then applies module constants
+  `THROTTLED_REDUCTION` (4) and `THROTTLED_FLOOR` (1). Magnitude never
+  read. **5 pieces** author one.
+- **`corrupted`** — same shape: presence check, then a flat
+  `CORRUPTED_MULTIPLIER` (0.5). Magnitude never read. **7 pieces**.
+- **`choked`** — reads its magnitude properly, as a fraction of a
+  starting threshold (session 48's `CHOKE_MAG`). **3 pieces**. Working.
+
+So 12 of 15 debuff pieces carry a magnitude number that does nothing, and
+two authored at different magnitudes are identical in play. Found by the
+diagnostic pillar suite: the Throttle pillar produced byte-identical
+player outcomes at scalar 1 and scalar 14, which is exactly the class of
+silent flat-line a calibration fixture exists to expose.
+
+Not fixed. The Throttle pillar sweeps **duration** instead, which is
+read, and the exception is asserted in `diagnostic-enemies.test.ts` so it
+cannot be quietly "tidied" back to magnitude. Whether to wire magnitude
+up or delete the field is a content-rebuild decision (D11), not a repair
+to make against a pool that is being re-authored.
+
 ## Dead mechanism: Occurrence `scaling` (session 50)
 
 `DESIGN.md:688` specifies the Scaling occurrence variation as
