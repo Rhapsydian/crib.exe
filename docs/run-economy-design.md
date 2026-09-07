@@ -380,14 +380,44 @@ per-turn payload *and* a reactive payload that fires when its reaction
 condition is met. Clean to price separately, and it replaces the old
 meaning ("bypasses the turn gate"), which is no longer distinguishing.
 
-**Open — naming.** A term is needed for the empowered state. `Overclock`
-was proposed; its collisions (a pool subroutine, and the Overclocked
-Accumulator Mod) both sit in the scrap/rework set, but the *metaphor* is
-wrong: overclocking means running **faster**, and D11 fixes the rate at
-one fire per turn while varying **power**. Candidates: **Elevated**
-(exact hacking idiom for "same actor, more privilege"; leans Root-
-flavoured), **Charged** (zero collisions, archetype-neutral, pairs with
-"charges" as the resource), **Leveraged**.
+**Naming: ELEVATED.** ✅ A subroutine banks **charges** and fires
+**elevated**. Two words for two things — the resource and the state.
+`Overclock` was proposed and rejected: its collisions (a pool subroutine,
+the Overclocked Accumulator Mod) both sit in the scrap/rework set, but
+the *metaphor* is wrong — overclocking means running **faster**, and D11
+fixes the rate at one fire per turn while varying **power**. It would
+name the one axis the redesign removes.
+
+### D13 — Loadout ordering stays, and chains come in two strengths ✅
+
+Ordering survives D11 as a real decision. Two chain shapes, forming a
+power ladder rather than duplicating each other:
+
+- **Adjacent** — the rider applies if the *immediately prior* subroutine
+  in loadout order was of a given id/archetype/tag. Hard to satisfy,
+  sensitive to exact arrangement, so it carries the **larger** rider.
+- **Any-prior** — the rider applies if a matching subroutine executed
+  **elevated** earlier in this turn. Satisfied by having one anywhere
+  above, so a **smaller** rider.
+
+Both reuse machinery that already exists: `satisfiesChain`
+(`loadout.ts`) already implements the three id/archetype/tag match modes,
+and `ReorderStrategy` (`run.ts`, called between fights) already models
+loadout order as a mutable player decision, consistent with DESIGN.md's
+"mid-combat's only lever is Togglable" rule.
+
+Two consequences worth pricing in:
+
+- **This makes `INSTALLED_SLOT_CAP` (6) a genuine puzzle space.** Six
+  ordered slots with adjacency chains produces real combinatorial build
+  decisions without adding a system.
+- **It creates a hard UI requirement, not polish.** Adjacency chains are
+  only fair if the player can arrange the loadout; there is no UI yet,
+  and drag-to-reorder moves from "nice to have" to load-bearing. Log it
+  as a UI dependency now rather than discovering it later.
+- **Acquisition stops being a strict upgrade.** Inserting a new piece can
+  break an adjacency chain, so taking a reward becomes a real decision
+  rather than an automatic yes. Judged a feature, not a defect.
 
 ---
 
