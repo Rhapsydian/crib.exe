@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { chargesFor } from './triggers';
 import type { Card } from './cards';
 import { bestCardToForce } from './ai';
 import { NEUTRAL_RARES, BREACHER_LOADOUT, ALL_POOL_SUBROUTINES } from './subroutines';
@@ -2119,6 +2120,49 @@ describe('tracePressure (session 47)', () => {
 });
 
 
+describe('D11-C: condition elevation', () => {
+  const burstAmount = (events: { payload: PayloadEffect }[]) => {
+    const p = events[0].payload;
+    return p.kind === 'directBurst' ? p.amount : NaN;
+  };
+
+  it('adds the bonus while a selfState condition holds, and nothing while it does not', () => {
+    // A condition is a charge of 1 while true -- so `perCharge` IS the
+    // flat bonus-while-true and `cap: 1` falls out. isDealer alternates
+    // every hand, which is the rhythm this shape exists to give.
+    const piece = definition('a', { kind: 'selfState', condition: 'isDealer' }, { kind: 'directBurst', amount: 5 }, { elevation: { perCharge: 6, cap: 1 } });
+    const asDealer = fireReadySubroutines(createCombatState([piece], [], [12, 12]), 0, { isDealer: true });
+    const asNonDealer = fireReadySubroutines(createCombatState([piece], [], [12, 12]), 0, { isDealer: false });
+    expect(burstAmount(asDealer.events)).toBe(11);
+    expect(burstAmount(asNonDealer.events)).toBe(5);
+  });
+
+  it('fires at its floor either way -- a false condition never suppresses the fire', () => {
+    // The D11 guarantee: a condition changes how hard a piece acts, never
+    // whether it acts. Both cases above produced exactly one event.
+    const piece = definition('a', { kind: 'selfState', condition: 'isDealer' }, { kind: 'directBurst', amount: 5 }, { elevation: { perCharge: 6, cap: 1 } });
+    const { events } = fireReadySubroutines(createCombatState([piece], [], [12, 12]), 0, { isDealer: false });
+    expect(events).toHaveLength(1);
+  });
+
+  it('reads an enemyState condition off live combat state', () => {
+    const piece = definition('a', { kind: 'enemyState', condition: 'gaugeFillAbove', fraction: 0.5 }, { kind: 'directBurst', amount: 5 }, { elevation: { perCharge: 8, cap: 1 } });
+    const low = createCombatState([piece], [], [12, 12]);
+    const high = createCombatState([piece], [], [12, 12]);
+    // gaugeFillAbove reads the INITIATIVE gauge (`gauge`), not the win
+    // gauge -- `breachContainmentAbove` is the win-gauge condition.
+    high.sides[1].gauge = { ...high.sides[1].gauge, progress: high.sides[1].gauge.threshold * 0.9 };
+    expect(burstAmount(fireReadySubroutines(low, 0, { isDealer: false }).events)).toBe(5);
+    expect(burstAmount(fireReadySubroutines(high, 0, { isDealer: false }).events)).toBe(13);
+  });
+
+  it('gives no elevation when no context is available -- a caller that cannot evaluate must not guess', () => {
+    const piece = definition('a', { kind: 'selfState', condition: 'isDealer' }, { kind: 'directBurst', amount: 5 }, { elevation: { perCharge: 6, cap: 1 } });
+    const state = createCombatState([piece], [], [12, 12]);
+    expect(chargesFor(piece, state.sides[0].loadout[0].state)).toBe(0);
+  });
+});
+
 describe('D11-B: charge elevation', () => {
   /** Banks `n` charges on the first loadout entry without driving a real
    * hand -- the counter is the subject here, not how it got filled. */
@@ -2174,8 +2218,12 @@ describe('D11-B: charge elevation', () => {
     expect(burstAmount(second.events)).toBe(4);
   });
 
-  it('gives condition-family triggers no charges -- they are D11-C bonuses, not counters', () => {
-    for (const trigger of [{ kind: 'always' } as const, { kind: 'selfState', condition: 'isDealer' } as const]) {
+  it('gives always/chained no charges -- they carry no signal of their own', () => {
+    // selfState/enemyState were in this list until D11-C, which made a
+    // condition a charge of 1 while true. `always` and `chained` remain
+    // genuinely signal-less: a floor-only cantrip and a sequencing
+    // reference respectively.
+    for (const trigger of [{ kind: 'always' } as const, { kind: 'chained', afterArchetype: 'malware' } as const]) {
       const piece = definition('a', trigger, { kind: 'directBurst', amount: 4 }, { elevation: { perCharge: 3, cap: 5 } });
       const state = withCharges(createCombatState([piece], [], [12, 12]), 4, 'bankedOccurrences');
       const { events } = fireReadySubroutines(state, 0, { isDealer: true });

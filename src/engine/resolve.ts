@@ -2176,7 +2176,7 @@ export interface FireEvent {
  * here is still pre-fire (resetAfterFire, which increments fireCount,
  * hasn't run for this fire yet), so `fireCount` correctly reflects prior
  * fires only, not this one. */
-function payloadForFire(entry: LoadoutEntry): PayloadEffect {
+function payloadForFire(entry: LoadoutEntry, context?: TriggerContext): PayloadEffect {
   const { magnitudeDecayPerFire, magnitudeFloor, elevation } = entry.definition;
   let payload = entry.definition.payload;
 
@@ -2195,7 +2195,7 @@ function payloadForFire(entry: LoadoutEntry): PayloadEffect {
   // does that conversion, which is exactly the bug class that shipped in
   // session 48 and must not be reintroduced here.
   if (elevation !== undefined) {
-    const charges = Math.min(chargesFor(entry.definition, entry.state), elevation.cap);
+    const charges = Math.min(chargesFor(entry.definition, entry.state, context), elevation.cap);
     if (charges > 0) {
       payload = improvedPayloadMagnitude(payload, elevation.perCharge * charges) ?? payload;
     }
@@ -2220,12 +2220,6 @@ export function fireReadySubroutines(
   const events: FireEvent[] = [];
   const firedThisTurn: FiredSubroutineInfo[] = [];
   const loadoutLength = state.sides[side].loadout.length;
-  // Retained through D11-A even though the turn-gate no longer reads it:
-  // D11-C (conditional elevation) and D11-E (chained riders) both need
-  // the trigger context back, and `firedThisTurn` is still collected
-  // below for the same reason. Deleting and re-adding the parameter would
-  // churn every call site twice.
-  void selfContext;
 
   for (let i = 0; i < loadoutLength; i++) {
     const entry = state.sides[side].loadout[i];
@@ -2240,7 +2234,12 @@ export function fireReadySubroutines(
     if (!withinFiringGates(entry.definition, entry.state)) continue;
     if (!entry.state.toggledOn) continue;
 
-    const fireEffect = payloadForFire(entry);
+    // D11-C: the context is back, but for ELEVATION rather than gating.
+    // Rebuilt per entry because an earlier fire in this same pass can
+    // change what a later condition sees (gauge fill, debuffs) -- the
+    // same loadout-order sequencing chained triggers already relied on.
+    const triggerContext = buildTriggerContext(state, side, firedThisTurn, selfContext.isDealer);
+    const fireEffect = payloadForFire(entry, triggerContext);
     state = resolvePayload(fireEffect, entry.definition.archetype, state, side, { priorFireCountThisTurn: events.length }, entry.definition);
     events.push({ subroutineId: entry.definition.id, side, payload: fireEffect });
     firedThisTurn.push({ id: entry.definition.id, archetype: entry.definition.archetype, tags: entry.definition.tags });

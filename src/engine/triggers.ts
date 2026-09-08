@@ -421,9 +421,10 @@ export function advanceTowardFiring(
  * (D11-B, session 50). Under D11 a trigger no longer decides whether a
  * piece acts — it decides how hard it acts, and this is that number.
  *
- * Charge-family triggers only. `selfState`/`enemyState` are conditions,
- * not counters (D11-C gives them a bonus-while-true instead), and
- * `always`/`chained` carry no signal of their own. `rareOccurrence` and
+ * Charge families bank a counter; condition families (`selfState`/
+ * `enemyState`, D11-C) contribute 1 while true and 0 otherwise, which is
+ * a flat bonus-while-true expressed in the same units. `always`/
+ * `chained` carry no signal of their own. `rareOccurrence` and
  * `handOutcome` bypass the readiness pipeline entirely and are D11-D's
  * to reconcile; they bank nothing today, so they read 0 rather than
  * silently borrowing another family's counter.
@@ -431,8 +432,28 @@ export function advanceTowardFiring(
  * `resetAfterFire` already clears both counters, so charges are
  * per-fire by construction rather than needing their own bookkeeping.
  */
-export function chargesFor(definition: SubroutineDefinition, state: SubroutineRuntimeState): number {
+export function chargesFor(definition: SubroutineDefinition, state: SubroutineRuntimeState, context?: TriggerContext): number {
   const trigger = definition.trigger;
+  // D11-C: a CONDITION is just a charge that is 1 while true and 0 while
+  // false. That unification is not a shortcut -- it falls out of the
+  // one-rider model. A piece has exactly one trigger, so a
+  // selfState/enemyState piece has no charge counter to multiply; the
+  // only coherent shape for it is a flat bonus while the condition
+  // holds, which is precisely `perCharge` at `cap: 1`. One field shape
+  // serves both families.
+  //
+  // Evaluated live against the passed context rather than read off
+  // `state.ready`: `ready` is latched by refreshTriggerReadiness and
+  // cleared by resetAfterFire, so it can be stale within a turn, and
+  // D11-A means nothing else consults it any more. Without a context the
+  // condition families return 0 -- a caller that cannot say whether the
+  // condition holds must not get to guess.
+  if (trigger.kind === 'selfState') {
+    return context && evaluateSelfState(trigger, context.self) ? 1 : 0;
+  }
+  if (trigger.kind === 'enemyState') {
+    return context && evaluateEnemyState(trigger, context.enemy) ? 1 : 0;
+  }
   if (trigger.kind === 'occurrence') {
     // 'scaling' already caps its own bank in updateSubroutineState;
     // 'instant'/'threshold' bank uncapped, so the elevation cap is what

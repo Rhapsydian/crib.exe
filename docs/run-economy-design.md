@@ -473,6 +473,29 @@ constraint. It needs its own measurement before any denial content is
 priced, and it may be the strongest argument yet for D11: under a
 per-turn model the six-to-one action asymmetry is exactly what changes.
 
+### D15 — A condition is a charge of 1 (D11-C) ✅
+
+The open question was whether a condition rider should be a flat bonus
+while true or a multiplier on charges. It answers itself from the
+one-rider model: a piece has exactly **one** trigger, so a
+`selfState`/`enemyState` piece has no charge counter to multiply — a
+multiplier would be multiplying zero.
+
+So a condition contributes **1 charge while true, 0 while false**, which
+makes `perCharge` the flat bonus-while-true and `cap: 1` fall out
+naturally. One field shape (`elevation: { perCharge, cap }`) serves both
+families, and `chargesFor` is the single place either is computed.
+
+Evaluated live against a `TriggerContext` rather than read off
+`state.ready`: `ready` is latched by `refreshTriggerReadiness` and
+cleared by `resetAfterFire`, so it can be stale within a turn — and after
+D11-A nothing else consults it. Without a context the condition families
+return 0, since a caller that cannot evaluate the condition must not get
+to guess.
+
+`always` and `chained` remain genuinely signal-less — a floor-only
+cantrip and a sequencing reference.
+
 ---
 
 ## Implementation plan — diagnostic pillar suite
