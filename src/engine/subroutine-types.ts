@@ -600,6 +600,21 @@ export interface SubroutineDefinition {
    * runtime, not definition, data — see SubroutineRuntimeState.toggledOn
    * in triggers.ts. */
   togglable?: boolean;
+  /**
+   * Graded empowerment (D11-B, session 50): the payload's magnitude gains
+   * `perCharge` for every charge banked since the last fire, capped at
+   * `cap` charges. Charges come from the trigger — see triggers.ts's
+   * `chargesFor`.
+   *
+   * This is the mechanism that makes a rare trigger worth authoring under
+   * D11. A piece is never dead: it fires every turn at its floor, and the
+   * trigger decides how far above the floor it lands. Rarity gates
+   * amplitude, never existence.
+   *
+   * Absent means "floor only" — a cantrip, which is now the baseline
+   * shape rather than a special case.
+   */
+  empowerment?: { perCharge: number; cap: number };
   /** Fires the instant it becomes ready, bypassing the normal turn-gate
    * (fireReadySubroutines only runs on the owning side's own triggered
    * turn). On selfState/enemyState (level-triggered) conditions, arms

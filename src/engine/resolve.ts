@@ -15,6 +15,7 @@ import {
   evaluateSelfState,
   isReady,
   withinFiringGates,
+  chargesFor,
   resetAfterFire,
   updateSuitTallyState,
   updateMitigationBankedState,
@@ -2176,10 +2177,31 @@ export interface FireEvent {
  * hasn't run for this fire yet), so `fireCount` correctly reflects prior
  * fires only, not this one. */
 function payloadForFire(entry: LoadoutEntry): PayloadEffect {
-  const { magnitudeDecayPerFire, magnitudeFloor } = entry.definition;
-  if (magnitudeDecayPerFire === undefined) return entry.definition.payload;
-  const decayed = decayedPayloadMagnitude(entry.definition.payload, entry.state.fireCount, magnitudeDecayPerFire, magnitudeFloor ?? 0);
-  return decayed ?? entry.definition.payload;
+  const { magnitudeDecayPerFire, magnitudeFloor, empowerment } = entry.definition;
+  let payload = entry.definition.payload;
+
+  if (magnitudeDecayPerFire !== undefined) {
+    payload = decayedPayloadMagnitude(payload, entry.state.fireCount, magnitudeDecayPerFire, magnitudeFloor ?? 0) ?? payload;
+  }
+
+  // D11-B: graded empowerment. Applied AFTER decay, so a decaying piece
+  // that is also empowered still decays from its own floor rather than
+  // from an inflated one -- decay is a property of how often it has
+  // fired, empowerment of what it banked since it last did.
+  //
+  // improvedPayloadMagnitude carries the session 48 units split: tempo
+  // payloads are denominated in fractions of a turn/threshold, so a flat
+  // bonus there would mean "plus N whole turns". Its tempoAmount default
+  // does that conversion, which is exactly the bug class that shipped in
+  // session 48 and must not be reintroduced here.
+  if (empowerment !== undefined) {
+    const charges = Math.min(chargesFor(entry.definition, entry.state), empowerment.cap);
+    if (charges > 0) {
+      payload = improvedPayloadMagnitude(payload, empowerment.perCharge * charges) ?? payload;
+    }
+  }
+
+  return payload;
 }
 
 /**

@@ -30,13 +30,14 @@ function definition(
   trigger: TriggerFamily,
   payload: PayloadEffect,
   overrides: Partial<
-    Pick<SubroutineDefinition, 'archetype' | 'togglable' | 'reactive' | 'firesAt' | 'maxFiresPerCombat' | 'magnitudeDecayPerFire' | 'magnitudeFloor'>
+    Pick<SubroutineDefinition, 'archetype' | 'togglable' | 'reactive' | 'firesAt' | 'maxFiresPerCombat' | 'magnitudeDecayPerFire' | 'magnitudeFloor' | 'empowerment'>
   > = {},
 ): SubroutineDefinition {
   return {
     id,
     name: id,
     archetype: overrides.archetype ?? 'exploit',
+    empowerment: overrides.empowerment,
     trigger,
     payload,
     tags: [],
@@ -2114,5 +2115,97 @@ describe('tracePressure (session 47)', () => {
     expect(state.sides[0].trace).toBe(6);
     state = resolvePayload({ kind: 'traceReduction', amount: 4, floor: 0 }, 'encryption', state, 0);
     expect(state.sides[0].trace).toBe(2);
+  });
+});
+
+
+describe('D11-B: charge empowerment', () => {
+  /** Banks `n` charges on the first loadout entry without driving a real
+   * hand -- the counter is the subject here, not how it got filled. */
+  const withCharges = (state: ReturnType<typeof createCombatState>, n: number, field: 'bankedOccurrences' | 'accumulatedProgress') => {
+    state.sides[0].loadout[0].state = { ...state.sides[0].loadout[0].state, [field]: n };
+    return state;
+  };
+  const burstAmount = (events: { payload: PayloadEffect }[]) => {
+    const p = events[0].payload;
+    return p.kind === 'directBurst' ? p.amount : NaN;
+  };
+
+  it('fires at its floor with no charges banked', () => {
+    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'directBurst', amount: 4 }, { empowerment: { perCharge: 3, cap: 5 } });
+    const { events } = fireReadySubroutines(createCombatState([piece], [], [12, 12]), 0, { isDealer: false });
+    expect(burstAmount(events)).toBe(4);
+  });
+
+  it('adds perCharge for every banked occurrence -- DESIGN.md:688 Scaling, finally real', () => {
+    // "occurrences bank up to a per-subroutine cap, and payload magnitude
+    // scales with how many were actually banked when it fires". Written
+    // in session 21+, never implemented: bankedOccurrences was written
+    // and read nowhere until now.
+    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'scaling', cap: 4 }, { kind: 'directBurst', amount: 4 }, { empowerment: { perCharge: 3, cap: 5 } });
+    const state = withCharges(createCombatState([piece], [], [12, 12]), 3, 'bankedOccurrences');
+    const { events } = fireReadySubroutines(state, 0, { isDealer: false });
+    expect(burstAmount(events)).toBe(4 + 3 * 3);
+  });
+
+  it('caps the bonus at `cap` charges', () => {
+    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'directBurst', amount: 4 }, { empowerment: { perCharge: 3, cap: 2 } });
+    const state = withCharges(createCombatState([piece], [], [12, 12]), 99, 'bankedOccurrences');
+    const { events } = fireReadySubroutines(state, 0, { isDealer: false });
+    expect(burstAmount(events)).toBe(4 + 3 * 2);
+  });
+
+  it('counts accumulator charges in whole thresholds, not raw progress', () => {
+    // An accumulator's threshold is its natural charge unit -- 7 raw
+    // points against a threshold of 3 is two complete charges, not seven.
+    const piece = definition('a', { kind: 'accumulator', metric: 'points', threshold: 3 }, { kind: 'directBurst', amount: 4 }, { empowerment: { perCharge: 5, cap: 9 } });
+    const state = withCharges(createCombatState([piece], [], [12, 12]), 7, 'accumulatedProgress');
+    const { events } = fireReadySubroutines(state, 0, { isDealer: false });
+    expect(burstAmount(events)).toBe(4 + 5 * 2);
+  });
+
+  it('spends its charges: the next fire is back at the floor', () => {
+    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'directBurst', amount: 4 }, { empowerment: { perCharge: 3, cap: 5 } });
+    let state = withCharges(createCombatState([piece], [], [12, 12]), 2, 'bankedOccurrences');
+    const first = fireReadySubroutines(state, 0, { isDealer: false });
+    expect(burstAmount(first.events)).toBe(10);
+    state = first.combatState;
+    const second = fireReadySubroutines(state, 0, { isDealer: false });
+    expect(burstAmount(second.events)).toBe(4);
+  });
+
+  it('gives condition-family triggers no charges -- they are D11-C bonuses, not counters', () => {
+    for (const trigger of [{ kind: 'always' } as const, { kind: 'selfState', condition: 'isDealer' } as const]) {
+      const piece = definition('a', trigger, { kind: 'directBurst', amount: 4 }, { empowerment: { perCharge: 3, cap: 5 } });
+      const state = withCharges(createCombatState([piece], [], [12, 12]), 4, 'bankedOccurrences');
+      const { events } = fireReadySubroutines(state, 0, { isDealer: true });
+      expect(burstAmount(events), `${trigger.kind} borrowed another family's counter`).toBe(4);
+    }
+  });
+
+  it('converts the bonus into tempo units for a fraction-denominated payload', () => {
+    // The session 48 bug class, guarded. instantManipulation's gauge
+    // targets are FRACTIONS of a turn/threshold, so a flat "+3" there
+    // would mean "plus three whole turns" -- which is exactly what
+    // shipped in session 48 and had to be fixed generically.
+    // improvedPayloadMagnitude's tempoAmount default does the conversion;
+    // this asserts empowerment goes through it rather than around it.
+    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'instantManipulation', target: 'ownGauge', amount: 0.5 }, { empowerment: { perCharge: 4, cap: 5 } });
+    const state = withCharges(createCombatState([piece], [], [12, 12]), 1, 'bankedOccurrences');
+    const { events } = fireReadySubroutines(state, 0, { isDealer: false });
+    const p = events[0].payload;
+    const amount = p.kind === 'instantManipulation' ? p.amount : NaN;
+    // A raw flat bonus would give 4.5 -- four and a half WHOLE turns.
+    expect(amount).toBeLessThan(1.5);
+    expect(amount).toBeGreaterThan(0.5);
+  });
+
+  it('applies empowerment AFTER decay, so a decaying piece decays from its own floor', () => {
+    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'directBurst', amount: 20 }, { empowerment: { perCharge: 4, cap: 5 }, magnitudeDecayPerFire: 6, magnitudeFloor: 2 });
+    const state = withCharges(createCombatState([piece], [], [12, 12]), 2, 'bankedOccurrences');
+    state.sides[0].loadout[0].state = { ...state.sides[0].loadout[0].state, fireCount: 2 };
+    const { events } = fireReadySubroutines(state, 0, { isDealer: false });
+    // decay first: 20 - 6*2 = 8; then empowerment: 8 + 4*2 = 16.
+    expect(burstAmount(events)).toBe(16);
   });
 });

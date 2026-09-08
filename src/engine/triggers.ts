@@ -416,6 +416,41 @@ export function advanceTowardFiring(
  * than gating an occasional fire, and it is the frequency axis the
  * pillar suite sweeps.
  */
+/**
+ * How many empowerment CHARGES a piece has banked since its last fire
+ * (D11-B, session 50). Under D11 a trigger no longer decides whether a
+ * piece acts — it decides how hard it acts, and this is that number.
+ *
+ * Charge-family triggers only. `selfState`/`enemyState` are conditions,
+ * not counters (D11-C gives them a bonus-while-true instead), and
+ * `always`/`chained` carry no signal of their own. `rareOccurrence` and
+ * `handOutcome` bypass the readiness pipeline entirely and are D11-D's
+ * to reconcile; they bank nothing today, so they read 0 rather than
+ * silently borrowing another family's counter.
+ *
+ * `resetAfterFire` already clears both counters, so charges are
+ * per-fire by construction rather than needing their own bookkeeping.
+ */
+export function chargesFor(definition: SubroutineDefinition, state: SubroutineRuntimeState): number {
+  const trigger = definition.trigger;
+  if (trigger.kind === 'occurrence') {
+    // 'scaling' already caps its own bank in updateSubroutineState;
+    // 'instant'/'threshold' bank uncapped, so the empowerment cap is what
+    // bounds them. Both read the same counter -- which is the point:
+    // DESIGN.md:688 always described Scaling as "payload magnitude scales
+    // with how many were actually banked when it fires", and this is the
+    // first time anything reads that number.
+    return state.bankedOccurrences;
+  }
+  if (trigger.kind === 'accumulator') {
+    // Raw progress, expressed in whole thresholds -- an accumulator's
+    // threshold is its natural charge unit, so a piece that banked twice
+    // its threshold fires twice-empowered.
+    return trigger.threshold > 0 ? Math.floor(state.accumulatedProgress / trigger.threshold) : 0;
+  }
+  return 0;
+}
+
 export function withinFiringGates(definition: SubroutineDefinition, state: SubroutineRuntimeState): boolean {
   if (definition.maxFiresPerCombat !== undefined && state.fireCount >= definition.maxFiresPerCombat) return false;
   return state.cooldownRemaining <= 0;
