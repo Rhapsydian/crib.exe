@@ -30,14 +30,14 @@ function definition(
   trigger: TriggerFamily,
   payload: PayloadEffect,
   overrides: Partial<
-    Pick<SubroutineDefinition, 'archetype' | 'togglable' | 'reactive' | 'firesAt' | 'maxFiresPerCombat' | 'magnitudeDecayPerFire' | 'magnitudeFloor' | 'empowerment'>
+    Pick<SubroutineDefinition, 'archetype' | 'togglable' | 'reactive' | 'firesAt' | 'maxFiresPerCombat' | 'magnitudeDecayPerFire' | 'magnitudeFloor' | 'elevation'>
   > = {},
 ): SubroutineDefinition {
   return {
     id,
     name: id,
     archetype: overrides.archetype ?? 'exploit',
-    empowerment: overrides.empowerment,
+    elevation: overrides.elevation,
     trigger,
     payload,
     tags: [],
@@ -217,7 +217,7 @@ describe('fireReadySubroutines', () => {
   it('D11-A: fires a subroutine even when its trigger condition is NOT met', () => {
     // Inverted deliberately, not deleted. Under D11 the turn-gate stops
     // consulting the trigger: every installed, toggled-on piece fires on
-    // its side's turn, and the trigger becomes an empowerment modulator
+    // its side's turn, and the trigger becomes an elevation modulator
     // (D11-B onward) rather than a gate on acting at all. This is the
     // single behavioural assertion that defines D11-A.
     const notReady = definition('a', { kind: 'occurrence', category: 'run', variation: 'instant' }, { kind: 'directBurst', amount: 5 });
@@ -266,7 +266,7 @@ describe('fireReadySubroutines', () => {
     const state = createCombatState([second, first], [], [12, 12]);
     const { events } = fireReadySubroutines(state, 0, { isDealer: false });
     // Both fire now, in loadout order -- `chained` no longer gates.
-    // D11-E redefines it as a rider CONDITION on empowerment plus
+    // D11-E redefines it as a rider CONDITION on elevation plus
     // ordering ("applies if an Exploit fired elevated earlier this
     // turn"), which restores selectivity without deleting the family.
     // Until then a chained piece is indistinguishable from `always`.
@@ -2119,7 +2119,7 @@ describe('tracePressure (session 47)', () => {
 });
 
 
-describe('D11-B: charge empowerment', () => {
+describe('D11-B: charge elevation', () => {
   /** Banks `n` charges on the first loadout entry without driving a real
    * hand -- the counter is the subject here, not how it got filled. */
   const withCharges = (state: ReturnType<typeof createCombatState>, n: number, field: 'bankedOccurrences' | 'accumulatedProgress') => {
@@ -2132,7 +2132,7 @@ describe('D11-B: charge empowerment', () => {
   };
 
   it('fires at its floor with no charges banked', () => {
-    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'directBurst', amount: 4 }, { empowerment: { perCharge: 3, cap: 5 } });
+    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'directBurst', amount: 4 }, { elevation: { perCharge: 3, cap: 5 } });
     const { events } = fireReadySubroutines(createCombatState([piece], [], [12, 12]), 0, { isDealer: false });
     expect(burstAmount(events)).toBe(4);
   });
@@ -2142,14 +2142,14 @@ describe('D11-B: charge empowerment', () => {
     // scales with how many were actually banked when it fires". Written
     // in session 21+, never implemented: bankedOccurrences was written
     // and read nowhere until now.
-    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'scaling', cap: 4 }, { kind: 'directBurst', amount: 4 }, { empowerment: { perCharge: 3, cap: 5 } });
+    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'scaling', cap: 4 }, { kind: 'directBurst', amount: 4 }, { elevation: { perCharge: 3, cap: 5 } });
     const state = withCharges(createCombatState([piece], [], [12, 12]), 3, 'bankedOccurrences');
     const { events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(burstAmount(events)).toBe(4 + 3 * 3);
   });
 
   it('caps the bonus at `cap` charges', () => {
-    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'directBurst', amount: 4 }, { empowerment: { perCharge: 3, cap: 2 } });
+    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'directBurst', amount: 4 }, { elevation: { perCharge: 3, cap: 2 } });
     const state = withCharges(createCombatState([piece], [], [12, 12]), 99, 'bankedOccurrences');
     const { events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(burstAmount(events)).toBe(4 + 3 * 2);
@@ -2158,14 +2158,14 @@ describe('D11-B: charge empowerment', () => {
   it('counts accumulator charges in whole thresholds, not raw progress', () => {
     // An accumulator's threshold is its natural charge unit -- 7 raw
     // points against a threshold of 3 is two complete charges, not seven.
-    const piece = definition('a', { kind: 'accumulator', metric: 'points', threshold: 3 }, { kind: 'directBurst', amount: 4 }, { empowerment: { perCharge: 5, cap: 9 } });
+    const piece = definition('a', { kind: 'accumulator', metric: 'points', threshold: 3 }, { kind: 'directBurst', amount: 4 }, { elevation: { perCharge: 5, cap: 9 } });
     const state = withCharges(createCombatState([piece], [], [12, 12]), 7, 'accumulatedProgress');
     const { events } = fireReadySubroutines(state, 0, { isDealer: false });
     expect(burstAmount(events)).toBe(4 + 5 * 2);
   });
 
   it('spends its charges: the next fire is back at the floor', () => {
-    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'directBurst', amount: 4 }, { empowerment: { perCharge: 3, cap: 5 } });
+    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'directBurst', amount: 4 }, { elevation: { perCharge: 3, cap: 5 } });
     let state = withCharges(createCombatState([piece], [], [12, 12]), 2, 'bankedOccurrences');
     const first = fireReadySubroutines(state, 0, { isDealer: false });
     expect(burstAmount(first.events)).toBe(10);
@@ -2176,7 +2176,7 @@ describe('D11-B: charge empowerment', () => {
 
   it('gives condition-family triggers no charges -- they are D11-C bonuses, not counters', () => {
     for (const trigger of [{ kind: 'always' } as const, { kind: 'selfState', condition: 'isDealer' } as const]) {
-      const piece = definition('a', trigger, { kind: 'directBurst', amount: 4 }, { empowerment: { perCharge: 3, cap: 5 } });
+      const piece = definition('a', trigger, { kind: 'directBurst', amount: 4 }, { elevation: { perCharge: 3, cap: 5 } });
       const state = withCharges(createCombatState([piece], [], [12, 12]), 4, 'bankedOccurrences');
       const { events } = fireReadySubroutines(state, 0, { isDealer: true });
       expect(burstAmount(events), `${trigger.kind} borrowed another family's counter`).toBe(4);
@@ -2189,8 +2189,8 @@ describe('D11-B: charge empowerment', () => {
     // would mean "plus three whole turns" -- which is exactly what
     // shipped in session 48 and had to be fixed generically.
     // improvedPayloadMagnitude's tempoAmount default does the conversion;
-    // this asserts empowerment goes through it rather than around it.
-    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'instantManipulation', target: 'ownGauge', amount: 0.5 }, { empowerment: { perCharge: 4, cap: 5 } });
+    // this asserts elevation goes through it rather than around it.
+    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'instantManipulation', target: 'ownGauge', amount: 0.5 }, { elevation: { perCharge: 4, cap: 5 } });
     const state = withCharges(createCombatState([piece], [], [12, 12]), 1, 'bankedOccurrences');
     const { events } = fireReadySubroutines(state, 0, { isDealer: false });
     const p = events[0].payload;
@@ -2200,12 +2200,12 @@ describe('D11-B: charge empowerment', () => {
     expect(amount).toBeGreaterThan(0.5);
   });
 
-  it('applies empowerment AFTER decay, so a decaying piece decays from its own floor', () => {
-    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'directBurst', amount: 20 }, { empowerment: { perCharge: 4, cap: 5 }, magnitudeDecayPerFire: 6, magnitudeFloor: 2 });
+  it('applies elevation AFTER decay, so a decaying piece decays from its own floor', () => {
+    const piece = definition('a', { kind: 'occurrence', category: 'fifteen', variation: 'instant' }, { kind: 'directBurst', amount: 20 }, { elevation: { perCharge: 4, cap: 5 }, magnitudeDecayPerFire: 6, magnitudeFloor: 2 });
     const state = withCharges(createCombatState([piece], [], [12, 12]), 2, 'bankedOccurrences');
     state.sides[0].loadout[0].state = { ...state.sides[0].loadout[0].state, fireCount: 2 };
     const { events } = fireReadySubroutines(state, 0, { isDealer: false });
-    // decay first: 20 - 6*2 = 8; then empowerment: 8 + 4*2 = 16.
+    // decay first: 20 - 6*2 = 8; then elevation: 8 + 4*2 = 16.
     expect(burstAmount(events)).toBe(16);
   });
 });

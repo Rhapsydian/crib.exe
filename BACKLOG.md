@@ -261,7 +261,7 @@ Neutral pool: designed, documented, half-wired, silently inert.
 
 **Do not fix in place.** Session 50's D11
 (`docs/run-economy-design.md`) supersedes Scaling entirely — triggers
-become empowerment rather than gates, so the three pieces are
+become elevation rather than gates, so the three pieces are
 re-authoring targets in the rebuild rather than repair targets. Logged
 here because the defect is real and independent of that direction, and
 because `increasedScalingCap` is live misinformation in the meantime.

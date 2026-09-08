@@ -265,7 +265,7 @@ both cases where the interaction *is* the enemy. The table gives an
 expected baseline; the interesting production enemies are the ones that
 deviate from it.
 
-### D11 — Every subroutine has a per-turn effect; triggers EMPOWER ✅
+### D11 — Every subroutine has a per-turn effect; triggers ELEVATE ✅
 
 **The largest design decision in the project's history, taken knowingly.**
 Every subroutine gains a baseline per-turn effect. Triggers stop gating
@@ -297,12 +297,12 @@ much**.
    turns, i.e. ~11 progress per turn across the whole loadout — so the
    per-piece per-turn floor lands near **1.5–2**, against a current
    `COMMON.burst` of 5. Floors are roughly a third of today's common
-   burst, with empowerment supplying the variance.
+   burst, with elevation supplying the variance.
 2. **"Easier to trigger" evaporates as an upgrade axis.** Merge's
    `easeTriggerCondition`, Operator's Primed passive,
    `occurrenceBankTargetReduction`, `THRESHOLD_EXPLOIT_REDUCTION` are all
    "make this fire sooner" — meaningless when everything fires. They need
-   re-pointing to empowerment knobs (lower empowerment threshold, higher
+   re-pointing to elevation knobs (lower elevation threshold, higher
    cap, bigger rider). This touches Merge, Mods and a class passive, not
    just the subroutine pool.
 3. **Trigger families change job, and not all map cleanly.**
@@ -329,7 +329,7 @@ layer, Heat/Trace economy (D1–D7 above stand independently).
 With the pool scrapped there is no content to calibrate *against*, and
 the pillars stop being a measuring instrument and become the **authoring
 template**: every production subroutine is a pillar floor plus an
-empowerment rider. The checkpoint plan below gains weight rather than
+elevation rider. The checkpoint plan below gains weight rather than
 losing it, and the "hold the trigger constant, sweep magnitude ×
 frequency" design (D9) is exactly the two-component shape D11 asks
 content to be written in.
@@ -338,7 +338,7 @@ content to be written in.
 
 All eight families collapse into three modulator roles: **charge** (bank
 something, spend it as magnitude on the next per-turn fire),
-**condition** (while true, the fire is empowered), and **extra fire** (an
+**condition** (while true, the fire is elevated), and **extra fire** (an
 additional fire outside the turn gate).
 
 | family | role | notes |
@@ -348,13 +348,13 @@ additional fire outside the turn gate).
 | `accumulator` | charge | Same, counting raw progress; `threshold` becomes the stepped point |
 | `rareOccurrence` | charge, stepped | `minMagnitude` and `watchSide` both survive — watching the *enemy's* scoring stays a distinct signal |
 | `selfState` | condition | `isDealer`/`isNonDealer` gives a half-your-turns rhythm; `traceAbove`/`Below` are build-state conditions |
-| `enemyState` | condition | "empowered as the fight goes badly/well" — meaning unchanged |
+| `enemyState` | condition | "elevated as the fight goes badly/well" — meaning unchanged |
 | `handOutcome` | extra fire | A per-*hand* rhythm rather than per-turn; texture worth keeping |
 | `chained` | condition, redefined | See below — the only family that breaks |
 
 **Occurrence's variations dissolve.** `instant`/`threshold`/`scaling`
 were three answers to "when does it fire", a question D11 deletes. Their
-design intents survive as two empowerment shapes: **graded** (magnitude
+design intents survive as two elevation shapes: **graded** (magnitude
 += per-charge x charges; `cap` survives from `scaling`) and **stepped**
 (at >=N charges add a distinct effect; `bankTarget` survives from
 `threshold`). Scaling finally does what DESIGN.md:688 always said.
@@ -365,12 +365,12 @@ magnitude *and* add a mechanic (e.g. also apply a DoT). So a piece is
 pricing tractable: one floor and one rider are each independently
 measurable, where an arbitrary stack of riders would not be.
 
-**`chained` is redefined onto empowerment, not firing.** Under D11
+**`chained` is redefined onto elevation, not firing.** Under D11
 everything fires every turn, so `afterSubroutineId`/`afterArchetype`/
 `afterTag` all become trivially true and the family would collapse into
-`always`. Instead it becomes a rider condition on *empowerment plus
+`always`. Instead it becomes a rider condition on *elevation plus
 ordering* — e.g. "Chain-Exploit: this rider applies if an Exploit
-subroutine executed **empowered** earlier in this turn." That restores
+subroutine executed **elevated** earlier in this turn." That restores
 selectivity, keeps the family's real job (loadout synergy), and preserves
 loadout **ordering** as a live decision, since `fireReadySubroutines`
 sequences by loadout position.

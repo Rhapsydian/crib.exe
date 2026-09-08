@@ -407,7 +407,7 @@ export function advanceTowardFiring(
  * per-combat fire cap and the points cooldown. Split out for D11-A
  * (session 50), where the normal turn-gate stops consulting the trigger
  * at all -- every installed, toggled-on piece now fires on its side's
- * turn, and the trigger becomes an empowerment modulator instead.
+ * turn, and the trigger becomes an elevation modulator instead.
  *
  * These two must still hold, for exactly the reason they were moved to
  * this choke point in the first place: they have to apply regardless of
@@ -417,7 +417,7 @@ export function advanceTowardFiring(
  * pillar suite sweeps.
  */
 /**
- * How many empowerment CHARGES a piece has banked since its last fire
+ * How many elevation CHARGES a piece has banked since its last fire
  * (D11-B, session 50). Under D11 a trigger no longer decides whether a
  * piece acts — it decides how hard it acts, and this is that number.
  *
@@ -435,7 +435,7 @@ export function chargesFor(definition: SubroutineDefinition, state: SubroutineRu
   const trigger = definition.trigger;
   if (trigger.kind === 'occurrence') {
     // 'scaling' already caps its own bank in updateSubroutineState;
-    // 'instant'/'threshold' bank uncapped, so the empowerment cap is what
+    // 'instant'/'threshold' bank uncapped, so the elevation cap is what
     // bounds them. Both read the same counter -- which is the point:
     // DESIGN.md:688 always described Scaling as "payload magnitude scales
     // with how many were actually banked when it fires", and this is the
@@ -445,7 +445,7 @@ export function chargesFor(definition: SubroutineDefinition, state: SubroutineRu
   if (trigger.kind === 'accumulator') {
     // Raw progress, expressed in whole thresholds -- an accumulator's
     // threshold is its natural charge unit, so a piece that banked twice
-    // its threshold fires twice-empowered.
+    // its threshold fires twice-elevated.
     return trigger.threshold > 0 ? Math.floor(state.accumulatedProgress / trigger.threshold) : 0;
   }
   return 0;

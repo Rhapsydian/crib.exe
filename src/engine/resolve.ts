@@ -2177,27 +2177,27 @@ export interface FireEvent {
  * hasn't run for this fire yet), so `fireCount` correctly reflects prior
  * fires only, not this one. */
 function payloadForFire(entry: LoadoutEntry): PayloadEffect {
-  const { magnitudeDecayPerFire, magnitudeFloor, empowerment } = entry.definition;
+  const { magnitudeDecayPerFire, magnitudeFloor, elevation } = entry.definition;
   let payload = entry.definition.payload;
 
   if (magnitudeDecayPerFire !== undefined) {
     payload = decayedPayloadMagnitude(payload, entry.state.fireCount, magnitudeDecayPerFire, magnitudeFloor ?? 0) ?? payload;
   }
 
-  // D11-B: graded empowerment. Applied AFTER decay, so a decaying piece
-  // that is also empowered still decays from its own floor rather than
+  // D11-B: graded elevation. Applied AFTER decay, so a decaying piece
+  // that is also elevated still decays from its own floor rather than
   // from an inflated one -- decay is a property of how often it has
-  // fired, empowerment of what it banked since it last did.
+  // fired, elevation of what it banked since it last did.
   //
   // improvedPayloadMagnitude carries the session 48 units split: tempo
   // payloads are denominated in fractions of a turn/threshold, so a flat
   // bonus there would mean "plus N whole turns". Its tempoAmount default
   // does that conversion, which is exactly the bug class that shipped in
   // session 48 and must not be reintroduced here.
-  if (empowerment !== undefined) {
-    const charges = Math.min(chargesFor(entry.definition, entry.state), empowerment.cap);
+  if (elevation !== undefined) {
+    const charges = Math.min(chargesFor(entry.definition, entry.state), elevation.cap);
     if (charges > 0) {
-      payload = improvedPayloadMagnitude(payload, empowerment.perCharge * charges) ?? payload;
+      payload = improvedPayloadMagnitude(payload, elevation.perCharge * charges) ?? payload;
     }
   }
 
@@ -2221,7 +2221,7 @@ export function fireReadySubroutines(
   const firedThisTurn: FiredSubroutineInfo[] = [];
   const loadoutLength = state.sides[side].loadout.length;
   // Retained through D11-A even though the turn-gate no longer reads it:
-  // D11-C (conditional empowerment) and D11-E (chained riders) both need
+  // D11-C (conditional elevation) and D11-E (chained riders) both need
   // the trigger context back, and `firedThisTurn` is still collected
   // below for the same reason. Deleting and re-adding the parameter would
   // churn every call site twice.
@@ -2234,7 +2234,7 @@ export function fireReadySubroutines(
     if (entry.definition.firesAt) continue;
     // D11-A (session 50): the turn-gate no longer consults the trigger.
     // Every installed, toggled-on piece fires on its side's turn; the
-    // trigger becomes an empowerment modulator (D11-B onward) rather
+    // trigger becomes an elevation modulator (D11-B onward) rather
     // than a gate on whether the piece acts at all. Only the fire cap
     // and the points cooldown still gate here.
     if (!withinFiringGates(entry.definition, entry.state)) continue;
