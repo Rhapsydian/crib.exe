@@ -289,16 +289,20 @@ describe('playRun', { timeout: 30_000 }, () => {
 
   it('a victorious run clears all 4 layers, matching layersCompleted to the log', () => {
     // Scans a wide seed range because the point is "find a victorious
-    // run and check its shape," not "seed N wins." Widened from 50 in
-    // session 46: adding the 18 Neutral pieces to every class's reward
-    // pool shifted which seeds win, and a floor-strategy player
-    // (alwaysAcquireFirst, beeline, no skill dial) wins rarely enough
-    // that the first victory now lands at seed 96.
+    // run and check its shape," not "seed N wins."
+    //
+    // Session 50 (D11-A): a FLOOR-strategy player now wins in none of
+    // 500 seeds -- unconditional firing revived more dead enemy content
+    // than player content, so the game got harder. The player is given
+    // the project's standing diagnostic skill (0.85) rather than the
+    // scan being widened: the test's subject is a victory's SHAPE, and
+    // "a floor player can win at all" was never what it asserted. First
+    // victory now lands at seed 7.
     const victorySeed = Array.from({ length: 500 }, (_, seed) => seed).find(
-      (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper }).outcome === 'victory',
+      (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper, playerSkill: 0.85 }).outcome === 'victory',
     );
     expect(victorySeed).toBeDefined();
-    const result = playRun({ seed: victorySeed!, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper });
+    const result = playRun({ seed: victorySeed!, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper, playerSkill: 0.85 });
     expect(result.layersCompleted).toBe(4);
     expect(result.log.filter((e) => e.type === 'layerCleared')).toHaveLength(4);
     // 4 gatekeeper wins (checkpoint C) each award Data -- confirms it
@@ -316,13 +320,17 @@ describe('playRun', { timeout: 30_000 }, () => {
 
   it('onBeforeGatekeeperFight (session 39) fires once per gatekeeper fight with the real accumulated state at that moment', () => {
     // Scans a wide seed range because the point is "find a victorious
-    // run and check its shape," not "seed N wins." Widened from 50 in
-    // session 46: adding the 18 Neutral pieces to every class's reward
-    // pool shifted which seeds win, and a floor-strategy player
-    // (alwaysAcquireFirst, beeline, no skill dial) wins rarely enough
-    // that the first victory now lands at seed 96.
+    // run and check its shape," not "seed N wins."
+    //
+    // Session 50 (D11-A): a FLOOR-strategy player now wins in none of
+    // 500 seeds -- unconditional firing revived more dead enemy content
+    // than player content, so the game got harder. The player is given
+    // the project's standing diagnostic skill (0.85) rather than the
+    // scan being widened: the test's subject is a victory's SHAPE, and
+    // "a floor player can win at all" was never what it asserted. First
+    // victory now lands at seed 7.
     const victorySeed = Array.from({ length: 500 }, (_, seed) => seed).find(
-      (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper }).outcome === 'victory',
+      (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper, playerSkill: 0.85 }).outcome === 'victory',
     );
     expect(victorySeed).toBeDefined();
     const captures: GatekeeperFightContext[] = [];
@@ -330,6 +338,7 @@ describe('playRun', { timeout: 30_000 }, () => {
       seed: victorySeed!,
       layerNodeCounts: TINY_LAYERS,
       traversalStrategy: beelineToGatekeeper,
+      playerSkill: 0.85,
       onBeforeGatekeeperFight: (ctx) => captures.push(ctx),
     });
     expect(result.outcome).toBe('victory');

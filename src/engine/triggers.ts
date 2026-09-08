@@ -402,6 +402,25 @@ export function advanceTowardFiring(
   return state;
 }
 
+/**
+ * The two gates that are NOT trigger-family evaluation: the
+ * per-combat fire cap and the points cooldown. Split out for D11-A
+ * (session 50), where the normal turn-gate stops consulting the trigger
+ * at all -- every installed, toggled-on piece now fires on its side's
+ * turn, and the trigger becomes an empowerment modulator instead.
+ *
+ * These two must still hold, for exactly the reason they were moved to
+ * this choke point in the first place: they have to apply regardless of
+ * trigger family. `pointsCooldown` in particular becomes MORE
+ * load-bearing under D11 -- it now suppresses a guaranteed floor rather
+ * than gating an occasional fire, and it is the frequency axis the
+ * pillar suite sweeps.
+ */
+export function withinFiringGates(definition: SubroutineDefinition, state: SubroutineRuntimeState): boolean {
+  if (definition.maxFiresPerCombat !== undefined && state.fireCount >= definition.maxFiresPerCombat) return false;
+  return state.cooldownRemaining <= 0;
+}
+
 export function isReady(
   definition: SubroutineDefinition,
   state: SubroutineRuntimeState,
@@ -422,11 +441,7 @@ export function isReady(
   // (non-reactive, non-rareOccurrence/handOutcome) firing path already
   // funnels through, so the cap now applies uniformly regardless of
   // trigger kind instead of needing a bespoke check per family.
-  if (definition.maxFiresPerCombat !== undefined && state.fireCount >= definition.maxFiresPerCombat) return false;
-  // Points cooldown (session 47) -- checked at the same choke point and
-  // for the same reason as the cap above: it has to hold regardless of
-  // trigger family, and this is where every normal firing path converges.
-  if (state.cooldownRemaining > 0) return false;
+  if (!withinFiringGates(definition, state)) return false;
   const trigger = definition.trigger;
   switch (trigger.kind) {
     case 'accumulator':

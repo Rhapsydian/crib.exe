@@ -213,12 +213,31 @@ describe('fireReadySubroutines', () => {
     expect(combatState.sides[0].loadout[0].state.ready).toBe(false);
   });
 
-  it('does not fire a subroutine whose condition is not met', () => {
+  it('D11-A: fires a subroutine even when its trigger condition is NOT met', () => {
+    // Inverted deliberately, not deleted. Under D11 the turn-gate stops
+    // consulting the trigger: every installed, toggled-on piece fires on
+    // its side's turn, and the trigger becomes an empowerment modulator
+    // (D11-B onward) rather than a gate on acting at all. This is the
+    // single behavioural assertion that defines D11-A.
     const notReady = definition('a', { kind: 'occurrence', category: 'run', variation: 'instant' }, { kind: 'directBurst', amount: 5 });
     const state = createCombatState([notReady], [], [12, 12]);
     const { combatState, events } = fireReadySubroutines(state, 0, { isDealer: false });
-    expect(events).toHaveLength(0);
-    expect(combatState.sides[0].winGauge.progress).toBe(0);
+    expect(events).toHaveLength(1);
+    expect(combatState.sides[0].winGauge.progress).toBe(5);
+  });
+
+  it('D11-A: still respects the points cooldown and the per-combat fire cap', () => {
+    // The two gates that survive unconditional firing. pointsCooldown
+    // becomes MORE load-bearing under D11 -- it now suppresses a
+    // guaranteed floor rather than gating an occasional fire, and it is
+    // the frequency axis the pillar suite sweeps.
+    const capped = { ...alwaysBurst('a', 5), maxFiresPerCombat: 0 };
+    const cappedState = createCombatState([capped], [], [12, 12]);
+    expect(fireReadySubroutines(cappedState, 0, { isDealer: false }).events).toHaveLength(0);
+
+    const cooling = createCombatState([alwaysBurst('b', 5)], [], [12, 12]);
+    cooling.sides[0].loadout[0].state = { ...cooling.sides[0].loadout[0].state, cooldownRemaining: 4 };
+    expect(fireReadySubroutines(cooling, 0, { isDealer: false }).events).toHaveLength(0);
   });
 
   it('skips a ready subroutine that has been toggled off', () => {
@@ -238,14 +257,19 @@ describe('fireReadySubroutines', () => {
     expect(combatState.sides[0].winGauge.progress).toBe(11);
   });
 
-  it('does not fire a chained subroutine that comes before the one it depends on', () => {
+  it('D11-A: a chained subroutine now fires regardless of loadout order', () => {
     const second = definition('b', { kind: 'chained', afterSubroutineId: 'a' }, { kind: 'directBurst', amount: 7 });
     const first = alwaysBurst('a', 4);
     // loadout order: b before a -- b's condition (a fired) can't be met
     // within this single top-to-bottom pass since a hasn't fired yet.
     const state = createCombatState([second, first], [], [12, 12]);
     const { events } = fireReadySubroutines(state, 0, { isDealer: false });
-    expect(events.map((e) => e.subroutineId)).toEqual(['a']);
+    // Both fire now, in loadout order -- `chained` no longer gates.
+    // D11-E redefines it as a rider CONDITION on empowerment plus
+    // ordering ("applies if an Exploit fired elevated earlier this
+    // turn"), which restores selectivity without deleting the family.
+    // Until then a chained piece is indistinguishable from `always`.
+    expect(events.map((e) => e.subroutineId)).toEqual(['b', 'a']);
   });
 
   it('skips a firesAt-tagged entry even when otherwise ready -- it only ever fires via fireHandLifecycleSubroutines', () => {
@@ -1931,12 +1955,20 @@ describe('Root offense (session 40 continued) -- rareOccurrence trigger', () => 
     expect(second.events).toHaveLength(0);
   });
 
-  it('never becomes ready via the normal turn-gated pipeline -- isReady/refreshTriggerReadiness never latch it', () => {
+  it('D11-A INTERIM: also fires on the turn-gate, so it currently DOUBLE-fires', () => {
     const watcher = definition('watcher', { kind: 'rareOccurrence', category: 'pair', minMagnitude: 6, watchSide: 'either' }, { kind: 'directBurst', amount: 5 }, { archetype: 'root' });
     let state = createCombatState([watcher], [], [12, 12]);
     state = refreshTriggerReadiness(state, 0);
     const fired = fireReadySubroutines(state, 0, { isDealer: true });
-    expect(fired.events).toHaveLength(0); // never fires via the normal path, regardless of readiness refresh
+    // KNOWN INTERIM DEFECT (D11-A). rareOccurrence/handOutcome are
+    // trigger KINDS, not `firesAt`, so the turn-gate no longer excludes
+    // them -- these pieces now fire once here AND once via their own
+    // bespoke path. D11-D owns the fix: under the per-turn model these
+    // families become an EXTRA fire on top of the floor, which needs the
+    // two paths reconciled deliberately rather than by accident.
+    // Asserted as-is so the double-fire is visible and cannot be
+    // mistaken for intended behaviour.
+    expect(fired.events).toHaveLength(1);
   });
 });
 
@@ -2022,12 +2054,20 @@ describe('Root offense (session 40 continued) -- handOutcome trigger ("Crib Trap
     expect(second.events).toHaveLength(0);
   });
 
-  it('never becomes ready via the normal turn-gated pipeline', () => {
+  it('D11-A INTERIM: also fires on the turn-gate, so it currently DOUBLE-fires', () => {
     const trap = definition('trap', { kind: 'handOutcome', phase: 'crib', side: 'enemy', comparison: 'above', value: 4 }, { kind: 'directBurst', amount: 3 }, { archetype: 'root' });
     let state = createCombatState([trap], [], [12, 12]);
     state = refreshTriggerReadiness(state, 0);
     const fired = fireReadySubroutines(state, 0, { isDealer: true });
-    expect(fired.events).toHaveLength(0);
+    // KNOWN INTERIM DEFECT (D11-A). rareOccurrence/handOutcome are
+    // trigger KINDS, not `firesAt`, so the turn-gate no longer excludes
+    // them -- these pieces now fire once here AND once via their own
+    // bespoke path. D11-D owns the fix: under the per-turn model these
+    // families become an EXTRA fire on top of the floor, which needs the
+    // two paths reconciled deliberately rather than by accident.
+    // Asserted as-is so the double-fire is visible and cannot be
+    // mistaken for intended behaviour.
+    expect(fired.events).toHaveLength(1);
   });
 });
 

@@ -130,7 +130,10 @@ describe('combatThresholdsFor -- the meta-progression sockets (session 48)', () 
 
 const OVERWHELMING_PLAYER: RunPlayerState = {
   classId: 'breacher',
-  installedLoadout: overwhelmingBreacherLoadout(30),
+  // D11-A raised the bar: every enemy piece now fires every turn, so 30
+  // burst no longer reliably out-races a gatekeeper. The fixture's job is
+  // to win dependably, so the number moves rather than the assertion.
+  installedLoadout: overwhelmingBreacherLoadout(90),
   data: 0,
   bench: [],
   material: {},
@@ -439,7 +442,11 @@ describe('heatSources (session 50) -- Heat attribution', () => {
     let checked = 0;
     let sawNonZero = 0;
     for (const classId of ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'] as ClassId[]) {
-      for (let seed = 0; seed < 15; seed++) {
+      // 30 rather than 15 since D11-A: runs end sooner, so a fixed seed
+      // count yields fewer non-zero Heat encounters. Seeds go up rather
+      // than the non-vacuity floor coming down -- lowering that floor
+      // would weaken the guard instead of feeding it.
+      for (let seed = 0; seed < 30; seed++) {
         const result = playRun({ seed, classId, playerSkill: 0.85 });
         for (const entry of result.log) {
           if (entry.type !== 'encounter') continue;

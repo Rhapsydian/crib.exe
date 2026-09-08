@@ -14,6 +14,7 @@ import {
   evaluateEnemyState,
   evaluateSelfState,
   isReady,
+  withinFiringGates,
   resetAfterFire,
   updateSuitTallyState,
   updateMitigationBankedState,
@@ -2197,14 +2198,24 @@ export function fireReadySubroutines(
   const events: FireEvent[] = [];
   const firedThisTurn: FiredSubroutineInfo[] = [];
   const loadoutLength = state.sides[side].loadout.length;
+  // Retained through D11-A even though the turn-gate no longer reads it:
+  // D11-C (conditional empowerment) and D11-E (chained riders) both need
+  // the trigger context back, and `firedThisTurn` is still collected
+  // below for the same reason. Deleting and re-adding the parameter would
+  // churn every call site twice.
+  void selfContext;
 
   for (let i = 0; i < loadoutLength; i++) {
     const entry = state.sides[side].loadout[i];
     // firesAt-tagged entries only ever fire via fireHandLifecycleSubroutines
     // below, never via the normal turn-gate.
     if (entry.definition.firesAt) continue;
-    const triggerContext = buildTriggerContext(state, side, firedThisTurn, selfContext.isDealer);
-    if (!isReady(entry.definition, entry.state, triggerContext)) continue;
+    // D11-A (session 50): the turn-gate no longer consults the trigger.
+    // Every installed, toggled-on piece fires on its side's turn; the
+    // trigger becomes an empowerment modulator (D11-B onward) rather
+    // than a gate on whether the piece acts at all. Only the fire cap
+    // and the points cooldown still gate here.
+    if (!withinFiringGates(entry.definition, entry.state)) continue;
     if (!entry.state.toggledOn) continue;
 
     const fireEffect = payloadForFire(entry);
