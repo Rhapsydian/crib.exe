@@ -233,16 +233,18 @@ export const synergyAwareAcquisition: AcquisitionStrategy = (options, playerStat
 // A fully general optimizer (searching permutations against simulated
 // outcomes) was considered and rejected by session 45 as its own
 // research project. This is a fixed rule over the `sequence` beta source:
-// a piece whose beta wants something to have fired before it gets that
-// something moved ahead of it --
+// a piece whose beta wants a particular neighbour or predecessor gets one
+// moved into place --
 //
-//   - `adjacent`: a matching piece moved to the slot immediately before.
-//   - `anyPrior`: a matching piece moved anywhere earlier, if none is.
+//   - `adjacent` (positional, either side -- A12): if neither the slot
+//     above nor below matches, a matching piece moves into the nearest
+//     neighbouring slot (below if it came from below, above if from above).
+//   - `anyPrior` (firing order): if nothing earlier matches, a matching
+//     piece moves up to sit directly above.
 //
-// Same-turn firing resolves top-to-bottom (resolve.ts), so without this a
-// sequence beta only applies when acquisition order happens to line it
-// up. D13 makes this a prerequisite for measuring chain content at all:
-// no simulated run had ever reordered a loadout before it existed.
+// Without this a sequence beta only applies when acquisition order happens
+// to line it up. D13 makes this a prerequisite for measuring chain content
+// at all: no simulated run had ever reordered a loadout before it existed.
 //
 // Session 46's second pass (chain finishers last) retired with the
 // chain-finisher payload kind. Empower now has the strongest positional
@@ -280,18 +282,23 @@ export const synergyAwareReorder: ReorderStrategy = (playerState) => {
     for (let i = 0; i < loadout.length; i++) {
       const beta = loadout[i].beta;
       if (beta?.source !== 'sequence') continue;
+      const matches = (index: number) => index >= 0 && index < loadout.length && matchesSequence(beta.match, loadout[index]);
       const satisfied =
-        beta.reach === 'adjacent'
-          ? i > 0 && matchesSequence(beta.match, loadout[i - 1])
-          : loadout.slice(0, i).some((earlier) => matchesSequence(beta.match, earlier));
+        beta.reach === 'adjacent' ? matches(i - 1) || matches(i + 1) : loadout.slice(0, i).some((earlier) => matchesSequence(beta.match, earlier));
       if (satisfied) continue;
       const candidateIndex = loadout.findIndex((candidate, index) => index !== i && matchesSequence(beta.match, candidate));
       if (candidateIndex === -1) continue; // nothing installed satisfies it at all
-      // Moving a later piece up to slot i pushes this piece to i + 1, so
-      // the match lands immediately before it -- which satisfies both
-      // reaches. An earlier, non-adjacent candidate (adjacent only) moves
-      // down to sit just above it instead.
-      state = candidateIndex > i ? reorderInstalled(state, candidateIndex, i) : reorderInstalled(state, candidateIndex, i - 1);
+      if (beta.reach === 'adjacent') {
+        // Into the nearest neighbouring slot: a later candidate moves up to
+        // sit directly below (i + 1); an earlier one moves down to sit
+        // directly above (removing it shifts this piece to i - 1, so
+        // inserting at i - 1 lands it just above).
+        state = candidateIndex > i ? reorderInstalled(state, candidateIndex, i + 1) : reorderInstalled(state, candidateIndex, i - 1);
+      } else {
+        // anyPrior needs it earlier: a later candidate moves up to slot i,
+        // pushing this piece down one.
+        state = reorderInstalled(state, candidateIndex, i);
+      }
       movedSomething = true;
       break;
     }

@@ -207,6 +207,12 @@ describe('fireTurn -- betas', () => {
     expect(state.sides[0].wardShield).toBe(5);
   });
 
+  it('adjacent counts the neighbour BELOW too, even though it has not fired yet (A12)', () => {
+    const daemon = piece('d', { verb: 'ward', amount: 1 }, undefined, {}, 'daemon');
+    const wantsDaemon = piece('w', { verb: 'credit', amount: 1 }, { source: 'sequence', reach: 'adjacent', match: { archetype: 'daemon' }, shape: 'whileTrue', effect: { verb: 'enhance', amount: 5 } });
+    expect(progress(fireTurn(fight([wantsDaemon, daemon]), 0, { isDealer: false }).combatState, 0)).toBe(6);
+  });
+
   it('adjacent sequence betas depend on loadout order (D13)', () => {
     const daemon = piece('d', { verb: 'ward', amount: 1 }, undefined, {}, 'daemon');
     const wantsDaemon = piece('w', { verb: 'credit', amount: 1 }, { source: 'sequence', reach: 'adjacent', match: { archetype: 'daemon' }, shape: 'whileTrue', effect: { verb: 'enhance', amount: 5 } });

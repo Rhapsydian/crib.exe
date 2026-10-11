@@ -22,8 +22,8 @@
  * repro, the same way this file's own predecessor bug was found.
  *
  * Usage:
- *   npx tsx scripts/sweep.ts run [--classes=breacher,ghost] [--seeds=200] [--traversal=beeline|explore|opportunistic] [--acquisition=floor|synergy] [--playerSkill=0.85] [--out=file.jsonl]
- *   npx tsx scripts/sweep.ts enemy --enemy=ghost-in-the-machine [--vs=blackhat] [--seeds=200] [--out=file.jsonl]
+ *   npx tsx scripts/sweep.ts run [--classes=exploit-overclock,daemon-honeypot] [--seeds=200] [--traversal=beeline|explore|opportunistic] [--acquisition=floor|synergy] [--playerSkill=0.85] [--out=file.jsonl]
+ *   npx tsx scripts/sweep.ts enemy --enemy=skeleton-gate-4 [--vs=exploit-daemon] [--seeds=200] [--out=file.jsonl]
  *
  * `run` sweeps playRun() outcome distribution per class (RunOutcome +
  * layersCompleted). `--traversal` selects which of run.ts's
@@ -68,10 +68,10 @@ import { CLASS_STARTING_LOADOUTS } from '../src/engine/subroutines';
 import { ENEMY_ROSTER } from '../src/engine/enemies';
 import { preferMergeWhenAvailable, opportunisticSafehouseStrategy, type SafehouseStrategy } from '../src/engine/merge';
 import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
-import type { ClassId } from '../src/engine/classes';
+import { ALL_CLASS_IDS, DEFAULT_CLASS_ID, type ClassId } from '../src/engine/classes';
 import { parseSyntheticGatekeepers, describeSyntheticGatekeepers } from './synthetic-gatekeepers';
 
-const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
+const ALL_CLASSES: ClassId[] = ALL_CLASS_IDS;
 
 const TRAVERSAL_STRATEGIES: Record<string, TraversalStrategy> = {
   beeline: beelineToGatekeeper,
@@ -188,7 +188,7 @@ function sweepEnemy(args: Record<string, string>): void {
   if (!enemyId) throw new Error('sweep.ts enemy: --enemy=<id> is required');
   const enemy = ENEMY_ROSTER.find((e) => e.id === enemyId);
   if (!enemy) throw new Error(`sweep.ts enemy: no enemy with id "${enemyId}"`);
-  const classId = (args.vs ?? 'breacher') as ClassId;
+  const classId = (args.vs ?? DEFAULT_CLASS_ID) as ClassId;
   const seeds = Number(args.seeds ?? 100);
   const outFile = args.out;
   if (outFile) writeFileSync(outFile, '');

@@ -51,24 +51,18 @@ items 4 and 7 below: the gatekeeper roster and the classes are both
 rebuilt rather than tuned. Work happens on the `archetype-redesign`
 branch.
 
-1. **Engine refactor** — checkpointed, pausing after each:
-   1. `DESIGN.md` restructure ✅ (superseded sections archived verbatim
-      in `docs/design-history.md`).
-   2. New subroutine model (alpha verb + growth, beta source × shape),
-      new archetypes/suits, removal of tags, Togglable and Neutral;
-      delete the old pool and enemy kits; skeleton pool, skeleton
-      roster, six placeholder classes with 3-piece loadouts.
-   3. Combat resolution: verb dispatch, beta evaluation on the D11–D15
-      charge machinery; remove DoT/HoT, scheduled sabotage, hand-
-      lifecycle recon.
-   4. Dependent systems: Mods (re-keyed hooks; tick Mods), placeholder
-      bridge passives, Merge upgrades the beta, combat Burners as verbs.
-   5. Diagnostic scripts compile; a short sweep runs end to end.
-
-   Checkpoints 2–4 will not build green individually — the type change
-   ripples everywhere. Expect most of the ~800 tests to be rewritten.
-2. **Recalibrate** — pillar suite re-aligned one per verb, then
-   run-economy checkpoints 3–6 to price an alpha and a beta.
+1. **Engine refactor** ✅ (checkpoints 1–5, session 51) — `DESIGN.md`
+   restructure; alpha/beta types and skeleton content; combat resolution;
+   Mods / Merge / Burners / bridge passives; diagnostics ported. Build
+   green: `npm run check` clean, 615 tests. Every implementation call is
+   logged in `docs/archetype-redesign.md`.
+2. **Recalibrate** — the pillar suite currently carries three verb
+   pillars (Credit, Suppress, Tempo); Ward, Empower, Disrupt and Charge
+   pillars need a design first (they can't win alone, D14). Then
+   run-economy checkpoints 3–6 to price an alpha and a beta. Known going
+   in: skeleton regular/elite fights are near-free (100% player wins in
+   `enemy-check.ts`), and two watch items sit on Honeypot (A2's, and
+   conversion credits bypassing Ward).
 3. **Author** — archetype subroutines → classes (names, bridge
    passives, unlock order) → enemy roster.
 

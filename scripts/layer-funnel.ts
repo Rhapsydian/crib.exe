@@ -41,16 +41,16 @@
  * less often" gets answered.
  *
  * Usage:
- *   npx tsx scripts/layer-funnel.ts [--classes=breacher,ghost] [--seeds=600] [--acquisition=floor|synergy] [--playerSkill=0.85] [--excludeGatekeeper=firewall-prime] [--out=file.jsonl]
+ *   npx tsx scripts/layer-funnel.ts [--classes=exploit-overclock,daemon-honeypot] [--seeds=600] [--acquisition=floor|synergy] [--playerSkill=0.85] [--excludeGatekeeper=<id>] [--out=file.jsonl]
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { playRun, opportunisticTraversal, summarizeRunLoadout } from '../src/engine/run';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
-import type { ClassId } from '../src/engine/classes';
+import { ALL_CLASS_IDS, type ClassId } from '../src/engine/classes';
 import type { EnemyId } from '../src/engine/enemies';
 
-const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
+const ALL_CLASSES: ClassId[] = ALL_CLASS_IDS;
 
 // Mirrors scripts/sweep.ts's own map -- see this file's header. `floor`
 // is an explicit empty override so omitting the flag and passing

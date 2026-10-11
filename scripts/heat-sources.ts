@@ -25,7 +25,7 @@
  * measurement, and this script does not pretend otherwise.
  *
  * Usage:
- *   npx tsx scripts/heat-sources.ts [--seeds=300] [--classes=blackhat]
+ *   npx tsx scripts/heat-sources.ts [--seeds=300] [--classes=exploit-daemon]
  *                                   [--acquisition=floor|synergy]
  *                                   [--noNearMissScaler] [--containmentMult=2]
  */
@@ -33,9 +33,9 @@ import { playRun, opportunisticTraversal } from '../src/engine/run';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
 import { HEAT_MAX } from '../src/engine/heat';
-import type { ClassId } from '../src/engine/classes';
+import { ALL_CLASS_IDS, type ClassId } from '../src/engine/classes';
 
-const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
+const ALL_CLASSES: ClassId[] = ALL_CLASS_IDS;
 const PLAYER_SKILL = 0.85;
 
 // Mirrors heat.ts's own table -- imported values would be better, but

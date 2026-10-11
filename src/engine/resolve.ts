@@ -583,15 +583,25 @@ export interface FireEvent {
   immediate: boolean;
 }
 
-export function buildTriggerContext(combatState: CombatState, side: PlayerIndex, isDealer: boolean, firedThisTurn: readonly FiredThisTurn[] = []): TriggerContext {
+/** `index` is the piece's loadout slot, for `adjacent` betas (A12) --
+ * its neighbours are the slots directly above and below. */
+export function buildTriggerContext(
+  combatState: CombatState,
+  side: PlayerIndex,
+  isDealer: boolean,
+  firedThisTurn: readonly FiredThisTurn[] = [],
+  index?: number,
+): TriggerContext {
   const own = combatState.sides[side];
   const opponent = combatState.sides[opponentOf(side)];
+  const neighbours = index === undefined ? [] : [own.loadout[index - 1], own.loadout[index + 1]].filter((e) => e !== undefined).map((e) => e.definition);
   return {
     isDealer,
     ownWard: own.wardShield,
     ownGaugeFraction: own.winGauge.progress / own.winGauge.threshold,
     opponentGaugeFraction: opponent.winGauge.progress / opponent.winGauge.threshold,
     firedThisTurn,
+    neighbours,
   };
 }
 
@@ -663,7 +673,7 @@ export function fireTurn(
 
     const { definition } = entry;
     const beta = definition.beta;
-    const context = buildTriggerContext(state, side, selfContext.isDealer, firedThisTurn);
+    const context = buildTriggerContext(state, side, selfContext.isDealer, firedThisTurn, i);
     const scale = beta ? betaScale(beta, betaCharges(definition, entry.state, context)) : 0;
     const elevated = scale > 0;
 

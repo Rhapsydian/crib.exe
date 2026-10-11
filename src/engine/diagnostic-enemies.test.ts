@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { PILLAR_IDS, pillarEnemy, allPillars, type DiagnosticEnemyId } from './diagnostic-enemies';
+import { CREDIT_PILLAR_IDS, PILLAR_IDS, pillarEnemy, allPillars, type DiagnosticEnemyId } from './diagnostic-enemies';
 import { ENEMY_ROSTER, eligibleEnemies, pickRegularOrEliteEnemy, assignGatekeeperEnemy } from './enemies';
 import { createRng } from './rng';
 import { generateLayer } from './map-gen';
 import { playCombat } from './combat';
 import { CLASS_DEFINITIONS } from './classes';
 import { GAUGE_THRESHOLD, BREACH_THRESHOLD, CONTAINMENT_THRESHOLD } from './encounters';
+
+// Session 51: ported to one pillar per verb (credit, suppress, tempo).
+// The DoT, Drain and Throttle pillars retired with their mechanics; see
+// diagnostic-enemies.ts's header. The unreachability guards are unchanged.
 
 const SPEC = { scalar: 5, pointsCooldown: 12 };
 
@@ -56,55 +60,32 @@ describe('diagnostic pillars -- unreachable in real play', () => {
 });
 
 describe('diagnostic pillars -- shape', () => {
-  it('gives every pillar exactly one piece, no passive, and the shared always+cooldown trigger', () => {
-    // A pillar with two pieces or a passive would be measuring more than
-    // one variable, which defeats the entire point of the suite.
+  it('gives every pillar exactly one piece, no passive, no beta, and the points-cooldown frequency knob', () => {
+    // A pillar with two pieces, a beta or a passive would be measuring more
+    // than one variable, which defeats the entire point of the suite.
     for (const id of PILLAR_IDS) {
       const enemy = pillarEnemy(id, SPEC);
       expect(enemy.loadout).toHaveLength(1);
       expect(enemy.passiveIds).toEqual([]);
-      expect(enemy.loadout[0].trigger).toEqual({ kind: 'always' });
+      expect(enemy.loadout[0].beta).toBeUndefined();
       expect(enemy.loadout[0].pointsCooldown).toBe(SPEC.pointsCooldown);
-      // Neutral archetype keeps the payload clear of archetype-specific
-      // Ward blocking and Mod amplification.
-      expect(enemy.loadout[0].archetype).toBe('neutral');
     }
   });
 
-  it('threads the scalar into each pillar own payload knob', () => {
-    const knob = (id: DiagnosticEnemyId): number => {
-      const p = pillarEnemy(id, { ...SPEC, scalar: 7 }).loadout[0].payload as unknown as Record<string, number>;
-      return p.amount ?? p.amountPerTick ?? p.magnitude;
-    };
-    for (const id of PILLAR_IDS) expect(knob(id)).toBe(7);
-    // Throttle is the exception and it matters: `applyThrottled` never
-    // reads magnitude (flat THROTTLED_REDUCTION on presence alone), so
-    // the scalar drives duration instead. Asserted so the exception
-    // cannot be silently "tidied" back to magnitude later.
-    const throttle = pillarEnemy('pillar-throttle', { ...SPEC, scalar: 7 }).loadout[0].payload;
-    expect(throttle.kind === 'debuff' && throttle.duration).toBe(7);
+  it("threads the scalar into each pillar's alpha amount", () => {
+    for (const id of PILLAR_IDS) {
+      const alpha = pillarEnemy(id, { ...SPEC, scalar: 7 }).loadout[0].alpha;
+      expect(alpha.verb !== 'disrupt' && alpha.amount, id).toBe(7);
+    }
   });
 
-  it('covers seven distinct payload signatures -- one per win condition', () => {
-    // Six payload KINDS, seven pillars: the two DoTs share `dot` and are
-    // separated by cadence, which is the distinction that matters.
-    const sigs = allPillars(SPEC).map((e) => {
-      const p = e.loadout[0].payload;
-      return p.kind === 'dot' ? `dot:${p.cadence}` : p.kind;
-    });
-    expect(new Set(sigs).size).toBe(PILLAR_IDS.length);
-    expect(new Set(allPillars(SPEC).map((e) => e.loadout[0].payload.kind)).size).toBe(PILLAR_IDS.length - 1);
+  it('covers one distinct verb per pillar', () => {
+    const verbs = allPillars(SPEC).map((e) => e.loadout[0].alpha.verb);
+    expect(new Set(verbs).size).toBe(PILLAR_IDS.length);
   });
 
-  it('separates the two DoT cadences, which is the whole point of having both', () => {
-    const turn = pillarEnemy('pillar-dot-turn', SPEC).loadout[0].payload;
-    const points = pillarEnemy('pillar-dot-points', SPEC).loadout[0].payload;
-    expect(turn.kind === 'dot' && turn.cadence).toBe('castersTurnPulse');
-    expect(points.kind === 'dot' && points.cadence).toBe('globalPulse');
-    // globalPulse ticks off COMBINED points, so this one accelerates when
-    // the player scores well -- the Quarantine Ward pathology in pure
-    // form, and the reason it gets its own pillar.
-    expect(points.kind === 'dot' && points.pointsPerTick).toBeGreaterThan(0);
+  it('the tempo pillar slows the PLAYER (opponent target, threshold mode)', () => {
+    expect(pillarEnemy('pillar-tempo', SPEC).loadout[0].alpha).toMatchObject({ verb: 'tempo', target: 'opponent', mode: 'threshold' });
   });
 });
 
@@ -113,11 +94,11 @@ describe('diagnostic pillars -- they actually do something in a real fight', () 
   // table of zeros that looks like data. Each pillar must measurably
   // move the fight against a real class loadout.
   const fight = (id: DiagnosticEnemyId, scalar: number, seed: number) =>
-    playCombat([CLASS_DEFINITIONS.breacher.startingLoadout, pillarEnemy(id, { scalar, pointsCooldown: 6 }).loadout], {
+    playCombat([CLASS_DEFINITIONS['exploit-overclock'].startingLoadout, pillarEnemy(id, { scalar, pointsCooldown: 6 }).loadout], {
       seed,
       gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD],
       winThreshold: [BREACH_THRESHOLD, CONTAINMENT_THRESHOLD],
-      classId: 'breacher',
+      classId: 'exploit-overclock',
     });
 
   it('fires: every pillar appears in a real combat log', () => {
@@ -133,8 +114,8 @@ describe('diagnostic pillars -- they actually do something in a real fight', () 
   // suppress the player and win at HARD_RESOLUTION_HAND by attrition, so
   // their enemy peak fill is 0 at every scalar. Measuring them with one
   // metric would have produced a table of zeros that looked like data.
-  const CREDIT_PILLARS: DiagnosticEnemyId[] = ['pillar-burst', 'pillar-dot-turn', 'pillar-dot-points'];
-  const DENIAL_PILLARS: DiagnosticEnemyId[] = ['pillar-suppress', 'pillar-drain', 'pillar-tempo', 'pillar-throttle'];
+  const CREDIT_PILLARS = CREDIT_PILLAR_IDS;
+  const DENIAL_PILLARS = PILLAR_IDS.filter((id) => !CREDIT_PILLAR_IDS.includes(id));
   const SEEDS = [0, 1, 2, 3, 4, 5, 6, 7];
 
   it('credit pillars: a bigger scalar advances the enemy gauge further', () => {

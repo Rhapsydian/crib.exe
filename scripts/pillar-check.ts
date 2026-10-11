@@ -33,7 +33,7 @@
  * quoted, per README's conventions.
  *
  * Usage:
- *   npx tsx scripts/pillar-check.ts [--seeds=25] [--pillars=pillar-burst,...]
+ *   npx tsx scripts/pillar-check.ts [--seeds=25] [--pillars=pillar-credit,...]
  *                                   [--scalars=2,4,6,9,13,18] [--cooldowns=8,20,50,120,320]
  *                                   [--layers=1,2,3,4] [--playerSkill=0.85] [--out=f.jsonl]
  */
@@ -45,16 +45,16 @@ import { playCombat } from '../src/engine/combat';
 import { GAUGE_THRESHOLD, BREACH_THRESHOLD, CONTAINMENT_THRESHOLD } from '../src/engine/encounters';
 import { enemySkill } from '../src/engine/enemies';
 import { discardSkillStrategy, pegSkillStrategy } from '../src/engine/ai';
-import { PILLAR_IDS, pillarEnemy, type DiagnosticEnemyId } from '../src/engine/diagnostic-enemies';
+import { CREDIT_PILLAR_IDS, PILLAR_IDS, pillarEnemy, type DiagnosticEnemyId } from '../src/engine/diagnostic-enemies';
 import { BURNER_DEFINITIONS } from '../src/engine/burners';
-import type { ClassId } from '../src/engine/classes';
+import { ALL_CLASS_IDS, type ClassId } from '../src/engine/classes';
 
-const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
+const ALL_CLASSES: ClassId[] = ALL_CLASS_IDS;
 const DEFAULT_PLAYER_SKILL = 0.85;
 
 /** Pillars whose win condition is filling their OWN Containment gauge.
  * The rest deny the player and win by attrition instead. */
-const CREDIT_PILLARS = new Set<DiagnosticEnemyId>(['pillar-burst', 'pillar-dot-turn', 'pillar-dot-points']);
+const CREDIT_PILLARS = new Set<DiagnosticEnemyId>(CREDIT_PILLAR_IDS);
 
 function parseArgs(argv: string[]): Record<string, string> {
   const out: Record<string, string> = {};

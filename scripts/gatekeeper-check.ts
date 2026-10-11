@@ -31,7 +31,7 @@
  * modest LAYER_SKILL_STEP).
  *
  * Usage:
- *   npx tsx scripts/gatekeeper-check.ts [--classes=breacher,ghost] [--seeds=300] [--playerSkills=0.85] [--syntheticGatekeepers=1,1,1,1] [--out=file.jsonl]
+ *   npx tsx scripts/gatekeeper-check.ts [--classes=exploit-overclock,daemon-honeypot] [--seeds=300] [--playerSkills=0.85] [--syntheticGatekeepers=1,1,1,1] [--out=file.jsonl]
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { playRun, opportunisticTraversal, type GatekeeperFightContext } from '../src/engine/run';
@@ -41,10 +41,10 @@ import { GAUGE_THRESHOLD, BREACH_THRESHOLD, CONTAINMENT_THRESHOLD } from '../src
 import { enemySkill, magnitudeScalerFor, gaugeThresholdFor, winThresholdFor, scaledEnemyLoadout } from '../src/engine/enemies';
 import { discardSkillStrategy, pegSkillStrategy } from '../src/engine/ai';
 import { BURNER_DEFINITIONS } from '../src/engine/burners';
-import type { ClassId } from '../src/engine/classes';
+import { ALL_CLASS_IDS, type ClassId } from '../src/engine/classes';
 import { parseSyntheticGatekeepers, describeSyntheticGatekeepers } from './synthetic-gatekeepers';
 
-const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
+const ALL_CLASSES: ClassId[] = ALL_CLASS_IDS;
 // Session 39: the player's own standing default for realistic diagnostics
 // -- anchored to the hardest real enemy skill in the game (layer-4
 // gatekeeper, enemySkill() tops out at 0.84, enemies.ts) rather than

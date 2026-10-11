@@ -196,6 +196,17 @@ the skeleton pieces, so regular/elite/gatekeeper fights still exist in
 full runs; calibration's controlled background stays the synthetic
 gatekeeper.
 
+### A12 — "Adjacent" is positional, either side ✅
+
+A `sequence` beta with `reach: 'adjacent'` checks whether the loadout
+slot directly **above or below** holds a matching piece — a fixed
+property of the arrangement, known before the turn starts, regardless of
+what fires. `anyPrior` stays the firing-order rule (a matching piece
+fired *elevated* earlier this turn). The two chain strengths now differ
+in kind: adjacent is a placement puzzle a UI can show, anyPrior is turn
+dynamics. Supersedes checkpoint 3's "last piece to fire" reading (the
+user's own reading of the word).
+
 ### Calls made in passing (flag to revisit)
 
 - **Neutral archetype removed**, per the inventory — A3's archetype-level
@@ -343,6 +354,19 @@ Made while rewriting `resolve.ts`, `triggers.ts` and `combat.ts`.
   the rank did nothing — it now falls through to the alpha; and an
   `enhance` beta on a Tempo alpha took the flat +1 (a whole extra turn) —
   it now takes the fractional Tempo bonus.
+
+### Checkpoint 5 notes
+
+- **Pillar suite ported to three verb pillars**: Burst → **Credit**,
+  Suppress, Tempo. Drain (sustained HoT suppression) folds into Suppress —
+  a per-turn Suppress alpha *is* sustained suppression now. DoT-Turn,
+  DoT-Points and Throttle retired with their mechanics. The other four
+  verbs need designed pillars (a credit base plus the verb), which is
+  step 2's work.
+- **First skeleton readings** (10-seed smoke runs, not measurements):
+  regular/elite fights are 100% player wins; the layer-1 gatekeeper is
+  the only real wall. Expected from untuned numbers; recorded so step 2
+  doesn't mistake it for a finding.
 
 ### User feedback on checkpoint 3
 

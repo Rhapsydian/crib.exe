@@ -19,7 +19,7 @@
  * **hands** (how long it took) alongside the win rate.
  *
  * Usage:
- *   npx tsx scripts/enemy-check.ts [--seeds=200] [--classes=warden,ghost]
+ *   npx tsx scripts/enemy-check.ts [--seeds=200] [--classes=daemon-honeypot,overclock-honeypot]
  *                                  [--acquisition=floor|synergy] [--out=f.jsonl]
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
@@ -27,9 +27,9 @@ import { playRun, opportunisticTraversal } from '../src/engine/run';
 import { ENEMY_ROSTER, OPENER_FIGHT_WINDOW } from '../src/engine/enemies';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
-import type { ClassId } from '../src/engine/classes';
+import { ALL_CLASS_IDS, type ClassId } from '../src/engine/classes';
 
-const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
+const ALL_CLASSES: ClassId[] = ALL_CLASS_IDS;
 const PLAYER_SKILL = 0.85;
 
 function parseArgs(argv: string[]): Record<string, string> {

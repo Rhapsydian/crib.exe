@@ -40,6 +40,7 @@ const context = (patch: Partial<TriggerContext> = {}): TriggerContext => ({
   ownGaugeFraction: 0,
   opponentGaugeFraction: 0,
   firedThisTurn: [],
+  neighbours: [],
   ...patch,
 });
 
@@ -141,14 +142,15 @@ describe('betaCharges', () => {
     expect(betaCharges(behind, createInitialState(), context({ opponentGaugeFraction: 0.6 }))).toBe(1);
   });
 
-  it('sequence adjacent reads only the last piece to fire this turn', () => {
-    const adjacent = withBeta({ source: 'sequence', reach: 'adjacent', match: { archetype: 'daemon' }, shape: 'whileTrue', effect: ENHANCE });
+  it('sequence adjacent is positional and either-side (A12): it counts matching neighbours, not what fired', () => {
+    const adjacent = withBeta({ source: 'sequence', reach: 'adjacent', match: { archetype: 'daemon' }, shape: 'graded', cap: 2, effect: ENHANCE });
     const daemon = withBeta(undefined, { id: 'd' }, 'daemon');
     const exploit = withBeta(undefined, { id: 'e' }, 'exploit');
-    expect(betaCharges(adjacent, createInitialState(), context({ firedThisTurn: [{ definition: daemon, elevated: false }] }))).toBe(1);
-    expect(
-      betaCharges(adjacent, createInitialState(), context({ firedThisTurn: [{ definition: daemon, elevated: true }, { definition: exploit, elevated: true }] })),
-    ).toBe(0);
+    expect(betaCharges(adjacent, createInitialState(), context({ neighbours: [daemon] }))).toBe(1);
+    expect(betaCharges(adjacent, createInitialState(), context({ neighbours: [daemon, daemon] }))).toBe(2);
+    expect(betaCharges(adjacent, createInitialState(), context({ neighbours: [exploit] }))).toBe(0);
+    // A matching piece that FIRED this turn but isn't a neighbour doesn't count.
+    expect(betaCharges(adjacent, createInitialState(), context({ neighbours: [exploit], firedThisTurn: [{ definition: daemon, elevated: true }] }))).toBe(0);
   });
 
   it('sequence anyPrior counts matching pieces that fired ELEVATED (graded = the old chain-finisher)', () => {

@@ -243,9 +243,10 @@ export type BetaEffect = Effect | { verb: 'enhance'; amount: number; trace?: num
  *   conditions read the real **win** gauge as a fraction of its
  *   threshold, never the cyclical initiative gauge (session 40's
  *   gaugeFillAbove lesson).
- * - `sequence`: what fired before this piece this turn (D13). `adjacent`
- *   checks only the immediately prior piece; `anyPrior` checks every
- *   earlier piece that fired elevated (its beta applied). Matches by id,
+ * - `sequence`: the piece's place in the loadout (D13, A12). `adjacent`
+ *   checks the slots directly above and below -- a positional, either-side
+ *   test, fixed by the arrangement; `anyPrior` checks every earlier piece
+ *   that fired elevated this turn (its beta applied). Matches by id,
  *   archetype or verb -- id matching is reserved for pieces guaranteed to
  *   be co-present, e.g. a class's own fixed starting loadout (session
  *   41's dead-chain lesson).

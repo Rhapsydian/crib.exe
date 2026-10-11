@@ -270,10 +270,16 @@ criterion), and Togglable.
 Order is a real decision (D13). Pieces fire top to bottom each turn, and
 **Sequence** betas come in two strengths:
 
-- **Adjacent** — the immediately prior piece matches an id, archetype,
-  verb, source or shape. Hard to satisfy, so the larger beta.
+- **Adjacent** — the slot directly above *or* below holds a matching
+  piece (by id, archetype or verb). Positional, either side, and fixed by
+  the arrangement — known before the turn starts, regardless of what
+  fires (A12). A graded adjacent beta counts both neighbours, rewarding
+  being flanked. Hard to satisfy, so the larger beta.
 - **Any-prior** — a matching piece fired *elevated* earlier this turn.
-  Easier, so the smaller beta.
+  Firing order, not position. Easier, so the smaller beta.
+
+The two strengths differ in kind, not just size: adjacent is a placement
+puzzle the UI can show directly; any-prior is turn dynamics.
 
 Six ordered slots with adjacency chains is the build puzzle. Two
 consequences carried from D13: drag-to-reorder is a hard UI requirement,

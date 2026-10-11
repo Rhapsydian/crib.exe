@@ -21,7 +21,7 @@
  *
  * ## Why every pillar shares one trigger
  *
- * All seven fire on `always` gated by `pointsCooldown`, so a sweep moves
+ * Every pillar's alpha fires each turn gated by `pointsCooldown`, so a sweep moves
  * exactly one variable at a time and pillars stay comparable to each
  * other. Trigger *frequency* is then a separate second axis, because
  * `pointsCooldown` "ticks only on the owning side's own scoring"
@@ -43,103 +43,64 @@
  * *evenly* while occurrences arrive in *clusters*, and in a
  * threshold race burstiness can carry a gauge over the line in a way
  * even output cannot. See the plan's burstiness checkpoint.
+ *
+ * ## Session 51: one pillar per verb
+ *
+ * The archetype redesign (DESIGN.md "Archetypes & Subroutines") replaced
+ * payload kinds with seven verbs, and step 2 of that redesign re-aligns
+ * this suite one pillar per verb. This file carries the three pillars
+ * that map directly: Burst became **Credit**, Suppress stayed, Tempo
+ * stayed -- and Drain, which was sustained HoT suppression, folded into
+ * Suppress, since a per-turn Suppress alpha IS sustained suppression now.
+ * The two DoT pillars and Throttle have no verb counterpart and are gone.
+ * Ward, Empower, Disrupt and Charge cannot win alone (D14), so their
+ * pillars need a design -- a credit base plus the verb under test -- and
+ * are step 2's work, not a port.
  */
 import type { EnemyDefinition, EnemyTier } from './enemies';
-import type { PayloadEffect, SubroutineDefinition } from './subroutine-types';
+import type { Effect, SubroutineDefinition } from './subroutine-types';
 
-export const PILLAR_IDS = [
-  'pillar-burst',
-  'pillar-dot-turn',
-  'pillar-dot-points',
-  'pillar-suppress',
-  'pillar-drain',
-  'pillar-tempo',
-  'pillar-throttle',
-] as const;
+export const PILLAR_IDS = ['pillar-credit', 'pillar-suppress', 'pillar-tempo'] as const;
 
 export type DiagnosticEnemyId = (typeof PILLAR_IDS)[number];
 
+/** Pillars that win by filling their own Containment gauge; the rest win
+ * by denial (attrition at the hand-20 deadline) and never credit. Two
+ * families with different success metrics (D14). */
+export const CREDIT_PILLAR_IDS: readonly DiagnosticEnemyId[] = ['pillar-credit'];
+
 export interface PillarSpec {
-  /** The single payload knob under test. Units differ per pillar — gauge
-   * points for burst/suppress, points-per-tick for the DoTs, shield for
-   * drain, a fraction of a starting threshold for tempo, and debuff
-   * DURATION (not magnitude — see payloadFor) for throttle. */
+  /** The single knob under test: gauge points for credit/suppress, a
+   * fraction of the player's starting threshold for tempo. */
   scalar: number;
   /** Fires every turn, gated by this many of the caster's OWN scored
    * points. This is the frequency axis. */
   pointsCooldown: number;
-  /** Tick count for the two DoT pillars. Ignored by the others. */
-  duration?: number;
-  /** Combined points (either side) per tick, `globalPulse` only —
-   * i.e. DoT-Points. Ignored by the others. */
-  pointsPerTick?: number;
   /** Drives `enemySkill`, and `magnitudeScalerFor` for regular/elite, if
    * a pillar is ever routed through `resolveFight` rather than
    * `playCombat` directly. Defaults to 'regular'. */
   tier?: EnemyTier;
 }
 
-const DEFAULT_DURATION = 3;
-const DEFAULT_POINTS_PER_TICK = 8;
-
-/** Payload per pillar. `neutral` archetype throughout, deliberately: a
- * suited archetype would expose the payload to archetype-specific Ward
- * blocking and Mod amplification, which is exactly the kind of hidden
- * second variable a calibration fixture must not have. */
-function payloadFor(id: DiagnosticEnemyId, spec: PillarSpec): PayloadEffect {
-  const duration = spec.duration ?? DEFAULT_DURATION;
+/** The pillar's one alpha. No beta: a beta is a second variable, and the
+ * pillar exists to price one alpha at a time (step 2 adds beta pillars). */
+function alphaFor(id: DiagnosticEnemyId, spec: PillarSpec): Effect {
   switch (id) {
-    case 'pillar-burst':
-      return { kind: 'directBurst', amount: spec.scalar };
-    case 'pillar-dot-turn':
-      return { kind: 'dot', amountPerTick: spec.scalar, cadence: 'castersTurnPulse', duration };
-    case 'pillar-dot-points':
-      return {
-        kind: 'dot',
-        amountPerTick: spec.scalar,
-        cadence: 'globalPulse',
-        duration,
-        pointsPerTick: spec.pointsPerTick ?? DEFAULT_POINTS_PER_TICK,
-      };
+    case 'pillar-credit':
+      return { verb: 'credit', amount: spec.scalar };
     case 'pillar-suppress':
-      return { kind: 'instantCounterPush', amount: spec.scalar };
-    case 'pillar-drain':
-      // Sustained denial: HoT reduces the OPPONENT's gauge over ticks,
-      // the counterpart to instantCounterPush's one-shot (see
-      // subroutine-types.ts's CAPPED tier note). Replaced a `ward`-based
-      // "Stall" pillar in checkpoint 2: ward absorbs incoming offense
-      // against the warded side, but the player wins by filling their
-      // OWN Breach gauge, which an enemy shield never touches -- so it
-      // measured a flat line at every scalar. Ward is mitigation, not a
-      // win condition, and a pillar has to be a win condition.
-      return { kind: 'hot', amountPerTick: spec.scalar, cadence: 'castersTurnPulse', duration };
+      return { verb: 'suppress', amount: spec.scalar };
     case 'pillar-tempo':
-      // Positive raises the PLAYER's initiative threshold (a fraction of
-      // their starting threshold), i.e. slows them -- the unambiguous
-      // direction, unlike 'enemyGauge' where sign carries the meaning.
-      return { kind: 'instantManipulation', target: 'enemyGaugeThreshold', amount: spec.scalar };
-    case 'pillar-throttle':
-      // NOTE: the scalar drives DURATION here, not magnitude. Session 50
-      // found that `applyThrottled` checks only for the debuff's
-      // PRESENCE and then applies module constants
-      // (THROTTLED_REDUCTION/THROTTLED_FLOOR) -- `magnitude` is stored on
-      // the debuff record and never read. Same for `corrupted`
-      // (CORRUPTED_MULTIPLIER); only `choked` reads its magnitude. So
-      // magnitude is a dead knob for this debuff kind and sweeping it
-      // would produce a flat line that looked like a finding. Duration is
-      // the axis that actually moves the fight. See BACKLOG.
-      return { kind: 'debuff', debuffId: 'throttled', magnitude: spec.scalar, duration: spec.scalar };
+      // Raises the PLAYER's initiative threshold by a fraction of their
+      // starting threshold, i.e. slows them -- the unambiguous direction.
+      return { verb: 'tempo', target: 'opponent', mode: 'threshold', amount: spec.scalar };
   }
 }
 
 const PILLAR_NAMES: Record<DiagnosticEnemyId, string> = {
-  'pillar-burst': 'Pillar: Burst',
-  'pillar-dot-turn': 'Pillar: DoT (own turn)',
-  'pillar-dot-points': 'Pillar: DoT (combined points)',
+  'pillar-credit': 'Pillar: Credit',
   'pillar-suppress': 'Pillar: Suppress',
-  'pillar-drain': 'Pillar: Drain (sustained denial)',
   'pillar-tempo': 'Pillar: Tempo',
-  'pillar-throttle': 'Pillar: Throttle',
 };
 
 /**
@@ -149,13 +110,13 @@ const PILLAR_NAMES: Record<DiagnosticEnemyId, string> = {
  * them, which is how a fixture quietly stops matching what it claims.
  */
 export function pillarEnemy(id: DiagnosticEnemyId, spec: PillarSpec): EnemyDefinition {
+  // Archetype is inert here: archetypes matter to Mods, bridge passives
+  // and sequence betas, all of which are player-side only.
   const piece: SubroutineDefinition = {
     id: `${id}-piece`,
     name: PILLAR_NAMES[id],
-    archetype: 'neutral',
-    trigger: { kind: 'always' },
-    payload: payloadFor(id, spec),
-    tags: [],
+    archetype: 'exploit',
+    alpha: alphaFor(id, spec),
     pointsCooldown: spec.pointsCooldown,
   };
   return {

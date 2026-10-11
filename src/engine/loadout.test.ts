@@ -255,14 +255,19 @@ describe('synergyAwareReorder', () => {
     expect(order(synergyAwareReorder(state))).toEqual(['a-daemon', 'dependent']);
   });
 
-  it('places an adjacent prerequisite immediately before its dependent', () => {
+  it('moves an earlier, non-neighbouring adjacent prerequisite to sit directly above', () => {
     const state = playerState([piece('a-daemon', 'daemon'), piece('filler'), wants('dependent', 'adjacent', { archetype: 'daemon' })], []);
     expect(order(synergyAwareReorder(state))).toEqual(['filler', 'a-daemon', 'dependent']);
   });
 
-  it('pulls a later adjacent prerequisite up to sit directly before its dependent', () => {
+  it('pulls a later, non-neighbouring adjacent prerequisite up to sit directly below (A12: either side counts)', () => {
     const state = playerState([wants('dependent', 'adjacent', { id: 'prereq' }), piece('filler'), piece('prereq')], []);
-    expect(order(synergyAwareReorder(state))).toEqual(['prereq', 'dependent', 'filler']);
+    expect(order(synergyAwareReorder(state))).toEqual(['dependent', 'prereq', 'filler']);
+  });
+
+  it('leaves an adjacent chain alone when the match is already the neighbour below', () => {
+    const state = playerState([piece('x'), wants('dependent', 'adjacent', { archetype: 'daemon' }), piece('d', 'daemon')], []);
+    expect(order(synergyAwareReorder(state))).toEqual(['x', 'dependent', 'd']);
   });
 
   it('leaves an anyPrior chain alone when something earlier already satisfies it', () => {
@@ -328,7 +333,8 @@ describe('reorderStrategy wiring', () => {
       if (p.beta?.source !== 'sequence' || p.beta.reach !== 'adjacent') return;
       const match = p.beta.match;
       const satisfiable = loadout.some((other, j) => j !== i && matchesSequence(match, other));
-      if (satisfiable) expect(i > 0 && matchesSequence(match, loadout[i - 1]), p.id).toBe(true);
+      const neighbourMatches = [loadout[i - 1], loadout[i + 1]].some((n) => n !== undefined && matchesSequence(match, n));
+      if (satisfiable) expect(neighbourMatches, p.id).toBe(true);
     });
   });
 });

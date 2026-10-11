@@ -225,13 +225,16 @@ export interface FiredThisTurn {
 
 /** The live fight state a `state` or `sequence` beta reads. Gauge
  * fractions are real **win** gauge progress over threshold, never the
- * cyclical initiative gauge (session 40's gaugeFillAbove lesson). */
+ * cyclical initiative gauge (session 40's gaugeFillAbove lesson).
+ * `neighbours` are the pieces in the loadout slots directly above and
+ * below this one (A12) -- empty outside a loadout context. */
 export interface TriggerContext {
   isDealer: boolean;
   ownWard: number;
   ownGaugeFraction: number;
   opponentGaugeFraction: number;
   firedThisTurn: readonly FiredThisTurn[];
+  neighbours: readonly SubroutineDefinition[];
 }
 
 type StateCondition = Extract<BetaSource, { source: 'state' }>['condition'];
@@ -259,10 +262,11 @@ export function evaluateStateCondition(condition: StateCondition, context: Trigg
  * How many charges a beta has right now. Banked for cards/progress; for
  * `state`, 1 while true (D15); for `sequence`, the number of matching
  * pieces that fired elevated earlier this turn (`anyPrior` -- so a graded
- * sequence beta is the old chain-finisher), or 1 if the immediately prior
- * fire matches (`adjacent`). "Immediately prior" means the last piece to
- * actually fire this turn, so a piece skipped by its cooldown does not
- * break an adjacency it never took part in.
+ * sequence beta is the old chain-finisher), or the number of matching
+ * neighbours, above and below (`adjacent`, A12 -- 0, 1 or 2, so a graded
+ * adjacent beta rewards being flanked). Adjacency is positional: it reads
+ * the arrangement, not what fired, so a neighbour that hasn't fired yet
+ * (or was skipped by its cooldown) still counts.
  */
 export function betaCharges(definition: SubroutineDefinition, state: SubroutineRuntimeState, context: TriggerContext): number {
   const beta = definition.beta;
@@ -274,10 +278,7 @@ export function betaCharges(definition: SubroutineDefinition, state: SubroutineR
     case 'state':
       return evaluateStateCondition(beta.condition, context) ? 1 : 0;
     case 'sequence': {
-      if (beta.reach === 'adjacent') {
-        const prior = context.firedThisTurn[context.firedThisTurn.length - 1];
-        return prior && matchesSequence(beta.match, prior.definition) ? 1 : 0;
-      }
+      if (beta.reach === 'adjacent') return context.neighbours.filter((n) => matchesSequence(beta.match, n)).length;
       return context.firedThisTurn.filter((f) => f.elevated && matchesSequence(beta.match, f.definition)).length;
     }
   }
