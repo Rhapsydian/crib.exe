@@ -1,756 +1,418 @@
 import type { Suit } from './cards';
 
 /**
- * Pure type system for Phase 2 (session 17 checkpoint B). No runtime
- * logic lives here — trigger evaluation is triggers.ts, payload
- * resolution is resolve.ts.
+ * Pure type system for subroutines -- session 51's archetype and
+ * subroutine redesign (DESIGN.md "Archetypes & Subroutines";
+ * docs/archetype-redesign.md A1-A11). No runtime logic lives here --
+ * beta criteria are evaluated in triggers.ts, effects resolve in
+ * resolve.ts.
+ *
+ * Every subroutine has two effects:
+ *
+ * - an **alpha**, which fires on every turn the owning side gets
+ *   (session 50's D11: nothing gates whether a piece acts); and
+ * - an optional **beta**, which fires when its criteria are met -- either
+ *   enhancing the alpha, adding a different effect to the turn's fire, or
+ *   firing immediately outside the turn.
+ *
+ * Everything this replaces -- the 22 payload kinds, the 8 trigger
+ * families, tags, Togglable, `reactive`/`firesAt`, the Neutral archetype
+ * -- is described in docs/design-history.md.
  */
 
-/** 'neutral' (session 28's Neutral Archetype) is a genuine 5th value,
- * not one of the other 4 reused for flavor -- it naturally fails every
- * archetype-specific passive check (Primed's `=== 'root'`, Sleeper
- * Cell's `=== 'malware'`, etc.) without needing new exclusion logic,
- * and correctly has no suit affiliation at all (see SUIT_ARCHETYPES
- * below, which stays a 4-entry map -- Cribbage only has 4 real suits, a
- * neutral piece was never going to get a 5th one). No class or enemy
- * ever "specializes" in it (ClassDefinition/EnemyDefinition.archetypes
- * never includes it) -- it's a small, shared toolbox anyone can draw
- * from, built entirely from trigger families that don't depend on suit
- * (see DESIGN.md's "Neutral Archetype" section). */
-export type Archetype = 'exploit' | 'malware' | 'encryption' | 'root' | 'neutral';
+/**
+ * The four archetypes (A2, A7), each built from one way to win and one
+ * kind of utility:
+ *
+ * - **exploit** -- Spike / Control. Big beta moments on Cribbage scoring;
+ *   steers the cards and the opponent's tempo.
+ * - **daemon** -- Ramp / Healing. Alphas that grow over the fight; pushes
+ *   the opponent's gauge back.
+ * - **overclock** -- Tempo / Empowerment. Wins by taking more turns;
+ *   boosts other subroutines.
+ * - **honeypot** -- Conversion / Defense. Banks defense and turns it, and
+ *   the opponent's own progress, into its own.
+ *
+ * No 5th value: session 28's 'neutral' archetype existed only because two
+ * of the old four had no way to credit their own gauge. A3's
+ * archetype-level credit rule removes that gap at the root.
+ */
+export type Archetype = 'exploit' | 'daemon' | 'overclock' | 'honeypot';
 
-/** The 4 real, suited archetypes -- excludes 'neutral', which has no
- * suit and which no class/enemy ever specializes in. Used for
- * ClassDefinition/EnemyDefinition.archetypes so indexing ARCHETYPE_POOLS
- * (subroutines.ts) or SUIT_ARCHETYPES by a class/enemy's own archetypes
- * stays exhaustive without a 'neutral' case neither structure has. */
-export type SuitedArchetype = Exclude<Archetype, 'neutral'>;
+export const ARCHETYPES: readonly Archetype[] = ['exploit', 'daemon', 'overclock', 'honeypot'];
 
-/** Suits are still the generic 0-3 slots from cards.ts; real suit-name
- * theming is a UI concern, not the engine's. */
-export const SUIT_ARCHETYPES: Record<Suit, SuitedArchetype> = {
+/** Suits are still the generic 0-3 slots from cards.ts, and each is bound
+ * 1:1 to the archetype of the same name (A1) -- scoring with Daemon cards
+ * *is* charging your Daemon subroutines. Real suit-name theming (icon,
+ * colour) is a UI concern, not the engine's. */
+export const SUIT_ARCHETYPES: Record<Suit, Archetype> = {
   0: 'exploit',
-  1: 'malware',
-  2: 'encryption',
-  3: 'root',
+  1: 'daemon',
+  2: 'overclock',
+  3: 'honeypot',
 };
 
-/** 'direct' (session 41): immediate, single-shot, none of the other 5
- * mechanisms -- added after counting real tag coverage found no tag for
- * the single most common shape in the pool (38% of the 99 pre-session-41
- * pieces carried no tag at all, and a first-pass draft of the 57 new
- * pieces was worse). Deliberately its own tag rather than stretching an
- * existing one, which would have diluted what that tag means. */
-export type Tag = 'trap' | 'piercing' | 'firewall' | 'worm' | 'daemon' | 'direct';
+/** The inverse of SUIT_ARCHETYPES -- which suit tallies charge a given
+ * archetype's `cards`/`suit` betas. */
+export const ARCHETYPE_SUITS: Record<Archetype, Suit> = {
+  exploit: 0,
+  daemon: 1,
+  overclock: 2,
+  honeypot: 3,
+};
 
-/** The 8 session-5 occurrence categories, unified across the pegging
- * play phase and the show/count phase. */
+/** The Cribbage scoring categories a `cards` beta can watch, unified
+ * across the pegging play phase and the show/count phase. His Heels is
+ * deliberately absent (A5): one occurrence per game, dealer only, and
+ * entirely outside either player's control. */
 export type OccurrenceCategory =
   | 'fifteen'
   | 'pair'
   | 'run'
   | 'flush'
   | 'hisNobs'
-  | 'hisHeels'
   | 'thirtyOne'
   | 'go';
 
-export type AccumulatorTrigger =
-  | { kind: 'accumulator'; metric: 'points'; threshold: number }
-  | { kind: 'accumulator'; metric: 'suitTally'; suit: Suit; threshold: number }
-  /** Session 28's Neutral Archetype (Circuit Breaker): banks the total
-   * amount of the caster's own Ward/instantCounterPush/hot payloads
-   * cast this match -- fed from resolve.ts's creditMitigationBanked,
-   * called wherever those three payload kinds resolve. Suit-independent
-   * like 'points', unlike 'suitTally'. */
-  | { kind: 'accumulator'; metric: 'mitigationBanked'; threshold: number };
-
-export type OccurrenceTrigger =
-  | { kind: 'occurrence'; category: OccurrenceCategory; variation: 'instant' }
-  | { kind: 'occurrence'; category: OccurrenceCategory; variation: 'threshold'; bankTarget: number }
-  | { kind: 'occurrence'; category: OccurrenceCategory; variation: 'scaling'; cap: number };
-
-export type EnemyStateTrigger =
-  | { kind: 'enemyState'; condition: 'breachContainmentBelow'; value: number }
-  | { kind: 'enemyState'; condition: 'breachContainmentAbove'; value: number }
-  | { kind: 'enemyState'; condition: 'gaugeFillAbove'; fraction: number }
-  /** `'any'` (session 41) is a wildcard sentinel -- matches the enemy
-   * carrying *any* active debuff, regardless of kind, rather than one
-   * specific DebuffKind. Every hasDebuff piece before this session
-   * hardcoded a single kind ('corrupted'); the pool-expansion pass wanted
-   * a generic "enemy is currently debuffed" condition for Exploit/Neutral
-   * pieces that don't care which debuff landed. */
-  | { kind: 'enemyState'; condition: 'hasDebuff'; debuffId: string | 'any' };
-
-export type SelfStateTrigger =
-  | { kind: 'selfState'; condition: 'traceAbove'; value: number }
-  | { kind: 'selfState'; condition: 'traceBelow'; value: number }
-  | { kind: 'selfState'; condition: 'isDealer' }
-  | { kind: 'selfState'; condition: 'isNonDealer' };
-
-/** References something that fired earlier in the same turn's own
- * resolution pass, feeding this one's condition. Three match modes
- * (session 41's redesign): `afterSubroutineId` (a specific piece, by id)
- * stays reserved for contexts that guarantee both halves are present
- * together — a class's own starting loadout, or a future Event that
- * grants a matched pair at once — since nothing in the acquisition system
- * (shop slate, combat rewards) guarantees a player ever draws a specific
- * id-pair together in one run. Pool content instead matches on
- * `afterArchetype` (any piece of that archetype fired) or `afterTag` (any
- * piece carrying that tag fired) — broader, so a chained pool piece can
- * never end up permanently dead for classes that don't own its old
- * id-specific partner. */
-export type ChainedTrigger =
-  | { kind: 'chained'; afterSubroutineId: string }
-  | { kind: 'chained'; afterArchetype: Archetype }
-  | { kind: 'chained'; afterTag: Tag };
-
-/** No real condition — fires every turn that side gets ("Cantrip"). */
-export interface AlwaysTrigger {
-  kind: 'always';
-}
+// ---------------------------------------------------------------------
+// Effects: the seven verbs (A4, A5)
+// ---------------------------------------------------------------------
 
 /**
- * Root-native, session 40 continued: watches a specific occurrence
- * category at or above a magnitude floor, from *either* side, not just
- * the caster's own -- the one deliberate break from Occurrence's own
- * "scoped to the caster's own scoring events" rule (DESIGN.md). Fires
- * the instant a qualifying occurrence happens (resolve.ts's
- * fireRareOccurrenceSubroutines), completely independent of whose turn
- * it is -- no `reactive` flag needed, this trigger family doesn't go
- * through the normal ready-flag pipeline at all. `minMagnitude` is what
- * makes "rare" real rather than aspirational: a Pair occurrence's own
- * magnitude is real *points*, not a count-of-a-kind (scoring.ts's
- * pairEvents/pegging.ts's own breakdown: n*(n-1) -- 2 for a bare pair, 6
- * for pair royal, 12 for double pair royal), so `minMagnitude: 6`
- * genuinely means "pair royal or better," not "any pair." Pairs with any
- * existing credit-capable payload (sessionHijack, directBurst, etc.) --
- * no new payload kind needed, the novelty is entirely in the trigger.
- */
-export interface RareOccurrenceTrigger {
-  kind: 'rareOccurrence';
-  category: OccurrenceCategory;
-  minMagnitude: number;
-  watchSide: 'own' | 'enemy' | 'either';
-}
-
-/**
- * Root-native, session 40 continued: watches one phase's own aggregate
- * total for a resolved hand -- crib/hand/pegging scores are each already
- * computed onto HandResult (game.ts) before any turn-based processing
- * begins, so this checks the real number directly rather than
- * approximating from individual occurrences. Fires once per qualifying
- * hand (resolve.ts's fireHandOutcomeSubroutines), right after that
- * hand's HandResult is built -- same "bypasses the normal ready-flag
- * pipeline entirely" treatment as RareOccurrenceTrigger above, for the
- * same reason: this has nothing to do with turn-based readiness.
+ * Fields every effect can carry, whatever its verb.
  *
- * `phase: 'crib'` only ever resolves for a hand where `side` (resolved
- * from the caster's own perspective) is actually that hand's dealer --
- * the crib belongs to the dealer, so a hand where the specified side
- * isn't dealing simply doesn't trigger this pass, not an error.
- * `phase: 'hand'` resolves to `side`'s own kept-hand score regardless of
- * dealer role (dealerHandScore or nonDealerHandScore, whichever `side`
- * actually was that hand). `phase: 'pegging'` reads peggingScores
- * directly.
+ * `trace` replaces three old mechanisms at once -- the per-piece
+ * `traceCost`, the `riskRewardBurst` payload kind and the
+ * `traceReduction` payload kind. It is a signed delta to the caster's own
+ * Trace, applied each time this effect resolves: positive makes noise
+ * (Exploit's "bigger but louder" beta), negative covers your tracks.
+ * Trace is floored at 0. Inert on an enemy piece, since Trace is
+ * player-only (session 43).
  */
-export interface HandOutcomeTrigger {
-  kind: 'handOutcome';
-  phase: 'crib' | 'hand' | 'pegging';
-  side: 'own' | 'enemy';
-  comparison: 'above' | 'below';
-  value: number;
+interface EffectBase {
+  trace?: number;
 }
 
 /**
- * The 8 trigger families (6 original + RareOccurrenceTrigger/
- * HandOutcomeTrigger, session 40 continued). Togglable is deliberately
- * NOT a member — DESIGN.md is explicit it's an orthogonal property, so
- * it lives on SubroutineDefinition instead.
- */
-export type TriggerFamily =
-  | AccumulatorTrigger
-  | OccurrenceTrigger
-  | EnemyStateTrigger
-  | SelfStateTrigger
-  | ChainedTrigger
-  | AlwaysTrigger
-  | RareOccurrenceTrigger
-  | HandOutcomeTrigger;
-
-/** Malware DoT / Encryption HoT tick cadence (DESIGN.md: a per-subroutine
- * property, not universal). Global pulse ticks off combined points from
- * either side; caster's-turn pulse ticks only when the caster gets a turn. */
-export type TickCadence = 'globalPulse' | 'castersTurnPulse';
-
-// --- Exploit (4) ---
-export interface DirectBurstPayload {
-  kind: 'directBurst';
-  amount: number;
-}
-export interface PiercingPayload {
-  kind: 'piercing';
-  amount: number;
-}
-export interface ChainFinisherScalingPayload {
-  kind: 'chainFinisherScaling';
-  baseAmount: number;
-  perPriorFire: number;
-}
-/**
- * Exploit's signature shape: a big burst whose price is Trace. Session 47
- * moved the Trace cost itself out to SubroutineDefinition.traceCost, so
- * every archetype can make noise as a side-effect of its own normal work
- * rather than needing an Exploit-flavored burst bolted on. What remains
- * here is the identity: riskRewardBurst is the payload kind that exists
- * *because* it is paid for, and Exploit carries the steepest costs in the
- * game by design.
- */
-export interface RiskRewardBurstPayload {
-  kind: 'riskRewardBurst';
-  amount: number;
-}
-
-// --- Malware (2) ---
-export interface DotPayload {
-  kind: 'dot';
-  amountPerTick: number;
-  cadence: TickCadence;
-  duration: number;
-  /** Only meaningful when cadence is 'globalPulse': how many combined
-   * points (scored by either side) trigger the next tick, per
-   * DESIGN.md's "ticks every X combined points scored by either side."
-   * Ignored for 'castersTurnPulse'. */
-  pointsPerTick?: number;
-}
-/**
- * The 3 canonical debuff kinds (session 21+ content pass) — reused
- * across pieces rather than each subroutine inventing its own:
- * **throttled** dents the target's own scoring as it's credited to
- * their gauge; **corrupted** reduces the magnitude of the target's own
- * fired payloads; **choked** temporarily raises the target's gauge
- * threshold (Root's `enemyGaugeThreshold` manipulation target is the
- * permanent, non-expiring counterpart).
- */
-export type DebuffKind = 'throttled' | 'corrupted' | 'choked';
-
-export interface DebuffPayload {
-  kind: 'debuff';
-  debuffId: DebuffKind;
-  magnitude: number;
-  duration: number;
-}
-
-// --- Encryption (4) ---
-export interface InstantCounterPushPayload {
-  kind: 'instantCounterPush';
-  amount: number;
-}
-/** Blocks the next incoming payload of a given archetype the moment it
- * would fire — reactive negation. */
-/** Breach/Containment redesign (session 22+): builds an accumulating
- * shield on the caster's own side, no longer archetype-scoped -- the
- * shield absorbs the opponent's future non-Piercing directBurst offense
- * (denying the gauge-fill it would otherwise cause) until depleted;
- * Piercing always bypasses it. Archetype-scoping was dropped since
- * Piercing already supplies the one counter-play axis that matters. */
-export interface WardPayload {
-  kind: 'ward';
-  amount: number;
-}
-export interface HotPayload {
-  kind: 'hot';
-  amountPerTick: number;
-  cadence: TickCadence;
-  duration: number;
-  /** See DotPayload.pointsPerTick — same meaning, only for 'globalPulse'. */
-  pointsPerTick?: number;
-}
-export interface CleansePayload {
-  kind: 'cleanse';
-  /** Omit to cleanse any one active debuff, or target a specific one. */
-  debuffId?: DebuffKind;
-}
-
-/**
- * Encryption offense, part 1 of 3 (session 40 continued -- Encryption's
- * payload catalog had zero kinds that credit the caster's own gauge,
- * confirmed directly from resolve.ts's dispatch; "mitigation can't win
- * alone" was a deliberate structural property, but Encryption having no
- * native path to ever win outright was a real gap, not the same thing).
- * Generalizes Ghost's Return to Sender passive (resolve.ts,
- * RETURN_TO_SENDER_RATIO) from a single class-locked Mod into a real,
- * native Encryption payload kind any subroutine can use.
+ * Fills the caster's own win gauge -- the one verb every archetype needs
+ * a path to (A3's credit rule).
  *
- * Adds to the caster's own wardShield exactly like plain Ward, but also
- * arms an ongoing "counter" effect for the rest of the combat: every
- * future absorb on this side (from *any* ward source, not just this
- * cast) also credits `ratio` of the absorbed amount to this side's own
- * gauge. Armed via passiveState (resolve.ts's passiveStat/
- * setPassiveStat), not a new CombatSideState field -- wardShield is a
- * single pooled number, not tracked per-casting-subroutine, so "my ward
- * absorbing something" can only ever mean "this side's ward," the same
- * scope Return to Sender itself already uses. If more than one
- * wardCounter piece is ever active at once, the most recently fired one's
- * ratio simply overwrites the stored value -- not additive. Ratio
- * TBD/playtesting; expect it below Return to Sender's own 0.25 (that
- * ratio was tuned as one class's entire win condition, not a bonus
- * stacked on top of a normal defensive kit).
- */
-export interface WardCounterPayload {
-  kind: 'wardCounter';
-  amount: number;
-  ratio: number;
-}
-
-/**
- * Encryption offense, part 2 of 3 (session 40 continued -- see
- * WardCounterPayload's own header for the shared context). Same shape as
- * HotPayload, but each tick also credits `ratio` of that tick's own
- * amount to the caster's own gauge, on top of the full amount still
- * reducing the opponent's -- both effects happen every tick, not a split
- * of one pool. Implemented via a new optional ActiveTick.selfCreditRatio
- * field (resolve.ts) rather than a third tick list alongside dots/hots --
- * keeps every existing dots/hots-enumerating function (tickGlobalPulse,
- * tickCastersTurnPulse, tickExpiryExtendOnce, etc.) untouched. Ratio
- * TBD/playtesting, same reasoning as WardCounterPayload.
- */
-export interface DrainingHotPayload {
-  kind: 'drainingHot';
-  amountPerTick: number;
-  cadence: TickCadence;
-  duration: number;
-  /** See DotPayload.pointsPerTick -- same meaning, only for 'globalPulse'. */
-  pointsPerTick?: number;
-  ratio: number;
-}
-
-/**
- * Encryption offense, part 3 of 3 (session 40 continued -- see
- * WardCounterPayload's own header for the shared context). "Ward Bash" --
- * cashes in a fraction of the caster's *current* wardShield for an
- * instant credit to their own gauge, reducing wardShield by the same
- * spent amount. Structurally simpler than the other two: reads/writes
- * wardShield and winGauge directly, no new persistent state at all --
- * unlike WardCounterPayload, this doesn't need attribution to "whose"
- * ward it is, since it's spending the pooled value at cast time, not
- * reacting to a future absorb event.
+ * `piercing` ignores the opponent's Ward (the old `piercing` payload kind,
+ * now a modifier). `from` says what pays for the credit:
  *
- * `fraction` (0-1) is expected to vary by rarity tier rather than needing
- * a separate "consume everything" flag: a low fraction (common/uncommon)
- * spends a modest slice and leaves meaningful shield behind; a high
- * fraction (rare, up to and including 1.0) naturally consumes nearly or
- * exactly the whole shield as the cost of the bigger payout -- the
- * "large percentage -> ward consumed" behavior falls out of the same
- * field, not a second mechanic. A fraction of 0 (or an empty shield) is
- * a natural, harmless no-op, same as every other zero-amount payload.
- * Conversion is 1:1 (amount spent == amount credited) for this first
- * draft -- fraction itself is the only tuning knob, not a separate
- * multiplier on top of it.
- */
-export interface WardBashPayload {
-  kind: 'wardBash';
-  fraction: number;
-}
-
-// --- Root (4) ---
-
-/**
- * Root offense (session 40 continued -- confirmed from resolvePayloadCore's
- * dispatch, same as Encryption before this session's WardCounterPayload/
- * DrainingHotPayload/WardBashPayload: Root has zero payload kinds that
- * credit the caster's own gauge). Two shapes were weighed: extending
- * InstantManipulationPayload with a new 'ownWinGauge' target (rejected --
- * mechanically indistinguishable from directBurst wearing Root's flavor
- * text, no new tension) vs. this: "Session Hijack," a genuine two-sided
- * transfer, steals progress directly out of the opponent's own win-gauge
- * and credits it to the caster's -- composes for free from two
- * already-existing primitives (reduceWinGauge + creditWinGauge), but is
- * mechanically new to the catalog regardless (nothing else does a
- * coupled dual-side transfer). More distinctly Root's own identity than
- * a relabeled burst: not "I hit you" (Exploit) or "I drain/absorb you"
- * (Encryption), but "I redirect your own intrusion progress into my
- * session" -- session hijacking is a real hacking term (intercepting and
- * taking over an active connection), a direct thematic fit.
+ * - absent: nothing -- plain credit.
+ * - 'ward': spends the caster's own Ward shield 1:1, crediting only what
+ *   was actually there (the old Ward Bash).
+ * - 'opponent': takes from the opponent's win gauge 1:1, capped at what
+ *   they had banked (the old Session Hijack). You can only steal what is
+ *   there.
  *
- * The credited amount is capped at what the opponent actually had banked
- * (see resolve.ts's own case) -- crediting the full requested `amount`
- * regardless of the opponent's actual progress would make this strictly
- * better against a near-empty gauge than a full one, backwards from "you
- * can only steal what's there." 1:1 transfer for this first draft (no
- * separate efficiency ratio); doesn't feed mitigationBanked -- offense,
- * not defensive effort, same reasoning WardBashPayload was excluded.
+ * The two `from` sources are Honeypot's conversion betas (A4) -- banked
+ * defense and the opponent's own progress turned into the caster's.
  */
-export interface SessionHijackPayload {
-  kind: 'sessionHijack';
+export interface CreditEffect extends EffectBase {
+  verb: 'credit';
+  amount: number;
+  piercing?: boolean;
+  from?: 'ward' | 'opponent';
+}
+
+/** Pushes the opponent's win gauge back -- Daemon's "healing". Instant
+ * only: a lasting Suppress would re-create the old HoT, and an alpha
+ * already fires every turn. */
+export interface SuppressEffect extends EffectBase {
+  verb: 'suppress';
   amount: number;
 }
 
-export interface InstantManipulationPayload {
-  kind: 'instantManipulation';
-  /** 'enemyGaugeThreshold' (session 21+) permanently raises the enemy's
-   * gauge threshold, no duration — the persistent counterpart to
-   * Malware's temporary 'choked' debuff. 'ownGauge'/'ownGaugeThreshold'
-   * (session 24, Root mechanical redesign) are haste, completing the
-   * slow/haste pair the enemy-facing targets already gave Root --
-   * see resolve.ts's instantManipulation case for the mechanics. */
-  target: 'enemyGauge' | 'suitTally' | 'subroutineProgress' | 'enemyGaugeThreshold' | 'ownGauge' | 'ownGaugeThreshold';
-  /**
-   * Units depend on `target` — as they always have ('suitTally' has
-   * never meant the same thing as 'enemyGauge'), but session 48 made the
-   * split load-bearing, so it is spelled out here:
-   *
-   * - 'suitTally' / 'subroutineProgress': an absolute count, unchanged.
-   * - 'enemyGauge' / 'ownGauge': a **fraction of a turn**, resolved
-   *   against the affected side's *live* initiative threshold. 1 means
-   *   "a whole turn's worth of gauge progress."
-   * - 'enemyGaugeThreshold' / 'ownGaugeThreshold': a **fraction of a
-   *   threshold**, resolved against the affected side's *starting*
-   *   threshold. 1 means "raise/lower by one whole starting threshold."
-   *
-   * The threshold targets deliberately read the starting snapshot rather
-   * than the live value: resolving a fraction against a value this
-   * payload is itself mutating compounds multiplicatively, so a piece
-   * that fired twice would double a threshold rather than add twice the
-   * same amount, which is not what the flat-amount version did.
-   *
-   * Authored via subroutines.ts's TEMPO_MAG tier, not raw numbers. See
-   * resolve.ts's TEMPO/turnFraction for the reasoning behind
-   * denominating tempo in turns at all.
-   */
+/** Adds to the caster's Ward shield, which absorbs the opponent's
+ * incoming non-piercing credit until depleted -- Honeypot's defense, and
+ * its conversion fuel. */
+export interface WardEffect extends EffectBase {
+  verb: 'ward';
   amount: number;
-  /** Required when target is 'subroutineProgress'. */
-  targetSubroutineId?: string;
-}
-
-/** The `instantManipulation` targets whose `amount` is a fraction rather
- * than an absolute count (session 48). Anything doing *unit-sensitive*
- * arithmetic on a payload amount -- Merge's flat +3 bonus, the Primed
- * passives' flat bonuses -- must branch on this, since adding 3 to a
- * fraction means "plus three whole turns." Multiplicative scaling
- * (enemies.ts's per-layer difficulty scaler) is unit-agnostic and does
- * not need to care. */
-const TEMPO_MANIPULATION_TARGETS: readonly string[] = ['enemyGauge', 'ownGauge', 'enemyGaugeThreshold', 'ownGaugeThreshold'];
-
-export function isTempoManipulation(payload: PayloadEffect): boolean {
-  return payload.kind === 'instantManipulation' && TEMPO_MANIPULATION_TARGETS.includes(payload.target);
-}
-/**
- * Manipulates the underlying Cribbage layer itself, not combat state
- * directly. Always resolves at the next deal (like Scheduled Sabotage) —
- * a fired subroutine can only ever act after this hand's deal/discard/
- * cut have already happened, so there's nothing "instant" to apply to.
- * - **forceDiscard**: forces the *target* (not the caster) to discard
- *   their two highest-ranked cards next hand instead of their normal
- *   strategy — a forced-bad-discard, not a literal specific-card
- *   target. Session 24 added a real specific-card version instead --
- *   see ForceDiscardCardPayload, a `firesAt: 'onDealt'` payload that
- *   resolves in the *same* hand rather than deferring to the next one.
- * - **peekCrib**: reveals the crib's contents. Still a genuine no-op as
- *   specified here (see resolve.ts's consumePendingCribbageManipulation)
- *   -- by the time this deferred-to-next-hand action applies, the crib
- *   it would reveal has already been fully scored. Session 24 added the
- *   real, working version instead: RevealCribPayload, a
- *   `firesAt: 'onCribSelected'` payload that resolves in the same hand,
- *   before that crib is scored.
- * - **skewCut**: biases next hand's cut toward a Jack if the caster is
- *   that hand's dealer, away from one otherwise (His Heels only ever
- *   credits the dealer, so the bias direction always favors the
- *   caster).
- * - **markSuit**: immediately credits the caster's own suitTally
- *   Accumulator subroutines watching `suit` with one tally point, as if
- *   a card of that suit had been played.
- */
-export interface CribbageLayerManipulationPayload {
-  kind: 'cribbageLayerManipulation';
-  action: 'forceDiscard' | 'peekCrib' | 'skewCut' | 'markSuit';
-  /** Required when action is 'markSuit'. */
-  suit?: Suit;
-}
-/** Fires now, but the wrapped effect doesn't resolve until a future
- * Cribbage-flow checkpoint. */
-export interface ScheduledSabotagePayload {
-  kind: 'scheduledSabotage';
-  resolvesAt: 'nextDeal';
-  effect: PayloadEffect;
 }
 
 /**
- * Reduces the caster's own Trace (CombatSideState.trace -- this fight's
- * accumulated noise, surfaced via CombatResult.traceGenerated and folded
- * into run Heat when the fight ends), floored so it can't go below a set
- * point. Reducing Trace before it converts is the "cover your tracks on
- * the way out" mechanic -- an in-fight action with an out-of-fight
- * payoff.
- * Session 21+ content pass: no archetype's documented payload catalog
- * includes a heat-reduction effect (Exploit's risk/reward burst only
- * *costs* Trace), but Ghost's *Low Profile* starting Cantrip needed one --
- * reusing an Exploit-flavored payload would be thematically wrong for a
- * class with zero Exploit access. Filed under Root (Ghost's other
- * archetype), matching Root's own "any piece of the system" framing.
+ * Boosts the magnitude of other subroutines' effects later in this same
+ * turn -- Overclock's utility, and the reason loadout order matters to
+ * it. `scope: 'next'` boosts only the next piece to fire; `'rest'` boosts
+ * every remaining piece this turn. Expires at the end of the turn either
+ * way: an Empower that carried across turns would make order irrelevant.
  */
-export interface TraceReductionPayload {
-  kind: 'traceReduction';
+export interface EmpowerEffect extends EffectBase {
+  verb: 'empower';
   amount: number;
-  floor: number;
+  scope: 'next' | 'rest';
 }
 
 /**
- * Root recon (session 24, Root mechanical redesign): three
- * `firesAt`-only payloads, one per hand-lifecycle moment, each
- * revealing a different, real piece of intel to the caster. No fields
- * of their own -- the actual revealed cards are supplied at fire time
- * by combat.ts (resolve.ts's resolvePayload `revealedCards` option),
- * not baked into content authoring, since which cards are "the
- * opponent's hand" or "the crib" only exists as combat.ts's own local
- * state during a hand, never persisted into CombatState itself.
- * Reveals *data*, not decisions -- the caster's own discard/pegging
- * strategy still has to do something with it (see deal.ts's
- * DiscardContext.knownOpponentHand, pegging.ts's PlayContext.
- * knownCrib/knownOpponentHand); a no-op with the current baseline
- * strategies, which don't consume those fields yet.
- */
-export interface RevealOpponentHandPayload {
-  kind: 'revealOpponentHand';
-}
-
-export interface RevealCribPayload {
-  kind: 'revealCrib';
-}
-
-export interface RevealOpponentKeptHandPayload {
-  kind: 'revealOpponentKeptHand';
-}
-
-/**
- * Root manipulation (session 24 checkpoint D): forces a specific card
- * out of the opponent's hand and into this hand's crib -- a surgical
- * upgrade on cribbageLayerManipulation's forceDiscard (which dictates
- * *both* discarded cards via discardHighestTwo). `firesAt: 'onDealt'`
- * only. No fields of its own, same reasoning as the recon payloads --
- * resolve.ts's ai.ts-backed targeting (bestCardToForce) picks the
- * specific card *and* its best companion from combat.ts's supplied
- * revealedCards (the opponent's dealt hand), needing no recon
- * prerequisite (decision 3: payload resolution already has full state
- * access, unlike a strategy function).
- */
-export interface ForceDiscardCardPayload {
-  kind: 'forceDiscardCard';
-}
-
-export type PayloadEffect =
-  | DirectBurstPayload
-  | PiercingPayload
-  | ChainFinisherScalingPayload
-  | RiskRewardBurstPayload
-  | DotPayload
-  | DebuffPayload
-  | InstantCounterPushPayload
-  | WardPayload
-  | HotPayload
-  | CleansePayload
-  | WardCounterPayload
-  | DrainingHotPayload
-  | WardBashPayload
-  | SessionHijackPayload
-  | InstantManipulationPayload
-  | CribbageLayerManipulationPayload
-  | ScheduledSabotagePayload
-  | TraceReductionPayload
-  | RevealOpponentHandPayload
-  | RevealCribPayload
-  | RevealOpponentKeptHandPayload
-  | ForceDiscardCardPayload;
-
-/** Which PayloadEffect kinds actually credit a win-gauge -- i.e. push
- * the caster toward their own threshold win rather than only
- * manipulating, revealing, warding, or debuffing. Lived as a private
- * const inside enemies.test.ts until session 46's Gameplay Simulation
- * Heuristics work needed the same classification in production code
- * (loadout.ts's credit-gap ladder step), so it's promoted here beside
- * PayloadEffect itself rather than duplicated a second time. The test
- * that originally owned it now imports it -- one source of truth.
+ * Speeds the caster's initiative or slows the opponent's.
  *
- * Note the asymmetry this deliberately encodes: `ward`/`hot`/`cleanse`
- * are Encryption's *defensive* payloads and credit nothing; session
- * 40's `wardCounter`/`drainingHot`/`wardBash`/`sessionHijack` are the
- * Encryption/Root pieces that do credit, which is exactly the gap that
- * session motivated fixing. */
-export const CREDIT_CAPABLE_PAYLOAD_KINDS: ReadonlySet<PayloadEffect['kind']> = new Set<PayloadEffect['kind']>([
-  'directBurst',
-  'piercing',
-  'chainFinisherScaling',
-  'riskRewardBurst',
-  'dot',
-  'wardCounter',
-  'drainingHot',
-  'wardBash',
-  'sessionHijack', // Root offense (session 40 continued)
-]);
+ * `mode: 'gauge'` moves gauge progress, denominated in **fractions of a
+ * turn** against the affected side's live threshold. `mode: 'threshold'`
+ * moves the threshold itself, denominated in **fractions of the starting
+ * threshold** (session 48's invariants -- never a point count, and never
+ * resolved against a value this effect is itself mutating).
+ *
+ * `duration` applies to `'threshold'` only: a temporary threshold change
+ * lasting that many of the affected side's turns (the old `choked`
+ * debuff). Absent means permanent.
+ */
+export interface TempoEffect extends EffectBase {
+  verb: 'tempo';
+  target: 'own' | 'opponent';
+  mode: 'gauge' | 'threshold';
+  amount: number;
+  duration?: number;
+}
+
+/**
+ * Acts on the Cribbage layer -- Exploit's control. A turn happens
+ * mid-hand, after the moment any of these would matter, so a Disrupt
+ * effect **arms for the next hand** and resolves at the right point in
+ * it: the opponent's dealt hand is revealed once dealt, the crib once
+ * selected, and `forceDiscard` pulls one adversarially chosen card from
+ * the opponent's hand into the crib before they discard. One timing
+ * mechanism, replacing session 24's three hand-lifecycle moments and
+ * `scheduledSabotage` alike.
+ */
+export interface DisruptEffect extends EffectBase {
+  verb: 'disrupt';
+  action: 'revealHand' | 'revealCrib' | 'forceDiscard';
+}
+
+/**
+ * Adds charges to a beta -- this piece's own, the next piece's in
+ * loadout order, or every other installed piece's. Distinct from Empower
+ * (which boosts *output*): Charge feeds *criteria*. An alpha may be
+ * nothing but Charge (A5, the user's own call) -- a piece whose job is
+ * powering a beta, its own or a neighbour's.
+ */
+export interface ChargeEffect extends EffectBase {
+  verb: 'charge';
+  amount: number;
+  target: 'self' | 'next' | 'all';
+}
+
+export type Effect =
+  | CreditEffect
+  | SuppressEffect
+  | WardEffect
+  | EmpowerEffect
+  | TempoEffect
+  | DisruptEffect
+  | ChargeEffect;
+
+export type Verb = Effect['verb'];
+
+export const VERBS: readonly Verb[] = ['credit', 'suppress', 'ward', 'empower', 'tempo', 'disrupt', 'charge'];
+
+/** An alpha is one effect, plus an optional `growth`: added to its
+ * magnitude each time the piece fires (A5). That is how Ramp -- Daemon's
+ * offensive theme -- is expressed; without it Daemon could only ramp
+ * through its beta. `growthCap` bounds the total growth, so a long fight
+ * cannot run it away unboundedly. */
+export type Alpha = Effect & { growth?: number; growthCap?: number };
+
+/** A beta's own effect: either a full verb effect bundled onto the fire
+ * (the "different effect" relationship), or `enhance` -- added to the
+ * alpha's own magnitude (the "enhance" relationship, which D13 calls
+ * firing *elevated*). */
+export type BetaEffect = Effect | { verb: 'enhance'; amount: number; trace?: number };
+
+// ---------------------------------------------------------------------
+// Beta criteria: source x shape (A5)
+// ---------------------------------------------------------------------
+
+/**
+ * What a beta watches. Each source produces **charges**: a counter for
+ * `cards`/`progress`, a 1-or-0 for `state`/`sequence` (D15: a condition
+ * is a charge of 1).
+ *
+ * - `cards`: one charge per Cribbage scoring occurrence of `category`, or
+ *   with `category: 'suit'` one per card of the piece's own archetype's
+ *   suit played (A1: the archetype's own suit tally). `watch` (default
+ *   'own') and `minMagnitude` absorb session 40's rare-occurrence
+ *   family -- watching the opponent's scoring is a distinct signal, and a
+ *   pair occurrence's magnitude is real points (2/6/12), so
+ *   `minMagnitude: 6` really does mean "pair royal or better".
+ * - `progress`: one charge per `per` units of progress -- own points
+ *   scored, this piece's own fires, or Ward absorbed by the caster's side.
+ * - `state`: true/false conditions on the fight right now. Gauge
+ *   conditions read the real **win** gauge as a fraction of its
+ *   threshold, never the cyclical initiative gauge (session 40's
+ *   gaugeFillAbove lesson).
+ * - `sequence`: what fired before this piece this turn (D13). `adjacent`
+ *   checks only the immediately prior piece; `anyPrior` checks every
+ *   earlier piece that fired elevated (its beta applied). Matches by id,
+ *   archetype or verb -- id matching is reserved for pieces guaranteed to
+ *   be co-present, e.g. a class's own fixed starting loadout (session
+ *   41's dead-chain lesson).
+ */
+export type BetaSource =
+  | {
+      source: 'cards';
+      category: OccurrenceCategory | 'suit';
+      watch?: 'own' | 'opponent' | 'either';
+      minMagnitude?: number;
+    }
+  | { source: 'progress'; metric: 'points' | 'fires' | 'absorbed'; per: number }
+  | {
+      source: 'state';
+      condition:
+        | { kind: 'dealer' }
+        | { kind: 'nonDealer' }
+        | { kind: 'wardAbove'; amount: number }
+        | { kind: 'ownGaugeAbove'; fraction: number }
+        | { kind: 'ownGaugeBelow'; fraction: number }
+        | { kind: 'opponentGaugeAbove'; fraction: number }
+        | { kind: 'opponentGaugeBelow'; fraction: number };
+    }
+  | {
+      source: 'sequence';
+      reach: 'adjacent' | 'anyPrior';
+      match: { id: string } | { archetype: Archetype } | { verb: Verb };
+    };
+
+/**
+ * How a beta responds to its charges.
+ *
+ * - `graded`: on the turn's fire, the beta's amount is multiplied by
+ *   charges banked, up to `cap`. Charges reset when spent.
+ * - `stepped`: on the turn's fire, the beta applies at full amount once
+ *   `at` charges have banked. Charges reset when spent.
+ * - `whileTrue`: on the turn's fire, the beta applies if its condition
+ *   holds right now. For `state` and `sequence` sources; nothing banks.
+ * - `immediate`: the beta fires the moment `at` charges have banked (or,
+ *   for a `state` source, the moment the condition turns true), outside
+ *   the turn gate entirely. An `enhance` effect here means an extra,
+ *   elevated fire of the alpha -- D12's "extra fire". Not meaningful for a
+ *   `sequence` source, which only exists inside a turn.
+ */
+export type BetaShape =
+  | { shape: 'graded'; cap: number }
+  | { shape: 'stepped'; at: number }
+  | { shape: 'whileTrue' }
+  | { shape: 'immediate'; at?: number };
+
+/** A beta is one source, one shape and one effect -- one bundle, never a
+ * stack (D12), so an alpha and a beta are each independently priceable
+ * by the pillar suite. */
+export type Beta = BetaSource & BetaShape & { effect: BetaEffect };
+
+// ---------------------------------------------------------------------
+// The subroutine itself
+// ---------------------------------------------------------------------
 
 export interface SubroutineDefinition {
   id: string;
   name: string;
   archetype: Archetype;
-  trigger: TriggerFamily;
-  payload: PayloadEffect;
-  tags: Tag[];
-  /** Whether this subroutine carries a manual on/off switch at all,
-   * orthogonal to its trigger family. The actual current on/off state is
-   * runtime, not definition, data — see SubroutineRuntimeState.toggledOn
-   * in triggers.ts. */
-  togglable?: boolean;
-  /**
-   * Graded elevation (D11-B, session 50). A subroutine **banks charges**
-   * and **fires elevated**: the payload's magnitude gains `perCharge` for
-   * every charge banked since the last fire, capped at `cap` charges.
-   * Charges come from the trigger — see triggers.ts's `chargesFor`.
-   *
-   * This is the mechanism that makes a rare trigger worth authoring under
-   * D11. A piece is never dead: it fires every turn at its floor, and the
-   * trigger decides how far above the floor it lands. Rarity gates
-   * amplitude, never existence.
-   *
-   * Absent means "floor only" — a cantrip, which is now the baseline
-   * shape rather than a special case.
-   */
-  elevation?: { perCharge: number; cap: number };
-  /** Fires the instant it becomes ready, bypassing the normal turn-gate
-   * (fireReadySubroutines only runs on the owning side's own triggered
-   * turn). On selfState/enemyState (level-triggered) conditions, arms
-   * edge-triggered by default — see
-   * SubroutineRuntimeState.lastConditionTrue — so it fires once per
-   * false→true transition rather than refiring on every continuous-
-   * evaluation pass while the condition stays true. Accumulator/
-   * Occurrence-triggered Reactive needs no such debounce — those are
-   * already discrete crossing events, not a continuously-true level. */
-  reactive?: boolean;
-  /** Fires at a fixed Cribbage hand-lifecycle moment instead of the
-   * normal turn-gate -- Root mechanical redesign (session 24), the
-   * engine seam recon/manipulation payloads need. Orthogonal to
-   * `reactive`, same relationship: a `firesAt` subroutine bypasses
-   * fireReadySubroutines'/fireNewlyReadyReactiveSubroutines' normal
-   * paths entirely (resolve.ts's fireHandLifecycleSubroutines is the
-   * only thing that ever fires it) and is expected never to also be
-   * `reactive` -- readiness (via `trigger`) still governs whether it's
-   * *armed*, `firesAt` only says *when* an armed one actually fires. */
-  firesAt?: HandLifecycleMoment;
-  /** Caps how many times this subroutine can ever fire in one combat,
-   * regardless of how many more times its trigger condition would
-   * otherwise re-arm it (session 39). Undefined means unlimited, the
-   * default and pre-existing behavior for every subroutine. Currently
-   * only enforced for the reactive selfState/enemyState re-arm path
-   * (see resolve.ts's refreshTriggerReadiness) -- a Reactive piece whose
-   * level condition keeps re-triggering (e.g. an opponent's gauge
-   * repeatedly crossing back above a threshold) would otherwise fire
-   * every single time, unbounded. Not yet checked for
-   * accumulator/occurrence trigger re-arming; extend there too if a
-   * future piece needs the same cap on a non-reactive trigger. */
-  maxFiresPerCombat?: number;
-  /** How much this payload's own magnitude shrinks per prior fire this
-   * combat (session 39) -- a self-limiting alternative to
-   * `maxFiresPerCombat` for a payload that should keep firing but hit
-   * diminishing returns rather than a hard wall. Requires
-   * `magnitudeFloor` alongside it (the minimum it decays down to, never
-   * below). Undefined means no decay, the default. See merge.ts's
-   * decayedPayloadMagnitude for the actual formula and resolve.ts's
-   * payloadForFire for where it's applied (every real fire-dispatch
-   * path: fireReadySubroutines, fireNewlyReadyReactiveSubroutines,
-   * fireHandLifecycleSubroutines). */
-  magnitudeDecayPerFire?: number;
-  /** The floor `magnitudeDecayPerFire` decays down to and never below.
-   * Ignored (and meaningless) without `magnitudeDecayPerFire` set. */
-  magnitudeFloor?: number;
-  /** Points this subroutine's own side must *score* after a fire before
-   * it may fire again (session 47) -- a cooldown denominated in real
-   * Cribbage scoring rather than turns or hands.
-   *
-   * Sits alongside maxFiresPerCombat/magnitudeDecayPerFire as a per-piece
-   * constraint applied *next to* the trigger rather than inside it,
-   * because triggers aren't composable (a piece has exactly one
-   * TriggerFamily) and this has to work with any of them.
-   *
-   * Exists because a piece that grants tempo can otherwise pay for its
-   * own next activation. Session 47 found a real non-terminating fight:
-   * Cold Call (`traceBelow` -> Haste on its own initiative gauge) fires,
-   * grants itself a turn, fires again on that turn, and compounds -- fatal
-   * once Merge lifts its magnitude to the initiative threshold. At the
-   * time, all four self-Haste pieces were authored at 5 against a
-   * threshold of 8, so MERGE_MAGNITUDE_BONUS (3) put them over at rank
-   * 1. Session 48 re-denominated those amounts as fractions of a turn
-   * (5/8) and gave Merge a matching fractional bonus (3/8), so the
-   * arithmetic is unchanged -- rank 1 still reaches a full turn, and
-   * this cooldown is still what stops it compounding.
-   *
-   * The cooldown is denominated in *scored points* specifically because
-   * that is the one quantity such a piece cannot manufacture: scoring
-   * flows only from occurrencesForHand -> applyOccurrenceToState ->
-   * updateSubroutineState, while Haste writes gauge.progress directly and
-   * never produces a ScoringOccurrence. So the gate can never be fed by
-   * the thing it gates -- the same separation suitTally already relies on
-   * ("a non-scoring play produces no ScoringOccurrence at all"). Ticks
-   * only on the owning side's own scoring. */
+  alpha: Alpha;
+  /** Absent only on skeleton/test content -- every authored piece is
+   * expected to carry one (the user's framing: every subroutine has two
+   * effects). */
+  beta?: Beta;
+  /** Points this piece's own side must *score* after a fire before it
+   * may fire again (session 47). Denominated in real Cribbage scoring
+   * because that is the one quantity a piece cannot manufacture -- a
+   * Tempo piece writes gauge progress directly and never produces a
+   * scoring occurrence, so the gate can never be fed by the thing it
+   * gates. More load-bearing under D11, where it suppresses a guaranteed
+   * per-turn fire, and the frequency axis the pillar suite sweeps (D9). */
   pointsCooldown?: number;
-  /** Trace this piece adds to its own side each time it fires (session
-   * 47) -- see resolve.ts's CombatSideState.trace and DESIGN.md's
-   * Resources section. Absent means silent, which is most of the pool.
-   *
-   * A per-piece property rather than one payload's field, because noise
-   * is a property of *what a piece does*, not of one effect shape: an
-   * alarm, a broadcast storm and a ransomware payload are all loud while
-   * having nothing else in common. Keeping it here also means a piece can
-   * both read and write Trace, which is the self-limiting pairing the
-   * design leans on -- e.g. a `traceBelow 8` trigger with traceCost 2
-   * fires about four times and then quiets itself, a limiter the player
-   * can see and can counteract with Trace reduction, unlike an opaque
-   * maxFiresPerCombat.
-   *
-   * Blackhat's Zero Day waives the first Trace-costing fire each combat
-   * (resolve.ts) -- that hook reads this field, so it now covers every
-   * archetype's noisy pieces rather than only Exploit's bursts. */
-  traceCost?: number;
+  /** Caps how many times this piece can fire in one combat (session 39).
+   * Mostly for `immediate` betas, the one path that can re-fire outside
+   * the turn gate. Undefined means unlimited. */
+  maxFiresPerCombat?: number;
   /** Trace this piece inflicts on its OPPONENT each time it fires
-   * (session 47) -- the mirror of traceCost, which charges the caster.
-   *
-   * Enemy-side content. Trace remains player-only as a *resource*
-   * (session 43: enemies have no Heat of their own and accumulate
-   * nothing), but an enemy actively hunting you can still make YOU
-   * visible -- that is a threat, like a debuff, not an enemy resource.
-   * An enemy carrying this raises the player's Trace, which converts to
-   * run Heat when the fight ends, so a long fight against something loud
-   * is genuinely expensive at the run level.
-   *
-   * Deliberately a side-effect field rather than its own payload kind, so
-   * an enemy's existing attacks simply become noisy without spending a
-   * loadout slot on it -- a hunter should be dangerous *and* loud, not
-   * loud instead of dangerous.
-   *
-   * On a player piece this is inert: the enemy side has no Trace to
-   * raise. enemies.test.ts guards the intended direction. */
+   * (session 47) -- enemy-side content. Trace stays player-only as a
+   * resource, but an enemy actively hunting you can still make you
+   * visible. Inert on a player piece. */
   tracePressure?: number;
 }
 
-/** The three real Cribbage lifecycle moments a `firesAt` subroutine can
- * hook -- see SubroutineDefinition.firesAt and resolve.ts's
- * fireHandLifecycleSubroutines. 'onDealt': right after this hand's
- * cards are dealt, before either side discards. 'onCribSelected':
- * after both sides have discarded (the crib now exists), before the
- * cut. 'onPlayPhaseStart': after the cut, before the first peg play. */
-export type HandLifecycleMoment = 'onDealt' | 'onCribSelected' | 'onPlayPhaseStart';
+/** The magnitude field of an effect, or undefined for a verb with none
+ * (Disrupt). One place that knows which verbs carry an `amount`, for
+ * Merge, enemy scaling, Empower and `enhance` alike. */
+export function effectAmount(effect: Effect | BetaEffect): number | undefined {
+  return effect.verb === 'disrupt' ? undefined : effect.amount;
+}
 
-/** Whether `loadout` already contains a piece of `archetype` that can
- * credit the win gauge (session 46, Gameplay Simulation Heuristics
- * checkpoint A) -- the primitive behind the acquisition ladder's
- * credit-gap step: a class whose own installed kit has no credit-capable
- * Encryption piece should prefer an offered Encryption piece that is one
- * over anything else, since without it that half of the class's
- * specialization can never actually push toward a threshold win. Mirrors
- * enemies.test.ts's own long-standing "every enemy needs a credit-capable
- * payload" structural rule, applied to the player side.
+/**
+ * Which shapes make sense for which sources (A5). The type system allows
+ * any pairing; this is the authoring rule, enforced by tests over every
+ * piece rather than by a much larger type.
  *
- * Note this checks the *installed* loadout specifically at every call
- * site -- a benched piece isn't evaluated in a fight, so it doesn't
- * close a gap. */
+ * - `cards`/`progress` bank a counter, so `graded`, `stepped` and
+ *   `immediate`. Not `whileTrue`: there is no condition to be true.
+ * - `state` is a condition, so `whileTrue` or `immediate` (fires on the
+ *   false -> true edge). Graded/stepped would mean a counter it doesn't
+ *   have (D15: a condition is a charge of 1).
+ * - `sequence` only exists inside a turn, so `whileTrue`, or `graded`
+ *   counting how many matching pieces fired earlier this turn (the old
+ *   chain-finisher shape). Never `immediate`.
+ */
+export const VALID_SHAPES: Record<BetaSource['source'], readonly BetaShape['shape'][]> = {
+  cards: ['graded', 'stepped', 'immediate'],
+  progress: ['graded', 'stepped', 'immediate'],
+  state: ['whileTrue', 'immediate'],
+  sequence: ['whileTrue', 'graded'],
+};
+
+export function isValidBeta(beta: Beta): boolean {
+  return VALID_SHAPES[beta.source].includes(beta.shape);
+}
+
+/** Whether `piece` satisfies a `sequence` beta's match -- by id,
+ * archetype or the verb of its alpha. One definition shared by beta
+ * evaluation (triggers.ts) and the reorder heuristic (loadout.ts), so the
+ * two can never disagree about what a chain wants. */
+export function matchesSequence(match: Extract<BetaSource, { source: 'sequence' }>['match'], piece: SubroutineDefinition): boolean {
+  if ('id' in match) return piece.id === match.id;
+  if ('archetype' in match) return piece.archetype === match.archetype;
+  return piece.alpha.verb === match.verb;
+}
+
+/** Multiplies every magnitude a piece carries -- its alpha, its alpha's
+ * growth, and its beta's effect -- by `multiplier`. Multiplicative, so
+ * unit-agnostic: safe on Tempo's fractions (session 48). Used for
+ * per-layer enemy scaling. A multiplier of 1 returns the piece unchanged. */
+export function scaledDefinition(piece: SubroutineDefinition, multiplier: number): SubroutineDefinition {
+  if (multiplier === 1) return piece;
+  const scale = <T extends Effect | BetaEffect>(effect: T): T =>
+    effect.verb === 'disrupt' ? effect : { ...effect, amount: effect.amount * multiplier };
+  // Spread so the growth writes below can never mutate the source piece
+  // (scale() returns a Disrupt effect as-is).
+  const alpha = { ...scale(piece.alpha) } as Alpha;
+  if (alpha.growth !== undefined) alpha.growth *= multiplier;
+  if (alpha.growthCap !== undefined) alpha.growthCap *= multiplier;
+  return { ...piece, alpha, beta: piece.beta ? { ...piece.beta, effect: scale(piece.beta.effect) } : undefined };
+}
+
+/** Whether an effect is Tempo -- whose amount is a fraction of a turn or
+ * of a threshold, so anything doing *additive* arithmetic on it (a flat
+ * Merge bonus, a flat Empower) must not treat it as points: adding 3 to a
+ * fraction means "plus three whole turns" (session 48's invariant).
+ * Multiplicative scaling is unit-agnostic and does not need to care. */
+export function isTempo(effect: Effect | BetaEffect): effect is TempoEffect {
+  return effect.verb === 'tempo';
+}
+
+/** Whether a piece can credit the win gauge through either of its
+ * effects -- the primitive behind A3's credit rule and the simulation
+ * heuristics' credit-gap step. A beta of `enhance` counts if the alpha
+ * itself is Credit, since it only ever makes that credit bigger. */
+export function hasCreditPath(piece: SubroutineDefinition): boolean {
+  if (piece.alpha.verb === 'credit') return true;
+  return piece.beta?.effect.verb === 'credit';
+}
+
+/** Whether `loadout` already contains a piece of `archetype` with a
+ * credit path (session 46's credit-gap ladder step, re-pointed to the
+ * verb model). Checks the *installed* loadout at every call site -- a
+ * benched piece isn't evaluated in a fight, so it doesn't close a gap. */
 export function hasCreditCapablePiece(loadout: SubroutineDefinition[], archetype: Archetype): boolean {
-  return loadout.some((piece) => piece.archetype === archetype && CREDIT_CAPABLE_PAYLOAD_KINDS.has(piece.payload.kind));
+  return loadout.some((piece) => piece.archetype === archetype && hasCreditPath(piece));
 }

@@ -18,7 +18,7 @@ import { HEAT_MAX } from './heat';
  */
 
 function playerWith(overrides: Partial<RunPlayerState>): RunPlayerState {
-  return { ...createInitialPlayerState('breacher'), ...overrides };
+  return { ...createInitialPlayerState('exploit-overclock'), ...overrides };
 }
 
 describe('EVENT_ROSTER content shape', () => {
@@ -142,7 +142,7 @@ describe('EventChoiceStrategy', () => {
 
 describe('Choice resolution -- every risk tier and the bonus-fight path', () => {
   const overwhelming = [
-    { id: 'overwhelm', name: 'Overwhelm', archetype: 'exploit' as const, trigger: { kind: 'always' as const }, payload: { kind: 'directBurst' as const, amount: 30 }, tags: [] },
+    { id: 'overwhelm', name: 'Overwhelm', archetype: 'exploit' as const, alpha: { verb: 'credit' as const, amount: 30 } },
   ];
 
   function forceChoice(choice: EventChoice): EventChoiceStrategy {
@@ -340,7 +340,7 @@ describe('Events smoke test -- a full run resolving Events with real choices', (
     const preferGamble: EventChoiceStrategy = (event) => event.choices.find((c) => c.riskTier === 'gamble') ?? event.choices[0];
     const result = playRun({
       seed: 13,
-      classId: 'breacher',
+      classId: 'exploit-overclock',
       layerNodeCounts: [6, 6, 6, 6],
       eventChoiceStrategy: preferGamble,
     });
@@ -361,7 +361,7 @@ describe('Events smoke test -- a full run resolving Events with real choices', (
     const preferGamble: EventChoiceStrategy = (event) => event.choices.find((c) => c.riskTier === 'gamble') ?? event.choices[0];
     const result = playRun({
       seed: 21,
-      classId: 'breacher',
+      classId: 'exploit-overclock',
       layerNodeCounts: [8, 8, 8, 8],
       eventChoiceStrategy: preferGamble,
       carriedBurnerIdsOverride: ['flash-drive', 'ghost-protocol', 'stolen-coupon'],

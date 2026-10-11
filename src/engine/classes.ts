@@ -1,72 +1,92 @@
-import type { SubroutineDefinition, SuitedArchetype } from './subroutine-types';
+import type { Archetype, SubroutineDefinition } from './subroutine-types';
 import { CLASS_STARTING_LOADOUTS } from './subroutines';
 import type { ModId } from './mod-types';
 
 /**
- * Class type system (Phase 4 checkpoint A). All 6 classes ship
- * immediately selectable with no unlock gating -- session 21's
- * persistence-stub decision: a real save/profile layer is distinct,
- * unscoped infrastructure this project hasn't built yet, so the
- * designed unlock order (session 13) is recorded below for reference
- * only, not enforced anywhere.
+ * Class type system. Session 51 (A8) rebuilt the six classes as one per
+ * pair of the four new archetypes, each with a **bridge** passive that
+ * makes one of its archetypes feed the other.
+ *
+ * PLACEHOLDERS. Class names, bridge passives and unlock order are not
+ * designed yet -- they wait for real subroutines (step 3 of the
+ * redesign). Until then each class is named for its pair, and its
+ * passive is a placeholder bridge Mod (mods.ts).
+ *
+ * All 6 ship immediately selectable with no unlock gating -- session
+ * 21's persistence-stub decision still holds: there is no save/profile
+ * layer to gate against.
  */
-export type ClassId = 'breacher' | 'blackhat' | 'saboteur' | 'operator' | 'warden' | 'ghost';
+export type ClassId =
+  | 'exploit-overclock'
+  | 'exploit-daemon'
+  | 'daemon-overclock'
+  | 'exploit-honeypot'
+  | 'daemon-honeypot'
+  | 'overclock-honeypot';
 
-/** The 6 bespoke starting passives (session 11) are class-exclusive Mods
- * (Phase 5 Mods checkpoint D) -- granted automatically at run start by
- * class selection (see run.ts's createInitialPlayerState and
- * resolve.ts's createCombatState), never appearing in the general
- * reward/Shop pool. `startingPassiveId` just names *which* ModId a class
- * gets; the ModDefinition + hook logic live in mods.ts/resolve.ts. */
+/** Class passives are class-exclusive Mods (Phase 5 Mods checkpoint D) --
+ * granted automatically at run start by class selection, never appearing
+ * in the general reward/Shop pool. `startingPassiveId` names *which* ModId
+ * a class gets; the definition and hook logic live in mods.ts/resolve.ts. */
 export interface ClassDefinition {
   id: ClassId;
-  archetypes: [SuitedArchetype, SuitedArchetype];
+  archetypes: [Archetype, Archetype];
   startingPassiveId: ModId;
   startingLoadout: SubroutineDefinition[];
 }
 
 export const CLASS_DEFINITIONS: Record<ClassId, ClassDefinition> = {
-  breacher: {
-    id: 'breacher',
-    archetypes: ['exploit', 'encryption'],
-    startingPassiveId: 'foothold',
-    startingLoadout: CLASS_STARTING_LOADOUTS.breacher,
+  'exploit-overclock': {
+    id: 'exploit-overclock',
+    archetypes: ['exploit', 'overclock'],
+    startingPassiveId: 'bridge-exploit-overclock',
+    startingLoadout: CLASS_STARTING_LOADOUTS['exploit-overclock'],
   },
-  blackhat: {
-    id: 'blackhat',
-    archetypes: ['exploit', 'malware'],
-    startingPassiveId: 'zero-day',
-    startingLoadout: CLASS_STARTING_LOADOUTS.blackhat,
+  'exploit-daemon': {
+    id: 'exploit-daemon',
+    archetypes: ['exploit', 'daemon'],
+    startingPassiveId: 'bridge-exploit-daemon',
+    startingLoadout: CLASS_STARTING_LOADOUTS['exploit-daemon'],
   },
-  saboteur: {
-    id: 'saboteur',
-    archetypes: ['malware', 'root'],
-    startingPassiveId: 'sleeper-cell',
-    startingLoadout: CLASS_STARTING_LOADOUTS.saboteur,
+  'daemon-overclock': {
+    id: 'daemon-overclock',
+    archetypes: ['daemon', 'overclock'],
+    startingPassiveId: 'bridge-daemon-overclock',
+    startingLoadout: CLASS_STARTING_LOADOUTS['daemon-overclock'],
   },
-  operator: {
-    id: 'operator',
-    archetypes: ['exploit', 'root'],
-    startingPassiveId: 'primed',
-    startingLoadout: CLASS_STARTING_LOADOUTS.operator,
+  'exploit-honeypot': {
+    id: 'exploit-honeypot',
+    archetypes: ['exploit', 'honeypot'],
+    startingPassiveId: 'bridge-exploit-honeypot',
+    startingLoadout: CLASS_STARTING_LOADOUTS['exploit-honeypot'],
   },
-  warden: {
-    id: 'warden',
-    archetypes: ['malware', 'encryption'],
-    startingPassiveId: 'feedback-loop',
-    startingLoadout: CLASS_STARTING_LOADOUTS.warden,
+  'daemon-honeypot': {
+    id: 'daemon-honeypot',
+    archetypes: ['daemon', 'honeypot'],
+    startingPassiveId: 'bridge-daemon-honeypot',
+    startingLoadout: CLASS_STARTING_LOADOUTS['daemon-honeypot'],
   },
-  ghost: {
-    id: 'ghost',
-    archetypes: ['encryption', 'root'],
-    startingPassiveId: 'return-to-sender',
-    startingLoadout: CLASS_STARTING_LOADOUTS.ghost,
+  'overclock-honeypot': {
+    id: 'overclock-honeypot',
+    archetypes: ['overclock', 'honeypot'],
+    startingPassiveId: 'bridge-overclock-honeypot',
+    startingLoadout: CLASS_STARTING_LOADOUTS['overclock-honeypot'],
   },
 };
 
-/** Session 13's designed unlock order -- recorded for reference/future
- * gating (a real save/profile layer), not enforced by anything today.
- * All 6 classes are selectable right now regardless of this order. */
-export const CLASS_UNLOCK_ORDER: ClassId[] = ['breacher', 'blackhat', 'warden', 'saboteur', 'operator', 'ghost'];
+/** Provisional unlock direction (A8): Exploit + Overclock first (fast
+ * spikes, simplest to read), Honeypot pairs late (A2's watch item: the
+ * highest-skill-floor archetype). Recorded for future gating only --
+ * nothing enforces it. */
+export const CLASS_UNLOCK_ORDER: ClassId[] = [
+  'exploit-overclock',
+  'exploit-daemon',
+  'daemon-overclock',
+  'exploit-honeypot',
+  'daemon-honeypot',
+  'overclock-honeypot',
+];
 
-export const DEFAULT_CLASS_ID: ClassId = 'breacher';
+export const ALL_CLASS_IDS: ClassId[] = CLASS_UNLOCK_ORDER;
+
+export const DEFAULT_CLASS_ID: ClassId = 'exploit-overclock';

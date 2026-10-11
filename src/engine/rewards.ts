@@ -1,7 +1,7 @@
-import type { Archetype, SubroutineDefinition } from './subroutine-types';
+import { ARCHETYPES, type Archetype, type SubroutineDefinition } from './subroutine-types';
 import type { ClassId } from './classes';
 import { CLASS_DEFINITIONS } from './classes';
-import { ARCHETYPE_POOLS, NEUTRAL_POOL } from './subroutines';
+import { ARCHETYPE_POOLS } from './subroutines';
 import type { Rng } from './rng';
 
 /**
@@ -24,12 +24,7 @@ export type RewardTier = 'none' | 'standard' | 'better';
 
 function buildRarityById(): Record<string, Rarity> {
   const map: Record<string, Rarity> = {};
-  // NEUTRAL_POOL stays out of ARCHETYPE_POOLS proper (it has no suit and
-  // no class specializes in it) but is included here, and since session
-  // 46 in rewardPoolForClass below too -- the "real acquisition is still
-  // banked" note this comment used to carry turned out to describe a bug
-  // rather than a decision, and is resolved.
-  for (const pool of [...Object.values(ARCHETYPE_POOLS), NEUTRAL_POOL]) {
+  for (const pool of Object.values(ARCHETYPE_POOLS)) {
     for (const piece of pool.commons) map[piece.id] = 'common';
     for (const piece of pool.uncommons) map[piece.id] = 'uncommon';
     for (const piece of pool.rares) map[piece.id] = 'rare';
@@ -40,66 +35,61 @@ function buildRarityById(): Record<string, Rarity> {
 const RARITY_BY_ID: Record<string, Rarity> = buildRarityById();
 
 /** Rarity for any subroutine id -- 'common' for anything outside the
- * archetype pools (the 18 class starting-loadout pieces have no
- * authored rarity of their own; treated as common, matching their
- * deliberately simple onboarding-piece design). */
+ * archetype pools (a Mod's granted subroutine, a test fixture). */
 export function rarityOf(id: string): Rarity {
   return RARITY_BY_ID[id] ?? 'common';
 }
 
-/** The 4 pool-level Cantrips (one per archetype, Always-triggered,
- * common) -- DESIGN.md's "universal Chained/Cantrip pool," available to
- * every class's reward pool regardless of its own 2 archetypes, even
- * though each is still structurally tagged with one specific archetype
- * (see subroutines.ts's own header on this distinction). Identified
- * structurally (Always trigger among the commons) rather than a
- * hardcoded id list, so a future archetype's own Cantrip is picked up
- * automatically. */
-function universalCantrips(): SubroutineDefinition[] {
-  return Object.values(ARCHETYPE_POOLS).flatMap((pool) => pool.commons.filter((piece) => piece.trigger.kind === 'always'));
+/**
+ * How much less likely an off-class piece is to be offered than an
+ * on-class one of the same rarity (session 51). DESIGN.md: a class draws
+ * "primarily from its 2 specialized archetypes, with occasional off-class
+ * picks from the other two" -- primarily, not exclusively, so a class can
+ * still stumble into the other half of the game.
+ *
+ * Replaces the two mechanisms that used to supply off-class pieces: the
+ * universal Cantrips (one Always-triggered common per archetype -- under
+ * D11 every piece fires every turn, so a Cantrip is no longer a distinct
+ * kind of piece) and the Neutral pool (removed with the Neutral
+ * archetype). TBD/playtesting, like every number here.
+ */
+export const OFF_CLASS_WEIGHT = 0.2;
+
+function allRarities(archetype: Archetype): SubroutineDefinition[] {
+  const pool = ARCHETYPE_POOLS[archetype];
+  return [...pool.commons, ...pool.uncommons, ...pool.rares];
 }
 
-/** A class's full combat-reward pool: both of its own archetype pools
- * (all 3 rarities), its own starting loadout (a class's own pieces stay
- * in its own pool -- drawing a duplicate becomes Merge material later,
- * not a wasted offer), and the universal Cantrips from its OTHER 2
- * archetypes (its own archetypes' Cantrips are already included via
- * their pools). De-duplicated by id, in case a starting piece ever
- * shares an id with a pool piece (it doesn't today, but cheap to
- * guarantee). */
+function dedupeById(pieces: SubroutineDefinition[]): SubroutineDefinition[] {
+  const seen = new Set<string>();
+  return pieces.filter((piece) => (seen.has(piece.id) ? false : (seen.add(piece.id), true)));
+}
+
+/** A class's own reward pool: both of its archetypes' pools, all 3
+ * rarities, plus its own starting loadout (a class's own pieces stay in
+ * its own pool -- drawing a duplicate becomes Merge material later, not
+ * a wasted offer). De-duplicated by id, since the skeleton starting
+ * loadouts are pool pieces. On-class only: the Shop and Event grants
+ * read this directly, and off-class pieces enter only through the
+ * combat-reward draw, down-weighted (see offClassPoolForClass). */
 export function rewardPoolForClass(classId: ClassId): SubroutineDefinition[] {
   const classDef = CLASS_DEFINITIONS[classId];
-  const [archetypeA, archetypeB] = classDef.archetypes;
-  const ownArchetypes = new Set<Archetype>([archetypeA, archetypeB]);
+  return dedupeById([...classDef.startingLoadout, ...classDef.archetypes.flatMap(allRarities)]);
+}
 
-  const ownPools = [archetypeA, archetypeB].flatMap((archetype) => {
-    const pool = ARCHETYPE_POOLS[archetype];
-    return [...pool.commons, ...pool.uncommons, ...pool.rares];
-  });
-  const otherCantrips = universalCantrips().filter((piece) => !ownArchetypes.has(piece.archetype));
+/** The other two archetypes' pools -- the "occasional off-class picks"
+ * a combat reward can offer at OFF_CLASS_WEIGHT. */
+export function offClassPoolForClass(classId: ClassId): SubroutineDefinition[] {
+  const own = new Set<Archetype>(CLASS_DEFINITIONS[classId].archetypes);
+  return ARCHETYPES.filter((archetype) => !own.has(archetype)).flatMap(allRarities);
+}
 
-  // The whole Neutral pool, every class, every rarity (session 46). It
-  // had been unreachable through *any* acquisition path since session 28
-  // -- absent from combat rewards, the Shop slate and Event grants alike,
-  // since all three derive from this one function -- leaving 18 authored
-  // pieces with no way into a run but a single scripted Event grant. That
-  // was a real bug rather than a deliberate gating: the archetype exists
-  // precisely as "a small, shared toolbox anyone can draw from"
-  // (subroutine-types.ts's Archetype comment).
-  //
-  // Enters at full weight, no special-casing. drawRewardOptions weights
-  // purely by rarity, and NEUTRAL_POOL's own 8/6/4 split is near-
-  // proportional to the 28/20/12 a class's two archetype pools already
-  // contribute, so the rarity distribution barely shifts -- measured at
-  // +0.1pp on a standard-tier rare draw and +0.5pp on a better-tier one.
-  // A reduced weight was considered and rejected: it would need
-  // per-piece weighting machinery that doesn't exist, set by a number
-  // with no calibration target behind it.
-  const neutralPool = [...NEUTRAL_POOL.commons, ...NEUTRAL_POOL.uncommons, ...NEUTRAL_POOL.rares];
-
-  const seen = new Set<string>();
-  const combined = [...classDef.startingLoadout, ...ownPools, ...otherCantrips, ...neutralPool];
-  return combined.filter((piece) => (seen.has(piece.id) ? false : (seen.add(piece.id), true)));
+/** On-class pieces at their rarity weight, off-class ones scaled down by
+ * OFF_CLASS_WEIGHT -- the weighted list both reward draws sample from. */
+function weightedRewardPool(classId: ClassId, rarityWeights: Record<Rarity, number>): { piece: SubroutineDefinition; weight: number }[] {
+  const onClass = rewardPoolForClass(classId).map((piece) => ({ piece, weight: rarityWeights[rarityOf(piece.id)] }));
+  const offClass = offClassPoolForClass(classId).map((piece) => ({ piece, weight: rarityWeights[rarityOf(piece.id)] * OFF_CLASS_WEIGHT }));
+  return [...onClass, ...offClass];
 }
 
 // TBD/playtesting, same convention as every other placeholder numeric
@@ -145,8 +135,7 @@ function weightedSampleWithoutReplacement(
 export function drawRewardOptions(classId: ClassId, tier: RewardTier, rng: Rng): SubroutineDefinition[] {
   if (tier === 'none') return [];
   const weights = RARITY_WEIGHTS_BY_TIER[tier];
-  const pool = rewardPoolForClass(classId);
-  const weighted = pool.map((piece) => ({ piece, weight: weights[rarityOf(piece.id)] }));
+  const weighted = weightedRewardPool(classId, weights);
   return weightedSampleWithoutReplacement(weighted, REWARD_OPTIONS_COUNT, rng);
 }
 
@@ -158,7 +147,6 @@ const UPGRADED_RARITY_WEIGHTS: Record<Rarity, number> = { common: 20, uncommon: 
  * rarity weighting even more generous than 'better', rather than adding
  * a 4th RewardTier value just for one Mod's own upgrade chance. */
 export function drawUpgradedRewardOptions(classId: ClassId, rng: Rng): SubroutineDefinition[] {
-  const pool = rewardPoolForClass(classId);
-  const weighted = pool.map((piece) => ({ piece, weight: UPGRADED_RARITY_WEIGHTS[rarityOf(piece.id)] }));
+  const weighted = weightedRewardPool(classId, UPGRADED_RARITY_WEIGHTS);
   return weightedSampleWithoutReplacement(weighted, REWARD_OPTIONS_COUNT, rng);
 }

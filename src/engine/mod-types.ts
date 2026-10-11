@@ -1,4 +1,4 @@
-import type { SubroutineDefinition, SuitedArchetype } from './subroutine-types';
+import type { Archetype, SubroutineDefinition } from './subroutine-types';
 import type { Rarity } from './rewards';
 
 /**
@@ -14,13 +14,15 @@ import type { Rarity } from './rewards';
  * doubling the general pool to 34.
  */
 export type ModId =
-  // Class-exclusive starting passives (checkpoint D)
-  | 'foothold'
-  | 'zero-day'
-  | 'sleeper-cell'
-  | 'primed'
-  | 'feedback-loop'
-  | 'return-to-sender'
+  // Class-exclusive starting passives -- session 51's six placeholder
+  // bridge passives (A8), one per class/archetype pair. Real names and
+  // effects wait for real subroutines; see classes.ts.
+  | 'bridge-exploit-overclock'
+  | 'bridge-exploit-daemon'
+  | 'bridge-daemon-overclock'
+  | 'bridge-exploit-honeypot'
+  | 'bridge-daemon-honeypot'
+  | 'bridge-overclock-honeypot'
   // Common (7)
   | 'static-shield'
   | 'light-footing'
@@ -100,8 +102,9 @@ export interface ModDefinition {
    * exclusion" -- the same "don't ship a structurally dead piece"
    * concern the Neutral Archetype addressed). Absent for the general,
    * archetype-agnostic majority of the pool. */
-  archetype?: SuitedArchetype;
-  /** True for the 6 class-exclusive starting passives (checkpoint D) --
+  archetype?: Archetype;
+  /** True for the 6 class-exclusive starting passives (the bridge
+   * passives since session 51) --
    * granted automatically at run start by class selection, never
    * appearing in the general reward/Shop pool (session 30). */
   classExclusive?: boolean;

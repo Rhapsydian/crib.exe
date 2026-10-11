@@ -222,6 +222,53 @@ gatekeeper.
   Overclock-archetype piece. It is in the re-point set anyway; rename it
   then.
 
+### Implementation calls made in step 1, checkpoint 2 (flag to revisit)
+
+Made while writing `subroutine-types.ts` and the skeleton content; each
+follows from A1–A11 but was not discussed individually.
+
+- **Suppress is instant only.** A lasting Suppress would re-create HoT,
+  and an alpha already fires every turn. So of the old debuffs, only
+  `choked` survives (as Tempo `threshold` with a `duration`); `throttled`
+  and `corrupted` are dropped rather than folded. Refines A4.
+- **Trace is a signed `trace` delta on any effect** — positive makes
+  noise, negative covers tracks, floored at 0. Replaces `traceCost`,
+  `riskRewardBurst` and `traceReduction` in one field. Low Profile's
+  separate floor is gone.
+- **Credit carries Honeypot's conversions** as `from: 'ward'` (spend own
+  Ward 1:1) or `from: 'opponent'` (take from the opponent's gauge, capped
+  at what is there), plus `piercing`. No separate conversion verbs.
+- **Suit tally is implicit**: `category: 'suit'` always means the piece's
+  own archetype's suit (A1/A2).
+- **Disrupt arms for the next hand** and resolves at the right point in
+  it — one timing mechanism replacing hand-lifecycle `firesAt` and
+  `scheduledSabotage`.
+- **Empower lasts only the current turn** (`scope: 'next' | 'rest'`), so
+  order stays meaningful. **Charge** targets `self | next | all`.
+- **`immediate` + `enhance`** means an extra, elevated alpha fire — D12's
+  "extra fire".
+- **Valid source × shape pairs** are an authoring rule (`VALID_SHAPES`),
+  enforced by tests rather than the type: cards/progress →
+  graded/stepped/immediate; state → whileTrue/immediate; sequence →
+  whileTrue/graded (graded sequence = the old chain-finisher).
+- **Removed fields**: `reactive`, `firesAt`, `magnitudeDecayPerFire`/
+  `magnitudeFloor`, `togglable`, `tags`, `elevation`, `traceCost`.
+  **Kept**: `pointsCooldown`, `maxFiresPerCombat`, `tracePressure`.
+- **Off-class rewards**: combat rewards add the other two archetypes at
+  `OFF_CLASS_WEIGHT` 0.2 (placeholder). The Shop and Event grants stay
+  on-class only.
+- **Skeleton starting loadouts reuse pool pieces**; the bridge slot is a
+  placeholder (the partner archetype's credit common).
+- **The Whistleblower event** granted Neutral's Checksum Match; it now
+  grants Probe, which is off-class for half the classes.
+- **Reorder heuristic**: session 46's "chain finishers last" pass retired
+  with that payload kind. Empower-first is the obvious next rule, left
+  for real Empower content.
+- **Pool pieces with a `trace` effect can't sit in enemy kits** (the
+  player-only Trace guard caught two in the skeleton roster).
+- **Gatekeeper ablation (`excludedIds`) throws** on the skeleton's
+  one-per-layer roster; use the synthetic gatekeeper instead.
+
 ## Noted for later (not discussed)
 
 - **Baseline Trace from every fight, scaled by the enemy's Containment %

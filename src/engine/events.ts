@@ -106,7 +106,11 @@ export const EVENT_ROSTER: EventDefinition[] = [
         label: 'Hear them out',
         riskTier: 'gamble',
         outcomes: [
-          { probability: 0.5, effect: { subroutineGrant: { specific: pool('checksum-match') } } },
+          // Session 51: was Checksum Match, a Neutral piece removed with that
+          // archetype. Probe is the nearest skeleton equivalent (credit that
+          // scales on fifteens); being Exploit, it is off-class for half the
+          // classes -- revisit when real content exists.
+          { probability: 0.5, effect: { subroutineGrant: { specific: pool('probe') } } },
           { probability: 0.5, effect: { heatDelta: 22 } },
         ],
       },

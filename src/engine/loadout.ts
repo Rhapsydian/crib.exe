@@ -1,9 +1,9 @@
 import {
-  CREDIT_CAPABLE_PAYLOAD_KINDS,
   hasCreditCapablePiece,
+  hasCreditPath,
+  matchesSequence,
   type Archetype,
   type SubroutineDefinition,
-  type TriggerFamily,
 } from './subroutine-types';
 import type { RunPlayerState } from './run';
 import { CLASS_DEFINITIONS, type ClassId } from './classes';
@@ -14,9 +14,9 @@ import { rarityOf, type Rarity } from './rewards';
  * player's `installedLoadout` (active, evaluated each fight, capped) vs.
  * `bench` (owned, uninstalled) -- pure between-fights functions, same
  * "legal-not-good scripted decision" shape as discardStrategy/
- * traversalStrategy. Mid-combat, a subroutine's only lever is Togglable
- * (session 3) -- install/uninstall/reorder are deliberately
- * between-fights only.
+ * traversalStrategy. Install/uninstall/reorder are deliberately
+ * between-fights only, and since session 51 removed Togglable there is
+ * no mid-combat lever at all.
  */
 
 export const INSTALLED_SLOT_CAP = 6; // TBD/playtesting -- floated as flavor only, session 7
@@ -72,9 +72,9 @@ export function installGrantedSubroutine(playerState: RunPlayerState, subroutine
 }
 
 /** Moves the installedLoadout entry at `fromIndex` to `toIndex` --
- * firing order matters (chainFinisherScaling's payoff, Primed/Sleeper
- * Cell's "first Exploit/Root subroutine" targeting), so this is a real
- * lever, not cosmetic. A no-op if either index is out of range. */
+ * firing order matters (`sequence` betas, Empower boosting the pieces
+ * after it, Charge feeding the next piece), so this is a real lever, not
+ * cosmetic. A no-op if either index is out of range. */
 export function reorderInstalled(playerState: RunPlayerState, fromIndex: number, toIndex: number): RunPlayerState {
   const loadout = playerState.installedLoadout;
   if (fromIndex < 0 || fromIndex >= loadout.length || toIndex < 0 || toIndex >= loadout.length) return playerState;
@@ -161,57 +161,33 @@ export function rarityLadderPosition(rarity: Rarity): 0 | 1 | 2 {
 /** Rung 2's position for an archetype, shared by all three item ladders.
  * 0 on-archetype, 1 universal, 2 off-archetype.
  *
- * Two different things map onto the middle position, for the same
- * reason. A `neutral` subroutine is suit-independent by construction, so
- * it's always live for any class; a Mod with **no** archetype field at
- * all (the archetype-agnostic majority of the Mod pool) is universal in
- * exactly the same sense. Neither is as good as content reinforcing one
- * of the class's own 2 specializations, but both beat content the class
- * will rarely lean on. */
+ * The middle position is for a Mod with **no** archetype field at all
+ * (the archetype-agnostic majority of the Mod pool): always live for any
+ * class, but not reinforcing either of its specializations. Every
+ * subroutine has one of the four archetypes since session 51 removed
+ * `neutral`, so subroutines only ever land on 0 or 2. */
 export function archetypeLadderPosition(archetype: Archetype | undefined, classId: ClassId): 0 | 1 | 2 {
-  if (archetype === undefined || archetype === 'neutral') return 1;
+  if (archetype === undefined) return 1;
   const classArchetypes: readonly Archetype[] = CLASS_DEFINITIONS[classId].archetypes;
   return classArchetypes.includes(archetype) ? 0 : 2;
 }
 
-/** Whether acquiring `piece` would close a real credit-gap -- i.e. give
- * the class a way to actually push toward a threshold win somewhere it
- * currently can't. A defensive-only piece can never qualify, whatever
- * its archetype: that inability is exactly the structural hole session
- * 40 existed to fix.
- *
- * Neutral is handled deliberately, not incidentally (session 46, after
- * measuring): a neutral piece is suit-independent by construction and
- * therefore always live for every class, so it closes *any* of the
- * class's open gaps rather than one specific archetype's. That matters
- * because 4 of the 6 classes start a run with a credit-capable piece
- * missing in one of their own two specializations (Saboteur/Operator:
- * root; Warden: encryption; Ghost: both), which is the very gap session
- * 28's Neutral Archetype was created to be able to fill.
- *
- * Note this does NOT let neutral outrank on-archetype content: a
- * credit-capable neutral piece and a credit-capable on-archetype piece
- * both land on rung 1, and rung 2 then resolves the tie toward
- * on-archetype. Neutral only wins when nothing on-archetype is on offer.
- *
- * An off-archetype piece never fills a gap -- it's content the class's
- * own two specializations won't reinforce, so prioritizing it would be
- * chasing a gap the class was never built to cover. */
+/** Whether acquiring `piece` would close a real credit-gap -- give the
+ * class a way to push toward a threshold win in one of its own two
+ * archetypes where its installed kit currently has none. A piece with no
+ * credit path (neither its alpha nor its beta credits) can never qualify,
+ * and neither can an off-archetype piece: prioritizing it would chase a
+ * gap the class was never built to cover. A3's credit rule means every
+ * starting loadout already has a credit path; this rung matters once
+ * swaps and Merge choices start reshaping the installed kit. */
 export function fillsCreditGap(piece: SubroutineDefinition, playerState: RunPlayerState): boolean {
-  if (!CREDIT_CAPABLE_PAYLOAD_KINDS.has(piece.payload.kind)) return false;
+  if (!hasCreditPath(piece)) return false;
   const classArchetypes: readonly Archetype[] = CLASS_DEFINITIONS[playerState.classId].archetypes;
-  if (piece.archetype === 'neutral') {
-    return classArchetypes.some((archetype) => !hasCreditCapablePiece(playerState.installedLoadout, archetype));
-  }
   if (!classArchetypes.includes(piece.archetype)) return false;
   return !hasCreditCapablePiece(playerState.installedLoadout, piece.archetype);
 }
 
-/** Ranks one piece on the 3-rung ladder. Neutral sits deliberately
- * *between* on- and off-archetype: a neutral piece is suit-independent
- * by construction (see subroutine-types.ts's Archetype comment), so it's
- * always live for this class, where an off-archetype piece is content
- * the class's own two specializations won't reinforce. */
+/** Ranks one piece on the 3-rung ladder. */
 export function ladderRank(piece: SubroutineDefinition, playerState: RunPlayerState): LadderRank {
   return {
     creditGap: fillsCreditGap(piece, playerState) ? 0 : 1,
@@ -251,38 +227,27 @@ export function bestByLadder(options: SubroutineDefinition[], playerState: RunPl
 export const synergyAwareAcquisition: AcquisitionStrategy = (options, playerState) => bestByLadder(options, playerState);
 
 // ---------------------------------------------------------------------
-// Gameplay Simulation Heuristics (session 46, checkpoint F) -- loadout
-// reorder. reorderInstalled has existed since Phase 4 with a doc comment
-// stressing that firing order is "a real lever, not cosmetic," and
-// nothing has ever called it -- not even a legal-not-good default. This
-// is the first decision-maker for it.
+// Gameplay Simulation Heuristics (session 46, checkpoint F; re-pointed
+// session 51) -- loadout reorder.
 //
 // A fully general optimizer (searching permutations against simulated
 // outcomes) was considered and rejected by session 45 as its own
-// research project. This is a fixed rule reusing the ChainedTrigger
-// classification the engine already carries.
+// research project. This is a fixed rule over the `sequence` beta source:
+// a piece whose beta wants something to have fired before it gets that
+// something moved ahead of it --
 //
-// Two passes, in order:
-//   1. **Prerequisites before dependents.** Same-turn firing resolves
-//      top-to-bottom (resolve.ts), so a chained piece only credits this
-//      turn if whatever it chains off fired earlier in the same pass --
-//      otherwise it waits for the next turn, or never fires at all.
-//   2. **Chain finishers last.** A chainFinisherScaling payload scales
-//      with how many pieces already fired this turn, so it wants to be
-//      as late in the order as possible.
+//   - `adjacent`: a matching piece moved to the slot immediately before.
+//   - `anyPrior`: a matching piece moved anywhere earlier, if none is.
 //
-// Pass 2 deliberately wins where the two conflict (a finisher that is
-// also some other piece's prerequisite): its whole payoff is positional
-// in a way a chained trigger's is not.
+// Same-turn firing resolves top-to-bottom (resolve.ts), so without this a
+// sequence beta only applies when acquisition order happens to line it
+// up. D13 makes this a prerequisite for measuring chain content at all:
+// no simulated run had ever reordered a loadout before it existed.
 //
-// Scope note, measured rather than assumed: session 45's spec wrote pass
-// 1 against ChainedTrigger's `afterSubroutineId` variant only, but *no*
-// piece in the game uses it -- session 42's pool expansion converted
-// every chain to `afterArchetype`/`afterTag` because id-pairs can't be
-// guaranteed to co-occur in a run. Pass 1 handles all three variants
-// (decided live with the user), so it covers the 14 real chained pieces
-// instead of zero. The id variant is kept because it stays correct and
-// becomes live the moment a matched-pair Event or starting kit uses it.
+// Session 46's second pass (chain finishers last) retired with the
+// chain-finisher payload kind. Empower now has the strongest positional
+// payoff -- it boosts pieces *after* it -- and is the obvious next rule,
+// left for when real Empower content exists to measure it against.
 // ---------------------------------------------------------------------
 
 /** A full-loadout transform rather than a choice between options -- the
@@ -295,51 +260,42 @@ export type ReorderStrategy = (playerState: RunPlayerState) => RunPlayerState;
  * greppable alongside alwaysAcquireFirst and friends. */
 export const keepAcquisitionOrder: ReorderStrategy = (playerState) => playerState;
 
-/** Whether `piece` satisfies `trigger`'s chain condition -- the same
- * three match modes ChainedTrigger itself defines. */
-function satisfiesChain(trigger: Extract<TriggerFamily, { kind: 'chained' }>, piece: SubroutineDefinition): boolean {
-  if ('afterSubroutineId' in trigger) return piece.id === trigger.afterSubroutineId;
-  if ('afterArchetype' in trigger) return piece.archetype === trigger.afterArchetype;
-  return piece.tags.includes(trigger.afterTag);
-}
-
-/** Reorders the installed loadout per this section's two passes. Pure,
- * and idempotent -- running it twice changes nothing the second time,
- * which is what lets run.ts apply it once per node rather than at every
- * individual acquisition call site. */
+/** Reorders the installed loadout so every `sequence` beta's
+ * prerequisite sits where the beta needs it. Pure, and idempotent --
+ * running it twice changes nothing the second time, which is what lets
+ * run.ts apply it once per node rather than at every acquisition call
+ * site. */
 export const synergyAwareReorder: ReorderStrategy = (playerState) => {
   let state = playerState;
 
-  // Pass 1. Each iteration fixes at most one violation and restarts, so
-  // the bound is generous rather than tight; the cap exists because a
-  // chain cycle (A after B, B after A) is expressible in the type system
-  // and would otherwise spin forever. A cycle simply stops early with
-  // the order it has reached -- an unsatisfiable chain is dead content
-  // regardless of how it's ordered.
+  // Each iteration fixes at most one violation and restarts, so the bound
+  // is generous rather than tight; the cap exists because a chain cycle
+  // (A wants B first, B wants A first) is expressible and would otherwise
+  // spin forever. A cycle stops early with the order it has reached -- an
+  // unsatisfiable chain stays unsatisfied however it's ordered.
   const maxPasses = state.installedLoadout.length * state.installedLoadout.length + 1;
   for (let pass = 0; pass < maxPasses; pass++) {
     const loadout = state.installedLoadout;
     let movedSomething = false;
     for (let i = 0; i < loadout.length; i++) {
-      const trigger = loadout[i].trigger;
-      if (trigger.kind !== 'chained') continue;
-      // Already satisfied by something earlier in the order -- nothing to do.
-      if (loadout.slice(0, i).some((earlier) => satisfiesChain(trigger, earlier))) continue;
-      const laterIndex = loadout.findIndex((candidate, index) => index > i && satisfiesChain(trigger, candidate));
-      if (laterIndex === -1) continue; // nothing installed satisfies it at all
-      state = reorderInstalled(state, laterIndex, i);
+      const beta = loadout[i].beta;
+      if (beta?.source !== 'sequence') continue;
+      const satisfied =
+        beta.reach === 'adjacent'
+          ? i > 0 && matchesSequence(beta.match, loadout[i - 1])
+          : loadout.slice(0, i).some((earlier) => matchesSequence(beta.match, earlier));
+      if (satisfied) continue;
+      const candidateIndex = loadout.findIndex((candidate, index) => index !== i && matchesSequence(beta.match, candidate));
+      if (candidateIndex === -1) continue; // nothing installed satisfies it at all
+      // Moving a later piece up to slot i pushes this piece to i + 1, so
+      // the match lands immediately before it -- which satisfies both
+      // reaches. An earlier, non-adjacent candidate (adjacent only) moves
+      // down to sit just above it instead.
+      state = candidateIndex > i ? reorderInstalled(state, candidateIndex, i) : reorderInstalled(state, candidateIndex, i - 1);
       movedSomething = true;
       break;
     }
     if (!movedSomething) break;
-  }
-
-  // Pass 2. Moving each finisher to the end in its existing relative
-  // order leaves the finishers trailing in that same relative order.
-  const finisherIds = state.installedLoadout.filter((piece) => piece.payload.kind === 'chainFinisherScaling').map((piece) => piece.id);
-  for (const id of finisherIds) {
-    const from = state.installedLoadout.findIndex((piece) => piece.id === id);
-    if (from !== -1) state = reorderInstalled(state, from, state.installedLoadout.length - 1);
   }
 
   return state;

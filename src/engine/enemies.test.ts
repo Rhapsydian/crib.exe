@@ -3,7 +3,7 @@ import { createRng } from './rng';
 import { createNode } from './map-types';
 import { playCombat } from './combat';
 import { CLASS_STARTING_LOADOUTS, ALL_POOL_SUBROUTINES, ALL_SUBROUTINES } from './subroutines';
-import { CREDIT_CAPABLE_PAYLOAD_KINDS, type SubroutineDefinition } from './subroutine-types';
+import { hasCreditPath, type SubroutineDefinition } from './subroutine-types';
 import {
   ENEMY_ROSTER,
   eligibleEnemies,
@@ -18,28 +18,18 @@ import {
   type EnemyDefinition,
 } from './enemies';
 
-/**
- * Phase 5 checkpoint E: roster-integrity tests for the real 32-enemy
- * roster (checkpoint D) and the selection/skill-dial machinery
- * (checkpoint C), plus a direct regression guard for this session's own
- * finding -- 9 enemies originally shipped with zero payload capable of
- * crediting their own win-gauge at all (DESIGN.md's Neutral Archetype
- * section), fixed via a neutral-piece retrofit.
- */
-
-// The credit-capable classification this file's own structural rule
-// checks used to live here as a private const. Session 46 (Gameplay
-// Simulation Heuristics checkpoint A) promoted it into
-// subroutine-types.ts, since the player-side acquisition ladder needs
-// the same classification in production code -- imported above rather
-// than kept as a second copy about to drift.
+// Session 51: rewritten for the SKELETON roster (A11) -- one regular per
+// archetype, two elites, one gatekeeper per layer, no passives. The old
+// roster's per-enemy assertions (Null Session's 65 override, the stealth
+// gatekeepers, minLayer > 1 regulars) retired with it.
 
 describe('ENEMY_ROSTER structural integrity', () => {
-  it('has exactly 32 enemies: 12 regular, 8 elite, 12 gatekeeper', () => {
-    expect(ENEMY_ROSTER).toHaveLength(32);
-    expect(ENEMY_ROSTER.filter((e) => e.tier === 'regular')).toHaveLength(12);
-    expect(ENEMY_ROSTER.filter((e) => e.tier === 'elite')).toHaveLength(8);
-    expect(ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper')).toHaveLength(12);
+  it('skeleton shape: 4 regular, 2 elite, and exactly one gatekeeper per layer', () => {
+    expect(ENEMY_ROSTER.filter((e) => e.tier === 'regular')).toHaveLength(4);
+    expect(ENEMY_ROSTER.filter((e) => e.tier === 'elite')).toHaveLength(2);
+    for (let layer = 1; layer <= 4; layer++) {
+      expect(ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper' && e.minLayer === layer), `layer ${layer}`).toHaveLength(1);
+    }
   });
 
   it('every id is globally unique', () => {
@@ -47,24 +37,19 @@ describe('ENEMY_ROSTER structural integrity', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('every gatekeeper has an exact-layer stable of at least 2 members for each of the 4 layers', () => {
-    for (let layer = 1; layer <= 4; layer++) {
-      const stable = ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper' && e.minLayer === layer);
-      expect(stable.length).toBeGreaterThanOrEqual(2);
+  // Session 43's standing rule: every enemy loadout needs a credit path,
+  // UNLESS the enemy is explicitly designed to stall to the hand-20
+  // resolution instead (the user's own amendment). No enemy uses that
+  // exemption -- exempt one here by id rather than loosening the check.
+  it('every enemy can credit its own win gauge (session 28 regression guard)', () => {
+    for (const enemy of ENEMY_ROSTER) {
+      expect(enemy.loadout.some(hasCreditPath), `${enemy.name} (${enemy.id}) has no credit path`).toBe(true);
     }
   });
 
-  // Session 43's decision-session reconfirmed this as a standing design
-  // rule, not just a one-off regression guard: every enemy loadout needs a
-  // credit-capable payload, UNLESS the enemy is explicitly designed to
-  // stall to the hand-20 attrition resolution instead (the user's own
-  // amendment). No enemy currently uses that exemption -- if a future
-  // session authors a genuine stall-design enemy, exempt it here by id
-  // rather than loosening the check for everyone.
-  it("every enemy has at least one payload kind capable of crediting its own win-gauge -- the session 28 regression guard (9 enemies originally had none: Legacy Firewall, Access Gate, Hardened Workstation, Zero Trust Node, Backchannel Handler, Firewall Prime, Ghost Process, Null Session, Ghost in the Machine)", () => {
+  it("every enemy's pieces belong to its own declared archetypes", () => {
     for (const enemy of ENEMY_ROSTER) {
-      const canCredit = enemy.loadout.some((piece) => CREDIT_CAPABLE_PAYLOAD_KINDS.has(piece.payload.kind));
-      expect(canCredit, `${enemy.name} (${enemy.id}) has no credit-capable payload`).toBe(true);
+      for (const piece of enemy.loadout) expect(enemy.archetypes, `${enemy.id}/${piece.id}`).toContain(piece.archetype);
     }
   });
 });
@@ -72,19 +57,21 @@ describe('ENEMY_ROSTER structural integrity', () => {
 describe('eligibleEnemies', () => {
   it('regular/elite eligibility is a floor -- a layer-1 enemy stays eligible at every later layer', () => {
     for (let layer = 1; layer <= 4; layer++) {
-      expect(eligibleEnemies('regular', layer).some((e) => e.id === 'script-kiddie')).toBe(true);
+      expect(eligibleEnemies('regular', layer).some((e) => e.id === 'skeleton-crawler')).toBe(true);
     }
   });
 
-  it('regular/elite eligibility excludes an enemy whose minLayer is above the given layer', () => {
-    expect(eligibleEnemies('regular', 2).some((e) => e.id === 'hardened-workstation')).toBe(false); // minLayer 3
-    expect(eligibleEnemies('regular', 3).some((e) => e.id === 'hardened-workstation')).toBe(true);
+  it('regular/elite eligibility never includes an enemy whose minLayer is above the given layer', () => {
+    for (let layer = 1; layer <= 4; layer++) {
+      for (const tier of ['regular', 'elite'] as const) {
+        expect(eligibleEnemies(tier, layer).every((e) => e.minLayer <= layer), `${tier} @ ${layer}`).toBe(true);
+      }
+    }
   });
 
   it('gatekeeper eligibility is an exact match, not a floor', () => {
-    expect(eligibleEnemies('gatekeeper', 1).map((e) => e.id)).not.toContain('incident-response'); // layer 2
-    expect(eligibleEnemies('gatekeeper', 2).map((e) => e.id)).toContain('incident-response');
-    expect(eligibleEnemies('gatekeeper', 1).length).toBeGreaterThanOrEqual(2);
+    expect(eligibleEnemies('gatekeeper', 1).map((e) => e.id)).toEqual(['skeleton-gate-1']);
+    expect(eligibleEnemies('gatekeeper', 2).map((e) => e.id)).toEqual(['skeleton-gate-2']);
   });
 });
 
@@ -99,28 +86,27 @@ describe('pickRegularOrEliteEnemy', () => {
   });
 
   it('picks from the real tier/layer pool once past the opener window', () => {
-    const rng = createRng(1);
-    const picked = pickRegularOrEliteEnemy('elite', 4, 10, rng);
-    expect(picked.tier).toBe('elite');
+    expect(pickRegularOrEliteEnemy('elite', 4, 10, createRng(1)).tier).toBe('elite');
   });
 });
 
 describe('assignGatekeeperEnemy / gatekeeperEnemyForNode', () => {
+  const graph = () => ({ nodes: [createNode('gk', 'gatekeeperFight')], edges: [], entryNodeId: 'gk', gatekeeperNodeId: 'gk' });
+
   it('assigns a valid, real gatekeeper id for the given layer', () => {
-    const graph = { nodes: [createNode('gk', 'gatekeeperFight')], edges: [], entryNodeId: 'gk', gatekeeperNodeId: 'gk' };
-    const assigned = assignGatekeeperEnemy(graph, 2, createRng(1));
-    const node = assigned.nodes[0];
-    expect(node.assignedEnemyId).toBeDefined();
-    const enemy = gatekeeperEnemyForNode(node);
+    const enemy = gatekeeperEnemyForNode(assignGatekeeperEnemy(graph(), 2, createRng(1)).nodes[0]);
     expect(enemy.tier).toBe('gatekeeper');
     expect(enemy.minLayer).toBe(2);
   });
 
   it('is deterministic for a fixed seed', () => {
-    const graph = { nodes: [createNode('gk', 'gatekeeperFight')], edges: [], entryNodeId: 'gk', gatekeeperNodeId: 'gk' };
-    const a = assignGatekeeperEnemy(graph, 3, createRng(42));
-    const b = assignGatekeeperEnemy(graph, 3, createRng(42));
+    const a = assignGatekeeperEnemy(graph(), 3, createRng(42));
+    const b = assignGatekeeperEnemy(graph(), 3, createRng(42));
     expect(a.nodes[0].assignedEnemyId).toBe(b.nodes[0].assignedEnemyId);
+  });
+
+  it("throws loudly when ablation excludes a layer's only gatekeeper (one per layer in the skeleton)", () => {
+    expect(() => assignGatekeeperEnemy(graph(), 1, createRng(1), ['skeleton-gate-1'])).toThrow();
   });
 });
 
@@ -140,25 +126,20 @@ describe('enemySkill', () => {
 });
 
 describe('magnitudeScalerFor (session 39 per-layer difficulty scaler)', () => {
+  const gate = (layer: number) => ENEMY_ROSTER.find((e) => e.tier === 'gatekeeper' && e.minLayer === layer)!;
+
   it('every gatekeeper has its own stored magnitudeScaler set', () => {
-    for (const gatekeeper of ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper')) {
-      expect(gatekeeper.magnitudeScaler).toBeDefined();
-    }
+    for (const gatekeeper of ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper')) expect(gatekeeper.magnitudeScaler).toBeDefined();
   });
 
   it("reads a gatekeeper's own stored value, not a live layer formula", () => {
-    const firewallPrime = ENEMY_ROSTER.find((e) => e.id === 'firewall-prime')!;
-    const nullSession = ENEMY_ROSTER.find((e) => e.id === 'null-session')!;
-    // Both real layerIndex/fightsResolved args are irrelevant here --
-    // the point is these are individually authored, not derived.
-    expect(magnitudeScalerFor(firewallPrime, firewallPrime.minLayer, 10)).toBe(firewallPrime.magnitudeScaler);
-    expect(magnitudeScalerFor(nullSession, nullSession.minLayer, 10)).toBe(nullSession.magnitudeScaler);
-    expect(magnitudeScalerFor(firewallPrime, firewallPrime.minLayer, 10)).not.toBe(magnitudeScalerFor(nullSession, nullSession.minLayer, 10));
+    expect(magnitudeScalerFor(gate(1), 1, 10)).toBe(gate(1).magnitudeScaler);
+    expect(magnitudeScalerFor(gate(4), 4, 10)).toBe(gate(4).magnitudeScaler);
+    expect(magnitudeScalerFor(gate(1), 1, 10)).not.toBe(magnitudeScalerFor(gate(4), 4, 10));
   });
 
   it('regular/elite are pinned to 1 (no scaling) during the opener window regardless of layer', () => {
-    const regular = ENEMY_ROSTER.find((e) => e.tier === 'regular')!;
-    expect(magnitudeScalerFor(regular, 4, 0)).toBe(1);
+    expect(magnitudeScalerFor(ENEMY_ROSTER.find((e) => e.tier === 'regular')!, 4, 0)).toBe(1);
   });
 
   it('regular/elite climb from layer 1 to layer 4, past the opener window', () => {
@@ -176,101 +157,74 @@ describe('magnitudeScalerFor (session 39 per-layer difficulty scaler)', () => {
 });
 
 describe('gaugeThresholdFor/winThresholdFor (session 40, per-side threshold plumbing)', () => {
-  it('session 40 continued (balance pass): Null Session is the first gatekeeper with a real override, needing more of its own win-gauge progress to win (was crushing Saboteur/Warden specifically)', () => {
-    const nullSession = ENEMY_ROSTER.find((e) => e.id === 'null-session')!;
-    expect(nullSession.winThreshold).toBe(65);
-    expect(nullSession.gaugeThresholdScaler).toBeUndefined();
-  });
+  const gatekeeper = () => ENEMY_ROSTER.find((e) => e.tier === 'gatekeeper')!;
 
-  it('every gatekeeper ships with the tempo dial unset -- session 48 delivered the knob, not new tuning', () => {
-    for (const gatekeeper of ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper')) {
-      expect(gatekeeper.gaugeThresholdScaler).toBeUndefined();
-    }
-    for (const gatekeeper of ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper' && e.id !== 'null-session')) {
-      expect(gatekeeper.winThreshold).toBeUndefined();
+  it('no skeleton gatekeeper carries a threshold override or tempo dial', () => {
+    for (const enemy of ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper')) {
+      expect(enemy.gaugeThresholdScaler, enemy.id).toBeUndefined();
+      expect(enemy.winThreshold, enemy.id).toBeUndefined();
     }
   });
 
   it('falls back to flatDefault for a gatekeeper with no override set', () => {
-    const firewallPrime = ENEMY_ROSTER.find((e) => e.id === 'firewall-prime')!;
-    expect(gaugeThresholdFor(firewallPrime, firewallPrime.minLayer, 10, 12)).toBe(12);
-    expect(winThresholdFor(firewallPrime, firewallPrime.minLayer, 10, 50)).toBe(50);
+    expect(gaugeThresholdFor(gatekeeper(), 1, 10, 12)).toBe(12);
+    expect(winThresholdFor(gatekeeper(), 1, 10, 50)).toBe(50);
   });
 
   it("scales flatDefault by a gatekeeper's own tempo dial when set (session 48)", () => {
-    const nullSession = ENEMY_ROSTER.find((e) => e.id === 'null-session')!;
     // Inverse polarity to magnitudeScaler: this scales the *threshold*,
     // so below 1 is a faster, more dangerous enemy.
-    const faster: EnemyDefinition = { ...nullSession, gaugeThresholdScaler: 0.75 };
-    expect(gaugeThresholdFor(faster, faster.minLayer, 10, 12)).toBe(9);
-    const slower: EnemyDefinition = { ...nullSession, gaugeThresholdScaler: 1.5 };
-    expect(gaugeThresholdFor(slower, slower.minLayer, 10, 12)).toBe(18);
-    // Tracks the base rather than pinning a number -- the whole reason
-    // this replaced session 40's absolute override.
-    expect(gaugeThresholdFor(faster, faster.minLayer, 10, 8)).toBe(6);
+    const faster: EnemyDefinition = { ...gatekeeper(), gaugeThresholdScaler: 0.75 };
+    expect(gaugeThresholdFor(faster, 1, 10, 12)).toBe(9);
+    const slower: EnemyDefinition = { ...gatekeeper(), gaugeThresholdScaler: 1.5 };
+    expect(gaugeThresholdFor(slower, 1, 10, 12)).toBe(18);
+    // Tracks the base rather than pinning a number.
+    expect(gaugeThresholdFor(faster, 1, 10, 8)).toBe(6);
     // Rounded, and floored at 1 for gauges.ts's addPoints loop guard.
-    const absurd: EnemyDefinition = { ...nullSession, gaugeThresholdScaler: 0.01 };
-    expect(gaugeThresholdFor(absurd, absurd.minLayer, 10, 12)).toBe(1);
+    const absurd: EnemyDefinition = { ...gatekeeper(), gaugeThresholdScaler: 0.01 };
+    expect(gaugeThresholdFor(absurd, 1, 10, 12)).toBe(1);
   });
 
   it('winThreshold stays an absolute override -- it is not denominated in anything that moves', () => {
-    const overridden: EnemyDefinition = { ...ENEMY_ROSTER.find((e) => e.id === 'null-session')!, winThreshold: 30 };
-    expect(winThresholdFor(overridden, overridden.minLayer, 10, 50)).toBe(30);
+    const overridden: EnemyDefinition = { ...gatekeeper(), winThreshold: 30 };
+    expect(winThresholdFor(overridden, 1, 10, 50)).toBe(30);
   });
 
-  it('regular/elite always return flatDefault, regardless of layer or fightsResolved -- no per-layer formula unlike magnitude', () => {
+  it('regular/elite always return flatDefault, regardless of layer or fightsResolved', () => {
     const regular = ENEMY_ROSTER.find((e) => e.tier === 'regular')!;
     const elite = ENEMY_ROSTER.find((e) => e.tier === 'elite')!;
-    expect(gaugeThresholdFor(regular, 1, 0, 12)).toBe(12);
     expect(gaugeThresholdFor(regular, 4, 10, 12)).toBe(12);
-    expect(winThresholdFor(elite, 1, 0, 50)).toBe(50);
     expect(winThresholdFor(elite, 4, 10, 50)).toBe(50);
   });
 });
 
 describe('scaledEnemyLoadout', () => {
-  const burst: SubroutineDefinition = {
-    id: 'test-burst',
-    name: 'test-burst',
+  const credit: SubroutineDefinition = {
+    id: 'test-credit',
+    name: 'test-credit',
     archetype: 'exploit',
-    trigger: { kind: 'always' },
-    payload: { kind: 'directBurst', amount: 10 },
-    tags: [],
+    alpha: { verb: 'credit', amount: 10 },
+    beta: { source: 'cards', category: 'pair', shape: 'stepped', at: 2, effect: { verb: 'suppress', amount: 4 } },
   };
-  const cleanse: SubroutineDefinition = {
-    id: 'test-cleanse',
-    name: 'test-cleanse',
-    archetype: 'encryption',
-    trigger: { kind: 'always' },
-    payload: { kind: 'cleanse' },
-    tags: [],
-  };
+  const disrupt: SubroutineDefinition = { id: 'test-disrupt', name: 'test-disrupt', archetype: 'exploit', alpha: { verb: 'disrupt', action: 'revealHand' } };
 
-  it('scales a magnitude-bearing payload proportionally', () => {
-    const scaled = scaledEnemyLoadout([burst], 1.5);
-    expect(scaled[0].payload).toEqual({ kind: 'directBurst', amount: 15 });
+  it('scales the alpha and the beta effect proportionally', () => {
+    const [scaled] = scaledEnemyLoadout([credit], 1.5);
+    expect(scaled.alpha).toEqual({ verb: 'credit', amount: 15 });
+    expect(scaled.beta?.effect).toEqual({ verb: 'suppress', amount: 6 });
   });
 
-  it('leaves a magnitude-less payload unchanged', () => {
-    const scaled = scaledEnemyLoadout([cleanse], 1.5);
-    expect(scaled[0].payload).toEqual({ kind: 'cleanse' });
+  it('leaves a magnitude-less effect unchanged', () => {
+    expect(scaledEnemyLoadout([disrupt], 1.5)[0].alpha).toEqual({ verb: 'disrupt', action: 'revealHand' });
   });
 
-  it("doesn't ease the trigger condition -- magnitude scaling only, unlike Merge's own upgrade path", () => {
-    const accumulator: SubroutineDefinition = {
-      id: 'test-accumulator',
-      name: 'test-accumulator',
-      archetype: 'malware',
-      trigger: { kind: 'accumulator', metric: 'points', threshold: 6 },
-      payload: { kind: 'cleanse' },
-      tags: [],
-    };
-    const scaled = scaledEnemyLoadout([accumulator], 1.5);
-    expect(scaled[0].trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 6 });
+  it('never changes when a beta applies -- magnitude scaling only', () => {
+    const [scaled] = scaledEnemyLoadout([credit], 1.5);
+    expect(scaled.beta).toMatchObject({ source: 'cards', category: 'pair', shape: 'stepped', at: 2 });
   });
 
   it('a multiplier of 1 is a genuine no-op (same array reference)', () => {
-    const loadout = [burst];
+    const loadout = [credit];
     expect(scaledEnemyLoadout(loadout, 1)).toBe(loadout);
   });
 });
@@ -280,42 +234,26 @@ describe('scaledEnemyLoadout', () => {
 // ---------------------------------------------------------------------
 
 describe('no enemy touches Trace', () => {
-  // Session 43 ruled Heat/Trace a player-only run-level resource ("risk
-  // has no enemy-side analog at all"), and session 39 swept the roster
-  // for Heat-gated enemy pieces -- but looked only for `heatAbove`,
-  // i.e. pieces that never fire. Two-Factor gated on `heatBelow`, which
-  // on an enemy is not dead but *unconditionally true*, so it read as
-  // working content and survived. These guards catch either direction.
-
-  const TRACE_TRIGGERS = ['traceAbove', 'traceBelow'];
-  const TRACE_PAYLOADS = ['riskRewardBurst', 'traceReduction'];
-
-  it('no enemy piece reads Trace', () => {
-    for (const enemy of ENEMY_ROSTER) {
-      for (const piece of enemy.loadout) {
-        const reads = piece.trigger.kind === 'selfState' && TRACE_TRIGGERS.includes(piece.trigger.condition);
-        expect(reads, `${enemy.id}/${piece.id} gates on Trace, which an enemy can never accumulate`).toBe(false);
-      }
-    }
-  });
+  // Session 51 removed Trace-threshold conditions entirely, so "no enemy
+  // piece reads Trace" now holds by construction. What remains is the
+  // write side: an effect's `trace` delta is the caster's own Trace, which
+  // an enemy does not have.
 
   it('no enemy piece writes Trace', () => {
     for (const enemy of ENEMY_ROSTER) {
       for (const piece of enemy.loadout) {
-        expect(
-          TRACE_PAYLOADS.includes(piece.payload.kind),
-          `${enemy.id}/${piece.id} has a Trace-moving payload; Trace is player-only`,
-        ).toBe(false);
+        for (const effect of [piece.alpha, piece.beta?.effect]) {
+          expect(effect?.trace ?? 0, `${enemy.id}/${piece.id} moves Trace; Trace is player-only`).toBe(0);
+        }
       }
     }
   });
 
   it('Trace pressure is enemy-only, and never on a shared pool piece', () => {
-    // Session 47: enemies may now raise the PLAYER's Trace (a threat, like
-    // a debuff) while still having none of their own. The constraint that
-    // matters is where it lives -- a pool piece's definition is the same
-    // object the player can draw, and a player raising an enemy's Trace is
-    // meaningless, so pressure belongs only on bespoke enemy pieces.
+    // Enemies may raise the PLAYER's Trace (a threat, like a debuff) while
+    // having none of their own. A pool piece's definition is the same
+    // object the player can draw, so pressure belongs only on bespoke
+    // enemy pieces.
     const poolIds = new Set(ALL_POOL_SUBROUTINES.map((p) => p.id));
     for (const enemy of ENEMY_ROSTER) {
       for (const piece of enemy.loadout) {
@@ -326,32 +264,20 @@ describe('no enemy touches Trace', () => {
   });
 
   it('no player-side piece carries Trace pressure, which would be inert', () => {
-    for (const piece of ALL_SUBROUTINES) {
-      expect(piece.tracePressure ?? 0, `${piece.id} has tracePressure; enemies have no Trace to raise`).toBe(0);
-    }
+    for (const piece of ALL_SUBROUTINES) expect(piece.tracePressure ?? 0, piece.id).toBe(0);
   });
 
-  it('the stealth gatekeepers stay silent', () => {
-    // An enemy that generates no Trace is its own kind of signal -- these
-    // three are deliberately quiet, and that is content, not an omission.
-    for (const id of ['ghost-process', 'null-session', 'silent-corruption']) {
-      const enemy = ENEMY_ROSTER.find((e) => e.id === id)!;
-      const total = enemy.loadout.reduce((sum, p) => sum + (p.tracePressure ?? 0), 0);
-      expect(total, `${id} should generate no Trace pressure`).toBe(0);
-    }
-  });
-
-  it("an enemy's Trace stays 0 through a real fight", () => {
-    // The behavioural counterpart to the two structural guards above.
-    const enemy = ENEMY_ROSTER.find((e) => e.id === 'access-gate')!;
-    const result = playCombat([CLASS_STARTING_LOADOUTS.breacher, enemy.loadout], {
+  // Needs a working resolver -- red until checkpoint 3.
+  it('a real fight against a skeleton enemy resolves to a winner', () => {
+    const enemy = ENEMY_ROSTER.find((e) => e.id === 'skeleton-tarpit')!;
+    const result = playCombat([CLASS_STARTING_LOADOUTS['exploit-honeypot'], enemy.loadout], {
       seed: 5,
       gaugeThreshold: [8, 8],
       winThreshold: [50, 50],
-      classId: 'breacher',
+      classId: 'exploit-honeypot',
       enemyPassiveIds: enemy.passiveIds,
     });
-    expect(result.traceGenerated).toBeGreaterThanOrEqual(0); // side 0 may generate Trace
+    expect(result.traceGenerated).toBeGreaterThanOrEqual(0);
     expect(result.winner === 0 || result.winner === 1).toBe(true);
   });
 });

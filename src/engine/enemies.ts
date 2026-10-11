@@ -1,8 +1,6 @@
 import type { DiagnosticEnemyId } from './diagnostic-enemies';
-import type { SubroutineDefinition, SuitedArchetype } from './subroutine-types';
+import { scaledDefinition, type Archetype, type SubroutineDefinition } from './subroutine-types';
 import { ALL_POOL_SUBROUTINES } from './subroutines';
-import { ENEMY_ONLY_SUBROUTINES } from './enemy-subroutines';
-import { scaledPayloadMagnitude } from './merge';
 import type { Rng } from './rng';
 import type { LayerGraph, MapNode } from './map-types';
 
@@ -17,100 +15,38 @@ import type { LayerGraph, MapNode } from './map-types';
 
 export type EnemyTier = 'regular' | 'elite' | 'gatekeeper';
 
-/** One id per named enemy in the roster (checkpoint D fills in the real
- * EnemyDefinition data). Deliberately allowed to collide with a
- * subroutine id in subroutines.ts (e.g. 'script-kiddie', 'total-compromise')
- * when an enemy is named after its own signature piece -- different
- * keyspaces (ENEMY_DEFINITIONS vs ALL_POOL_SUBROUTINES), never looked up
- * interchangeably. */
-/** Diagnostic pillar ids are part of EnemyId so fixtures type-check
+/** One id per enemy in the roster. Session 51 deleted the session 27
+ * roster -- its kits were built from the scrapped subroutine pool -- and
+ * replaced it with a SKELETON roster (A11), which stands in until the
+ * roster is re-authored against the pillar calibration (run-economy
+ * D10). The old roster is archived in docs/design-history.md.
+ *
+ * Diagnostic pillar ids are part of EnemyId so fixtures type-check
  * everywhere a real enemy does, while staying absent from ENEMY_ROSTER --
  * which is what actually makes them unreachable (every selection path
  * filters that array). Type-only import, so there is no runtime cycle
  * with diagnostic-enemies.ts. */
 export type EnemyId =
   | DiagnosticEnemyId
-  // Regular (12)
-  | 'script-kiddie'
-  | 'fuzzer-bot'
-  | 'botnet-node'
-  | 'keylogger-process'
-  | 'legacy-firewall'
-  | 'access-gate'
-  | 'drive-by-kit'
-  | 'rogue-endpoint'
-  | 'patch-runner'
-  | 'perimeter-sentry'
-  | 'quarantine-daemon'
-  | 'hardened-workstation'
-  // Elite (8)
-  | 'zero-day-broker'
-  | 'ransomware-deployment'
-  | 'zero-trust-node'
-  | 'compromised-ad-server'
-  | 'hardened-perimeter'
-  | 'blackout-cell'
-  | 'backchannel-handler'
-  | 'compromised-dependency'
-  // Gatekeeper, layer 1 (3)
-  | 'the-concierge'
-  | 'firewall-prime'
-  | 'ghost-process'
-  // Gatekeeper, layer 2 (3)
-  | 'incident-response'
-  | 'the-quarantine-ward'
-  | 'zero-sum'
-  // Gatekeeper, layer 3 (3)
-  | 'total-compromise'
-  | 'adaptive-threat'
-  | 'silent-corruption'
-  // Gatekeeper, layer 4 (3)
-  | 'null-session'
-  | 'kernel-panic'
-  | 'ghost-in-the-machine';
-
-/** One id per named enemy passive (checkpoint B implements the actual
- * hook logic each of these drives; checkpoint D wires them onto
- * EnemyDefinition.passiveIds). 34 total across the 32 enemies (Blackout
- * Cell and Backchannel Handler each carry 2). */
-export type EnemyPassiveId =
   // Regular
-  | 'lucky-guess'
-  | 'trial-and-error'
-  | 'still-spreading'
-  | 'long-runtime'
-  | 'stubborn-default'
-  | 'locked-down'
-  | 'smash-and-grab'
-  | 'opportunist'
-  | 'cover-your-tracks'
-  | 'hold-the-line'
-  | 'steady-state'
-  | 'grinds-you-down'
+  | 'skeleton-crawler'
+  | 'skeleton-watchdog'
+  | 'skeleton-relay'
+  | 'skeleton-tarpit'
   // Elite
-  | 'fresh-exploit'
-  | 'escalating-demand'
-  | 'no-exceptions'
-  | 'infection-vector'
-  | 'foothold-reinforced'
-  | 'attrition'
-  | 'held-together'
-  | 'dead-drop-protocol'
-  | 'off-the-grid'
-  | 'sleeper-network'
-  // Gatekeeper
-  | 'reception-protocol'
-  | 'no-way-in'
-  | 'digital-ghost'
-  | 'highest-bidder'
-  | 'total-quarantine'
-  | 'primed-to-strike'
-  | 'cascading-failure'
-  | 'adaptive-defense'
-  | 'total-corruption'
-  | 'null-session-passive'
-  | 'redundant-kernel'
-  | 'total-access';
+  | 'skeleton-hunter'
+  | 'skeleton-sentinel'
+  // Gatekeepers, one per layer
+  | 'skeleton-gate-1'
+  | 'skeleton-gate-2'
+  | 'skeleton-gate-3'
+  | 'skeleton-gate-4';
+
+/** Enemy passive ids. Empty since session 51: all 34 named passives
+ * belonged to the deleted roster, and the skeleton roster carries none.
+ * The registry machinery (resolve.ts) survives for the rebuilt roster;
+ * new passive ids get added here when it is authored. */
+export type EnemyPassiveId = never;
 
 export interface EnemyDefinition {
   id: EnemyId;
@@ -120,7 +56,7 @@ export interface EnemyDefinition {
    * Archetype] -- session 27's decision: 2-archetype pairing is the
    * default but not a hard lock, single-archetype and bespoke 3+
    * archetype gatekeepers are both fine. */
-  archetypes: SuitedArchetype[];
+  archetypes: Archetype[];
   /** The layer (1-4) this identity starts appearing at -- it stays in
    * its tier's pool at every layer afterward, not just this one. */
   minLayer: number;
@@ -191,21 +127,15 @@ export interface EnemyDefinition {
 }
 
 const SUBROUTINE_BY_ID: ReadonlyMap<string, SubroutineDefinition> = new Map(
-  [...ALL_POOL_SUBROUTINES, ...ENEMY_ONLY_SUBROUTINES].map((subroutine) => [subroutine.id, subroutine]),
+  ALL_POOL_SUBROUTINES.map((subroutine) => [subroutine.id, subroutine]),
 );
 
-/** Looks up a real subroutine by id, from either the shared player-pool
- * catalog or enemy-subroutines.ts's own enemy-only catalog -- throws
- * immediately on a typo/missing id rather than silently shipping a gap
- * in an enemy's kit. Enemies can draw from either (DESIGN.md:
- * "subroutines can be drawn straight from the player's own catalog... or
- * be fully bespoke to one enemy") -- the session 27 roster draft used
- * only pool pieces, no bespoke content at all, until session 39's roster
- * audit found that produced real dead content (Heat-gated triggers,
- * which no enemy can ever satisfy) and enemy-subroutines.ts's catalog
- * was added to fix it. Enemy-only ids are never reachable through a
- * player's own Merge/Shop/reward draw -- this function is the only thing
- * that ever resolves one. */
+/** Looks up a pool subroutine by id -- throws immediately on a
+ * typo/missing id rather than silently shipping a gap in an enemy's kit.
+ * Enemies may also carry bespoke enemy-only pieces (DESIGN.md: "drawn
+ * straight from the player's own catalog... or fully bespoke"), but the
+ * skeleton roster uses none, so session 51 deleted enemy-subroutines.ts
+ * along with the roster it served. */
 export function pool(id: string): SubroutineDefinition {
   const found = SUBROUTINE_BY_ID.get(id);
   if (!found) throw new Error(`enemies.ts: no pool subroutine with id "${id}"`);
@@ -213,236 +143,38 @@ export function pool(id: string): SubroutineDefinition {
 }
 
 /**
- * The enemy roster (checkpoint C plumbing, checkpoint D content).
+ * The SKELETON roster (session 51, A11). Not content: it exists so full
+ * runs keep their regular, elite and gatekeeper fights while the real
+ * roster waits on the pillar calibration. Calibration's controlled
+ * background is still the synthetic gatekeeper (`gatekeeperOverrides`),
+ * not this roster.
  *
- * A plain array, not a Record<EnemyId, EnemyDefinition> -- EnemyId's
- * union already lists all 32 real names, and a keyed Record would force
- * every one of them to be defined before this file type-checks. An
- * array has no such exhaustiveness requirement, so checkpoint C's
- * selection/skill-dial machinery can be built and tested now against a
- * small placeholder set; checkpoint D swaps this array's contents for
- * the real 32 `EnemyDefinition`s with no change needed anywhere that
- * reads from it.
+ * Shape follows the tier-authoring split (DESIGN.md Enemy Design): one
+ * regular per archetype, two elites, one gatekeeper per layer, each a
+ * pairing of skeleton pool pieces with a credit path (the standing
+ * "every enemy can credit its own gauge" rule) and no passive.
+ * Gatekeeper magnitudeScaler is seeded from the same 0.3-per-layer step
+ * regular/elite scaling uses, not tuned.
  *
- * `minLayer` means two different things depending on tier, documented
- * on EnemyDefinition's own JSDoc: for regular/elite it's a floor (starts
- * appearing at this layer, stays in the pool afterward); for gatekeeper
- * it's the exact layer that enemy's stable belongs to (one stable per
- * layer, not a floor).
- */
-/**
- * The full 32-enemy roster (Phase 5 checkpoint D), transcribed from
- * DESIGN.md's "The Roster" -- every subroutine drawn from the shared
- * pool catalog via pool() above (no bespoke subroutine content in this
- * roster), every passive id wired to its real hook logic in resolve.ts
- * (checkpoint B). Both real technical issues DESIGN.md documents were
- * already designed around: no included subroutine's `chained` trigger
- * is missing its pool-legal prerequisite from the same kit, and no
- * enemy includes `zero-knowledge-exploit` (which needs a Corrupted-
- * applier partner it would otherwise lack).
+ * `minLayer` means two different things depending on tier: for
+ * regular/elite it's a floor (starts appearing at this layer, stays in
+ * the pool afterward); for gatekeeper it's the exact layer that enemy's
+ * stable belongs to.
  */
 export const ENEMY_ROSTER: EnemyDefinition[] = [
-  // --- Regular (12) -- commons only, no Root ---
-  { id: 'script-kiddie', name: 'Script Kiddie', tier: 'regular', archetypes: ['exploit'], minLayer: 1, loadout: [pool('script-kiddie'), pool('port-scan')], passiveIds: ['lucky-guess'] },
-  { id: 'fuzzer-bot', name: 'Fuzzer Bot', tier: 'regular', archetypes: ['exploit'], minLayer: 2, loadout: [pool('fuzzer'), pool('race-condition')], passiveIds: ['trial-and-error'] },
-  { id: 'botnet-node', name: 'Botnet Node', tier: 'regular', archetypes: ['malware'], minLayer: 1, loadout: [pool('botnet'), pool('adware')], passiveIds: ['still-spreading'] },
-  { id: 'keylogger-process', name: 'Keylogger Process', tier: 'regular', archetypes: ['malware'], minLayer: 2, loadout: [pool('keylogger'), pool('memory-leak')], passiveIds: ['long-runtime'] },
-  // Session 28 retrofit: Legacy Firewall's original 2-piece kit
-  // (basic-auth/checksum, both instantCounterPush) had zero payload
-  // that credits its own gauge -- structurally incapable of ever
-  // winning outright (DESIGN.md's Neutral Archetype section). Background
-  // Task (neutral common) gives it a small, real, unconditional credit.
-  { id: 'legacy-firewall', name: 'Legacy Firewall', tier: 'regular', archetypes: ['encryption'], minLayer: 1, loadout: [pool('basic-auth'), pool('checksum'), pool('background-task')], passiveIds: ['stubborn-default'] },
-  // Session 28 retrofit: same structural gap as Legacy Firewall --
-  // challenge-response/sandboxing are both pure mitigation. Checksum
-  // Match (neutral common, occurrence:fifteen) instead of Background Task
-  // for roster variety (see Legacy Firewall's own note).
-  // Session 47: Two-Factor -> Challenge-Response. Two-Factor gates on
-  // `traceBelow`, and an enemy's Trace is permanently 0 by design, so it
-  // fired unconditionally every fight -- see enemy-subroutines.ts's
-  // Challenge-Response entry.
-  { id: 'access-gate', name: 'Access Gate', tier: 'regular', archetypes: ['encryption'], minLayer: 2, loadout: [pool('challenge-response'), pool('sandboxing'), pool('checksum-match')], passiveIds: ['locked-down'] },
-  { id: 'drive-by-kit', name: 'Drive-By Kit', tier: 'regular', archetypes: ['exploit', 'malware'], minLayer: 1, loadout: [pool('off-by-one'), pool('ransomware')], passiveIds: ['smash-and-grab'] },
-  { id: 'rogue-endpoint', name: 'Rogue Endpoint', tier: 'regular', archetypes: ['exploit', 'malware'], minLayer: 2, loadout: [pool('credential-stuffing'), pool('trojan'), pool('race-condition')], passiveIds: ['opportunist'] },
-  { id: 'patch-runner', name: 'Patch Runner', tier: 'regular', archetypes: ['exploit', 'encryption'], minLayer: 1, loadout: [pool('port-scan'), pool('patch')], passiveIds: ['cover-your-tracks'] },
-  { id: 'perimeter-sentry', name: 'Perimeter Sentry', tier: 'regular', archetypes: ['exploit', 'encryption'], minLayer: 2, loadout: [pool('privilege-escalation'), pool('access-control')], passiveIds: ['hold-the-line'] },
-  { id: 'quarantine-daemon', name: 'Quarantine Daemon', tier: 'regular', archetypes: ['malware', 'encryption'], minLayer: 1, loadout: [pool('patch-notes'), pool('adware')], passiveIds: ['steady-state'] },
-  // Session 28 retrofit: Slowloris applies a debuff only (no DoT), so
-  // this kit had no credit-capable piece either -- swapped for Steady
-  // Drip (neutral common, accumulator:points) rather than adding a 4th
-  // piece, keeping Regular's 1-3-subroutine sizing.
-  { id: 'hardened-workstation', name: 'Hardened Workstation', tier: 'regular', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [pool('sandboxing'), pool('challenge-response'), pool('steady-drip')], passiveIds: ['grinds-you-down'] },
-
-  // --- Elite (8) -- 3+ subroutines, mostly uncommons ---
-  // Session 35: widened from minLayer 2 to 1 -- the 3 single-archetype
-  // Elites are the tier's simplest identities (mirroring Regular's own
-  // layer-1/layer-2 split by archetype simplicity), so layer 1 gets a
-  // real Elite presence without new authoring. The 2-archetype and Root
-  // Elites below stay at their original minLayer, preserving the
-  // "deeper layers draw from a harder-skewing subset" progression.
-  { id: 'zero-day-broker', name: 'Zero-Day Broker', tier: 'elite', archetypes: ['exploit'], minLayer: 1, loadout: [pool('zero-day-chain'), pool('buffer-overrun'), pool('fracture-point')], passiveIds: ['fresh-exploit'] },
-  { id: 'ransomware-deployment', name: 'Ransomware Deployment', tier: 'elite', archetypes: ['malware'], minLayer: 1, loadout: [pool('fork-bomb'), pool('polymorphic-worm'), pool('spyware')], passiveIds: ['escalating-demand'] },
-  // Session 28 retrofit: an all-mitigation Elite kit (same structural
-  // gap) -- Overclock (neutral uncommon, selfState:traceAbove) added as
-  // a 4th piece, "pushed to its limits, it strikes back."
-  { id: 'zero-trust-node', name: 'Zero Trust Node', tier: 'elite', archetypes: ['encryption'], minLayer: 1, loadout: [pool('rate-limiting'), pool('honeypot'), pool('redundant-backup'), pool('escalating-response')], passiveIds: ['no-exceptions'] },
-  { id: 'compromised-ad-server', name: 'Compromised Ad Server', tier: 'elite', archetypes: ['exploit', 'malware'], minLayer: 2, loadout: [pool('watering-hole'), pool('polymorphic-worm'), pool('off-by-one')], passiveIds: ['infection-vector'] },
-  { id: 'hardened-perimeter', name: 'Hardened Perimeter', tier: 'elite', archetypes: ['exploit', 'encryption'], minLayer: 2, loadout: [pool('watering-hole'), pool('fail-secure'), pool('privilege-escalation')], passiveIds: ['foothold-reinforced'] },
-  { id: 'blackout-cell', name: 'Blackout Cell', tier: 'elite', archetypes: ['malware', 'encryption'], minLayer: 3, loadout: [pool('persistent-threat'), pool('redundant-backup'), pool('slowloris')], passiveIds: ['attrition', 'held-together'] },
-  // Session 28 retrofit: a pure recon/denial Root kit, zero credit --
-  // Chain Reaction (neutral uncommon, occurrence:run) added as a 4th
-  // piece, "the recon pays off in a real strike."
-  { id: 'backchannel-handler', name: 'Backchannel Handler', tier: 'elite', archetypes: ['root'], minLayer: 3, loadout: [pool('intercept'), pool('dns-poisoning'), pool('dead-drop'), pool('chain-reaction')], passiveIds: ['dead-drop-protocol', 'off-the-grid'] },
-  { id: 'compromised-dependency', name: 'Compromised Dependency', tier: 'elite', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('supply-route'), pool('polymorphic-worm'), pool('fork-bomb')], passiveIds: ['sleeper-network'] },
-
-  // --- Gatekeeper (12) -- fully bespoke, one stable per layer ---
-  // magnitudeScaler (session 39) seeded uniformly per layer here --
-  // 1.0/1.3/1.6/1.9, the same 0.3-per-layer step regular/elite get from
-  // enemyMagnitudeScaler below (bumped from an initial 0.15 -- see that
-  // constant's own comment) -- as a starting point for empirical
-  // retuning against gatekeeper-check.ts, not a final answer. Each is a
-  // real, independent per-gatekeeper knob from here on, not slaved to
-  // this formula (e.g. Firewall Prime, already the roster's hardest
-  // fight at its own layer, is an obvious first candidate to dial back
-  // rather than leaving at the layer-1 baseline).
-  // Layer 1 -- perimeter/DMZ
-  // Session 43 decision-session: added Escort Out (enemy-subroutines.ts),
-  // the gatekeeper's own required bespoke thematic piece (new "every
-  // gatekeeper needs one, unless it's a deliberate stall-to-20 design"
-  // rule).
-  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'encryption'], minLayer: 1, loadout: [pool('total-pwnage'), pool('patch'), pool('full-rollback'), pool('privilege-escalation'), pool('escort-out')], passiveIds: ['reception-protocol'], magnitudeScaler: 1.0 },
-  // Session 28 retrofit: an all-mitigation gatekeeper -- Circuit
-  // Breaker (neutral rare) is a near-perfect thematic fit for the
-  // roster's purest defensive identity, converting exactly the
-  // mitigation this kit already generates into a real strike.
-  // Session 39, ground-up redesign (in progress): Zero Trust's own
-  // reactive enemyState trigger re-arms every time the player's own
-  // Breach/Containment climbs back above the threshold after being
-  // pushed down -- unbounded, it fired an average of 8.28 times per real
-  // match against Warden (600-seed check), dragging fights toward the
-  // hard-resolution deadline and giving Circuit Breaker far more time to
-  // build than a normal fight would. A hard fire cap either does nothing
-  // or trivializes the matchup for every class (tested, no good middle
-  // value exists) -- redesigned instead as a self-limiting decay via the
-  // new magnitudeDecayPerFire mechanism: still hits close to full
-  // strength the first couple of times, tapers toward a real-but-
-  // survivable floor rather than an infinite wall. A bespoke copy (not
-  // the shared pool piece -- Null Session and any future user of Zero
-  // Trust stay unaffected). Decay/floor values TBD/playtesting, being
-  // tuned empirically against the real matchup next.
-  {
-    id: 'firewall-prime',
-    name: 'Firewall Prime',
-    tier: 'gatekeeper',
-    archetypes: ['encryption'],
-    minLayer: 1,
-    loadout: [
-      { ...pool('zero-trust'), id: 'zero-trust-firewall-prime', magnitudeDecayPerFire: 1, magnitudeFloor: 10 },
-      // Was Air Gap, session 39's original dead-piece finding (selfState:
-      // traceAbove, unreachable -- enemies never accumulate Heat). Replaced
-      // with Fail-Secure (enemy-subroutines.ts), a genuinely enemy-viable
-      // Ward-caster -- which also resurrects `no-way-in` below: that
-      // passive only ever re-casts a just-fired Ward, and Air Gap being
-      // the kit's sole (and dead) Ward-caster made it doubly dead. Now
-      // that Fail-Secure can actually fire, no-way-in has something real
-      // to refresh again.
-      pool('fail-secure'),
-      // Redundant Backup's hot payload credits mitigationBanked its full
-      // amountPerTick*duration at cast time (resolve.ts's `case 'hot':`) --
-      // at the shared player value (5*4=20) a single cast alone armed
-      // Circuit Breaker (threshold 10) more than 2x over, before Zero
-      // Trust ever fired. Tuned down here (2*4=8, below threshold alone)
-      // so Circuit Breaker needs contribution from more than one piece.
-      // TBD/playtesting.
-      { ...pool('redundant-backup'), id: 'redundant-backup-firewall-prime', payload: { kind: 'hot', amountPerTick: 2, cadence: 'castersTurnPulse', duration: 4 } },
-      pool('circuit-breaker'),
-    ],
-    passiveIds: ['no-way-in'],
-    magnitudeScaler: 1.0,
-  },
-  // Session 28 retrofit: cron-job/full-system-compromise/dns-poisoning
-  // are all denial/manipulation, zero credit -- Watchdog Timer (neutral
-  // rare, occurrence:go, scaling) added: "keep calling Go, it corners you."
-  // Session 43: added Orphaned Thread (enemy-subroutines.ts), its required
-  // bespoke thematic piece.
-  { id: 'ghost-process', name: 'Ghost Process', tier: 'gatekeeper', archetypes: ['root'], minLayer: 1, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('dns-poisoning'), pool('watchdog-timer'), pool('orphaned-thread')], passiveIds: ['digital-ghost'], magnitudeScaler: 1.0 },
-  // Layer 2 -- internal LAN
-  // Session 43: added Escalation Path (enemy-subroutines.ts) -- its own
-  // Highest Bidder passive ("chain-finisher pieces get a bonus per Exploit
-  // fired") had nothing to buff before this, a real dead-passive finding,
-  // not just the required bespoke piece.
-  { id: 'incident-response', name: 'Incident Response', tier: 'gatekeeper', archetypes: ['exploit'], minLayer: 2, loadout: [pool('supply-chain-compromise'), pool('vulnerability-scan'), pool('zero-day-chain'), pool('escalation-path')], passiveIds: ['highest-bidder'], magnitudeScaler: 1.3 },
-  // Session 43: Epidemic/Cold Storage replaced outright (not just
-  // supplemented) -- both share Kernel Panic's exact pre-fix suitTally-
-  // threshold dead-trigger problem, confirmed directly against
-  // subroutines.ts before designing Contagion Protocol/Cryo Lock
-  // (enemy-subroutines.ts) as like-for-like Always-triggered fixes. Also
-  // unblocks this gatekeeper's own Total Quarantine passive, which needs
-  // real ticks to fire off at all.
-  { id: 'the-quarantine-ward', name: 'The Quarantine Ward', tier: 'gatekeeper', archetypes: ['malware', 'encryption'], minLayer: 2, loadout: [pool('contagion-protocol'), pool('cryo-lock'), pool('slowloris')], passiveIds: ['total-quarantine'], magnitudeScaler: 1.3 },
-  // The Quarantine Ward, session 47: scaler deliberately left at 1.3.
-  // Lowering it was tried and reverted -- magnitude is provably NOT this
-  // enemy's threat. A test at scaler 0.4, a 65% cut, moved layer 2's mean
-  // pass rate by 0.8pp, and three ablation runs spanning a 1.3 -> 1.15
-  // change produced byte-identical columns. Its difficulty is tempo: the
-  // Total Quarantine passive nudges its initiative on every DoT/HoT tick
-  // (resolve.ts), and Contagion Protocol used to refresh a 5-duration DoT
-  // every single turn, manufacturing the tick stream that fed it. Fixed
-  // at the trigger instead -- see enemy-subroutines.ts.
-  // Session 43: Total Pwnage/Dead Drop replaced outright, same reasoning
-  // as Quarantine Ward above -- both were confirmed dead/near-dead
-  // (occurrence-threshold pieces that essentially never bank in a real
-  // fight). Quick Draw also makes Primed to Strike's Root-fire-cheapens-
-  // next-Exploit-fire synergy reliable, since Total Pwnage was its only
-  // Exploit piece and rarely fired to begin with.
-  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['root', 'exploit'], minLayer: 2, loadout: [pool('packet-injection'), pool('redistribution'), pool('quick-draw')], passiveIds: ['primed-to-strike'], magnitudeScaler: 1.45 },
-  // Zero-Sum, session 47: 1.3 -> 1.45. The same ablation measured it as
-  // layer 2's *prop* -- removing it cost 12.1pp of pass rate, the largest
-  // single effect of the three, because the layer leans on it being the
-  // easy draw. Swapping Supply Route for Packet Injection recovered some
-  // of that (-9.3pp after), but its remaining pieces are a rare-trigger
-  // sessionHijack and a modest piercing, so it is still a fair kit in a
-  // stable of oppressive ones.
-  // Zero-Sum, session 47: swapped Supply Route -> Packet Injection. A
-  // gatekeeper ablation measured Zero-Sum as layer 2's *easy* draw --
-  // removing it cost 12.1pp of pass rate across all six classes, the
-  // largest effect of the three, because it was propping the layer up.
-  // Supply Route manipulates its own suitTally, a player-facing utility
-  // that does essentially nothing offensive for an enemy, leaving the kit
-  // with one dead piece and its only real threat (Redistribution's
-  // sessionHijack) gated behind a flush -- one of the rarest occurrences
-  // in Cribbage. Packet Injection is the same archetype and also
-  // credit-capable, but triggers on fifteens, so the kit finally has
-  // reliable offense instead of a rare spike.
-  // Layer 3 -- secured subnet
-  // Session 43: added System Meltdown (enemy-subroutines.ts), which ties
-  // directly into its own Cascading Failure passive rather than just
-  // satisfying the bespoke-piece rule generically.
-  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['malware'], minLayer: 3, loadout: [pool('fork-bomb'), pool('ransomware-cascade'), pool('total-compromise'), pool('system-meltdown')], passiveIds: ['cascading-failure'], magnitudeScaler: 1.6 },
-  // Session 43: added Behavioral Model (enemy-subroutines.ts).
-  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['exploit', 'malware'], minLayer: 3, loadout: [pool('vulnerability-scan'), pool('polymorphic-worm'), pool('spyware'), pool('behavioral-model')], passiveIds: ['adaptive-defense'], magnitudeScaler: 1.6 },
-  // Session 43: added Undetected (enemy-subroutines.ts); rootkit-
-  // deployment/epidemic left as-is (unlike Quarantine Ward's identical
-  // trigger shape) -- this gatekeeper's own Total Corruption passive
-  // already speeds up suitTally accumulation 50%, real in-kit
-  // compensation the Ward never had, so its suitTally pieces weren't
-  // treated as broken here.
-  { id: 'silent-corruption', name: 'Silent Corruption', tier: 'gatekeeper', archetypes: ['root', 'malware'], minLayer: 3, loadout: [pool('rootkit-deployment'), pool('epidemic'), pool('supply-route'), pool('undetected')], passiveIds: ['total-corruption'], magnitudeScaler: 1.6 },
-  // Layer 4 -- core
-  // Session 28 retrofit: air-gap was already dead weight (its reactive
-  // trigger needs the caster's own Heat above a threshold, and enemies
-  // have no Heat source) on top of the kit's zero-credit problem --
-  // swapped for Circuit Breaker (neutral rare), the run's real
-  // final-boss layer earning the strongest fix.
-  // Session 43: added Impersonation (enemy-subroutines.ts) -- feeds off
-  // the same mitigationBanked accumulator as its existing Circuit Breaker,
-  // real in-kit synergy rather than an unrelated bolt-on.
-  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['root', 'encryption'], minLayer: 4, loadout: [pool('cron-job'), pool('full-system-compromise'), pool('zero-trust'), pool('circuit-breaker'), pool('impersonation')], passiveIds: ['null-session-passive'], magnitudeScaler: 1.9, winThreshold: 65 },
-  { id: 'kernel-panic', name: 'Kernel Panic', tier: 'gatekeeper', archetypes: ['exploit', 'malware', 'encryption'], minLayer: 4, loadout: [pool('stack-overflow'), pool('memory-corruption'), pool('failsafe-reboot')], passiveIds: ['redundant-kernel'], magnitudeScaler: 1.9 },
-  // Session 28 retrofit: same pure recon/denial trio as its Layer 1
-  // echo, Ghost Process -- Watchdog Timer again (deliberate reuse,
-  // reinforcing the two enemies' own intentional narrative link).
-  { id: 'ghost-in-the-machine', name: 'Ghost in the Machine', tier: 'gatekeeper', archetypes: ['root'], minLayer: 4, loadout: [pool('dns-poisoning'), pool('dead-drop'), pool('intercept'), pool('watchdog-timer')], passiveIds: ['total-access'], magnitudeScaler: 1.9 },
+  // --- Regular -- one per archetype ---
+  { id: 'skeleton-crawler', name: 'Crawler', tier: 'regular', archetypes: ['exploit'], minLayer: 1, loadout: [pool('probe'), pool('port-knock')], passiveIds: [] },
+  { id: 'skeleton-watchdog', name: 'Watchdog', tier: 'regular', archetypes: ['daemon'], minLayer: 1, loadout: [pool('cron-job'), pool('self-repair')], passiveIds: [] },
+  { id: 'skeleton-relay', name: 'Relay Node', tier: 'regular', archetypes: ['overclock'], minLayer: 1, loadout: [pool('burst-clock'), pool('voltage-boost')], passiveIds: [] },
+  { id: 'skeleton-tarpit', name: 'Tarpit Host', tier: 'regular', archetypes: ['honeypot'], minLayer: 1, loadout: [pool('lure'), pool('tarpit')], passiveIds: [] },
+  // --- Elite ---
+  { id: 'skeleton-hunter', name: 'Hunter Process', tier: 'elite', archetypes: ['exploit', 'overclock'], minLayer: 1, loadout: [pool('probe'), pool('burst-clock'), pool('turbo')], passiveIds: [] },
+  { id: 'skeleton-sentinel', name: 'Sentinel', tier: 'elite', archetypes: ['daemon', 'honeypot'], minLayer: 1, loadout: [pool('cron-job'), pool('lure'), pool('sinkhole')], passiveIds: [] },
+  // --- Gatekeepers, one per layer ---
+  { id: 'skeleton-gate-1', name: 'Perimeter Gate', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 1, loadout: [pool('probe'), pool('cron-job'), pool('port-knock'), pool('respawn')], passiveIds: [], magnitudeScaler: 1 },
+  { id: 'skeleton-gate-2', name: 'LAN Gate', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 2, loadout: [pool('burst-clock'), pool('lure'), pool('turbo'), pool('sinkhole')], passiveIds: [], magnitudeScaler: 1.3 },
+  { id: 'skeleton-gate-3', name: 'Subnet Gate', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 3, loadout: [pool('probe'), pool('lure'), pool('packet-sniffer'), pool('mirror-port')], passiveIds: [], magnitudeScaler: 1.6 },
+  { id: 'skeleton-gate-4', name: 'Core Gate', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 4, loadout: [pool('cron-job'), pool('burst-clock'), pool('rollback'), pool('pipeline')], passiveIds: [], magnitudeScaler: 1.9 },
 ];
 
 /** Every enemy eligible for `tier` at `layerIndex` -- a floor for
@@ -499,9 +231,11 @@ export function pickRegularOrEliteEnemy(tier: 'regular' | 'elite', layerIndex: n
  * like with Firewall Prime never assigned anywhere," to isolate whether
  * a specific gatekeeper is an outlier. Undefined/empty changes nothing
  * (every existing caller). Throws the same way as an empty natural stable
- * if excluding narrows a layer's pool to nothing -- won't happen with the
- * current 3-per-layer roster excluding one at a time, but stays a loud
- * failure rather than a silent one if the roster ever shrinks. */
+ * if excluding narrows a layer's pool to nothing. The skeleton roster
+ * (session 51) has ONE gatekeeper per layer, so excluding it does exactly
+ * that -- ablation is meaningless until the real roster is rebuilt, and
+ * the loud failure is the right outcome meanwhile. Use the synthetic
+ * gatekeeper for controlled measurement instead. */
 export function assignGatekeeperEnemy(graph: LayerGraph, layerIndex: number, rng: Rng, excludedIds?: EnemyId[]): LayerGraph {
   const stable = eligibleEnemies('gatekeeper', layerIndex).filter((e) => !excludedIds?.includes(e.id));
   if (stable.length === 0) throw new Error(`enemies.ts: no gatekeeper stable defined for layer ${layerIndex}`);
@@ -593,19 +327,11 @@ export function winThresholdFor(enemy: EnemyDefinition, _layerIndex: number, _fi
   return flatDefault;
 }
 
-/** Applies `multiplier` to every piece of `loadout` via
- * merge.ts's scaledPayloadMagnitude -- a payload with no magnitude field
- * (Ward/Cleanse/Cribbage-Layer Manipulation) is left unscaled, same
- * "magnitude only, not trigger ease" scope as this session's own ask
- * (unlike Merge's own upgradedDefinition, which falls back to easing the
- * trigger condition -- deliberately not mirrored here, since making an
- * enemy's condition easier to trigger is a different kind of change than
- * "hits harder," out of scope for this pass). multiplier of 1 is
- * effectively a no-op (new objects, same values). */
+/** Applies `multiplier` to every magnitude in `loadout` -- alpha,
+ * growth and beta (subroutine-types.ts's scaledDefinition). Magnitude
+ * only: nothing about *when* a beta applies is changed. A multiplier of 1
+ * is a no-op. */
 export function scaledEnemyLoadout(loadout: SubroutineDefinition[], multiplier: number): SubroutineDefinition[] {
   if (multiplier === 1) return loadout;
-  return loadout.map((piece) => {
-    const scaledPayload = scaledPayloadMagnitude(piece.payload, multiplier);
-    return scaledPayload ? { ...piece, payload: scaledPayload } : piece;
-  });
+  return loadout.map((piece) => scaledDefinition(piece, multiplier));
 }

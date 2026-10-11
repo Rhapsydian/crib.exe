@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { playRun, opportunisticTraversal, type RunPlayerState } from './run';
 import { rarityOf } from './rewards';
 import { CLASS_DEFINITIONS } from './classes';
-import { hasCreditCapablePiece, type Archetype, type SubroutineDefinition, type Tag } from './subroutine-types';
+import { hasCreditCapablePiece, matchesSequence, type Alpha, type Archetype, type Beta, type SubroutineDefinition } from './subroutine-types';
 import {
   installSubroutine,
   uninstallSubroutine,
@@ -18,13 +18,20 @@ import {
   acquireSubroutineWithSwap,
 } from './loadout';
 
-function piece(id: string): SubroutineDefinition {
-  return { id, name: id, archetype: 'exploit', trigger: { kind: 'always' }, payload: { kind: 'directBurst', amount: 1 }, tags: [] };
+// Session 51: fixtures rebuilt for the alpha/beta model. The default
+// class is exploit-daemon, so overclock and honeypot are the
+// off-archetype cases throughout.
+
+const CREDIT: Alpha = { verb: 'credit', amount: 3 };
+const DEFENSIVE: Alpha = { verb: 'ward', amount: 3 };
+
+function piece(id: string, archetype: Archetype = 'exploit', alpha: Alpha = { verb: 'credit', amount: 1 }, beta?: Beta): SubroutineDefinition {
+  return { id, name: id, archetype, alpha, beta };
 }
 
 function playerState(installedLoadout: SubroutineDefinition[], bench: SubroutineDefinition[], material: Record<string, number> = {}): RunPlayerState {
   return {
-    classId: 'breacher',
+    classId: 'exploit-daemon',
     installedLoadout,
     data: 0,
     bench,
@@ -48,15 +55,13 @@ describe('installSubroutine', () => {
 
   it('is a no-op when the id is not on the bench', () => {
     const state = playerState([piece('a')], [piece('b')]);
-    const result = installSubroutine(state, 'not-there');
-    expect(result).toEqual(state);
+    expect(installSubroutine(state, 'not-there')).toEqual(state);
   });
 
   it('is a no-op when installedLoadout is already at the slot cap', () => {
     const full = Array.from({ length: 2 }, (_, i) => piece(`installed-${i}`));
     const state = playerState(full, [piece('b')]);
-    const result = installSubroutine(state, 'b', 2);
-    expect(result).toEqual(state);
+    expect(installSubroutine(state, 'b', 2)).toEqual(state);
   });
 });
 
@@ -70,16 +75,14 @@ describe('uninstallSubroutine', () => {
 
   it('is a no-op when the id is not installed', () => {
     const state = playerState([piece('a')], []);
-    const result = uninstallSubroutine(state, 'not-there');
-    expect(result).toEqual(state);
+    expect(uninstallSubroutine(state, 'not-there')).toEqual(state);
   });
 });
 
 describe('reorderInstalled', () => {
   it('moves an entry from one index to another', () => {
     const state = playerState([piece('a'), piece('b'), piece('c')], []);
-    const result = reorderInstalled(state, 0, 2);
-    expect(result.installedLoadout.map((p) => p.id)).toEqual(['b', 'c', 'a']);
+    expect(reorderInstalled(state, 0, 2).installedLoadout.map((p) => p.id)).toEqual(['b', 'c', 'a']);
   });
 
   it('is a no-op for an out-of-range index', () => {
@@ -91,334 +94,211 @@ describe('reorderInstalled', () => {
 
 describe('acquireSubroutine', () => {
   it('benches then auto-installs when there is room', () => {
-    const state = playerState([piece('a')], []);
-    const result = acquireSubroutine(state, piece('new'));
+    const result = acquireSubroutine(playerState([piece('a')], []), piece('new'));
     expect(result.installedLoadout.map((p) => p.id)).toEqual(['a', 'new']);
     expect(result.bench).toEqual([]);
   });
 
   it('leaves the piece benched when installedLoadout is already at the slot cap', () => {
     const full = Array.from({ length: 2 }, (_, i) => piece(`installed-${i}`));
-    const state = playerState(full, []);
-    const result = acquireSubroutine(state, piece('new'), 2);
+    const result = acquireSubroutine(playerState(full, []), piece('new'), 2);
     expect(result.installedLoadout.map((p) => p.id)).toEqual(['installed-0', 'installed-1']);
     expect(result.bench.map((p) => p.id)).toEqual(['new']);
   });
 
   it('respects the default INSTALLED_SLOT_CAP when none is passed', () => {
     const full = Array.from({ length: INSTALLED_SLOT_CAP }, (_, i) => piece(`installed-${i}`));
-    const state = playerState(full, []);
-    const result = acquireSubroutine(state, piece('new'));
+    const result = acquireSubroutine(playerState(full, []), piece('new'));
     expect(result.installedLoadout).toHaveLength(INSTALLED_SLOT_CAP);
     expect(result.bench.map((p) => p.id)).toEqual(['new']);
   });
 
   it('acquiring an already-installed id banks Merge material instead of a second copy', () => {
-    const state = playerState([piece('a')], []);
-    const result = acquireSubroutine(state, piece('a'));
-    expect(result.installedLoadout.map((p) => p.id)).toEqual(['a']); // no duplicate
+    const result = acquireSubroutine(playerState([piece('a')], []), piece('a'));
+    expect(result.installedLoadout.map((p) => p.id)).toEqual(['a']);
     expect(result.bench).toEqual([]);
     expect(result.material.a).toBe(1);
   });
 
   it('acquiring an already-benched id banks Merge material and stacks on repeat', () => {
-    const state = playerState([], [piece('a')], { a: 2 });
-    const result = acquireSubroutine(state, piece('a'));
-    expect(result.bench.map((p) => p.id)).toEqual(['a']); // no duplicate
+    const result = acquireSubroutine(playerState([], [piece('a')], { a: 2 }), piece('a'));
+    expect(result.bench.map((p) => p.id)).toEqual(['a']);
     expect(result.material.a).toBe(3);
   });
 });
 
 describe('alwaysAcquireFirst', () => {
   it('picks the first offered option', () => {
-    const state = playerState([], []);
-    expect(alwaysAcquireFirst([piece('x'), piece('y')], state)?.id).toBe('x');
+    expect(alwaysAcquireFirst([piece('x'), piece('y')], playerState([], []))?.id).toBe('x');
   });
 
   it('declines when nothing is offered', () => {
-    const state = playerState([], []);
-    expect(alwaysAcquireFirst([], state)).toBeNull();
+    expect(alwaysAcquireFirst([], playerState([], []))).toBeNull();
   });
 });
 
 // ---------------------------------------------------------------------
-// Gameplay Simulation Heuristics (session 46) -- checkpoint A's shared
-// credit-capable classification. Lives here rather than in its own
-// subroutine-types.test.ts because it exists purely as the acquisition
-// ladder's own primitive, and the ladder tests it feeds are in this file.
+// The credit-path classification (session 46, re-pointed session 51 to
+// "credits through its alpha or its beta").
 // ---------------------------------------------------------------------
 
-/** Like `piece` above, but lets a test pin the two fields the ladder
- * actually reads (archetype, payload kind) instead of the fixed
- * exploit/directBurst default. */
-function typedPiece(id: string, archetype: Archetype, payload: SubroutineDefinition['payload']): SubroutineDefinition {
-  return { id, name: id, archetype, trigger: { kind: 'always' }, payload, tags: [] };
-}
-
 describe('hasCreditCapablePiece', () => {
-  it('is true when the loadout has a credit-capable piece of that archetype', () => {
-    const loadout = [typedPiece('burst', 'encryption', { kind: 'wardCounter', amount: 3, ratio: 0.2 })];
-    expect(hasCreditCapablePiece(loadout, 'encryption')).toBe(true);
+  it('is true when a piece of that archetype has a Credit alpha', () => {
+    expect(hasCreditCapablePiece([piece('hit', 'daemon', CREDIT)], 'daemon')).toBe(true);
   });
 
-  it('is false when the only piece of that archetype is defensive-only', () => {
-    // The exact gap session 40 existed to fix: a pure `ward` piece is
-    // Encryption content that can never push toward a threshold win.
-    const loadout = [typedPiece('shield', 'encryption', { kind: 'ward', amount: 4 })];
-    expect(hasCreditCapablePiece(loadout, 'encryption')).toBe(false);
+  it('is true when the credit path is only in the beta (Honeypot-style conversion)', () => {
+    const tarpit = piece('tarpit', 'honeypot', DEFENSIVE, {
+      source: 'state',
+      condition: { kind: 'wardAbove', amount: 6 },
+      shape: 'whileTrue',
+      effect: { verb: 'credit', amount: 3, from: 'ward' },
+    });
+    expect(hasCreditCapablePiece([tarpit], 'honeypot')).toBe(true);
   });
 
-  it('is archetype-scoped -- a credit-capable Exploit piece does not close an Encryption gap', () => {
-    const loadout = [typedPiece('hit', 'exploit', { kind: 'directBurst', amount: 5 })];
+  it('is false when the only piece of that archetype never credits', () => {
+    expect(hasCreditCapablePiece([piece('shield', 'honeypot', DEFENSIVE)], 'honeypot')).toBe(false);
+  });
+
+  it('an enhance beta on a non-credit alpha does not count -- it only makes that effect bigger', () => {
+    const shield = piece('shield', 'honeypot', DEFENSIVE, { source: 'progress', metric: 'points', per: 5, shape: 'graded', cap: 2, effect: { verb: 'enhance', amount: 1 } });
+    expect(hasCreditCapablePiece([shield], 'honeypot')).toBe(false);
+  });
+
+  it('is archetype-scoped', () => {
+    const loadout = [piece('hit', 'exploit', CREDIT)];
     expect(hasCreditCapablePiece(loadout, 'exploit')).toBe(true);
-    expect(hasCreditCapablePiece(loadout, 'encryption')).toBe(false);
+    expect(hasCreditCapablePiece(loadout, 'daemon')).toBe(false);
   });
 
   it('is false for an empty loadout', () => {
-    expect(hasCreditCapablePiece([], 'root')).toBe(false);
+    expect(hasCreditCapablePiece([], 'overclock')).toBe(false);
   });
 });
 
 // ---------------------------------------------------------------------
-// Checkpoint B -- the synergy-aware acquisition ladder.
+// The synergy-aware acquisition ladder. Real pool ids are used wherever
+// a test depends on the rarity rung, since rarityOf() derives rarity
+// from which subroutines.ts array a piece lives in -- an invented id
+// would silently read as 'common'. probe = common, fuzzer = uncommon,
+// packet-sniffer = rare (all Exploit).
 // ---------------------------------------------------------------------
-
-/** Breacher's own two specializations are exploit + encryption
- * (classes.ts), so 'malware'/'root' are the off-archetype cases in every
- * test below. Real pool ids are used wherever a test depends on the
- * rarity rung, since rarityOf() derives rarity structurally from which
- * subroutines.ts array a piece lives in -- an invented id would silently
- * read as 'common'. */
-function breacherState(installedLoadout: SubroutineDefinition[]): RunPlayerState {
-  return playerState(installedLoadout, []);
-}
 
 describe('ladderRank / synergyAwareAcquisition', () => {
   it('credit-gap outranks a higher-rarity off-archetype option', () => {
-    // The ladder's whole reason for being a ladder rather than a
-    // weighted sum: no rarity edge, however large, outvotes rung 1.
-    const gapFiller = typedPiece('fuzzer', 'encryption', { kind: 'wardCounter', amount: 3, ratio: 0.2 });
-    const shinyButOff = typedPiece('supply-chain-compromise', 'malware', { kind: 'directBurst', amount: 9 });
-    const state = breacherState([]); // no credit-capable encryption piece installed
-    expect(synergyAwareAcquisition([shinyButOff, gapFiller], state)?.id).toBe('fuzzer');
+    const gapFiller = piece('probe', 'daemon', CREDIT);
+    const shinyButOff = piece('packet-sniffer', 'overclock', CREDIT);
+    expect(synergyAwareAcquisition([shinyButOff, gapFiller], playerState([], []))?.id).toBe('probe');
   });
 
-  it('stops preferring a piece once that archetype gap is already closed', () => {
-    const another = typedPiece('fuzzer', 'encryption', { kind: 'wardCounter', amount: 3, ratio: 0.2 });
-    const shinyButOff = typedPiece('supply-chain-compromise', 'malware', { kind: 'directBurst', amount: 9 });
-    // Same two options, but Encryption already credits -- rung 1 ties,
-    // so rung 2 (on-archetype) decides, still landing on the Encryption
-    // piece but now for a different reason.
-    const closed = breacherState([typedPiece('installed-enc', 'encryption', { kind: 'wardBash', fraction: 0.4 })]);
+  it('stops counting a gap once that archetype already credits', () => {
+    const another = piece('probe', 'daemon', CREDIT);
+    const closed = playerState([piece('installed-daemon', 'daemon', CREDIT)], []);
     expect(ladderRank(another, closed).creditGap).toBe(1);
-    expect(synergyAwareAcquisition([shinyButOff, another], closed)?.id).toBe('fuzzer');
   });
 
-  it('a defensive-only on-archetype piece does not count as filling the gap', () => {
-    const wardOnly = typedPiece('ward-only', 'encryption', { kind: 'ward', amount: 4 });
-    expect(fillsCreditGap(wardOnly, breacherState([]))).toBe(false);
+  it('a piece with no credit path never fills the gap', () => {
+    expect(fillsCreditGap(piece('ward-only', 'daemon', DEFENSIVE), playerState([], []))).toBe(false);
   });
 
-  it('ranks on-archetype above neutral above off-archetype', () => {
-    const state = breacherState([]);
-    const on = typedPiece('on', 'exploit', { kind: 'ward', amount: 1 });
-    const neutral = typedPiece('neutral', 'neutral', { kind: 'ward', amount: 1 });
-    const off = typedPiece('off', 'root', { kind: 'ward', amount: 1 });
-    expect(ladderRank(on, state).archetype).toBe(0);
-    expect(ladderRank(neutral, state).archetype).toBe(1);
-    expect(ladderRank(off, state).archetype).toBe(2);
-    expect(synergyAwareAcquisition([off, neutral, on], state)?.id).toBe('on');
+  it('an off-archetype credit piece never fills a gap', () => {
+    expect(fillsCreditGap(piece('off-hit', 'honeypot', CREDIT), playerState([], []))).toBe(false);
+  });
+
+  it('ranks on-archetype above off-archetype; only Mods with no archetype sit in the middle', () => {
+    const state = playerState([], []);
+    expect(ladderRank(piece('on', 'exploit', DEFENSIVE), state).archetype).toBe(0);
+    expect(ladderRank(piece('off', 'overclock', DEFENSIVE), state).archetype).toBe(2);
+    expect(synergyAwareAcquisition([piece('off', 'overclock', DEFENSIVE), piece('on', 'exploit', DEFENSIVE)], state)?.id).toBe('on');
   });
 
   it('breaks a full tie by rarity, preferring the rarer piece', () => {
-    // Both on-archetype exploit, both credit-capable, and Exploit's gap
-    // is already closed by the installed piece -- so only rung 3 is live.
-    const state = breacherState([typedPiece('installed-exp', 'exploit', { kind: 'directBurst', amount: 2 })]);
-    const common = typedPiece('fuzzer', 'exploit', { kind: 'directBurst', amount: 3 });
-    const rare = typedPiece('supply-chain-compromise', 'exploit', { kind: 'directBurst', amount: 3 });
-    expect(synergyAwareAcquisition([common, rare], state)?.id).toBe('supply-chain-compromise');
+    const state = playerState([piece('installed-exp', 'exploit', CREDIT)], []);
+    expect(rarityOf('packet-sniffer')).toBe('rare');
+    expect(synergyAwareAcquisition([piece('probe', 'exploit', CREDIT), piece('packet-sniffer', 'exploit', CREDIT)], state)?.id).toBe('packet-sniffer');
   });
 
   it('falls to the earliest option when ranks tie exactly, matching alwaysAcquireFirst', () => {
-    const state = breacherState([]);
-    const first = typedPiece('first', 'root', { kind: 'ward', amount: 1 });
-    const second = typedPiece('second', 'root', { kind: 'ward', amount: 1 });
-    expect(synergyAwareAcquisition([first, second], state)?.id).toBe('first');
+    const state = playerState([], []);
+    expect(synergyAwareAcquisition([piece('first', 'overclock', DEFENSIVE), piece('second', 'overclock', DEFENSIVE)], state)?.id).toBe('first');
   });
 
   it('returns null for an empty slate', () => {
-    expect(synergyAwareAcquisition([], breacherState([]))).toBeNull();
-  });
-});
-
-describe('fillsCreditGap -- neutral handling (session 46)', () => {
-  // Warden specializes in malware + encryption and ships with no
-  // credit-capable Encryption piece (classes.ts) -- one of the 4 classes
-  // that starts a run with a real gap, which is what makes this rung
-  // live rather than theoretical.
-  function wardenState(installedLoadout: SubroutineDefinition[]): RunPlayerState {
-    return { ...playerState(installedLoadout, []), classId: 'warden' };
-  }
-
-  const creditCapableNeutral = typedPiece('neutral-hit', 'neutral', { kind: 'directBurst', amount: 4 });
-
-  it('a credit-capable neutral piece fills an open gap in either specialization', () => {
-    // malware credits (starting kit), encryption does not -- one open
-    // gap is enough for a suit-independent piece to be worth prioritizing.
-    const state = wardenState([typedPiece('mal', 'malware', { kind: 'dot', amountPerTick: 2, cadence: 'globalPulse', duration: 3, pointsPerTick: 4 })]);
-    expect(fillsCreditGap(creditCapableNeutral, state)).toBe(true);
-  });
-
-  it('stops filling a gap once both specializations already credit', () => {
-    const state = wardenState([
-      typedPiece('mal', 'malware', { kind: 'dot', amountPerTick: 2, cadence: 'globalPulse', duration: 3, pointsPerTick: 4 }),
-      typedPiece('enc', 'encryption', { kind: 'wardCounter', amount: 3, ratio: 0.2 }),
-    ]);
-    expect(fillsCreditGap(creditCapableNeutral, state)).toBe(false);
-  });
-
-  it('a defensive-only neutral piece never fills a gap', () => {
-    const defensiveNeutral = typedPiece('neutral-ward', 'neutral', { kind: 'ward', amount: 3 });
-    expect(fillsCreditGap(defensiveNeutral, wardenState([]))).toBe(false);
-  });
-
-  it('does not let neutral outrank an on-archetype piece that fills the same gap', () => {
-    // Both reach rung 1; rung 2 resolves toward on-archetype. This is
-    // the specific worry that made neutral-on-rung-1 look risky -- it
-    // does not actually materialize.
-    const state = wardenState([typedPiece('mal', 'malware', { kind: 'dot', amountPerTick: 2, cadence: 'globalPulse', duration: 3, pointsPerTick: 4 })]);
-    const onArchetype = typedPiece('enc-hit', 'encryption', { kind: 'wardCounter', amount: 3, ratio: 0.2 });
-    expect(fillsCreditGap(onArchetype, state)).toBe(true);
-    expect(fillsCreditGap(creditCapableNeutral, state)).toBe(true);
-    expect(synergyAwareAcquisition([creditCapableNeutral, onArchetype], state)?.id).toBe('enc-hit');
-  });
-
-  it('but neutral wins over a defensive-only on-archetype piece', () => {
-    // The outcome that was backwards before this change: a credit-starved
-    // class preferring a piece that can never push toward a win.
-    const state = wardenState([typedPiece('mal', 'malware', { kind: 'dot', amountPerTick: 2, cadence: 'globalPulse', duration: 3, pointsPerTick: 4 })]);
-    const defensiveOnArchetype = typedPiece('enc-ward', 'encryption', { kind: 'ward', amount: 4 });
-    expect(synergyAwareAcquisition([defensiveOnArchetype, creditCapableNeutral], state)?.id).toBe('neutral-hit');
-  });
-
-  it('an off-archetype credit-capable piece still never fills a gap', () => {
-    const offArchetype = typedPiece('root-hit', 'root', { kind: 'sessionHijack', amount: 3 });
-    expect(fillsCreditGap(offArchetype, wardenState([]))).toBe(false);
+    expect(synergyAwareAcquisition([], playerState([], []))).toBeNull();
   });
 });
 
 // ---------------------------------------------------------------------
-// Checkpoint F -- loadout reorder.
+// Loadout reorder over `sequence` betas (D13).
 // ---------------------------------------------------------------------
 
-function chainedPiece(id: string, trigger: SubroutineDefinition['trigger'], archetype: Archetype = 'exploit', tags: Tag[] = []): SubroutineDefinition {
-  return { id, name: id, archetype, trigger, payload: { kind: 'directBurst', amount: 1 }, tags };
-}
-
-function finisher(id: string, archetype: Archetype = 'exploit'): SubroutineDefinition {
-  return {
-    id,
-    name: id,
-    archetype,
-    trigger: { kind: 'always' },
-    payload: { kind: 'chainFinisherScaling', baseAmount: 2, perPriorFire: 1 },
-    tags: [],
-  };
+function wants(id: string, reach: 'adjacent' | 'anyPrior', match: Extract<Beta, { source: 'sequence' }>['match']): SubroutineDefinition {
+  return piece(id, 'exploit', CREDIT, { source: 'sequence', reach, match, shape: 'whileTrue', effect: { verb: 'enhance', amount: 1 } });
 }
 
 const order = (state: RunPlayerState): string[] => state.installedLoadout.map((p) => p.id);
 
-describe('synergyAwareReorder -- prerequisites before dependents', () => {
-  it('moves an afterSubroutineId prerequisite before its dependent', () => {
-    const state = playerState([chainedPiece('dependent', { kind: 'chained', afterSubroutineId: 'prereq' }), piece('prereq')], []);
-    expect(order(synergyAwareReorder(state))).toEqual(['prereq', 'dependent']);
-  });
-
-  it('moves an afterArchetype prerequisite before its dependent', () => {
-    // The variant that actually has content -- 9 pool pieces chain this
-    // way, versus 0 on afterSubroutineId.
-    const state = playerState(
-      [chainedPiece('needs-malware', { kind: 'chained', afterArchetype: 'malware' }), chainedPiece('a-malware-piece', { kind: 'always' }, 'malware')],
-      [],
-    );
-    expect(order(synergyAwareReorder(state))).toEqual(['a-malware-piece', 'needs-malware']);
-  });
-
-  it('moves an afterTag prerequisite before its dependent', () => {
-    const state = playerState(
-      [chainedPiece('needs-worm', { kind: 'chained', afterTag: 'worm' }), chainedPiece('a-worm', { kind: 'always' }, 'malware', ['worm'])],
-      [],
-    );
-    expect(order(synergyAwareReorder(state))).toEqual(['a-worm', 'needs-worm']);
-  });
-
-  it('leaves an order alone when the chain is already satisfied earlier', () => {
-    const state = playerState(
-      [chainedPiece('a-malware-piece', { kind: 'always' }, 'malware'), chainedPiece('needs-malware', { kind: 'chained', afterArchetype: 'malware' })],
-      [],
-    );
-    expect(order(synergyAwareReorder(state))).toEqual(['a-malware-piece', 'needs-malware']);
-  });
-
-  it('leaves a chained piece alone when nothing installed satisfies it', () => {
-    const state = playerState([piece('other'), chainedPiece('orphan', { kind: 'chained', afterArchetype: 'root' })], []);
-    expect(order(synergyAwareReorder(state))).toEqual(['other', 'orphan']);
-  });
-
-  it('terminates on a chain cycle rather than spinning', () => {
-    // A-after-B and B-after-A is expressible in the type system; an
-    // unsatisfiable chain is dead content however it's ordered, so the
-    // rule just needs to stop.
-    const state = playerState(
-      [chainedPiece('a', { kind: 'chained', afterSubroutineId: 'b' }), chainedPiece('b', { kind: 'chained', afterSubroutineId: 'a' })],
-      [],
-    );
-    expect(order(synergyAwareReorder(state))).toHaveLength(2);
+describe('matchesSequence', () => {
+  it('matches by id, archetype or alpha verb', () => {
+    const target = piece('target', 'daemon', { verb: 'suppress', amount: 1 });
+    expect(matchesSequence({ id: 'target' }, target)).toBe(true);
+    expect(matchesSequence({ archetype: 'daemon' }, target)).toBe(true);
+    expect(matchesSequence({ verb: 'suppress' }, target)).toBe(true);
+    expect(matchesSequence({ verb: 'credit' }, target)).toBe(false);
   });
 });
 
-describe('synergyAwareReorder -- finishers last', () => {
-  it('moves a chainFinisherScaling piece to the end', () => {
-    const state = playerState([finisher('big-finish'), piece('a'), piece('b')], []);
-    expect(order(synergyAwareReorder(state))).toEqual(['a', 'b', 'big-finish']);
+describe('synergyAwareReorder', () => {
+  it('moves an anyPrior prerequisite ahead of its dependent', () => {
+    const state = playerState([wants('dependent', 'anyPrior', { archetype: 'daemon' }), piece('a-daemon', 'daemon')], []);
+    expect(order(synergyAwareReorder(state))).toEqual(['a-daemon', 'dependent']);
   });
 
-  it('keeps multiple finishers in their existing relative order', () => {
-    const state = playerState([finisher('first-finisher'), piece('a'), finisher('second-finisher')], []);
-    expect(order(synergyAwareReorder(state))).toEqual(['a', 'first-finisher', 'second-finisher']);
+  it('places an adjacent prerequisite immediately before its dependent', () => {
+    const state = playerState([piece('a-daemon', 'daemon'), piece('filler'), wants('dependent', 'adjacent', { archetype: 'daemon' })], []);
+    expect(order(synergyAwareReorder(state))).toEqual(['filler', 'a-daemon', 'dependent']);
   });
 
-  it('sends a finisher last even when it is another piece\'s prerequisite', () => {
-    // The deliberate conflict resolution: pass 2 wins, because a
-    // finisher's whole payoff is positional in a way a chained
-    // trigger's is not.
-    const state = playerState([chainedPiece('dependent', { kind: 'chained', afterSubroutineId: 'fin' }), finisher('fin')], []);
-    expect(order(synergyAwareReorder(state))).toEqual(['dependent', 'fin']);
+  it('pulls a later adjacent prerequisite up to sit directly before its dependent', () => {
+    const state = playerState([wants('dependent', 'adjacent', { id: 'prereq' }), piece('filler'), piece('prereq')], []);
+    expect(order(synergyAwareReorder(state))).toEqual(['prereq', 'dependent', 'filler']);
+  });
+
+  it('leaves an anyPrior chain alone when something earlier already satisfies it', () => {
+    const state = playerState([piece('a-daemon', 'daemon'), piece('filler'), wants('dependent', 'anyPrior', { archetype: 'daemon' })], []);
+    expect(order(synergyAwareReorder(state))).toEqual(['a-daemon', 'filler', 'dependent']);
+  });
+
+  it('leaves a sequence piece alone when nothing installed satisfies it', () => {
+    const state = playerState([piece('other'), wants('orphan', 'anyPrior', { archetype: 'honeypot' })], []);
+    expect(order(synergyAwareReorder(state))).toEqual(['other', 'orphan']);
+  });
+
+  it('terminates on a cycle rather than spinning', () => {
+    const state = playerState([wants('a', 'adjacent', { id: 'b' }), wants('b', 'adjacent', { id: 'a' })], []);
+    expect(order(synergyAwareReorder(state))).toHaveLength(2);
   });
 
   it('is idempotent -- running it twice changes nothing further', () => {
-    // This is what lets run.ts apply it once per node rather than at
-    // every individual acquisition call site.
-    const state = playerState(
-      [finisher('fin'), chainedPiece('needs-malware', { kind: 'chained', afterArchetype: 'malware' }), chainedPiece('mal', { kind: 'always' }, 'malware')],
-      [],
-    );
+    const state = playerState([wants('dep', 'adjacent', { archetype: 'daemon' }), piece('x'), piece('d', 'daemon')], []);
     const once = synergyAwareReorder(state);
     expect(order(synergyAwareReorder(once))).toEqual(order(once));
   });
 
-  it('is a no-op on a loadout with no chains and no finishers', () => {
+  it('is a no-op on a loadout with no sequence betas', () => {
     const state = playerState([piece('a'), piece('b'), piece('c')], []);
     expect(order(synergyAwareReorder(state))).toEqual(['a', 'b', 'c']);
   });
 });
 
-describe('reorderStrategy wiring (checkpoint F)', () => {
+// Needs a working resolver -- red until checkpoint 3.
+describe('reorderStrategy wiring', () => {
   it('playRun calls the reorder strategy after each resolved encounter', () => {
     let calls = 0;
     playRun({
       seed: 0,
-      classId: 'breacher',
+      classId: 'exploit-daemon',
       traversalStrategy: opportunisticTraversal,
       reorderStrategy: (state) => {
         calls++;
@@ -429,187 +309,127 @@ describe('reorderStrategy wiring (checkpoint F)', () => {
   });
 
   it('defaults to keepAcquisitionOrder -- unchanged behavior when omitted', () => {
-    const withDefault = playRun({ seed: 3, classId: 'breacher', traversalStrategy: opportunisticTraversal });
-    const withExplicit = playRun({
-      seed: 3,
-      classId: 'breacher',
-      traversalStrategy: opportunisticTraversal,
-      reorderStrategy: keepAcquisitionOrder,
-    });
+    const withDefault = playRun({ seed: 3, classId: 'exploit-daemon', traversalStrategy: opportunisticTraversal });
+    const withExplicit = playRun({ seed: 3, classId: 'exploit-daemon', traversalStrategy: opportunisticTraversal, reorderStrategy: keepAcquisitionOrder });
     expect(withDefault.outcome).toBe(withExplicit.outcome);
     expect(withDefault.layersCompleted).toBe(withExplicit.layersCompleted);
   });
 
-  it('a real run with synergyAwareReorder leaves every finisher trailing', () => {
-    // End-to-end: whatever the run actually acquired, the invariant the
-    // rule exists to enforce holds on the final loadout.
+  it('a real run with synergyAwareReorder leaves every satisfiable adjacent chain satisfied', () => {
     const result = playRun({
       seed: 0,
-      classId: 'breacher',
+      classId: 'daemon-overclock',
       traversalStrategy: opportunisticTraversal,
       acquisitionStrategy: synergyAwareAcquisition,
       reorderStrategy: synergyAwareReorder,
     });
     const loadout = result.playerState.installedLoadout;
-    const firstFinisher = loadout.findIndex((p) => p.payload.kind === 'chainFinisherScaling');
-    if (firstFinisher !== -1) {
-      expect(loadout.slice(firstFinisher).every((p) => p.payload.kind === 'chainFinisherScaling')).toBe(true);
-    }
+    loadout.forEach((p, i) => {
+      if (p.beta?.source !== 'sequence' || p.beta.reach !== 'adjacent') return;
+      const match = p.beta.match;
+      const satisfiable = loadout.some((other, j) => j !== i && matchesSequence(match, other));
+      if (satisfiable) expect(i > 0 && matchesSequence(match, loadout[i - 1]), p.id).toBe(true);
+    });
   });
 });
 
 // ---------------------------------------------------------------------
-// Checkpoint G -- swap-out on a full loadout.
+// Swap-out on a full loadout.
 // ---------------------------------------------------------------------
 
 describe('acquireSubroutineWithSwap', () => {
-  const CREDIT = { kind: 'directBurst', amount: 3 } as const;
-  const DEFENSIVE = { kind: 'ward', amount: 3 } as const;
-
   it('behaves exactly like acquireSubroutine when there is room', () => {
     const state = playerState([piece('a')], []);
     expect(acquireSubroutineWithSwap(state, piece('new'), 6)).toEqual(acquireSubroutine(state, piece('new'), 6));
   });
 
   it('banks Merge material for an already-owned id, same as acquireSubroutine', () => {
-    const state = playerState([piece('a')], []);
-    expect(acquireSubroutineWithSwap(state, piece('a'), 6).material.a).toBe(1);
+    expect(acquireSubroutineWithSwap(playerState([piece('a')], []), piece('a'), 6).material.a).toBe(1);
   });
 
   it('evicts the worst-ranked installed piece when the candidate outranks it', () => {
-    // Breacher: exploit + encryption. The off-archetype root piece is
-    // the weakest thing installed; an on-archetype candidate displaces it.
-    const state = playerState(
-      [typedPiece('keep-exploit', 'exploit', CREDIT), typedPiece('weak-root', 'root', DEFENSIVE)],
-      [],
-    );
-    const result = acquireSubroutineWithSwap(state, typedPiece('new-exploit', 'exploit', CREDIT), 2);
+    const state = playerState([piece('keep-exploit', 'exploit', CREDIT), piece('weak-off', 'overclock', DEFENSIVE)], []);
+    const result = acquireSubroutineWithSwap(state, piece('new-exploit', 'exploit', CREDIT), 2);
     expect(result.installedLoadout.map((p) => p.id)).toEqual(['keep-exploit', 'new-exploit']);
-    expect(result.bench.map((p) => p.id)).toEqual(['weak-root']);
+    expect(result.bench.map((p) => p.id)).toEqual(['weak-off']);
   });
 
   it('benches the candidate when it does not outrank anything installed', () => {
-    const state = playerState(
-      [typedPiece('strong-a', 'exploit', CREDIT), typedPiece('strong-b', 'encryption', CREDIT)],
-      [],
-    );
-    const result = acquireSubroutineWithSwap(state, typedPiece('weak-root', 'root', DEFENSIVE), 2);
+    const state = playerState([piece('strong-a', 'exploit', CREDIT), piece('strong-b', 'daemon', CREDIT)], []);
+    const result = acquireSubroutineWithSwap(state, piece('weak-off', 'overclock', DEFENSIVE), 2);
     expect(result.installedLoadout.map((p) => p.id)).toEqual(['strong-a', 'strong-b']);
-    expect(result.bench.map((p) => p.id)).toEqual(['weak-root']);
+    expect(result.bench.map((p) => p.id)).toEqual(['weak-off']);
   });
 
-  it('does not evict the sole credit-capable piece of an archetype', () => {
-    // The inversion this checkpoint had to work around. 'lone-enc' is
-    // the only thing crediting Encryption; ranked by the plain
-    // acquisition ladder it scores as "fills no gap" -- precisely
-    // because it is what fills it -- and would look cheap to evict.
-    // Counterfactual ranking protects it, so the lower-value defensive
-    // exploit piece goes instead.
-    const state = playerState(
-      [typedPiece('lone-enc', 'encryption', CREDIT), typedPiece('spare-exploit', 'exploit', DEFENSIVE)],
-      [],
-    );
-    const result = acquireSubroutineWithSwap(state, typedPiece('new-exploit', 'exploit', CREDIT), 2);
-    expect(result.installedLoadout.map((p) => p.id)).toContain('lone-enc');
+  it('does not evict the sole credit provider of an archetype', () => {
+    // Ranked by the plain acquisition ladder, 'lone-daemon' scores as
+    // "fills no gap" -- precisely because it is what fills it -- and
+    // would look cheap to evict. Counterfactual ranking protects it.
+    const state = playerState([piece('lone-daemon', 'daemon', CREDIT), piece('spare-exploit', 'exploit', DEFENSIVE)], []);
+    const result = acquireSubroutineWithSwap(state, piece('new-exploit', 'exploit', CREDIT), 2);
+    expect(result.installedLoadout.map((p) => p.id)).toContain('lone-daemon');
     expect(result.bench.map((p) => p.id)).toEqual(['spare-exploit']);
   });
 
   it('never evicts a Mod-granted piece, even when it ranks worst', () => {
-    // Granted entries are cap-exempt and removal-locked
-    // (uninstallSubroutine refuses them outright), so evicting one
-    // silently fails and would waste the acquisition entirely.
-    // 'granted-junk' is off-archetype and defensive -- the weakest thing
-    // installed, and what a naive worst-ranked search would reach for --
-    // so the evictable 'weak-root' has to go instead.
     const state = {
-      ...playerState([typedPiece('granted-junk', 'root', DEFENSIVE), typedPiece('weak-root', 'root', DEFENSIVE)], []),
+      ...playerState([piece('granted-junk', 'overclock', DEFENSIVE), piece('weak-off', 'overclock', DEFENSIVE)], []),
       grantedByMod: { 'granted-junk': 'some-mod' },
     };
-    const result = acquireSubroutineWithSwap(state, typedPiece('strong-exploit', 'exploit', CREDIT), 1);
+    const result = acquireSubroutineWithSwap(state, piece('strong-exploit', 'exploit', CREDIT), 1);
     expect(result.installedLoadout.map((p) => p.id)).toEqual(['granted-junk', 'strong-exploit']);
-    expect(result.bench.map((p) => p.id)).toEqual(['weak-root']);
+    expect(result.bench.map((p) => p.id)).toEqual(['weak-off']);
   });
 
   it('declines the swap when the only evictable piece is a sole credit provider it cannot beat', () => {
-    // Cap-exempt granted entries mean the evictable set can be a single
-    // piece that is load-bearing -- benching the candidate is correct.
     const state = {
-      ...playerState([typedPiece('granted-junk', 'root', DEFENSIVE), typedPiece('lone-exploit', 'exploit', CREDIT)], []),
+      ...playerState([piece('granted-junk', 'overclock', DEFENSIVE), piece('lone-exploit', 'exploit', CREDIT)], []),
       grantedByMod: { 'granted-junk': 'some-mod' },
     };
-    const result = acquireSubroutineWithSwap(state, typedPiece('another-exploit', 'exploit', CREDIT), 1);
+    const result = acquireSubroutineWithSwap(state, piece('another-exploit', 'exploit', CREDIT), 1);
     expect(result.installedLoadout.map((p) => p.id)).toEqual(['granted-junk', 'lone-exploit']);
     expect(result.bench.map((p) => p.id)).toEqual(['another-exploit']);
   });
 
   it('leaves acquireSubroutine itself unchanged -- bench-forever stays the default', () => {
-    const full = [typedPiece('a', 'root', DEFENSIVE), typedPiece('b', 'root', DEFENSIVE)];
-    const state = playerState(full, []);
-    const strong = typedPiece('strong', 'exploit', CREDIT);
+    const state = playerState([piece('a', 'overclock', DEFENSIVE), piece('b', 'overclock', DEFENSIVE)], []);
+    const strong = piece('strong', 'exploit', CREDIT);
     expect(acquireSubroutine(state, strong, 2).installedLoadout.map((p) => p.id)).toEqual(['a', 'b']);
     expect(acquireSubroutineWithSwap(state, strong, 2).installedLoadout.map((p) => p.id)).toContain('strong');
   });
-});
 
-describe('acquireSubroutineWithSwap -- rarity is not an eviction criterion (session 46 regression)', () => {
-  const CREDIT = { kind: 'directBurst', amount: 3 } as const;
-
-  it('does not evict an incumbent merely because the candidate is rarer', () => {
-    // The bug this guards: rarityOf() reports 'common' for all 18 class
-    // starting-loadout pieces because they carry no authored rarity at
-    // all, not because they are weak. With rarity on the eviction
-    // comparison that parked every hand-designed starting piece at the
-    // bottom of the order, and an ablation sweep measured 73% of them
-    // being dismantled for pool pieces -- dropping the full synergy
-    // profile below the dumb baseline it was built to beat.
-    const state = playerState([typedPiece('buffer-overflow', 'exploit', CREDIT)], []);
-    const rarerSameRungs = typedPiece('supply-chain-compromise', 'exploit', CREDIT);
-    expect(rarityOf('supply-chain-compromise')).toBe('rare');
-    expect(rarityOf('buffer-overflow')).toBe('common'); // unauthored, not weak
-    const result = acquireSubroutineWithSwap(state, rarerSameRungs, 1);
-    expect(result.installedLoadout.map((p) => p.id)).toEqual(['buffer-overflow']);
-    expect(result.bench.map((p) => p.id)).toEqual(['supply-chain-compromise']);
+  it('does not evict an incumbent merely because the candidate is rarer (session 46 regression)', () => {
+    const state = playerState([piece('probe', 'exploit', CREDIT)], []);
+    const result = acquireSubroutineWithSwap(state, piece('packet-sniffer', 'exploit', CREDIT), 1);
+    expect(result.installedLoadout.map((p) => p.id)).toEqual(['probe']);
+    expect(result.bench.map((p) => p.id)).toEqual(['packet-sniffer']);
   });
 
-  it('still evicts on a genuine credit-gap or archetype improvement', () => {
-    // The bar is higher, not gone -- an off-archetype incumbent still
-    // loses to an on-archetype candidate of identical rarity.
-    const state = playerState([typedPiece('off-arch', 'root', CREDIT)], []);
-    const result = acquireSubroutineWithSwap(state, typedPiece('on-arch', 'exploit', CREDIT), 1);
+  it('still evicts on a genuine archetype improvement', () => {
+    const result = acquireSubroutineWithSwap(playerState([piece('off-arch', 'overclock', CREDIT)], []), piece('on-arch', 'exploit', CREDIT), 1);
     expect(result.installedLoadout.map((p) => p.id)).toEqual(['on-arch']);
   });
 });
 
-describe('acquireSubroutineWithSwap -- starting kits are never evicted (session 47 regression)', () => {
-  const CREDIT = { kind: 'directBurst', amount: 3 } as const;
-
+describe("acquireSubroutineWithSwap -- starting kits are never evicted (session 47 regression)", () => {
+  // Session 47's bug: a class's starting ward ranked bottom (no credit
+  // path) and was swapped out in 72% of runs, leaving the class passive
+  // with nothing to fire on. Starting pieces are protected wholesale.
   it("does not evict a class's starting piece, even when it ranks worst", () => {
-    // The bug this guards, measured: Ghost's Steganography is a `ward`,
-    // which is not in CREDIT_CAPABLE_PAYLOAD_KINDS, so it ranked bottom
-    // and was swapped out in 72% of runs (42/150 kept). Return to
-    // Sender's primary hook is ward absorption, so evicting the ward left
-    // the class passive with nothing to fire on -- turning Ghost from the
-    // best class under the legal-not-good defaults (24.7%) into the worst
-    // under the synergy profile (8.0%).
-    const ghostKit = CLASS_DEFINITIONS.ghost.startingLoadout;
-    const state = { ...playerState([...ghostKit], []), classId: 'ghost' as const };
-    const strongOffer = typedPiece('supply-chain-compromise', 'encryption', CREDIT);
-    const result = acquireSubroutineWithSwap(state, strongOffer, ghostKit.length);
-    for (const starting of ghostKit) {
-      expect(result.installedLoadout.map((p) => p.id), `${starting.id} was evicted`).toContain(starting.id);
-    }
-    expect(result.bench.map((p) => p.id)).toEqual(['supply-chain-compromise']);
+    const kit = CLASS_DEFINITIONS['exploit-honeypot'].startingLoadout;
+    const state = { ...playerState([...kit], []), classId: 'exploit-honeypot' as const };
+    const strongOffer = piece('strong-offer', 'honeypot', CREDIT);
+    const result = acquireSubroutineWithSwap(state, strongOffer, kit.length);
+    for (const starting of kit) expect(result.installedLoadout.map((p) => p.id), `${starting.id} was evicted`).toContain(starting.id);
+    expect(result.bench.map((p) => p.id)).toEqual(['strong-offer']);
   });
 
   it('still evicts a non-starting piece that the candidate outranks', () => {
-    // The protection is scoped to starting kits, not a blanket freeze --
-    // acquired pieces remain swappable.
-    const ghostKit = CLASS_DEFINITIONS.ghost.startingLoadout;
-    const acquired = typedPiece('weak-acquired', 'exploit', { kind: 'ward', amount: 1 });
-    const state = { ...playerState([...ghostKit, acquired], []), classId: 'ghost' as const };
-    const strongOffer = typedPiece('strong-enc', 'encryption', CREDIT);
-    const result = acquireSubroutineWithSwap(state, strongOffer, ghostKit.length + 1);
-    expect(result.installedLoadout.map((p) => p.id)).toContain('strong-enc');
+    const kit = CLASS_DEFINITIONS['exploit-honeypot'].startingLoadout;
+    const acquired = piece('weak-acquired', 'overclock', DEFENSIVE);
+    const state = { ...playerState([...kit, acquired], []), classId: 'exploit-honeypot' as const };
+    const result = acquireSubroutineWithSwap(state, piece('strong-offer', 'honeypot', CREDIT), kit.length + 1);
+    expect(result.installedLoadout.map((p) => p.id)).toContain('strong-offer');
     expect(result.bench.map((p) => p.id)).toEqual(['weak-acquired']);
   });
 });
