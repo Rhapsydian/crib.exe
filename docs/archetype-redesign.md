@@ -269,6 +269,46 @@ follows from A1–A11 but was not discussed individually.
 - **Gatekeeper ablation (`excludedIds`) throws** on the skeleton's
   one-per-layer roster; use the synthetic gatekeeper instead.
 
+### Implementation calls made in step 1, checkpoint 3 (flag to revisit)
+
+Made while rewriting `resolve.ts`, `triggers.ts` and `combat.ts`.
+
+- **Banked charges are consumed when the beta is evaluated**, before the
+  fire resolves — so a charge the same fire banks (Charge `self`, Ward
+  absorbed mid-fire) survives to the next turn.
+- **Only plain Credit is absorbed by Ward** (and by the incoming-credit
+  Mods, Static Shield / Surge Protector). Piercing skips both; so do the
+  conversion credits (`from: 'ward' | 'opponent'`), which are transfers,
+  not attacks.
+- **Empower boosts only Credit, Suppress and Ward alphas** — never
+  Tempo (session 48's units invariant), never a beta's own effect. A
+  `next` Empower is spent by whichever piece fires next, even if that
+  piece's verb can't use it.
+- **"Adjacent" means the last piece to actually fire this turn**, so a
+  piece skipped by its points cooldown doesn't break an adjacency it took
+  no part in.
+- **Charge `next` doesn't wrap**: the last piece's `next` charges
+  nothing.
+- **An immediate beta with its own effect** counts against
+  `maxFiresPerCombat` but is not an alpha fire (no growth, no `fires`
+  progress). An immediate `enhance` is a real extra alpha fire.
+- **Timed Tempo** stores the threshold delta actually applied (after
+  flooring) and counts the *affected* side's own turns; it reverts by
+  exactly that delta.
+- **Disrupt timing within the next hand**: `revealHand` and
+  `forceDiscard` after the deal, `revealCrib` once the crib is selected,
+  and a revealed hand narrows to the kept four at the start of play.
+  Session 24's whole-pair forced discard and the cut bias (`skewCut`) are
+  gone; the cut is always fair.
+- **His Heels still scores** into the initiative gauge; it just can't be
+  watched by a beta.
+- **The enemy-passive registry is not rebuilt** — the skeleton roster has
+  none, and the real roster writes its own hooks. Carried over as-is:
+  Warm Boot, Cold Boot, Early Momentum, First Contact, Static Shield,
+  Surge Protector. Everything else Mod- or passive-shaped is checkpoint 4.
+- **Unchanged**: escalation, the defender-favoured hard tiebreak at hand
+  20, the loop detector, the deal/peg/show sequence.
+
 ## Noted for later (not discussed)
 
 - **Baseline Trace from every fight, scaled by the enemy's Containment %

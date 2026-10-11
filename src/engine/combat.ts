@@ -1,19 +1,17 @@
 import { createRng, deriveAiNoiseSeed } from './rng';
 import type { Card } from './cards';
 import { createDeck, shuffle } from './deck';
-import { deal, discardToCrib, discardLowestTwo, discardHighestTwo, cut, biasedCut, hisHeels, type DiscardStrategy, type CutStrategy } from './deal';
+import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardStrategy } from './deal';
 import { playPegging, playLowestLegal, type PlayStrategy } from './pegging';
 import { countHandEvents, countCribEvents } from './scoring';
 import type { HandResult, PlayerIndex } from './game';
-import type { SubroutineDefinition, HandLifecycleMoment } from './subroutine-types';
+import type { SubroutineDefinition } from './subroutine-types';
 import type { ClassId } from './classes';
 import type { EnemyPassiveId } from './enemies';
 import type { ModId } from './mod-types';
 import type { BurnerId } from './burner-types';
 import { BURNER_DEFINITIONS } from './burners';
 import {
-  updateSubroutineState,
-  updateSuitTallyState,
   occurrencesFromPeggingEvent,
   occurrencesFromHandEvents,
   occurrenceFromHisHeels,
@@ -23,40 +21,33 @@ import {
 } from './triggers';
 import { addPoints, shrinkDuelThreshold, type InitiativeGauge } from './gauges';
 import {
-  applyEnemyGaugeCross50Passives,
   applyModGaugeCross50Passives,
   applyModOnCombatStartPassives,
-  accumulatorThresholdMultiplier,
-  occurrenceThresholdReduction,
-  applyFootholdBonus,
-  applyThrottled,
+  applyOccurrence,
+  applySuitPlayed,
   clearHandKnowledge,
-  consumePendingCribbageManipulation,
   createCombatState,
-  fireHandLifecycleSubroutines,
-  fireHandOutcomeSubroutines,
-  fireNewlyReadyReactiveSubroutines,
-  fireRareOccurrenceSubroutines,
-  fireReadySubroutines,
-  refreshTriggerReadiness,
-  resolvePayload,
-  resolvePendingSabotage,
-  tickCastersTurnPulse,
-  tickDebuffDurations,
-  tickGlobalPulse,
+  fireImmediateBetas,
+  fireTurn,
+  forceOpponentDiscard,
+  resolveEffect,
+  revealCrib,
+  revealOpponentHand,
+  takePendingDisrupt,
   type CombatState,
   type CombatSideState,
   type FireEvent,
 } from './resolve';
 
 /**
- * The combat orchestrator (session 17 checkpoint F): loops playOneHand,
- * feeds each hand's scoring into both sides' gauges and subroutine
- * trigger state one discrete event at a time (in the real chronological
- * order they happen: his heels at the cut, then pegging play-by-play,
- * then non-dealer hand / dealer hand / crib at the show), fires ready
- * subroutines the instant a side's gauge crosses its threshold, and
- * continues until Breach/Containment resolves.
+ * The combat orchestrator (session 17 checkpoint F; re-pointed to the
+ * alpha/beta model in session 51): plays real hands of Cribbage, feeds
+ * each hand's scoring into both sides' initiative gauges and beta charges
+ * one discrete event at a time, in the real chronological order (his heels
+ * at the cut, pegging play-by-play, then non-dealer hand / dealer hand /
+ * crib at the show), fires a side's whole loadout the instant its gauge
+ * crosses its threshold, fires `immediate` betas the instant their
+ * criteria are met, and continues until Breach/Containment resolves.
  */
 
 export interface CombatOptions {
@@ -193,47 +184,6 @@ function remainingBurnerIds(carried: BurnerId[], used: BurnerId[]): BurnerId[] {
   return remaining;
 }
 
-/** Advances every subroutine on both sides against one occurrence --
- * updateSubroutineState already no-ops for the side that doesn't own the
- * occurrence, so this is safe to call unconditionally for both sides. */
-function applyOccurrenceToState(combatState: CombatState, occurrence: ScoringOccurrence): CombatState {
-  const sides = combatState.sides.map((sideState, side) => ({
-    ...sideState,
-    loadout: sideState.loadout.map((entry) => ({
-      ...entry,
-      state: updateSubroutineState(
-        entry.state,
-        entry.definition,
-        occurrence,
-        side as PlayerIndex,
-        accumulatorThresholdMultiplier(combatState, side as PlayerIndex),
-        occurrenceThresholdReduction(combatState, side as PlayerIndex),
-      ),
-    })),
-  })) as [CombatSideState, CombatSideState];
-  return { ...combatState, sides };
-}
-
-/** Advances every suitTally Accumulator subroutine on both sides against
- * one card played -- parallel to applyOccurrenceToState above, updating
- * a different, non-scoring signal. */
-function applySuitPlayedToState(combatState: CombatState, suitPlayed: SuitPlayed): CombatState {
-  const sides = combatState.sides.map((sideState, side) => ({
-    ...sideState,
-    loadout: sideState.loadout.map((entry) => ({
-      ...entry,
-      state: updateSuitTallyState(
-        entry.state,
-        entry.definition,
-        suitPlayed,
-        side as PlayerIndex,
-        accumulatorThresholdMultiplier(combatState, side as PlayerIndex),
-      ),
-    })),
-  })) as [CombatSideState, CombatSideState];
-  return { ...combatState, sides };
-}
-
 /** Every card played during this hand's pegging phase, suit-tagged --
  * processed as its own pass (see the loop in playCombat) rather than
  * interleaved into occurrencesForHand's combined stream, since a
@@ -255,33 +205,19 @@ function resolution(combatState: CombatState): PlayerIndex | null {
   return null;
 }
 
-/** Fires any Reactive subroutine that just became ready between `before`
- * and `combatState` (comparing via fireNewlyReadyReactiveSubroutines),
- * appends its events to `log`, and reports whether the match resolved as
- * a result -- Reactive fires push Breach/Containment just like a normal
- * fire, so they can end the match too. Call after every step that can
- * change readiness directly (applying an occurrence -- accumulator/
- * occurrence -- or ticking). */
-function checkReactive(
-  before: CombatState,
-  combatState: CombatState,
-  log: FireEvent[],
-): { combatState: CombatState; winner: PlayerIndex | null } {
-  const reactive = fireNewlyReadyReactiveSubroutines(before, combatState);
-  log.push(...reactive.events);
-  return { combatState: reactive.combatState, winner: resolution(reactive.combatState) };
-}
-
-/** Refreshes self/enemy-state readiness against `combatState`, then
- * checkReactive against the refreshed result. Call after anything that
- * could change Heat, Breach/Containment, a gauge, or a debuff -- which
- * is virtually every step in this loop. */
-function advance(
+/** Fires every `immediate` beta whose criteria are now met, appends the
+ * events to `log`, and reports whether the match resolved -- an immediate
+ * beta can credit a gauge like any fire. Call after every step that can
+ * bank a charge or change a state condition: a scoring occurrence, a
+ * card played, a turn, escalation. */
+function immediates(
   combatState: CombatState,
   handDealer: PlayerIndex,
   log: FireEvent[],
 ): { combatState: CombatState; winner: PlayerIndex | null } {
-  return checkReactive(combatState, refreshTriggerReadiness(combatState, handDealer), log);
+  const fired = fireImmediateBetas(combatState, handDealer);
+  log.push(...fired.events);
+  return { combatState: fired.combatState, winner: resolution(fired.combatState) };
 }
 
 // Escalation (session 22+): a match still resolves faster once it's
@@ -501,75 +437,17 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   /** Applies one step's result, tracks each side's running win-gauge
    * fill-fraction peak, and returns the winner if the step resolved the
    * match -- every state-changing step in this loop goes through this so
-   * peak tracking and resolution checks stay uniform. Also checks
-   * Breacher's Foothold passive (the one hook that needs to see every
-   * step uniformly, regardless of what caused it -- see
-   * applyFootholdBonus's own doc comment) and re-derives the winner
-   * afterward, since Foothold's own bonus can finish the match. */
+   * peak tracking and resolution checks stay uniform. Also runs the
+   * gauge-crosses-half Mod hooks, which need to see every step uniformly
+   * whatever caused it, and re-derives the winner afterward. */
   const step = (result: { combatState: CombatState; winner: PlayerIndex | null }): PlayerIndex | null => {
-    combatState = applyModGaugeCross50Passives(applyEnemyGaugeCross50Passives(applyFootholdBonus(result.combatState)));
+    combatState = applyModGaugeCross50Passives(result.combatState);
     const [side0, side1] = combatState.sides;
     peakFillFraction = [
       Math.max(peakFillFraction[0], side0.winGauge.progress / side0.winGauge.threshold),
       Math.max(peakFillFraction[1], side1.winGauge.progress / side1.winGauge.threshold),
     ];
     return result.winner !== null ? result.winner : resolution(combatState);
-  };
-
-  /** Fires every side's `firesAt`-tagged subroutines for one hand-
-   * lifecycle moment (session 24 checkpoint B), side 0 then side 1 --
-   * same deterministic order as everywhere else -- routing each side's
-   * fire through step() so peak-tracking/resolution stays uniform.
-   * Returns the winner the instant either side's fire resolves the
-   * match, same early-exit contract step() already has. */
-  const fireLifecycleGap = (
-    moment: HandLifecycleMoment,
-    revealedCardsForSide: (side: PlayerIndex) => Card[] | undefined,
-    targetIsOwnCribForSide?: (side: PlayerIndex) => boolean,
-  ): PlayerIndex | null => {
-    for (const side of [0, 1] as PlayerIndex[]) {
-      const fired = fireHandLifecycleSubroutines(
-        combatState,
-        side,
-        moment,
-        { isDealer: side === dealer },
-        revealedCardsForSide(side),
-        targetIsOwnCribForSide?.(side),
-      );
-      log.push(...fired.events);
-      const winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
-      if (winner !== null) return winner;
-    }
-    return null;
-  };
-
-  /** Root offense (session 40 continued): fires every handOutcome-
-   * triggered subroutine once per hand, both sides, right after that
-   * hand's HandResult is built -- same "route through step() so peak-
-   * tracking/resolution stays uniform" contract fireLifecycleGap above
-   * already has. */
-  const fireHandOutcomeGap = (hand: HandResult): PlayerIndex | null => {
-    for (const side of [0, 1] as PlayerIndex[]) {
-      const fired = fireHandOutcomeSubroutines(combatState, side, hand);
-      log.push(...fired.events);
-      const winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
-      if (winner !== null) return winner;
-    }
-    return null;
-  };
-
-  /** Root offense (session 40 continued): fires every rareOccurrence-
-   * triggered subroutine matching `occurrence`, both sides, watching
-   * either side's own scoring per each piece's own watchSide field. Same
-   * step()-routing contract as fireHandOutcomeGap above. */
-  const fireRareOccurrenceGap = (occurrence: ScoringOccurrence): PlayerIndex | null => {
-    for (const side of [0, 1] as PlayerIndex[]) {
-      const fired = fireRareOccurrenceSubroutines(combatState, side, occurrence);
-      log.push(...fired.events);
-      const winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
-      if (winner !== null) return winner;
-    }
-    return null;
   };
 
   // HARD_RESOLUTION_HAND is the only real bound -- its own unconditional
@@ -584,81 +462,60 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     // Escalation: once the match has run long enough, both sides' own
     // win-gauge thresholds start shrinking each hand -- a shrink can
     // itself resolve the match if banked progress already exceeds the
-    // new, lower threshold, and can also newly arm an enemyState
-    // breachContainmentBelow/Above trigger purely from the changed fill
-    // percentage (advance() re-checks readiness, not just resolution).
+    // new, lower threshold, and can flip a gauge-fraction state condition
+    // (immediates() re-checks those, not just resolution).
     if (i >= ESCALATION_START_HAND) {
-      winner = step(advance(applyEscalation(combatState), dealer, log));
+      winner = step(immediates(applyEscalation(combatState), dealer, log));
       if (winner !== null) return finish(winner);
     }
 
-    // Cribbage-layer manipulation (skewCut/forceDiscard/markSuit) has to
-    // be consumed BEFORE this hand is dealt, since it changes how this
-    // hand's own deal/discard/cut behaves -- unlike Scheduled Sabotage/
-    // debuff-duration ticking below, which only touch combat state and
-    // can happen any time within the "next deal" window. markSuit's
-    // suit-tally credit applies immediately, right here.
-    const beforeManipulation = combatState;
-    const manipulation = consumePendingCribbageManipulation(combatState, dealer);
-    combatState = manipulation.combatState;
-    winner = step(checkReactive(beforeManipulation, combatState, log));
-    if (winner !== null) return finish(winner);
-
-    const cutStrategy: CutStrategy = manipulation.forHand.cutBias ? biasedCut(manipulation.forHand.cutBias) : cut;
-
-    // Hand-lifecycle decomposition (session 24 checkpoint B): combat.ts
-    // now orchestrates game.ts's granular pieces directly instead of
-    // calling playOneHand as one opaque step, so Root's recon/
-    // manipulation subroutines can fire in the gaps between them (see
-    // the decision session's plan for why this shape was chosen over
-    // injecting callbacks into playOneHand itself). Phase 1's
-    // playHands still uses playOneHand unchanged; nothing there needs
-    // these hooks.
-    const nonDealer: PlayerIndex = (1 - dealer) as PlayerIndex;
-    // Clear last hand's recon intel before this hand's own onDealt gap
-    // can repopulate it -- a side whose recon didn't fire this hand
-    // (toggled off, conditional trigger unmet) must not keep seeing
-    // stale intel from a previous hand.
+    // Disrupt (session 51): effects armed on earlier turns resolve during
+    // this hand, each at the point it matters -- one timing mechanism
+    // replacing session 24's three hand-lifecycle firing moments and the
+    // next-deal Cribbage-layer manipulation queue alike.
     combatState = clearHandKnowledge(combatState);
+    const disrupt = takePendingDisrupt(combatState);
+    combatState = disrupt.combatState;
+    const armed = (side: PlayerIndex, action: 'revealHand' | 'revealCrib' | 'forceDiscard'): boolean => disrupt.pending[side].includes(action);
+
+    const nonDealer: PlayerIndex = (1 - dealer) as PlayerIndex;
     const shuffled = shuffle(createDeck(), rng);
     const { hands: dealtHands, stock } = deal(shuffled);
 
-    winner = fireLifecycleGap(
-      'onDealt',
-      (side) => dealtHands[(1 - side) as PlayerIndex],
-      (side) => dealer === ((1 - side) as PlayerIndex),
-    );
-    if (winner !== null) return finish(winner);
+    // After the deal: reveal the opponent's dealt hand, and pull one
+    // adversarially chosen card out of it into the crib.
+    for (const side of [0, 1] as PlayerIndex[]) {
+      const opponent = (1 - side) as PlayerIndex;
+      if (armed(side, 'revealHand')) combatState = revealOpponentHand(combatState, side, dealtHands[opponent]);
+      if (armed(side, 'forceDiscard')) combatState = forceOpponentDiscard(combatState, side, dealtHands[opponent], dealer === opponent);
+    }
 
-    // forcedDiscardPair (checkpoint D's "force a specific card") takes
-    // precedence over the older, blunter forcedDiscardSide (whole-pair
-    // discardHighestTwo override) -- more specific manipulation wins if
-    // both were somehow active on the same hand, though real content is
-    // never expected to stack them.
     const strategy0: DiscardStrategy = combatState.sides[0].forcedDiscardPair
       ? () => combatState.sides[0].forcedDiscardPair as [Card, Card]
-      : manipulation.forHand.forcedDiscardSide === 0
-        ? discardHighestTwo
-        : discardStrategies[0];
+      : discardStrategies[0];
     const strategy1: DiscardStrategy = combatState.sides[1].forcedDiscardPair
       ? () => combatState.sides[1].forcedDiscardPair as [Card, Card]
-      : manipulation.forHand.forcedDiscardSide === 1
-        ? discardHighestTwo
-        : discardStrategies[1];
+      : discardStrategies[1];
     const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: dealer === 0, knownOpponentHand: combatState.sides[0].knownOpponentHand, rng: aiRng }, strategy0);
     const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: dealer === 1, knownOpponentHand: combatState.sides[1].knownOpponentHand, rng: aiRng }, strategy1);
     const crib = [...d0.discarded, ...d1.discarded];
 
-    winner = fireLifecycleGap('onCribSelected', () => crib);
-    if (winner !== null) return finish(winner);
+    // Once the crib exists: reveal it.
+    for (const side of [0, 1] as PlayerIndex[]) {
+      if (armed(side, 'revealCrib')) combatState = revealCrib(combatState, side, crib);
+    }
 
-    const { starter } = cutStrategy(stock, rng);
+    const { starter } = cut(stock, rng);
     const heelsPoints = hisHeels(starter);
     scores[dealer] += heelsPoints;
 
+    // At the start of play a revealed hand narrows to the opponent's kept
+    // four -- the later, smaller reveal supersedes the dealt six exactly
+    // when it becomes the relevant one (pegging cares about kept cards).
     const keptForSide: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
-    winner = fireLifecycleGap('onPlayPhaseStart', (side) => keptForSide[(1 - side) as PlayerIndex]);
-    if (winner !== null) return finish(winner);
+    for (const side of [0, 1] as PlayerIndex[]) {
+      if (armed(side, 'revealHand')) combatState = revealOpponentHand(combatState, side, keptForSide[(1 - side) as PlayerIndex]);
+    }
 
     const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
     // Genuinely per-side now (session 24 tunable-skill AI checkpoint A)
@@ -704,64 +561,22 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     };
     hands.push(hand);
 
-    // Root offense (session 40 continued): handOutcome traps resolve
-    // against this hand's own just-computed totals, before anything
-    // else about the new hand (sabotage/debuff-duration resolution,
-    // the occurrence loop) happens -- conceptually this is still part
-    // of *this* hand finishing, not the next one starting.
-    winner = fireHandOutcomeGap(hand);
-    if (winner !== null) return finish(winner);
-
-    // Scheduled Sabotage "resolves at next deal," and debuff durations
-    // (measured in hands, unlike DoT/HoT ticks) count down -- both right
-    // here, before anything else in this new hand happens. advance()
-    // afterward also covers the new hand's dealer: self-state's
-    // isDealer/isNonDealer needs a chance to latch even in the unlikely
-    // case nothing else in this hand touches Trace/Breach-Containment/
-    // gauges before this side's own turn.
-    winner = step(advance(tickDebuffDurations(resolvePendingSabotage(combatState)), hand.dealer, log));
-    if (winner !== null) return finish(winner);
-
-    // Suit-tally Accumulators watch cards played, not scoring events --
-    // processed as its own pass since a non-scoring play produces no
-    // ScoringOccurrence at all. Runs ahead of this hand's occurrence
-    // loop below (pegging always precedes the show phase anyway); the
-    // two mechanics don't otherwise interact, so no finer interleaving
-    // is needed.
+    // Suit tallies watch cards played, not scoring events -- its own pass,
+    // since a non-scoring play produces no ScoringOccurrence. Runs ahead
+    // of the occurrence loop (pegging precedes the show anyway).
     for (const suitPlayed of suitsPlayedForHand(hand)) {
-      const beforeSuitPlayed = combatState;
-      winner = step(checkReactive(beforeSuitPlayed, applySuitPlayedToState(combatState, suitPlayed), log));
+      winner = step(immediates(applySuitPlayed(combatState, suitPlayed), hand.dealer, log));
       if (winner !== null) return finish(winner);
     }
 
     for (const occurrence of occurrencesForHand(hand)) {
-      const beforeOccurrence = combatState;
-      winner = step(checkReactive(beforeOccurrence, applyOccurrenceToState(combatState, occurrence), log));
+      // Charges first, so a beta charged by this very occurrence applies
+      // on the turn it buys.
+      winner = step(immediates(applyOccurrence(combatState, occurrence), hand.dealer, log));
       if (winner !== null) return finish(winner);
 
-      // Root offense (session 40 continued): rareOccurrence watchers
-      // check this occurrence directly, independent of the readiness
-      // state applyOccurrenceToState/checkReactive just updated above --
-      // this trigger family never touches that machinery at all.
-      winner = fireRareOccurrenceGap(occurrence);
-      if (winner !== null) return finish(winner);
-
-      // Global-pulse DoT/HoT ticks watch combined scoring from either
-      // side, independent of whose turn it is -- feed this occurrence's
-      // magnitude in regardless of which side scored it.
-      winner = step(advance(tickGlobalPulse(combatState, occurrence.magnitude), hand.dealer, log));
-      if (winner !== null) return finish(winner);
-
-      // Throttled dents points right as they're credited to the gauge --
-      // not applied to tickGlobalPulse above, which is a separate
-      // mechanic Throttled doesn't touch.
-      const throttledMagnitude = applyThrottled(combatState, occurrence.player, occurrence.magnitude);
-      const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, throttledMagnitude);
-      // The gauge that just moved is watched by the *other* side's
-      // gauge-fill-above enemy-state pieces -- refresh now, not just at
-      // fire time.
-      winner = step(advance(replaceSideGauge(combatState, occurrence.player, gauge), hand.dealer, log));
-      if (winner !== null) return finish(winner);
+      const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrence.magnitude);
+      combatState = replaceSideGauge(combatState, occurrence.player, gauge);
 
       if (turnsTriggered > 0) {
         consecutiveTurns = occurrence.player === lastTurnSide ? consecutiveTurns + turnsTriggered : turnsTriggered;
@@ -796,22 +611,19 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
           const burnerDef = chosenBurnerId && availableBurnerIds.includes(chosenBurnerId) ? BURNER_DEFINITIONS[chosenBurnerId] : undefined;
           if (chosenBurnerId && burnerDef?.combatEffect) {
             burnersUsedThisCombat.push(chosenBurnerId);
-            const afterBurner = resolvePayload(burnerDef.combatEffect, 'neutral', combatState, occurrence.player);
+            const afterBurner = resolveEffect(burnerDef.combatEffect, combatState, occurrence.player);
             winner = step({ combatState: afterBurner, winner: resolution(afterBurner) });
             if (winner !== null) return finish(winner);
           }
         }
 
-        const fired = fireReadySubroutines(combatState, occurrence.player, {
-          isDealer: occurrence.player === hand.dealer,
-        });
+        const fired = fireTurn(combatState, occurrence.player, { isDealer: occurrence.player === hand.dealer });
         log.push(...fired.events);
         winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
         if (winner !== null) return finish(winner);
 
-        // Caster's-turn-pulse ticks fire whenever their caster gets a
-        // turn, gated exactly like a normal subroutine fire.
-        winner = step(advance(tickCastersTurnPulse(combatState, occurrence.player), hand.dealer, log));
+        // A turn can bank charges or flip a condition for either side.
+        winner = step(immediates(combatState, hand.dealer, log));
         if (winner !== null) return finish(winner);
       }
     }

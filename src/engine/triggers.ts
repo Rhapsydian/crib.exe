@@ -1,88 +1,83 @@
 import type { PeggingEvent, PlayerIndex } from './pegging';
 import type { HandScoreEvent } from './scoring';
 import type { Suit } from './cards';
-import type {
-  AlwaysTrigger,
-  Archetype,
-  ChainedTrigger,
-  EnemyStateTrigger,
-  OccurrenceCategory,
-  SelfStateTrigger,
-  SubroutineDefinition,
-  Tag,
+import {
+  ARCHETYPE_SUITS,
+  matchesSequence,
+  type Beta,
+  type BetaSource,
+  type OccurrenceCategory,
+  type SubroutineDefinition,
 } from './subroutine-types';
 
 /**
- * Per-subroutine-instance runtime state (one per subroutine in a
- * loadout, carried across the whole match). `ready` is sticky once set —
- * it only clears via resetAfterFire, called once the subroutine has
- * actually fired.
+ * Beta criteria (session 51, A5): charge bookkeeping and condition
+ * evaluation for a subroutine's beta. Nothing here decides *whether* a
+ * piece acts -- since session 50's D11 every piece fires its alpha on
+ * every turn its side gets. This decides whether the beta applies and how
+ * hard, and is the descendant of D11-B's `chargesFor` and D15's "a
+ * condition is a charge of 1".
+ *
+ * Charges come from the beta's source:
+ *
+ * - `cards` / `progress` bank a counter here, in SubroutineRuntimeState.
+ * - `state` is evaluated live against a TriggerContext -- 1 while true.
+ * - `sequence` is evaluated live against what fired earlier this turn.
+ *
+ * The old trigger families (`accumulator`, `occurrence` and its three
+ * variations, `selfState`, `enemyState`, `chained`, `always`,
+ * `rareOccurrence`, `handOutcome`) and the readiness latch that gated
+ * firing on them are gone; see docs/design-history.md.
  */
+
+/** Per-subroutine-instance runtime state, one per loadout entry, carried
+ * across the whole combat. */
 export interface SubroutineRuntimeState {
-  accumulatedProgress: number;
-  bankedOccurrences: number;
-  ready: boolean;
-  toggledOn: boolean;
-  /** Last-known live truth value of a selfState/enemyState condition —
-   * only meaningful for Reactive subroutines on those two trigger
-   * families, used to arm edge-triggered (rising-edge only) instead of
-   * refiring on every continuous-evaluation pass while the condition
-   * stays true. Ignored by every other trigger family and by
-   * non-Reactive subroutines. */
-  lastConditionTrue: boolean;
-  /** How many times this subroutine has actually fired so far this
-   * combat (session 39) — incremented in resetAfterFire, checked against
-   * SubroutineDefinition.maxFiresPerCombat wherever that cap applies.
-   * Tracked for every subroutine unconditionally (cheap), even though
-   * only a `maxFiresPerCombat`-bearing definition ever reads it. */
+  /** Charges banked toward the beta (cards/progress sources only).
+   * Spent -- reset to 0 -- whenever the beta applies. */
+  charges: number;
+  /** Raw progress banked toward the *next* charge, for `progress`
+   * sources: points scored, Ward absorbed, fires made. One charge per
+   * `per` units; the remainder carries. */
+  progressBank: number;
+  /** Fires so far this combat (alpha fires, including immediate extra
+   * fires). Checked against maxFiresPerCombat. */
   fireCount: number;
   /** Points this side must still score before this piece may fire again
-   * (session 47) -- set from SubroutineDefinition.pointsCooldown on each
-   * fire, ticked down by the owning side's own scoring occurrences, and
-   * checked in isReady. 0 means no cooldown outstanding, which is also
-   * the starting state, so a piece is never gated before its first
-   * fire. */
+   * (session 47's pointsCooldown). Ticked down by the owning side's own
+   * scoring; 0 means no cooldown outstanding. */
   cooldownRemaining: number;
+  /** Total alpha growth accrued so far (A5's `growth`), capped at the
+   * alpha's `growthCap`. */
+  growthTotal: number;
+  /** Last-known truth of a `state` condition -- an `immediate` state beta
+   * fires only on the false -> true edge, not on every check while the
+   * condition stays true. */
+  lastConditionTrue: boolean;
 }
 
 export function createInitialState(): SubroutineRuntimeState {
-  return { accumulatedProgress: 0, bankedOccurrences: 0, ready: false, toggledOn: true, lastConditionTrue: false, fireCount: 0, cooldownRemaining: 0 };
+  return { charges: 0, progressBank: 0, fireCount: 0, cooldownRemaining: 0, growthTotal: 0, lastConditionTrue: false };
 }
 
-/** Clears banked/accumulated progress and the ready flag after an actual
- * fire — DESIGN.md's universal "fire, then reset and wait again" rule,
- * shared by every trigger family that banks anything. Does not touch
- * `toggledOn`, a separate manual switch, or `lastConditionTrue`, which
- * must survive the fire/reset boundary for edge-detection to keep
- * working correctly (resetting it would look like a false→true
- * transition on the very next check if the condition is still true).
- * Does increment `fireCount` — this function is only ever called once a
- * fire has genuinely happened (see its call sites in resolve.ts), and
- * arms `pointsCooldown` for the same reason. */
-export function resetAfterFire(state: SubroutineRuntimeState, pointsCooldown = 0): SubroutineRuntimeState {
-  return {
-    ...state,
-    accumulatedProgress: 0,
-    bankedOccurrences: 0,
-    ready: false,
-    fireCount: state.fireCount + 1,
-    cooldownRemaining: pointsCooldown,
-  };
-}
+// ---------------------------------------------------------------------
+// Scoring occurrences -- the one stream fed by both the pegging play
+// phase and the show/count phase.
+// ---------------------------------------------------------------------
 
-/**
- * The unification point DESIGN.md calls for: a single occurrence shape
- * fed by both the pegging play phase and the show/count phase, so
- * Occurrence triggers don't need separate play-vs-show variants.
- */
+/** Every scoring category the engine produces. His Heels still scores
+ * real points -- so it still feeds the initiative gauge -- but is not a
+ * category a beta can watch (OccurrenceCategory excludes it, A5). */
+export type ScoringCategory = OccurrenceCategory | 'hisHeels';
+
 export interface ScoringOccurrence {
-  category: OccurrenceCategory;
+  category: ScoringCategory;
   player: PlayerIndex;
   magnitude: number;
 }
 
 /** Adapts pegging events into occurrences. Only 'play' (via its
- * breakdown) and 'go-point' events produce occurrences — a bare 'go'
+ * breakdown) and 'go-point' events produce occurrences -- a bare 'go'
  * (pass) scores nothing. */
 export function occurrencesFromPeggingEvent(event: PeggingEvent): ScoringOccurrence[] {
   if (event.type === 'play') {
@@ -108,414 +103,242 @@ const HAND_EVENT_CATEGORY: Record<HandScoreEvent['category'], OccurrenceCategory
   nobs: 'hisNobs',
 };
 
-/**
- * Adapts the show/count phase's discrete event list (scoring.ts's
- * countHandEvents/countCribEvents) into occurrences, one-to-one — unlike
- * a lumped breakdown, this correctly produces 2 separate 'fifteen'
- * occurrences for 2 distinct 15-combinations in the same hand, or 2
- * separate 'pair' occurrences for 2 different-rank pairs, while still
- * keeping a pair royal as the single magnitude-variant event it already
- * is at the scoring.ts level.
- */
+/** Adapts the show/count phase's discrete event list one-to-one -- two
+ * distinct 15-combinations are two 'fifteen' occurrences, while a pair
+ * royal stays the single magnitude-variant event scoring.ts makes it. */
 export function occurrencesFromHandEvents(events: HandScoreEvent[], player: PlayerIndex): ScoringOccurrence[] {
-  return events.map((event) => ({
-    category: HAND_EVENT_CATEGORY[event.category],
-    player,
-    magnitude: event.points,
-  }));
+  return events.map((event) => ({ category: HAND_EVENT_CATEGORY[event.category], player, magnitude: event.points }));
 }
 
-/** His Heels scores at the cut, not from either breakdown — sourced
- * directly from deal.ts's hisHeels(), always credited to the dealer. */
+/** His Heels scores at the cut, always for the dealer. */
 export function occurrenceFromHisHeels(heelsPoints: number, dealer: PlayerIndex): ScoringOccurrence | null {
   return heelsPoints > 0 ? { category: 'hisHeels', player: dealer, magnitude: heelsPoints } : null;
 }
 
-/** A card of a given suit being played during pegging — the signal
- * suit-tally Accumulators watch. Deliberately separate from
- * ScoringOccurrence: a play that scores nothing still counts toward a
- * suit tally, but produces no ScoringOccurrence at all (see
- * occurrencesFromPeggingEvent above), so suit-tally can't be threaded
- * through that stream. Scoped to pegging plays only, not the show/count
- * phase's hand/crib cards -- extracting per-card suit info from
- * scoring.ts's combinatorial fifteen/pair/run event generation would be
- * a much larger rework of already-tested Phase 1 code for a currently
- * unused, untuned mechanic; a real gap if the show phase turns out to
- * matter later, not this checkpoint's job. */
+/** A card of a given suit being played during pegging -- the signal a
+ * `cards`/`suit` beta watches. Separate from ScoringOccurrence because a
+ * play that scores nothing still counts toward a suit tally. Pegging
+ * plays only, not the show phase (a deliberate scope limit inherited
+ * from the old suit-tally accumulator). */
 export interface SuitPlayed {
   suit: Suit;
   player: PlayerIndex;
 }
 
-/** Adapts a pegging event into a suit-played signal, independent of
- * whether the play scored anything. Null for non-play pegging events
- * (go/go-point) and implicitly for the show phase (no adapter exists
- * for it -- see SuitPlayed's own doc comment). */
 export function suitPlayedFromPeggingEvent(event: PeggingEvent): SuitPlayed | null {
   return event.type === 'play' ? { suit: event.card.suit, player: event.player } : null;
 }
 
-/**
- * Advances a suitTally Accumulator subroutine's banked progress from one
- * card played of a given suit -- parallel to updateSubroutineState
- * below, which only handles points-based Accumulator/Occurrence progress
- * from scoring events. No-op for every other trigger kind/metric, a
- * suitTally trigger watching a different suit, or a play belonging to
- * the other side.
- */
-/** `thresholdMultiplier` (Phase 5 Mods checkpoint C, session 33's 12th
- * hook, `onTriggerEvaluate`): Overclocked Accumulator scales an
- * Accumulator trigger's effective threshold before this comparison,
- * rather than intercepting `triggers.ts`'s `isReady` (which only reads
- * an already-latched boolean) -- see mods.ts's OVERCLOCKED_ACCUMULATOR_REDUCTION.
- * Defaults to 1 (no change) for every caller that doesn't own the Mod. */
-export function updateSuitTallyState(
-  state: SubroutineRuntimeState,
-  definition: SubroutineDefinition,
-  suitPlayed: SuitPlayed,
-  side: PlayerIndex,
-  thresholdMultiplier: number = 1,
-): SubroutineRuntimeState {
-  if (suitPlayed.player !== side) return state;
-  const trigger = definition.trigger;
-  if (trigger.kind !== 'accumulator' || trigger.metric !== 'suitTally' || trigger.suit !== suitPlayed.suit) return state;
-  const accumulatedProgress = state.accumulatedProgress + 1;
-  return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold * thresholdMultiplier };
+// ---------------------------------------------------------------------
+// Banking charges
+// ---------------------------------------------------------------------
+
+/** Adds `n` whole charges -- the Charge verb's entry point, and what every
+ * banking path below funnels into. A beta whose source doesn't bank
+ * (state/sequence) has nothing to hold charges, so this is a no-op for
+ * it rather than a silent store nobody reads. */
+export function addCharges(state: SubroutineRuntimeState, definition: SubroutineDefinition, n: number): SubroutineRuntimeState {
+  const source = definition.beta?.source;
+  if (n <= 0 || (source !== 'cards' && source !== 'progress')) return state;
+  return { ...state, charges: state.charges + n };
 }
 
-/**
- * Advances a mitigationBanked Accumulator subroutine's banked progress
- * by `amount` -- session 28's Neutral Archetype (Circuit Breaker), fed
- * from resolve.ts's creditMitigationBanked whenever the *same side*
- * casts a Ward/instantCounterPush/hot payload, parallel to
- * updateSuitTallyState above (a non-scoring-event-driven Accumulator
- * variant). No-op for every other trigger kind/metric.
- */
-export function updateMitigationBankedState(
+/** Banks raw progress toward a `progress` beta of the given metric,
+ * converting each whole `per` into a charge and carrying the remainder. */
+function bankProgress(
   state: SubroutineRuntimeState,
   definition: SubroutineDefinition,
+  metric: Extract<BetaSource, { source: 'progress' }>['metric'],
   amount: number,
-  thresholdMultiplier: number = 1,
 ): SubroutineRuntimeState {
-  const trigger = definition.trigger;
-  if (trigger.kind !== 'accumulator' || trigger.metric !== 'mitigationBanked' || amount <= 0) return state;
-  const accumulatedProgress = state.accumulatedProgress + amount;
-  return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold * thresholdMultiplier };
+  const beta = definition.beta;
+  if (!beta || beta.source !== 'progress' || beta.metric !== metric || amount <= 0 || beta.per <= 0) return state;
+  const total = state.progressBank + amount;
+  const gained = Math.floor(total / beta.per);
+  return { ...state, charges: state.charges + gained, progressBank: total - gained * beta.per };
 }
 
 /**
- * Advances an Accumulator or Occurrence subroutine's banked progress
- * from one incoming occurrence. Occurrences belonging to the other side
- * are ignored — both families are scoped to the caster's own scoring
- * (DESIGN.md). No-op for the other 4 trigger families, which aren't
- * occurrence-driven — see evaluateSelfState/evaluateEnemyState/
- * evaluateChained/evaluateAlways below.
+ * Feeds one scoring occurrence into one piece's beta, from the point of
+ * view of `side` (the piece's owner):
+ *
+ * - a `cards` beta watching this category banks a charge if the scorer
+ *   matches its `watch` (default: its own side) and the magnitude clears
+ *   `minMagnitude`;
+ * - a `progress`/`points` beta banks its own side's points;
+ * - every piece's points cooldown ticks down on its own side's scoring,
+ *   whatever its beta -- the cooldown is a firing gate, not a criterion.
  */
-export function updateSubroutineState(
+export function chargeFromOccurrence(
   state: SubroutineRuntimeState,
   definition: SubroutineDefinition,
   occurrence: ScoringOccurrence,
   side: PlayerIndex,
-  thresholdMultiplier: number = 1,
-  /** Threshold Exploit's onTriggerEvaluate hook (session 44) -- a flat
-   * fraction shaved off an Occurrence-Threshold trigger's own bankTarget,
-   * floored at 1 (a subroutine can never need *zero* banked occurrences).
-   * Independent from thresholdMultiplier above, which only ever applies
-   * to Accumulator's raw-magnitude threshold -- Occurrence's bankTarget
-   * is a small integer count, a different shape that needs its own
-   * reduction rather than reusing the multiplier verbatim. */
-  occurrenceBankTargetReduction: number = 0,
 ): SubroutineRuntimeState {
-  if (occurrence.player !== side) return state;
-
-  // Points cooldown (session 47) ticks on this side's own real scoring,
-  // whatever the trigger family -- deliberately ahead of the per-family
-  // branching below, which returns early for kinds that bank nothing.
-  if (state.cooldownRemaining > 0) {
-    state = { ...state, cooldownRemaining: Math.max(0, state.cooldownRemaining - occurrence.magnitude) };
+  const own = occurrence.player === side;
+  let next = state;
+  if (own && next.cooldownRemaining > 0) {
+    next = { ...next, cooldownRemaining: Math.max(0, next.cooldownRemaining - occurrence.magnitude) };
   }
 
-  const trigger = definition.trigger;
+  const beta = definition.beta;
+  if (!beta) return next;
+  if (beta.source === 'progress') return own ? bankProgress(next, definition, 'points', occurrence.magnitude) : next;
+  if (beta.source !== 'cards' || beta.category === 'suit' || beta.category !== occurrence.category) return next;
 
-  if (trigger.kind === 'accumulator') {
-    // suitTally is handled by the separate updateSuitTallyState above,
-    // fed from actual card plays rather than scoring occurrences.
-    if (trigger.metric !== 'points') return state;
-    const accumulatedProgress = state.accumulatedProgress + occurrence.magnitude;
-    return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold * thresholdMultiplier };
-  }
-
-  if (trigger.kind === 'occurrence') {
-    if (occurrence.category !== trigger.category) return state;
-    if (trigger.variation === 'instant') {
-      return { ...state, ready: true };
-    }
-    const bankedOccurrences =
-      trigger.variation === 'scaling'
-        ? Math.min(state.bankedOccurrences + 1, trigger.cap)
-        : state.bankedOccurrences + 1;
-    const effectiveBankTarget =
-      trigger.variation === 'threshold' ? Math.max(1, Math.round(trigger.bankTarget * (1 - occurrenceBankTargetReduction))) : 0;
-    const ready = trigger.variation === 'threshold' ? bankedOccurrences >= effectiveBankTarget : true;
-    return { ...state, bankedOccurrences, ready: state.ready || ready };
-  }
-
-  return state;
+  const watch = beta.watch ?? 'own';
+  const watched = watch === 'either' || (watch === 'own') === own;
+  if (!watched || occurrence.magnitude < (beta.minMagnitude ?? 0)) return next;
+  return addCharges(next, definition, 1);
 }
 
-export interface SelfStateContext {
-  /** Trace -- in-fight noise, not the run's Heat. See
-   * resolve.ts's CombatSideState.trace. */
-  trace: number;
-  isDealer: boolean;
-}
-
-export interface EnemyStateContext {
-  breachContainment: number;
-  gaugeFillFraction: number;
-  activeDebuffIds: string[];
-}
-
-export function evaluateSelfState(trigger: SelfStateTrigger, context: SelfStateContext): boolean {
-  switch (trigger.condition) {
-    case 'traceAbove':
-      return context.trace > trigger.value;
-    case 'traceBelow':
-      return context.trace < trigger.value;
-    case 'isDealer':
-      return context.isDealer;
-    case 'isNonDealer':
-      return !context.isDealer;
-  }
-}
-
-export function evaluateEnemyState(trigger: EnemyStateTrigger, context: EnemyStateContext): boolean {
-  switch (trigger.condition) {
-    case 'breachContainmentBelow':
-      return context.breachContainment < trigger.value;
-    case 'breachContainmentAbove':
-      return context.breachContainment > trigger.value;
-    case 'gaugeFillAbove':
-      return context.gaugeFillFraction > trigger.fraction;
-    case 'hasDebuff':
-      if (trigger.debuffId === 'any') return context.activeDebuffIds.length > 0;
-      return context.activeDebuffIds.includes(trigger.debuffId);
-  }
-}
-
-/** What's needed to evaluate any of ChainedTrigger's three match modes
- * against a piece that fired earlier in the current turn's own pass. */
-export interface FiredSubroutineInfo {
-  id: string;
-  archetype: Archetype;
-  tags: Tag[];
-}
-
-/** A chained subroutine becomes ready the moment something matching its
- * chosen match mode (id / archetype / tag — session 41) fires, within the
- * same turn's resolution pass. */
-export function evaluateChained(trigger: ChainedTrigger, firedThisTurn: readonly FiredSubroutineInfo[]): boolean {
-  if ('afterSubroutineId' in trigger) return firedThisTurn.some((f) => f.id === trigger.afterSubroutineId);
-  if ('afterArchetype' in trigger) return firedThisTurn.some((f) => f.archetype === trigger.afterArchetype);
-  return firedThisTurn.some((f) => f.tags.includes(trigger.afterTag));
-}
-
-export function evaluateAlways(_trigger: AlwaysTrigger): boolean {
-  return true;
-}
-
-export interface TriggerContext {
-  self: SelfStateContext;
-  enemy: EnemyStateContext;
-  firedThisTurn: readonly FiredSubroutineInfo[];
-}
-
-/** The single entry point turn-resolution logic (Checkpoint E) uses to
- * decide whether a subroutine fires: banked state for accumulator/
- * occurrence/self-state/enemy-state (all four now latch `ready` via
- * banked progress or refreshTriggerReadiness below, rather than being
- * live-checked here), live context evaluation only for chained/always
- * (no banked state to latch -- a chain reference or "always" is
- * meaningless to cache).
- *
- * Self-state/enemy-state used to be live-checked right here, only at
- * fire time -- which missed real cases: a condition (e.g. the enemy's
- * gauge sitting above some fraction) could be true for a genuine
- * stretch of game-time and revert before this side's own turn ever came
- * up to check it, silently losing the opportunity even though the
- * condition really was true at some point. refreshTriggerReadiness
- * fixes this by latching `ready` the moment the condition is ever true
- * -- the same "banked, not re-checked" semantics accumulator/occurrence
- * already had. */
-/**
- * Advances a subroutine toward firing by `amount`, the way a *pump* piece
- * (instantManipulation -> subroutineProgress) is meant to: Operator's
- * Priority Override feeding Precision Strike, Saboteur's Background
- * Process feeding Time Bomb.
- *
- * Session 47 bug fix. resolve.ts previously wrote straight to
- * `accumulatedProgress`, which ONLY accumulator triggers ever read -- so
- * both pump pieces in the entire game were completely inert, and both sit
- * in a class's starting loadout. Two of six classes had been playing with
- * a dead piece in their opening kit. Fixed at the mechanic rather than
- * the two call sites, so a future pump aimed at any bankable trigger just
- * works.
- *
- * What "advance" means per family, mirroring updateSubroutineState's own
- * banking rules so a pump and a real scoring event agree:
- *   - accumulator: bank raw progress, and latch ready on reaching the
- *     threshold. The old code banked but never re-checked ready, so even
- *     an accumulator target only woke up on its next real occurrence.
- *   - occurrence 'threshold'/'scaling': bank whole occurrences (respecting
- *     the scaling cap), latching ready exactly as a real one would.
- *   - occurrence 'instant': there is nothing to bank -- the piece fires on
- *     the event itself -- so a pump simply readies it.
- *   - selfState/enemyState/chained/always: readiness is a live condition
- *     or a same-turn reference, not a bank, so there is nothing a pump can
- *     advance. Deliberately a no-op rather than a forced fire; making
- *     these fire on demand would let a pump bypass the condition that
- *     defines them.
- *   - rareOccurrence/handOutcome: bypass the readiness pipeline entirely
- *     (see isReady), so likewise a no-op.
- */
-export function advanceTowardFiring(
+/** Feeds one pegging play into a `cards`/`suit` beta: a charge per card
+ * of the piece's own archetype's suit played by its own side (A1). */
+export function chargeFromSuitPlayed(
   state: SubroutineRuntimeState,
   definition: SubroutineDefinition,
-  amount: number,
+  suitPlayed: SuitPlayed,
+  side: PlayerIndex,
 ): SubroutineRuntimeState {
-  if (amount <= 0) return state;
-  const trigger = definition.trigger;
+  const beta = definition.beta;
+  if (!beta || beta.source !== 'cards' || beta.category !== 'suit') return state;
+  if (suitPlayed.player !== side || suitPlayed.suit !== ARCHETYPE_SUITS[definition.archetype]) return state;
+  return addCharges(state, definition, 1);
+}
 
-  if (trigger.kind === 'accumulator') {
-    const accumulatedProgress = state.accumulatedProgress + amount;
-    return { ...state, accumulatedProgress, ready: state.ready || accumulatedProgress >= trigger.threshold };
+/** Feeds Ward absorbed by the piece's own side into a
+ * `progress`/`absorbed` beta -- Honeypot's conversion fuel. */
+export function chargeFromAbsorbed(state: SubroutineRuntimeState, definition: SubroutineDefinition, amount: number): SubroutineRuntimeState {
+  return bankProgress(state, definition, 'absorbed', amount);
+}
+
+// ---------------------------------------------------------------------
+// Evaluating a beta
+// ---------------------------------------------------------------------
+
+/** One piece that fired earlier in the current turn, in firing order --
+ * what a `sequence` beta reads. `elevated` is whether its beta applied. */
+export interface FiredThisTurn {
+  definition: SubroutineDefinition;
+  elevated: boolean;
+}
+
+/** The live fight state a `state` or `sequence` beta reads. Gauge
+ * fractions are real **win** gauge progress over threshold, never the
+ * cyclical initiative gauge (session 40's gaugeFillAbove lesson). */
+export interface TriggerContext {
+  isDealer: boolean;
+  ownWard: number;
+  ownGaugeFraction: number;
+  opponentGaugeFraction: number;
+  firedThisTurn: readonly FiredThisTurn[];
+}
+
+type StateCondition = Extract<BetaSource, { source: 'state' }>['condition'];
+
+export function evaluateStateCondition(condition: StateCondition, context: TriggerContext): boolean {
+  switch (condition.kind) {
+    case 'dealer':
+      return context.isDealer;
+    case 'nonDealer':
+      return !context.isDealer;
+    case 'wardAbove':
+      return context.ownWard > condition.amount;
+    case 'ownGaugeAbove':
+      return context.ownGaugeFraction > condition.fraction;
+    case 'ownGaugeBelow':
+      return context.ownGaugeFraction < condition.fraction;
+    case 'opponentGaugeAbove':
+      return context.opponentGaugeFraction > condition.fraction;
+    case 'opponentGaugeBelow':
+      return context.opponentGaugeFraction < condition.fraction;
   }
-
-  if (trigger.kind === 'occurrence') {
-    if (trigger.variation === 'instant') return { ...state, ready: true };
-    const bankedOccurrences =
-      trigger.variation === 'scaling' ? Math.min(state.bankedOccurrences + amount, trigger.cap) : state.bankedOccurrences + amount;
-    const ready = trigger.variation === 'threshold' ? bankedOccurrences >= trigger.bankTarget : true;
-    return { ...state, bankedOccurrences, ready: state.ready || ready };
-  }
-
-  return state;
 }
 
 /**
- * The two gates that are NOT trigger-family evaluation: the
- * per-combat fire cap and the points cooldown. Split out for D11-A
- * (session 50), where the normal turn-gate stops consulting the trigger
- * at all -- every installed, toggled-on piece now fires on its side's
- * turn, and the trigger becomes an elevation modulator instead.
- *
- * These two must still hold, for exactly the reason they were moved to
- * this choke point in the first place: they have to apply regardless of
- * trigger family. `pointsCooldown` in particular becomes MORE
- * load-bearing under D11 -- it now suppresses a guaranteed floor rather
- * than gating an occasional fire, and it is the frequency axis the
- * pillar suite sweeps.
+ * How many charges a beta has right now. Banked for cards/progress; for
+ * `state`, 1 while true (D15); for `sequence`, the number of matching
+ * pieces that fired elevated earlier this turn (`anyPrior` -- so a graded
+ * sequence beta is the old chain-finisher), or 1 if the immediately prior
+ * fire matches (`adjacent`). "Immediately prior" means the last piece to
+ * actually fire this turn, so a piece skipped by its cooldown does not
+ * break an adjacency it never took part in.
  */
-/**
- * How many elevation CHARGES a piece has banked since its last fire
- * (D11-B, session 50). Under D11 a trigger no longer decides whether a
- * piece acts — it decides how hard it acts, and this is that number.
- *
- * Charge families bank a counter; condition families (`selfState`/
- * `enemyState`, D11-C) contribute 1 while true and 0 otherwise, which is
- * a flat bonus-while-true expressed in the same units. `always`/
- * `chained` carry no signal of their own. `rareOccurrence` and
- * `handOutcome` bypass the readiness pipeline entirely and are D11-D's
- * to reconcile; they bank nothing today, so they read 0 rather than
- * silently borrowing another family's counter.
- *
- * `resetAfterFire` already clears both counters, so charges are
- * per-fire by construction rather than needing their own bookkeeping.
- */
-export function chargesFor(definition: SubroutineDefinition, state: SubroutineRuntimeState, context?: TriggerContext): number {
-  const trigger = definition.trigger;
-  // D11-C: a CONDITION is just a charge that is 1 while true and 0 while
-  // false. That unification is not a shortcut -- it falls out of the
-  // one-rider model. A piece has exactly one trigger, so a
-  // selfState/enemyState piece has no charge counter to multiply; the
-  // only coherent shape for it is a flat bonus while the condition
-  // holds, which is precisely `perCharge` at `cap: 1`. One field shape
-  // serves both families.
-  //
-  // Evaluated live against the passed context rather than read off
-  // `state.ready`: `ready` is latched by refreshTriggerReadiness and
-  // cleared by resetAfterFire, so it can be stale within a turn, and
-  // D11-A means nothing else consults it any more. Without a context the
-  // condition families return 0 -- a caller that cannot say whether the
-  // condition holds must not get to guess.
-  if (trigger.kind === 'selfState') {
-    return context && evaluateSelfState(trigger, context.self) ? 1 : 0;
+export function betaCharges(definition: SubroutineDefinition, state: SubroutineRuntimeState, context: TriggerContext): number {
+  const beta = definition.beta;
+  if (!beta) return 0;
+  switch (beta.source) {
+    case 'cards':
+    case 'progress':
+      return state.charges;
+    case 'state':
+      return evaluateStateCondition(beta.condition, context) ? 1 : 0;
+    case 'sequence': {
+      if (beta.reach === 'adjacent') {
+        const prior = context.firedThisTurn[context.firedThisTurn.length - 1];
+        return prior && matchesSequence(beta.match, prior.definition) ? 1 : 0;
+      }
+      return context.firedThisTurn.filter((f) => f.elevated && matchesSequence(beta.match, f.definition)).length;
+    }
   }
-  if (trigger.kind === 'enemyState') {
-    return context && evaluateEnemyState(trigger, context.enemy) ? 1 : 0;
-  }
-  if (trigger.kind === 'occurrence') {
-    // 'scaling' already caps its own bank in updateSubroutineState;
-    // 'instant'/'threshold' bank uncapped, so the elevation cap is what
-    // bounds them. Both read the same counter -- which is the point:
-    // DESIGN.md:688 always described Scaling as "payload magnitude scales
-    // with how many were actually banked when it fires", and this is the
-    // first time anything reads that number.
-    return state.bankedOccurrences;
-  }
-  if (trigger.kind === 'accumulator') {
-    // Raw progress, expressed in whole thresholds -- an accumulator's
-    // threshold is its natural charge unit, so a piece that banked twice
-    // its threshold fires twice-elevated.
-    return trigger.threshold > 0 ? Math.floor(state.accumulatedProgress / trigger.threshold) : 0;
-  }
-  return 0;
 }
 
+/**
+ * The multiplier a beta applies at on the turn's fire, given its charges
+ * -- 0 means it does not apply. Graded scales by charges up to its cap;
+ * stepped and whileTrue are all-or-nothing. An `immediate` beta never
+ * applies on the turn's fire: it fires on its own, outside the turn (see
+ * immediateBetaReady).
+ */
+export function betaScale(beta: Beta, charges: number): number {
+  switch (beta.shape) {
+    case 'graded':
+      return Math.min(charges, beta.cap);
+    case 'stepped':
+      return charges >= beta.at ? 1 : 0;
+    case 'whileTrue':
+      return charges >= 1 ? 1 : 0;
+    case 'immediate':
+      return 0;
+  }
+}
+
+/** Whether an `immediate` beta should fire right now: banked charges
+ * reaching `at` (default 1) for cards/progress, or a `state` condition
+ * turning true since the last check (edge, not level). */
+export function immediateBetaReady(definition: SubroutineDefinition, state: SubroutineRuntimeState, context: TriggerContext): boolean {
+  const beta = definition.beta;
+  if (!beta || beta.shape !== 'immediate') return false;
+  if (beta.source === 'state') return evaluateStateCondition(beta.condition, context) && !state.lastConditionTrue;
+  if (beta.source === 'cards' || beta.source === 'progress') return state.charges >= (beta.at ?? 1);
+  return false;
+}
+
+/** Clears banked charges once a beta has applied -- the universal
+ * "fire, then reset and wait again" rule, now scoped to the beta. The
+ * progress remainder carries, since it is progress toward a charge not
+ * yet banked. */
+export function spendCharges(state: SubroutineRuntimeState): SubroutineRuntimeState {
+  return { ...state, charges: 0 };
+}
+
+// ---------------------------------------------------------------------
+// Firing gates and post-fire bookkeeping
+// ---------------------------------------------------------------------
+
+/** The only two gates left on a piece acting at all: the per-combat fire
+ * cap and the points cooldown (session 47). Everything else is beta. */
 export function withinFiringGates(definition: SubroutineDefinition, state: SubroutineRuntimeState): boolean {
   if (definition.maxFiresPerCombat !== undefined && state.fireCount >= definition.maxFiresPerCombat) return false;
   return state.cooldownRemaining <= 0;
 }
 
-export function isReady(
-  definition: SubroutineDefinition,
-  state: SubroutineRuntimeState,
-  context: TriggerContext,
-): boolean {
-  // maxFiresPerCombat (session 39) was only ever enforced on the reactive
-  // selfState/enemyState path (resolve.ts) and the rareOccurrence/
-  // handOutcome paths (fireRareOccurrenceSubroutines/
-  // fireHandOutcomeSubroutines) -- SubroutineDefinition's own doc comment
-  // flagged this as a known gap ("not yet checked for accumulator/
-  // occurrence trigger re-arming; extend there too if a future piece
-  // needs the same cap on a non-reactive trigger"). Session 43 hit it for
-  // real: an occurrence:threshold gatekeeper piece with an uncapped
-  // permanent-threshold-raise payload turned out to be a genuine runaway
-  // spiral over a long fight (found via a real regression sweep, not
-  // theorized) once maxFiresPerCombat alone on the definition didn't
-  // actually stop it. Checked here, the one real choke point every normal
-  // (non-reactive, non-rareOccurrence/handOutcome) firing path already
-  // funnels through, so the cap now applies uniformly regardless of
-  // trigger kind instead of needing a bespoke check per family.
-  if (!withinFiringGates(definition, state)) return false;
-  const trigger = definition.trigger;
-  switch (trigger.kind) {
-    case 'accumulator':
-    case 'occurrence':
-    case 'selfState':
-    case 'enemyState':
-      return state.ready;
-    case 'chained':
-      return evaluateChained(trigger, context.firedThisTurn);
-    case 'always':
-      return evaluateAlways(trigger);
-    case 'rareOccurrence':
-    case 'handOutcome':
-      // Never ready via the normal pipeline (session 40 continued) --
-      // both bypass it entirely, fired directly by
-      // resolve.ts's fireRareOccurrenceSubroutines/
-      // fireHandOutcomeSubroutines instead. Neither has anything to do
-      // with turn-based readiness.
-      return false;
-  }
+/** Bookkeeping after a piece's alpha fires: count the fire, arm its
+ * cooldown, accrue its alpha growth (capped), and bank a charge toward a
+ * `progress`/`fires` beta -- Ramp's own clock. */
+export function recordFire(state: SubroutineRuntimeState, definition: SubroutineDefinition): SubroutineRuntimeState {
+  const { growth, growthCap } = definition.alpha;
+  const growthTotal = growth === undefined ? state.growthTotal : Math.min(state.growthTotal + growth, growthCap ?? Infinity);
+  const next = { ...state, fireCount: state.fireCount + 1, cooldownRemaining: definition.pointsCooldown ?? 0, growthTotal };
+  return bankProgress(next, definition, 'fires', 1);
 }

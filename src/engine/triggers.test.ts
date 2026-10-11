@@ -1,202 +1,244 @@
 import { describe, it, expect } from 'vitest';
 import type { PegPlayEvent, PegGoEvent, PegGoPointEvent } from './pegging';
 import type { HandScoreEvent } from './scoring';
-import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
+import type { Alpha, Archetype, Beta, SubroutineDefinition } from './subroutine-types';
 import {
+  addCharges,
+  betaCharges,
+  betaScale,
+  chargeFromAbsorbed,
+  chargeFromOccurrence,
+  chargeFromSuitPlayed,
   createInitialState,
-  resetAfterFire,
-  updateSubroutineState,
-  updateSuitTallyState,
-  occurrencesFromPeggingEvent,
-  occurrencesFromHandEvents,
+  immediateBetaReady,
   occurrenceFromHisHeels,
+  occurrencesFromHandEvents,
+  occurrencesFromPeggingEvent,
+  recordFire,
+  spendCharges,
   suitPlayedFromPeggingEvent,
-  evaluateSelfState,
-  evaluateEnemyState,
-  evaluateChained,
-  evaluateAlways,
-  isReady,
+  withinFiringGates,
   type ScoringOccurrence,
-  type SelfStateContext,
-  type EnemyStateContext,
   type TriggerContext,
 } from './triggers';
 
-const dummyPayload: PayloadEffect = { kind: 'directBurst', amount: 5 };
+// Session 51: rewritten for beta criteria. The occurrence-adapter tests
+// are unchanged; the old readiness/trigger-family tests retired with the
+// families.
 
-function definitionWith(trigger: TriggerFamily): SubroutineDefinition {
-  return { id: 'sub-1', name: 'Test Subroutine', archetype: 'exploit', trigger, payload: dummyPayload, tags: [] };
+const ALPHA: Alpha = { verb: 'credit', amount: 1 };
+
+function withBeta(beta: Beta | undefined, extra: Partial<SubroutineDefinition> = {}, archetype: Archetype = 'exploit'): SubroutineDefinition {
+  return { id: 'p', name: 'p', archetype, alpha: ALPHA, beta, ...extra };
 }
 
-const emptyContext: TriggerContext = {
-  self: { trace: 0, isDealer: false },
-  enemy: { breachContainment: 50, gaugeFillFraction: 0, activeDebuffIds: [] },
+const ENHANCE = { verb: 'enhance', amount: 1 } as const;
+
+const context = (patch: Partial<TriggerContext> = {}): TriggerContext => ({
+  isDealer: false,
+  ownWard: 0,
+  ownGaugeFraction: 0,
+  opponentGaugeFraction: 0,
   firedThisTurn: [],
-};
+  ...patch,
+});
 
-describe('updateSubroutineState — accumulator', () => {
-  it('becomes ready once accumulated points cross the threshold', () => {
-    const def = definitionWith({ kind: 'accumulator', metric: 'points', threshold: 5 });
-    let state = createInitialState();
-    state = updateSubroutineState(state, def, { category: 'pair', player: 0, magnitude: 2 }, 0);
-    expect(state.ready).toBe(false);
-    expect(state.accumulatedProgress).toBe(2);
-    state = updateSubroutineState(state, def, { category: 'fifteen', player: 0, magnitude: 2 }, 0);
-    expect(state.ready).toBe(false);
-    state = updateSubroutineState(state, def, { category: 'run', player: 0, magnitude: 3 }, 0);
-    expect(state.ready).toBe(true);
-    expect(state.accumulatedProgress).toBe(7);
+const occ = (category: ScoringOccurrence['category'], player: 0 | 1, magnitude = 2): ScoringOccurrence => ({ category, player, magnitude });
+
+describe('chargeFromOccurrence -- cards', () => {
+  const pairs = withBeta({ source: 'cards', category: 'pair', shape: 'graded', cap: 3, effect: ENHANCE });
+
+  it('banks a charge for its own side scoring its category', () => {
+    expect(chargeFromOccurrence(createInitialState(), pairs, occ('pair', 0), 0).charges).toBe(1);
   });
 
-  it('ignores occurrences belonging to the other side', () => {
-    const def = definitionWith({ kind: 'accumulator', metric: 'points', threshold: 5 });
-    const state = updateSubroutineState(createInitialState(), def, { category: 'pair', player: 1, magnitude: 10 }, 0);
-    expect(state).toEqual(createInitialState());
+  it('ignores another category and, by default, the opponent scoring', () => {
+    expect(chargeFromOccurrence(createInitialState(), pairs, occ('fifteen', 0), 0).charges).toBe(0);
+    expect(chargeFromOccurrence(createInitialState(), pairs, occ('pair', 1), 0).charges).toBe(0);
+  });
+
+  it("watch: 'opponent' and 'either' read the other side's scoring (absorbing rareOccurrence)", () => {
+    const theirs = withBeta({ source: 'cards', category: 'pair', watch: 'opponent', shape: 'graded', cap: 3, effect: ENHANCE });
+    expect(chargeFromOccurrence(createInitialState(), theirs, occ('pair', 1), 0).charges).toBe(1);
+    expect(chargeFromOccurrence(createInitialState(), theirs, occ('pair', 0), 0).charges).toBe(0);
+    const either = withBeta({ source: 'cards', category: 'pair', watch: 'either', shape: 'graded', cap: 3, effect: ENHANCE });
+    expect(chargeFromOccurrence(createInitialState(), either, occ('pair', 1), 0).charges).toBe(1);
+  });
+
+  it('minMagnitude makes "royal pair" real: a pair occurrence is 2/6/12 points', () => {
+    const royal = withBeta({ source: 'cards', category: 'pair', minMagnitude: 6, shape: 'stepped', at: 1, effect: ENHANCE });
+    expect(chargeFromOccurrence(createInitialState(), royal, occ('pair', 0, 2), 0).charges).toBe(0);
+    expect(chargeFromOccurrence(createInitialState(), royal, occ('pair', 0, 6), 0).charges).toBe(1);
+  });
+
+  it('His Heels scores points but no beta can watch it', () => {
+    // 'hisHeels' is not an OccurrenceCategory, so no cards beta can name it;
+    // feeding one changes nothing.
+    expect(chargeFromOccurrence(createInitialState(), pairs, occ('hisHeels', 0), 0)).toEqual(createInitialState());
   });
 });
 
-describe('updateSubroutineState — occurrence: instant', () => {
-  it('fires immediately on the matching category and ignores others', () => {
-    const def = definitionWith({ kind: 'occurrence', category: 'run', variation: 'instant' });
-    let state = updateSubroutineState(createInitialState(), def, { category: 'pair', player: 0, magnitude: 2 }, 0);
-    expect(state.ready).toBe(false);
-    state = updateSubroutineState(state, def, { category: 'run', player: 0, magnitude: 3 }, 0);
-    expect(state.ready).toBe(true);
+describe('chargeFromOccurrence -- progress and cooldown', () => {
+  it("a points beta banks its own side's points, one charge per `per`, carrying the remainder", () => {
+    const points = withBeta({ source: 'progress', metric: 'points', per: 5, shape: 'graded', cap: 9, effect: ENHANCE });
+    let state = chargeFromOccurrence(createInitialState(), points, occ('fifteen', 0, 4), 0);
+    expect(state).toMatchObject({ charges: 0, progressBank: 4 });
+    state = chargeFromOccurrence(state, points, occ('run', 0, 7), 0);
+    expect(state).toMatchObject({ charges: 2, progressBank: 1 });
+    expect(chargeFromOccurrence(state, points, occ('run', 1, 7), 0)).toEqual(state);
+  });
+
+  it("ticks every piece's points cooldown down on its own side's scoring, whatever its beta", () => {
+    const state = { ...createInitialState(), cooldownRemaining: 10 };
+    expect(chargeFromOccurrence(state, withBeta(undefined), occ('pair', 0, 4), 0).cooldownRemaining).toBe(6);
+    expect(chargeFromOccurrence(state, withBeta(undefined), occ('pair', 1, 4), 0).cooldownRemaining).toBe(10);
   });
 });
 
-describe('updateSubroutineState — occurrence: threshold', () => {
-  it('banks occurrences silently until bankTarget is reached', () => {
-    const def = definitionWith({ kind: 'occurrence', category: 'pair', variation: 'threshold', bankTarget: 3 });
-    let state = createInitialState();
-    for (let i = 0; i < 2; i++) {
-      state = updateSubroutineState(state, def, { category: 'pair', player: 0, magnitude: 2 }, 0);
-      expect(state.ready).toBe(false);
-    }
-    state = updateSubroutineState(state, def, { category: 'pair', player: 0, magnitude: 2 }, 0);
-    expect(state.ready).toBe(true);
-    expect(state.bankedOccurrences).toBe(3);
+describe('chargeFromSuitPlayed', () => {
+  const suit = (archetype: Archetype) => withBeta({ source: 'cards', category: 'suit', shape: 'graded', cap: 5, effect: ENHANCE }, {}, archetype);
+
+  it("charges only for cards of the piece's own archetype's suit (A1), played by its own side", () => {
+    // Exploit is suit 0, Daemon suit 1.
+    expect(chargeFromSuitPlayed(createInitialState(), suit('exploit'), { suit: 0, player: 0 }, 0).charges).toBe(1);
+    expect(chargeFromSuitPlayed(createInitialState(), suit('exploit'), { suit: 1, player: 0 }, 0).charges).toBe(0);
+    expect(chargeFromSuitPlayed(createInitialState(), suit('daemon'), { suit: 1, player: 0 }, 0).charges).toBe(1);
+    expect(chargeFromSuitPlayed(createInitialState(), suit('exploit'), { suit: 0, player: 1 }, 0).charges).toBe(0);
   });
 });
 
-describe('updateSubroutineState — occurrence: scaling', () => {
-  it('banks up to a cap and is ready from the first occurrence onward', () => {
-    const def = definitionWith({ kind: 'occurrence', category: 'fifteen', variation: 'scaling', cap: 3 });
-    let state = createInitialState();
-    state = updateSubroutineState(state, def, { category: 'fifteen', player: 0, magnitude: 2 }, 0);
-    expect(state.ready).toBe(true);
-    expect(state.bankedOccurrences).toBe(1);
-    state = updateSubroutineState(state, def, { category: 'fifteen', player: 0, magnitude: 2 }, 0);
-    state = updateSubroutineState(state, def, { category: 'fifteen', player: 0, magnitude: 2 }, 0);
-    state = updateSubroutineState(state, def, { category: 'fifteen', player: 0, magnitude: 2 }, 0);
-    expect(state.bankedOccurrences).toBe(3); // clamped at cap despite 4 occurrences
+describe('chargeFromAbsorbed', () => {
+  it('banks Ward absorbed into an absorbed-progress beta', () => {
+    const absorbed = withBeta({ source: 'progress', metric: 'absorbed', per: 3, shape: 'stepped', at: 2, effect: ENHANCE });
+    expect(chargeFromAbsorbed(createInitialState(), absorbed, 7)).toMatchObject({ charges: 2, progressBank: 1 });
+    expect(chargeFromAbsorbed(createInitialState(), withBeta(undefined), 7)).toEqual(createInitialState());
   });
 });
 
-describe('resetAfterFire', () => {
-  it('clears banked/accumulated progress and ready, leaves toggledOn and lastConditionTrue alone, and increments fireCount', () => {
-    const fired = {
-      accumulatedProgress: 7,
-      bankedOccurrences: 2,
-      ready: true,
-      toggledOn: false,
-      lastConditionTrue: true,
-      fireCount: 2,
-      cooldownRemaining: 0,
-    };
-    expect(resetAfterFire(fired)).toEqual({
-      accumulatedProgress: 0,
-      bankedOccurrences: 0,
-      cooldownRemaining: 0,
-      ready: false,
-      toggledOn: false,
-      lastConditionTrue: true,
-      fireCount: 3,
-    });
+describe('addCharges', () => {
+  it('adds to a banking beta, and is a no-op for a live (state/sequence) beta or no beta', () => {
+    const banked = withBeta({ source: 'cards', category: 'go', shape: 'graded', cap: 3, effect: ENHANCE });
+    const live = withBeta({ source: 'state', condition: { kind: 'dealer' }, shape: 'whileTrue', effect: ENHANCE });
+    expect(addCharges(createInitialState(), banked, 2).charges).toBe(2);
+    expect(addCharges(createInitialState(), live, 2).charges).toBe(0);
+    expect(addCharges(createInitialState(), withBeta(undefined), 2).charges).toBe(0);
   });
 });
 
-describe('contextual evaluators', () => {
-  it('evaluateSelfState checks Trace and dealer conditions', () => {
-    const ctx: SelfStateContext = { trace: 10, isDealer: true };
-    expect(evaluateSelfState({ kind: 'selfState', condition: 'traceAbove', value: 5 }, ctx)).toBe(true);
-    expect(evaluateSelfState({ kind: 'selfState', condition: 'traceBelow', value: 5 }, ctx)).toBe(false);
-    expect(evaluateSelfState({ kind: 'selfState', condition: 'isDealer' }, ctx)).toBe(true);
-    expect(evaluateSelfState({ kind: 'selfState', condition: 'isNonDealer' }, ctx)).toBe(false);
+describe('betaCharges', () => {
+  it('reads banked charges for cards/progress', () => {
+    const banked = withBeta({ source: 'cards', category: 'go', shape: 'graded', cap: 3, effect: ENHANCE });
+    expect(betaCharges(banked, { ...createInitialState(), charges: 2 }, context())).toBe(2);
   });
 
-  it('evaluateEnemyState checks Breach/Containment, gauge fill, and debuff presence', () => {
-    const ctx: EnemyStateContext = { breachContainment: 30, gaugeFillFraction: 0.8, activeDebuffIds: ['slowed'] };
-    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'breachContainmentBelow', value: 50 }, ctx)).toBe(true);
-    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'breachContainmentAbove', value: 50 }, ctx)).toBe(false);
-    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'gaugeFillAbove', fraction: 0.5 }, ctx)).toBe(true);
-    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'hasDebuff', debuffId: 'slowed' }, ctx)).toBe(true);
-    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'hasDebuff', debuffId: 'stunned' }, ctx)).toBe(false);
+  it('is 1 while a state condition holds, 0 otherwise (D15)', () => {
+    const dealer = withBeta({ source: 'state', condition: { kind: 'dealer' }, shape: 'whileTrue', effect: ENHANCE });
+    expect(betaCharges(dealer, createInitialState(), context({ isDealer: true }))).toBe(1);
+    expect(betaCharges(dealer, createInitialState(), context({ isDealer: false }))).toBe(0);
+    const ward = withBeta({ source: 'state', condition: { kind: 'wardAbove', amount: 5 }, shape: 'whileTrue', effect: ENHANCE });
+    expect(betaCharges(ward, createInitialState(), context({ ownWard: 6 }))).toBe(1);
+    const behind = withBeta({ source: 'state', condition: { kind: 'opponentGaugeAbove', fraction: 0.5 }, shape: 'whileTrue', effect: ENHANCE });
+    expect(betaCharges(behind, createInitialState(), context({ opponentGaugeFraction: 0.6 }))).toBe(1);
   });
 
-  it('evaluateEnemyState hasDebuff:any (session 41) matches any active debuff, not one specific kind', () => {
-    const debuffed: EnemyStateContext = { breachContainment: 30, gaugeFillFraction: 0.8, activeDebuffIds: ['throttled'] };
-    const clean: EnemyStateContext = { breachContainment: 30, gaugeFillFraction: 0.8, activeDebuffIds: [] };
-    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'hasDebuff', debuffId: 'any' }, debuffed)).toBe(true);
-    expect(evaluateEnemyState({ kind: 'enemyState', condition: 'hasDebuff', debuffId: 'any' }, clean)).toBe(false);
-  });
-
-  it('evaluateChained (afterSubroutineId) fires only once the referenced subroutine has fired this turn', () => {
-    const trigger = { kind: 'chained' as const, afterSubroutineId: 'sub-a' };
-    expect(evaluateChained(trigger, [])).toBe(false);
-    expect(evaluateChained(trigger, [{ id: 'sub-a', archetype: 'exploit', tags: [] }])).toBe(true);
-  });
-
-  it('evaluateChained (afterArchetype) fires once any piece of that archetype has fired this turn', () => {
-    const trigger = { kind: 'chained' as const, afterArchetype: 'malware' as const };
-    expect(evaluateChained(trigger, [{ id: 'sub-a', archetype: 'exploit', tags: [] }])).toBe(false);
-    expect(evaluateChained(trigger, [{ id: 'sub-b', archetype: 'malware', tags: [] }])).toBe(true);
-  });
-
-  it('evaluateChained (afterTag) fires once any piece carrying that tag has fired this turn', () => {
-    const trigger = { kind: 'chained' as const, afterTag: 'daemon' as const };
-    expect(evaluateChained(trigger, [{ id: 'sub-a', archetype: 'exploit', tags: ['worm'] }])).toBe(false);
-    expect(evaluateChained(trigger, [{ id: 'sub-b', archetype: 'exploit', tags: ['daemon'] }])).toBe(true);
-  });
-
-  it('evaluateAlways is always true', () => {
-    expect(evaluateAlways({ kind: 'always' })).toBe(true);
-  });
-});
-
-describe('isReady dispatcher', () => {
-  it('reads banked state for accumulator/occurrence families', () => {
-    const def = definitionWith({ kind: 'occurrence', category: 'go', variation: 'instant' });
-    const notReady = createInitialState();
-    const ready = updateSubroutineState(notReady, def, { category: 'go', player: 0, magnitude: 1 }, 0);
-    expect(isReady(def, notReady, emptyContext)).toBe(false);
-    expect(isReady(def, ready, emptyContext)).toBe(true);
-  });
-
-  it('reads banked state for selfState/enemyState too -- latched via refreshTriggerReadiness (resolve.ts), not live context here', () => {
-    const selfDef = definitionWith({ kind: 'selfState', condition: 'isDealer' });
-    const notReady = createInitialState();
-    const latched = { ...notReady, ready: true };
-    // Passing a context where the condition is true no longer matters --
-    // isReady only reads the banked flag for this family now.
-    expect(isReady(selfDef, notReady, { ...emptyContext, self: { trace: 0, isDealer: true } })).toBe(false);
-    expect(isReady(selfDef, latched, emptyContext)).toBe(true);
-  });
-
-  it('evaluates always/chained live from context -- no banked state to latch for either', () => {
-    const alwaysDef = definitionWith({ kind: 'always' });
-    expect(isReady(alwaysDef, createInitialState(), emptyContext)).toBe(true);
-
-    const chainedDef = definitionWith({ kind: 'chained', afterSubroutineId: 'other-sub' });
-    expect(isReady(chainedDef, createInitialState(), emptyContext)).toBe(false);
+  it('sequence adjacent reads only the last piece to fire this turn', () => {
+    const adjacent = withBeta({ source: 'sequence', reach: 'adjacent', match: { archetype: 'daemon' }, shape: 'whileTrue', effect: ENHANCE });
+    const daemon = withBeta(undefined, { id: 'd' }, 'daemon');
+    const exploit = withBeta(undefined, { id: 'e' }, 'exploit');
+    expect(betaCharges(adjacent, createInitialState(), context({ firedThisTurn: [{ definition: daemon, elevated: false }] }))).toBe(1);
     expect(
-      isReady(chainedDef, createInitialState(), {
-        ...emptyContext,
-        firedThisTurn: [{ id: 'other-sub', archetype: 'exploit', tags: [] }],
-      }),
-    ).toBe(true);
+      betaCharges(adjacent, createInitialState(), context({ firedThisTurn: [{ definition: daemon, elevated: true }, { definition: exploit, elevated: true }] })),
+    ).toBe(0);
+  });
+
+  it('sequence anyPrior counts matching pieces that fired ELEVATED (graded = the old chain-finisher)', () => {
+    const anyPrior = withBeta({ source: 'sequence', reach: 'anyPrior', match: { verb: 'credit' }, shape: 'graded', cap: 5, effect: ENHANCE });
+    const a = withBeta(undefined, { id: 'a' });
+    const fired = [
+      { definition: a, elevated: true },
+      { definition: a, elevated: false },
+      { definition: a, elevated: true },
+    ];
+    expect(betaCharges(anyPrior, createInitialState(), context({ firedThisTurn: fired }))).toBe(2);
   });
 });
+
+describe('betaScale', () => {
+  const base = { source: 'cards', category: 'go', effect: ENHANCE } as const;
+
+  it('graded scales by charges up to the cap, and does not apply at 0', () => {
+    const graded: Beta = { ...base, shape: 'graded', cap: 3 };
+    expect([0, 1, 3, 7].map((c) => betaScale(graded, c))).toEqual([0, 1, 3, 3]);
+  });
+
+  it('stepped is all-or-nothing at `at` charges', () => {
+    const stepped: Beta = { ...base, shape: 'stepped', at: 3 };
+    expect([2, 3, 9].map((c) => betaScale(stepped, c))).toEqual([0, 1, 1]);
+  });
+
+  it('whileTrue applies at 1 or more', () => {
+    expect(betaScale({ source: 'state', condition: { kind: 'dealer' }, shape: 'whileTrue', effect: ENHANCE }, 1)).toBe(1);
+  });
+
+  it('immediate never applies on the turn -- it fires on its own', () => {
+    expect(betaScale({ ...base, shape: 'immediate', at: 1 }, 5)).toBe(0);
+  });
+});
+
+describe('immediateBetaReady', () => {
+  it('cards/progress: ready once `at` charges have banked (default 1)', () => {
+    const atTwo = withBeta({ source: 'cards', category: 'go', shape: 'immediate', at: 2, effect: ENHANCE });
+    expect(immediateBetaReady(atTwo, { ...createInitialState(), charges: 1 }, context())).toBe(false);
+    expect(immediateBetaReady(atTwo, { ...createInitialState(), charges: 2 }, context())).toBe(true);
+    const atDefault = withBeta({ source: 'cards', category: 'go', shape: 'immediate', effect: ENHANCE });
+    expect(immediateBetaReady(atDefault, { ...createInitialState(), charges: 1 }, context())).toBe(true);
+  });
+
+  it('state: fires on the false -> true edge only, not while it stays true', () => {
+    const dealer = withBeta({ source: 'state', condition: { kind: 'dealer' }, shape: 'immediate', effect: ENHANCE });
+    expect(immediateBetaReady(dealer, createInitialState(), context({ isDealer: true }))).toBe(true);
+    expect(immediateBetaReady(dealer, { ...createInitialState(), lastConditionTrue: true }, context({ isDealer: true }))).toBe(false);
+  });
+
+  it('is never true for a non-immediate beta', () => {
+    const graded = withBeta({ source: 'cards', category: 'go', shape: 'graded', cap: 3, effect: ENHANCE });
+    expect(immediateBetaReady(graded, { ...createInitialState(), charges: 5 }, context())).toBe(false);
+  });
+});
+
+describe('spendCharges', () => {
+  it('clears banked charges but keeps the progress remainder', () => {
+    expect(spendCharges({ ...createInitialState(), charges: 3, progressBank: 2 })).toMatchObject({ charges: 0, progressBank: 2 });
+  });
+});
+
+describe('firing gates and recordFire', () => {
+  it('maxFiresPerCombat and an outstanding points cooldown each block a fire', () => {
+    expect(withinFiringGates(withBeta(undefined, { maxFiresPerCombat: 2 }), { ...createInitialState(), fireCount: 2 })).toBe(false);
+    expect(withinFiringGates(withBeta(undefined), { ...createInitialState(), cooldownRemaining: 1 })).toBe(false);
+    expect(withinFiringGates(withBeta(undefined), createInitialState())).toBe(true);
+  });
+
+  it('counts the fire and arms the points cooldown', () => {
+    expect(recordFire(createInitialState(), withBeta(undefined, { pointsCooldown: 12 }))).toMatchObject({ fireCount: 1, cooldownRemaining: 12 });
+  });
+
+  it('accrues alpha growth up to its cap (Ramp)', () => {
+    const ramp: SubroutineDefinition = { id: 'r', name: 'r', archetype: 'daemon', alpha: { verb: 'credit', amount: 1, growth: 2, growthCap: 5 } };
+    let state = createInitialState();
+    for (let i = 0; i < 4; i++) state = recordFire(state, ramp);
+    expect(state.growthTotal).toBe(5);
+  });
+
+  it("banks a charge toward a fires-progress beta -- Ramp's own clock", () => {
+    const clock = withBeta({ source: 'progress', metric: 'fires', per: 2, shape: 'stepped', at: 1, effect: ENHANCE });
+    expect(recordFire(recordFire(createInitialState(), clock), clock).charges).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------
+// Occurrence adapters -- unchanged from before session 51.
+// ---------------------------------------------------------------------
 
 describe('occurrencesFromPeggingEvent', () => {
   it('produces one occurrence per non-zero breakdown category from a play event', () => {
@@ -224,9 +266,6 @@ describe('occurrencesFromPeggingEvent', () => {
 
 describe('occurrencesFromHandEvents', () => {
   it('maps each discrete scoring event to its own occurrence, 1:1', () => {
-    // Two distinct fifteens must stay 2 separate occurrences, not merge
-    // into one lump -- this is the whole point of the events-based
-    // adapter over a lumped-breakdown one.
     const events: HandScoreEvent[] = [
       { category: 'fifteen', points: 2 },
       { category: 'fifteen', points: 2 },
@@ -270,98 +309,5 @@ describe('suitPlayedFromPeggingEvent', () => {
   it('returns null for go and go-point events', () => {
     expect(suitPlayedFromPeggingEvent({ type: 'go', player: 0 })).toBeNull();
     expect(suitPlayedFromPeggingEvent({ type: 'go-point', player: 0 })).toBeNull();
-  });
-});
-
-describe('updateSuitTallyState', () => {
-  const def = definitionWith({ kind: 'accumulator', metric: 'suitTally', suit: 1, threshold: 3 });
-
-  it('accumulates one per matching card played by the owning side', () => {
-    let state = createInitialState();
-    state = updateSuitTallyState(state, def, { suit: 1, player: 0 }, 0);
-    expect(state.accumulatedProgress).toBe(1);
-    expect(state.ready).toBe(false);
-    state = updateSuitTallyState(state, def, { suit: 1, player: 0 }, 0);
-    state = updateSuitTallyState(state, def, { suit: 1, player: 0 }, 0);
-    expect(state.accumulatedProgress).toBe(3);
-    expect(state.ready).toBe(true);
-  });
-
-  it('ignores a card of a different suit', () => {
-    let state = createInitialState();
-    state = updateSuitTallyState(state, def, { suit: 0, player: 0 }, 0);
-    expect(state.accumulatedProgress).toBe(0);
-  });
-
-  it('ignores a play belonging to the other side', () => {
-    let state = createInitialState();
-    state = updateSuitTallyState(state, def, { suit: 1, player: 1 }, 0);
-    expect(state.accumulatedProgress).toBe(0);
-  });
-
-  it('no-ops for a non-suitTally accumulator or any other trigger family', () => {
-    const pointsDef = definitionWith({ kind: 'accumulator', metric: 'points', threshold: 3 });
-    const alwaysDef = definitionWith({ kind: 'always' });
-    let state = createInitialState();
-    state = updateSuitTallyState(state, pointsDef, { suit: 1, player: 0 }, 0);
-    state = updateSuitTallyState(state, alwaysDef, { suit: 1, player: 0 }, 0);
-    expect(state.accumulatedProgress).toBe(0);
-  });
-});
-
-// ---------------------------------------------------------------------
-// Points cooldown (session 47) -- a per-piece constraint denominated in
-// real scoring, added to stop a tempo-granting piece buying its own next
-// activation. See SubroutineDefinition.pointsCooldown.
-// ---------------------------------------------------------------------
-
-describe('pointsCooldown', () => {
-  const hasted: SubroutineDefinition = {
-    id: 'test-haste',
-    name: 'Test Haste',
-    archetype: 'root',
-    trigger: { kind: 'selfState', condition: 'traceBelow', value: 8 },
-    payload: { kind: 'instantManipulation', target: 'ownGauge', amount: 5 },
-    tags: [],
-    pointsCooldown: 15,
-  };
-  const ctx: TriggerContext = { ...emptyContext };
-  const scored = (magnitude: number): ScoringOccurrence => ({ category: 'fifteen', player: 0, magnitude });
-
-  it('arms the cooldown on fire, blocking a piece that would otherwise be ready', () => {
-    const ready = { ...createInitialState(), ready: true };
-    expect(isReady(hasted, ready, ctx)).toBe(true);
-    const afterFire = resetAfterFire(ready, hasted.pointsCooldown);
-    expect(afterFire.cooldownRemaining).toBe(15);
-    // Even re-latched as ready, the cooldown holds it back.
-    expect(isReady(hasted, { ...afterFire, ready: true }, ctx)).toBe(false);
-  });
-
-  it('ticks down only on the owning side\'s own scoring', () => {
-    let state = resetAfterFire({ ...createInitialState(), ready: true }, hasted.pointsCooldown);
-    state = updateSubroutineState(state, hasted, scored(6), 0);
-    expect(state.cooldownRemaining).toBe(9);
-    // An occurrence scored by the OTHER side does nothing.
-    state = updateSubroutineState(state, hasted, { category: 'fifteen', player: 1, magnitude: 9 }, 0);
-    expect(state.cooldownRemaining).toBe(9);
-  });
-
-  it('clears at zero and lets the piece fire again', () => {
-    let state = resetAfterFire({ ...createInitialState(), ready: true }, hasted.pointsCooldown);
-    state = updateSubroutineState(state, hasted, scored(20), 0); // overshoot floors at 0
-    expect(state.cooldownRemaining).toBe(0);
-    expect(isReady(hasted, { ...state, ready: true }, ctx)).toBe(true);
-  });
-
-  it('is inert for a definition that does not declare one', () => {
-    const plain: SubroutineDefinition = { ...hasted, pointsCooldown: undefined };
-    const afterFire = resetAfterFire({ ...createInitialState(), ready: true }, plain.pointsCooldown);
-    expect(afterFire.cooldownRemaining).toBe(0);
-    expect(isReady(plain, { ...afterFire, ready: true }, ctx)).toBe(true);
-  });
-
-  it('never gates a piece before its first fire', () => {
-    expect(createInitialState().cooldownRemaining).toBe(0);
-    expect(isReady(hasted, { ...createInitialState(), ready: true }, ctx)).toBe(true);
   });
 });

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Card } from './cards';
 import { cardValue } from './cards';
 import type { PlayerIndex } from './game';
-import type { SubroutineDefinition } from './subroutine-types';
+import type { Alpha, Beta, SubroutineDefinition } from './subroutine-types';
 import { playCombat, escalationFloorFor, escalationShrinkPerHandFor } from './combat';
 import { CLASS_STARTING_LOADOUTS } from './subroutines';
 import { createRng } from './rng';
@@ -12,373 +12,142 @@ import { playPegging, playLowestLegal, type PlayStrategy } from './pegging';
 import { countHandEvents, countCribEvents } from './scoring';
 import { pegSkillStrategy, discardSkillStrategy } from './ai';
 
-function alwaysBurst(id: string, amount: number): SubroutineDefinition {
-  return {
-    id,
-    name: id,
-    archetype: 'exploit',
-    trigger: { kind: 'always' },
-    payload: { kind: 'directBurst', amount },
-    tags: [],
-  };
+// Session 51: fixtures rebuilt for the alpha/beta model. Old-mechanic
+// end-to-end tests (global-pulse DoT, scheduled sabotage, markSuit,
+// Reactive, hand-lifecycle firesAt) retired with those mechanics; their
+// replacements are immediate betas, suit-tally charges and next-hand
+// Disrupt, below.
+
+function piece(id: string, alpha: Alpha, beta?: Beta, extra: Partial<SubroutineDefinition> = {}): SubroutineDefinition {
+  return { id, name: id, archetype: 'exploit', alpha, beta, ...extra };
 }
 
+const credit = (id: string, amount: number): SubroutineDefinition => piece(id, { verb: 'credit', amount });
+
 describe('playCombat', () => {
-  it('resolves in the player\'s favor when only the player has a firing subroutine', () => {
-    const result = playCombat([[alwaysBurst('a', 20)], []], { seed: 1, gaugeThreshold: [5, 5] });
+  it("resolves in the player's favor when only the player has a piece", () => {
+    const result = playCombat([[credit('a', 20)], []], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.winner).toBe(0);
     expect(result.hands.length).toBeGreaterThan(0);
     expect(result.log.length).toBeGreaterThan(0);
     expect(result.log.every((e) => e.side === 0)).toBe(true);
   });
 
-  it('resolves in the enemy\'s favor when only the enemy has a firing subroutine', () => {
-    const result = playCombat([[], [alwaysBurst('b', 20)]], { seed: 1, gaugeThreshold: [5, 5] });
+  it("resolves in the enemy's favor when only the enemy has a piece", () => {
+    const result = playCombat([[], [credit('b', 20)]], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.winner).toBe(1);
     expect(result.log.every((e) => e.side === 1)).toBe(true);
   });
 
   it('is fully deterministic for the same seed', () => {
-    const loadouts: [SubroutineDefinition[], SubroutineDefinition[]] = [
-      [alwaysBurst('a', 3)],
-      [alwaysBurst('b', 2)],
-    ];
-    const a = playCombat(loadouts, { seed: 42, gaugeThreshold: [8, 8] });
-    const b = playCombat(loadouts, { seed: 42, gaugeThreshold: [8, 8] });
-    expect(a).toEqual(b);
-  });
-
-  it('a symmetric duel between two firing loadouts resolves without throwing', () => {
-    const loadouts: [SubroutineDefinition[], SubroutineDefinition[]] = [
-      [alwaysBurst('a', 3)],
-      [alwaysBurst('b', 3)],
-    ];
-    const result = playCombat(loadouts, { seed: 7, gaugeThreshold: [6, 6] });
-    expect([0, 1]).toContain(result.winner);
+    const loadouts: [SubroutineDefinition[], SubroutineDefinition[]] = [[credit('a', 3)], [credit('b', 2)]];
+    expect(playCombat(loadouts, { seed: 42, gaugeThreshold: [8, 8] })).toEqual(playCombat(loadouts, { seed: 42, gaugeThreshold: [8, 8] }));
   });
 
   it('plays different hands for a different seed', () => {
-    const loadouts: [SubroutineDefinition[], SubroutineDefinition[]] = [
-      [alwaysBurst('a', 3)],
-      [alwaysBurst('b', 3)],
-    ];
-    const a = playCombat(loadouts, { seed: 1, gaugeThreshold: [6, 6] });
-    const b = playCombat(loadouts, { seed: 2, gaugeThreshold: [6, 6] });
-    expect(a.hands).not.toEqual(b.hands);
+    const loadouts: [SubroutineDefinition[], SubroutineDefinition[]] = [[credit('a', 3)], [credit('b', 3)]];
+    expect(playCombat(loadouts, { seed: 1, gaugeThreshold: [6, 6] }).hands).not.toEqual(playCombat(loadouts, { seed: 2, gaugeThreshold: [6, 6] }).hands);
   });
 
-  it('resolves via the hard-resolution deadline rather than looping forever when neither side can ever get a turn', () => {
-    // HARD_RESOLUTION_HAND is now the only bound (maxHands removed,
-    // session 39 -- it had been vestigial since session 27 introduced
-    // this deadline). An empty-vs-empty loadout can never cross either
-    // threshold on its own, so this exercises the deadline at its most
-    // extreme: side 1 (the defender) wins unconditionally at hand 20,
-    // not a throw/hang.
+  it('resolves via the hard-resolution deadline rather than looping forever when neither side can act', () => {
     const result = playCombat([[], []], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.winner).toBe(1);
     expect(result.resolvedBy).toBe('attrition');
     expect(result.hands.length).toBe(20);
   });
 
-  it('surfaces the player side\'s in-combat Heat generated by riskRewardBurst payloads', () => {
-    const riskyPlayer: SubroutineDefinition = {
-      id: 'a',
-      name: 'a',
-      archetype: 'exploit',
-      trigger: { kind: 'always' },
-      payload: { kind: 'riskRewardBurst', amount: 20 },
-      tags: [],
-      traceCost: 4,
-    };
-    const result = playCombat([[riskyPlayer], []], { seed: 1, gaugeThreshold: [5, 5] });
+  it("surfaces the player side's Trace from an effect's trace delta", () => {
+    const loud = piece('loud', { verb: 'credit', amount: 20, trace: 4 });
+    const result = playCombat([[loud], []], { seed: 1, gaugeThreshold: [5, 5] });
     expect(result.winner).toBe(0);
     expect(result.traceGenerated).toBeGreaterThan(0);
     expect(result.traceGenerated % 4).toBe(0);
   });
 
-  it('reports zero player Heat generated when nothing costs Heat', () => {
-    const result = playCombat([[alwaysBurst('a', 20)], []], { seed: 1, gaugeThreshold: [5, 5] });
-    expect(result.traceGenerated).toBe(0);
+  it('reports zero Trace when nothing makes noise', () => {
+    expect(playCombat([[credit('a', 20)], []], { seed: 1, gaugeThreshold: [5, 5] }).traceGenerated).toBe(0);
   });
 
-  it('cribbageLayerManipulation markSuit credits a suitTally Accumulator through the full pipeline', () => {
-    const suitMarker: SubroutineDefinition = {
-      id: 'suit-marker',
-      name: 'suit-marker',
-      archetype: 'root',
-      trigger: { kind: 'always' },
-      payload: { kind: 'cribbageLayerManipulation', action: 'markSuit', suit: 0 },
-      tags: [],
-    };
-    const suitPayoff: SubroutineDefinition = {
-      id: 'suit-payoff',
-      name: 'suit-payoff',
-      archetype: 'malware',
-      trigger: { kind: 'accumulator', metric: 'suitTally', suit: 0, threshold: 1 },
-      payload: { kind: 'directBurst', amount: 60 },
-      tags: [],
-      reactive: true,
-    };
-    // suit-marker fires on a normal turn, registering a pending markSuit
-    // -- consumed at the start of the *next* hand, immediately arming
-    // and firing the Reactive suit-payoff via the credit alone, with no
-    // card of that suit needing to actually be played.
-    const result = playCombat([[suitMarker, suitPayoff], []], { seed: 1, gaugeThreshold: [5, 5] });
-    expect(result.winner).toBe(0);
-    expect(result.log.some((e) => e.subroutineId === 'suit-payoff')).toBe(true);
+  it('every piece fires its alpha on every turn its side gets (D11) -- no trigger gates it', () => {
+    // Two pieces whose betas can never apply still both fire every turn.
+    const neverBeta: Beta = { source: 'cards', category: 'flush', minMagnitude: 999, shape: 'stepped', at: 1, effect: { verb: 'enhance', amount: 50 } };
+    const result = playCombat([[piece('x', { verb: 'credit', amount: 1 }, neverBeta), piece('y', { verb: 'credit', amount: 1 }, neverBeta)], []], {
+      seed: 4,
+      gaugeThreshold: [6, 6],
+      winThreshold: [30, 30],
+    });
+    const xFires = result.log.filter((e) => e.subroutineId === 'x').length;
+    expect(xFires).toBeGreaterThan(0);
+    expect(result.log.filter((e) => e.subroutineId === 'y').length).toBe(xFires);
+    expect(result.log.every((e) => !e.elevated)).toBe(true);
   });
 
-  it('cribbageLayerManipulation forceDiscard resolves through a full match without throwing', () => {
-    const discardForcer: SubroutineDefinition = {
-      id: 'discard-forcer',
-      name: 'discard-forcer',
-      archetype: 'root',
-      trigger: { kind: 'always' },
-      payload: { kind: 'cribbageLayerManipulation', action: 'forceDiscard' },
-      tags: [],
-    };
-    expect(() => playCombat([[discardForcer, alwaysBurst('finisher', 20)], []], { seed: 3, gaugeThreshold: [5, 5] })).not.toThrow();
-  });
-
-  it('a suitTally Accumulator fires from cards played, not from scoring', () => {
-    const suitWatcher: SubroutineDefinition = {
-      id: 'suit-watcher',
-      name: 'suit-watcher',
-      archetype: 'malware',
-      trigger: { kind: 'accumulator', metric: 'suitTally', suit: 0, threshold: 2 },
-      payload: { kind: 'directBurst', amount: 30 },
-      tags: [],
-      reactive: true,
-    };
-    // gaugeThreshold is deliberately unreachable within the hands this
-    // takes to resolve, and side 1 is empty -- the only way
-    // breachContainment can move is the suit-watcher actually firing
-    // from real cards played during pegging.
-    const result = playCombat([[suitWatcher], []], { seed: 1, gaugeThreshold: [100_000, 100_000] });
+  it('an immediate beta fires mid-hand, outside the turn gate', () => {
+    // The gauge threshold is unreachable, so side 0 never takes a turn --
+    // any side-0 fire in the log can only be the immediate beta.
+    const onFifteen = piece('on-fifteen', { verb: 'credit', amount: 1 }, {
+      source: 'cards',
+      category: 'fifteen',
+      shape: 'immediate',
+      at: 1,
+      effect: { verb: 'credit', amount: 20 },
+    });
+    const result = playCombat([[onFifteen], []], { seed: 1, gaugeThreshold: [100_000, 100_000] });
     expect(result.winner).toBe(0);
     expect(result.log.length).toBeGreaterThan(0);
+    expect(result.log.every((e) => e.side === 0 && e.immediate)).toBe(true);
+  });
+
+  it("a suit-tally beta charges from cards of its own archetype's suit played, not from scoring", () => {
+    // Exploit's suit is suit 0. Turns are unreachable, so only the
+    // immediate beta -- charged by real pegging plays -- can move the gauge.
+    const suitWatcher = piece('suit-watcher', { verb: 'credit', amount: 1 }, {
+      source: 'cards',
+      category: 'suit',
+      shape: 'immediate',
+      at: 2,
+      effect: { verb: 'credit', amount: 30 },
+    });
+    const result = playCombat([[suitWatcher], []], { seed: 1, gaugeThreshold: [100_000, 100_000] });
+    expect(result.winner).toBe(0);
     expect(result.log.every((e) => e.side === 0 && e.subroutineId === 'suit-watcher')).toBe(true);
   });
 
-  it('a global-pulse DoT ticks from combined scoring, independent of whose turn it is', () => {
-    const globalDot: SubroutineDefinition = {
-      id: 'global-dot',
-      name: 'global-dot',
-      archetype: 'malware',
-      trigger: { kind: 'always' },
-      payload: { kind: 'dot', amountPerTick: 30, cadence: 'globalPulse', duration: 5, pointsPerTick: 5 },
-      tags: [],
-    };
-    // A low gaugeThreshold gets the dot registered on side 0's first
-    // turn; after that, side 1 has an empty loadout (can never push
-    // back), so any further movement toward side 0's win can only come
-    // from global-pulse ticking off combined scoring, not from turns.
-    const result = playCombat([[globalDot], []], { seed: 1, gaugeThreshold: [3, 3] });
-    expect(result.winner).toBe(0);
-    expect(result.log.length).toBeGreaterThan(0);
-  });
-
-  it('a scheduledSabotage payload resolves at a later deal, driving the match to resolution', () => {
-    const sabotageBurst: SubroutineDefinition = {
-      id: 'sabotage-burst',
-      name: 'sabotage-burst',
-      archetype: 'root',
-      trigger: { kind: 'always' },
-      payload: { kind: 'scheduledSabotage', resolvesAt: 'nextDeal', effect: { kind: 'directBurst', amount: 20 } },
-      tags: [],
-    };
-    // Side 1 has an empty loadout -- the only way breachContainment can
-    // ever move is through side 0's scheduled sabotage actually
-    // resolving on a later deal. If the resolution hook weren't wired
-    // up, pending entries would pile up forever and this would instead
-    // hit the hard-resolution deadline (hand 20) and resolve as an
-    // attrition loss for side 0, not the real win asserted below.
-    const result = playCombat([[sabotageBurst], []], { seed: 1, gaugeThreshold: [5, 5] });
-    expect(result.winner).toBe(0);
-  });
-
-  it('a Reactive piece fires mid-hand, bypassing the turn-gate entirely', () => {
-    const reactiveFifteen: SubroutineDefinition = {
-      id: 'reactive-fifteen',
-      name: 'reactive-fifteen',
-      archetype: 'exploit',
-      trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
-      payload: { kind: 'directBurst', amount: 20 },
-      tags: [],
-      reactive: true,
-    };
-    // gaugeThreshold is deliberately unreachable within the hands this
-    // takes to resolve -- side 0's own gauge should never cross via a
-    // normal turn, so any side-0 fire in the log can only be the
-    // Reactive path. Side 1 has an empty loadout, so it can never fire
-    // even if it somehow got a turn.
-    const result = playCombat([[reactiveFifteen], []], { seed: 1, gaugeThreshold: [100_000, 100_000] });
-    expect(result.winner).toBe(0);
-    expect(result.log.length).toBeGreaterThan(0);
-    expect(result.log.every((e) => e.side === 0 && e.subroutineId === 'reactive-fifteen')).toBe(true);
-  });
-
-  it(
-    "the hand-lifecycle decomposition produces byte-for-byte identical HandResults to a direct game.ts replay for the same seed " +
-      '(session 24 checkpoint B regression check)',
-    () => {
-      const result = playCombat([[alwaysBurst('winner', 1000)], []], { seed: 42, gaugeThreshold: [1, 1] });
-      expect(result.hands.length).toBeGreaterThan(0);
-
-      // Independently replay the exact same rng sequence through game.ts's
-      // granular pieces, in the same order combat.ts's decomposition calls
-      // them, with the same default strategies -- if these two diverged, it
-      // would mean the decomposition changed real game behavior.
-      const rng = createRng(42);
-      for (const hand of result.hands) {
-        const shuffled = shuffle(createDeck(), rng);
-        const { hands: dealtHands, stock } = deal(shuffled);
-        const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: hand.dealer === 0 }, discardLowestTwo);
-        const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: hand.dealer === 1 }, discardLowestTwo);
-        const { starter } = cut(stock, rng);
-        expect(starter).toEqual(hand.starter);
-        expect(hisHeels(starter)).toBe(hand.hisHeelsPoints);
-
-        const nonDealer = (1 - hand.dealer) as PlayerIndex;
-        const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
-        const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, [playLowestLegal, playLowestLegal]);
-        expect(peggingScores).toEqual(hand.peggingScores);
-        expect(peggingEvents).toEqual(hand.peggingEvents);
-        expect(countHandEvents(kept[nonDealer], starter)).toEqual(hand.nonDealerHandEvents);
-        expect(countHandEvents(kept[hand.dealer], starter)).toEqual(hand.dealerHandEvents);
-        expect(countCribEvents([...d0.discarded, ...d1.discarded], starter)).toEqual(hand.cribEvents);
-      }
-    },
-  );
-
-  it("recon's revealOpponentHand plumbs the real opponent hand through to the discard strategy's DiscardContext (session 24 checkpoint C end-to-end)", () => {
-    const recon: SubroutineDefinition = {
-      id: 'recon',
-      name: 'recon',
-      archetype: 'root',
-      trigger: { kind: 'always' },
-      payload: { kind: 'revealOpponentHand' },
-      tags: [],
-      firesAt: 'onDealt',
-    };
-    const seenKnownHands: (Card[] | undefined)[] = [];
-    const spyDiscardStrategy: DiscardStrategy = (ctx) => {
-      seenKnownHands.push(ctx.knownOpponentHand);
-      const sorted = ctx.hand.slice().sort((a, b) => a.rank - b.rank);
-      return [sorted[0], sorted[1]];
-    };
-    const result = playCombat([[recon, alwaysBurst('winner', 1000)], []], {
-      seed: 5,
-      gaugeThreshold: [1, 1],
-      discardStrategies: [spyDiscardStrategy, spyDiscardStrategy],
-    });
+  it('the hand flow produces HandResults identical to a direct game.ts replay for the same seed (session 24 regression check)', () => {
+    const result = playCombat([[credit('winner', 1000)], []], { seed: 42, gaugeThreshold: [1, 1] });
     expect(result.hands.length).toBeGreaterThan(0);
-    // Side 0 discards first each hand (combat.ts's fixed order) and has
-    // the recon piece -- its DiscardContext should carry side 1's real,
-    // full 6-card dealt hand. Side 1 has no recon piece of its own, so
-    // its call sees nothing.
-    expect(seenKnownHands[0]).toBeDefined();
-    expect(seenKnownHands[0]).toHaveLength(6);
-    expect(seenKnownHands[1]).toBeUndefined();
+    const rng = createRng(42);
+    for (const hand of result.hands) {
+      const shuffled = shuffle(createDeck(), rng);
+      const { hands: dealtHands, stock } = deal(shuffled);
+      const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: hand.dealer === 0 }, discardLowestTwo);
+      const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: hand.dealer === 1 }, discardLowestTwo);
+      const { starter } = cut(stock, rng);
+      expect(starter).toEqual(hand.starter);
+      expect(hisHeels(starter)).toBe(hand.hisHeelsPoints);
+      const nonDealer = (1 - hand.dealer) as PlayerIndex;
+      const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
+      const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, [playLowestLegal, playLowestLegal]);
+      expect(peggingScores).toEqual(hand.peggingScores);
+      expect(peggingEvents).toEqual(hand.peggingEvents);
+      expect(countHandEvents(kept[nonDealer], starter)).toEqual(hand.nonDealerHandEvents);
+      expect(countHandEvents(kept[hand.dealer], starter)).toEqual(hand.dealerHandEvents);
+      expect(countCribEvents([...d0.discarded, ...d1.discarded], starter)).toEqual(hand.cribEvents);
+    }
   });
 
-  it("Root's forceDiscardCard manipulation bypasses the target's own discard strategy entirely (session 24 checkpoint D end-to-end)", () => {
-    const manipulator: SubroutineDefinition = {
-      id: 'manipulator',
-      name: 'manipulator',
-      archetype: 'root',
-      trigger: { kind: 'always' },
-      payload: { kind: 'forceDiscardCard' },
-      tags: [],
-      firesAt: 'onDealt',
-    };
-    let totalDiscardCalls = 0;
-    const spyDiscardStrategy: DiscardStrategy = (ctx) => {
-      totalDiscardCalls++;
-      const sorted = ctx.hand.slice().sort((a, b) => a.rank - b.rank);
-      return [sorted[0], sorted[1]];
-    };
-    const result = playCombat([[manipulator, alwaysBurst('winner', 1000)], []], {
-      seed: 7,
-      gaugeThreshold: [1, 1],
-      discardStrategies: [spyDiscardStrategy, spyDiscardStrategy],
-    });
-    expect(result.hands.length).toBeGreaterThan(0);
-    // Shared discardStrategy is normally called once per side per hand
-    // (2 calls/hand). Side 1 (the manipulation target) should never
-    // actually reach it -- forcedDiscardPair overrides its call
-    // entirely, so only side 0's own unmanipulated call goes through.
-    expect(totalDiscardCalls).toBe(result.hands.length);
-  });
-
-  it('haste (ownGauge) banks initiative-gauge overflow that grants multiple turns on the next natural scoring event (session 24 checkpoint E end-to-end)', () => {
-    const haste: SubroutineDefinition = {
-      id: 'haste',
-      name: 'haste',
-      archetype: 'root',
-      trigger: { kind: 'always' },
-      payload: { kind: 'instantManipulation', target: 'ownGauge', amount: 15 },
-      tags: [],
-      firesAt: 'onDealt',
-    };
-    const burst = alwaysBurst('burst', 1);
-    // gaugeThreshold=5, haste dumps 15 progress at deal-time -- already
-    // 3 threshold-widths banked before any real Cribbage scoring even
-    // happens. The very first positive-magnitude occurrence this hand
-    // (His Heels, a peg play, or the show) should release all 3 banked
-    // turns at once via gauges.ts's addPoints overflow-carrying, each
-    // firing burst -- winThreshold=3 lets that single release resolve
-    // the match immediately, well within hand 1.
-    const result = playCombat([[haste, burst], []], { seed: 3, gaugeThreshold: [5, 5], winThreshold: [3, 3] });
+  it('own-gauge Tempo banks initiative overflow that releases as turns on the next scoring event', () => {
+    // Haste of 3 whole turns per fire. After the first turn, the next
+    // scoring event releases the banked turns at once, each firing burst.
+    const haste = piece('haste', { verb: 'tempo', target: 'own', mode: 'gauge', amount: 3 }, undefined, { pointsCooldown: 1000 });
+    const burst = credit('burst', 1);
+    const result = playCombat([[haste, burst], []], { seed: 3, gaugeThreshold: [5, 5], winThreshold: [4, 4] });
     expect(result.winner).toBe(0);
     expect(result.log.filter((e) => e.subroutineId === 'burst').length).toBeGreaterThanOrEqual(3);
   });
 
-  it("recon's revealCrib and revealOpponentKeptHand plumb real crib/kept-hand data through to the pegging strategy's PlayContext (session 24 checkpoint G end-to-end)", () => {
-    const cribRecon: SubroutineDefinition = {
-      id: 'crib-recon',
-      name: 'crib-recon',
-      archetype: 'root',
-      trigger: { kind: 'always' },
-      payload: { kind: 'revealCrib' },
-      tags: [],
-      firesAt: 'onCribSelected',
-    };
-    const handRecon: SubroutineDefinition = {
-      id: 'hand-recon',
-      name: 'hand-recon',
-      archetype: 'root',
-      trigger: { kind: 'always' },
-      payload: { kind: 'revealOpponentKeptHand' },
-      tags: [],
-      firesAt: 'onPlayPhaseStart',
-    };
-    const burst = alwaysBurst('winner', 1000);
-    let sawKnownCrib = false;
-    let sawKnownOpponentHand = false;
-    const spyPlayStrategy: PlayStrategy = (ctx) => {
-      if (ctx.knownCrib) sawKnownCrib = true;
-      if (ctx.knownOpponentHand) sawKnownOpponentHand = true;
-      return ctx.legalCards.slice().sort((a, b) => cardValue(a) - cardValue(b))[0];
-    };
-    // Pegging always plays out in full before any occurrence (and so any
-    // win) can be processed (combat.ts builds occurrencesForHand from
-    // the already-complete HandResult) -- both flags should already be
-    // set by the time this returns, regardless of exactly which hand
-    // the match resolves in.
-    const result = playCombat([[cribRecon, handRecon, burst], []], {
-      seed: 11,
-      gaugeThreshold: [1, 1],
-      playStrategies: [spyPlayStrategy, spyPlayStrategy],
-    });
-    expect(result.hands.length).toBeGreaterThan(0);
-    expect(sawKnownCrib).toBe(true);
-    expect(sawKnownOpponentHand).toBe(true);
-  });
-
-  it('pegSkillStrategy plugs into real combat via per-side playStrategies without throwing (session 24 tunable-skill AI checkpoint B smoke test)', () => {
-    const burst = alwaysBurst('winner', 20);
-    const result = playCombat([[burst], [burst]], {
+  it('pegSkillStrategy plugs into real combat via per-side playStrategies', () => {
+    const result = playCombat([[credit('a', 20)], [credit('b', 20)]], {
       seed: 13,
       gaugeThreshold: [5, 5],
       winThreshold: [30, 30],
@@ -387,9 +156,8 @@ describe('playCombat', () => {
     expect([0, 1]).toContain(result.winner);
   });
 
-  it('discardSkillStrategy plugs into real combat via per-side discardStrategies without throwing (session 24 tunable-skill AI checkpoint C smoke test)', () => {
-    const burst = alwaysBurst('winner', 20);
-    const result = playCombat([[burst], [burst]], {
+  it('discardSkillStrategy plugs into real combat via per-side discardStrategies', () => {
+    const result = playCombat([[credit('a', 20)], [credit('b', 20)]], {
       seed: 17,
       gaugeThreshold: [5, 5],
       winThreshold: [30, 30],
@@ -397,81 +165,97 @@ describe('playCombat', () => {
     });
     expect([0, 1]).toContain(result.winner);
   });
+});
 
-  describe('escalation', () => {
-    // A tiny, always-firing burst against a winThreshold it could never
-    // realistically reach through normal play within a sane hand count.
-    // Pre-session-27, only escalation's shrinking threshold (starts at
-    // hand 10, floors at 10 by hand 20 -- session 26) could eventually
-    // bring the bar down to something this weak enough to cross, which
-    // this exact setup used to do around hand 261. Since session 27's
-    // hard-resolution deadline (HARD_RESOLUTION_HAND, hand 20) forces a
-    // result unconditionally, this now never gets the chance to
-    // converge on its own at all -- it always resolves as an attrition
-    // loss at hand 20 instead, which is what the test below actually
-    // asserts.
-    const weakBurst = (id: string): SubroutineDefinition => ({
-      id,
-      name: id,
-      archetype: 'exploit',
-      trigger: { kind: 'always' },
-      payload: { kind: 'directBurst', amount: 0.01 },
-      tags: [],
+// ---------------------------------------------------------------------
+// Disrupt -- armed on a turn, resolved during the NEXT hand (session 51).
+// ---------------------------------------------------------------------
+
+describe('Disrupt end to end', () => {
+  // A slow credit keeps the fight going for several hands, so a Disrupt
+  // armed on an early turn has a next hand to resolve in.
+  const slow = (id: string) => credit(id, 2);
+  const options = { gaugeThreshold: [4, 1000] as [number, number], winThreshold: [40, 40] as [number, number] };
+
+  it("revealHand puts the opponent's real dealt hand into the discard strategy's context on a later hand", () => {
+    const recon = piece('recon', { verb: 'disrupt', action: 'revealHand' });
+    const seen: (Card[] | undefined)[][] = [];
+    const spy = (side: 0 | 1): DiscardStrategy => (ctx) => {
+      (seen[side] ??= []).push(ctx.knownOpponentHand);
+      const sorted = ctx.hand.slice().sort((a, b) => a.rank - b.rank);
+      return [sorted[0], sorted[1]];
+    };
+    const result = playCombat([[recon, slow('s')], []], { seed: 5, ...options, discardStrategies: [spy(0), spy(1)] });
+    expect(result.hands.length).toBeGreaterThan(1);
+    // Never on the first hand -- nothing has had a turn yet.
+    expect(seen[0][0]).toBeUndefined();
+    const revealed = seen[0].filter((hand) => hand !== undefined);
+    expect(revealed.length).toBeGreaterThan(0);
+    for (const hand of revealed) expect(hand).toHaveLength(6);
+    // Side 1 has no recon, so never sees anything.
+    expect(seen[1].every((hand) => hand === undefined)).toBe(true);
+  });
+
+  it("forceDiscard bypasses the target's own discard strategy on a later hand", () => {
+    const manipulator = piece('manipulator', { verb: 'disrupt', action: 'forceDiscard' });
+    const calls: [number, number] = [0, 0];
+    const spy = (side: 0 | 1): DiscardStrategy => (ctx) => {
+      calls[side]++;
+      const sorted = ctx.hand.slice().sort((a, b) => a.rank - b.rank);
+      return [sorted[0], sorted[1]];
+    };
+    const result = playCombat([[manipulator, slow('s')], []], { seed: 7, ...options, discardStrategies: [spy(0), spy(1)] });
+    expect(result.hands.length).toBeGreaterThan(1);
+    expect(calls[0]).toBe(result.hands.length);
+    expect(calls[1]).toBeLessThan(result.hands.length);
+  });
+
+  it('revealCrib and revealHand reach the pegging strategy as knownCrib and the kept hand', () => {
+    const cribRecon = piece('crib-recon', { verb: 'disrupt', action: 'revealCrib' });
+    const handRecon = piece('hand-recon', { verb: 'disrupt', action: 'revealHand' });
+    let sawKnownCrib = false;
+    let keptHandSize: number | undefined;
+    const spy: PlayStrategy = (ctx) => {
+      if (ctx.knownCrib) sawKnownCrib = true;
+      if (ctx.knownOpponentHand) keptHandSize = ctx.knownOpponentHand.length;
+      return ctx.legalCards.slice().sort((a, b) => cardValue(a) - cardValue(b))[0];
+    };
+    const result = playCombat([[cribRecon, handRecon, slow('s')], []], { seed: 11, ...options, playStrategies: [spy, spy] });
+    expect(result.hands.length).toBeGreaterThan(1);
+    expect(sawKnownCrib).toBe(true);
+    // At play, a revealed hand has narrowed to the opponent's kept four.
+    expect(keptHandSize).toBe(4);
+  });
+});
+
+describe('escalation', () => {
+  it('resolves as an attrition loss for a side too weak to close it out in time', () => {
+    const result = playCombat([[credit('a', 0.01)], []], { seed: 1, gaugeThreshold: [3, 3], winThreshold: [15, 15] });
+    expect(result.winner).toBe(1);
+    expect(result.resolvedBy).toBe('attrition');
+    expect(result.hands.length).toBe(20);
+  });
+
+  describe('per-side derivation (session 48)', () => {
+    it('reproduces the old flat constants exactly at the historical shared base of 50', () => {
+      expect(escalationFloorFor(50)).toBe(10);
+      expect(escalationShrinkPerHandFor(50)).toBe(4);
     });
 
-    it('resolves as an attrition loss for a side too weak to realistically close it out in time, even against an empty opposing loadout', () => {
-      // Session 27 checkpoint E revised resolveHardTiebreak: reaching
-      // the hard-resolution deadline (hand 20) at all means side 0 (the
-      // attacker) failed to breach in time, full stop -- side 1 wins
-      // unconditionally, not whichever side has the thinner fractional
-      // lead. Side 1 fires nothing at all here, which used to make side
-      // 0's tiny nonzero fraction win the old comparison outright; now
-      // it correctly loses anyway, since it never actually crossed its
-      // own threshold within the window escalation gives it (0.01/fire
-      // against even the escalated floor of 10 would need on the order
-      // of a thousand real fires -- not realistic within 20 hands).
-      const result = playCombat([[weakBurst('a')], []], { seed: 1, gaugeThreshold: [3, 3], winThreshold: [15, 15] });
-      expect(result.winner).toBe(1);
-      expect(result.resolvedBy).toBe('attrition');
-      expect(result.hands.length).toBe(20); // combat.ts's own HARD_RESOLUTION_HAND
+    it('lands any starting bar on its own floor in exactly the same number of hands', () => {
+      for (const base of [30, 40, 50, 65, 100]) {
+        expect(base - escalationShrinkPerHandFor(base) * 10).toBeCloseTo(escalationFloorFor(base), 5);
+      }
     });
 
-    describe('per-side derivation (session 48)', () => {
-      // The rate and floor used to be flat constants (4/hand, floored at
-      // 10), both silently calibrated against a single shared win
-      // threshold of 50: (50 - 10) / 10 hands = 4. Splitting
-      // BREACH_THRESHOLD from CONTAINMENT_THRESHOLD, and giving
-      // meta-progression a socket to move them independently, made that
-      // assumption unsafe -- so both are now derived per side.
+    it('gives two sides on different bars the same escalation timeline, not the same rate', () => {
+      expect(escalationShrinkPerHandFor(40)).toBeLessThan(escalationShrinkPerHandFor(65));
+      expect(escalationFloorFor(40)).toBeLessThan(escalationFloorFor(65));
+    });
 
-      it('reproduces the old flat constants exactly at the historical shared base of 50', () => {
-        expect(escalationFloorFor(50)).toBe(10);
-        expect(escalationShrinkPerHandFor(50)).toBe(4);
-      });
-
-      it('lands any starting bar on its own floor in exactly the same number of hands', () => {
-        // The property that matters: "reach your floor as the deadline
-        // lands" has to stay true at every value, not just at 50.
-        for (const base of [30, 40, 50, 65, 100]) {
-          const floor = escalationFloorFor(base);
-          const perHand = escalationShrinkPerHandFor(base);
-          expect(base - perHand * 10).toBeCloseTo(floor, 5);
-        }
-      });
-
-      it('gives two sides on different bars the same escalation timeline, not the same rate', () => {
-        // A flat 4/hand against a player bar lowered to 40 would floor at
-        // hand 17 while the enemy's floored at 20 -- a three-hand
-        // sudden-death window handed out as a side effect of an upgrade
-        // that was only meant to lower a number.
-        expect(escalationShrinkPerHandFor(40)).toBeLessThan(escalationShrinkPerHandFor(65));
-        expect(escalationFloorFor(40)).toBeLessThan(escalationFloorFor(65));
-      });
-
-      it('floors at 1 so a tiny starting bar can never produce a zero or negative threshold', () => {
-        expect(escalationFloorFor(1)).toBe(1);
-        expect(escalationShrinkPerHandFor(1)).toBeGreaterThanOrEqual(1);
-      });
+    it('floors at 1 so a tiny starting bar can never produce a zero or negative threshold', () => {
+      expect(escalationFloorFor(1)).toBe(1);
+      expect(escalationShrinkPerHandFor(1)).toBeGreaterThanOrEqual(1);
     });
   });
 });
@@ -481,34 +265,17 @@ describe('playCombat', () => {
 // ---------------------------------------------------------------------
 
 describe('systemic turn-loop detection', () => {
-  it('throws loudly, with reproducible state, on a self-feeding turn engine', () => {
-    // The exact shape session 47 found: a piece that Hastes its own
-    // initiative gauge by at least the gauge threshold, on a trigger that
-    // is continuously true, and WITHOUT the pointsCooldown that now ships
-    // on the real content. Each fire buys a whole turn, which fires it
-    // again. Left unguarded this reached a 4GB heap.
-    const runaway: SubroutineDefinition = {
-      id: 'runaway-haste',
-      name: 'Runaway Haste',
-      archetype: 'root',
-      trigger: { kind: 'selfState', condition: 'traceBelow', value: 8 },
-      payload: { kind: 'instantManipulation', target: 'ownGauge', amount: 12 },
-      tags: [],
-    };
-    expect(() =>
-      playCombat([[runaway], [runaway]], { seed: 1, gaugeThreshold: [8, 8], winThreshold: [50, 50] }),
-    ).toThrow(/systemic turn loop/);
+  // Session 47's shape: a piece that Hastes its own initiative gauge by
+  // more than a whole turn, with NO points cooldown. Each fire buys more
+  // than a turn, which fires it again. Content guards forbid this
+  // (subroutines.test.ts); the detector exists for when one slips through.
+  const runaway = piece('runaway-haste', { verb: 'tempo', target: 'own', mode: 'gauge', amount: 1.5 });
+
+  it('throws loudly on a self-feeding turn engine', () => {
+    expect(() => playCombat([[runaway], [runaway]], { seed: 1, gaugeThreshold: [8, 8], winThreshold: [50, 50] })).toThrow(/systemic turn loop/);
   });
 
   it('names the side, hand, seed and loadout so the case can be reproduced', () => {
-    const runaway: SubroutineDefinition = {
-      id: 'runaway-haste',
-      name: 'Runaway Haste',
-      archetype: 'root',
-      trigger: { kind: 'selfState', condition: 'traceBelow', value: 8 },
-      payload: { kind: 'instantManipulation', target: 'ownGauge', amount: 12 },
-      tags: [],
-    };
     try {
       playCombat([[runaway], [runaway]], { seed: 1, gaugeThreshold: [8, 8], winThreshold: [50, 50] });
       throw new Error('expected the loop detector to fire');
@@ -517,15 +284,13 @@ describe('systemic turn-loop detection', () => {
       expect(message).toContain('seed=1');
       expect(message).toContain('runaway-haste');
       expect(message).toMatch(/hand=\d+/);
-      expect(message).toMatch(/gauge=\d+\/\d+/);
+      expect(message).toMatch(/gauge=[\d.]+\/\d+/);
     }
   });
 
   it('does not fire on ordinary play', () => {
-    // The whole 748-test suite exercises this implicitly, but pin it
-    // directly: a normal kit against a normal kit must never trip it.
     expect(() =>
-      playCombat([CLASS_STARTING_LOADOUTS.breacher, CLASS_STARTING_LOADOUTS.ghost], {
+      playCombat([CLASS_STARTING_LOADOUTS['exploit-overclock'], CLASS_STARTING_LOADOUTS['daemon-honeypot']], {
         seed: 3,
         gaugeThreshold: [8, 8],
         winThreshold: [50, 50],
