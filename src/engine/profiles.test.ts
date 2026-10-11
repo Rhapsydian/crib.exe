@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { SYNERGY_AWARE_PROFILE, SYNERGY_EVENT_RISK } from './profiles';
 import { createInitialPlayerState, playRun, opportunisticTraversal, summarizeRunLoadout } from './run';
 import { opportunisticSafehouseStrategy } from './merge';
-import { CLASS_DEFINITIONS, type ClassId } from './classes';
+import { ALL_CLASS_IDS, CLASS_DEFINITIONS, type ClassId } from './classes';
 
 /**
  * Gameplay Simulation Heuristics checkpoint J -- the bundled profile.
@@ -13,9 +13,12 @@ import { CLASS_DEFINITIONS, type ClassId } from './classes';
  * genuinely changes how a run plays rather than merely being accepted,
  * and that it leaves the traversal dial alone so the two profiles stay
  * independently comparable.
+ *
+ * Session 51 port: class ids moved to the archetype-pair ids, and
+ * ALL_CLASSES now reads ALL_CLASS_IDS rather than a hand-kept list.
  */
 
-const ALL_CLASSES: ClassId[] = ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'];
+const ALL_CLASSES: ClassId[] = ALL_CLASS_IDS;
 
 describe('SYNERGY_AWARE_PROFILE', () => {
   it('covers every decision point checkpoints B-I added a strategy for', () => {
@@ -128,7 +131,7 @@ describe('summarizeRunLoadout (session 46)', () => {
     const result = playRun({
       ...SYNERGY_AWARE_PROFILE,
       seed: 0,
-      classId: 'breacher',
+      classId: 'exploit-overclock',
       traversalStrategy: opportunisticTraversal,
       safehouseStrategy: opportunisticSafehouseStrategy,
     });
@@ -144,7 +147,7 @@ describe('summarizeRunLoadout (session 46)', () => {
 
   it('omits zero-valued rank and material entries rather than emitting noise', () => {
     const summary = summarizeRunLoadout({
-      ...createInitialPlayerState('breacher'),
+      ...createInitialPlayerState('exploit-overclock'),
       rank: { ranked: 2, unranked: 0 },
       material: { banked: 1, spent: 0 },
     });
@@ -156,7 +159,7 @@ describe('summarizeRunLoadout (session 46)', () => {
     // A granted piece is cap-exempt and removal-locked, so counting it
     // as evidence the run "picked" that subroutine would be wrong.
     const summary = summarizeRunLoadout({
-      ...createInitialPlayerState('ghost'),
+      ...createInitialPlayerState('overclock-honeypot'),
       grantedByMod: { 'some-piece': 'auxiliary-process' },
     });
     expect(summary.grantedByMod).toEqual(['some-piece']);

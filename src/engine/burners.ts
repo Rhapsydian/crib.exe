@@ -29,14 +29,14 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     name: 'Flash Drive',
     rarity: 'common',
     contexts: ['combat'],
-    combatEffect: { kind: 'directBurst', amount: 5 },
+    combatEffect: { verb: 'credit', amount: 5 },
   },
   'emp-charge': {
     id: 'emp-charge',
     name: 'EMP Charge',
     rarity: 'uncommon',
     contexts: ['combat'],
-    combatEffect: { kind: 'instantCounterPush', amount: 8 },
+    combatEffect: { verb: 'suppress', amount: 8 },
   },
 
   // --- Map (3) ---

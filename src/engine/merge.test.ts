@@ -1,16 +1,19 @@
+// Session 51 port: fixtures rewritten to the alpha/beta subroutine model
+// (subroutine-types.ts). Merge now upgrades the beta, so the trigger-easing,
+// payload-scaling and decay tests are gone with the mechanics they covered;
+// the session 48 Tempo invariant is re-asserted against the new rules, and
+// enemy scaling (now scaledDefinition) is covered in subroutines.test.ts.
 import { describe, it, expect } from 'vitest';
 import { playRun, opportunisticTraversal, type RunPlayerState } from './run';
-import type { Archetype, SubroutineDefinition } from './subroutine-types';
+import { scaledDefinition, type Archetype, type Beta, type SubroutineDefinition } from './subroutine-types';
 import {
-  easeTriggerCondition,
   mergeSubroutine,
   preferMergeWhenAvailable,
   opportunisticSafehouseStrategy,
   pickMergeTarget,
-  scaledPayloadMagnitude,
-  decayedPayloadMagnitude,
-  improvedPayloadMagnitude,
+  upgradedDefinition,
   MERGE_MAGNITUDE_BONUS,
+  MERGE_TEMPO_BONUS,
   MERGE_RANK_CAP,
   synergyAwareMergeTarget,
 } from './merge';
@@ -18,7 +21,7 @@ import { HEAT_HIGH_FRACTION, HEAT_MAX } from './heat';
 
 function playerState(overrides: Partial<RunPlayerState> = {}): RunPlayerState {
   return {
-    classId: 'breacher',
+    classId: 'exploit-honeypot',
     installedLoadout: [],
     bench: [],
     data: 0,
@@ -33,192 +36,150 @@ function playerState(overrides: Partial<RunPlayerState> = {}): RunPlayerState {
   };
 }
 
-describe('easeTriggerCondition', () => {
-  it('reduces Accumulator threshold, floored at 1', () => {
-    expect(easeTriggerCondition({ kind: 'accumulator', metric: 'points', threshold: 3 }, 5)).toEqual({
-      kind: 'accumulator',
-      metric: 'points',
-      threshold: 1,
-    });
-  });
-
-  it('reduces Occurrence: threshold bankTarget', () => {
-    expect(easeTriggerCondition({ kind: 'occurrence', category: 'pair', variation: 'threshold', bankTarget: 5 }, 2)).toEqual({
-      kind: 'occurrence',
-      category: 'pair',
-      variation: 'threshold',
-      bankTarget: 3,
-    });
-  });
-
-  it('leaves Occurrence: scaling untouched -- no firing-ease knob (already unconditional)', () => {
-    const trigger = { kind: 'occurrence' as const, category: 'flush' as const, variation: 'scaling' as const, cap: 4 };
-    expect(easeTriggerCondition(trigger, 2)).toBe(trigger); // same reference -- true no-op
-  });
-
-  it('lowers a Self-state traceAbove value, floored at 0', () => {
-    expect(easeTriggerCondition({ kind: 'selfState', condition: 'traceAbove', value: 1 }, 5)).toEqual({
-      kind: 'selfState',
-      condition: 'traceAbove',
-      value: 0,
-    });
-  });
-
-  it('raises a Self-state traceBelow value', () => {
-    expect(easeTriggerCondition({ kind: 'selfState', condition: 'traceBelow', value: 10 }, 2)).toEqual({
-      kind: 'selfState',
-      condition: 'traceBelow',
-      value: 12,
-    });
-  });
-
-  it('leaves Always/Chained/isDealer untouched', () => {
-    expect(easeTriggerCondition({ kind: 'always' }, 2)).toEqual({ kind: 'always' });
-    expect(easeTriggerCondition({ kind: 'chained', afterSubroutineId: 'x' }, 2)).toEqual({ kind: 'chained', afterSubroutineId: 'x' });
-    expect(easeTriggerCondition({ kind: 'selfState', condition: 'isDealer' }, 2)).toEqual({ kind: 'selfState', condition: 'isDealer' });
-  });
-});
-
 function piece(id: string, overrides: Partial<SubroutineDefinition> = {}): SubroutineDefinition {
   return {
     id,
     name: id,
     archetype: 'exploit',
-    trigger: { kind: 'always' },
-    payload: { kind: 'directBurst', amount: 5 },
-    tags: [],
+    alpha: { verb: 'credit', amount: 2 },
+    beta: { source: 'cards', category: 'fifteen', shape: 'graded', cap: 3, effect: { verb: 'enhance', amount: 1 } },
     ...overrides,
   };
 }
 
-describe('scaledPayloadMagnitude (session 39, enemies.ts\'s per-layer difficulty scaler)', () => {
-  it('scales a magnitude-bearing payload proportionally, not by a flat amount', () => {
-    expect(scaledPayloadMagnitude({ kind: 'directBurst', amount: 10 }, 1.5)).toEqual({ kind: 'directBurst', amount: 15 });
+/** A Disrupt beta -- the one effect with no amount, so Merge loosens its
+ * shape instead. `shape` overrides the default stepped-at-2. */
+function disruptBeta(shape: Partial<Beta> = {}): Beta {
+  return { source: 'cards', category: 'pair', shape: 'stepped', at: 2, effect: { verb: 'disrupt', action: 'forceDiscard' }, ...shape } as Beta;
+}
+
+describe('upgradedDefinition -- Tempo amounts are fractions, not point counts (session 48)', () => {
+  it('applies the fraction-denominated bonus to a Tempo beta, never the flat one', () => {
+    // The flat bonus is a gauge-point count. Added to a Tempo fraction it
+    // would mean "plus a whole extra turn" -- the exact runaway
+    // pointsCooldown exists to contain.
+    const haste = piece('haste', {
+      beta: { source: 'state', condition: { kind: 'dealer' }, shape: 'whileTrue', effect: { verb: 'tempo', target: 'own', mode: 'threshold', amount: 1 / 2 } },
+    });
+    expect(upgradedDefinition(haste).beta!.effect).toEqual({ verb: 'tempo', target: 'own', mode: 'threshold', amount: 1 / 2 + 1 / 8 });
+    expect(MERGE_TEMPO_BONUS).toBeLessThan(MERGE_MAGNITUDE_BONUS);
   });
 
-  it('returns null for a magnitude-less payload -- same "null means no knob" contract as improvedPayloadMagnitude', () => {
-    expect(scaledPayloadMagnitude({ kind: 'cleanse' }, 1.5)).toBeNull();
+  it('applies the fraction-denominated bonus to a Tempo alpha on a beta-less piece', () => {
+    const slow = piece('slow', { alpha: { verb: 'tempo', target: 'opponent', mode: 'gauge', amount: 1 / 8 }, beta: undefined });
+    expect(upgradedDefinition(slow).alpha).toEqual({ verb: 'tempo', target: 'opponent', mode: 'gauge', amount: 1 / 8 + 1 / 8 });
   });
 
-  it('scales every magnitude field shape (baseAmount, amountPerTick, magnitude), not just amount', () => {
-    expect(scaledPayloadMagnitude({ kind: 'chainFinisherScaling', baseAmount: 4, perPriorFire: 1 }, 2)).toEqual({
-      kind: 'chainFinisherScaling',
-      baseAmount: 8,
-      perPriorFire: 1,
+  it('still applies the flat bonus to a non-Tempo beta on a Tempo-alpha piece -- the split is per-effect, not per-piece', () => {
+    // Turbo's shape: a Tempo alpha with a Credit beta. The beta is a real
+    // point count and gets the flat bonus; the alpha is left alone.
+    const turbo = piece('turbo', {
+      archetype: 'overclock',
+      alpha: { verb: 'tempo', target: 'own', mode: 'gauge', amount: 1 / 8 },
+      beta: { source: 'cards', category: 'suit', shape: 'immediate', at: 4, effect: { verb: 'credit', amount: 3 } },
     });
-    expect(scaledPayloadMagnitude({ kind: 'dot', amountPerTick: 2, cadence: 'globalPulse', duration: 3 }, 2)).toEqual({
-      kind: 'dot',
-      amountPerTick: 4,
-      cadence: 'globalPulse',
-      duration: 3,
-    });
-    expect(scaledPayloadMagnitude({ kind: 'debuff', debuffId: 'throttled', magnitude: 3, duration: 2 }, 2)).toEqual({
-      kind: 'debuff',
-      debuffId: 'throttled',
-      magnitude: 6,
-      duration: 2,
-    });
-  });
-});
-
-describe('improvedPayloadMagnitude -- tempo amounts are fractions, not point counts (session 48)', () => {
-  it('applies a fraction-denominated bonus to a tempo target, not the flat one', () => {
-    // The flat bonus is 3. Adding it to DNS Poisoning's half-a-threshold
-    // would mean "reduce by three and a half whole thresholds" -- the
-    // exact runaway pointsCooldown exists to contain. It gets 3/8
-    // instead, which is what the flat 3 was worth in turns back when
-    // tempo was denominated in points against a threshold of 8.
-    expect(improvedPayloadMagnitude({ kind: 'instantManipulation', target: 'ownGaugeThreshold', amount: 1 / 2 }, MERGE_MAGNITUDE_BONUS)).toEqual({
-      kind: 'instantManipulation',
-      target: 'ownGaugeThreshold',
-      amount: 1 / 2 + 3 / 8,
-    });
-  });
-
-  it('still applies the flat bonus to the non-tempo instantManipulation targets', () => {
-    // suitTally/subroutineProgress are genuinely absolute counts and did
-    // not change units -- the split has to be per-target, not per-kind.
-    expect(improvedPayloadMagnitude({ kind: 'instantManipulation', target: 'suitTally', amount: 1 }, MERGE_MAGNITUDE_BONUS)).toEqual({
-      kind: 'instantManipulation',
-      target: 'suitTally',
-      amount: 4,
-    });
+    const upgraded = upgradedDefinition(turbo);
+    expect(upgraded.beta!.effect).toEqual({ verb: 'credit', amount: 4 }); // +1 (MERGE_MAGNITUDE_BONUS)
+    expect(upgraded.alpha).toEqual(turbo.alpha);
   });
 
   it('leaves multiplicative scaling alone -- a multiplier is unit-agnostic', () => {
-    expect(scaledPayloadMagnitude({ kind: 'instantManipulation', target: 'ownGauge', amount: 1 / 2 }, 2)).toEqual({
-      kind: 'instantManipulation',
-      target: 'ownGauge',
-      amount: 1,
-    });
+    const tempo = piece('t', { alpha: { verb: 'tempo', target: 'own', mode: 'gauge', amount: 1 / 2 }, beta: undefined });
+    expect(scaledDefinition(tempo, 2).alpha).toEqual({ verb: 'tempo', target: 'own', mode: 'gauge', amount: 1 });
   });
 });
 
-describe('decayedPayloadMagnitude (session 39, Firewall Prime\'s Zero Trust redesign)', () => {
-  it('decays linearly by fireCount, not scaling with the base amount', () => {
-    expect(decayedPayloadMagnitude({ kind: 'instantCounterPush', amount: 18 }, 2, 4, 4)).toEqual({
-      kind: 'instantCounterPush',
-      amount: 10, // 18 - 2*4
-    });
+describe('upgradedDefinition -- Disrupt betas loosen their shape (session 51)', () => {
+  it("lowers a stepped beta's `at` by one", () => {
+    const upgraded = upgradedDefinition(piece('d', { beta: disruptBeta({ shape: 'stepped', at: 3 } as Partial<Beta>) }));
+    expect(upgraded.beta).toMatchObject({ shape: 'stepped', at: 2 });
   });
 
-  it('floors at the given value rather than continuing to decay or going negative', () => {
-    expect(decayedPayloadMagnitude({ kind: 'instantCounterPush', amount: 18 }, 10, 4, 4)).toEqual({
-      kind: 'instantCounterPush',
-      amount: 4, // 18 - 10*4 = -22, floored at 4
-    });
+  it("raises a graded beta's cap by one", () => {
+    const upgraded = upgradedDefinition(piece('d', { beta: disruptBeta({ shape: 'graded', cap: 3 } as Partial<Beta>) }));
+    expect(upgraded.beta).toMatchObject({ shape: 'graded', cap: 4 });
   });
 
-  it('fireCount 0 (the first fire) leaves the amount at its full base value', () => {
-    expect(decayedPayloadMagnitude({ kind: 'instantCounterPush', amount: 18 }, 0, 4, 4)).toEqual({
-      kind: 'instantCounterPush',
-      amount: 18,
-    });
+  it("lowers an immediate beta's `at` by one", () => {
+    const upgraded = upgradedDefinition(piece('d', { beta: disruptBeta({ shape: 'immediate', at: 2 } as Partial<Beta>) }));
+    expect(upgraded.beta).toMatchObject({ shape: 'immediate', at: 1 });
   });
 
-  it('returns null for a magnitude-less payload, same contract as the other transforms', () => {
-    expect(decayedPayloadMagnitude({ kind: 'cleanse' }, 3, 4, 4)).toBeNull();
+  it('a stepped or immediate beta already at `at` 1 has nothing to loosen, so the rank goes to the alpha instead of being wasted', () => {
+    // Session 51 review fix: loosenedShape used to build a new object even
+    // at the floor, so upgradedDefinition thought it had loosened something
+    // and the rank did nothing at all.
+    for (const shape of [{ shape: 'stepped', at: 1 }, { shape: 'immediate', at: undefined }, { shape: 'immediate', at: 1 }]) {
+      const original = piece('d', { beta: disruptBeta(shape as Partial<Beta>) });
+      const upgraded = upgradedDefinition(original);
+      expect(upgraded.beta, JSON.stringify(shape)).toBe(original.beta);
+      expect(upgraded.alpha, JSON.stringify(shape)).toEqual({ verb: 'credit', amount: 3 }); // +1 (MERGE_MAGNITUDE_BONUS)
+    }
+  });
+
+  it('an enhance beta on a Tempo alpha gets the fractional bonus, never a flat +1 (session 48)', () => {
+    // An enhance adds to its alpha's amount, so on a Tempo alpha it is
+    // denominated in turns: a flat +1 would be a whole extra turn.
+    const original: SubroutineDefinition = {
+      id: 'tempo-enhance',
+      name: 'tempo-enhance',
+      archetype: 'overclock',
+      alpha: { verb: 'tempo', target: 'own', mode: 'gauge', amount: 1 / 8 },
+      beta: { source: 'cards', category: 'go', shape: 'graded', cap: 3, effect: { verb: 'enhance', amount: 1 / 8 } },
+    };
+    expect(upgradedDefinition(original).beta!.effect).toEqual({ verb: 'enhance', amount: 1 / 8 + MERGE_TEMPO_BONUS });
+  });
+
+  it('keeps the Disrupt effect and leaves the alpha alone when the shape loosens', () => {
+    const original = piece('d', { beta: disruptBeta() });
+    const upgraded = upgradedDefinition(original);
+    expect(upgraded.beta!.effect).toEqual({ verb: 'disrupt', action: 'forceDiscard' });
+    expect(upgraded.alpha).toEqual(original.alpha);
+  });
+
+  it('upgrades the alpha instead for a whileTrue Disrupt beta, which has no shape knob', () => {
+    const original = piece('d', {
+      beta: { source: 'state', condition: { kind: 'dealer' }, shape: 'whileTrue', effect: { verb: 'disrupt', action: 'revealCrib' } },
+    });
+    const upgraded = upgradedDefinition(original);
+    expect(upgraded.beta).toBe(original.beta);
+    expect(upgraded.alpha).toEqual({ verb: 'credit', amount: 3 }); // +1 (MERGE_MAGNITUDE_BONUS)
+  });
+
+  it('is a true no-op for a piece with no magnitude anywhere (Disrupt alpha, no beta)', () => {
+    const original = piece('d', { alpha: { verb: 'disrupt', action: 'revealHand' }, beta: undefined });
+    expect(upgradedDefinition(original)).toEqual(original);
   });
 });
 
 describe('mergeSubroutine', () => {
-  it('improves a magnitude-bearing payload in place on the bench', () => {
+  it('improves a magnitude-bearing beta in place on the bench', () => {
     const state = playerState({ bench: [piece('a')], material: { a: 1 } });
     const result = mergeSubroutine(state, 'a');
-    expect(result.bench[0].payload).toEqual({ kind: 'directBurst', amount: 8 }); // +3 (MERGE_MAGNITUDE_BONUS)
+    expect(result.bench[0].beta!.effect).toEqual({ verb: 'enhance', amount: 2 }); // +1 (MERGE_MAGNITUDE_BONUS)
+    expect(result.bench[0].alpha).toEqual({ verb: 'credit', amount: 2 }); // the alpha is the piece's identity -- untouched
     expect(result.material.a).toBe(0);
     expect(result.rank.a).toBe(1);
   });
 
-  it('improves a magnitude-bearing payload in place when installed instead', () => {
+  it('improves a magnitude-bearing beta in place when installed instead', () => {
     const state = playerState({ installedLoadout: [piece('a')], material: { a: 1 } });
     const result = mergeSubroutine(state, 'a');
-    expect(result.installedLoadout[0].payload).toEqual({ kind: 'directBurst', amount: 8 });
+    expect(result.installedLoadout[0].beta!.effect).toEqual({ verb: 'enhance', amount: 2 });
   });
 
-  it("improves Ward's shield amount directly -- it's a real magnitude now (Breach/Containment redesign)", () => {
-    const ward = piece('w', { payload: { kind: 'ward', amount: 7 } });
+  it("improves a beta-less Ward piece's shield amount via its alpha -- a real magnitude", () => {
+    const ward = piece('w', { archetype: 'honeypot', alpha: { verb: 'ward', amount: 7 }, beta: undefined });
     const state = playerState({ bench: [ward], material: { w: 1 } });
     const result = mergeSubroutine(state, 'w');
-    expect(result.bench[0].payload).toEqual({ kind: 'ward', amount: 10 }); // +3 (MERGE_MAGNITUDE_BONUS)
+    expect(result.bench[0].alpha).toEqual({ verb: 'ward', amount: 8 }); // +1 (MERGE_MAGNITUDE_BONUS)
   });
 
-  it('falls back to the trigger knob for a non-magnitude payload (Cleanse)', () => {
-    const cleanse = piece('c', { payload: { kind: 'cleanse' }, trigger: { kind: 'accumulator', metric: 'points', threshold: 6 } });
-    const state = playerState({ bench: [cleanse], material: { c: 1 } });
-    const result = mergeSubroutine(state, 'c');
-    expect(result.bench[0].payload).toEqual({ kind: 'cleanse' }); // unchanged
-    expect(result.bench[0].trigger).toEqual({ kind: 'accumulator', metric: 'points', threshold: 4 }); // -2
-  });
-
-  it("raises Occurrence: scaling's cap for a non-magnitude payload with no other knob", () => {
-    const cleanse = piece('c', {
-      payload: { kind: 'cleanse' },
-      trigger: { kind: 'occurrence', category: 'flush', variation: 'scaling', cap: 4 },
-    });
-    const state = playerState({ bench: [cleanse], material: { c: 1 } });
-    const result = mergeSubroutine(state, 'c');
-    expect(result.bench[0].trigger).toEqual({ kind: 'occurrence', category: 'flush', variation: 'scaling', cap: 6 }); // +2
+  it('falls back to the shape knob for a beta with no amount (Disrupt)', () => {
+    const state = playerState({ bench: [piece('d', { beta: disruptBeta() })], material: { d: 1 } });
+    const result = mergeSubroutine(state, 'd');
+    expect(result.bench[0].beta!.effect).toEqual({ verb: 'disrupt', action: 'forceDiscard' }); // unchanged
+    expect(result.bench[0].beta).toMatchObject({ shape: 'stepped', at: 1 }); // -1
   });
 
   it('is a no-op when no material is banked for the id', () => {
@@ -301,12 +262,12 @@ describe('pickMergeTarget', () => {
 // synergy-aware Merge target.
 // ---------------------------------------------------------------------
 
-function mergePiece(id: string, archetype: Archetype, payload: SubroutineDefinition['payload']): SubroutineDefinition {
-  return { id, name: id, archetype, trigger: { kind: 'always' }, payload, tags: [] };
+function mergePiece(id: string, archetype: Archetype, alpha: SubroutineDefinition['alpha'], beta?: Beta): SubroutineDefinition {
+  return { id, name: id, archetype, alpha, beta };
 }
 
-const CREDIT = { kind: 'directBurst', amount: 3 } as const;
-const DEFENSIVE = { kind: 'ward', amount: 3 } as const;
+const CREDIT = { verb: 'credit', amount: 3 } as const;
+const DEFENSIVE = { verb: 'ward', amount: 3 } as const;
 
 describe('synergyAwareMergeTarget', () => {
   it('prefers an installed piece over a benched one with more banked material', () => {
@@ -324,17 +285,34 @@ describe('synergyAwareMergeTarget', () => {
 
   it('prefers a credit-capable installed piece over a defensive-only one', () => {
     const state = playerState({
-      installedLoadout: [mergePiece('ward', 'encryption', DEFENSIVE), mergePiece('hit', 'exploit', CREDIT)],
+      installedLoadout: [mergePiece('ward', 'honeypot', DEFENSIVE), mergePiece('hit', 'exploit', CREDIT)],
       material: { ward: 3, hit: 1 },
     });
     expect(pickMergeTarget(state)).toBe('ward');
     expect(synergyAwareMergeTarget(state)).toBe('hit');
   });
 
-  it('prefers on-archetype when installed and credit-capability tie', () => {
-    // Breacher: exploit + encryption, so 'root' is off-archetype.
+  it('counts a credit path through the beta (hasCreditPath), not just a Credit alpha', () => {
+    // Tarpit's shape: a Ward alpha whose beta converts banked Ward into
+    // credit. It can push toward a win, so it outranks a pure Ward.
+    const converter: Beta = {
+      source: 'state',
+      condition: { kind: 'wardAbove', amount: 6 },
+      shape: 'whileTrue',
+      effect: { verb: 'credit', amount: 3, from: 'ward' },
+    };
     const state = playerState({
-      installedLoadout: [mergePiece('off', 'root', CREDIT), mergePiece('on', 'exploit', CREDIT)],
+      installedLoadout: [mergePiece('ward', 'honeypot', DEFENSIVE), mergePiece('tarpit', 'honeypot', DEFENSIVE, converter)],
+      material: { ward: 3, tarpit: 1 },
+    });
+    expect(pickMergeTarget(state)).toBe('ward');
+    expect(synergyAwareMergeTarget(state)).toBe('tarpit');
+  });
+
+  it('prefers on-archetype when installed and credit-capability tie', () => {
+    // exploit-honeypot, so 'daemon' is off-archetype.
+    const state = playerState({
+      installedLoadout: [mergePiece('off', 'daemon', CREDIT), mergePiece('on', 'exploit', CREDIT)],
       material: { off: 2, on: 1 },
     });
     expect(synergyAwareMergeTarget(state)).toBe('on');
@@ -402,7 +380,7 @@ describe('mergeTargetStrategy wiring (checkpoint E)', () => {
     for (let seed = 0; seed < 40 && seen.length === 0; seed++) {
       playRun({
         seed,
-        classId: 'breacher',
+        classId: 'exploit-overclock',
         traversalStrategy: opportunisticTraversal,
         safehouseStrategy: () => 'merge',
         mergeTargetStrategy: spy,
@@ -415,10 +393,10 @@ describe('mergeTargetStrategy wiring (checkpoint E)', () => {
     // Same seed, no strategy passed -- unchanged behavior for every
     // existing caller is the whole point of the append-at-the-end
     // default.
-    const withDefault = playRun({ seed: 7, classId: 'breacher', safehouseStrategy: preferMergeWhenAvailable });
+    const withDefault = playRun({ seed: 7, classId: 'exploit-overclock', safehouseStrategy: preferMergeWhenAvailable });
     const withExplicit = playRun({
       seed: 7,
-      classId: 'breacher',
+      classId: 'exploit-overclock',
       safehouseStrategy: preferMergeWhenAvailable,
       mergeTargetStrategy: pickMergeTarget,
     });

@@ -2,19 +2,27 @@ import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import { createNode } from './map-types';
 import { totalHeatSources, NO_HEAT_SOURCES, resolveEncounter, combatThresholdsFor, GAUGE_THRESHOLD, BREACH_THRESHOLD, CONTAINMENT_THRESHOLD } from './encounters';
-import { ENEMY_ROSTER, type EnemyId } from './enemies';
+import { ENEMY_ROSTER, type EnemyDefinition, type EnemyId } from './enemies';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
 import { playRun, opportunisticTraversal, type RunPlayerState } from './run';
-import type { ClassId } from './classes';
+import { ALL_CLASS_IDS, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
-import { BREACHER_LOADOUT } from './subroutines';
+import { CLASS_STARTING_LOADOUTS } from './subroutines';
 import { REWARD_OPTIONS_COUNT } from './rewards';
 import { dataForTier } from './data';
 import { REROLL_COST, buyCheapestAffordable, type ShopRerollStrategy } from './shop';
 import { preferMergeWhenAvailable } from './merge';
 
 /**
+ * Session 51 port: fixtures moved to the redesigned model. The win side
+ * is now the 'exploit-overclock' class's real starting kit (Probe,
+ * Voltage Boost, Burst Clock) with only Probe's credit alpha scaled up;
+ * the loss side is a lone beta-less verb-alpha credit piece; the pinned
+ * enemies are skeleton-roster ids; class sweeps read ALL_CLASS_IDS. The
+ * historical notes below describe the pre-session-51 kits they were
+ * written against and are kept for the reasoning, not the piece names.
+ *
  * Breach/Containment is a sharp positive-feedback race (session 20's own
  * finding, confirmed again at Phase 4 checkpoint A): a near-symmetric
  * matchup can take anywhere from tens to tens of thousands of hands to
@@ -47,31 +55,31 @@ import { preferMergeWhenAvailable } from './merge';
  * questions for Phase 5, not something to bake into this test. Falls back
  * to a synthetic single-piece negligible dummy instead.
  */
-function overwhelmingBreacherLoadout(burstAmount: number): SubroutineDefinition[] {
-  return BREACHER_LOADOUT.map((piece) =>
-    piece.id === 'buffer-overflow' ? { ...piece, payload: { ...piece.payload, amount: burstAmount } } : piece,
+function overwhelmingStarterLoadout(creditAmount: number): SubroutineDefinition[] {
+  // Session 51: the real 'exploit-overclock' starting kit, Probe's credit
+  // alpha scaled up -- Voltage Boost's Empower and Burst Clock's sequence
+  // beta stay at their real values, the same "real kit, one magnitude
+  // scaled" construction the old Buffer Overflow version used.
+  return CLASS_STARTING_LOADOUTS['exploit-overclock'].map((piece): SubroutineDefinition =>
+    piece.id === 'probe' ? { ...piece, alpha: { verb: 'credit', amount: creditAmount } } : piece,
   );
 }
 
-// classId: 'ghost' here, deliberately NOT 'breacher' -- Phase 4
-// checkpoint B wired starting passives in, and Foothold (Breacher's)
-// hooks into every Breach/Containment crossing regardless of payload
-// kind, which could inject an unwanted bonus push into this single-
-// piece dummy's own trajectory. Ghost's Return to Sender only touches
-// instantCounterPush payloads, which this dummy never fires -- inert,
-// same as every other class's passive would be against a lone
-// directBurst piece.
+// classId: 'daemon-honeypot' here, deliberately a class with no Exploit
+// half -- the class passive must stay inert against this single-piece
+// dummy's own trajectory. Session 51's placeholder bridge passive only
+// acts when a piece of the class's first archetype fires elevated; this
+// dummy is an Exploit piece with no beta, so it can never fire elevated
+// and is never the feeder archetype either -- doubly inert.
 function playerWithBurst(amount: number): RunPlayerState {
   return {
-    classId: 'ghost',
+    classId: 'daemon-honeypot',
     installedLoadout: [
       {
         id: 'test-player-burst',
         name: 'test-player-burst',
         archetype: 'exploit',
-        trigger: { kind: 'always' },
-        payload: { kind: 'directBurst', amount },
-        tags: [],
+        alpha: { verb: 'credit', amount },
       } satisfies SubroutineDefinition,
     ],
     data: 0,
@@ -87,12 +95,17 @@ function playerWithBurst(amount: number): RunPlayerState {
 }
 
 describe('combatThresholdsFor -- the meta-progression sockets (session 48)', () => {
-  const nullSession = ENEMY_ROSTER.find((e) => e.id === 'null-session')!; // authors its own Containment of 65
-  const firewallPrime = ENEMY_ROSTER.find((e) => e.id === 'firewall-prime')!; // no overrides at all
+  // Session 51: no skeleton gatekeeper authors a Containment override, so
+  // the authored-65 gatekeeper (the old Null Session) is a fixture built
+  // on a real skeleton gatekeeper rather than a roster lookup.
+  const plainGate = ENEMY_ROSTER.find((e) => e.id === 'skeleton-gate-1')!; // no overrides at all
+  const nullSession: EnemyDefinition = { ...ENEMY_ROSTER.find((e) => e.id === 'skeleton-gate-4')!, winThreshold: 65 };
   const base = playerWithBurst(1);
 
   it('falls back to the flat constants when nothing is socketed -- the state of every run today', () => {
-    expect(combatThresholdsFor(base, firewallPrime, 1, 5)).toEqual({
+    expect(plainGate.winThreshold).toBeUndefined();
+    expect(plainGate.gaugeThresholdScaler).toBeUndefined();
+    expect(combatThresholdsFor(base, plainGate, 1, 5)).toEqual({
       gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD],
       winThreshold: [BREACH_THRESHOLD, CONTAINMENT_THRESHOLD],
     });
@@ -104,7 +117,7 @@ describe('combatThresholdsFor -- the meta-progression sockets (session 48)', () 
 
   it('applies the player\'s own initiative and Breach values as absolute overrides', () => {
     const upgraded: RunPlayerState = { ...base, initiativeThreshold: 9, breachThreshold: 40 };
-    const { gaugeThreshold, winThreshold } = combatThresholdsFor(upgraded, firewallPrime, 1, 5);
+    const { gaugeThreshold, winThreshold } = combatThresholdsFor(upgraded, plainGate, 1, 5);
     expect(gaugeThreshold[0]).toBe(9);
     expect(winThreshold[0]).toBe(40);
     // Neither touches the enemy's own side of either pair.
@@ -118,22 +131,22 @@ describe('combatThresholdsFor -- the meta-progression sockets (session 48)', () 
     // individually. An absolute player-side override would flatten Null
     // Session's 65 to the same value every other enemy in the game gets.
     const defensive: RunPlayerState = { ...base, containmentThresholdScaler: 1.2 };
-    expect(combatThresholdsFor(defensive, firewallPrime, 1, 5).winThreshold[1]).toBe(60); // 50 * 1.2
+    expect(combatThresholdsFor(defensive, plainGate, 1, 5).winThreshold[1]).toBe(60); // 50 * 1.2
     expect(combatThresholdsFor(defensive, nullSession, 4, 20).winThreshold[1]).toBe(78); // 65 * 1.2, identity preserved
   });
 
   it('floors a scaled Containment at 1 -- gauges.ts never sees a zero bar', () => {
     const absurd: RunPlayerState = { ...base, containmentThresholdScaler: 0.001 };
-    expect(combatThresholdsFor(absurd, firewallPrime, 1, 5).winThreshold[1]).toBe(1);
+    expect(combatThresholdsFor(absurd, plainGate, 1, 5).winThreshold[1]).toBe(1);
   });
 });
 
 const OVERWHELMING_PLAYER: RunPlayerState = {
-  classId: 'breacher',
+  classId: 'exploit-overclock',
   // D11-A raised the bar: every enemy piece now fires every turn, so 30
   // burst no longer reliably out-races a gatekeeper. The fixture's job is
   // to win dependably, so the number moves rather than the assertion.
-  installedLoadout: overwhelmingBreacherLoadout(90),
+  installedLoadout: overwhelmingStarterLoadout(90),
   data: 0,
   bench: [],
   material: {},
@@ -162,14 +175,13 @@ const SEEDS = [1, 2, 3];
 // regardless of which enemy real selection would have produced.
 const TEST_LAYER = 4;
 const TEST_FIGHT_NUMBER = 10;
+// Session 51: every skeleton enemy carries a credit-alpha piece that
+// fires every turn (D11), so each pick below credits its own gauge
+// reliably; these are the skeleton ids with the most credit in the kit.
 const RELIABLE_ENEMY_ID: Record<'regularFight' | 'eliteFight' | 'gatekeeperFight', EnemyId> = {
-  regularFight: 'drive-by-kit', // off-by-one (thirtyOne) + ransomware (accumulator DoT)
-  eliteFight: 'zero-day-broker', // zero-day-chain fires on any Pair
-  // total-compromise's rare fires reactively whenever the *player's*
-  // fill is low -- true almost the whole match against NEGLIGIBLE_PLAYER,
-  // false almost immediately against OVERWHELMING_PLAYER's rush, which
-  // is exactly the behavior both win/loss scenarios below need.
-  gatekeeperFight: 'total-compromise',
+  regularFight: 'skeleton-crawler', // Probe (credit alpha, graded fifteen enhance)
+  eliteFight: 'skeleton-hunter', // Probe + Burst Clock credit alphas, Turbo tempo
+  gatekeeperFight: 'skeleton-gate-4', // layer 4's own gatekeeper, matching TEST_LAYER
 };
 // Both sides pinned to the dumb baseline explicitly -- an explicit
 // override always wins outright over checkpoint C's computed skill-dial
@@ -312,7 +324,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
   });
 
   it('Safehouse merges instead of resting when Merge material is banked -- costs 0 Heat', () => {
-    const playerWithMaterial: RunPlayerState = { ...OVERWHELMING_PLAYER, material: { 'buffer-overflow': 1 } };
+    const playerWithMaterial: RunPlayerState = { ...OVERWHELMING_PLAYER, material: { probe: 1 } };
     const outcome = resolveEncounter(createNode('n', 'safehouse'), createRng(1), playerWithMaterial);
     expect(outcome).toEqual({
       newState: 'inert',
@@ -322,7 +334,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
       rewardTier: 'none',
       dataAwarded: 0,
       rewardOptions: [],
-      mergeTargetId: 'buffer-overflow',
+      mergeTargetId: 'probe',
       shopPurchase: null,
       rerollCost: 0,
       modRewardOptions: [],
@@ -441,7 +453,7 @@ describe('heatSources (session 50) -- Heat attribution', () => {
     // an Event carrying a bonus fight).
     let checked = 0;
     let sawNonZero = 0;
-    for (const classId of ['breacher', 'blackhat', 'saboteur', 'operator', 'warden', 'ghost'] as ClassId[]) {
+    for (const classId of ALL_CLASS_IDS) {
       // 30 rather than 15 since D11-A: runs end sooner, so a fixed seed
       // count yields fewer non-zero Heat encounters. Seeds go up rather
       // than the non-vacuity floor coming down -- lowering that floor
@@ -468,9 +480,15 @@ describe('heatSources (session 50) -- Heat attribution', () => {
     // amounts cannot tell "never happened" from "cost nothing".
     let containmentLosses = 0;
     let attritionLosses = 0;
-    for (const classId of ['breacher', 'warden', 'ghost'] as ClassId[]) {
+    for (const classId of ['exploit-overclock', 'daemon-honeypot', 'overclock-honeypot'] as ClassId[]) {
       for (let seed = 0; seed < 25; seed++) {
-        for (const entry of playRun({ seed, classId, playerSkill: 0.85, traversalStrategy: opportunisticTraversal }).log) {
+        // Session 51: floor player skill rather than 0.85. Against the
+        // skeleton roster a skill-0.85 player lost 2 regular/elite fights
+        // in 150 runs (all six classes), so the non-vacuity floor below
+        // could not be fed by more seeds within budget; at floor skill the
+        // same three classes lose ~20 in 75 runs. The split being asserted
+        // is skill-independent, so the input moves rather than the floor.
+        for (const entry of playRun({ seed, classId, traversalStrategy: opportunisticTraversal }).log) {
           if (entry.type !== 'encounter') continue;
           const { heatSources, fight } = entry.outcome;
           // At most one loss bucket can ever be charged per encounter.
@@ -493,7 +511,7 @@ describe('heatSources (session 50) -- Heat attribution', () => {
     // Gatekeeper losses bypass Heat entirely and go to Quarantine
     // (heat.ts) -- so they must contribute nothing to any bucket.
     let seen = 0;
-    for (const classId of ['breacher', 'warden'] as ClassId[]) {
+    for (const classId of ['exploit-overclock', 'daemon-honeypot'] as ClassId[]) {
       for (let seed = 0; seed < 40; seed++) {
         for (const entry of playRun({ seed, classId, playerSkill: 0.85 }).log) {
           if (entry.type !== 'encounter' || !entry.outcome.quarantined) continue;

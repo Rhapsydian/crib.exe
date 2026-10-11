@@ -287,3 +287,26 @@ describe('fireImmediateBetas', () => {
     expect(fires).toBe(1);
   });
 });
+
+describe('placeholder bridge passive (A8)', () => {
+  // Every class: when a piece of its FIRST archetype fires elevated, every
+  // piece of its SECOND archetype banks a charge. exploit-daemon: Exploit
+  // feeds Daemon.
+  const banking: Beta = { source: 'cards', category: 'go', shape: 'graded', cap: 9, effect: { verb: 'enhance', amount: 1 } };
+  const elevatedExploit = piece('ex', { verb: 'credit', amount: 1 }, { source: 'state', condition: { kind: 'dealer' }, shape: 'whileTrue', effect: { verb: 'enhance', amount: 1 } });
+  const daemon = piece('dm', { verb: 'credit', amount: 1 }, banking, {}, 'daemon');
+  const withClass = (classId: 'exploit-daemon' | undefined) => createCombatState([elevatedExploit, daemon], [], [12, 12], classId, [100, 100]);
+
+  // The Daemon piece fires right after the Exploit one, so it spends the
+  // bridged charge in the same turn -- read it off whether it fired elevated.
+  const daemonElevated = (state: CombatState, isDealer: boolean) => fireTurn(state, 0, { isDealer }).events[1].elevated;
+
+  it("charges the second archetype's pieces when the first archetype's piece fires elevated", () => {
+    expect(daemonElevated(withClass('exploit-daemon'), true)).toBe(true);
+  });
+
+  it('does nothing when the feeder piece fires un-elevated, or with no class', () => {
+    expect(daemonElevated(withClass('exploit-daemon'), false)).toBe(false);
+    expect(daemonElevated(withClass(undefined), true)).toBe(false);
+  });
+});

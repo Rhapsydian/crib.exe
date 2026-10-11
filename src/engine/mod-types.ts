@@ -32,16 +32,14 @@ export type ModId =
   | 'backup-generator'
   | 'petty-cache'
   // Uncommon (6)
-  | 'tagged-firmware'
-  | 'malware-amplifier'
-  | 'redundant-ticks'
+  | 'firmware-patch'
+  | 'daemon-amplifier'
   | 'salvage-protocol'
-  | 'overclocked-accumulator'
+  | 'cache-prefetch'
   | 'bulk-buyer'
   // Rare (4)
   | 'auxiliary-process'
   | 'rootkit-persistence'
-  | 'failsafe-cascade'
   | 'black-budget'
   // Common (Mod Pool Expansion, session 44, +7)
   | 'cold-boot'
@@ -53,13 +51,12 @@ export type ModId =
   | 'init-script'
   // Uncommon (Mod Pool Expansion, session 44, +6)
   | 'exploit-amplifier'
-  | 'encryption-amplifier'
-  | 'root-amplifier'
+  | 'honeypot-amplifier'
+  | 'overclock-amplifier'
   | 'fast-learner'
   | 'threshold-exploit'
   | 'scrap-merchant'
   // Rare (Mod Pool Expansion, session 44, +4)
-  | 'redline'
   | 'heat-sink'
   | 'backdoor-access'
   | 'session-hijack-relay';

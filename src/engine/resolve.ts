@@ -1,11 +1,19 @@
 import type { PlayerIndex } from './pegging';
 import type { Card } from './cards';
-import type { BetaEffect, Effect, SubroutineDefinition, TempoEffect } from './subroutine-types';
+import type { Archetype, BetaEffect, Effect, SubroutineDefinition, TempoEffect } from './subroutine-types';
 import type { ClassId } from './classes';
 import { CLASS_DEFINITIONS } from './classes';
 import type { EnemyPassiveId } from './enemies';
 import type { ModId } from './mod-types';
-import { reactiveModSubroutines, MOD_SMALL, MOD_MEDIUM } from './mods';
+import {
+  reactiveModSubroutines,
+  AMPLIFIER_BONUS,
+  CACHE_PREFETCH_CHARGES,
+  FIRMWARE_PATCH_BONUS,
+  MOD_SMALL,
+  MOD_MEDIUM,
+  THRESHOLD_EXPLOIT_REDUCTION,
+} from './mods';
 import type { BurnerId } from './burner-types';
 import {
   addCharges,
@@ -161,7 +169,7 @@ export function createCombatState(
   // Reactive-subroutine Mods (session 30's "fires outside the loadout"
   // bucket) are appended to side 0's loadout: no slot, no cap, otherwise
   // ordinary entries that fire on the player's turns.
-  const playerLoadoutWithMods = [...playerLoadout, ...reactiveModSubroutines(effectiveModIds)];
+  const playerLoadoutWithMods = modAdjustedLoadout([...playerLoadout, ...reactiveModSubroutines(effectiveModIds)], effectiveModIds);
   return {
     sides: [
       createCombatSideState(playerLoadoutWithMods, gaugeThreshold[0], winThreshold[0]),
@@ -272,19 +280,93 @@ function setPassiveStat(combatState: CombatState, side: PlayerIndex, key: string
   return withSide(combatState, side, { passiveState: { ...sideState.passiveState, [key]: value } });
 }
 
-// Model-independent Mod hooks carried over from Phase 5. The Mods that
-// depended on the old subroutine model -- archetype Amplifiers, tag and
-// trigger-easing Mods, tick Mods -- are re-pointed in checkpoint 4, as
-// are the class bridge passives.
+// ---------------------------------------------------------------------
+// Mods that reshape the player's pieces for one fight (session 51 re-
+// points). Applied once, to combat-local copies, in createCombatState --
+// the run's own loadout is never touched, so a Mod lost or gained between
+// fights takes effect on the next fight with no bookkeeping.
+// ---------------------------------------------------------------------
+
+const AMPLIFIERS: Partial<Record<ModId, Archetype>> = {
+  'exploit-amplifier': 'exploit',
+  'daemon-amplifier': 'daemon',
+  'overclock-amplifier': 'overclock',
+  'honeypot-amplifier': 'honeypot',
+};
+
+/** Verbs whose amount is gauge points -- the only ones a flat Mod bonus
+ * may touch. Tempo is a fraction of a turn or threshold (session 48);
+ * Charge, Empower and Disrupt are not output. */
+function isPointsEffect(effect: Effect | BetaEffect): boolean {
+  return effect.verb === 'credit' || effect.verb === 'suppress' || effect.verb === 'ward';
+}
+
+/**
+ * - An archetype **Amplifier** adds AMPLIFIER_BONUS to that archetype's
+ *   points alphas (was a flat credit per fire -- under D11 that would be a
+ *   credit per piece per turn).
+ * - **Firmware Patch** adds FIRMWARE_PATCH_BONUS to every beta effect in
+ *   points, including an `enhance` on a points alpha (was Tagged Firmware;
+ *   tags are gone).
+ * - **Threshold Exploit** lowers every stepped beta's `at` by one, never
+ *   below 1 (was "fewer banked occurrences to fire").
+ */
+function modAdjustedLoadout(loadout: SubroutineDefinition[], ownedModIds: ModId[]): SubroutineDefinition[] {
+  const amplified = new Set(ownedModIds.map((id) => AMPLIFIERS[id]).filter((a): a is Archetype => a !== undefined));
+  const firmware = ownedModIds.includes('firmware-patch');
+  const thresholdExploit = ownedModIds.includes('threshold-exploit');
+  if (amplified.size === 0 && !firmware && !thresholdExploit) return loadout;
+
+  return loadout.map((piece) => {
+    let next = piece;
+    if (amplified.has(piece.archetype) && isPointsEffect(next.alpha) && next.alpha.verb !== 'disrupt') {
+      next = { ...next, alpha: { ...next.alpha, amount: next.alpha.amount + AMPLIFIER_BONUS } };
+    }
+    const beta = next.beta;
+    if (beta && firmware) {
+      const boostable = beta.effect.verb === 'enhance' ? isPointsEffect(next.alpha) : isPointsEffect(beta.effect);
+      if (boostable && beta.effect.verb !== 'disrupt') {
+        next = { ...next, beta: { ...beta, effect: { ...beta.effect, amount: beta.effect.amount + FIRMWARE_PATCH_BONUS } } };
+      }
+    }
+    if (next.beta?.shape === 'stepped' && thresholdExploit) {
+      next = { ...next, beta: { ...next.beta, at: Math.max(1, next.beta.at - THRESHOLD_EXPLOIT_REDUCTION) } };
+    }
+    return next;
+  });
+}
+
+// ---------------------------------------------------------------------
+// The class bridge passive (A8) -- PLACEHOLDER. One generic rule for all
+// six classes until real bridge passives are designed alongside real
+// content: whenever one of the class's FIRST archetype's pieces fires
+// elevated, every piece of its SECOND archetype banks a charge. The
+// example A8 gave ("your A betas add a charge to your B pieces"), applied
+// uniformly so the class identity loop exists for simulation.
+// ---------------------------------------------------------------------
+
+const BRIDGE_CHARGES = 1; // TBD/playtesting
+
+function applyBridgePassive(combatState: CombatState, side: PlayerIndex, fired: SubroutineDefinition, elevated: boolean): CombatState {
+  if (side !== 0 || !elevated || !combatState.classId) return combatState;
+  const [feeder, fed] = CLASS_DEFINITIONS[combatState.classId].archetypes;
+  if (fired.archetype !== feeder) return combatState;
+  return mapLoadout(combatState, 0, (entry) => (entry.definition.archetype === fed ? addCharges(entry.state, entry.definition, BRIDGE_CHARGES) : entry.state));
+}
+
+// Model-independent Mod hooks carried over from Phase 5.
 
 const MOD_GAUGE_CROSS_FRACTION = 0.5;
 
-/** Warm Boot (start with a small Ward) and Cold Boot (start with a small
- * credit) -- once per fight, before the first hand. */
+/** Warm Boot (start with a small Ward), Cold Boot (start with a small
+ * credit) and Cache Prefetch (every banking beta starts with a charge;
+ * session 51, was Overclocked Accumulator) -- once per fight, before the
+ * first hand. */
 export function applyModOnCombatStartPassives(combatState: CombatState): CombatState {
   let state = combatState;
   if (hasMod(state, 'warm-boot')) state = withSide(state, 0, { wardShield: state.sides[0].wardShield + MOD_SMALL });
   if (hasMod(state, 'cold-boot')) state = creditWinGauge(state, 0, MOD_SMALL);
+  if (hasMod(state, 'cache-prefetch')) state = mapLoadout(state, 0, (entry) => addCharges(entry.state, entry.definition, CACHE_PREFETCH_CHARGES));
   return state;
 }
 
@@ -603,6 +685,7 @@ export function fireTurn(
     const resolved = resolveFire(state, side, i, alpha, beta?.effect, scale, turn);
     state = applyTracePressure(resolved.combatState, side, definition);
     state = mapLoadout(state, side, (e, index) => (index === i ? recordFire(e.state, definition) : e.state));
+    state = applyBridgePassive(state, side, definition, elevated);
 
     events.push({ subroutineId: definition.id, side, alpha, beta: resolved.beta, elevated, immediate: false });
     firedThisTurn.push({ definition, elevated });

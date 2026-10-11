@@ -47,14 +47,20 @@ import {
  * least once across their real contexts, plus a smoke-tested full run.
  * Mirrors mods.test.ts's own style -- exercised through the public API,
  * not by reaching into private per-context dispatch code.
+ *
+ * Session 51 port: fixtures moved to the redesigned model -- class ids
+ * are the archetype-pair ids ('exploit-overclock' stands in for the old
+ * 'breacher'), and the hand-built piece is a verb-alpha
+ * SubroutineDefinition. Combat Burners are now verb Effects (Flash
+ * Drive = credit, EMP Charge = suppress).
  */
 
 function playerWith(overrides: Partial<RunPlayerState>): RunPlayerState {
-  return { ...createInitialPlayerState('breacher'), ...overrides };
+  return { ...createInitialPlayerState('exploit-overclock'), ...overrides };
 }
 
 describe('Combat-context activation -- BurnerActivationStrategy', () => {
-  it('Flash Drive fires a real directBurst payload via playCombat', () => {
+  it('Flash Drive fires a real credit effect via playCombat', () => {
     const alwaysFlashDrive: BurnerActivationStrategy = (ctx) => (ctx.availableBurnerIds.includes('flash-drive') ? 'flash-drive' : null);
     const result = playCombat([[], []], {
       seed: 1,
@@ -66,7 +72,7 @@ describe('Combat-context activation -- BurnerActivationStrategy', () => {
     expect(result.burnersUsedThisCombat).toEqual(['flash-drive']);
   });
 
-  it('EMP Charge fires a real instantCounterPush payload via playCombat', () => {
+  it('EMP Charge fires a real suppress effect via playCombat', () => {
     const alwaysEmpCharge: BurnerActivationStrategy = (ctx) => (ctx.availableBurnerIds.includes('emp-charge') ? 'emp-charge' : null);
     const result = playCombat([[], []], {
       seed: 1,
@@ -240,7 +246,7 @@ describe('Shop-context activation (coupon) -- ShopBurnerStrategy', () => {
   });
 
   it('Insider Tip forces the shop wildcard slot to rare', () => {
-    const withFloor = shopOfferingsForClass('breacher', createRng(2), 0, 0, 0, 'rare');
+    const withFloor = shopOfferingsForClass('exploit-overclock', createRng(2), 0, 0, 0, 'rare');
     const wildcard = withFloor[withFloor.length - 1];
     expect(wildcard.cost).toBeGreaterThan(0);
 
@@ -272,7 +278,7 @@ describe('Shop-context activation (coupon) -- ShopBurnerStrategy', () => {
 
 describe('Burner shop slate (buying) -- BurnerShopStrategy / BurnerShopRerollStrategy', () => {
   it('buyCheapestAffordableBurner buys the cheapest affordable offering, or declines', () => {
-    const offerings = burnerOfferingsForClass('breacher', createRng(1), 0, 0);
+    const offerings = burnerOfferingsForClass('exploit-overclock', createRng(1), 0, 0);
     const rich = buyCheapestAffordableBurner(offerings, playerWith({ data: 1000 }));
     expect(rich).not.toBeNull();
     const broke = buyCheapestAffordableBurner(offerings, playerWith({ data: 0 }));
@@ -280,7 +286,7 @@ describe('Burner shop slate (buying) -- BurnerShopStrategy / BurnerShopRerollStr
   });
 
   it('rerollBurnerIfNothingAffordable rerolls only when nothing is affordable and the reroll itself is', () => {
-    const offerings = burnerOfferingsForClass('breacher', createRng(1), 0, 0);
+    const offerings = burnerOfferingsForClass('exploit-overclock', createRng(1), 0, 0);
     const cheapest = offerings.reduce((c, o) => (o.cost < c.cost ? o : c));
     const brokeButCanReroll = playerWith({ data: 10 });
     expect(rerollBurnerIfNothingAffordable(offerings, brokeButCanReroll)).toBe(cheapest.cost > 10);
@@ -321,7 +327,7 @@ describe('Combat-reward acquisition -- BurnerAcquisitionStrategy', () => {
 
   it('a regular fight win offers a Burner reward (unlike Mods, not elite-only)', () => {
     const overwhelming = [
-      { id: 'overwhelm', name: 'Overwhelm', archetype: 'exploit' as const, trigger: { kind: 'always' as const }, payload: { kind: 'directBurst' as const, amount: 30 }, tags: [] },
+      { id: 'overwhelm', name: 'Overwhelm', archetype: 'exploit' as const, alpha: { verb: 'credit' as const, amount: 30 } },
     ];
     const outcome = resolveEncounter(createNode('n', 'regularFight'), createRng(9), playerWith({ installedLoadout: overwhelming }));
     expect(outcome.rewardTier).toBe('standard'); // confirms a real win, not a fluke
@@ -350,7 +356,7 @@ describe('Burners smoke test -- a full run with Burners carried and used across 
 
     const result = playRun({
       seed: 11,
-      classId: 'breacher',
+      classId: 'exploit-overclock',
       layerNodeCounts: [8, 8, 8, 8],
       carriedBurnerIdsOverride: ['flash-drive', 'ghost-protocol', 'stolen-coupon'],
       burnerActivationStrategies: [combatStrategy, neverActivateBurner], // side 1 has no Burner economy
@@ -389,7 +395,7 @@ describe('synergyAwareBurnerAcquisition / synergyAwareBurnerShopStrategy', () =>
   const rare = BURNER_DEFINITIONS['skeleton-key']; // rare
 
   function stateWithData(data: number): RunPlayerState {
-    return { ...createInitialPlayerState('breacher'), data };
+    return { ...createInitialPlayerState('exploit-overclock'), data };
   }
 
   it('picks the rarest offered Burner', () => {
@@ -463,7 +469,7 @@ describe('synergyAwareCombatBurnerActivation', () => {
 
 describe('synergyAwareShopBurnerStrategy', () => {
   function state(data: number): RunPlayerState {
-    return { ...createInitialPlayerState('breacher'), data };
+    return { ...createInitialPlayerState('exploit-overclock'), data };
   }
 
   it('spends Insider Tip only once a rare is actually affordable', () => {
@@ -510,7 +516,7 @@ describe('synergyAwareMapBurnerStrategy', () => {
     };
   }
 
-  function mapCtx(graph: LayerGraph, availableBurnerIds: BurnerId[], playerState = createInitialPlayerState('breacher')) {
+  function mapCtx(graph: LayerGraph, availableBurnerIds: BurnerId[], playerState = createInitialPlayerState('exploit-overclock')) {
     return {
       graph,
       position: { layerIndex: 0, nodeId: 'a' },
@@ -559,7 +565,7 @@ describe('synergyAwareMapBurnerStrategy', () => {
     // the game currently drives the cost to 0, so the declining branch
     // is unreachable against today's content -- it exists so the rule
     // stays correct if one ever does, not as dead weight.
-    const lightFooted = { ...createInitialPlayerState('breacher'), ownedModIds: ['light-footing' as ModId] };
+    const lightFooted = { ...createInitialPlayerState('exploit-overclock'), ownedModIds: ['light-footing' as ModId] };
     const picked = synergyAwareMapBurnerStrategy(mapCtx(graphWithBClosed(false), ['ghost-protocol'], lightFooted));
     expect(picked?.burnerId).toBe('ghost-protocol');
     expect(applyOnMoveMods(lightFooted.ownedModIds, HEAT_PER_MOVE)).toBeGreaterThan(0);

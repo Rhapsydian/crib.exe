@@ -1,209 +1,90 @@
-import type { PayloadEffect, SubroutineDefinition, TriggerFamily } from './subroutine-types';
+import type { Beta, BetaEffect, Effect, SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
 import { HEAT_HIGH_FRACTION, HEAT_MAX } from './heat';
-import { CREDIT_CAPABLE_PAYLOAD_KINDS, isTempoManipulation } from './subroutine-types';
+import { hasCreditPath, isTempo } from './subroutine-types';
 import { archetypeLadderPosition } from './loadout';
 
 /**
- * Duplicate material & Merge (Phase 4 checkpoint E): acquiring an
- * already-owned subroutine becomes bench material instead of a second
- * copy (loadout.ts's acquireSubroutine); Merge spends it to upgrade the
- * base copy already owned. DESIGN.md's Duplicate Subroutines section:
- * "improves magnitude/efficiency only -- bigger payload, lower trigger
- * threshold, a higher Scaling bank cap -- never payload sub-type or
- * trigger family."
+ * Duplicate material & Merge (Phase 4 checkpoint E; re-pointed session
+ * 51): acquiring an already-owned subroutine becomes bench material
+ * instead of a second copy (loadout.ts's acquireSubroutine); Merge spends
+ * it to upgrade the base copy already owned.
+ *
+ * Since session 51 Merge upgrades the **beta** (DESIGN.md "Subroutine
+ * acquisition"): the old upgrade axis, "easier to trigger", stopped
+ * existing once every piece fires every turn (D11). It never changes the
+ * alpha's verb or the beta's source -- those are the piece's identity.
+ * How much one rank is *worth* is unpriced until the pillar calibration;
+ * the bonuses below are placeholders sized to the skeleton pool's
+ * per-turn floor (~1.5-2), not tuned.
  */
 
-export const MERGE_MAGNITUDE_BONUS = 3; // TBD/playtesting
-
-/** The initiative threshold every flat magnitude bonus in this project
- * was implicitly calibrated against, back when tempo amounts were point
- * counts (session 48 re-denominated them as fractions -- see
- * subroutine-types.ts's isTempoManipulation). Used only to convert those
- * flat bonuses into their fractional equivalents, so a merged tempo
- * piece gains exactly the tempo it always gained. Deliberately a frozen
- * historical constant, NOT a reference to encounters.ts's live
- * GAUGE_THRESHOLD: the point of the conversion is to preserve past
- * behaviour, so it must not move when the live threshold does. */
-const OLD_GAUGE_THRESHOLD = 8;
-const MERGE_TRIGGER_EASE_AMOUNT = 2; // TBD/playtesting
-const MERGE_SCALING_CAP_BONUS = 2; // TBD/playtesting
+/** Flat bonus a rank adds to an amount in gauge points. Was 3 against a
+ * common burst of 5; the per-turn floor is now ~1.5-2, so 1. */
+export const MERGE_MAGNITUDE_BONUS = 1; // TBD/playtesting
+/** The same bonus for a Tempo amount, which is a fraction of a turn or
+ * threshold (session 48) -- a flat +1 there would mean a whole extra
+ * turn. An eighth of a turn, matching the skeleton's smallest Tempo. */
+export const MERGE_TEMPO_BONUS = 1 / 8; // TBD/playtesting
+/** How far a rank loosens a beta's shape when its effect has no amount
+ * to grow: one fewer charge needed, or one more charge counted. */
+const MERGE_SHAPE_STEP = 1; // TBD/playtesting
 export const MERGE_RANK_CAP = 3; // TBD/playtesting, same treatment as the slot cap
 
 // Total banked material (summed across every subroutine id) counted as
 // "high" by the opportunistic Safehouse strategy below -- TBD/playtesting.
 export const MATERIAL_HIGH_THRESHOLD = 2;
 
-/** Eases whichever numeric "how much banked progress needed" knob a
- * trigger carries, floored/ceilinged sensibly -- shared by Operator's
- * Primed passive (resolve.ts) and Merge's own trigger-knob fallback,
- * since both are "make this condition easier to satisfy." Occurrence's
- * 'scaling' variation is deliberately excluded here: unlike 'threshold',
- * it already fires unconditionally on every occurrence (see
- * triggers.ts's updateSubroutineState -- `ready` is true regardless of
- * `cap`), so there's no firing-ease knob to touch. Its `cap` is a
- * scaling ceiling, not a gate -- Merge treats raising it as a separate,
- * power-improving case below (increasedScalingCap), not an "easier to
- * fire" one. 'instant' Occurrence and the non-numeric trigger kinds
- * (chained/always/enemyState) have no knob at all here either. */
-export function easeTriggerCondition(trigger: TriggerFamily, amount: number): TriggerFamily {
-  if (trigger.kind === 'accumulator') return { ...trigger, threshold: Math.max(1, trigger.threshold - amount) };
-  if (trigger.kind === 'occurrence' && trigger.variation === 'threshold') {
-    return { ...trigger, bankTarget: Math.max(1, trigger.bankTarget - amount) };
-  }
-  if (trigger.kind === 'selfState' && trigger.condition === 'traceAbove') {
-    return { ...trigger, value: Math.max(0, trigger.value - amount) };
-  }
-  if (trigger.kind === 'selfState' && trigger.condition === 'traceBelow') {
-    return { ...trigger, value: trigger.value + amount };
-  }
-  return trigger;
+/** Bumps an effect's amount by one rank -- the flat bonus for gauge
+ * points, the fractional one for Tempo. Disrupt has no amount; returned
+ * unchanged. `tempoUnits` forces the fractional bonus: an `enhance` beta
+ * adds to its alpha's amount, so on a Tempo alpha it is denominated in
+ * turns even though `enhance` itself is not a Tempo effect -- a flat +1
+ * there would be a whole extra turn (session 48's invariant). */
+function bumpedEffect<T extends Effect | BetaEffect>(effect: T, tempoUnits = isTempo(effect)): T {
+  if (effect.verb === 'disrupt') return effect;
+  return { ...effect, amount: effect.amount + (tempoUnits ? MERGE_TEMPO_BONUS : MERGE_MAGNITUDE_BONUS) };
 }
 
-/** Merge-only: raises Occurrence: Scaling's bank cap, a genuine power
- * improvement (DESIGN.md's "higher Scaling bank cap") distinct from
- * easeTriggerCondition's "easier to fire" -- see that function's own
- * comment on why 'scaling' is excluded there. */
-function increasedScalingCap(trigger: TriggerFamily, amount: number): TriggerFamily {
-  if (trigger.kind === 'occurrence' && trigger.variation === 'scaling') return { ...trigger, cap: trigger.cap + amount };
-  return trigger;
-}
-
-/** Merge's trigger-knob fallback, used only when the payload itself has
- * no magnitude to improve: tries easeTriggerCondition first (Accumulator/
- * Occurrence:threshold/Self-state heat), then falls back to
- * increasedScalingCap for Occurrence: scaling. A piece with neither (e.g.
- * a Chained-triggered Ward) is a true no-op -- not expected to occur
- * across the 78 authored subroutines (every one has a payload magnitude
- * or one of these knobs), so this doesn't specially guard against it. */
-function improveTriggerKnob(trigger: TriggerFamily): TriggerFamily {
-  const eased = easeTriggerCondition(trigger, MERGE_TRIGGER_EASE_AMOUNT);
-  if (eased !== trigger) return eased;
-  return increasedScalingCap(trigger, MERGE_SCALING_CAP_BONUS);
-}
-
-/** Applies `transform` to whichever field carries a payload's "how hard
- * does this hit" magnitude, or returns null if the payload has none
- * (Ward/Cleanse/Cribbage-Layer Manipulation, and Scheduled Sabotage's
- * own top-level shape -- its wrapped inner effect isn't recursed into, a
- * deliberate simplification). Generic by field name rather than a
- * per-payload-kind table beyond that dispatch, per the plan's own
- * "resolved generically" decision. The shared engine behind both
- * improvedPayloadMagnitude (additive, below) and enemies.ts's
- * scaledPayloadMagnitude (multiplicative, session 39's per-layer
- * difficulty scaler) -- factored out so the one big kind-by-kind dispatch
- * only has to exist once. */
-function transformPayloadMagnitude(
-  payload: PayloadEffect,
-  transform: (amount: number) => number,
-  /** Applied instead of `transform` to a tempo-denominated amount (see
-   * isTempoManipulation). Defaults to `transform`, which is correct for
-   * any multiplicative caller -- a multiplier is unit-agnostic. Additive
-   * callers MUST pass a fraction-denominated bonus here, or a flat +3
-   * lands as "plus three whole turns" (session 48). */
-  tempoTransform: (amount: number) => number = transform,
-): PayloadEffect | null {
-  switch (payload.kind) {
-    case 'instantManipulation':
-      return { ...payload, amount: (isTempoManipulation(payload) ? tempoTransform : transform)(payload.amount) };
-    case 'directBurst':
-    case 'piercing':
-    case 'riskRewardBurst':
-    case 'instantCounterPush':
-    case 'traceReduction':
-    case 'sessionHijack':
-    case 'ward':
-      // Breach/Containment redesign (session 22+): Ward became an
-      // accumulating shield amount, no longer archetype-scoped -- now a
-      // genuine magnitude this can transform, same as any other payload
-      // with an `amount` field.
-      return { ...payload, amount: transform(payload.amount) };
-    case 'chainFinisherScaling':
-      return { ...payload, baseAmount: transform(payload.baseAmount) };
-    case 'dot':
-    case 'hot':
-    case 'drainingHot':
-      return { ...payload, amountPerTick: transform(payload.amountPerTick) };
-    case 'wardCounter':
-      // Encryption offense (session 40 continued) -- amount transforms
-      // exactly like plain ward's own case above; ratio is a conversion
-      // fraction, not a raw magnitude, and deliberately untouched here
-      // (same reasoning wardBash's fraction is excluded entirely, below).
-      return { ...payload, amount: transform(payload.amount) };
-    case 'debuff':
-      return { ...payload, magnitude: transform(payload.magnitude) };
-    case 'wardBash':
-      // fraction is a 0-1 share of the caster's *current* wardShield,
-      // not an absolute amount -- multiplying it by a magnitudeScaler or
-      // additively bumping it via Merge would push it outside 0-1 and
-      // has no sensible meaning here. Deliberately excluded, same
-      // default: null fallback every other non-magnitude payload
-      // (cleanse, cribbageLayerManipulation, scheduledSabotage, etc.)
-      // already gets.
-      return null;
-    default:
-      return null;
+/** Loosens a beta's shape by one step: a graded beta counts one more
+ * charge, a stepped or immediate one needs one fewer (never below 1).
+ * Returns the SAME object when there is nothing to loosen -- whileTrue
+ * has no knob, and a stepped/immediate beta already at 1 is at its floor
+ * -- so upgradedDefinition can tell "loosened" from "no-op" by identity
+ * and fall through to the alpha rather than waste the rank. */
+function loosenedShape(beta: Beta): Beta {
+  switch (beta.shape) {
+    case 'graded':
+      return { ...beta, cap: beta.cap + MERGE_SHAPE_STEP };
+    case 'stepped':
+      return beta.at > 1 ? { ...beta, at: Math.max(1, beta.at - MERGE_SHAPE_STEP) } : beta;
+    case 'immediate':
+      return (beta.at ?? 1) > 1 ? { ...beta, at: Math.max(1, (beta.at ?? 1) - MERGE_SHAPE_STEP) } : beta;
+    case 'whileTrue':
+      return beta;
   }
 }
 
-/** Bumps a payload's magnitude by a flat additive amount -- Merge's own
- * upgrade shape. Exported (session 25) for Operator's reworked Primed
- * passive (`resolve.ts`) to reuse -- the same generic magnitude bump,
- * applied to the caster's next Exploit fire instead of a permanent
- * Merge upgrade.
+/**
+ * One Merge rank's upgrade:
  *
- * `tempoAmount` (session 48) is the same bonus re-denominated for the
- * tempo-fraction payloads: it defaults to `amount / OLD_GAUGE_THRESHOLD`,
- * which is exactly what the flat bonus used to be worth in turns back
- * when tempo amounts were point counts against a threshold of 8. Every
- * existing caller therefore keeps its historical effect without having
- * to pass anything. This default is the safe one -- getting it wrong in
- * the other direction (a flat +3 onto a fraction) means "plus three
- * whole turns," which is precisely the runaway that session 47's
- * pointsCooldown was invented to contain. */
-export function improvedPayloadMagnitude(payload: PayloadEffect, amount: number, tempoAmount: number = amount / OLD_GAUGE_THRESHOLD): PayloadEffect | null {
-  return transformPayloadMagnitude(
-    payload,
-    (current) => current + amount,
-    (current) => current + tempoAmount,
-  );
-}
-
-/** Scales a payload's magnitude by a multiplier -- enemies.ts's per-layer
- * difficulty scaler (session 39), proportional rather than flat so it
- * doesn't hit low- and high-magnitude payloads unevenly the way a flat
- * bonus would. `multiplier` of 1 is a no-op (still returns a new object
- * for a magnitude-bearing payload, same "null only for a genuinely
- * magnitude-less payload" contract as improvedPayloadMagnitude). */
-export function scaledPayloadMagnitude(payload: PayloadEffect, multiplier: number): PayloadEffect | null {
-  return transformPayloadMagnitude(payload, (current) => current * multiplier);
-}
-
-/** Shrinks a payload's magnitude linearly by `decayPerFire` for every
- * prior fire this combat (`fireCount`), floored at `floor` -- the
- * mechanism behind SubroutineDefinition.magnitudeDecayPerFire (session
- * 39, Firewall Prime's Zero Trust redesign). A self-limiting alternative
- * to a hard fire cap: still hits close to full strength the first couple
- * of times, but tapers toward `floor` rather than stopping outright, so
- * persistent pressure eventually gets real relief instead of hitting an
- * infinite wall. `fireCount` is the count *before* this fire (how many
- * times it's already fired, not counting the current one) -- resolve.ts's
- * payloadForFire reads it straight from the still-unincremented runtime
- * state, since resetAfterFire (which increments it) hasn't run yet at
- * the point a fire's own payload gets resolved. */
-export function decayedPayloadMagnitude(
-  payload: PayloadEffect,
-  fireCount: number,
-  decayPerFire: number,
-  floor: number,
-): PayloadEffect | null {
-  return transformPayloadMagnitude(payload, (current) => Math.max(floor, current - decayPerFire * fireCount));
-}
-
-function upgradedDefinition(definition: SubroutineDefinition): SubroutineDefinition {
-  const improvedPayload = improvedPayloadMagnitude(definition.payload, MERGE_MAGNITUDE_BONUS);
-  if (improvedPayload) return { ...definition, payload: improvedPayload };
-  return { ...definition, trigger: improveTriggerKnob(definition.trigger) };
+ * - a beta whose effect has an amount gets a bigger effect;
+ * - a beta whose effect has none (Disrupt) gets a looser shape;
+ * - a piece with no beta, or a whileTrue Disrupt beta with no knob at
+ *   all, upgrades its alpha instead -- a rank is never silently wasted
+ *   unless the piece has no magnitude anywhere.
+ */
+export function upgradedDefinition(definition: SubroutineDefinition): SubroutineDefinition {
+  const { beta } = definition;
+  if (beta && beta.effect.verb !== 'disrupt') {
+    const tempoUnits = beta.effect.verb === 'enhance' ? isTempo(definition.alpha) : isTempo(beta.effect);
+    return { ...definition, beta: { ...beta, effect: bumpedEffect(beta.effect, tempoUnits) } };
+  }
+  if (beta) {
+    const loosened = loosenedShape(beta);
+    if (loosened !== beta) return { ...definition, beta: loosened };
+  }
+  return { ...definition, alpha: bumpedEffect(definition.alpha) };
 }
 
 /** Spends 1 banked material to rank up the owned copy of `id` (found in
@@ -313,8 +194,8 @@ export function pickMergeTarget(playerState: RunPlayerState): string | null {
 // a Merge decision actually turns on. Rungs, in order:
 //   1. installed before benched -- an upgrade only pays off on a piece
 //      that fires. This is the rung the naive reuse got backwards.
-//   2. credit-capable before defensive-only -- upgrading a ward makes
-//      losing slower; upgrading a wardCounter makes winning likelier.
+//   2. credit path before none -- upgrading a pure Ward makes losing
+//      slower; upgrading a piece that credits makes winning likelier.
 //   3. on-archetype before universal before off-archetype -- shared with
 //      the other two ladders via archetypeLadderPosition.
 //   4. most banked material -- today's entire criterion, demoted to the
@@ -364,7 +245,7 @@ export function synergyAwareMergeTarget(playerState: RunPlayerState): string | n
     const owned = ownedPiece(playerState, id)!;
     return [
       owned.installed ? 0 : 1,
-      CREDIT_CAPABLE_PAYLOAD_KINDS.has(owned.piece.payload.kind) ? 0 : 1,
+      hasCreditPath(owned.piece) ? 0 : 1,
       archetypeLadderPosition(owned.piece.archetype, playerState.classId),
       -(playerState.material[id] ?? 0), // negated: more banked material is better
     ];

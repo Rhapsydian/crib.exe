@@ -309,6 +309,53 @@ Made while rewriting `resolve.ts`, `triggers.ts` and `combat.ts`.
 - **Unchanged**: escalation, the defender-favoured hard tiebreak at hand
   20, the loop detector, the deal/peg/show sequence.
 
+### Implementation calls made in step 1, checkpoint 4 (flag to revisit)
+
+- **Merge upgrades the beta, in this order**: a beta effect with an
+  amount gets +1 (or +1/8 turn for Tempo); a Disrupt beta gets a looser
+  shape (graded cap +1, stepped/immediate `at` −1, min 1); a piece with no
+  beta upgrades its alpha. Bonus sized to the skeleton floor, unpriced.
+- **Mods that reshape pieces are combat-start transforms** on
+  combat-local copies, never the run's own loadout: archetype Amplifiers
+  (+1 to that archetype's Credit/Suppress/Ward alphas — was a flat credit
+  per fire, which under D11 would be per piece per turn), **Firmware
+  Patch** (was Tagged Firmware; +1 to points beta effects), and
+  **Threshold Exploit** (stepped `at` −1).
+- **Renames**: Malware/Encryption/Root Amplifier → Daemon/Honeypot/
+  Overclock Amplifier; Overclocked Accumulator → **Cache Prefetch** (every
+  banking beta starts each fight with a charge); Salvage Protocol keys on
+  Daemon, Fast Learner on Overclock.
+- **The three tick Mods are out of the pool** (Redundant Ticks, Failsafe
+  Cascade, Redline) — nothing left for them to act on, and shipping inert
+  Mods is the dead-content pattern this project keeps paying for. The
+  content step re-points or retires them. General pool 34 → 31.
+- **Reactive/granted Mod pieces** got archetypes (Neutral is gone): Boot
+  Sector → Overclock, Auxiliary Process → Daemon (small growth credit),
+  Backdoor Access → Exploit (fifteen-graded), Rootkit Persistence →
+  Exploit, Session Hijack Relay → Honeypot (credit `from: 'opponent'`).
+- **Placeholder bridge passive**, all six classes: when a piece of the
+  class's first archetype fires elevated, every piece of its second
+  archetype banks a charge. One direction only, until real bridges are
+  designed with content.
+- **Burners**: Flash Drive = Credit 5, EMP Charge = Suppress 8.
+- **Two Merge bugs caught in review** (by the test-porting pass, not
+  shipped): a Disrupt beta already at `at: 1` counted as "loosened", so
+  the rank did nothing — it now falls through to the alpha; and an
+  `enhance` beta on a Tempo alpha took the flat +1 (a whole extra turn) —
+  it now takes the fractional Tempo bonus.
+
+### User feedback on checkpoint 3
+
+- **Watch item (user): conversion credits bypass Ward.** `from: 'ward'`
+  and `from: 'opponent'` skip the target's Ward. Keep an eye on it in
+  calibration — paired with A2's Honeypot watch item, since both sit on
+  the same archetype.
+- **Open (user): what "adjacent" means.** Implemented as "the last piece
+  to fire before this one this turn". The user reads adjacent as "the
+  slot before *or after* this one in the loadout" — a positional,
+  either-side reading rather than a firing-order one. Needs its own
+  decision before any sequence content is authored.
+
 ## Noted for later (not discussed)
 
 - **Baseline Trace from every fight, scaled by the enemy's Containment %

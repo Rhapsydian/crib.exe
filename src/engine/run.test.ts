@@ -14,7 +14,7 @@ import {
 } from './run';
 import { eligibleEnemies } from './enemies';
 import type { SubroutineDefinition } from './subroutine-types';
-import { BREACHER_LOADOUT } from './subroutines';
+import { CLASS_STARTING_LOADOUTS } from './subroutines';
 import { INSTALLED_SLOT_CAP } from './loadout';
 import type { DiscardStrategy } from './deal';
 import type { PlayStrategy } from './pegging';
@@ -22,7 +22,14 @@ import { HEAT_MAX, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from '
 import { MATERIAL_HIGH_THRESHOLD } from './merge';
 import { DATA_HIGH_THRESHOLD, DATA_LOW_THRESHOLD } from './shop';
 
-/** Same reasoning as encounters.test.ts's OVERWHELMING/NEGLIGIBLE_PLAYER:
+/** Session 51 port: fixtures moved to the redesigned model. The
+ * overwhelming loadout is now the 'exploit-overclock' starting kit
+ * (Probe, Voltage Boost, Burst Clock) with only Probe's credit alpha
+ * scaled up; the negligible loadout is a lone beta-less verb-alpha
+ * credit piece; class ids are the archetype-pair ids. The notes below
+ * predate the port and describe the old kits -- kept for the reasoning.
+ *
+ * Same reasoning as encounters.test.ts's OVERWHELMING/NEGLIGIBLE_PLAYER:
  * Breach/Containment's sharp positive-feedback dynamics mean a real
  * class kit's win/loss outcome across a seed sweep is fat-tailed and
  * seed-sensitive, not a reliable way to exercise a *guaranteed* outcome
@@ -43,15 +50,14 @@ import { DATA_HIGH_THRESHOLD, DATA_LOW_THRESHOLD } from './shop';
  * encounters.test.ts's fuller note on why that's a Phase 5 tuning
  * question, not a test-construction one.
  *
- * Every playRun() call using NEGLIGIBLE_LOADOUT passes classId: 'ghost'
- * explicitly, not the default ('breacher') -- Phase 4 checkpoint B wired
- * Foothold in to hook every Breach/Containment crossing regardless of
- * payload kind, which could inject an unwanted bonus into this single-
- * piece dummy's trajectory. Ghost's own passive only touches
- * instantCounterPush payloads, which this dummy never fires -- inert. */
-function overwhelmingBreacherLoadout(burstAmount: number): SubroutineDefinition[] {
-  return BREACHER_LOADOUT.map((piece) =>
-    piece.id === 'buffer-overflow' ? { ...piece, payload: { ...piece.payload, amount: burstAmount } } : piece,
+ * Every playRun() call using NEGLIGIBLE_LOADOUT passes classId:
+ * 'daemon-honeypot' explicitly, not the default ('exploit-overclock') --
+ * a class with no Exploit half, so its placeholder bridge passive (which
+ * acts only when the class's first archetype fires elevated) can never
+ * touch this beta-less Exploit dummy's trajectory -- inert. */
+function overwhelmingStarterLoadout(creditAmount: number): SubroutineDefinition[] {
+  return CLASS_STARTING_LOADOUTS['exploit-overclock'].map((piece): SubroutineDefinition =>
+    piece.id === 'probe' ? { ...piece, alpha: { verb: 'credit', amount: creditAmount } } : piece,
   );
 }
 
@@ -61,14 +67,12 @@ function loadoutWithBurst(amount: number): SubroutineDefinition[] {
       id: 'test-run-burst',
       name: 'test-run-burst',
       archetype: 'exploit',
-      trigger: { kind: 'always' },
-      payload: { kind: 'directBurst', amount },
-      tags: [],
+      alpha: { verb: 'credit', amount },
     },
   ];
 }
 
-const OVERWHELMING_LOADOUT = overwhelmingBreacherLoadout(30);
+const OVERWHELMING_LOADOUT = overwhelmingStarterLoadout(30);
 const NEGLIGIBLE_LOADOUT = loadoutWithBurst(0.1);
 
 /** Test-only strategy: greedily prefers an already-resolved or
@@ -175,31 +179,31 @@ describe('opportunisticTraversal', () => {
   });
 
   it('prefers a reachable fight node over everything else, regardless of state', () => {
-    const player = { ...createInitialPlayerState('breacher'), material: { a: MATERIAL_HIGH_THRESHOLD }, data: DATA_HIGH_THRESHOLD };
+    const player = { ...createInitialPlayerState('exploit-overclock'), material: { a: MATERIAL_HIGH_THRESHOLD }, data: DATA_HIGH_THRESHOLD };
     expect(opportunisticTraversal(starGraph(), position, highHeat, player)).toBe('fight');
   });
 
   it('pulls toward the Safehouse when Heat is high and no fight is available', () => {
     const graph = { ...starGraph(), nodes: starGraph().nodes.map((n) => (n.type === 'regularFight' ? { ...n, state: 'inert' as const } : n)) };
-    const player = { ...createInitialPlayerState('breacher'), data: DATA_HIGH_THRESHOLD }; // Data also high, Heat should still win
+    const player = { ...createInitialPlayerState('exploit-overclock'), data: DATA_HIGH_THRESHOLD }; // Data also high, Heat should still win
     expect(opportunisticTraversal(graph, position, highHeat, player)).toBe('safehouse');
   });
 
   it('pulls toward the Safehouse when banked material is high (Heat not high)', () => {
     const graph = { ...starGraph(), nodes: starGraph().nodes.map((n) => (n.type === 'regularFight' ? { ...n, state: 'inert' as const } : n)) };
-    const player = { ...createInitialPlayerState('breacher'), material: { a: MATERIAL_HIGH_THRESHOLD } };
+    const player = { ...createInitialPlayerState('exploit-overclock'), material: { a: MATERIAL_HIGH_THRESHOLD } };
     expect(opportunisticTraversal(graph, position, lowHeat, player)).toBe('safehouse');
   });
 
   it('pulls toward the Shop when Data is high (Heat and material not high)', () => {
     const graph = { ...starGraph(), nodes: starGraph().nodes.map((n) => (n.type === 'regularFight' ? { ...n, state: 'inert' as const } : n)) };
-    const player = { ...createInitialPlayerState('breacher'), data: DATA_HIGH_THRESHOLD };
+    const player = { ...createInitialPlayerState('exploit-overclock'), data: DATA_HIGH_THRESHOLD };
     expect(opportunisticTraversal(graph, position, lowHeat, player)).toBe('shop');
   });
 
   it('pulls toward the Event when Heat, material, and Data are all low', () => {
     const graph = { ...starGraph(), nodes: starGraph().nodes.map((n) => (n.type === 'regularFight' ? { ...n, state: 'inert' as const } : n)) };
-    const player = { ...createInitialPlayerState('breacher'), data: DATA_LOW_THRESHOLD };
+    const player = { ...createInitialPlayerState('exploit-overclock'), data: DATA_LOW_THRESHOLD };
     expect(opportunisticTraversal(graph, position, lowHeat, player)).toBe('event');
   });
 
@@ -211,13 +215,13 @@ describe('opportunisticTraversal', () => {
     // unresolved here, so this proves the algorithm actively declines
     // them rather than just having nothing left to pull toward.
     const midHeat = Math.round(((HEAT_HIGH_FRACTION + HEAT_LOW_FRACTION) / 2) * HEAT_MAX);
-    const player = { ...createInitialPlayerState('breacher'), data: Math.round((DATA_HIGH_THRESHOLD + DATA_LOW_THRESHOLD) / 2) };
+    const player = { ...createInitialPlayerState('exploit-overclock'), data: Math.round((DATA_HIGH_THRESHOLD + DATA_LOW_THRESHOLD) / 2) };
     expect(opportunisticTraversal(graph, position, midHeat, player)).toBe('gate');
   });
 
   it('never takes a detour that would risk stranding it short of the gatekeeper -- falls through to beeline instead', () => {
     const graph = { ...starGraph(), nodes: starGraph().nodes.map((n) => (n.type === 'regularFight' ? { ...n, state: 'inert' as const } : n)) };
-    const player = { ...createInitialPlayerState('breacher'), material: { a: MATERIAL_HIGH_THRESHOLD } };
+    const player = { ...createInitialPlayerState('exploit-overclock'), material: { a: MATERIAL_HIGH_THRESHOLD } };
     // Detouring to safehouse costs 3 hops (entry->safehouse->entry->gate)
     // worth of Heat -- pin current Heat close enough to HEAT_MAX that the
     // reserve can't cover it, even though material is high.
@@ -243,7 +247,7 @@ describe('playRun', { timeout: 30_000 }, () => {
         layerNodeCounts: TINY_LAYERS,
         traversalStrategy: beelineToGatekeeper,
         installedLoadoutOverride: OVERWHELMING_LOADOUT,
-        classId: 'breacher',
+        classId: 'exploit-overclock',
       }).outcome,
     );
     expect(outcomes).toContain('victory');
@@ -266,7 +270,7 @@ describe('playRun', { timeout: 30_000 }, () => {
       layerNodeCounts: TINY_LAYERS,
       traversalStrategy: beelineToGatekeeper,
       installedLoadoutOverride: OVERWHELMING_LOADOUT,
-      classId: 'breacher',
+      classId: 'exploit-overclock',
       discardStrategies: [spyDiscard, spyDiscard],
       playStrategies: [spyPlay, spyPlay],
     });
@@ -281,7 +285,7 @@ describe('playRun', { timeout: 30_000 }, () => {
         layerNodeCounts: TINY_LAYERS,
         traversalStrategy: beelineToGatekeeper,
         installedLoadoutOverride: NEGLIGIBLE_LOADOUT,
-        classId: 'ghost',
+        classId: 'daemon-honeypot',
       }).outcome,
     );
     expect(outcomes).toContain('quarantined');
@@ -297,7 +301,8 @@ describe('playRun', { timeout: 30_000 }, () => {
     // the project's standing diagnostic skill (0.85) rather than the
     // scan being widened: the test's subject is a victory's SHAPE, and
     // "a floor player can win at all" was never what it asserted. First
-    // victory now lands at seed 7.
+    // victory now lands at seed 7. (Session 51: seed 6 on the skeleton
+    // roster; a floor player still wins none of the first 50.)
     const victorySeed = Array.from({ length: 500 }, (_, seed) => seed).find(
       (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper, playerSkill: 0.85 }).outcome === 'victory',
     );
@@ -310,7 +315,7 @@ describe('playRun', { timeout: 30_000 }, () => {
     // in a single resolveEncounter() call (encounters.test.ts).
     expect(result.playerState.data).toBeGreaterThan(0);
     // Checkpoint D: the default acquisitionStrategy takes a reward from
-    // each of those 4 wins, growing the loadout beyond Breacher's
+    // each of those 4 wins, growing the loadout beyond the default class's
     // starting 3-piece kit -- exactly what makes session 20's original
     // static-loadout sweep no longer representative (see BACKLOG.md).
     const totalOwned = result.playerState.installedLoadout.length + result.playerState.bench.length;
@@ -328,7 +333,8 @@ describe('playRun', { timeout: 30_000 }, () => {
     // the project's standing diagnostic skill (0.85) rather than the
     // scan being widened: the test's subject is a victory's SHAPE, and
     // "a floor player can win at all" was never what it asserted. First
-    // victory now lands at seed 7.
+    // victory now lands at seed 7. (Session 51: seed 6 on the skeleton
+    // roster; a floor player still wins none of the first 50.)
     const victorySeed = Array.from({ length: 500 }, (_, seed) => seed).find(
       (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper, playerSkill: 0.85 }).outcome === 'victory',
     );
@@ -358,7 +364,8 @@ describe('playRun', { timeout: 30_000 }, () => {
     // "gatekeeper-only fights" framing above) -- proves this is a live
     // mid-run snapshot, not just the final RunResult.playerState handed
     // back four times: at this exact moment nothing has been acquired
-    // yet, so the loadout is still exactly Breacher's starting 3 pieces.
+    // yet, so the loadout is still exactly the default class's starting 3
+    // pieces.
     expect(captures[0].fightsResolved).toBe(0);
     expect(captures[0].playerState.installedLoadout).toHaveLength(3);
     expect(captures[0].playerState.bench).toHaveLength(0);
@@ -380,7 +387,7 @@ describe('playRun', { timeout: 30_000 }, () => {
     // of depending on Breacher's real kit's natural win rate, which is
     // high enough that closures -- and so noRouteRemains -- are rare.
     const outcomes = Array.from({ length: 10 }, (_, seed) =>
-      playRun({ seed, traversalStrategy: exploreThenGatekeeper, installedLoadoutOverride: NEGLIGIBLE_LOADOUT, classId: 'ghost' }).outcome,
+      playRun({ seed, traversalStrategy: exploreThenGatekeeper, installedLoadoutOverride: NEGLIGIBLE_LOADOUT, classId: 'daemon-honeypot' }).outcome,
     );
     expect(outcomes).toContain('noRouteRemains');
   });
@@ -403,7 +410,7 @@ describe('playRun', { timeout: 30_000 }, () => {
     // no seed happens to quarantine.
     let sawQuarantine = false;
     for (let seed = 0; seed < 10; seed++) {
-      const result = playRun({ seed, layerNodeCounts: TINY_LAYERS, installedLoadoutOverride: NEGLIGIBLE_LOADOUT, classId: 'ghost' });
+      const result = playRun({ seed, layerNodeCounts: TINY_LAYERS, installedLoadoutOverride: NEGLIGIBLE_LOADOUT, classId: 'daemon-honeypot' });
       if (result.outcome !== 'quarantined') continue;
       sawQuarantine = true;
       const quarantineEvent = result.log.find((e) => e.type === 'encounter' && e.outcome.quarantined);

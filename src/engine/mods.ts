@@ -9,9 +9,14 @@ import { mergeSubroutine } from './merge';
 import { archetypeLadderPosition, rarityLadderPosition } from './loadout';
 
 /**
- * Mod content (Phase 5 checkpoints D/H): the 6 class-exclusive starting
- * passives (session 11, migrated onto Mod infrastructure) plus the 17
- * validated Mods from session 32's content-validation table. Mirrors
+ * Mod content (Phase 5 checkpoints D/H, session 44 expansion, session 51
+ * re-points): the 6 class-exclusive bridge passives (placeholders until
+ * real bridges are designed -- see resolve.ts's applyBridgePassive) plus
+ * the general pool. Session 51 re-keyed the archetype Mods to the new
+ * archetypes, re-pointed Tagged Firmware / Overclocked Accumulator /
+ * Threshold Exploit off tags and trigger-easing, and took the three tick
+ * Mods (Redundant Ticks, Failsafe Cascade, Redline) out of the pool
+ * until the content step decides their fate. Mirrors
  * enemies.ts's own split -- this file is the data (id, name, rarity,
  * archetype-exclusion, reactiveSubroutine content); the actual hook
  * *logic* for 'hook'-kind entries is hand-written in resolve.ts
@@ -29,9 +34,13 @@ export const MOD_SMALL = 2;
 export const MOD_MEDIUM = 4;
 export const MOD_LARGE = 7;
 
-/** Overclocked Accumulator's threshold reduction -- a fraction, not a
- * flat amount, since it scales the trigger's own threshold. */
-export const OVERCLOCKED_ACCUMULATOR_REDUCTION = 0.15;
+/** How much an archetype Amplifier adds to that archetype's alphas, and
+ * Firmware Patch to an applied beta's effect -- gauge points, so never
+ * applied to Tempo (session 48). Was a flat credit per fire, which under
+ * D11's every-piece-every-turn firing would have been a per-turn credit
+ * per piece; a magnitude bump keeps it proportional. TBD/playtesting. */
+export const AMPLIFIER_BONUS = 1;
+export const FIRMWARE_PATCH_BONUS = 1;
 
 /** Light Footing's flat per-move Heat discount. */
 export const LIGHT_FOOTING_HEAT_DISCOUNT = 1;
@@ -49,13 +58,6 @@ export const PETTY_CACHE_DATA_BONUS = 5;
  * reward's rarity by one tier. */
 export const BLACK_BUDGET_UPGRADE_CHANCE = 0.25;
 
-/** Tagged Firmware's watched tag -- 'daemon' chosen since it's the most
- * broadly-represented tag across the pool (Accumulators, DoT/HoT,
- * Always-Cantrips per subroutines.ts's own header), giving the Mod a
- * reasonable chance to matter in most loadouts. TBD/playtesting which
- * tag is the final pick, same as every other numeric/parameter choice
- * here. */
-export const TAGGED_FIRMWARE_TAG = 'daemon' as const;
 
 // ---------------------------------------------------------------------
 // Mod Pool Expansion (session 44) -- 17 new pieces, doubling every
@@ -71,7 +73,12 @@ export const QUIET_HOURS_MOVE_INTERVAL = 3;
 export const QUIET_HOURS_DATA_BONUS = 2;
 export const PETTY_THEFT_DATA_BONUS = 3;
 export const INIT_SCRIPT_DATA_BONUS = 5;
-export const THRESHOLD_EXPLOIT_REDUCTION = 0.15; // fraction off Occurrence-Threshold's bankTarget
+/** Threshold Exploit (re-pointed session 51): stepped betas need this
+ * many fewer charges, never below 1. */
+export const THRESHOLD_EXPLOIT_REDUCTION = 1;
+/** Cache Prefetch (session 51, was Overclocked Accumulator): every banking
+ * beta starts each fight with this many charges. */
+export const CACHE_PREFETCH_CHARGES = 1;
 export const HEAT_SINK_HEAT_REFUND = 10;
 
 /** Boot Sector's granted reactive-subroutine content -- a common-rarity
@@ -80,10 +87,8 @@ export const HEAT_SINK_HEAT_REFUND = 10;
 const BOOT_SECTOR_SUBROUTINE: SubroutineDefinition = {
   id: 'boot-sector',
   name: 'Boot Sector',
-  archetype: 'neutral',
-  trigger: { kind: 'always' },
-  payload: { kind: 'directBurst', amount: MOD_SMALL },
-  tags: ['daemon'],
+  archetype: 'overclock',
+  alpha: { verb: 'credit', amount: MOD_SMALL / 2 },
 };
 
 /** Session Hijack Relay's granted reactive-subroutine content -- Root-
@@ -94,25 +99,22 @@ const BOOT_SECTOR_SUBROUTINE: SubroutineDefinition = {
 const SESSION_HIJACK_RELAY_SUBROUTINE: SubroutineDefinition = {
   id: 'session-hijack-relay',
   name: 'Session Hijack Relay',
-  archetype: 'root',
-  trigger: { kind: 'always' },
-  payload: { kind: 'sessionHijack', amount: MOD_SMALL },
-  tags: ['daemon'],
+  archetype: 'honeypot',
+  alpha: { verb: 'credit', amount: MOD_SMALL / 2, from: 'opponent' },
 };
 
 /** Backdoor Access's granted, always-slotted subroutine -- Auxiliary
  * Process's sibling (session 32/checkpoint F's grantedSubroutine
- * mechanism), Neutral-archetype for the same class-exclusion-dodge
- * reasoning, but Occurrence-triggered (Instant, Fifteen) rather than
- * Always -- gives the granted-subroutine mechanism a second trigger
- * family example. */
+ * mechanism), with a fifteen-graded beta where Auxiliary Process ramps.
+ * Exploit since session 51 (Neutral is gone). The class-exclusion filter
+ * keys on the *Mod's* archetype, which stays unset, so every class can
+ * still be offered it. */
 const BACKDOOR_ACCESS_SUBROUTINE: SubroutineDefinition = {
   id: 'backdoor-access',
   name: 'Backdoor Access',
-  archetype: 'neutral',
-  trigger: { kind: 'occurrence', category: 'fifteen', variation: 'instant' },
-  payload: { kind: 'directBurst', amount: MOD_SMALL },
-  tags: ['daemon'],
+  archetype: 'exploit',
+  alpha: { verb: 'credit', amount: 1 },
+  beta: { source: 'cards', category: 'fifteen', shape: 'graded', cap: 3, effect: { verb: 'enhance', amount: 1 } },
 };
 
 /** Rootkit Persistence's granted reactive-subroutine content (session
@@ -124,41 +126,35 @@ const BACKDOOR_ACCESS_SUBROUTINE: SubroutineDefinition = {
 const ROOTKIT_PERSISTENCE_SUBROUTINE: SubroutineDefinition = {
   id: 'rootkit-persistence',
   name: 'Rootkit Persistence',
-  archetype: 'root',
-  trigger: { kind: 'always' },
-  // A quarter of a turn (session 48). `enemyGauge` amounts are fractions
-  // of a turn, not point counts, so this can no longer share MOD_SMALL
-  // (2) with the genuinely absolute quantities that constant is used for
-  // elsewhere -- 2 against the old threshold of 8 was exactly a quarter
-  // turn, so this is the same effect it has always had.
-  payload: { kind: 'instantManipulation', target: 'enemyGauge', amount: 1 / 4 },
-  tags: ['daemon'],
+  archetype: 'exploit',
+  // A quarter of the opponent's turn, drained every player turn -- Tempo
+  // amounts are fractions of a turn (session 48), the same effect this
+  // Mod has always had.
+  alpha: { verb: 'tempo', target: 'opponent', mode: 'gauge', amount: 1 / 4 },
 };
 
-/** Auxiliary Process's granted, always-slotted subroutine (session 32:
- * "a bespoke, neutral-archetype, Always-triggered subroutine... Neutral
- * rather than archetype-tied so it isn't subject to the class-exclusion
- * filter"). Inserted into installedLoadout by onModAcquired (checkpoint
- * E/F), cap-exempt and removal-locked via RunPlayerState.grantedByMod. */
+/** Auxiliary Process's granted, always-slotted subroutine (session 32).
+ * Daemon since session 51 (Neutral is gone); the Mod itself carries no
+ * archetype, so the class-exclusion filter still lets every class see
+ * it. Inserted into installedLoadout by onModAcquired (checkpoint E/F),
+ * cap-exempt and removal-locked via RunPlayerState.grantedByMod. */
 const AUXILIARY_PROCESS_SUBROUTINE: SubroutineDefinition = {
   id: 'auxiliary-process',
   name: 'Auxiliary Process',
-  archetype: 'neutral',
-  trigger: { kind: 'always' },
-  payload: { kind: 'directBurst', amount: MOD_SMALL },
-  tags: ['daemon'],
+  archetype: 'daemon',
+  alpha: { verb: 'credit', amount: 1, growth: 0.5, growthCap: 2 },
 };
 
 export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
-  // --- Class-exclusive starting passives (checkpoint D) ---
-  foothold: { id: 'foothold', name: 'Foothold', rarity: 'common', effectKind: 'hook', classExclusive: true },
-  'zero-day': { id: 'zero-day', name: 'Zero Day', rarity: 'common', effectKind: 'hook', classExclusive: true },
-  'sleeper-cell': { id: 'sleeper-cell', name: 'Sleeper Cell', rarity: 'common', effectKind: 'hook', classExclusive: true },
-  primed: { id: 'primed', name: 'Primed', rarity: 'common', effectKind: 'hook', classExclusive: true },
-  'feedback-loop': { id: 'feedback-loop', name: 'Feedback Loop', rarity: 'common', effectKind: 'hook', classExclusive: true },
-  'return-to-sender': { id: 'return-to-sender', name: 'Return to Sender', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  // --- Class-exclusive bridge passives (session 51 placeholders) ---
+  'bridge-exploit-overclock': { id: 'bridge-exploit-overclock', name: 'Bridge (Exploit -> Overclock)', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-exploit-daemon': { id: 'bridge-exploit-daemon', name: 'Bridge (Exploit -> Daemon)', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-daemon-overclock': { id: 'bridge-daemon-overclock', name: 'Bridge (Daemon -> Overclock)', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-exploit-honeypot': { id: 'bridge-exploit-honeypot', name: 'Bridge (Exploit -> Honeypot)', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-daemon-honeypot': { id: 'bridge-daemon-honeypot', name: 'Bridge (Daemon -> Honeypot)', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-overclock-honeypot': { id: 'bridge-overclock-honeypot', name: 'Bridge (Overclock -> Honeypot)', rarity: 'common', effectKind: 'hook', classExclusive: true },
 
-  // --- Common (7) ---
+  // --- Common ---
   'static-shield': { id: 'static-shield', name: 'Static Shield', rarity: 'common', effectKind: 'hook' },
   'light-footing': { id: 'light-footing', name: 'Light Footing', rarity: 'common', effectKind: 'hook' },
   'warm-boot': { id: 'warm-boot', name: 'Warm Boot', rarity: 'common', effectKind: 'hook' },
@@ -167,15 +163,19 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
   'backup-generator': { id: 'backup-generator', name: 'Backup Generator', rarity: 'common', effectKind: 'hook' },
   'petty-cache': { id: 'petty-cache', name: 'Petty Cache', rarity: 'common', effectKind: 'hook' },
 
-  // --- Uncommon (6) ---
-  'tagged-firmware': { id: 'tagged-firmware', name: 'Tagged Firmware', rarity: 'uncommon', effectKind: 'hook' },
-  'malware-amplifier': { id: 'malware-amplifier', name: 'Malware Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'malware' },
-  'redundant-ticks': { id: 'redundant-ticks', name: 'Redundant Ticks', rarity: 'uncommon', effectKind: 'hook' },
+  // --- Uncommon ---
+  // Session 51 re-points: Tagged Firmware -> Firmware Patch (tags are
+  // gone; it boosts betas instead), Malware Amplifier -> Daemon Amplifier,
+  // Overclocked Accumulator -> Cache Prefetch ("fire sooner" no longer
+  // exists, and the old name now reads as an Overclock piece). Redundant
+  // Ticks is out of the pool: DoT/HoT are gone, so it had nothing to do.
+  'firmware-patch': { id: 'firmware-patch', name: 'Firmware Patch', rarity: 'uncommon', effectKind: 'hook' },
+  'daemon-amplifier': { id: 'daemon-amplifier', name: 'Daemon Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'daemon' },
   'salvage-protocol': { id: 'salvage-protocol', name: 'Salvage Protocol', rarity: 'uncommon', effectKind: 'hook' },
-  'overclocked-accumulator': { id: 'overclocked-accumulator', name: 'Overclocked Accumulator', rarity: 'uncommon', effectKind: 'hook' },
+  'cache-prefetch': { id: 'cache-prefetch', name: 'Cache Prefetch', rarity: 'uncommon', effectKind: 'hook' },
   'bulk-buyer': { id: 'bulk-buyer', name: 'Bulk Buyer', rarity: 'uncommon', effectKind: 'hook' },
 
-  // --- Rare (4) ---
+  // --- Rare ---
   'auxiliary-process': {
     id: 'auxiliary-process',
     name: 'Auxiliary Process',
@@ -188,10 +188,9 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
     name: 'Rootkit Persistence',
     rarity: 'rare',
     effectKind: 'reactiveSubroutine',
-    archetype: 'root',
+    archetype: 'exploit',
     reactiveSubroutine: ROOTKIT_PERSISTENCE_SUBROUTINE,
   },
-  'failsafe-cascade': { id: 'failsafe-cascade', name: 'Failsafe Cascade', rarity: 'rare', effectKind: 'hook' },
   'black-budget': { id: 'black-budget', name: 'Black Budget', rarity: 'rare', effectKind: 'hook' },
 
   // --- Mod Pool Expansion (session 44): Common (+7) ---
@@ -211,14 +210,16 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
 
   // --- Mod Pool Expansion (session 44): Uncommon (+6) ---
   'exploit-amplifier': { id: 'exploit-amplifier', name: 'Exploit Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'exploit' },
-  'encryption-amplifier': { id: 'encryption-amplifier', name: 'Encryption Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'encryption' },
-  'root-amplifier': { id: 'root-amplifier', name: 'Root Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'root' },
+  'honeypot-amplifier': { id: 'honeypot-amplifier', name: 'Honeypot Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'honeypot' },
+  'overclock-amplifier': { id: 'overclock-amplifier', name: 'Overclock Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'overclock' },
   'fast-learner': { id: 'fast-learner', name: 'Fast Learner', rarity: 'uncommon', effectKind: 'hook' },
   'threshold-exploit': { id: 'threshold-exploit', name: 'Threshold Exploit', rarity: 'uncommon', effectKind: 'hook' },
   'scrap-merchant': { id: 'scrap-merchant', name: 'Scrap Merchant', rarity: 'uncommon', effectKind: 'hook' },
 
-  // --- Mod Pool Expansion (session 44): Rare (+4) ---
-  redline: { id: 'redline', name: 'Redline', rarity: 'rare', effectKind: 'hook' },
+  // --- Mod Pool Expansion (session 44): Rare ---
+  // Redline (credit per DoT tick) and, above, Failsafe Cascade (refresh an
+  // expiring DoT/HoT) are out of the pool since session 51 -- no ticks
+  // remain for them to act on. Re-point or retire in the content step.
   'heat-sink': { id: 'heat-sink', name: 'Heat Sink', rarity: 'rare', effectKind: 'hook' },
   'backdoor-access': {
     id: 'backdoor-access',
@@ -232,7 +233,7 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
     name: 'Session Hijack Relay',
     rarity: 'rare',
     effectKind: 'reactiveSubroutine',
-    archetype: 'root',
+    archetype: 'honeypot',
     reactiveSubroutine: SESSION_HIJACK_RELAY_SUBROUTINE,
   },
 };
@@ -420,13 +421,10 @@ export function shopModifiersForOwnedMods(ownedModIds: ModId[]): { discountFract
  * Merge would. */
 export function applyOnSubroutineAcquiredMods(playerState: RunPlayerState, acquired: SubroutineDefinition): RunPlayerState {
   let state = playerState;
-  state = applyFirstArchetypeUpgradeMod(state, acquired, 'salvage-protocol', 'malware');
-  // Fast Learner (session 44): Salvage Protocol's sibling, extending the
-  // same "first archetype-X subroutine acquired is upgraded once" pattern
-  // to a second archetype -- the same per-archetype scaling the Amplifier
-  // family already uses (Malware Amplifier -> Exploit/Encryption/Root
-  // Amplifier).
-  state = applyFirstArchetypeUpgradeMod(state, acquired, 'fast-learner', 'root');
+  // Session 51: Salvage Protocol was Malware, Fast Learner Root; re-keyed
+  // to Daemon and Overclock.
+  state = applyFirstArchetypeUpgradeMod(state, acquired, 'salvage-protocol', 'daemon');
+  state = applyFirstArchetypeUpgradeMod(state, acquired, 'fast-learner', 'overclock');
   return state;
 }
 
@@ -504,7 +502,7 @@ export interface ModLadderRank {
 
 /** `archetype` is optional on ModDefinition -- absent means the Mod
  * isn't tied to any one archetype, which archetypeLadderPosition maps
- * onto the same middle rung as a neutral subroutine. */
+ * onto the middle rung. */
 export function modLadderRank(mod: ModDefinition, playerState: RunPlayerState): ModLadderRank {
   return {
     archetype: archetypeLadderPosition(mod.archetype, playerState.classId),

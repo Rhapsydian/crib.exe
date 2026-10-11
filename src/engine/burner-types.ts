@@ -1,4 +1,4 @@
-import type { PayloadEffect } from './subroutine-types';
+import type { Effect } from './subroutine-types';
 import type { Rarity } from './rewards';
 
 /**
@@ -46,12 +46,10 @@ export interface BurnerDefinition {
   name: string;
   rarity: Rarity;
   contexts: BurnerContext[];
-  /** Only present when contexts includes 'combat' -- reuses PayloadEffect
-   * wholesale (session 37: confirmed against the actual engine, no new
-   * payload kinds needed), resolved via resolve.ts's exported
-   * resolvePayload so a Burner fire gets the same Primed/onFire passive
-   * interactions as any other payload resolution. */
-  combatEffect?: PayloadEffect;
+  /** Only present when contexts includes 'combat' -- a single verb effect
+   * (session 51; was a PayloadEffect), resolved through resolve.ts's
+   * exported resolveEffect exactly like any subroutine's effect. */
+  combatEffect?: Effect;
   /** Only present when contexts includes 'map'. */
   mapEffect?: MapBurnerEffect;
   /** Only present when contexts includes 'shop'. */
