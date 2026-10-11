@@ -179,6 +179,22 @@ Honeypot pairs, offense likely comes from the partner archetype.
 Matches D10/D11's commitment that pillars are the authoring template.
 `BACKLOG.md`'s next phase changes from "class audit" to this sequence.
 
+### A11 — A skeleton pool stands in during calibration ✅
+
+The pillar harness measures against real accumulated player state, which
+needs a pool to accumulate from. Step 1 ships a **skeleton pool**: one
+plain piece per archetype per verb it uses (~12–16), alpha-only or
+simplest beta, roughly level numbers. Keeps acquisition/Shop/Merge and
+full runs working, keeps the codebase compiling and testable, and doubles
+as test fixtures. The old 159 pieces and 32 enemy kits are **deleted,
+not migrated**. Rejected: a synthetic player kit — cleaner control, but
+it removes acquisition and Merge from "accumulated state".
+
+In passing: the same logic gives a **skeleton enemy roster** built from
+the skeleton pieces, so regular/elite/gatekeeper fights still exist in
+full runs; calibration's controlled background stays the synthetic
+gatekeeper.
+
 ### Calls made in passing (flag to revisit)
 
 - **Neutral archetype removed**, per the inventory — A3's archetype-level
@@ -207,4 +223,4 @@ Matches D10/D11's commitment that pillars are the authoring template.
 
 ## Open
 
-- A11: what the player side is during calibration, with the pool scrapped.
+- None blocking step 1. Planning step 1 next.
