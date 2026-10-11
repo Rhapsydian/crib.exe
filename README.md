@@ -6,44 +6,55 @@ structure, where combat is resolved by playing real Cribbage.
 You play a run through a four-layer network, fighting named enemies at
 map nodes. Each fight is a genuine game of Cribbage — but the points you
 score also fill an **initiative gauge**, and every time yours crosses its
-threshold you take a turn, firing every **subroutine** in your loadout
-whose trigger condition is currently met. Those subroutines push your
-**Breach** gauge toward the win, or suppress the enemy's **Containment**
-gauge to deny theirs. Play the cards well and you act more often; build
-the loadout well and each action does more.
+threshold you take a turn: every **subroutine** in your loadout fires its
+**alpha** effect, top to bottom, and each one whose criteria are met also
+applies its **beta** — a bigger hit, an extra effect, or (for some) a
+fire the instant its criteria land, outside the turn. Subroutines push
+your **Breach** gauge toward the win, push the enemy's **Containment**
+gauge back, shield, speed up your turns, or manipulate the cards. Play
+the cards well and you act more often; build and order the loadout well
+and each action does more.
+
+Four archetypes, each bound to one of the four suits: **Exploit** (spike /
+control), **Daemon** (ramp / healing), **Overclock** (tempo /
+empowerment) and **Honeypot** (conversion / defense).
 
 ## Status
 
-**The engine is complete and content-real. There is no UI yet** —
-`npm run dev` currently serves the default Svelte scaffold.
+**The engine is complete; the content is a placeholder skeleton. There is
+no UI yet** — `npm run dev` currently serves the default Svelte scaffold.
+
+Session 51 redesigned the archetypes and the subroutine model from
+scratch (`DESIGN.md` → Archetypes & Subroutines; the decision trail is
+`docs/archetype-redesign.md`). The engine runs the new model end to end,
+but the old 159-piece pool and 32-enemy roster were deleted, not
+migrated: a deliberately untuned **skeleton** pool and roster stand in
+until the pillar calibration says what an alpha and a beta are worth.
 
 What exists, all headless and test-covered:
 
 | area | state |
 |---|---|
 | Cribbage rules engine | complete, rules-correct, 2-player |
-| Combat wrapper | complete — triggers, payloads, initiative, Breach/Containment |
+| Combat wrapper | complete — alpha/beta subroutines, seven verbs, initiative, Breach/Containment |
 | Run & map layer | complete — free-roam movement, Heat, real duels at fight nodes |
-| Meta-progression | complete — 6 classes, acquisition, Merge, Shop |
-| Content | 159 subroutines (139 player-facing, 20 enemy-only), 32 enemies, 40 Mods, 8 Burners, 8 Events |
-| Balance | **in progress** — see `BACKLOG.md` |
+| Meta-progression | complete — 6 classes (placeholder names and bridge passives), acquisition, Merge, Shop |
+| Content | **skeleton** — 16 subroutines, 10 enemies; 37 Mods, 8 Burners, 8 Events carried over |
+| Balance | **blocked on recalibration** — see `BACKLOG.md` |
 | UI, art | not started |
 
-Balance is the active work and is not settled. Full-run win rates range
-from 6.0% to 39.3% across the six classes against a 10–20% target band.
-
-As of session 49 that spread is understood: **hold the gatekeeper roster
-still and it collapses to 11.0pp, with five of six classes inside the
-band** — so roughly two thirds of what reads as class imbalance is
-gatekeeper matchup. The per-layer curve is also non-monotonic, but the
-spike is layer 3 being a free layer (94.5% unfiltered), not layer 2 being
-too hard. `BACKLOG.md` has the numbers and what follows from them.
+The roadmap is now the redesign's three steps: engine refactor (done),
+recalibrate the pillar suite against the seven verbs, then author real
+content. The balance numbers from sessions 39–50 measured content that no
+longer exists; their *lessons* (gatekeeper matchup dominating class
+spread, trigger frequency over payload magnitude) carry forward in
+`DESIGN.md` and `docs/run-economy-design.md`.
 
 ## Running it
 
 ```bash
 npm install
-npm test        # Vitest suite (791 tests)
+npm test        # Vitest suite (615 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server (scaffold only — no game UI yet)
 ```
@@ -69,7 +80,7 @@ run, including that run's final loadout, so "how many winning runs
 included X" is a query rather than a bespoke script.
 
 ```bash
-npm run sweep -- enemy --enemy=ghost-in-the-machine --vs=blackhat
+npm run sweep -- enemy --enemy=skeleton-gate-4 --vs=exploit-daemon
 ```
 
 A direct `playCombat` between one named enemy and one class's starting
@@ -81,6 +92,8 @@ kit, reporting threshold vs. attrition wins on each side.
 | `npx tsx scripts/gatekeeper-check.ts` | How hard each gatekeeper is against *realistic accumulated* player state, not a bare starting kit |
 | `npx tsx scripts/occurrence-frequency.ts` | Real Cribbage occurrence frequency and score distributions, outside the roguelite layer — calibrates content thresholds against actual play |
 | `npx tsx scripts/cribbage-skill-matrix.ts` | What a given "player skill" value actually means, as a skill-vs-skill win-rate grid |
+| `npx tsx scripts/pillar-check.ts` | What one verb is worth: single-piece test enemies swept over magnitude × fire rate (three verb pillars so far; step 2 adds the rest) |
+| `npx tsx scripts/enemy-check.ts` / `heat-sources.ts` | Per-enemy difficulty against accumulated state; where run Heat comes from |
 
 ### Holding the gatekeepers still
 
@@ -92,7 +105,7 @@ the stable is drawn.
 ```bash
 npm run sweep -- run --seeds=300 --syntheticGatekeepers=1,1,1,1
 npm run sweep -- run --seeds=300 --syntheticGatekeepers=0.78,0.72,0.66,0.60
-npx tsx scripts/gatekeeper-check.ts --syntheticGatekeepers=1,pin:zero-sum,1,1
+npx tsx scripts/gatekeeper-check.ts --syntheticGatekeepers=1,pin:<gatekeeper-id>,1,1
 ```
 
 It exists because a lost gatekeeper fight ends the run outright, so every
@@ -100,7 +113,8 @@ layer's population is *strictly* "whoever beat the previous layer" — any
 per-layer or per-class number is otherwise measured on a cohort
 pre-selected by the very trait being measured. `1,1,1,1` removes that
 filter; a fixed curve holds the roster still while something else is
-read; `pin:` measures one gatekeeper against a controlled background.
+read; `pin:` measures one gatekeeper against a controlled background
+(meaningless on the skeleton roster, which has one gatekeeper per layer).
 
 ### Four conventions worth knowing before reading any number
 
@@ -139,12 +153,17 @@ That constraint is why the balance tooling above can exist at all.
 | file | holds |
 |---|---|
 | `DESIGN.md` | The settled design — mechanics, archetypes, classes, enemies, resources, and the reasoning behind them |
+| `docs/archetype-redesign.md` | Session 51's decision trail for the archetype and subroutine redesign (A1–A12, plus every implementation call) |
+| `docs/run-economy-design.md` | Session 50's decisions: the per-layer Heat economy (decided, not yet built), the pillar suite, and the per-turn model (D11–D15) |
+| `docs/design-history.md` | `DESIGN.md` sections superseded by session 51, archived verbatim |
 | `BACKLOG.md` | What is still to do, and the current balance picture |
 | `docs/roadmap-history.md` | Completed roadmap work and the per-checkpoint record of how it was built |
 | `docs/session-logs/` | Per-session record of decisions and results |
 
 Sessions 22–28 have no individual log; that stretch is covered by the
-combined `docs/session-logs/00-prior-sessions-1-28.md`.
+combined `docs/session-logs/00-prior-sessions-1-28.md`. Session 50 has
+none either — it was never closed out; its record is
+`docs/run-economy-design.md` and its commits.
 
 ---
 
