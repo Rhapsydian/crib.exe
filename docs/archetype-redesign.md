@@ -2,8 +2,9 @@
 
 Session 51 (`/decision-session`, 2026-10-11). Builds on
 `docs/run-economy-design.md` D11–D15 (every subroutine fires every turn;
-triggers modulate rather than gate). Settled results move to `DESIGN.md`
-when this is done.
+triggers modulate rather than gate). **Folded into `DESIGN.md` →
+Archetypes & Subroutines in step 1, checkpoint 1**; this file remains
+the decision trail.
 
 ## Framing (from the user)
 
@@ -209,6 +210,17 @@ gatekeeper.
   player-only (Trace is player-only).
 - **Escalation and the defender-favoured hard tiebreak stay** — they are
   combat-layer, and Honeypot's identity leans on them.
+
+### Found while restructuring DESIGN.md (checkpoint 1)
+
+- **Tick hooks lose their events.** With DoT/HoT removed,
+  `onTick`/`onTickExpiring` never fire, so Redundant Ticks, Failsafe
+  Cascade and Redline need re-pointing (alpha fires, lasting
+  Tempo/Suppress durations) or retiring with the hooks. Decide in the
+  content step.
+- **Name collision:** the Overclocked Accumulator Mod now reads as an
+  Overclock-archetype piece. It is in the re-point set anyway; rename it
+  then.
 
 ## Noted for later (not discussed)
 

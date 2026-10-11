@@ -42,6 +42,41 @@ not the layer curve — is where the balance problem lives.**
 
 ---
 
+## Archetype & subroutine redesign — the active arc (session 51)
+
+Decided in session 51 (`docs/archetype-redesign.md`, A1–A11; settled
+design in `DESIGN.md` → Archetypes & Subroutines). Replaces the
+roadmap's old next phase ("full class audit") and supersedes balance
+items 4 and 7 below: the gatekeeper roster and the classes are both
+rebuilt rather than tuned. Work happens on the `archetype-redesign`
+branch.
+
+1. **Engine refactor** — checkpointed, pausing after each:
+   1. `DESIGN.md` restructure ✅ (superseded sections archived verbatim
+      in `docs/design-history.md`).
+   2. New subroutine model (alpha verb + growth, beta source × shape),
+      new archetypes/suits, removal of tags, Togglable and Neutral;
+      delete the old pool and enemy kits; skeleton pool, skeleton
+      roster, six placeholder classes with 3-piece loadouts.
+   3. Combat resolution: verb dispatch, beta evaluation on the D11–D15
+      charge machinery; remove DoT/HoT, scheduled sabotage, hand-
+      lifecycle recon.
+   4. Dependent systems: Mods (re-keyed hooks; tick Mods), placeholder
+      bridge passives, Merge upgrades the beta, combat Burners as verbs.
+   5. Diagnostic scripts compile; a short sweep runs end to end.
+
+   Checkpoints 2–4 will not build green individually — the type change
+   ripples everywhere. Expect most of the ~800 tests to be rewritten.
+2. **Recalibrate** — pillar suite re-aligned one per verb, then
+   run-economy checkpoints 3–6 to price an alpha and a beta.
+3. **Author** — archetype subroutines → classes (names, bridge
+   passives, unlock order) → enemy roster.
+
+Resolved by the refactor rather than repaired in place: the dead debuff
+`magnitude` and the dead Occurrence `scaling` (both below).
+
+---
+
 ## Balance — the active arc
 
 ### 1. `GAUGE_THRESHOLD` is roster-mediated — RESOLVED
@@ -372,7 +407,7 @@ because `increasedScalingCap` is live misinformation in the meantime.
 | 2 — Combat wrapper | ✅ complete (session 18) |
 | 3 — Network map / run structure | ✅ complete (session 20) |
 | 4 — Meta-progression | ✅ complete (session 22) |
-| 5 — Content, balance & polish | 🔄 systems complete; **balance ongoing**, no UI, no art |
+| 5 — Content, balance & polish | 🔄 systems complete; **archetype redesign in progress** (session 51), no UI, no art |
 
 Detail for every completed phase, and the full per-checkpoint record of
 Phase 5's systems work, is in `docs/roadmap-history.md`.
