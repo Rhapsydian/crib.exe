@@ -209,6 +209,57 @@ skeleton content — not balance measurements): victory 18–69% by class
 Fight Trace is now ~60% of all Heat, up from ~25% — session 50's wanted
 "inflow shift": the budget is about which fights to take, not walking.
 
+## Checkpoint 2 — the pricing instrument (findings that revise R2)
+
+Built as `src/engine/pricing.ts` (unit-tested) plus
+`scripts/price-check.ts` (the CLI).
+
+- **Seat swapping is mandatory, not a refinement.** `playCombat` is not
+  seat-symmetric (the defender wins at the hand-20 deadline; side 0 deals
+  first). Measured in a pure mirror at skill 0.85: **side 0 wins 65.5%**.
+  Every seed is played with both loadouts in both seats; identical
+  loadouts then score *exactly* 0.5.
+- **R2's planned instrument check was a tautology.** "Credit c prices at
+  ~c" with c on the price grid compares identical loadouts at Δ = c,
+  which tie by construction. Credit is linear by construction, so no
+  Credit-only check can test measurement *validity*. Replaced by:
+  a **wiring check** (identical loadouts tie exactly), a **resolution
+  check** (c deliberately *off* the grid, 0.75× and 1.25× the host), and —
+  moved to checkpoint 3 — a **validity check**: price two different verbs
+  separately and together; if prices mean anything they should roughly
+  add.
+- **Prices are a staircase.** A pure-Credit race is decided by how many
+  turns each side needs to reach its threshold, `ceil(50 / credit per
+  turn)` (before escalation). When both need the same number, the fight
+  plays out exactly like a mirror — exactly 0.5, every seed. So the win
+  rate against Δ has flat steps at exactly 0.5, and any Δ inside one is
+  equally correct. The solver reports the **midpoint of the step**, and
+  the interval is widened to the **grid bracket** (last grid Δ above 0.5,
+  first below), because inside a step the outcome is deterministic and a
+  binomial SE is overconfident.
+- **Consequence for step 3**: content prices finer than one turn-to-win
+  step don't change outcomes. Around a host of Credit 2 a step is ~0.25
+  Credit wide, wider at larger totals. Authoring should think in
+  turns-to-win, not decimals.
+- **Cost**: ~17 ms per fight at skill 0.85 (the Cribbage AI dominates),
+  so prices use a fixed Δ grid on shared seeds, not bisection — about a
+  minute per price at 200 seeds.
+- **Two-pass pricing** (coarse grid finds the bracket, a fine grid inside
+  it pins the price), because the coarse grid alone left intervals as wide
+  as its spacing.
+- **Resolution check results** (skill 0.85, 200 seeds × 2 seats, refined):
+  off-grid Credit 0.75 → 0.75 [0.70, 0.80] and 1.25 → 1.20 [1.10, 1.30]
+  at host 1; 1.5 → 1.56 [1.40, 1.81] and 2.5 → 2.30 [2.00, 2.60] at host
+  2; 3 → 2.60 [2.00, 3.20] and 5 → 5.00 [4.00, 6.00] at host 4. All pass.
+  At host 4 the curve is *exactly* 50% from Δ 4.4 to 5.6: one turn-to-win
+  step ~1.2 Credit wide, which no number of seeds narrows — a property of
+  the game, not the instrument. **Precise prices come from small hosts
+  (1–2);** the host-4 runs show how coarse the game itself is at higher
+  totals.
+- **The skill spot-check (R1's caveat) moves to checkpoint 3.** Credit
+  against Credit is skill-symmetric by construction, so it can't show a
+  skill effect; verbs that depend on scoring (Tempo, Disrupt) can.
+
 ## Open
 
 None blocking step 2. Left for tuning or later: D7's Safehouse count and
