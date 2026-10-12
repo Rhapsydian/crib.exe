@@ -11,14 +11,18 @@
  *
  * Usage:
  *   npx tsx scripts/price-check.ts --check                 # resolution check: off-grid Credit c must price at ~c
- *   npx tsx scripts/price-check.ts --verbs=suppress,ward --amount=2
- *        [--hosts=1,2,4] [--seeds=200] [--skill=0.85] [--deltas=0,0.5,1,...] [--out=f.jsonl]
+ *   npx tsx scripts/price-check.ts --verbs=suppress,ward,suppress+ward --amount=2
+ *        [--hosts=1,2,4] [--hostWard=2] [--seeds=200] [--skill=0.85] [--deltas=0,0.5,1,...] [--out=f.jsonl]
  *
- * Verbs: credit, suppress, ward, empower, tempo-haste, tempo-slow,
- * disrupt-reveal, disrupt-crib, disrupt-force, credit-piercing,
- * credit-from-ward, credit-from-opponent. `--amount` is the verb's own
- * magnitude (ignored by Disrupt; a fraction of a turn or threshold for the
- * two Tempo verbs).
+ * Verbs: credit, suppress, ward, empower, tempo-haste, tempo-haste-cd,
+ * tempo-slow, disrupt-reveal, disrupt-crib, disrupt-force,
+ * credit-piercing, credit-from-ward, credit-from-opponent. `a+b` prices
+ * the two together as one addition (the validity check: do prices add?).
+ * `--amount` is the verb's own magnitude (ignored by Disrupt; a fraction
+ * of a turn for the Tempo verbs). `--hostWard=W` gives BOTH hosts a Ward-W
+ * piece too -- needed to price piercing (against a Ward) and credit from
+ * Ward (spending your own). Empower is placed ABOVE the host, since it
+ * boosts only pieces below it.
  */
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { creditPiece, refinedPrice, type MirrorOptions, type PriceResult } from '../src/engine/pricing';
@@ -43,6 +47,7 @@ const options: MirrorOptions = {
   winThreshold: BREACH_THRESHOLD,
 };
 const hosts = nums('hosts', [1, 2, 4]);
+const hostWard = args.hostWard ? Number(args.hostWard) : 0;
 const outFile = args.out;
 if (outFile) writeFileSync(outFile, '');
 
@@ -68,10 +73,17 @@ function verbAlpha(verb: string, amount: number): Alpha {
 }
 
 function addition(verb: string, amount: number): SubroutineDefinition {
-  // Self-haste can buy its own next turn (session 47) -- the same points
-  // cooldown real content must carry.
-  const cooldown = verb === 'tempo-haste' ? { pointsCooldown: 15 } : {};
-  return { id: `test-${verb}`, name: verb, archetype: 'exploit', alpha: verbAlpha(verb, amount), ...cooldown };
+  // Self-haste priced twice: 'tempo-haste' is the bare verb (safe below a
+  // whole turn per fire), 'tempo-haste-cd' carries the 15-point cooldown
+  // real content must (session 47) -- the verb as it would actually ship.
+  const base = verb === 'tempo-haste-cd' ? 'tempo-haste' : verb;
+  const cooldown = verb === 'tempo-haste-cd' ? { pointsCooldown: 15 } : {};
+  return { id: `test-${verb}`, name: verb, archetype: 'exploit', alpha: verbAlpha(base, amount), ...cooldown };
+}
+
+function hostFor(host: number): SubroutineDefinition[] {
+  const credit = creditPiece(host, 'host');
+  return hostWard > 0 ? [credit, { id: 'host-ward', name: 'host-ward', archetype: 'honeypot', alpha: { verb: 'ward', amount: hostWard } }] : [credit];
 }
 
 /** Default grid relative to the host: prices are expected on the host's
@@ -89,7 +101,7 @@ function report(label: string, host: number, result: PriceResult, expected?: num
 }
 
 console.log(`\nMIRROR-DUEL PRICES -- Credit-equivalents, piece vs piece, equal skill. NOT a full-run metric.`);
-console.log(`${options.seeds} seeds x 2 seats per point; skill ${options.skill}; initiative ${options.gaugeThreshold}, win ${options.winThreshold}\n`);
+console.log(`${options.seeds} seeds x 2 seats per point; skill ${options.skill}; initiative ${options.gaugeThreshold}, win ${options.winThreshold}${hostWard ? `; both hosts carry Ward ${hostWard}` : ''}\n`);
 
 if (args.check) {
   // The resolution check. R2 planned "adding Credit c must price at ~c",
@@ -111,10 +123,13 @@ if (args.check) {
   const verbs = (args.verbs ?? '').split(',').filter(Boolean);
   if (verbs.length === 0) throw new Error('price-check: pass --check or --verbs=...');
   const amount = Number(args.amount ?? 2);
-  for (const verb of verbs) {
+  for (const spec of verbs) {
+    const parts = spec.split('+');
+    const pieces = parts.map((verb) => addition(verb, amount));
+    const placement = parts.includes('empower') ? 'before' : 'after';
     for (const host of hosts) {
-      const { coarse, fine } = refinedPrice([creditPiece(host)], addition(verb, amount), gridFor(host), options);
-      report(`${verb} ${verb.startsWith('disrupt') ? '' : amount}`, host, fine ?? coarse);
+      const { coarse, fine } = refinedPrice(hostFor(host), pieces.length === 1 ? pieces[0] : pieces, gridFor(host), options, placement);
+      report(`${spec} ${parts.every((v) => v.startsWith('disrupt')) ? '' : amount}`, host, fine ?? coarse);
     }
   }
 }

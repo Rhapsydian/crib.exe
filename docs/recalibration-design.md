@@ -260,8 +260,81 @@ Built as `src/engine/pricing.ts` (unit-tested) plus
   against Credit is skill-symmetric by construction, so it can't show a
   skill effect; verbs that depend on scoring (Tempo, Disrupt) can.
 
+## Checkpoint 3 — verb prices
+
+Raw output: `docs/calibration/step2-cp3-verb-prices.txt`. Skill 0.85,
+200 seeds × 2 seats per point, two-pass refined, hosts Credit 1 / 2 / 4.
+Six batches: (A) Suppress 2, Ward 2, Suppress+Ward; (B) Empower 2,
+Credit-from-opponent 2; (C) self-haste ¼ turn with and without its
+15-point cooldown, Slow ¼ turn; (D) the three Disrupts; (E) with a Ward-2
+piece on both hosts: Piercing 2, Credit-from-Ward 2, Credit 2 control;
+(F) skill 0.5 at host 2: Slow, forced discard, Suppress. Harness changes:
+`placement: 'before'` (Empower boosts only pieces below it) and
+multi-piece additions with Credit-0 padding.
+
+### Prices, in Credit per turn
+
+| addition | host 1 | host 2 | host 4 | reading |
+|---|---|---|---|---|
+| Suppress 2 | 1.90 | 1.91 | 1.80 | ≈ 0.95 per point |
+| Ward 2 | 1.93 | 1.94 | 1.84 | ≈ 0.95 per point, while the opponent has credit to absorb |
+| **Suppress 2 + Ward 2** | **3.82** | **3.85** | **3.62** | **sum of parts: 3.83 / 3.85 / 3.64 — prices add** |
+| Empower 2 (one piece below) | 2.09 | 2.01 | 1.90 | ≈ 1 per point *per boosted piece* |
+| Credit 2 from opponent | 3.73 | 3.76 | 3.51 | ≈ 1.85 per point — Credit + Suppress in one |
+| Haste ¼ turn | 0.36 | 0.74 | 1.30 | ≈ ⅓ × own per-turn output |
+| Haste ¼ turn + 15-pt cooldown | 0.19 | 0.36 | 0.50 | about half the bare verb |
+| Slow ¼ turn | 0.28 | 0.60 | 1.03 | ≈ 0.27 × opponent per-turn output |
+| Disrupt: reveal hand | 0.09 | 0.19 | 0.16 | small |
+| Disrupt: force discard | 0.29 | 0.63 | 1.04 | ≈ 0.27 × opponent per-turn output |
+| **Disrupt: reveal crib** | **0.00** | **0.00** | **0.00** | **dead — see below** |
+| *with Ward 2 on both hosts:* | | | | |
+| Credit 2 (control) | 2.02 | 2.08 | 2.13 | the instrument reads true with Wards in play |
+| Piercing Credit 2 | 2.95 | 2.21 | 2.13 | Credit + the Ward it bypasses; matters when Ward is large relative to the hits |
+| Credit 2 from own Ward | 1.12 | 0.29 | 0.18 | only worth the Ward that would otherwise be wasted |
+
+### What the prices say
+
+- **The validity check passes.** Suppress and Ward priced together come
+  out at the sum of their separate prices, within 0.02, at all three
+  hosts. Prices from this instrument are additive, which is what makes a
+  per-verb rule usable for authoring.
+- **The points verbs sit near 1:1 with Credit** — Suppress and Ward at
+  ~0.95 per point (defense and offense are nearly interchangeable in a
+  symmetric race), Empower at ~1 per point per boosted piece.
+- **Tempo and Disrupt scale with the loadout they act on.** Haste a turn
+  per fire is worth about a/(1−a) × the caster's own per-turn output (the
+  ⅓ at a = ¼ is exactly that: the haste piece also fires on the turns it
+  buys); Slow and forced discards are worth ~0.27 × the opponent's. So
+  they're cheap in a thin early kit and strong in a full one —
+  situational by nature, which step 3 must price against expected
+  loadout size, not a flat number.
+- **The 15-point cooldown halves self-haste.** Real content carries it,
+  so content should be priced on the `-cd` row.
+- **Conversion is two very different things** (the user's Honeypot watch
+  items):
+  - **Credit from the opponent is the strongest verb per point** (~1.85×
+    Credit), and it already bypasses Ward. If anything is overpowered,
+    it's this.
+  - **Credit from your own Ward is worth only the Ward that would be
+    wasted.** Spending Ward 1:1 gives up Ward's defensive value, so
+    against an opponent who hits hard enough to use the Ward, it is
+    nearly free credit's cost and nearly worthless. Honeypot's conversion
+    only pays when its Ward outruns what the opponent can throw at it.
+- **Skill spot-check (host 2, skill 0.5 vs 0.85):** Suppress 1.88 vs 1.91
+  and Slow 0.55 vs 0.60 barely move; **forced discard halves (0.33 vs
+  0.63)**. A worse player wastes less of a hand you've already spoiled,
+  so Disrupt's worth depends on the opponent's skill.
+- **Reveal Crib is dead content.** Its Δ = 0 point is *exactly* 50% at
+  every host — no outcome changed on any seed. The revealed crib does
+  reach the pegging strategy (`knownCrib`), but nothing in `ai.ts` reads
+  it — the session-40 bug class (Directory Traversal's reveal was
+  likewise delivered and never read). And knowing the crib only says
+  which two cards the opponent *doesn't* hold, so even read it would be
+  worth little. A design call for the user, not a quick fix.
+
 ## Open
 
-None blocking step 2. Left for tuning or later: D7's Safehouse count and
+- **Reveal Crib**: make the AI use it, give it a different job, or drop
+  it from Disrupt's actions. Left for tuning or later: D7's Safehouse count and
 placement, the Safehouse rename (Cold Storage / Sandbox / Air-Gapped
 Host), regular/elite win-rate targets (after step 3, per R1).

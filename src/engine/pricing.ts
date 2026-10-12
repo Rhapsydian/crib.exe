@@ -147,16 +147,31 @@ function crossing(deltas: number[], values: number[]): number | null {
   return (lower + upper) / 2;
 }
 
+/** Where the addition sits relative to the host. Order matters for
+ * Empower (it boosts only pieces BELOW it) and for sequence betas. */
+export type Placement = 'after' | 'before';
+
 /**
  * R2's host-plus-difference method. Both sides get `host`; the test side
- * adds `addition`; the reference side adds Credit Δ for each Δ in `deltas`
- * (ascending; 0 is a Credit-0 piece, keeping piece counts equal so loadout
- * size is never a confound). Returns the crossing and its interval.
+ * adds `addition` (one piece or several); the reference side adds Credit
+ * Δ for each Δ in `deltas`, padded with Credit-0 pieces so both sides
+ * always have the same piece count -- loadout size is never a confound.
+ * `placement` puts the addition (and, symmetrically, the reference's
+ * Credit Δ) after or before the host. Returns the crossing and interval.
  */
-export function priceAddition(host: SubroutineDefinition[], addition: SubroutineDefinition, deltas: number[], options: MirrorOptions): PriceResult {
+export function priceAddition(
+  host: SubroutineDefinition[],
+  addition: SubroutineDefinition | SubroutineDefinition[],
+  deltas: number[],
+  options: MirrorOptions,
+  placement: Placement = 'after',
+): PriceResult {
   const sorted = [...deltas].sort((a, b) => a - b);
-  const test = [...host, addition];
-  const curve = sorted.map((delta) => ({ delta, ...mirrorWinRate(test, [...host, creditPiece(delta, `credit-delta`)], options) }));
+  const added = Array.isArray(addition) ? addition : [addition];
+  const place = (extra: SubroutineDefinition[]): SubroutineDefinition[] => (placement === 'after' ? [...host, ...extra] : [...extra, ...host]);
+  const test = place(added);
+  const padding = Array.from({ length: added.length - 1 }, (_, i) => creditPiece(0, `credit-pad-${i}`));
+  const curve = sorted.map((delta) => ({ delta, ...mirrorWinRate(test, place([creditPiece(delta, `credit-delta`), ...padding]), options) }));
   const p = curve.map((c) => c.winRate);
   const bandLow = crossing(sorted, curve.map((c) => c.winRate - 2 * c.se));
   const bandHigh = crossing(sorted, curve.map((c) => c.winRate + 2 * c.se));
@@ -180,12 +195,19 @@ export function priceAddition(host: SubroutineDefinition[], addition: Subroutine
  * spacing, or to the staircase step, whichever is wider. Returns the
  * coarse result unchanged when it never brackets 0.5.
  */
-export function refinedPrice(host: SubroutineDefinition[], addition: SubroutineDefinition, coarseDeltas: number[], options: MirrorOptions, points = 6): { coarse: PriceResult; fine: PriceResult | null } {
-  const coarse = priceAddition(host, addition, coarseDeltas, options);
+export function refinedPrice(
+  host: SubroutineDefinition[],
+  addition: SubroutineDefinition | SubroutineDefinition[],
+  coarseDeltas: number[],
+  options: MirrorOptions,
+  placement: Placement = 'after',
+  points = 6,
+): { coarse: PriceResult; fine: PriceResult | null } {
+  const coarse = priceAddition(host, addition, coarseDeltas, options, placement);
   const lastAbove = [...coarse.curve].reverse().find((c) => c.winRate > 0.5)?.delta;
   const firstBelow = coarse.curve.find((c) => c.winRate < 0.5)?.delta;
   if (coarse.price === null || lastAbove === undefined || firstBelow === undefined || firstBelow <= lastAbove) return { coarse, fine: null };
   const step = (firstBelow - lastAbove) / (points - 1);
   const fineDeltas = Array.from({ length: points }, (_, i) => lastAbove + i * step);
-  return { coarse, fine: priceAddition(host, addition, fineDeltas, options) };
+  return { coarse, fine: priceAddition(host, addition, fineDeltas, options, placement) };
 }

@@ -92,3 +92,20 @@ describe('refinedPrice', () => {
     expect(refinedPrice([creditPiece(1)], creditPiece(40), [0, 1, 2], FAST).fine).toBeNull();
   });
 });
+
+describe('priceAddition -- placement and multi-piece additions', () => {
+  it('a two-piece addition is priced against Credit Δ padded to the same piece count', () => {
+    // Credit 1 + Credit 1 is mechanically Credit 2 per turn, so the pair
+    // must tie with Credit 2 (+ a Credit-0 pad) exactly.
+    const result = priceAddition([creditPiece(2)], [creditPiece(1, 'a'), creditPiece(1, 'b')], [2], FAST);
+    expect(result.curve[0].winRate).toBe(0.5);
+  });
+
+  it("'before' puts the addition above the host -- which is what Empower needs to boost anything", () => {
+    const empower = { id: 'emp', name: 'emp', archetype: 'overclock' as const, alpha: { verb: 'empower' as const, amount: 2, scope: 'rest' as const } };
+    // Below the host, Empower boosts nothing and is worth ~0; above it, it
+    // adds its amount to the host's Credit every turn.
+    expect(priceAddition([creditPiece(2)], empower, [0], FAST, 'after').curve[0].winRate).toBe(0.5);
+    expect(priceAddition([creditPiece(2)], empower, [0], FAST, 'before').curve[0].winRate).toBeGreaterThan(0.5);
+  });
+});
