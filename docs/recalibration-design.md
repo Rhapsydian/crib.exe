@@ -317,8 +317,8 @@ multi-piece additions with Credit-0 padding.
     it's this.
   - **Credit from your own Ward is worth only the Ward that would be
     wasted.** Spending Ward 1:1 gives up Ward's defensive value, so
-    against an opponent who hits hard enough to use the Ward, it is
-    nearly free credit's cost and nearly worthless. Honeypot's conversion
+    against an opponent who hits hard enough to use the Ward, converting
+    it gains almost nothing. Honeypot's conversion
     only pays when its Ward outruns what the opponent can throw at it.
 - **Skill spot-check (host 2, skill 0.5 vs 0.85):** Suppress 1.88 vs 1.91
   and Slow 0.55 vs 0.60 barely move; **forced discard halves (0.33 vs
