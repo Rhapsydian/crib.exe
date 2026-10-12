@@ -49,7 +49,9 @@ export const LIGHT_FOOTING_HEAT_DISCOUNT = 1;
 export const VENDOR_DISCOUNT_FRACTION = 0.2;
 
 /** Backup Generator's permanent max-Heat raise. */
-export const BACKUP_GENERATOR_HEAT_BONUS = 20;
+// Session 52: added to EVERY layer's allowance now (heat.ts), which is
+// ~30-40 rather than the old run-long 100 -- 20 would be +50%.
+export const BACKUP_GENERATOR_HEAT_BONUS = 8;
 
 /** Petty Cache's flat Data bonus on any win. */
 export const PETTY_CACHE_DATA_BONUS = 5;

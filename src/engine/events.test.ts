@@ -5,7 +5,12 @@ import { resolveEncounter, alwaysFirstEventChoice, synergyAwareEventChoice, type
 import { createInitialPlayerState, playRun, type RunPlayerState } from './run';
 import { EVENT_ROSTER } from './events';
 import type { EventChoice, EventDefinition } from './event-types';
-import { HEAT_MAX } from './heat';
+import { layerHeatAllowance } from './heat';
+import { BACKUP_GENERATOR_HEAT_BONUS } from './mods';
+
+// Session 52: Heat is a per-layer allowance; a player state built outside a
+// run plans against layer 1's (heat.ts's currentHeatCeiling).
+const HEAT_MAX = layerHeatAllowance(0);
 
 /**
  * Events verification (Phase 5 checkpoint J): the roster's own content
@@ -422,15 +427,17 @@ describe('synergyAwareEventChoice', () => {
   });
 
   it('scales the safety margin with a raised max Heat (Backup Generator)', () => {
-    // 59 Heat is over half of 100 but under half of 120, so the same
-    // absolute Heat is unsafe at base max Heat and safe for a player
-    // carrying Backup Generator's +20. The ceiling itself is exclusive
-    // -- Heat exactly at the margin counts as unsafe, matching
+    // Session 52: against layer 1's allowance (HEAT_MAX here) plus Backup
+    // Generator's per-layer bonus. Heat just over half the base allowance
+    // is unsafe there, but under half of the raised one. The ceiling is
+    // exclusive -- Heat exactly at the margin counts as unsafe, matching
     // opportunisticSafehouseStrategy's own `>=` reading of "Heat high."
+    const bonus = BACKUP_GENERATOR_HEAT_BONUS;
     const strategy = synergyAwareEventChoice({ maxRiskTier: 'gamble', gambleSafetyMargin: 0.5 });
-    expect(strategy(allTiers, playerWith({}), 59).id).toBe('odds');
-    expect(strategy(allTiers, playerWith({ maxHeatBonus: 20 }), 59).id).toBe('gamble');
-    expect(strategy(allTiers, playerWith({ maxHeatBonus: 20 }), 60).id).toBe('odds');
+    const justOverBase = HEAT_MAX / 2 + 1;
+    expect(strategy(allTiers, playerWith({}), justOverBase).id).toBe('odds');
+    expect(strategy(allTiers, playerWith({ maxHeatBonus: bonus }), justOverBase).id).toBe('gamble');
+    expect(strategy(allTiers, playerWith({ maxHeatBonus: bonus }), (HEAT_MAX + bonus) / 2).id).toBe('odds');
   });
 
   it('never exceeds a transparent-only cap', () => {

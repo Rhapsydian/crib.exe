@@ -1,44 +1,103 @@
 import { describe, it, expect } from 'vitest';
-import { addHeat, heatFromLoss, HEAT_MAX } from './heat';
+import {
+  addHeat,
+  currentHeatCeiling,
+  fightBaselineTrace,
+  fightPerformanceTrace,
+  fightPerformanceWeight,
+  heatFromLoss,
+  layerHeatAllowance,
+  postedFightRisk,
+  LAYER_HEAT_ALLOWANCE,
+  LOSS_MULTIPLIER,
+} from './heat';
+
+// Session 52: rewritten for the per-layer Heat economy (run-economy D1-D7,
+// recalibration R5-R8). Numbers are placeholders; these tests pin the
+// SHAPE the decisions require, not the values.
 
 describe('addHeat', () => {
   it('adds normally within range', () => {
-    expect(addHeat(10, 5)).toEqual({ heat: 15, maxed: false });
+    expect(addHeat(10, 5, 40)).toEqual({ heat: 15, maxed: false });
   });
 
-  it('clamps at HEAT_MAX and reports maxed', () => {
-    expect(addHeat(HEAT_MAX - 1, 10)).toEqual({ heat: HEAT_MAX, maxed: true });
+  it('clamps at the allowance and reports maxed', () => {
+    expect(addHeat(39, 10, 40)).toEqual({ heat: 40, maxed: true });
   });
 
   it('floors at 0 for a negative amount (e.g. Rest)', () => {
-    expect(addHeat(3, -10)).toEqual({ heat: 0, maxed: false });
+    expect(addHeat(3, -10, 40)).toEqual({ heat: 0, maxed: false });
   });
 
   it('reports maxed exactly at the boundary, not just past it', () => {
-    expect(addHeat(HEAT_MAX, 0).maxed).toBe(true);
-    expect(addHeat(HEAT_MAX - 1, 0).maxed).toBe(false);
+    expect(addHeat(40, 0, 40).maxed).toBe(true);
+    expect(addHeat(39, 0, 40).maxed).toBe(false);
   });
 });
 
-describe('heatFromLoss', () => {
-  // Session 50 removed the margin-of-loss scaler: the charge is now flat
-  // per tier, so entering a fight is a legible risk/reward decision
-  // rather than one whose cost depends on a peak gauge fill the player
-  // never sees.
-  it('charges a flat tier base, regardless of how the fight went', () => {
-    expect(heatFromLoss('regular')).toBe(15);
-    expect(heatFromLoss('elite')).toBe(30);
+describe('layer allowances (D4, D5)', () => {
+  it('tighten with depth', () => {
+    for (let i = 1; i < LAYER_HEAT_ALLOWANCE.length; i++) expect(LAYER_HEAT_ALLOWANCE[i]).toBeLessThan(LAYER_HEAT_ALLOWANCE[i - 1]);
   });
 
-  it('costs much more for an elite -- higher stakes for a harder, better-rewarded fight', () => {
-    expect(heatFromLoss('elite')).toBeGreaterThan(heatFromLoss('regular'));
+  it('add the Backup Generator bonus to every layer, and reuse the last entry past the table', () => {
+    expect(layerHeatAllowance(0, 8)).toBe(LAYER_HEAT_ALLOWANCE[0] + 8);
+    expect(layerHeatAllowance(99)).toBe(LAYER_HEAT_ALLOWANCE[LAYER_HEAT_ALLOWANCE.length - 1]);
   });
 
-  it('is a meaningful fraction of the Heat budget, so a loss is a real setback', () => {
-    // A regular loss should cost real progress toward HEAT_MAX, not a
-    // rounding error -- the near-miss scaler used to discount this to
-    // near zero on a close loss.
-    expect(heatFromLoss('regular') / HEAT_MAX).toBeGreaterThan(0.1);
-    expect(heatFromLoss('elite') / HEAT_MAX).toBeGreaterThan(0.25);
+  it("currentHeatCeiling reads the run's live allowance, falling back to layer 1's", () => {
+    expect(currentHeatCeiling({ heatAllowance: 23, maxHeatBonus: 0 })).toBe(23);
+    expect(currentHeatCeiling({ maxHeatBonus: 4 })).toBe(LAYER_HEAT_ALLOWANCE[0] + 4);
+  });
+});
+
+describe('fight Trace (D1, D2, R6)', () => {
+  it('posts a baseline for every tier, elite above regular, growing with layer', () => {
+    for (const tier of ['regular', 'elite', 'gatekeeper'] as const) expect(fightBaselineTrace(tier, 0)).toBeGreaterThan(0);
+    expect(fightBaselineTrace('elite', 0)).toBeGreaterThan(fightBaselineTrace('regular', 0));
+    expect(fightBaselineTrace('regular', 3)).toBeGreaterThan(fightBaselineTrace('regular', 0));
+  });
+
+  it("adds a performance term in proportion to the enemy's FINAL fill, clamped to 0-1", () => {
+    const k = fightPerformanceWeight('regular', 0);
+    expect(fightPerformanceTrace('regular', 0, 0)).toBe(0);
+    expect(fightPerformanceTrace('regular', 0, 0.5)).toBeCloseTo(k / 2);
+    expect(fightPerformanceTrace('regular', 0, 1.7)).toBeCloseTo(k);
+  });
+
+  it("puts the gatekeeper's price in the performance term, not the posted floor (R8)", () => {
+    expect(fightPerformanceWeight('gatekeeper', 0)).toBeGreaterThan(fightBaselineTrace('gatekeeper', 0));
+    expect(fightBaselineTrace('gatekeeper', 0)).toBeLessThan(fightBaselineTrace('regular', 0));
+  });
+});
+
+describe('heatFromLoss (R7)', () => {
+  it('is LOSS_MULTIPLIER x the worst-case win, with the multiplier above 1', () => {
+    expect(LOSS_MULTIPLIER).toBeGreaterThan(1);
+    for (const tier of ['regular', 'elite'] as const) {
+      for (let layer = 0; layer < 4; layer++) {
+        const { worstWin } = postedFightRisk(tier, layer);
+        expect(heatFromLoss(tier, layer)).toBeCloseTo(LOSS_MULTIPLIER * worstWin);
+      }
+    }
+  });
+
+  it('keeps the ladder in order at every tier and layer: clean win < worst win < loss', () => {
+    for (const tier of ['regular', 'elite'] as const) {
+      for (let layer = 0; layer < 4; layer++) {
+        const risk = postedFightRisk(tier, layer);
+        expect(risk.cleanWin).toBeLessThan(risk.worstWin);
+        expect(risk.worstWin).toBeLessThan(risk.loss!);
+      }
+    }
+  });
+
+  it('costs more deeper, and more for an elite', () => {
+    expect(heatFromLoss('regular', 3)).toBeGreaterThan(heatFromLoss('regular', 0));
+    expect(heatFromLoss('elite', 0)).toBeGreaterThan(heatFromLoss('regular', 0));
+  });
+
+  it("has no posted loss for a gatekeeper, whose loss is Quarantine", () => {
+    expect(postedFightRisk('gatekeeper', 0).loss).toBeUndefined();
   });
 });

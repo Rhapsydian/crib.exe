@@ -13,6 +13,7 @@ import { REWARD_OPTIONS_COUNT } from './rewards';
 import { dataForTier } from './data';
 import { REROLL_COST, buyCheapestAffordable, type ShopRerollStrategy } from './shop';
 import { preferMergeWhenAvailable } from './merge';
+import { postedFightRisk } from './heat';
 
 /**
  * Session 51 port: fixtures moved to the redesigned model. The win side
@@ -232,14 +233,27 @@ function lossOutcomes(nodeType: 'regularFight' | 'eliteFight' | 'gatekeeperFight
 }
 
 describe('resolveEncounter -- regularFight', () => {
-  it('a win goes inert, never quarantines, costs 0 Heat, grants a standard reward with Data and options', () => {
+  it('a win goes inert, never quarantines, costs its posted Trace window, grants a standard reward with Data and options', () => {
+    // Session 52 (D1, R6): a won fight is no longer free -- it costs at
+    // least the posted baseline and at most the posted worst-case win
+    // (this kit makes no noise of its own).
+    const risk = postedFightRisk('regular', TEST_LAYER - 1);
     for (const outcome of winOutcomes('regularFight')) {
       expect(outcome.newState).toBe('inert');
       expect(outcome.quarantined).toBe(false);
-      expect(outcome.heatDelta).toBe(0);
+      expect(outcome.heatDelta).toBeGreaterThanOrEqual(risk.cleanWin - 1e-9);
+      expect(outcome.heatDelta).toBeLessThanOrEqual(risk.worstWin + 1e-9);
       expect(outcome.rewardTier).toBe('standard');
       expect(outcome.dataAwarded).toBeGreaterThan(0);
       expect(outcome.rewardOptions).toHaveLength(REWARD_OPTIONS_COUNT);
+    }
+  });
+
+  it("a loss costs at least LOSS_MULTIPLIER x the node's posted worst-case win (R7), more than any win could", () => {
+    const risk = postedFightRisk('regular', TEST_LAYER - 1);
+    for (const outcome of lossOutcomes('regularFight')) {
+      expect(outcome.heatDelta).toBeGreaterThanOrEqual(risk.loss! - 1e-9);
+      expect(outcome.heatDelta).toBeGreaterThan(risk.worstWin);
     }
   });
 
@@ -303,8 +317,8 @@ describe('resolveEncounter -- non-fight nodes', () => {
     const outcome = resolveEncounter(createNode('n', 'safehouse'), createRng(1), OVERWHELMING_PLAYER);
     expect(outcome).toEqual({
       newState: 'inert',
-      heatDelta: -20,
-      heatSources: { ...NO_HEAT_SOURCES, rest: -20 },
+      heatDelta: -12, // session 52: Rest scaled with the per-layer allowance (was 20 of 100)
+      heatSources: { ...NO_HEAT_SOURCES, rest: -12 },
       quarantined: false,
       rewardTier: 'none',
       dataAwarded: 0,

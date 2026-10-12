@@ -65,3 +65,27 @@ describe('generateLayer', () => {
     expect(fillers.every((n) => n.type === 'relay')).toBe(true);
   });
 });
+
+describe('generateLayer -- guaranteed Safehouse (D7, session 52)', () => {
+  it('every layer has at least one Safehouse, across many seeds and sizes', () => {
+    for (let seed = 0; seed < 200; seed++) {
+      for (const nodeCount of [4, 8, 12]) {
+        const graph = generateLayer({ rng: createRng(seed), nodeCount });
+        expect(graph.nodes.some((n) => n.type === 'safehouse'), `seed ${seed}, ${nodeCount} nodes`).toBe(true);
+      }
+    }
+  });
+
+  it('consumes no extra randomness: the guarantee only re-types a node, so the edges match an unguaranteed draw', () => {
+    for (let seed = 0; seed < 50; seed++) {
+      const guaranteed = generateLayer({ rng: createRng(seed), nodeCount: 10 });
+      const plain = generateLayer({ rng: createRng(seed), nodeCount: 10, typeWeights: { safehouse: 0 } });
+      expect(guaranteed.edges).toEqual(plain.edges);
+    }
+  });
+
+  it('respects a caller that weights Safehouses out entirely', () => {
+    const graph = generateLayer({ rng: createRng(3), nodeCount: 10, typeWeights: { safehouse: 0 } });
+    expect(graph.nodes.some((n) => n.type === 'safehouse')).toBe(false);
+  });
+});

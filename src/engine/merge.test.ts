@@ -17,7 +17,11 @@ import {
   MERGE_RANK_CAP,
   synergyAwareMergeTarget,
 } from './merge';
-import { HEAT_HIGH_FRACTION, HEAT_MAX } from './heat';
+import { HEAT_HIGH_FRACTION, layerHeatAllowance } from './heat';
+
+// Session 52: Heat is a per-layer allowance; a player state built outside a
+// run plans against layer 1's (heat.ts's currentHeatCeiling).
+const HEAT_MAX = layerHeatAllowance(0);
 
 function playerState(overrides: Partial<RunPlayerState> = {}): RunPlayerState {
   return {

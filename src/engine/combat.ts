@@ -96,6 +96,11 @@ export interface CombatOptions {
    * always return null; both default to `() => null` (no Burner ever
    * activated), preserving every existing call site's behavior exactly. */
   burnerActivationStrategies?: [BurnerActivationStrategy, BurnerActivationStrategy];
+  /** Trace the player side starts the fight with (D1, session 52): the
+   * node's posted baseline, initialised rather than added afterwards so
+   * the player's own cover-your-tracks effects (negative `trace` deltas)
+   * can work against it during the fight. Defaults to 0. */
+  startingTrace?: number;
 }
 
 /** Context passed to a BurnerActivationStrategy for one turn's decision
@@ -137,6 +142,11 @@ export interface CombatResult {
    * "how close did this side get before the match ended," used by Phase 3's
    * Heat formula for margin-of-loss. Index 0 is the player's own peak. */
   peakFillFraction: [number, number];
+  /** Each side's win-gauge fill fraction (progress/threshold, clamped to
+   * 0-1) at the moment the fight ended (session 52). Unlike the peak, this
+   * is what is on screen when the fight resolves -- R6's performance term
+   * reads the enemy's (index 1). */
+  finalFillFraction: [number, number];
   /** Trace the player side (side 0) accumulated during this fight --
    * raised by riskRewardBurst payloads' traceCost, lowered by
    * traceReduction. CombatSideState.trace resets each combat, so the
@@ -398,6 +408,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     ownedModIds = [],
     carriedBurnerIds = [],
     burnerActivationStrategies = [neverActivateBurner, neverActivateBurner],
+    startingTrace = 0,
   } = options;
 
   const rng = createRng(seed);
@@ -414,9 +425,11 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   let consecutiveTurns = 0;
   let lastTurnSide: PlayerIndex | null = null;
   let scores: [number, number] = [0, 0];
-  let combatState = applyModOnCombatStartPassives(
-    createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds),
-  );
+  const created = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds);
+  let combatState = applyModOnCombatStartPassives({
+    ...created,
+    sides: [{ ...created.sides[0], trace: Math.max(0, startingTrace) }, created.sides[1]],
+  });
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
   let peakFillFraction: [number, number] = [0, 0];
@@ -429,6 +442,10 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     log,
     hands,
     peakFillFraction,
+    finalFillFraction: [
+      Math.min(1, combatState.sides[0].winGauge.progress / combatState.sides[0].winGauge.threshold),
+      Math.min(1, combatState.sides[1].winGauge.progress / combatState.sides[1].winGauge.threshold),
+    ],
     traceGenerated: combatState.sides[0].trace,
     resolvedBy,
     burnersUsedThisCombat,

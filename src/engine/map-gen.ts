@@ -48,6 +48,17 @@ export function generateLayer(options: LayerGenOptions): LayerGraph {
   for (let i = 2; i < nodeCount; i++) {
     fillerNodes.push(createNode(`n${i}`, pickWeightedType(weights, rng)));
   }
+  // D7 (session 50, built session 52): every layer has at least one
+  // Safehouse. Once Heat is a per-layer budget, "pay it down before the
+  // gatekeeper" is load-bearing, and at 0.15 filler weight 20-38% of
+  // layers used to generate with none. Re-types the LAST filler rather
+  // than drawing again, so no randomness is consumed and every layer's
+  // topology is identical to before. Skipped when a caller explicitly
+  // weights Safehouses out (typeWeights.safehouse === 0).
+  if (weights.safehouse > 0 && fillerNodes.length > 0 && !fillerNodes.some((n) => n.type === 'safehouse')) {
+    const last = fillerNodes.length - 1;
+    fillerNodes[last] = createNode(fillerNodes[last].id, 'safehouse');
+  }
 
   const nodes = [entryNode, gatekeeperNode, ...fillerNodes];
   const nodeIds = nodes.map((n) => n.id);

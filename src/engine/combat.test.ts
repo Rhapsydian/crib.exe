@@ -64,6 +64,20 @@ describe('playCombat', () => {
     expect(result.traceGenerated % 4).toBe(0);
   });
 
+  it('starts the player at startingTrace (D1), and cover-your-tracks works against it', () => {
+    expect(playCombat([[credit('a', 20)], []], { seed: 1, gaugeThreshold: [5, 5], startingTrace: 6 }).traceGenerated).toBe(6);
+    const quiet = piece('quiet', { verb: 'credit', amount: 20, trace: -2 });
+    expect(playCombat([[quiet], []], { seed: 1, gaugeThreshold: [5, 5], startingTrace: 6 }).traceGenerated).toBeLessThan(6);
+  });
+
+  it("reports each side's FINAL fill, clamped to 1 for the winner, never above the peak", () => {
+    const result = playCombat([[credit('a', 20)], [credit('b', 1)]], { seed: 1, gaugeThreshold: [5, 5], winThreshold: [30, 30] });
+    const loser = (1 - result.winner) as 0 | 1;
+    expect(result.finalFillFraction[result.winner]).toBe(1);
+    expect(result.finalFillFraction[loser]).toBeLessThan(1);
+    expect(result.finalFillFraction[loser]).toBeLessThanOrEqual(result.peakFillFraction[loser]);
+  });
+
   it('reports zero Trace when nothing makes noise', () => {
     expect(playCombat([[credit('a', 20)], []], { seed: 1, gaugeThreshold: [5, 5] }).traceGenerated).toBe(0);
   });

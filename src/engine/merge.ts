@@ -1,6 +1,6 @@
 import type { Beta, BetaEffect, Effect, SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
-import { HEAT_HIGH_FRACTION, HEAT_MAX } from './heat';
+import { HEAT_HIGH_FRACTION, currentHeatCeiling } from './heat';
 import { hasCreditPath, isTempo } from './subroutine-types';
 import { archetypeLadderPosition } from './loadout';
 
@@ -146,7 +146,7 @@ export const preferMergeWhenAvailable: SafehouseStrategy = (playerState) =>
  * preferMergeWhenAvailable's own default lean whenever Heat isn't the
  * pressing concern. */
 export const opportunisticSafehouseStrategy: SafehouseStrategy = (playerState, heat) => {
-  const heatHigh = heat >= HEAT_HIGH_FRACTION * (HEAT_MAX + playerState.maxHeatBonus);
+  const heatHigh = heat >= HEAT_HIGH_FRACTION * currentHeatCeiling(playerState);
   if (heatHigh) return 'rest';
   return preferMergeWhenAvailable(playerState, heat);
 };

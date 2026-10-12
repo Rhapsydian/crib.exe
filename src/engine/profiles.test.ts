@@ -70,7 +70,7 @@ describe('SYNERGY_AWARE_PROFILE', () => {
         traversalStrategy: opportunisticTraversal,
         safehouseStrategy: opportunisticSafehouseStrategy,
       });
-      expect(['victory', 'heatMaxed', 'quarantined', 'noRouteRemains']).toContain(result.outcome);
+      expect(['victory', 'heatMaxed', 'quarantined', 'noRouteRemains', 'breachedThenCaught']).toContain(result.outcome);
     }
   });
 

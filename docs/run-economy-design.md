@@ -70,6 +70,12 @@ resolution — that is event design, not a node tax.
 
 ### D4 — Heat fully resets on clearing a gatekeeper ✅
 
+> **Amended by R8 (session 52, `docs/recalibration-design.md`):** the
+> gatekeeper's toll is charged *after* the fight, not first, so its
+> performance term can read the result; beating the gatekeeper but being
+> caught by its toll is a new run ending, "breached, then caught".
+> Built in session 52.
+
 The gatekeeper's Trace is charged and checked **first**; survive it and
 Heat resets to zero for the next layer. Heat becomes a per-layer budget
 rather than a run-long accumulator.

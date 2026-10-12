@@ -32,7 +32,7 @@
 import { playRun, opportunisticTraversal } from '../src/engine/run';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
-import { HEAT_MAX } from '../src/engine/heat';
+import { LAYER_HEAT_ALLOWANCE } from '../src/engine/heat';
 import { ALL_CLASS_IDS, type ClassId } from '../src/engine/classes';
 
 const ALL_CLASSES: ClassId[] = ALL_CLASS_IDS;
@@ -124,7 +124,9 @@ for (const classId of classes) {
       }
       b.containmentLoss += h.containmentLoss;
       b.attritionLoss += h.attritionLoss;
-      b.trace += h.trace;
+      // Session 52: fight Trace is the fight's own (from its posted
+      // baseline) plus R6's performance term -- reported together.
+      b.trace += h.trace + h.performance;
       b.refund += h.refund;
       b.rest += h.rest;
       b.event += h.event;
@@ -156,7 +158,7 @@ for (const classId of classes) {
 
 const pct = (n: number, d: number) => (d === 0 ? '  n/a' : `${((n / d) * 100).toFixed(1)}%`.padStart(6));
 
-console.log(`\n${seeds} seeds/class, ${acquisition}/opportunistic, skill ${PLAYER_SKILL}, HEAT_MAX ${HEAT_MAX}`);
+console.log(`\n${seeds} seeds/class, ${acquisition}/opportunistic, skill ${PLAYER_SKILL}, layer allowances ${LAYER_HEAT_ALLOWANCE.join('/')}`);
 if (containmentMult !== 1) console.log(`counterfactual: containment x${containmentMult}`);
 
 console.log('\n=== gross Heat IN, per run, by source ===');
@@ -186,7 +188,7 @@ for (const c of classes) {
 }
 
 console.log('\n=== Heat OUT per run (outflows), and net ===');
-console.log('class          rest   refund  |  gross in     net   mean final   HEAT_MAX');
+console.log('class          rest   refund  |  gross in     net   mean final');
 for (const c of classes) {
   const b = byClass[c];
   const gross = b.move + b.trace + b.containmentLoss + b.attritionLoss + b.event;
@@ -194,7 +196,7 @@ for (const c of classes) {
   console.log(
     `${c.padEnd(11)} ${(b.rest / b.runs).toFixed(1).padStart(7)} ${(b.refund / b.runs).toFixed(1).padStart(8)}  | ` +
       `${(gross / b.runs).toFixed(1).padStart(8)} ${((gross + out) / b.runs).toFixed(1).padStart(7)}   ` +
-      `${(b.finalHeat / b.runs).toFixed(1).padStart(10)}   ${String(HEAT_MAX).padStart(8)}`,
+      `${(b.finalHeat / b.runs).toFixed(1).padStart(10)}`,
   );
 }
 

@@ -171,6 +171,44 @@ a natural meta currency. Balance guard to carry into that design: a
 breach-then-caught must reward meaningfully less than breaching and
 continuing, or "always overextend on the last layer" becomes dominant.
 
+## Checkpoint 1 — run economy built (implementation calls, flag to revisit)
+
+All numbers are first-pass placeholders in `heat.ts`, sized against the
+old run-long budget's proportions:
+
+- **Allowances** 40 / 36 / 32 / 28 by layer (was one run-long 100).
+  Backup Generator now adds 8 to *every* layer (was +20 to the run cap).
+- **Fight Trace baseline** regular 3, elite 6, gatekeeper 2 (R8's
+  floor), × (1 + 0.2 per layer past the first). **Performance weight k**
+  regular 3, elite 6, gatekeeper 10, same layer scaling — so a scraped
+  regular win costs about double a clean one, and the gatekeeper's price
+  sits in its performance term. **Loss multiplier m = 1.5.** Rest 12
+  (was 20 of 100). Move cost unchanged at 2.
+- **The baseline is initialised into the fight's own Trace** (D1), so the
+  player's cover-your-tracks effects work against it. On a loss, only the
+  player's own noise *above* the baseline is added to R7's charge, since
+  the loss charge already prices the baseline in.
+- **D7's guaranteed Safehouse re-types the last filler node** rather than
+  drawing again — no randomness consumed, every layer's topology
+  unchanged; skipped when a caller weights Safehouses out.
+- **The scripted route-planner now budgets posted prices**: a detour
+  costs its moves plus the target fight's posted worst-case win, and the
+  reserve holds the gatekeeper's worst-case toll. Without this, the first
+  sweep collapsed victory to 0–20% with "breached, then caught" ending a
+  third to a half of runs — the planner was walking into every gatekeeper
+  with no reserve for a toll it didn't know existed. This planner is the
+  *safe* end of R8's gamble; a bolder one would reserve less.
+- **A synthetic gatekeeper** (diagnostic) pays the posted floor plus its
+  sampled noise, and no performance term (a synthetic win reports the
+  enemy's final fill as 0).
+
+**First readings** (100 seeds/class, synergy + opportunistic, skill 0.85,
+skeleton content — not balance measurements): victory 18–69% by class
+(was 42–82%), heatMaxed 5–8%, breachedThenCaught 2–20%, quarantined
+20–72% (up: a careful player explores less and meets gatekeepers weaker).
+Fight Trace is now ~60% of all Heat, up from ~25% — session 50's wanted
+"inflow shift": the budget is about which fights to take, not walking.
+
 ## Open
 
 None blocking step 2. Left for tuning or later: D7's Safehouse count and

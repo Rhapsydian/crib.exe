@@ -27,7 +27,24 @@ order, and how well you can actually play Cribbage to trigger them.
 
 Two deliberately separate resources, not one shared health stat:
 
-- **Heat** — a persistent, run-spanning resource belonging only to the
+- **Heat — session 52 update: a per-layer budget.** The description
+  below is the original run-long model; what is built now (session 50's
+  D1–D7 plus step 2's R5–R8, `docs/recalibration-design.md`) is:
+  - each layer has its own **allowance**, tightening with depth (D5);
+    reaching it gets you caught;
+  - clearing a gatekeeper **resets Heat to 0** (D4) — after the
+    gatekeeper's toll, charged *after* that fight, has been survived (R8);
+  - every fight's Trace is a **posted baseline** (tier × layer, knowable
+    before committing) plus a **performance term** read off the enemy's
+    *final* Containment fill on a win (R6) — a scrappy win is louder than
+    a clean one, and the player watches that cost build on the enemy's
+    gauge;
+  - a **loss** costs a fixed multiple of the node's worst-case win (R7),
+    replacing the flat per-tier charge, so clean win < scrappy win < loss
+    holds everywhere and every node's risk is a posted triple;
+  - every layer has at least one Safehouse (D7).
+  Numbers are first-pass placeholders (`heat.ts`).
+- **Heat** (original model) — a persistent, run-spanning resource belonging only to the
   player (enemies don't persist across fights, so this is player-only by
   nature). It's a *rising* danger meter, not a depleting health bar: Heat
   accumulates toward a max (getting caught/burned) rather than draining
@@ -478,6 +495,13 @@ gatekeeper is the only passage forward at that point; (3) no route to
 further progress remains — accumulated permanent node closures from
 regular/elite Containment losses leave no path deeper, a soft-lock
 distinct from both of the above.
+
+**A fourth, since session 52 (R8): breached, then caught.** The
+gatekeeper's Heat toll is charged after the fight, so a player who pushed
+the layer hard can beat the gatekeeper and still be caught by its toll.
+The run ends, but the layer counts as breached — the meta-progression
+design is meant to credit it ("rep for how deep you got"), below a full
+continue.
 
 **Resolved (session 19)**: with free-roam movement (see above), outcome
 (3) is no longer a branching-tree redundancy question ("does every node
@@ -1484,12 +1508,8 @@ session 51 and are easy to revisit.
   subroutines.
 - **Honeypot watch item** — confirm it converts, at authoring and at
   calibration.
-- **Baseline Trace from every fight, scaled by the enemy's Containment %
-  at fight end** (user, session 51; noted, not discussed). Easy fights
-  were effectively Heat-free, which is what Trace was introduced to fix.
-  Must reconcile with run-economy D1/D2 and with the transparency reason
-  session 50 removed the margin-of-loss Heat scaler.
-- **The run-economy redesign** (`docs/run-economy-design.md` D1–D7, per-
-  layer Heat reset) is decided but not implemented or folded in here;
-  the Resources section above still describes the pre-session-50 Heat
-  model.
+- **Heat numbers** — the per-layer allowance, fight baselines, the
+  performance weight and the loss multiplier are first-pass placeholders
+  (`heat.ts`); step 2 prices Trace against a layer's allowance (R5).
+- **Meta-progression** — undesigned; must credit "breached, then caught"
+  below a full continue (R8).

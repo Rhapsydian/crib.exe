@@ -150,7 +150,7 @@ function sweepRun(args: Record<string, string>): void {
   console.log(describeSyntheticGatekeepers(gatekeeperOverrides));
 
   for (const classId of classes) {
-    const outcomes: Record<RunOutcome, number> = { victory: 0, heatMaxed: 0, quarantined: 0, noRouteRemains: 0 };
+    const outcomes: Record<RunOutcome, number> = { victory: 0, heatMaxed: 0, quarantined: 0, noRouteRemains: 0, breachedThenCaught: 0 };
     let layersSum = 0;
     for (let seed = 0; seed < seeds; seed++) {
       // Profile first, then the per-run knobs -- traversal/safehouse are
@@ -178,7 +178,7 @@ function sweepRun(args: Record<string, string>): void {
     }
     const total = seeds;
     console.log(
-      `\n${classId.padEnd(10)} [${traversalName}/${acquisitionName}] victory=${outcomes.victory}/${total} (${((outcomes.victory / total) * 100).toFixed(1)}%)  heatMaxed=${outcomes.heatMaxed}  quarantined=${outcomes.quarantined}  noRoute=${outcomes.noRouteRemains}  avgLayers=${(layersSum / total).toFixed(2)}\n`,
+      `\n${classId.padEnd(10)} [${traversalName}/${acquisitionName}] victory=${outcomes.victory}/${total} (${((outcomes.victory / total) * 100).toFixed(1)}%)  heatMaxed=${outcomes.heatMaxed}  breachedThenCaught=${outcomes.breachedThenCaught}  quarantined=${outcomes.quarantined}  noRoute=${outcomes.noRouteRemains}  avgLayers=${(layersSum / total).toFixed(2)}\n`,
     );
   }
 }

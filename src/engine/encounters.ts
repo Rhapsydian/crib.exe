@@ -6,7 +6,7 @@ import { playCombat, type BurnerActivationStrategy, type CombatResult } from './
 import { discardSkillStrategy, pegSkillStrategy } from './ai';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
-import { heatFromLoss, HEAT_MAX } from './heat';
+import { currentHeatCeiling, fightBaselineTrace, fightPerformanceTrace, heatFromLoss } from './heat';
 import { drawRewardOptions, drawUpgradedRewardOptions, rewardPoolForClass, rarityOf, type RewardTier } from './rewards';
 import { dataForTier } from './data';
 import { pickMergeTarget, preferMergeWhenAvailable, type MergeTargetStrategy, type SafehouseStrategy } from './merge';
@@ -62,7 +62,9 @@ import { EVENT_ROSTER } from './events';
  * dummy loadouts.
  */
 
-const REST_HEAT_REDUCTION = 20; // TBD/playtesting
+// Was 20 against the old run-long cap of 100; a layer's allowance is now
+// ~30-40 (heat.ts), so Rest keeps roughly the same share of the budget.
+const REST_HEAT_REDUCTION = 12; // TBD/playtesting
 
 // Phase 5 checkpoint C replaced the old flat single-burst-per-tier
 // dummy loadouts with real named-enemy selection (enemies.ts) -- see
@@ -188,8 +190,16 @@ export interface HeatSources {
    * (`resolvedBy: 'attrition'`). Same Heat cost today; separated here so
    * that is a choice rather than an accident. */
   attritionLoss: number;
-  /** Trace carried out of combat, added on wins and losses alike. */
+  /** Trace carried out of combat. On a win this is the fight's own Trace
+   * -- which starts at the node's posted baseline (D1) -- after whatever
+   * the player's effects added or covered. On a loss it is only the
+   * player's own noise above that baseline: the loss charge already
+   * prices the baseline in (R7). */
   trace: number;
+  /** R6's performance term on a win: Trace from how close the enemy came,
+   * read off its final Containment fill. For a gatekeeper this is most of
+   * R8's toll. */
+  performance: number;
   /** Negative. `heat-sink`'s refund on an elite/gatekeeper win. */
   refund: number;
   /** Negative. Rest at a Safehouse. */
@@ -205,6 +215,7 @@ export const NO_HEAT_SOURCES: HeatSources = {
   containmentLoss: 0,
   attritionLoss: 0,
   trace: 0,
+  performance: 0,
   refund: 0,
   rest: 0,
   event: 0,
@@ -215,6 +226,7 @@ export function addHeatSources(a: HeatSources, b: HeatSources): HeatSources {
     containmentLoss: a.containmentLoss + b.containmentLoss,
     attritionLoss: a.attritionLoss + b.attritionLoss,
     trace: a.trace + b.trace,
+    performance: a.performance + b.performance,
     refund: a.refund + b.refund,
     rest: a.rest + b.rest,
     event: a.event + b.event,
@@ -222,7 +234,7 @@ export function addHeatSources(a: HeatSources, b: HeatSources): HeatSources {
 }
 
 export function totalHeatSources(s: HeatSources): number {
-  return s.containmentLoss + s.attritionLoss + s.trace + s.refund + s.rest + s.event;
+  return s.containmentLoss + s.attritionLoss + s.trace + s.performance + s.refund + s.rest + s.event;
 }
 
 export interface EncounterOutcome {
@@ -450,7 +462,7 @@ export interface SyntheticGatekeeper {
  * practice -- a gatekeeper loss takes the `quarantined` branch, which
  * reads neither -- but are set coherently rather than left at zero.
  */
-function syntheticCombatResult(spec: SyntheticGatekeeper, seed: number): CombatResult {
+function syntheticCombatResult(spec: SyntheticGatekeeper, seed: number, startingTrace: number): CombatResult {
   const won = seed / 2 ** 31 < spec.passRate;
   // The trace sample index is derived from `seed` by a multiplicative
   // hash rather than drawn from the Rng, so supplying an empirical
@@ -458,14 +470,21 @@ function syntheticCombatResult(spec: SyntheticGatekeeper, seed: number): CombatR
   // the "seed-aligned until outcomes differ" property survives. Hashed
   // rather than taken modulo directly, so the index does not correlate
   // with the coin, which reads the same integer.
-  const trace = Array.isArray(spec.traceGenerated)
-    ? (spec.traceGenerated[(Math.imul(seed, 2654435761) >>> 0) % spec.traceGenerated.length] ?? 0)
-    : spec.traceGenerated;
+  // The sample is the fight's own noise; the posted baseline (D1) is added
+  // on top, as a real fight would start from it. A synthetic win reports
+  // the enemy's final fill as 0, so it pays no performance term -- a
+  // synthetic gatekeeper prices R8's toll at its floor.
+  const trace =
+    startingTrace +
+    (Array.isArray(spec.traceGenerated)
+      ? (spec.traceGenerated[(Math.imul(seed, 2654435761) >>> 0) % spec.traceGenerated.length] ?? 0)
+      : spec.traceGenerated);
   return {
     winner: won ? 0 : 1,
     log: [],
     hands: [],
     peakFillFraction: won ? [1, 0] : [0, 1],
+    finalFillFraction: won ? [1, 0] : [0, 1],
     traceGenerated: won ? trace : 0,
     resolvedBy: 'threshold',
     burnersUsedThisCombat: [],
@@ -512,10 +531,17 @@ function resolveFight(
   // Gated on `kind` so an Event's bonus fight, which reaches this same
   // function, is never synthesised along with the layer's gatekeeper.
   const synthetic = kind === 'gatekeeper' ? syntheticGatekeeper : undefined;
+  // D1/D2: the node's posted baseline Trace, by tier x layer, initialised
+  // into the fight so the player's cover-your-tracks effects can work
+  // against it. layerIndex is 1-based here (enemies.ts's numbering);
+  // heat.ts's tables are 0-based.
+  const layer0 = layerIndex - 1;
+  const baselineTrace = fightBaselineTrace(kind, layer0);
   const result: CombatResult = synthetic
-    ? syntheticCombatResult(synthetic, seed)
+    ? syntheticCombatResult(synthetic, seed, baselineTrace)
     : playCombat([playerState.installedLoadout, scaledLoadout], {
         seed,
+        startingTrace: baselineTrace,
         ...combatThresholdsFor(playerState, enemy, layerIndex, fightNumber),
         classId: playerState.classId,
         enemyPassiveIds: enemy.passiveIds,
@@ -545,10 +571,16 @@ function resolveFight(
       rng,
       (r) => drawUpgradedRewardOptions(playerState.classId, r),
     );
+    // R6: a win's Trace is the fight's own (from the posted baseline,
+    // after the player's effects) plus the performance term, read off the
+    // enemy's FINAL Containment. For a gatekeeper this is R8's toll --
+    // charged here, after the fight; run.ts checks it against the layer's
+    // allowance and resets Heat if it is survived.
+    const performance = fightPerformanceTrace(kind, layer0, result.finalFillFraction[1]);
     return {
       newState: 'inert',
-      heatDelta: result.traceGenerated - modified.heatRefund, // Failover (session 44); addHeat already floors at 0 (proven by Rest's own negative heatDelta)
-      heatSources: { ...NO_HEAT_SOURCES, trace: result.traceGenerated, refund: -modified.heatRefund },
+      heatDelta: result.traceGenerated + performance - modified.heatRefund, // Heat Sink (session 44); addHeat already floors at 0
+      heatSources: { ...NO_HEAT_SOURCES, trace: result.traceGenerated, performance, refund: -modified.heatRefund },
       fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, hands: result.hands.length },
       quarantined: false,
       rewardTier,
@@ -593,10 +625,15 @@ function resolveFight(
       burnerRerollCost: 0,
     };
   }
-  const lossHeat = heatFromLoss(kind);
+  // R7: a loss costs LOSS_MULTIPLIER x the node's worst-case win, which
+  // already prices the posted baseline in -- so only the player's own
+  // noise ABOVE that baseline is added on top (a reckless loss still costs
+  // more than a careful one).
+  const lossHeat = heatFromLoss(kind, layer0);
+  const ownNoise = Math.max(0, result.traceGenerated - baselineTrace);
   return {
     newState: 'closed',
-    heatDelta: lossHeat + result.traceGenerated,
+    heatDelta: lossHeat + ownNoise,
     // resolvedBy 'threshold' on a player loss means the enemy genuinely
     // filled its own Containment gauge; 'attrition' means it ran out the
     // HARD_RESOLUTION_HAND clock without ever doing so. heatFromLoss
@@ -605,7 +642,7 @@ function resolveFight(
       ...NO_HEAT_SOURCES,
       containmentLoss: result.resolvedBy === 'threshold' ? lossHeat : 0,
       attritionLoss: result.resolvedBy === 'threshold' ? 0 : lossHeat,
-      trace: result.traceGenerated,
+      trace: ownNoise,
     },
     fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, hands: result.hands.length },
     quarantined: false,
@@ -692,7 +729,7 @@ const RISK_TIER_ORDER: EventRiskTier[] = ['transparent', 'visibleOdds', 'gamble'
 export function synergyAwareEventChoice(config: EventRiskConfig): EventChoiceStrategy {
   return (event, playerState, heat) => {
     const maxIndex = RISK_TIER_ORDER.indexOf(config.maxRiskTier);
-    const heatCeiling = config.gambleSafetyMargin * (HEAT_MAX + playerState.maxHeatBonus);
+    const heatCeiling = config.gambleSafetyMargin * currentHeatCeiling(playerState);
     const gambleAllowed = heat < heatCeiling;
 
     const permitted = event.choices.filter((choice) => {

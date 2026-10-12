@@ -18,9 +18,13 @@ import { CLASS_STARTING_LOADOUTS } from './subroutines';
 import { INSTALLED_SLOT_CAP } from './loadout';
 import type { DiscardStrategy } from './deal';
 import type { PlayStrategy } from './pegging';
-import { HEAT_MAX, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
+import { layerHeatAllowance, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
 import { MATERIAL_HIGH_THRESHOLD } from './merge';
 import { DATA_HIGH_THRESHOLD, DATA_LOW_THRESHOLD } from './shop';
+
+// Session 52: Heat is a per-layer allowance; a player state built outside a
+// run plans against layer 1's (heat.ts's currentHeatCeiling).
+const HEAT_MAX = layerHeatAllowance(0);
 
 /** Session 51 port: fixtures moved to the redesigned model. The
  * overwhelming loadout is now the 'exploit-overclock' starting kit
@@ -178,15 +182,30 @@ describe('opportunisticTraversal', () => {
     expect(opportunisticTraversal(starGraph(), position, lowHeat)).toBe('gate');
   });
 
+  // Session 52: detours are priced at their posted Trace and the reserve
+  // holds the gatekeeper's toll, so a "high Heat" player on layer 1's
+  // tight allowance can afford nothing. These two pin PRIORITY, so they
+  // give the player a roomy allowance where high Heat is still affordable.
+  const ROOMY = 60;
+  const roomyHighHeat = Math.ceil(HEAT_HIGH_FRACTION * ROOMY);
+
   it('prefers a reachable fight node over everything else, regardless of state', () => {
-    const player = { ...createInitialPlayerState('exploit-overclock'), material: { a: MATERIAL_HIGH_THRESHOLD }, data: DATA_HIGH_THRESHOLD };
-    expect(opportunisticTraversal(starGraph(), position, highHeat, player)).toBe('fight');
+    const player = { ...createInitialPlayerState('exploit-overclock'), heatAllowance: ROOMY, material: { a: MATERIAL_HIGH_THRESHOLD }, data: DATA_HIGH_THRESHOLD };
+    expect(opportunisticTraversal(starGraph(), position, roomyHighHeat, player)).toBe('fight');
   });
 
   it('pulls toward the Safehouse when Heat is high and no fight is available', () => {
     const graph = { ...starGraph(), nodes: starGraph().nodes.map((n) => (n.type === 'regularFight' ? { ...n, state: 'inert' as const } : n)) };
-    const player = { ...createInitialPlayerState('exploit-overclock'), data: DATA_HIGH_THRESHOLD }; // Data also high, Heat should still win
-    expect(opportunisticTraversal(graph, position, highHeat, player)).toBe('safehouse');
+    const player = { ...createInitialPlayerState('exploit-overclock'), heatAllowance: ROOMY, data: DATA_HIGH_THRESHOLD }; // Data also high, Heat should still win
+    expect(opportunisticTraversal(graph, position, roomyHighHeat, player)).toBe('safehouse');
+  });
+
+  it('skips a fight whose posted worst-case win would eat the gatekeeper reserve (session 52)', () => {
+    // The flip side of pricing detours: on layer 1's own allowance, a high
+    // Heat player can no longer afford the fight plus the toll, and goes
+    // straight to the gatekeeper instead.
+    const player = { ...createInitialPlayerState('exploit-overclock'), material: { a: MATERIAL_HIGH_THRESHOLD }, data: DATA_HIGH_THRESHOLD };
+    expect(opportunisticTraversal(starGraph(), position, highHeat, player)).toBe('gate');
   });
 
   it('pulls toward the Safehouse when banked material is high (Heat not high)', () => {
@@ -561,4 +580,49 @@ describe('gatekeeperOverrides (session 49) -- the synthetic gatekeeper diagnosti
     const notInLayerOne = eligibleEnemies('gatekeeper', 4)[0].id;
     expect(() => playRun({ seed: 1, gatekeeperOverrides: [{ kind: 'pinned', enemyId: notInLayerOne }] })).toThrow(/layer 1/);
   });
+});
+
+describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
+  const runs = (classId: 'exploit-overclock' | 'exploit-daemon', seeds: number) =>
+    Array.from({ length: seeds }, (_, seed) => playRun({ seed, classId, playerSkill: 0.85, traversalStrategy: opportunisticTraversal }));
+
+  it('resets Heat after a gatekeeper is cleared and survived (D4)', () => {
+    let checked = 0;
+    for (const result of runs('exploit-daemon', 20)) {
+      result.log.forEach((event, i) => {
+        if (event.type !== 'layerCleared') return;
+        const nextMove = result.log.slice(i + 1).find((e) => e.type === 'move');
+        if (!nextMove || nextMove.type !== 'move') return;
+        // The next layer's first move starts from 0.
+        expect(nextMove.heatAfter).toBeLessThanOrEqual(nextMove.heatCost);
+        checked++;
+      });
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it("never lets Heat exceed the layer's own allowance (D5)", () => {
+    for (const result of runs('exploit-overclock', 20)) {
+      for (const event of result.log) {
+        if (event.type === 'move' || event.type === 'encounter') {
+          expect(event.heatAfter).toBeLessThanOrEqual(layerHeatAllowance(event.layerIndex, result.playerState.maxHeatBonus));
+        }
+      }
+    }
+  });
+
+  it('"breached, then caught": a gatekeeper win whose toll maxes Heat ends the run, counted as a breach (R8)', () => {
+    const caught = runs('exploit-overclock', 60).filter((r) => r.outcome === 'breachedThenCaught');
+    expect(caught.length).toBeGreaterThan(0);
+    for (const result of caught) {
+      const encounters = result.log.filter((e) => e.type === 'encounter');
+      const last = encounters[encounters.length - 1];
+      if (last.type !== 'encounter') throw new Error('unreachable');
+      expect(last.nodeType).toBe('gatekeeperFight');
+      expect(last.outcome.newState).toBe('inert');
+      expect(last.heatAfter).toBe(layerHeatAllowance(last.layerIndex, result.playerState.maxHeatBonus));
+      // The breached layer counts.
+      expect(result.layersCompleted).toBe(result.log.filter((e) => e.type === 'layerCleared').length);
+    }
+  }, 30_000); // 60 full runs -- same explicit budget as this file's other run-level sweeps
 });

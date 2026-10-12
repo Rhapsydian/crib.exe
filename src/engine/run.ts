@@ -4,7 +4,7 @@ import { generateLayer } from './map-gen';
 import { assignGatekeeperEnemy, eligibleEnemies, gatekeeperEnemyForNode, type EnemyDefinition, type EnemyId } from './enemies';
 import { move } from './traversal';
 import { resolveEncounter, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy, type SyntheticGatekeeper } from './encounters';
-import { addHeat, HEAT_MAX, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
+import { addHeat, currentHeatCeiling, layerHeatAllowance, postedFightRisk, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
 import {
@@ -93,6 +93,12 @@ export interface RunPlayerState {
   ownedModIds: ModId[];
   grantedByMod: Record<string, string>;
   maxHeatBonus: number;
+  /** The current layer's Heat allowance, Backup Generator bonus included
+   * (heat.ts's layerHeatAllowance) -- recorded by playRun at each layer
+   * start and after each encounter, so strategies that only see the
+   * player state can plan against the live ceiling. Absent outside a run;
+   * heat.ts's currentHeatCeiling falls back to layer 1's. */
+  heatAllowance?: number;
   modRunState: Record<string, number>;
   /** Every Burner currently carried this run (Phase 5 Burners checkpoint
    * B) -- a capped, unordered inventory, no bench/installed split (see
@@ -181,7 +187,15 @@ function removeOneCarriedBurner(playerState: RunPlayerState, burnerId: BurnerId)
   return { ...playerState, carriedBurnerIds: remaining };
 }
 
-export type RunOutcome = 'heatMaxed' | 'quarantined' | 'noRouteRemains' | 'victory';
+/**
+ * How a run ends. `breachedThenCaught` (session 52, R8): the layer's
+ * gatekeeper was beaten, but its toll -- charged after the fight -- took
+ * Heat over the layer's allowance. Distinct from `quarantined` (gatekeeper
+ * lost) and `heatMaxed` (caught mid-layer); counted as a breach
+ * (layersCompleted includes that layer). Future meta-progression is meant
+ * to credit it -- "rep for how deep you got" -- below a full continue.
+ */
+export type RunOutcome = 'heatMaxed' | 'quarantined' | 'noRouteRemains' | 'breachedThenCaught' | 'victory';
 
 export type RunEvent =
   | { type: 'layerGenerated'; layerIndex: number; nodeCount: number }
@@ -316,21 +330,35 @@ const OPPORTUNISTIC_RESERVE_MARGIN = 2 * HEAT_PER_MOVE;
  * Every detour (any tier above) is additionally gated by a safety
  * reserve: a node is only ever a candidate if reaching it, then taking
  * the shortest remaining path from there to the gatekeeper, keeps total
- * Heat spent under HEAT_MAX (plus any maxHeatBonus) with
+ * Heat spent under the current layer's allowance with
  * OPPORTUNISTIC_RESERVE_MARGIN to spare -- this strategy never explores
- * its way into a Heat-maxed dead end. */
+ * its way into a Heat-maxed dead end.
+ *
+ * Session 52 (per-layer Heat): a detour is priced at what the economy
+ * POSTS, not just its moves -- a fight node's worst-case win Trace
+ * (heat.ts's postedFightRisk) -- and the reserve also holds the
+ * gatekeeper's worst-case toll, charged after that fight (R8). That is
+ * the safe end of R8's gamble: this player never banks on a clean
+ * gatekeeper fight. A bolder strategy would reserve less. */
 export const opportunisticTraversal: TraversalStrategy = (graph, position, heat, playerState) => {
   if (!playerState) return beelineToGatekeeper(graph, position, heat);
 
   const live = withoutClosedNodes(graph);
-  const maxHeat = HEAT_MAX + playerState.maxHeatBonus;
+  const maxHeat = currentHeatCeiling(playerState);
+  const gatekeeperToll = postedFightRisk('gatekeeper', position.layerIndex).worstWin;
+  const postedWorstWin = (nodeId: string): number => {
+    const type = graph.nodes.find((n) => n.id === nodeId)?.type;
+    if (type === 'regularFight') return postedFightRisk('regular', position.layerIndex).worstWin;
+    if (type === 'eliteFight') return postedFightRisk('elite', position.layerIndex).worstWin;
+    return 0;
+  };
 
   const detourHeatCost = (targetId: string): number | null => {
     const toTarget = shortestPath(live, position.nodeId, targetId);
     if (toTarget.length < 2) return null;
     const toGatekeeper = targetId === graph.gatekeeperNodeId ? [targetId] : shortestPath(live, targetId, graph.gatekeeperNodeId);
     if (toGatekeeper.length === 0) return null;
-    return (toTarget.length - 1 + toGatekeeper.length - 1) * HEAT_PER_MOVE;
+    return (toTarget.length - 1 + toGatekeeper.length - 1) * HEAT_PER_MOVE + postedWorstWin(targetId) + gatekeeperToll;
   };
   const withinReserve = (targetId: string): boolean => {
     const cost = detourHeatCost(targetId);
@@ -678,6 +706,11 @@ export function playRun(options: RunOptions): RunResult {
     log.push({ type: 'layerGenerated', layerIndex, nodeCount: graph.nodes.length });
     let position: RunPosition = { layerIndex, nodeId: graph.entryNodeId };
     let layerCleared = false;
+    // D4/D5: each layer has its own allowance, tightening with depth.
+    // Read live rather than once, since Backup Generator can raise it
+    // mid-layer, and recorded on the player state for strategies.
+    const ceiling = (): number => layerHeatAllowance(layerIndex, playerState.maxHeatBonus);
+    playerState = { ...playerState, heatAllowance: ceiling() };
 
     while (!layerCleared) {
       const fromNodeId = position.nodeId;
@@ -737,8 +770,7 @@ export function playRun(options: RunOptions): RunResult {
       // Footing (a move can never refund Heat, only discount/waive it).
       const moveHeatCost = freeMoveActivated ? 0 : applyOnMoveMods(playerState.ownedModIds, moveResult.heatCost);
       playerState = applyQuietHoursMod(playerState); // session 44: Data trickle every QUIET_HOURS_MOVE_INTERVAL moves
-      const maxHeat = HEAT_MAX + playerState.maxHeatBonus; // Backup Generator (checkpoint E)
-      const afterMove = addHeat(heat, moveHeatCost, maxHeat);
+      const afterMove = addHeat(heat, moveHeatCost, ceiling());
       heat = afterMove.heat;
       log.push({ type: 'move', layerIndex, from: fromNodeId, to: position.nodeId, heatCost: moveHeatCost, heatAfter: heat });
       if (afterMove.maxed) {
@@ -785,7 +817,7 @@ export function playRun(options: RunOptions): RunResult {
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
-      const afterEncounter = addHeat(heat, outcome.heatDelta, HEAT_MAX + playerState.maxHeatBonus);
+      const afterEncounter = addHeat(heat, outcome.heatDelta, ceiling());
       heat = afterEncounter.heat;
       // Removes any Burner(s) actually activated in this encounter's
       // combat (checkpoint C wires the real activation) -- removes one
@@ -871,17 +903,28 @@ export function playRun(options: RunOptions): RunResult {
       playerState = reorderStrategy(playerState);
       log.push({ type: 'encounter', layerIndex, nodeId: node.id, nodeType: node.type, outcome, heatAfter: heat });
 
+      playerState = { ...playerState, heatAllowance: ceiling() };
+
       if (outcome.quarantined) {
         log.push({ type: 'runEnded', outcome: 'quarantined' });
         return finish('quarantined');
       }
-      if (afterEncounter.maxed) {
-        log.push({ type: 'runEnded', outcome: 'heatMaxed' });
-        return finish('heatMaxed');
-      }
-      if (node.type === 'gatekeeperFight' && outcome.newState === 'inert') {
+      const gatekeeperBeaten = node.type === 'gatekeeperFight' && outcome.newState === 'inert';
+      if (gatekeeperBeaten) {
         layersCompleted++;
         log.push({ type: 'layerCleared', layerIndex });
+      }
+      if (afterEncounter.maxed) {
+        // R8: the gatekeeper's toll is charged after the fight, so a
+        // breach can still end the run -- counted as a breach, distinct
+        // from being caught mid-layer.
+        const ending: RunOutcome = gatekeeperBeaten ? 'breachedThenCaught' : 'heatMaxed';
+        log.push({ type: 'runEnded', outcome: ending });
+        return finish(ending);
+      }
+      if (gatekeeperBeaten) {
+        // D4: survive the toll and Heat resets for the next layer.
+        heat = 0;
         layerCleared = true;
       }
     }
