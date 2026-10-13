@@ -180,6 +180,15 @@ describe('fireTurn -- betas', () => {
     expect(charges(fired.combatState, 0, 0)).toBe(0);
   });
 
+  it("records the beta's raw, uncapped charge count on the fire event", () => {
+    const capped = piece('cap', { verb: 'credit', amount: 1 }, { source: 'cards', category: 'fifteen', shape: 'graded', cap: 2, effect: { verb: 'enhance', amount: 1 } });
+    let state = fight([capped]);
+    for (let i = 0; i < 5; i++) state = applyOccurrence(state, { category: 'fifteen', player: 0, magnitude: 2 });
+    const fired = fireTurn(state, 0, { isDealer: false });
+    expect(fired.events[0].charges).toBe(5);
+    expect(progress(fired.combatState, 0)).toBe(1 + 2); // the beta still applied at its cap of 2
+  });
+
   it('a stepped different-effect beta adds its own effect once `at` charges have banked', () => {
     const daemon = piece('d', { verb: 'credit', amount: 1 }, { source: 'progress', metric: 'fires', per: 1, shape: 'stepped', at: 2, effect: { verb: 'suppress', amount: 5 } }, {}, 'daemon');
     let state = withProgress(fight([daemon]), 1, 20);

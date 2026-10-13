@@ -579,6 +579,12 @@ export interface FireEvent {
   beta?: Effect;
   /** Whether the beta applied (D13's "fired elevated"). */
   elevated: boolean;
+  /** The beta's raw charge count when this fire was evaluated -- banked
+   * charges for cards/progress, 1/0 for state, matching neighbours or
+   * elevated predecessors for sequence; 0 with no beta. Uncapped, unlike
+   * the scale the beta applied at. Recorded for measurement (step 2's
+   * beta frequency table reads it), not used by the engine. */
+  charges: number;
   /** True for an `immediate` beta firing outside the turn. */
   immediate: boolean;
 }
@@ -674,7 +680,8 @@ export function fireTurn(
     const { definition } = entry;
     const beta = definition.beta;
     const context = buildTriggerContext(state, side, selfContext.isDealer, firedThisTurn, i);
-    const scale = beta ? betaScale(beta, betaCharges(definition, entry.state, context)) : 0;
+    const charges = beta ? betaCharges(definition, entry.state, context) : 0;
+    const scale = beta ? betaScale(beta, charges) : 0;
     const elevated = scale > 0;
 
     let amount = alphaAmount(entry, turn);
@@ -697,7 +704,7 @@ export function fireTurn(
     state = mapLoadout(state, side, (e, index) => (index === i ? recordFire(e.state, definition) : e.state));
     state = applyBridgePassive(state, side, definition, elevated);
 
-    events.push({ subroutineId: definition.id, side, alpha, beta: resolved.beta, elevated, immediate: false });
+    events.push({ subroutineId: definition.id, side, alpha, beta: resolved.beta, elevated, charges, immediate: false });
     firedThisTurn.push({ definition, elevated });
   }
 
@@ -753,7 +760,8 @@ export function fireImmediateBetas(combatState: CombatState, dealer: PlayerIndex
       // An extra alpha fire is a real fire (growth, `fires` progress); a
       // standalone beta effect only counts against the fire cap.
       state = mapLoadout(state, side, (e, index) => (index === i ? (alpha ? recordFire(e.state, definition) : { ...e.state, fireCount: e.state.fireCount + 1 }) : e.state));
-      events.push({ subroutineId: definition.id, side, alpha: alpha ?? (definition.alpha as Effect), beta: resolvedBeta, elevated: true, immediate: true });
+      const firedCharges = beta.source === 'cards' || beta.source === 'progress' ? entry.state.charges : 1;
+      events.push({ subroutineId: definition.id, side, alpha: alpha ?? (definition.alpha as Effect), beta: resolvedBeta, elevated: true, charges: firedCharges, immediate: true });
     }
   }
   return { combatState: state, events };

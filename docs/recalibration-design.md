@@ -340,6 +340,78 @@ multi-piece additions with Credit-0 padding.
   any prediction. Re-priced: **0.10 / 0.18 / 0.14**, on a par with
   Reveal Hand.
 
+## Checkpoint 4 — beta frequency table
+
+Raw output: `docs/calibration/step2-cp4-beta-frequency.txt`.
+`scripts/beta-frequency.ts`, 400 seeds × 2 seats per configuration,
+Credit-host mirror at skill 0.85 unless noted. Charges per turn of the
+beta's owner, measured with **probe pieces** (Credit-0 alpha, inert
+uncapped beta) that report their raw charge count on every turn via a
+new `FireEvent.charges` field and change nothing about the fight.
+Ward-dependent probes (`absorbed`, `wardAbove`) are read from a run where
+the probe side carries Ward 2; everything else from a run without it,
+because a Ward 2 against a Credit-2 host absorbs the opponent completely
+and makes every opponent-gauge probe meaningless.
+
+### Per turn of the owner (host Credit 2, skill 0.85)
+
+| source | mean | P(≥1) | P(≥2) | P(≥3) | P(≥4) |
+|---|---|---|---|---|---|
+| fifteen | 2.45 | 0.91 | 0.76 | 0.49 | 0.23 |
+| pair | 1.24 | 0.80 | 0.34 | 0.09 | 0.01 |
+| go | 0.84 | 0.64 | 0.19 | 0.02 | 0.00 |
+| suit tally (own suit) | 0.92 | 0.57 | 0.25 | 0.07 | 0.03 |
+| run | 0.60 | 0.52 | 0.08 | 0.01 | 0.00 |
+| run ≥ 4 | 0.30 | 0.28 | 0.01 | | |
+| thirty-one | 0.16 | 0.15 | 0.01 | | |
+| pair royal (≥ 6) | 0.11 | 0.11 | 0.00 | | |
+| his nobs | 0.10 | 0.10 | 0.00 | | |
+| flush | 0.06 | 0.06 | 0.00 | | |
+| fifteen, *opponent's* | 2.39 | 0.62 | 0.51 | 0.41 | 0.32 |
+| pair, *opponent's* | 1.23 | 0.62 | 0.36 | 0.17 | 0.06 |
+| points (own) | 12.07 | | | | |
+| Ward absorbed (Ward 2 vs Credit-2 host) | 1.64 | 0.58 | 0.58 | 0.22 | 0.22 |
+
+| condition | fraction of turns true |
+|---|---|
+| dealer | 0.62 |
+| non-dealer | 0.38 |
+| own gauge > ½ | 0.26 (host 4: 0.45) |
+| own gauge < ¼ | 0.40 (host 4: 0.27) |
+| opponent gauge > ½ | 0.24 (host 4: 0.40) |
+| opponent gauge < ¼ | 0.44 (host 4: 0.32) |
+| Ward above 2 / 4 / 8 (Ward 2 piece) | 0.64 / 0.30 / 0.04 |
+
+### What the table says
+
+- **Card rates per turn are a property of Cribbage, not of the loadout.**
+  A turn is bought by ~12 of your own points, so the cards scored in
+  between are roughly fixed: host 2 and host 4 give identical card rows,
+  and skill 0.5 moves them only slightly (fifteens 2.57 vs 2.45) —
+  though at skill 0.5 a side gets fewer turns per hand (0.88 vs 1.06).
+  So a card beta's per-turn charge rate is stable enough to price as a
+  constant. That is the good news for R3's formula.
+- **State conditions are situational, as expected.** Gauge-fraction
+  conditions move a lot with fight shape (own gauge > ½: 26% of turns at
+  host 2, 45% at host 4), so they need pricing against expected fight
+  length, like Tempo and Disrupt.
+- **Turns cluster on dealer hands: 62% dealer, 38% non-dealer.** The
+  crib's extra points buy the dealer more turns. A "dealer" beta applies
+  far more often than "non-dealer", which an author would naively price
+  as equal.
+- **The opponent's scoring arrives in bigger lumps between your turns**
+  (opponent fifteens: P(≥4) 0.32 vs 0.23 for your own), since the
+  opponent can take several turns' worth of scoring between two of
+  yours. Graded betas watching the opponent should take lower caps or be
+  priced on their lumpier distribution.
+- **The rare categories are rare per turn:** flush 0.06, nobs 0.10,
+  pair royal 0.11, thirty-one 0.16 — once every 6–18 turns. Under D11
+  they no longer gate firing, so this is a price input, not a dead-piece
+  risk.
+- **The comparison with session 50's per-hand occurrence rates is not
+  like for like** (different measurement and skill levels), so it isn't
+  used as a cross-check.
+
 ## Open
 
 None blocking step 2. Left for tuning or later: D7's Safehouse count and

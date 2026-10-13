@@ -1,0 +1,142 @@
+# Step 2, checkpoint 4 -- beta frequency table (session 53)
+# scripts/beta-frequency.ts, 400 seeds x 2 seats per configuration.
+
+## configuration: plain
+BETA FREQUENCY -- charges per turn of the owner. Isolated duels, equal skill; NOT a full-run metric.
+400 seeds x 2 seats; skill 0.85; host Credit 2; initiative 12, win 50
+11926 probe-side turns over 11230 hands (1.06 probe turns per hand)
+source                         mean/turn   P>=1    P>=2    P>=3    P>=4    max   per hand
+cards:fifteen                     2.449   0.910   0.762   0.492   0.229      6     2.601
+cards:pair                        1.241   0.797   0.341   0.087   0.014      5     1.318
+cards:run                         0.603   0.517   0.081   0.005   0.000      4     0.640
+cards:flush                       0.056   0.056   0.000   0.000   0.000      2     0.059
+cards:hisNobs                     0.096   0.095   0.001   0.000   0.000      2     0.102
+cards:thirtyOne                   0.157   0.152   0.005   0.000   0.000      2     0.167
+cards:go                          0.843   0.637   0.187   0.018   0.001      4     0.895
+cards:pair>=6 (royal)             0.112   0.110   0.002   0.000   0.000      2     0.119
+cards:run>=4                      0.295   0.283   0.012   0.000   0.000      2     0.313
+cards:suit (own)                  0.922   0.567   0.252   0.072   0.026      8     0.979
+cards:fifteen (opponent)          2.392   0.616   0.514   0.411   0.315     15     2.541
+cards:pair (opponent)             1.228   0.615   0.359   0.173   0.063      8     1.304
+cards:run (opponent)              0.595   0.419   0.139   0.031   0.004      6     0.631
+cards:flush (opponent)            0.055   0.053   0.001   0.000   0.000      2     0.058
+cards:hisNobs (opponent)          0.097   0.094   0.003   0.000   0.000      2     0.103
+cards:thirtyOne (opponent)        0.157   0.150   0.006   0.000   0.000      3     0.166
+cards:go (opponent)               0.834   0.612   0.192   0.026   0.003      4     0.885
+progress:points                  12.066   1.000   0.999   0.998   0.997     23    12.814
+progress:fires                    0.933   0.933   0.000   0.000   0.000      1     0.991
+progress:absorbed                 0.000   0.000   0.000   0.000   0.000      0     0.000
+state:dealer                      0.619   0.619   0.000   0.000   0.000      1     0.657
+state:nonDealer                   0.381   0.381   0.000   0.000   0.000      1     0.405
+state:wardAbove 2                 0.000   0.000   0.000   0.000   0.000      0     0.000
+state:wardAbove 4                 0.000   0.000   0.000   0.000   0.000      0     0.000
+state:wardAbove 8                 0.000   0.000   0.000   0.000   0.000      0     0.000
+state:ownGauge>0.5                0.263   0.263   0.000   0.000   0.000      1     0.279
+state:ownGauge<0.25               0.402   0.402   0.000   0.000   0.000      1     0.427
+state:oppGauge>0.5                0.240   0.240   0.000   0.000   0.000      1     0.255
+state:oppGauge<0.25               0.441   0.441   0.000   0.000   0.000      1     0.469
+
+## configuration: ward
+BETA FREQUENCY -- charges per turn of the owner. Isolated duels, equal skill; NOT a full-run metric.
+400 seeds x 2 seats; skill 0.85; host Credit 2; probe side carries Ward 2; initiative 12, win 50
+12240 probe-side turns over 11467 hands (1.07 probe turns per hand)
+source                         mean/turn   P>=1    P>=2    P>=3    P>=4    max   per hand
+cards:fifteen                     2.448   0.910   0.761   0.492   0.229      6     2.613
+cards:pair                        1.244   0.797   0.342   0.088   0.015      5     1.327
+cards:run                         0.602   0.516   0.081   0.005   0.000      4     0.643
+cards:flush                       0.056   0.056   0.000   0.000   0.000      2     0.060
+cards:hisNobs                     0.096   0.095   0.001   0.000   0.000      2     0.102
+cards:thirtyOne                   0.157   0.153   0.005   0.000   0.000      2     0.168
+cards:go                          0.843   0.638   0.187   0.017   0.001      4     0.900
+cards:pair>=6 (royal)             0.112   0.110   0.002   0.000   0.000      2     0.119
+cards:run>=4                      0.294   0.282   0.013   0.000   0.000      2     0.314
+cards:suit (own)                  0.926   0.568   0.254   0.073   0.026      8     0.989
+cards:fifteen (opponent)          2.405   0.618   0.516   0.413   0.317     15     2.568
+cards:pair (opponent)             1.234   0.617   0.361   0.175   0.063      8     1.318
+cards:run (opponent)              0.598   0.421   0.140   0.032   0.004      6     0.639
+cards:flush (opponent)            0.055   0.054   0.001   0.000   0.000      2     0.059
+cards:hisNobs (opponent)          0.097   0.094   0.003   0.000   0.000      2     0.104
+cards:thirtyOne (opponent)        0.157   0.151   0.006   0.000   0.000      3     0.168
+cards:go (opponent)               0.836   0.613   0.194   0.026   0.003      4     0.892
+progress:points                  12.062   1.000   1.000   0.998   0.997     23    12.875
+progress:fires                    0.935   0.935   0.000   0.000   0.000      1     0.998
+progress:absorbed                 1.644   0.580   0.580   0.215   0.215      8     1.755
+state:dealer                      0.618   0.618   0.000   0.000   0.000      1     0.660
+state:nonDealer                   0.382   0.382   0.000   0.000   0.000      1     0.407
+state:wardAbove 2                 0.641   0.641   0.000   0.000   0.000      1     0.684
+state:wardAbove 4                 0.304   0.304   0.000   0.000   0.000      1     0.325
+state:wardAbove 8                 0.035   0.035   0.000   0.000   0.000      1     0.038
+state:ownGauge>0.5                0.282   0.282   0.000   0.000   0.000      1     0.301
+state:ownGauge<0.25               0.392   0.392   0.000   0.000   0.000      1     0.419
+state:oppGauge>0.5                0.000   0.000   0.000   0.000   0.000      1     0.001
+state:oppGauge<0.25               0.981   0.981   0.000   0.000   0.000      1     1.047
+
+## configuration: host4
+BETA FREQUENCY -- charges per turn of the owner. Isolated duels, equal skill; NOT a full-run metric.
+400 seeds x 2 seats; skill 0.85; host Credit 4; initiative 12, win 50
+8796 probe-side turns over 8490 hands (1.04 probe turns per hand)
+source                         mean/turn   P>=1    P>=2    P>=3    P>=4    max   per hand
+cards:fifteen                     2.455   0.913   0.762   0.496   0.229      6     2.544
+cards:pair                        1.242   0.799   0.340   0.087   0.014      5     1.287
+cards:run                         0.601   0.518   0.079   0.004   0.000      4     0.622
+cards:flush                       0.057   0.057   0.000   0.000   0.000      2     0.059
+cards:hisNobs                     0.095   0.094   0.001   0.000   0.000      2     0.099
+cards:thirtyOne                   0.160   0.154   0.005   0.000   0.000      2     0.165
+cards:go                          0.848   0.639   0.190   0.018   0.001      4     0.878
+cards:pair>=6 (royal)             0.111   0.109   0.002   0.000   0.000      2     0.115
+cards:run>=4                      0.296   0.283   0.013   0.000   0.000      2     0.307
+cards:suit (own)                  0.929   0.569   0.255   0.075   0.026      7     0.963
+cards:fifteen (opponent)          2.358   0.617   0.513   0.407   0.309     15     2.443
+cards:pair (opponent)             1.215   0.616   0.353   0.166   0.061      8     1.259
+cards:run (opponent)              0.586   0.414   0.136   0.031   0.004      6     0.607
+cards:flush (opponent)            0.056   0.055   0.001   0.000   0.000      2     0.058
+cards:hisNobs (opponent)          0.096   0.093   0.003   0.000   0.000      2     0.100
+cards:thirtyOne (opponent)        0.156   0.150   0.005   0.000   0.000      3     0.161
+cards:go (opponent)               0.842   0.615   0.197   0.027   0.003      4     0.872
+progress:points                  12.086   1.000   1.000   0.998   0.997     23    12.522
+progress:fires                    0.909   0.909   0.000   0.000   0.000      1     0.942
+progress:absorbed                 0.000   0.000   0.000   0.000   0.000      0     0.000
+state:dealer                      0.619   0.619   0.000   0.000   0.000      1     0.642
+state:nonDealer                   0.381   0.381   0.000   0.000   0.000      1     0.394
+state:wardAbove 2                 0.000   0.000   0.000   0.000   0.000      0     0.000
+state:wardAbove 4                 0.000   0.000   0.000   0.000   0.000      0     0.000
+state:wardAbove 8                 0.000   0.000   0.000   0.000   0.000      0     0.000
+state:ownGauge>0.5                0.454   0.454   0.000   0.000   0.000      1     0.471
+state:ownGauge<0.25               0.273   0.273   0.000   0.000   0.000      1     0.283
+state:oppGauge>0.5                0.402   0.402   0.000   0.000   0.000      1     0.416
+state:oppGauge<0.25               0.324   0.324   0.000   0.000   0.000      1     0.336
+
+## configuration: skill05
+BETA FREQUENCY -- charges per turn of the owner. Isolated duels, equal skill; NOT a full-run metric.
+400 seeds x 2 seats; skill 0.5; host Credit 2; initiative 12, win 50
+10524 probe-side turns over 11982 hands (0.88 probe turns per hand)
+source                         mean/turn   P>=1    P>=2    P>=3    P>=4    max   per hand
+cards:fifteen                     2.570   0.932   0.796   0.529   0.248      6     2.257
+cards:pair                        1.243   0.788   0.349   0.089   0.015      5     1.092
+cards:run                         0.587   0.506   0.078   0.003   0.000      3     0.516
+cards:flush                       0.032   0.032   0.000   0.000   0.000      2     0.028
+cards:hisNobs                     0.117   0.115   0.002   0.000   0.000      3     0.103
+cards:thirtyOne                   0.193   0.186   0.007   0.000   0.000      3     0.169
+cards:go                          1.003   0.714   0.252   0.036   0.001      4     0.881
+cards:pair>=6 (royal)             0.076   0.074   0.001   0.000   0.000      2     0.066
+cards:run>=4                      0.236   0.228   0.007   0.000   0.000      2     0.207
+cards:suit (own)                  1.110   0.640   0.322   0.108   0.031      7     0.975
+cards:fifteen (opponent)          2.503   0.673   0.567   0.440   0.323     15     2.198
+cards:pair (opponent)             1.227   0.642   0.364   0.159   0.049      8     1.078
+cards:run (opponent)              0.575   0.418   0.123   0.029   0.004      5     0.505
+cards:flush (opponent)            0.031   0.031   0.000   0.000   0.000      2     0.028
+cards:hisNobs (opponent)          0.117   0.113   0.004   0.000   0.000      2     0.103
+cards:thirtyOne (opponent)        0.190   0.179   0.011   0.000   0.000      3     0.167
+cards:go (opponent)               0.996   0.682   0.256   0.053   0.004      5     0.875
+progress:points                  12.054   1.000   1.000   0.999   0.998     23    10.587
+progress:fires                    0.924   0.924   0.000   0.000   0.000      1     0.812
+progress:absorbed                 0.000   0.000   0.000   0.000   0.000      0     0.000
+state:dealer                      0.635   0.635   0.000   0.000   0.000      1     0.557
+state:nonDealer                   0.365   0.365   0.000   0.000   0.000      1     0.321
+state:wardAbove 2                 0.000   0.000   0.000   0.000   0.000      0     0.000
+state:wardAbove 4                 0.000   0.000   0.000   0.000   0.000      0     0.000
+state:wardAbove 8                 0.000   0.000   0.000   0.000   0.000      0     0.000
+state:ownGauge>0.5                0.239   0.239   0.000   0.000   0.000      1     0.210
+state:ownGauge<0.25               0.456   0.456   0.000   0.000   0.000      1     0.400
+state:oppGauge>0.5                0.219   0.219   0.000   0.000   0.000      1     0.193
+state:oppGauge<0.25               0.497   0.497   0.000   0.000   0.000      1     0.436
