@@ -6,7 +6,7 @@ import { playCombat, type BurnerActivationStrategy, type CombatResult } from './
 import { discardSkillStrategy, pegSkillStrategy } from './ai';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
-import { currentHeatCeiling, fightBaselineTrace, fightPerformanceTrace, heatFromLoss } from './heat';
+import { currentHeatCeiling, eventHeat, fightBaselineTrace, fightPerformanceTrace, heatFromLoss } from './heat';
 import { drawRewardOptions, drawUpgradedRewardOptions, rewardPoolForClass, rarityOf, type RewardTier } from './rewards';
 import { dataForTier } from './data';
 import { pickMergeTarget, preferMergeWhenAvailable, type MergeTargetStrategy, type SafehouseStrategy } from './merge';
@@ -537,11 +537,14 @@ function resolveFight(
   // heat.ts's tables are 0-based.
   const layer0 = layerIndex - 1;
   const baselineTrace = fightBaselineTrace(kind, layer0);
+  // Checkpoint 6's diagnostic noise sits on top of the posted baseline as
+  // the player's own Trace, so a loss still adds it to R7's charge.
+  const startingTrace = baselineTrace + (playerState.extraFightTrace ?? 0);
   const result: CombatResult = synthetic
-    ? syntheticCombatResult(synthetic, seed, baselineTrace)
+    ? syntheticCombatResult(synthetic, seed, startingTrace)
     : playCombat([playerState.installedLoadout, scaledLoadout], {
         seed,
-        startingTrace: baselineTrace,
+        startingTrace,
         ...combatThresholdsFor(playerState, enemy, layerIndex, fightNumber),
         classId: playerState.classId,
         enemyPassiveIds: enemy.passiveIds,
@@ -1066,13 +1069,14 @@ export function resolveEncounter(
         ? resolveFight(effect.bonusFight.tier, node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, undefined, burnerActivationStrategies, playerSkill)
         : undefined;
 
+      const directHeat = eventHeat(effect.heatLosses ?? 0, layerIndex - 1); // heat.ts is 0-based
       return {
         newState: 'inert',
-        heatDelta: (effect.heatDelta ?? 0) + (bonusFightOutcome?.heatDelta ?? 0),
+        heatDelta: directHeat + (bonusFightOutcome?.heatDelta ?? 0),
         // The bonus fight's own Heat keeps its real attribution -- only
-        // the Event's direct heatDelta counts as `event`, so "Heat from
+        // the Event's direct Heat counts as `event`, so "Heat from
         // Containment losses" stays true wherever the fight happened.
-        heatSources: addHeatSources(bonusFightOutcome?.heatSources ?? NO_HEAT_SOURCES, { ...NO_HEAT_SOURCES, event: effect.heatDelta ?? 0 }),
+        heatSources: addHeatSources(bonusFightOutcome?.heatSources ?? NO_HEAT_SOURCES, { ...NO_HEAT_SOURCES, event: directHeat }),
         quarantined: false,
         rewardTier: bonusFightOutcome?.rewardTier ?? 'none',
         dataAwarded: (effect.dataDelta ?? 0) + (bonusFightOutcome?.dataAwarded ?? 0),

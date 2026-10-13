@@ -99,6 +99,8 @@ export interface RunPlayerState {
    * player state can plan against the live ceiling. Absent outside a run;
    * heat.ts's currentHeatCeiling falls back to layer 1's. */
   heatAllowance?: number;
+  /** Diagnostic only -- see PlayRunOptions.extraFightTrace. */
+  extraFightTrace?: number;
   modRunState: Record<string, number>;
   /** Every Burner currently carried this run (Phase 5 Burners checkpoint
    * B) -- a capped, unordered inventory, no bench/installed split (see
@@ -578,6 +580,14 @@ export interface RunOptions {
    * Any number produced with this set is NOT a plain full-run metric and
    * must say so when reported -- see README's conventions. */
   gatekeeperOverrides?: [GatekeeperOverride?, GatekeeperOverride?, GatekeeperOverride?, GatekeeperOverride?];
+  /** Diagnostic (step 2, checkpoint 6): extra Trace the player's side
+   * makes in every regular/elite/gatekeeper fight, as if a noisy piece
+   * were installed. Prices Trace against the layer budget: sweep it and
+   * read the change in victory/heatMaxed. Unposted -- the route-planner
+   * doesn't see it -- and counted as the player's own noise, so a loss
+   * adds it on top of R7's charge. Never set by real play; numbers
+   * produced with it are not plain full-run metrics. */
+  extraFightTrace?: number;
   /** Which banked id a 'merge' Safehouse action spends itself on
    * (session 46, Gameplay Simulation Heuristics checkpoint E) -- until
    * that checkpoint this was hardcoded to pickMergeTarget inside
@@ -644,6 +654,7 @@ export function playRun(options: RunOptions): RunResult {
     playerSkill,
     excludedGatekeeperIds,
     gatekeeperOverrides,
+    extraFightTrace,
     onBeforeGatekeeperFight,
   } = options;
 
@@ -662,6 +673,7 @@ export function playRun(options: RunOptions): RunResult {
   let playerState = installedLoadoutOverride
     ? { ...createInitialPlayerState(classId), installedLoadout: installedLoadoutOverride }
     : createInitialPlayerState(classId);
+  if (extraFightTrace) playerState = { ...playerState, extraFightTrace };
   // Routed through the same acquireMod each real Mod pickup uses (not a
   // raw ownedModIds splice), so onModAcquired's real side effects
   // (Backup Generator's max-Heat raise, Auxiliary Process's granted

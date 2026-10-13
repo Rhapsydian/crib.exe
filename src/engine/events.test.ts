@@ -59,7 +59,7 @@ describe('EVENT_ROSTER content shape', () => {
         riskTiers.add(choice.riskTier);
         for (const outcome of choice.outcomes) {
           const e = outcome.effect;
-          if (e.heatDelta !== undefined) effectKinds.add('heatDelta');
+          if (e.heatLosses !== undefined) effectKinds.add('heatLosses');
           if (e.dataDelta !== undefined) effectKinds.add('dataDelta');
           if (e.bonusFight !== undefined) effectKinds.add('bonusFight');
           for (const grant of [e.subroutineGrant, e.modGrant, e.burnerGrant]) {
@@ -75,7 +75,7 @@ describe('EVENT_ROSTER content shape', () => {
     }
 
     expect(riskTiers).toEqual(new Set(['transparent', 'visibleOdds', 'gamble']));
-    expect(effectKinds).toEqual(new Set(['heatDelta', 'dataDelta', 'subroutineGrant', 'modGrant', 'burnerGrant', 'bonusFight']));
+    expect(effectKinds).toEqual(new Set(['heatLosses', 'dataDelta', 'subroutineGrant', 'modGrant', 'burnerGrant', 'bonusFight']));
     expect(sawSpecificGrant).toBe(true);
     expect(sawRandomFromRarityGrant).toBe(true);
   });

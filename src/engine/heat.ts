@@ -129,6 +129,16 @@ export function heatFromLoss(tier: 'regular' | 'elite', layerIndex: number): num
   return LOSS_MULTIPLIER * (fightBaselineTrace(tier, layerIndex) + fightPerformanceWeight(tier, layerIndex));
 }
 
+/** Step 2, checkpoint 6: an Event's Heat, given as a multiple of the
+ * layer's elite-loss charge. Anchored to the loss price rather than a flat
+ * number so Events keep their weight against fights on every layer and
+ * follow any retuning of the posted prices. The roster's multiples are the
+ * old run-long values over the old elite charge (30), so each Event kept
+ * its ratio to losing an elite fight. */
+export function eventHeat(heatLosses: number, layerIndex: number): number {
+  return heatLosses * heatFromLoss('elite', layerIndex);
+}
+
 /** A fight's posted risk, all knowable before committing (D2, R7): what
  * a clean win, the worst win and a loss each cost, before any Trace the
  * player's own noisy effects add. `loss` is undefined for a gatekeeper,

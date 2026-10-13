@@ -481,8 +481,70 @@ Validated by `scripts/beta-validate.ts` against direct mirror-duel prices
   card-sourced samples hold. The misses come from correlation and
   timing, not clustering.
 
+## Checkpoint 6 — Trace price, Event Heat, the Exploit noise check
+
+### Event Heat is anchored to the loss price (user's call)
+
+Events gave flat ±8–28 Heat, sized for the old run-long 100; a single
+28 was 70% of layer 1's allowance. Each Event outcome is now
+`heatLosses`, a **multiple of the layer's elite-loss charge**
+(`heat.ts`'s `eventHeat`). Each Event keeps its old ratio to losing an
+elite fight (old value ÷ 30): the worst gamble is 0.93 losses, about 17
+Heat on layer 1 and growing with depth like every posted price, and the
+cleanups (0.27) are about −5. This was chosen over a flat ×0.4, which
+would have made the worst Event cheaper than a deep regular loss. Any
+retuning of fight prices now carries the Events with it.
+
+### Trace sensitivity (`scripts/trace-price.ts`)
+
+Each class was run with **`extraFightTrace`** = 0 / 1 / 2 / 4. This is a
+new diagnostic run option: it puts a noisy piece's worth of unposted
+Trace into every fight, counted as the player's own noise. 300 seeds per
+class, skeleton content. Raw output:
+`docs/calibration/step2-cp6-trace-price.txt`.
+
+| class | own noise/run at 0 | victory at +0 / +1 / +2 / +4 | caught + heatMaxed at +0 → +4 |
+|---|---|---|---|
+| exploit-daemon | 10.2 | 77 / 72 / 67 / 45 | 7% → 39% |
+| exploit-honeypot | 9.5 | 59 / 51 / 42 / 26 | 12% → 45% |
+| exploit-overclock | 7.3 | 32 / 25 / 21 / 9 | 18% → 42% |
+| daemon-honeypot | 0 | 50 / 50 / 47 / 38 | 2% → 21% |
+| daemon-overclock | 0 | 26 / 28 / 24 / 14 | 4% → 21% |
+| overclock-honeypot | 0 | 20 / 22 / 19 / 13 | 4% → 15% |
+
+- **Trace's price is convex in the noise a build already makes.** A
+  build with no noise of its own absorbs +1 per fight for free (within
+  noise) and +2 for 1–3 points of victory. A build already making ~10
+  Trace a run (the Exploit classes, via Fuzzer) loses **5–8 points of
+  victory for the first +1 per fight**. There is no flat exchange rate,
+  so R5's "trade it by judgment" stands. The rule step 3 needs is that
+  **a noisy piece costs more in a noisy build**.
+- **Unposted noise kills in the gatekeeper toll, not mid-layer.** The
+  rise is almost all "breached, then caught"; heatMaxed barely moves.
+  The route-planner budgets posted prices, so noise it can't see eats the
+  reserve it held for the toll. A player who sees their Heat would adapt,
+  so this overstates the cost for real play. It is the right shape for
+  R8's gamble, though: noise is paid at the end of the layer.
+- In layer terms, a run wins about 2–2.5 fights per layer, so **+1
+  Trace per fight is about 6–9% of a layer's allowance**.
+
+### Exploit noise check
+
+At extra 0, Exploit classes make **7–10 Trace a run of their own** (all
+from Fuzzer's Trace rider). Every other class makes 0. Their Heat
+endings, heatMaxed plus caught, run **7–18% against 2–4%**, three to
+five times the others. That holds even though the Exploit classes win
+the most fights and so also pay the most baseline. Session 50's
+identity, "Blackhat has to be careful with its Heat", survives the
+per-layer reset. In this model it shows up as gatekeeper tolls rather
+than mid-layer heatMaxed. **The check is provisional.** One skeleton
+piece carries all of it, and step 3's authored Exploit noise has to
+land on a target (below).
+
 ## Open
 
-None blocking step 2. Left for tuning or later: D7's Safehouse count and
+None blocking step 2. **The Exploit Heat target is the user's call
+(checkpoint 6):** how much more often an Exploit build should end on
+Heat than the others. The skeleton currently gives 3–5×. Left for tuning or later: D7's Safehouse count and
 placement, the Safehouse rename (Cold Storage / Sandbox / Air-Gapped
 Host), regular/elite win-rate targets (after step 3, per R1).

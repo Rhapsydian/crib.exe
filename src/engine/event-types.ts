@@ -30,7 +30,11 @@ export type Grant<T> = { specific: T } | { randomFromRarity: Rarity };
  * "Effect pool") -- no new resource type. Every field is optional so a
  * genuine no-op outcome (`{}`) is representable without a sentinel. */
 export interface EventEffect {
-  heatDelta?: number;
+  /** Heat, in multiples of this layer's elite-loss charge (step 2,
+   * checkpoint 6) -- resolved by heat.ts's `eventHeat`, so an Event keeps
+   * its weight against the posted fight prices on every layer. Negative
+   * cools. */
+  heatLosses?: number;
   dataDelta?: number;
   subroutineGrant?: Grant<SubroutineDefinition>;
   modGrant?: Grant<ModDefinition>;

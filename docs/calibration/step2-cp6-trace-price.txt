@@ -1,0 +1,29 @@
+
+TRACE PRICE -- 300 seeds/class, synergy/opportunistic, skill 0.85, skeleton content. NOT plain full-run metrics.
+Layer allowances 40/36/32/28: 1 Trace = 2.5% / 2.8% / 3.1% / 3.6% of a layer.
+
+class                extra  victory heatMax  caught  quarant  layers | per run: wins  baseline  perf  ownNoise  moves
+exploit-overclock        0   32.3%   1.7%  16.7%  48.3%   2.06 |    5.7   18.7     15.3     7.3     18.0
+exploit-overclock        1   24.7%   1.7%  24.0%  48.7%   1.96 |    5.3   17.5     14.6    12.1     16.8
+exploit-overclock        2   21.0%   2.7%  27.7%  47.7%   1.83 |    4.9   16.2     13.6    15.7     15.4
+exploit-overclock        4    9.3%   7.3%  34.7%  48.7%   1.41 |    4.1   13.5     11.0    21.1     12.4
+exploit-daemon           0   77.3%   2.3%   4.7%  15.7%   3.33 |    7.7   25.7      5.8    10.2     24.4
+exploit-daemon           1   72.3%   3.0%  11.7%  13.0%   3.27 |    7.4   24.7      5.7    17.1     23.0
+exploit-daemon           2   67.3%   2.3%  17.0%  13.3%   3.17 |    7.0   23.2      5.9    23.2     21.3
+exploit-daemon           4   45.3%   4.0%  35.0%  15.7%   2.68 |    6.1   19.9      5.8    32.0     17.8
+exploit-honeypot         0   58.7%   2.0%  10.0%  29.0%   2.80 |    6.8   22.7     12.1     9.5     21.8
+exploit-honeypot         1   51.0%   3.0%  17.3%  28.3%   2.67 |    6.5   21.4     11.7    15.0     20.1
+exploit-honeypot         2   41.7%   2.0%  27.0%  29.0%   2.52 |    6.1   19.9     11.0    19.9     18.5
+exploit-honeypot         4   26.0%   4.3%  40.7%  29.0%   2.09 |    5.2   17.0      9.7    27.2     15.3
+daemon-overclock         0   26.3%   0.3%   3.3%  69.7%   1.57 |    5.0   17.0      9.6     0.0     17.2
+daemon-overclock         1   28.0%   0.7%   4.7%  66.3%   1.66 |    4.9   16.2     10.0     4.9     16.9
+daemon-overclock         2   24.0%   1.0%   7.7%  67.0%   1.58 |    4.6   15.5     10.0     9.2     15.6
+daemon-overclock         4   13.7%   2.3%  18.3%  65.7%   1.26 |    3.9   12.8      8.3    15.5     12.7
+daemon-honeypot          0   50.3%   0.7%   1.7%  47.3%   2.35 |    6.3   21.4      8.0     0.0     20.7
+daemon-honeypot          1   50.0%   1.3%   3.7%  45.0%   2.41 |    6.1   20.5      8.5     6.1     20.2
+daemon-honeypot          2   47.3%   2.3%   7.0%  43.3%   2.38 |    5.9   19.6      8.7    11.8     19.3
+daemon-honeypot          4   37.7%   2.0%  19.3%  41.0%   2.16 |    5.3   17.4      8.3    21.1     16.4
+overclock-honeypot       0   20.0%   0.7%   3.0%  76.0%   1.23 |    4.5   15.2      7.2     0.0     15.5
+overclock-honeypot       1   22.0%   1.0%   3.7%  73.3%   1.30 |    4.3   14.5      7.2     4.3     15.2
+overclock-honeypot       2   19.0%   1.3%   6.7%  73.0%   1.26 |    4.2   13.9      7.2     8.2     14.4
+overclock-honeypot       4   13.0%   2.0%  12.7%  72.3%   1.03 |    3.6   11.9      6.4    14.2     11.9

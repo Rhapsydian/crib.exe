@@ -6,6 +6,7 @@ import {
   fightPerformanceTrace,
   fightPerformanceWeight,
   heatFromLoss,
+  eventHeat,
   layerHeatAllowance,
   postedFightRisk,
   LAYER_HEAT_ALLOWANCE,
@@ -99,5 +100,13 @@ describe('heatFromLoss (R7)', () => {
 
   it("has no posted loss for a gatekeeper, whose loss is Quarantine", () => {
     expect(postedFightRisk('gatekeeper', 0).loss).toBeUndefined();
+  });
+});
+
+describe('eventHeat (step 2, checkpoint 6)', () => {
+  it("is a multiple of the layer's elite-loss charge, so it scales with depth", () => {
+    for (const layer of [0, 1, 2, 3]) expect(eventHeat(0.5, layer)).toBeCloseTo(0.5 * heatFromLoss('elite', layer));
+    expect(eventHeat(1, 3)).toBeGreaterThan(eventHeat(1, 0));
+    expect(eventHeat(-0.27, 0)).toBeLessThan(0);
   });
 });

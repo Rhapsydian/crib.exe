@@ -28,7 +28,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
         id: 'defuse',
         label: 'Defuse it quietly',
         riskTier: 'transparent',
-        outcomes: [{ probability: 1, effect: { heatDelta: -8 } }],
+        outcomes: [{ probability: 1, effect: { heatLosses: -0.27 } }],
       },
       {
         id: 'repurpose',
@@ -36,7 +36,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
         riskTier: 'visibleOdds',
         outcomes: [
           { probability: 0.65, effect: { modGrant: { specific: MOD_DEFINITIONS['static-shield'] } } },
-          { probability: 0.35, effect: { heatDelta: 12 } },
+          { probability: 0.35, effect: { heatLosses: 0.4 } },
         ],
       },
       {
@@ -45,7 +45,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
         riskTier: 'gamble',
         outcomes: [
           { probability: 0.5, effect: { subroutineGrant: { randomFromRarity: 'rare' } } },
-          { probability: 0.5, effect: { heatDelta: 28 } },
+          { probability: 0.5, effect: { heatLosses: 0.93 } },
         ],
       },
     ],
@@ -66,7 +66,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
         id: 'wipe-and-leave',
         label: 'Wipe the session and leave',
         riskTier: 'transparent',
-        outcomes: [{ probability: 1, effect: { heatDelta: -8 } }],
+        outcomes: [{ probability: 1, effect: { heatLosses: -0.27 } }],
       },
     ],
   },
@@ -86,7 +86,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
         riskTier: 'visibleOdds',
         outcomes: [
           { probability: 0.6, effect: { dataDelta: 22 } },
-          { probability: 0.4, effect: { heatDelta: 18 } },
+          { probability: 0.4, effect: { heatLosses: 0.6 } },
         ],
       },
     ],
@@ -111,7 +111,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
           // scales on fifteens); being Exploit, it is off-class for half the
           // classes -- revisit when real content exists.
           { probability: 0.5, effect: { subroutineGrant: { specific: pool('probe') } } },
-          { probability: 0.5, effect: { heatDelta: 22 } },
+          { probability: 0.5, effect: { heatLosses: 0.73 } },
         ],
       },
     ],
@@ -150,7 +150,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
         riskTier: 'visibleOdds',
         outcomes: [
           { probability: 0.55, effect: { modGrant: { randomFromRarity: 'uncommon' } } },
-          { probability: 0.45, effect: { heatDelta: 15 } },
+          { probability: 0.45, effect: { heatLosses: 0.5 } },
         ],
       },
     ],
@@ -171,7 +171,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
         riskTier: 'gamble',
         outcomes: [
           { probability: 0.4, effect: { burnerGrant: { randomFromRarity: 'rare' } } },
-          { probability: 0.6, effect: { heatDelta: 20 } },
+          { probability: 0.6, effect: { heatLosses: 0.67 } },
         ],
       },
     ],
@@ -192,7 +192,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
         riskTier: 'visibleOdds',
         outcomes: [
           { probability: 0.65, effect: { dataDelta: 20 } },
-          { probability: 0.35, effect: { heatDelta: 10 } },
+          { probability: 0.35, effect: { heatLosses: 0.33 } },
         ],
       },
       {
@@ -201,7 +201,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
         riskTier: 'gamble',
         outcomes: [
           { probability: 0.45, effect: { burnerGrant: { specific: BURNER_DEFINITIONS['skeleton-key'] } } },
-          { probability: 0.55, effect: { heatDelta: 25 } },
+          { probability: 0.55, effect: { heatLosses: 0.83 } },
         ],
       },
     ],
