@@ -412,6 +412,75 @@ and makes every opponent-gauge probe meaningless.
   like for like** (different measurement and skill levels), so it isn't
   used as a cross-check.
 
+## Checkpoint 5 — beta pricing
+
+Built `src/engine/beta-pricing.ts` — R3's formula, and step 3's
+authoring tool: **piece price = alpha price + expected beta scale per
+turn × the value of one application**, in Credit per turn. Expected
+scale comes from checkpoint 4's distributions (generated into
+`beta-frequency-data.ts`): exact closed forms for graded-on-cards
+(Σ P(N ≥ k)) and immediate (mean / at), a deterministic simulation for
+the shapes that carry charges across turns (stepped, progress-banked
+graded). It **returns null** for what the measurements can't support —
+unmeasured sources, sequence betas, immediate state betas, and effects
+whose worth depends on the loadout (Tempo, Disrupt, Empower, credit spent
+from your own Ward).
+
+Validated by `scripts/beta-validate.ts` against direct mirror-duel prices
+(host Credit 2, skill 0.85, 200 seeds × 2 seats). Raw output:
+`docs/calibration/step2-cp5-beta-validation.txt`.
+
+| sample (alpha Credit 1 unless noted) | formula | measured | gap |
+|---|---|---|---|
+| graded fifteen, cap 3, +1 | 3.16 | 2.99 | −0.18 |
+| graded opponent's fifteen, cap 3, +1 | 2.54 | 2.56 | +0.02 |
+| graded suit tally, cap 3, +1 | 1.89 | 1.87 | −0.02 |
+| graded flush, cap 1, +3 (rare) | 1.17 | 1.24 | +0.07 |
+| graded pair royal, cap 1, +3 (rare) | 1.33 | 1.41 | +0.08 |
+| graded go, cap 2, steal 1 | 2.52 | 2.51 | −0.01 |
+| graded flush, cap 3, +1 (the Charge receiver) | 1.06 | 1.11 | +0.05 |
+| stepped pair at 2, +2 | 2.01 | 2.12 | +0.11 |
+| stepped run at 1, Suppress 2 | 1.98 | 1.98 | 0.00 |
+| stepped points/10 at 3, Suppress 2 | 1.72 | 1.80 | +0.08 |
+| whileTrue dealer, +2 | 2.24 | 2.17 | −0.07 |
+| whileTrue non-dealer, +2 | 1.76 | 1.86 | +0.09 |
+| Ward 2 + absorbed/2 graded cap 3, Credit 1 | 2.76 | 2.77 | +0.01 |
+| immediate pair at 2, Credit 3 | 2.86 | 2.92 | +0.06 |
+| **immediate run at 1, +1 (extra fire)** | **2.21** | **2.51** | **+0.30** |
+| **whileTrue opponent gauge > ½, Suppress 2** | **1.46** | **1.92** | **+0.46** |
+| **Ward 2 + whileTrue Ward > 4, +2** | **2.53** | **1.93** | **−0.60** |
+| charger (Charge 1 → next) + receiver | — | 2.12 | Charge ≈ 1.01 |
+
+### What the validation says
+
+- **The formula holds wherever an effect is worth the same every time
+  it applies** — card sources (own and opponent's), progress banks,
+  dealer/non-dealer, steal. Across those 14 samples the mean gap is
+  **0.06 Credit (~3%)**, and several "misses" are inside one
+  turn-to-win step (checkpoint 2). Opponent-watching lumpiness, flagged
+  in checkpoint 4, turned out not to matter.
+- **It fails when the condition is correlated with the effect's worth.**
+  Suppress while the opponent is ahead is worth nearly as much as
+  unconditional Suppress (1.92 vs 1.91 for Suppress 2 alone): pushing
+  back a leader is what Suppress is for, so concentrating it there loses
+  almost nothing. More Ward while Ward is already high is worth ~0: it
+  stacks on Ward that would go unused anyway. **Authoring rule: betas on
+  gauge or Ward conditions are priced by direct duel, not the formula.**
+- **Immediate "extra fire" betas carry a timing premium** (+0.30, about
+  +25% on the beta): credit landing mid-hand reaches the threshold
+  sooner. An immediate beta with a different effect showed only +2%, so
+  this is one data point, not yet a correction factor — **flagged for
+  step 3 to price immediate-enhance pieces directly** until more samples
+  exist.
+- **Charge is priced: one charge per turn ≈ 1.01 Credit** (2.12 with the
+  charger, 1.11 without), matching the prediction — a charge is worth one
+  extra application of whatever beta it feeds, while that beta is below
+  its cap.
+- **Burstiness (R4) is answered**: card occurrences arrive in clusters,
+  but the formula's distributions already capture that per turn, and the
+  card-sourced samples hold. The misses come from correlation and
+  timing, not clustering.
+
 ## Open
 
 None blocking step 2. Left for tuning or later: D7's Safehouse count and

@@ -1,0 +1,32 @@
+# Step 2, checkpoint 5 -- beta formula validation (session 53)
+# scripts/beta-validate.ts, host Credit 2, skill 0.85, 200 seeds x 2 seats per point, two-pass refined.
+
+BETA VALIDATION -- formula vs direct mirror-duel price, host Credit 2, skill 0.85. NOT a full-run metric.
+200 seeds x 2 seats per point; part 1/3
+sample                                   formula  measured  [  low,   high]   verdict
+graded fifteen cap 3, +1                   3.16     2.99  [  2.90,   3.00]   MISS (-0.18)
+graded OPP fifteen cap 3, +1               2.54     2.56  [  2.50,   2.60]   HOLDS
+stepped run at 1, suppress 2               1.98     1.98  [  1.90,   2.00]   HOLDS
+whileTrue non-dealer, +2                   1.76     1.86  [  1.80,   1.90]   MISS (+0.09)
+immediate run at 1, +1 (extra fire)        2.21     2.51  [  2.50,   2.60]   MISS (+0.30)
+ward 2 + absorbed/2 cap 3, credit 1        2.76     2.77  [  2.70,   2.91]   HOLDS
+
+BETA VALIDATION -- formula vs direct mirror-duel price, host Credit 2, skill 0.85. NOT a full-run metric.
+200 seeds x 2 seats per point; part 2/3
+sample                                   formula  measured  [  low,   high]   verdict
+graded flush cap 1, +3 (rare)              1.17     1.24  [  1.18,   1.30]   MISS (+0.07)
+graded pair royal cap 1, +3 (rare)         1.33     1.41  [  1.28,   1.50]   HOLDS
+stepped points/10 at 3, suppress 2         1.72     1.80  [  1.64,   1.90]   HOLDS
+whileTrue opp gauge > 1/2, suppress 2      1.46     1.92  [  1.85,   2.00]   MISS (+0.46)
+graded go cap 2, steal 1                   2.52     2.51  [  2.50,   2.63]   HOLDS
+receiver: flush cap 3, +1                  1.06     1.11  [  1.10,   1.20]   MISS (+0.06)
+
+BETA VALIDATION -- formula vs direct mirror-duel price, host Credit 2, skill 0.85. NOT a full-run metric.
+200 seeds x 2 seats per point; part 3/3
+sample                                   formula  measured  [  low,   high]   verdict
+graded suit cap 3, +1                      1.89     1.87  [  1.80,   1.90]   HOLDS
+stepped pair at 2, +2                      2.01     2.12  [  2.10,   2.20]   MISS (+0.10)
+whileTrue dealer, +2                       2.24     2.17  [  2.10,   2.20]   MISS (-0.07)
+immediate pair at 2, credit 3              2.86     2.92  [  2.59,   3.00]   HOLDS
+ward 2 + wardAbove 4, +2 (ward ctx)        2.53     1.93  [  1.86,   2.00]   MISS (-0.60)
+charger -> receiver                        --       2.12  [  2.10,   2.20]   n/a
