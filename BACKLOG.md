@@ -25,28 +25,19 @@ to. Ignoring that is what took this file to 4,396 lines.
 
 ---
 
-## Current state (end of session 51)
+## Current state (end of session 52)
 
-**Where the project is.** Session 51 redesigned the archetypes and the
-subroutine model from scratch (`docs/archetype-redesign.md`, A1–A12) and
-finished **step 1, the engine refactor**, on the `archetype-redesign`
-branch (not pushed). The engine runs the alpha/beta model end to end;
-content is a deliberately untuned skeleton. 615 tests, `npm run check`
-clean. **There is still no UI.**
+**Where the project is.** Step 1 of the archetype redesign (the engine
+refactor, session 51) is done; **step 2, recalibration, is three
+checkpoints in** (session 52, `docs/recalibration-design.md`, R1–R8).
+Heat is now a per-layer budget with posted fight prices and a new run
+ending, *breached, then caught*; and every verb has a price in
+Credit-per-turn from seat-swapped mirror duels. Content is still the
+untuned skeleton. 646 tests, `npm run check` clean, on the
+`archetype-redesign` branch. **There is still no UI.**
 
-**What changed underneath the balance work.** The balance arc below
-measured the old 159-piece pool and 32-enemy roster, both now deleted.
-Its numbers describe content that no longer exists; its lessons
-(gatekeeper matchup dominates class spread; trigger frequency, not
-payload magnitude, makes a fight hard) carry forward.
-
-**Session 50** (never closed out, no log) produced the run-economy
-decisions D1–D7 (per-layer Heat — decided, not built), the diagnostic
-pillar suite, and the per-turn model D11–D15 that session 51 built on.
-Its record is `docs/run-economy-design.md`.
-
-**Next:** step 2, recalibration — and it opens with design questions,
-not code. See the arc immediately below.
+**Next:** step 2's checkpoint 4, the beta frequency table. See the arc
+immediately below.
 
 ---
 
@@ -64,13 +55,23 @@ rather than tuned. Work happens on the `archetype-redesign` branch.
    Mods / Merge / Burners / bridge passives; diagnostics ported. Build
    green: `npm run check` clean, 615 tests. Every implementation call is
    logged in `docs/archetype-redesign.md`.
-2. **Recalibrate** — the pillar suite currently carries three verb
-   pillars (Credit, Suppress, Tempo); Ward, Empower, Disrupt and Charge
-   pillars need a design first (they can't win alone, D14). Then
-   run-economy checkpoints 3–6 to price an alpha and a beta. Known going
-   in: skeleton regular/elite fights are near-free (100% player wins in
-   `enemy-check.ts`), and two watch items sit on Honeypot (A2's, and
-   conversion credits bypassing Ward).
+2. **Recalibrate** — decided as R1–R8 (session 52). Checkpoints:
+   1. ✅ per-layer Heat economy (D1–D7, R6–R8);
+   2. ✅ pricing instrument (`src/engine/pricing.ts`,
+      `scripts/price-check.ts`);
+   3. ✅ verb prices — table in `docs/recalibration-design.md`, raw output
+      in `docs/calibration/`; Reveal Crib rebuilt to its intended timing;
+   4. beta frequency table — per-turn charge/hold rates per source;
+   5. beta pricing — R3's formula, validated on a sample; Charge;
+   6. Trace price against a layer's allowance, the Exploit noise check,
+      and **rescaling Event Heat values** (still ±8–28 against a 40
+      allowance);
+   7. write-up: pricing rules into `DESIGN.md`, retire `pillar-check.ts`.
+
+   Watch items: both Honeypot conversions now have prices — credit taken
+   from the opponent is the strongest verb per point (~1.85×), credit
+   spent from your own Ward is worth only Ward that would be wasted.
+   Skeleton regular/elite fights remain near-free.
 3. **Author** — archetype subroutines → classes (names, bridge
    passives, unlock order) → enemy roster.
 

@@ -29,7 +29,13 @@ scratch (`DESIGN.md` → Archetypes & Subroutines; the decision trail is
 `docs/archetype-redesign.md`). The engine runs the new model end to end,
 but the old 159-piece pool and 32-enemy roster were deleted, not
 migrated: a deliberately untuned **skeleton** pool and roster stand in
-until the pillar calibration says what an alpha and a beta are worth.
+until calibration says what an alpha and a beta are worth.
+
+Session 52 started step 2, recalibration (`docs/recalibration-design.md`,
+R1–R8): Heat is now a **per-layer budget** that resets at each gatekeeper,
+with posted fight prices and a new run ending, *breached, then caught*;
+and every verb now has a **price in Credit-equivalents**, measured by
+mirror duels.
 
 What exists, all headless and test-covered:
 
@@ -37,15 +43,14 @@ What exists, all headless and test-covered:
 |---|---|
 | Cribbage rules engine | complete, rules-correct, 2-player |
 | Combat wrapper | complete — alpha/beta subroutines, seven verbs, initiative, Breach/Containment |
-| Run & map layer | complete — free-roam movement, Heat, real duels at fight nodes |
+| Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
 | Meta-progression | complete — 6 classes (placeholder names and bridge passives), acquisition, Merge, Shop |
 | Content | **skeleton** — 16 subroutines, 10 enemies; 37 Mods, 8 Burners, 8 Events carried over |
-| Balance | **blocked on recalibration** — see `BACKLOG.md` |
+| Balance | **recalibration in progress** — verbs priced; betas next (see `BACKLOG.md`) |
 | UI, art | not started |
 
 The roadmap is now the redesign's three steps: engine refactor (done),
-recalibrate the pillar suite against the seven verbs, then author real
-content. The balance numbers from sessions 39–50 measured content that no
+recalibrate (in progress), then author real content. The balance numbers from sessions 39–50 measured content that no
 longer exists; their *lessons* (gatekeeper matchup dominating class
 spread, trigger frequency over payload magnitude) carry forward in
 `DESIGN.md` and `docs/run-economy-design.md`.
@@ -54,7 +59,7 @@ spread, trigger frequency over payload magnitude) carry forward in
 
 ```bash
 npm install
-npm test        # Vitest suite (615 tests)
+npm test        # Vitest suite (646 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server (scaffold only — no game UI yet)
 ```
@@ -92,7 +97,8 @@ kit, reporting threshold vs. attrition wins on each side.
 | `npx tsx scripts/gatekeeper-check.ts` | How hard each gatekeeper is against *realistic accumulated* player state, not a bare starting kit |
 | `npx tsx scripts/occurrence-frequency.ts` | Real Cribbage occurrence frequency and score distributions, outside the roguelite layer — calibrates content thresholds against actual play |
 | `npx tsx scripts/cribbage-skill-matrix.ts` | What a given "player skill" value actually means, as a skill-vs-skill win-rate grid |
-| `npx tsx scripts/pillar-check.ts` | What one verb is worth: single-piece test enemies swept over magnitude × fire rate (three verb pillars so far; step 2 adds the rest) |
+| `npx tsx scripts/price-check.ts` | What one verb is worth, in Credit per turn: seat-swapped mirror duels, host-plus-difference (`src/engine/pricing.ts`). Raw results in `docs/calibration/` |
+| `npx tsx scripts/pillar-check.ts` | Session 50's single-piece test enemies swept over magnitude × fire rate — superseded by `price-check.ts`, retired at step 2's write-up |
 | `npx tsx scripts/enemy-check.ts` / `heat-sources.ts` | Per-enemy difficulty against accumulated state; where run Heat comes from |
 
 ### Holding the gatekeepers still
@@ -154,7 +160,8 @@ That constraint is why the balance tooling above can exist at all.
 |---|---|
 | `DESIGN.md` | The settled design — mechanics, archetypes, classes, enemies, resources, and the reasoning behind them |
 | `docs/archetype-redesign.md` | Session 51's decision trail for the archetype and subroutine redesign (A1–A12, plus every implementation call) |
-| `docs/run-economy-design.md` | Session 50's decisions: the per-layer Heat economy (decided, not yet built), the pillar suite, and the per-turn model (D11–D15) |
+| `docs/run-economy-design.md` | Session 50's decisions: the per-layer Heat economy (built session 52), the pillar suite, and the per-turn model (D11–D15) |
+| `docs/recalibration-design.md` | Step 2's decision trail (R1–R8) and its checkpoint findings: the Heat build, the pricing instrument, the verb price table |
 | `docs/design-history.md` | `DESIGN.md` sections superseded by session 51, archived verbatim |
 | `BACKLOG.md` | What is still to do, and the current balance picture |
 | `docs/roadmap-history.md` | Completed roadmap work and the per-checkpoint record of how it was built |
