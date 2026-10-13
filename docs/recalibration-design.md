@@ -541,9 +541,62 @@ than mid-layer heatMaxed. **The check is provisional.** One skeleton
 piece carries all of it, and step 3's authored Exploit noise has to
 land on a target (below).
 
+## Checkpoint 6b — skill retention
+
+The user asked for a standing check that Cribbage skill still decides
+fights. Skill reaches a fight through points: points fill the initiative
+gauge, so the better player takes more turns. Every alpha fires flat each
+turn, though, so a strong enough loadout could drown the Cribbage out.
+
+**Retention** = the better player's edge (win rate − 0.5) in a loadout
+mirror ÷ their edge in plain Cribbage to 121, at the same skills
+(`src/engine/skill-retention.ts`). Measured by `scripts/skill-check.ts`:
+mirrors at 0.85 v 0.5 and 0.85 v 0.25, 300 seeds × 2 seats, plus each
+class's victory at player skill 0.5 vs 0.85. Mirrors carry no passive or
+Mods. Raw output: `docs/calibration/step2-cp6b-skill-retention.txt`.
+
+Plain Cribbage: the better player wins **87.4%** (v 0.5) and **94.3%**
+(v 0.25).
+
+| loadout | retention (0.85 v 0.5) | v 0.25 |
+|---|---|---|
+| Credit 1 (turns only) | 1.02 | 1.02 |
+| Credit 4 × 3 (heavy flat) | 0.76 | 0.81 |
+| class starting loadouts | 0.75–1.12 | 0.78–1.08 |
+| class loadouts late in runs (~6 pieces) | **0.55–0.94** | 0.58–0.96 |
+
+| class | victory, skill 0.5 → 0.85 |
+|---|---|
+| daemon-honeypot | 19 → 51% (+31) |
+| exploit-honeypot | 27 → 55% (+29) |
+| exploit-daemon | 53 → 76% (+23) |
+| exploit-overclock | 11 → 30% (+19) |
+| daemon-overclock | 7 → 23% (+16) |
+| overclock-honeypot | 10 → 21% (+11) |
+
+- **Skill decides fights today.** Turns-from-points carries plain
+  Cribbage's whole signal (Credit 1 retains 1.02), and every starting
+  loadout keeps at least three quarters of it.
+- **Retention falls as a loadout grows.** That is the risk to watch.
+  Heavy flat Credit retains ~0.8. Late-run loadouts drop to 0.55
+  (exploit-overclock) to 0.70 (most others). Big flat output shortens
+  the fight, so fewer hands decide it. Step 3 must check **late
+  loadouts**, not just starting ones.
+- **Overclock classes retain least** (late 0.55 / 0.70 / 0.84) and have
+  the smallest run-level skill gaps (+11 to +19). Tempo gains turns
+  without points, which bypasses the channel skill works through. This
+  is a watch item for authoring Overclock.
+- **The guard:** `skill-retention.test.ts` fails the suite if any class's
+  starting loadout, or a plain Credit mirror, drops below
+  `SKILL_RETENTION_FLOOR` (provisional 0.5, at 0.85 v 0.25, 25 seeds: a
+  coarse tripwire). `scripts/skill-check.ts` is the measurement step 3
+  runs on authored content, late loadouts included.
+
 ## Open
 
-None blocking step 2. **The Exploit Heat target is the user's call
+None blocking step 2. **The skill-retention floor is the user's call
+(checkpoint 6b):** provisional 0.5, against a skeleton low of 0.55 late
+in runs. **The Exploit Heat target is the user's call
 (checkpoint 6):** how much more often an Exploit build should end on
 Heat than the others. The skeleton currently gives 3–5×. Left for tuning or later: D7's Safehouse count and
 placement, the Safehouse rename (Cold Storage / Sandbox / Air-Gapped

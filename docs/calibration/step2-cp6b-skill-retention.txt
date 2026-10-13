@@ -1,0 +1,31 @@
+
+SKILL RETENTION -- isolated mirrors (no passive/Mods), skeleton content. NOT a balance measurement.
+300 seeds x 2 seats per mirror; Cribbage reference 2000 games to 121.
+
+plain Cribbage, better player wins: 0.85 v 0.5  87.4%   0.85 v 0.25  94.3%
+
+loadout                               0.85 v 0.5 win  retain   0.85 v 0.25 win  retain
+Credit 1 (turn leverage)                          88.3%   1.02                95.0%   1.02
+Credit 4 x 3 (heavy flat)                         78.5%   0.76                86.0%   0.81
+exploit-overclock start                           78.2%   0.75                84.7%   0.78
+exploit-overclock late (5 runs, ~6.2 pieces)              70.7%   0.55                75.8%   0.58
+
+RUN LEVEL -- victory by player skill, 150 seeds/class (synergy/opportunistic, skeleton content).
+class                 skill 0.5   skill 0.85   gap
+exploit-overclock      10.7%      30.0%      19.3 pts
+exploit-daemon start                              85.7%   0.95                94.5%   1.01
+exploit-daemon late (5 runs, ~6.0 pieces)              75.8%   0.69                84.0%   0.77
+exploit-daemon         52.7%      76.0%      23.3 pts
+daemon-overclock start                            84.7%   0.93                93.3%   0.98
+daemon-overclock late (5 runs, ~5.8 pieces)              76.0%   0.70                85.0%   0.79
+daemon-overclock        7.3%      23.3%      16.0 pts
+exploit-honeypot start                            87.7%   1.01                94.7%   1.01
+exploit-honeypot late (5 runs, ~6.2 pieces)              75.5%   0.68                87.2%   0.84
+exploit-honeypot       26.7%      55.3%      28.7 pts
+daemon-honeypot start                             90.3%   1.08                97.2%   1.07
+daemon-honeypot late (5 runs, ~5.8 pieces)              85.3%   0.94                92.7%   0.96
+daemon-honeypot        19.3%      50.7%      31.3 pts
+overclock-honeypot start                          91.8%   1.12                98.0%   1.08
+overclock-honeypot late (5 runs, ~6.2 pieces)              81.3%   0.84                90.5%   0.92
+overclock-honeypot     10.0%      21.3%      11.3 pts
+
