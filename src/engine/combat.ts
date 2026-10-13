@@ -513,11 +513,34 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     const strategy1: DiscardStrategy = combatState.sides[1].forcedDiscardPair
       ? () => combatState.sides[1].forcedDiscardPair as [Card, Card]
       : discardStrategies[1];
-    const d0 = discardToCrib({ hand: dealtHands[0], isOwnCrib: dealer === 0, knownOpponentHand: combatState.sides[0].knownOpponentHand, rng: aiRng }, strategy0);
-    const d1 = discardToCrib({ hand: dealtHands[1], isOwnCrib: dealer === 1, knownOpponentHand: combatState.sides[1].knownOpponentHand, rng: aiRng }, strategy1);
+    // Reveal Crib (session 52, the design's intent): the revealing side
+    // chooses its discards SEEING the two cards its opponent has already
+    // put in the crib -- so the opponent discards first. If both sides
+    // armed it, neither gets the edge and the order is unchanged. The
+    // first discard of the hand draws from aiRng first either way, so a
+    // hand with no Reveal Crib is byte-identical to before.
+    const strategies: [DiscardStrategy, DiscardStrategy] = [strategy0, strategy1];
+    const discardFor = (side: PlayerIndex, knownCribCards?: [Card, Card]) =>
+      discardToCrib(
+        { hand: dealtHands[side], isOwnCrib: dealer === side, knownOpponentHand: combatState.sides[side].knownOpponentHand, knownCribCards, rng: aiRng },
+        strategies[side],
+      );
+    const revealer: PlayerIndex | null = armed(0, 'revealCrib') !== armed(1, 'revealCrib') ? (armed(0, 'revealCrib') ? 0 : 1) : null;
+    let d0: ReturnType<typeof discardFor>;
+    let d1: ReturnType<typeof discardFor>;
+    if (revealer === 0) {
+      d1 = discardFor(1);
+      d0 = discardFor(0, d1.discarded as [Card, Card]);
+    } else if (revealer === 1) {
+      d0 = discardFor(0);
+      d1 = discardFor(1, d0.discarded as [Card, Card]);
+    } else {
+      d0 = discardFor(0);
+      d1 = discardFor(1);
+    }
     const crib = [...d0.discarded, ...d1.discarded];
 
-    // Once the crib exists: reveal it.
+    // The revealing side also keeps the full crib for pegging.
     for (const side of [0, 1] as PlayerIndex[]) {
       if (armed(side, 'revealCrib')) combatState = revealCrib(combatState, side, crib);
     }

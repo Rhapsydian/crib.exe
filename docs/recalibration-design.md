@@ -286,7 +286,8 @@ multi-piece additions with Credit-0 padding.
 | Slow ¼ turn | 0.28 | 0.60 | 1.03 | ≈ 0.27 × opponent per-turn output |
 | Disrupt: reveal hand | 0.09 | 0.19 | 0.16 | small |
 | Disrupt: force discard | 0.29 | 0.63 | 1.04 | ≈ 0.27 × opponent per-turn output |
-| **Disrupt: reveal crib** | **0.00** | **0.00** | **0.00** | **dead — see below** |
+| Disrupt: reveal crib (as first built) | 0.00 | 0.00 | 0.00 | dead — see below |
+| **Disrupt: reveal crib (intended timing)** | **0.10** | **0.18** | **0.14** | **≈ reveal hand** |
 | *with Ward 2 on both hosts:* | | | | |
 | Credit 2 (control) | 2.02 | 2.08 | 2.13 | the instrument reads true with Wards in play |
 | Piercing Credit 2 | 2.95 | 2.21 | 2.13 | Credit + the Ward it bypasses; matters when Ward is large relative to the hits |
@@ -324,17 +325,23 @@ multi-piece additions with Credit-0 padding.
   and Slow 0.55 vs 0.60 barely move; **forced discard halves (0.33 vs
   0.63)**. A worse player wastes less of a hand you've already spoiled,
   so Disrupt's worth depends on the opponent's skill.
-- **Reveal Crib is dead content.** Its Δ = 0 point is *exactly* 50% at
-  every host — no outcome changed on any seed. The revealed crib does
-  reach the pegging strategy (`knownCrib`), but nothing in `ai.ts` reads
-  it — the session-40 bug class (Directory Traversal's reveal was
-  likewise delivered and never read). And knowing the crib only says
-  which two cards the opponent *doesn't* hold, so even read it would be
-  worth little. A design call for the user, not a quick fix.
+- **Reveal Crib was dead as built, and is now fixed to its intent.**
+  As first measured its Δ = 0 point was *exactly* 50% at every host —
+  no outcome changed on any seed. It revealed the crib after both sides
+  had discarded, for pegging, and nothing in `ai.ts` read it (the
+  session-40 bug class). **The user's intent was different**: the crib
+  is worth knowing *while choosing your own discards*, when seeing the
+  two cards the opponent has put in lets you build your own crib or
+  starve theirs. Rebuilt that way: the opponent discards first, and the
+  revealing side's discard decision receives the two actual cards
+  (`DiscardContext.knownCribCards` — what a UI shows a human player at
+  discard time, too). The discard AI already scored the crib exactly
+  when its other half was known; it now uses the known cards ahead of
+  any prediction. Re-priced: **0.10 / 0.18 / 0.14**, on a par with
+  Reveal Hand.
 
 ## Open
 
-- **Reveal Crib**: make the AI use it, give it a different job, or drop
-  it from Disrupt's actions. Left for tuning or later: D7's Safehouse count and
+None blocking step 2. Left for tuning or later: D7's Safehouse count and
 placement, the Safehouse rename (Cold Storage / Sandbox / Air-Gapped
 Host), regular/elite win-rate targets (after step 3, per R1).

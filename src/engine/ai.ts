@@ -213,11 +213,12 @@ export function discardSkillStrategy(skill: number): DiscardStrategy {
   const weights = interpolateDiscardWeights(skill);
   const temperature = temperatureForSkill(DISCARD_MAX_TEMPERATURE, skill);
   return (ctx) => {
-    const predictedOpponentDiscard = ctx.knownOpponentHand
-      ? predictBestDiscard(ctx.knownOpponentHand, !ctx.isOwnCrib)
-      : undefined;
+    // The crib's other half: KNOWN when Reveal Crib let this side see the
+    // opponent's actual discards (session 52), otherwise PREDICTED from a
+    // revealed hand, otherwise estimated. Known beats predicted.
+    const otherCribHalf = ctx.knownCribCards ?? (ctx.knownOpponentHand ? predictBestDiscard(ctx.knownOpponentHand, !ctx.isOwnCrib) : undefined);
     const candidates = allDiscardPairs(ctx.hand);
-    const scores = candidates.map((pair) => scoreDiscard(ctx.hand, pair, ctx.isOwnCrib, predictedOpponentDiscard, weights));
+    const scores = candidates.map((pair) => scoreDiscard(ctx.hand, pair, ctx.isOwnCrib, otherCribHalf, weights));
     if (ctx.rng && temperature > TEMPERATURE_EPSILON) {
       return softmaxPick(candidates, scores, temperature, ctx.rng);
     }

@@ -224,6 +224,24 @@ describe('Disrupt end to end', () => {
     expect(calls[1]).toBeLessThan(result.hands.length);
   });
 
+  it("revealCrib lets the caster choose its discards SEEING the opponent's two crib cards (session 52)", () => {
+    const cribRecon = piece('crib-recon', { verb: 'disrupt', action: 'revealCrib' });
+    const seen: [Array<number>, Array<number>] = [[], []];
+    const spy = (side: 0 | 1): DiscardStrategy => (ctx) => {
+      seen[side].push(ctx.knownCribCards?.length ?? 0);
+      const sorted = ctx.hand.slice().sort((a, b) => a.rank - b.rank);
+      return [sorted[0], sorted[1]];
+    };
+    const result = playCombat([[cribRecon, slow('s')], []], { seed: 3, ...options, discardStrategies: [spy(0), spy(1)] });
+    expect(result.hands.length).toBeGreaterThan(1);
+    // Never on the first hand (nothing has had a turn yet); on later hands
+    // side 0 sees exactly the two cards side 1 already discarded.
+    expect(seen[0][0]).toBe(0);
+    expect(seen[0].some((n) => n === 2)).toBe(true);
+    // The opponent never sees side 0's.
+    expect(seen[1].every((n) => n === 0)).toBe(true);
+  });
+
   it('revealCrib and revealHand reach the pegging strategy as knownCrib and the kept hand', () => {
     const cribRecon = piece('crib-recon', { verb: 'disrupt', action: 'revealCrib' });
     const handRecon = piece('hand-recon', { verb: 'disrupt', action: 'revealHand' });

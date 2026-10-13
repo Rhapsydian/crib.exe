@@ -29,6 +29,12 @@ export interface DiscardContext {
   hand: Card[];
   isOwnCrib: boolean;
   knownOpponentHand?: Card[];
+  /** The two cards the opponent has ALREADY put in the crib (session 52,
+   * Disrupt's Reveal Crib): when a side has it armed, its opponent
+   * discards first and this side chooses its own discards seeing theirs
+   * -- the moment crib knowledge actually matters. What a UI would show a
+   * human player at discard time, too. */
+  knownCribCards?: [Card, Card];
   /** Session 26: a dedicated AI-decision-noise Rng stream (see
    * rng.ts's deriveAiNoiseSeed), absent by default. Only a
    * skill-dial strategy that opts into mistake-injection reads this --

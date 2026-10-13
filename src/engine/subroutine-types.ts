@@ -171,9 +171,12 @@ export interface TempoEffect extends EffectBase {
  * Acts on the Cribbage layer -- Exploit's control. A turn happens
  * mid-hand, after the moment any of these would matter, so a Disrupt
  * effect **arms for the next hand** and resolves at the right point in
- * it: the opponent's dealt hand is revealed once dealt, the crib once
- * selected, and `forceDiscard` pulls one adversarially chosen card from
- * the opponent's hand into the crib before they discard. One timing
+ * it: the opponent's dealt hand is revealed once dealt; `revealCrib`
+ * makes the opponent discard FIRST, so the caster chooses its own
+ * discards seeing the two cards already in the crib (the moment crib
+ * knowledge matters -- session 52, the design's original intent); and
+ * `forceDiscard` pulls one adversarially chosen card from the opponent's
+ * hand into the crib before they discard. One timing
  * mechanism, replacing session 24's three hand-lifecycle moments and
  * `scheduledSabotage` alike.
  */

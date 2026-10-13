@@ -123,3 +123,11 @@ MIRROR-DUEL PRICES -- Credit-equivalents, piece vs piece, equal skill. NOT a ful
 200 seeds x 2 seats per point; skill 0.5; initiative 12, win 50
 suppress 2                 host   2   price   1.88  [  1.80,   2.00]
                            curve 1:95% 1.2:90% 1.4:82% 1.6:66% 1.8:59% 2:38%
+
+## batch G -- Reveal Crib re-priced with its intended timing (discard-time knowledge)
+disrupt-crib               host   1   price   0.10  [  0.08,   0.15]
+                           curve 0:61% 0.05:61% 0.1:51% 0.15000000000000002:43% 0.2:36% 0.25:26%
+disrupt-crib               host   2   price   0.18  [  0.10,   0.23]
+                           curve 0:63% 0.1:63% 0.2:47% 0.30000000000000004:41% 0.4:34% 0.5:20%
+disrupt-crib               host   4   price   0.14  [  0.00,   0.20]
+                           curve 0:63% 0.2:44% 0.4:44% 0.6000000000000001:27% 0.8:25% 1:19%
