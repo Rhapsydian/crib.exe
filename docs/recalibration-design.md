@@ -592,6 +592,47 @@ Plain Cribbage: the better player wins **87.4%** (v 0.5) and **94.3%**
   coarse tripwire). `scripts/skill-check.ts` is the measurement step 3
   runs on authored content, late loadouts included.
 
+### Overclock A/B: the proposed levers don't move retention
+
+`scripts/overclock-ab.ts` rewrote the Overclock pieces actually present
+in each Overclock class's starting and late-run loadouts:
+- **B1:** Turbo's gauge haste becomes a one-turn threshold cut.
+- **B2:** the state/sequence betas charge from cards, at matched rates.
+- **B:** both.
+- **C:** betas on banked points.
+
+Each variant was measured for retention (0.85 v 0.5, 600 seeds × 2
+seats) and for power against the control. Raw output:
+`docs/calibration/step2-cp6b-overclock-ab.txt`.
+
+**No variant moved retention beyond noise** (all within ±0.04 of the
+control, SE ~0.035). Power did move: card triggers made starting
+loadouts 61–85% favourites, and threshold tempo was weaker (41–46%).
+
+**Why: in this engine, nothing per turn carries skill.** A turn fires
+when points fill the gauge, so points per turn are roughly fixed by
+construction. Card-occurrence rates per turn barely move with skill
+(checkpoint 4: fifteens 2.57 vs 2.45). Skill shows up almost entirely
+as **more turns**: 1.06 vs 0.88 a hand at 0.85 v 0.5. Re-triggering a
+per-turn effect off the cards or off banked points can't add skill
+signal, because per-turn scoring is skill-flat.
+
+What retention does track is **how many turns a fight lasts**. Credit 1
+(a long fight) retains 1.02, heavy flat Credit ~0.8, and late
+loadouts less. A turn-count edge decides a long fight but gets lost in
+a short one's variance. Overclock's low numbers are mostly Overclock
+being the burstiest kit (Empower and enhance stacking), not its
+triggers.
+
+**Two consequences for authoring:**
+- Skill weight is protected by **fight length**: output against the win
+  threshold. The retention floor already enforces it; step 3 should read
+  a low retention as "this build ends fights too fast".
+- A real skill lever has to read **per-hand** performance, not per-turn.
+  A hand's points do vary with skill. The user's idea, "score 8+ in a
+  hand → boost", is exactly that kind of source. It doesn't exist yet;
+  it would be a new beta source.
+
 ## Open
 
 None blocking step 2. **Decided (user, session 53):** the skill-retention

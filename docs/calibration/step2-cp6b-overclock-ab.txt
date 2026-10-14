@@ -1,0 +1,33 @@
+
+OVERCLOCK A/B -- retention at 0.85 v 0.5 (plain Cribbage  87.4%) and power vs control at 0.85.
+Isolated mirrors, no passive/Mods, skeleton content. 600 seeds x 2 seats retention, 200 x 2 power.
+
+loadout                            variant              skill-win  retain   power vs A
+exploit-overclock start            A  control            78.6%     0.76       --
+exploit-overclock start            B2 card betas         77.3%     0.73     61.0%
+exploit-overclock start            B  both               77.3%     0.73     61.0%
+exploit-overclock start            C  points betas       77.5%     0.74     60.5%
+exploit-overclock late             A  control            72.3%     0.60       --
+exploit-overclock late             B1 threshold tempo    73.1%     0.62     46.3%
+exploit-overclock late             B2 card betas         71.8%     0.58     56.5%
+exploit-overclock late             B  both               71.5%     0.57     52.8%
+exploit-overclock late             C  points betas       71.4%     0.57     51.0%
+daemon-overclock start             A  control            85.1%     0.94       --
+daemon-overclock start             B2 card betas         83.5%     0.90     67.5%
+daemon-overclock start             B  both               83.5%     0.90     67.5%
+daemon-overclock start             C  points betas       83.6%     0.90     68.0%
+daemon-overclock late              A  control            76.3%     0.70       --
+daemon-overclock late              B1 threshold tempo    76.4%     0.71     44.5%
+daemon-overclock late              B2 card betas         76.3%     0.70     60.0%
+daemon-overclock late              B  both               77.3%     0.73     54.8%
+daemon-overclock late              C  points betas       77.2%     0.73     53.5%
+overclock-honeypot start           A  control            92.1%     1.13       --
+overclock-honeypot start           B2 card betas         91.7%     1.11     84.8%
+overclock-honeypot start           B  both               91.7%     1.11     84.8%
+overclock-honeypot start           C  points betas       91.9%     1.12     86.0%
+overclock-honeypot late            A  control            84.2%     0.91       --
+overclock-honeypot late            B1 threshold tempo    84.1%     0.91     41.3%
+overclock-honeypot late            B2 card betas         83.3%     0.89     51.0%
+overclock-honeypot late            B  both               82.8%     0.88     43.3%
+overclock-honeypot late            C  points betas       82.9%     0.88     40.0%
+
