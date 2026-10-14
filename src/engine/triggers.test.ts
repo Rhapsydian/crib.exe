@@ -4,6 +4,7 @@ import type { HandScoreEvent } from './scoring';
 import type { Alpha, Archetype, Beta, SubroutineDefinition } from './subroutine-types';
 import {
   addCharges,
+  evaluateStateCondition,
   betaCharges,
   betaScale,
   chargeFromAbsorbed,
@@ -39,6 +40,7 @@ const context = (patch: Partial<TriggerContext> = {}): TriggerContext => ({
   ownWard: 0,
   ownGaugeFraction: 0,
   opponentGaugeFraction: 0,
+  ownHandPoints: 0,
   firedThisTurn: [],
   neighbours: [],
   ...patch,
@@ -311,5 +313,13 @@ describe('suitPlayedFromPeggingEvent', () => {
   it('returns null for go and go-point events', () => {
     expect(suitPlayedFromPeggingEvent({ type: 'go', player: 0 })).toBeNull();
     expect(suitPlayedFromPeggingEvent({ type: 'go-point', player: 0 })).toBeNull();
+  });
+});
+
+describe('handPointsAtLeast (checkpoint 6b)', () => {
+  it('holds once the hand reaches the threshold', () => {
+    const c = { kind: 'handPointsAtLeast', amount: 8 } as const;
+    expect(evaluateStateCondition(c, context({ ownHandPoints: 7 }))).toBe(false);
+    expect(evaluateStateCondition(c, context({ ownHandPoints: 8 }))).toBe(true);
   });
 });

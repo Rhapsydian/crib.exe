@@ -633,6 +633,52 @@ triggers.
   hand → boost", is exactly that kind of source. It doesn't exist yet;
   it would be a new beta source.
 
+### The per-hand source: built, carries skill, still doesn't raise retention
+
+The user's lever-3 idea is now in the model as a new state condition,
+**`handPointsAtLeast N`**. It holds once a side has scored N points this
+hand (pegging and show alike) and resets at each deal. As `immediate`,
+it fires the moment the hand crosses N. Raw output:
+`docs/calibration/step2-cp6b-big-hand.txt`.
+
+**It does carry skill.** Comparing skill 0.85 with 0.5, the higher the
+bar, the wider the gap:
+
+| condition | share of turns it holds, 0.85 vs 0.5 | per hand |
+|---|---|---|
+| (turn count alone) | — | 1.24× |
+| 8+ points this hand | 0.555 vs 0.485 | 1.39× |
+| 12+ | 0.342 vs 0.269 | 1.54× |
+| 16+ | 0.163 vs 0.107 | 1.83× |
+
+**But retention doesn't rise.** Overclock's betas were turned into "while
+12+ this hand" with the effect scaled up to hold output (variant D).
+Power-matched (×2/×1/×1, 53% vs control), retention is unchanged:
+late-run 0.60 vs 0.60 and 0.71 vs 0.70, starting loadouts slightly
+lower. The first scaling (×3/×1/×2) overshot power (58–84%) and lost
+retention, as stronger builds do.
+
+The skill advantage in *how often* the bonus lands is cancelled by the
+*variance* the bonus adds. A rare, big payoff makes the fight lumpier,
+and lumpiness is what drowns a turn-count edge. Even a weaker big-hand
+build (overclock-honeypot late, 30% power) retained less than its
+control.
+
+**Conclusions:**
+- Retention in this engine is set by **fight length and variance**, not
+  by which source triggers a bonus. The turn-count channel (points →
+  turns) is the skill signal, and a plain long fight already keeps all
+  of it (Credit 1: 1.02). **The authoring rule is about output and
+  burst**: keep turns-to-win up and payoffs smooth, enforced by the 0.5
+  floor.
+- `handPointsAtLeast` stays as a content option. It reads as skill to
+  the player ("play a big hand, the machine overclocks"), and it is
+  retention-neutral at matched power. Its frequency rows are in
+  `scripts/beta-frequency.ts` but not yet in `beta-frequency-data.ts`;
+  regenerate before pricing it by formula.
+- Levers 1 and 2 (threshold tempo, card triggers) are **not** adopted as
+  rules. The evidence says they don't matter for skill.
+
 ## Open
 
 None blocking step 2. **Decided (user, session 53):** the skill-retention

@@ -271,7 +271,14 @@ export type BetaSource =
         | { kind: 'ownGaugeAbove'; fraction: number }
         | { kind: 'ownGaugeBelow'; fraction: number }
         | { kind: 'opponentGaugeAbove'; fraction: number }
-        | { kind: 'opponentGaugeBelow'; fraction: number };
+        | { kind: 'opponentGaugeBelow'; fraction: number }
+        /** Session 53 (checkpoint 6b): true once this side has scored at
+         * least `amount` points this hand -- pegging and show alike,
+         * resetting at each deal. The skill-carrying condition: points
+         * per TURN are fixed by the initiative gauge, but points per HAND
+         * are not, so a better player clears a hand threshold more often.
+         * As `immediate`, it fires the moment the hand crosses it. */
+        | { kind: 'handPointsAtLeast'; amount: number };
     }
   | {
       source: 'sequence';

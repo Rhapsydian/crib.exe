@@ -5,6 +5,7 @@ import type { PlayerIndex } from './game';
 import type { Alpha, Beta, SubroutineDefinition } from './subroutine-types';
 import { playCombat, escalationFloorFor, escalationShrinkPerHandFor } from './combat';
 import { CLASS_STARTING_LOADOUTS } from './subroutines';
+import { GAUGE_THRESHOLD, BREACH_THRESHOLD } from './encounters';
 import { createRng } from './rng';
 import { createDeck, shuffle } from './deck';
 import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardStrategy } from './deal';
@@ -328,5 +329,20 @@ describe('systemic turn-loop detection', () => {
         winThreshold: [50, 50],
       }),
     ).not.toThrow();
+  });
+});
+
+describe('handPointsAtLeast end to end (checkpoint 6b)', () => {
+  it('fires an immediate beta once per hand that clears the threshold, and resets each deal', () => {
+    const piece: SubroutineDefinition = {
+      id: 'big-hand', name: 'big-hand', archetype: 'overclock',
+      alpha: { verb: 'credit', amount: 0 },
+      beta: { source: 'state', condition: { kind: 'handPointsAtLeast', amount: 8 }, shape: 'immediate', effect: { verb: 'credit', amount: 1 } },
+    };
+    const result = playCombat([[piece], [piece]], { seed: 7, gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD], winThreshold: [BREACH_THRESHOLD, BREACH_THRESHOLD] });
+    const fires = result.log.filter((e) => e.side === 0 && e.immediate && e.subroutineId === 'big-hand').length;
+    // At most one edge per hand; a real fight clears 8 points in some hands.
+    expect(fires).toBeGreaterThan(0);
+    expect(fires).toBeLessThanOrEqual(result.hands.length);
   });
 });

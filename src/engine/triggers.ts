@@ -233,6 +233,8 @@ export interface TriggerContext {
   ownWard: number;
   ownGaugeFraction: number;
   opponentGaugeFraction: number;
+  /** Points this side has scored so far this hand. */
+  ownHandPoints: number;
   firedThisTurn: readonly FiredThisTurn[];
   neighbours: readonly SubroutineDefinition[];
 }
@@ -255,6 +257,8 @@ export function evaluateStateCondition(condition: StateCondition, context: Trigg
       return context.opponentGaugeFraction > condition.fraction;
     case 'opponentGaugeBelow':
       return context.opponentGaugeFraction < condition.fraction;
+    case 'handPointsAtLeast':
+      return context.ownHandPoints >= condition.amount;
   }
 }
 

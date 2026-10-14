@@ -103,6 +103,9 @@ export interface CombatSideState {
   /** Accumulating shield from Ward: absorbs the opponent's incoming
    * non-piercing Credit until depleted. */
   wardShield: number;
+  /** Points scored so far this hand (pegging and show), reset at each
+   * deal -- for `handPointsAtLeast` state betas. */
+  handPoints: number;
   /** Temporary threshold changes on this side's initiative gauge. */
   timedTempo: TimedTempo[];
   /** Disrupt effects this side has armed for the next hand. */
@@ -143,6 +146,7 @@ export function createCombatSideState(definitions: SubroutineDefinition[], gauge
     trace: 0,
     loadout: definitions.map((definition) => ({ definition, state: createInitialState() })),
     wardShield: 0,
+    handPoints: 0,
     timedTempo: [],
     pendingDisrupt: [],
     knownOpponentHand: undefined,
@@ -190,6 +194,7 @@ export function clearHandKnowledge(combatState: CombatState): CombatState {
     knownOpponentHand: undefined,
     knownCrib: undefined,
     forcedDiscardPair: undefined,
+    handPoints: 0,
   })) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
 }
@@ -422,7 +427,7 @@ function mapLoadout(
  * cards betas, points-progress betas, and points cooldowns. Each piece
  * decides for itself whether the scorer is a side it watches. */
 export function applyOccurrence(combatState: CombatState, occurrence: ScoringOccurrence): CombatState {
-  let state = combatState;
+  let state = withSide(combatState, occurrence.player, { handPoints: combatState.sides[occurrence.player].handPoints + occurrence.magnitude });
   for (const side of [0, 1] as PlayerIndex[]) {
     state = mapLoadout(state, side, (entry) => chargeFromOccurrence(entry.state, entry.definition, occurrence, side));
   }
@@ -606,6 +611,7 @@ export function buildTriggerContext(
     ownWard: own.wardShield,
     ownGaugeFraction: own.winGauge.progress / own.winGauge.threshold,
     opponentGaugeFraction: opponent.winGauge.progress / opponent.winGauge.threshold,
+    ownHandPoints: own.handPoints,
     firedThisTurn,
     neighbours,
   };

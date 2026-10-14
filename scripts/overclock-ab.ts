@@ -16,7 +16,11 @@
  *       expectedScale; effect unchanged);
  *   B   both;
  *   C   lever 3, approximated -- B1, plus betas on points scored
- *       (`progress: points`, banked) at the same rates.
+ *       (`progress: points`, banked) at the same rates;
+ *   D   lever 3 proper -- the betas become "while you've scored 12+ this
+ *       hand" (`state: handPointsAtLeast`, the per-hand source), with the
+ *       effect scaled so the expected output per turn matches the control:
+ *       a rarer, bigger boost that a better player clears more often.
  *
  * Each variant is measured for RETENTION (0.85 v 0.5, as
  * scripts/skill-check.ts) and POWER: its win rate against the control
@@ -30,7 +34,7 @@
  * PROVENANCE: isolated mirrors, no passive/Mods, skeleton content.
  *
  * Usage:
- *   npx tsx scripts/overclock-ab.ts [--seeds=300] [--powerSeeds=150] [--late=5] [--classes=a,b]
+ *   npx tsx scripts/overclock-ab.ts [--seeds=300] [--powerSeeds=150] [--late=5] [--classes=a,b] [--variants=A,D] [--handScale=3,1,2]
  */
 import { GAUGE_THRESHOLD, BREACH_THRESHOLD } from '../src/engine/encounters';
 import { mirrorWinRate } from '../src/engine/pricing';
@@ -70,10 +74,25 @@ const POINTS_TRIGGERS: Record<string, Trigger> = {
   pipeline: { source: 'progress', metric: 'points', per: 15, shape: 'stepped', at: 1 }, // ~0.8
 } as Record<string, Trigger>;
 
-function retrigger(piece: SubroutineDefinition, triggers: Record<string, Trigger>): SubroutineDefinition {
+/** Big-hand triggers: 12+ points this hand holds on ~34% of turns at
+ * skill 0.85 (measured), so each effect is scaled to the control's rate. */
+const HAND_TRIGGERS: Record<string, Trigger> = {
+  'burst-clock': { source: 'state', condition: { kind: 'handPointsAtLeast', amount: 12 }, shape: 'whileTrue' },
+  'voltage-boost': { source: 'state', condition: { kind: 'handPointsAtLeast', amount: 12 }, shape: 'whileTrue' },
+  pipeline: { source: 'state', condition: { kind: 'handPointsAtLeast', amount: 12 }, shape: 'whileTrue' },
+} as Record<string, Trigger>;
+/** Effect multipliers that hold output per turn: 1.0 / 0.34, 0.38 / 0.34,
+ * ~0.7 / 0.34, rounded to whole amounts. */
+const [burstK, voltageK, pipelineK] = (args.handScale ?? '3,1,2').split(',').map(Number);
+const HAND_SCALE: Record<string, number> = { 'burst-clock': burstK, 'voltage-boost': voltageK, pipeline: pipelineK };
+
+function retrigger(piece: SubroutineDefinition, triggers: Record<string, Trigger>, scale: Record<string, number> = {}): SubroutineDefinition {
   const t = triggers[piece.id];
   if (!t || !piece.beta) return piece;
-  return { ...piece, beta: { ...t, effect: piece.beta.effect } as SubroutineDefinition['beta'] };
+  const k = scale[piece.id] ?? 1;
+  const e = piece.beta.effect;
+  const effect = k === 1 || e.verb === 'disrupt' ? e : { ...e, amount: e.amount * k };
+  return { ...piece, beta: { ...t, effect } as SubroutineDefinition['beta'] };
 }
 
 /** Lever 1: Turbo's gauge haste -> a one-turn threshold cut of the same
@@ -91,7 +110,9 @@ const VARIANTS: Record<string, (p: SubroutineDefinition) => SubroutineDefinition
   'B2 card betas': (p) => retrigger(p, CARD_TRIGGERS),
   'B  both': (p) => retrigger(thresholdTempo(p), CARD_TRIGGERS),
   'C  points betas': (p) => retrigger(thresholdTempo(p), POINTS_TRIGGERS),
+  'D  big-hand betas': (p) => retrigger(p, HAND_TRIGGERS, HAND_SCALE),
 };
+const only = args.variants ? new Set(args.variants.split(',')) : null;
 
 const matchup = { high: 0.85, low: 0.5 };
 const cribbage = cribbageSkillEdge(matchup, 2000);
@@ -138,6 +159,7 @@ for (const classId of classes) {
     for (const [vName, variant] of Object.entries(VARIANTS)) {
       const changed = loadouts.some((l) => l.some((p) => variant(p) !== p));
       if (!changed && !vName.startsWith('A')) continue; // identical to control
+      if (only && !only.has(vName.slice(0, 2).trim())) continue;
       const m = measure(loadouts, variant);
       console.log(`${name.padEnd(34)} ${vName.padEnd(20)} ${pct(m.skillWin)}    ${m.retain.toFixed(2).padStart(5)}    ${vName.startsWith('A') ? '   --' : pct(m.power)}`);
     }

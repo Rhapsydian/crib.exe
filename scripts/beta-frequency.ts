@@ -80,6 +80,7 @@ const probes: SubroutineDefinition[] = [
   probe('state:ownGauge<0.25', { source: 'state', condition: { kind: 'ownGaugeBelow', fraction: 0.25 } }),
   probe('state:oppGauge>0.5', { source: 'state', condition: { kind: 'opponentGaugeAbove', fraction: 0.5 } }),
   probe('state:oppGauge<0.25', { source: 'state', condition: { kind: 'opponentGaugeBelow', fraction: 0.25 } }),
+  ...[8, 12, 16].map((amount) => probe(`state:handPoints>=${amount}`, { source: 'state', condition: { kind: 'handPointsAtLeast', amount } })),
 ];
 
 const host = creditPiece(hostAmount, 'host');
