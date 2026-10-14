@@ -28,8 +28,8 @@ import type { WinRate } from './pricing';
  */
 
 /** The lowest retention a shipped loadout may have (checkpoint 6b).
- * PROVISIONAL, pending the user's call: at least half of plain Cribbage's
- * skill edge must survive. The skeleton measures 0.75-1.12 on starting
+ * Set by the user (session 53): at least half of plain Cribbage's skill
+ * edge must survive. The skeleton measures 0.75-1.12 on starting
  * loadouts and 0.55-0.94 late in runs (0.85 v 0.5;
  * `docs/calibration/step2-cp6b-skill-retention.txt`). */
 export const SKILL_RETENTION_FLOOR = 0.5;

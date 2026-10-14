@@ -594,10 +594,11 @@ Plain Cribbage: the better player wins **87.4%** (v 0.5) and **94.3%**
 
 ## Open
 
-None blocking step 2. **The skill-retention floor is the user's call
-(checkpoint 6b):** provisional 0.5, against a skeleton low of 0.55 late
-in runs. **The Exploit Heat target is the user's call
-(checkpoint 6):** how much more often an Exploit build should end on
-Heat than the others. The skeleton currently gives 3–5×. Left for tuning or later: D7's Safehouse count and
-placement, the Safehouse rename (Cold Storage / Sandbox / Air-Gapped
-Host), regular/elite win-rate targets (after step 3, per R1).
+None blocking step 2. **Decided (user, session 53):** the skill-retention
+floor stays at **0.5**. The Exploit Heat target is **3–5× the other
+classes' Heat-ending rate**, today's skeleton level. Keep watching it as
+authored Exploit noise lands.
+
+Left for tuning or later: D7's Safehouse count and placement, the
+Safehouse rename (Cold Storage / Sandbox / Air-Gapped Host),
+regular/elite win-rate targets (after step 3, per R1).
