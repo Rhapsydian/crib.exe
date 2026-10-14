@@ -37,6 +37,11 @@ with posted fight prices and a new run ending, *breached, then caught*;
 and every verb now has a **price in Credit-equivalents**, measured by
 mirror duels.
 
+Session 53 finished step 2: betas, Charge and Trace are priced, Event
+Heat scales with the posted fight prices, and a **skill-retention check**
+guards that Cribbage skill keeps deciding fights. The rules step 3
+authors against are in `DESIGN.md` → Pricing.
+
 What exists, all headless and test-covered:
 
 | area | state |
@@ -163,7 +168,7 @@ That constraint is why the balance tooling above can exist at all.
 | `DESIGN.md` | The settled design — mechanics, archetypes, classes, enemies, resources, and the reasoning behind them |
 | `docs/archetype-redesign.md` | Session 51's decision trail for the archetype and subroutine redesign (A1–A12, plus every implementation call) |
 | `docs/run-economy-design.md` | Session 50's decisions: the per-layer Heat economy (built session 52), the pillar suite, and the per-turn model (D11–D15) |
-| `docs/recalibration-design.md` | Step 2's decision trail (R1–R8) and its checkpoint findings: the Heat build, the pricing instrument, the verb price table |
+| `docs/recalibration-design.md` | Step 2's decision trail (R1–R8) and its checkpoint findings: the Heat build, the pricing instrument, verb and beta prices, Trace, skill retention |
 | `docs/design-history.md` | `DESIGN.md` sections superseded by session 51, archived verbatim |
 | `BACKLOG.md` | What is still to do, and the current balance picture |
 | `docs/roadmap-history.md` | Completed roadmap work and the per-checkpoint record of how it was built |
