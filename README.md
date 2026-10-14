@@ -98,7 +98,9 @@ kit, reporting threshold vs. attrition wins on each side.
 | `npx tsx scripts/occurrence-frequency.ts` | Real Cribbage occurrence frequency and score distributions, outside the roguelite layer — calibrates content thresholds against actual play |
 | `npx tsx scripts/cribbage-skill-matrix.ts` | What a given "player skill" value actually means, as a skill-vs-skill win-rate grid |
 | `npx tsx scripts/price-check.ts` | What one verb is worth, in Credit per turn: seat-swapped mirror duels, host-plus-difference (`src/engine/pricing.ts`). Raw results in `docs/calibration/` |
-| `npx tsx scripts/pillar-check.ts` | Session 50's single-piece test enemies swept over magnitude × fire rate — superseded by `price-check.ts`, retired at step 2's write-up |
+| `npx tsx scripts/beta-frequency.ts` / `beta-validate.ts` | How often each beta source charges per turn; the beta-pricing formula checked against duels |
+| `npx tsx scripts/trace-price.ts` | What extra Trace per fight costs a run, and how much of each class's Trace is its own noise |
+| `npx tsx scripts/skill-check.ts` | Skill retention: whether Cribbage skill still decides fights with loadouts installed (floor 0.5, DESIGN.md Pricing) |
 | `npx tsx scripts/enemy-check.ts` / `heat-sources.ts` | Per-enemy difficulty against accumulated state; where run Heat comes from |
 
 ### Holding the gatekeepers still

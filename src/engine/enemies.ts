@@ -1,4 +1,3 @@
-import type { DiagnosticEnemyId } from './diagnostic-enemies';
 import { scaledDefinition, type Archetype, type SubroutineDefinition } from './subroutine-types';
 import { ALL_POOL_SUBROUTINES } from './subroutines';
 import type { Rng } from './rng';
@@ -18,16 +17,10 @@ export type EnemyTier = 'regular' | 'elite' | 'gatekeeper';
 /** One id per enemy in the roster. Session 51 deleted the session 27
  * roster -- its kits were built from the scrapped subroutine pool -- and
  * replaced it with a SKELETON roster (A11), which stands in until the
- * roster is re-authored against the pillar calibration (run-economy
- * D10). The old roster is archived in docs/design-history.md.
- *
- * Diagnostic pillar ids are part of EnemyId so fixtures type-check
- * everywhere a real enemy does, while staying absent from ENEMY_ROSTER --
- * which is what actually makes them unreachable (every selection path
- * filters that array). Type-only import, so there is no runtime cycle
- * with diagnostic-enemies.ts. */
+ * roster is re-authored against step 2's pricing rules (DESIGN.md
+ * Pricing). The old roster is archived in docs/design-history.md.
+ */
 export type EnemyId =
-  | DiagnosticEnemyId
   // Regular
   | 'skeleton-crawler'
   | 'skeleton-watchdog'
@@ -145,7 +138,7 @@ export function pool(id: string): SubroutineDefinition {
 /**
  * The SKELETON roster (session 51, A11). Not content: it exists so full
  * runs keep their regular, elite and gatekeeper fights while the real
- * roster waits on the pillar calibration. Calibration's controlled
+ * roster waits on step 3's authoring. Calibration's controlled
  * background is still the synthetic gatekeeper (`gatekeeperOverrides`),
  * not this roster.
  *

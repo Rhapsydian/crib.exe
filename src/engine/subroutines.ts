@@ -5,11 +5,11 @@ import type { Archetype, SubroutineDefinition } from './subroutine-types';
  *
  * Not content. The archetype redesign scrapped the old 159-piece pool
  * (docs/design-history.md), and real content can't be authored until the
- * pillar calibration says what an alpha and a beta are each worth
- * (DESIGN.md "Archetypes & Subroutines" -> Pricing). This pool exists so
+ * against step 2's pricing rules (DESIGN.md "Archetypes & Subroutines"
+ * -> Pricing), which step 3 applies. This pool exists so
  * that, in the meantime, everything downstream of a pool keeps working --
- * acquisition, the Shop, Merge, full simulated runs, the pillar harness's
- * "real accumulated player state" -- and so tests have fixtures.
+ * acquisition, the Shop, Merge, full simulated runs and the calibration
+ * scripts -- and so tests have fixtures.
  *
  * Shape: four pieces per archetype (two common, one uncommon, one rare),
  * each using that archetype's verbs and signature beta shape (A3), so the

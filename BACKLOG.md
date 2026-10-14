@@ -55,23 +55,27 @@ rather than tuned. Work happens on the `archetype-redesign` branch.
    Mods / Merge / Burners / bridge passives; diagnostics ported. Build
    green: `npm run check` clean, 615 tests. Every implementation call is
    logged in `docs/archetype-redesign.md`.
-2. **Recalibrate** — decided as R1–R8 (session 52). Checkpoints:
-   1. ✅ per-layer Heat economy (D1–D7, R6–R8);
-   2. ✅ pricing instrument (`src/engine/pricing.ts`,
-      `scripts/price-check.ts`);
-   3. ✅ verb prices — table in `docs/recalibration-design.md`, raw output
-      in `docs/calibration/`; Reveal Crib rebuilt to its intended timing;
-   4. beta frequency table — per-turn charge/hold rates per source;
-   5. beta pricing — R3's formula, validated on a sample; Charge;
-   6. Trace price against a layer's allowance, the Exploit noise check,
-      and **rescaling Event Heat values** (still ±8–28 against a 40
-      allowance);
-   7. write-up: pricing rules into `DESIGN.md`, retire `pillar-check.ts`.
+2. **Recalibrate** ✅ (sessions 52–53) — decided as R1–R8; the rules
+   step 3 authors against are in `DESIGN.md` → Pricing, the full record in
+   `docs/recalibration-design.md`, raw output in `docs/calibration/`.
+   Checkpoints: per-layer Heat economy; pricing instrument; verb prices;
+   beta frequency table; beta pricing formula (validated, Charge priced);
+   Trace price, Event Heat anchored to the loss price, Exploit noise
+   check; skill retention (6b, with the Overclock A/Bs and the new
+   `handPointsAtLeast` source); write-up, pillar suite retired.
 
-   Watch items: both Honeypot conversions now have prices — credit taken
-   from the opponent is the strongest verb per point (~1.85×), credit
-   spent from your own Ward is worth only Ward that would be wasted.
-   Skeleton regular/elite fights remain near-free.
+   Watch items carried into step 3:
+   - **Exploit Heat** at 3–5× the other classes' Heat-ending rate (user's
+     target) — today carried by one skeleton piece.
+   - **Skill retention** runs lowest in late-run builds and Overclock
+     (late 0.55); floor 0.5. Check late loadouts, not just starting ones.
+   - **Honeypot conversions**: credit taken from the opponent is the
+     strongest verb per point (~1.85×); conversion bypassing Ward is the
+     user's flagged watch item.
+   - `handPointsAtLeast` frequency rows need generating into
+     `beta-frequency-data.ts` before the formula can price it.
+   - Skeleton regular/elite fights remain near-free; win-rate targets and
+     fight length (the game-wide skill dial) come after step 3.
 3. **Author** — archetype subroutines → classes (names, bridge
    passives, unlock order) → enemy roster.
 

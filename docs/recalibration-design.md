@@ -679,6 +679,20 @@ control.
 - Levers 1 and 2 (threshold tempo, card triggers) are **not** adopted as
   rules. The evidence says they don't matter for skill.
 
+## Checkpoint 7 — write-up
+
+- **The rules step 3 authors against are now in `DESIGN.md` → Pricing.**
+  They cover verb prices, the piece formula and where it doesn't apply,
+  Charge, Trace and the Exploit target, and skill retention.
+- **Retired:** the pillar suite (`scripts/pillar-check.ts`,
+  `src/engine/diagnostic-enemies.ts` and its test). R2's mirror duels
+  replaced it as the instrument in checkpoint 2, and nothing else read
+  it. Enemies are priced with the same instrument as the player pool.
+  It remains in git history.
+- `README.md`'s script table lists the step 2 instruments.
+
+Step 2 is complete.
+
 ## Open
 
 None blocking step 2. **Decided (user, session 53):** the skill-retention

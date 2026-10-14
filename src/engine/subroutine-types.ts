@@ -309,7 +309,7 @@ export type BetaShape =
 
 /** A beta is one source, one shape and one effect -- one bundle, never a
  * stack (D12), so an alpha and a beta are each independently priceable
- * by the pillar suite. */
+ * (`beta-pricing.ts`, `pricing.ts`). */
 export type Beta = BetaSource & BetaShape & { effect: BetaEffect };
 
 // ---------------------------------------------------------------------
@@ -331,7 +331,7 @@ export interface SubroutineDefinition {
    * Tempo piece writes gauge progress directly and never produces a
    * scoring occurrence, so the gate can never be fed by the thing it
    * gates. More load-bearing under D11, where it suppresses a guaranteed
-   * per-turn fire, and the frequency axis the pillar suite sweeps (D9). */
+   * per-turn fire. */
   pointsCooldown?: number;
   /** Caps how many times this piece can fire in one combat (session 39).
    * Mostly for `immediate` betas, the one path that can re-fire outside

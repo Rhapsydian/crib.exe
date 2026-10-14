@@ -14,7 +14,7 @@ import { archetypeLadderPosition } from './loadout';
  * acquisition"): the old upgrade axis, "easier to trigger", stopped
  * existing once every piece fires every turn (D11). It never changes the
  * alpha's verb or the beta's source -- those are the piece's identity.
- * How much one rank is *worth* is unpriced until the pillar calibration;
+ * How much one rank is *worth* is unpriced (price it with step 2's rules);
  * the bonuses below are placeholders sized to the skeleton pool's
  * per-turn floor (~1.5-2), not tuned.
  */

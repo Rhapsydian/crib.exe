@@ -42,7 +42,10 @@ Two deliberately separate resources, not one shared health stat:
   - a **loss** costs a fixed multiple of the node's worst-case win (R7),
     replacing the flat per-tier charge, so clean win < scrappy win < loss
     holds everywhere and every node's risk is a posted triple;
-  - every layer has at least one Safehouse (D7).
+  - every layer has at least one Safehouse (D7);
+  - an **Event's Heat** is a multiple of the layer's elite-loss charge
+    (`eventHeat`), so Events scale with depth like every posted price
+    (step 2, checkpoint 6).
   Numbers are first-pass placeholders (`heat.ts`).
 - **Heat** (original model) — a persistent, run-spanning resource belonging only to the
   player (enemies don't persist across fights, so this is player-only by
@@ -266,7 +269,7 @@ A beta's criteria are a **source** (what it watches) combined with a
 |---|---|---|
 | **Cards** | a scoring category (fifteen, pair, run, flush, nobs, thirty-one, go); the archetype's own suit tally. Optional: whose scoring to watch, minimum magnitude | Exploit |
 | **Progress** | own points scored, this piece's fire count, defense absorbed | Daemon, Honeypot |
-| **State** | dealer / non-dealer, own Ward size, either side's gauge level | Honeypot, Overclock |
+| **State** | dealer / non-dealer, own Ward size, either side's gauge level, points scored this hand (`handPointsAtLeast`, session 53) | Honeypot, Overclock |
 | **Sequence** | what fired before this piece in the loadout (below) | Overclock |
 
 | Shape | Behaviour |
@@ -374,21 +377,71 @@ likely comes from the partner archetype, since conversion pays off only
 after defense is banked. The old Cantrip slot is retired — under D11
 every piece acts every turn.
 
-### Pricing
+### Pricing (step 2, sessions 52–53)
 
-Not yet known — the open half of this design. The diagnostic pillar
-suite (`src/engine/diagnostic-enemies.ts`, `scripts/pillar-check.ts`;
-`docs/run-economy-design.md` D9–D14) is re-aligned one pillar per verb
-and swept magnitude × frequency to produce the exchange rate between
-effect size and fire rate. That rate prices the player pool and the
-enemy pool alike, and every production subroutine is authored as a
-priced alpha plus a priced beta.
+Every piece is priced in **Credit per turn**, the currency (R1). The
+full record, with every measurement behind these rules, is
+`docs/recalibration-design.md`; raw output is in `docs/calibration/`.
+The instruments are:
 
-Until then, a **skeleton pool** stands in (A11): one plain piece per
-archetype per verb it uses, roughly level numbers, enough to keep
-acquisition, Shop, Merge and full simulated runs working. A matching
-skeleton enemy roster keeps regular, elite and gatekeeper fights in
-runs.
+- `src/engine/pricing.ts` with `scripts/price-check.ts`: seat-swapped
+  mirror duels, a host plus the piece being priced against a host plus
+  Credit Δ, solving for the Δ that ties.
+- `src/engine/beta-pricing.ts`: the formula.
+- `scripts/beta-validate.ts`: checks the formula against duels.
+- `scripts/trace-price.ts`: prices Trace.
+- `scripts/skill-check.ts`: skill retention.
+
+**Authoring rules for step 3:**
+
+1. **Verb prices** at a Credit-2 host, per point of the effect's amount:
+   - **Flat across hosts:** Credit 1; Suppress ~0.96; Ward ~0.97;
+     credit taken from the opponent ~1.85 (the strongest verb per
+     point); Empower ~1 per point per boosted piece.
+   - **Scaling with what they act on:** Haste ¼ turn ≈ ⅓ × own output,
+     halved by the points cooldown; Slow and forced discard ≈ 0.27 ×
+     the opponent's output; credit spent from your own Ward is worth only
+     the Ward that would otherwise go unused. Price these in context.
+   - **Disrupt:** reveal-hand and reveal-crib are cheap (~0.1–0.2).
+     Forced discard halves against a weaker opponent.
+   - **Prices add:** two effects on one piece cost the sum of their parts.
+2. **Piece price = alpha + expected beta uses per turn × one use**
+   (`piecePrice`). It holds within ~3% for card, progress and
+   dealer/non-dealer sources. It returns null rather than guess for
+   sequence betas, immediate state betas, and context-priced verbs.
+   **Price these by duel instead:**
+   - betas on gauge or Ward conditions (the condition is correlated with
+     the effect's worth);
+   - immediate extra-fire betas (they carry a timing premium, ~+25% on
+     the beta).
+3. **Charge:** one charge a turn into a beta still below its cap is worth
+   one extra use of that beta (~1 Credit for a +1 enhance).
+4. **Trace has no flat exchange rate.** It is priced against a layer's
+   allowance (1 Trace = 2.5–3.6% of a layer). Its cost is convex in the
+   noise a build already makes: free in a quiet build, 5–8 points of run
+   victory for +1 Trace a fight in a noisy one. **A noisy piece costs
+   more in a noisy build.** Exploit's identity target: its classes end
+   on Heat **3–5×** as often as the others (user, session 53).
+5. **Skill retention ≥ 0.5.** Cribbage skill must keep deciding fights.
+   - **The measure:** a loadout mirror's skill edge (the better player's
+     win rate − 0.5) over plain Cribbage's, at the same skills.
+     `skill-retention.test.ts` guards the starting loadouts;
+     `scripts/skill-check.ts` measures any loadout, **late-run builds
+     included**, where retention runs lowest.
+   - **What sets it:** skill reaches a fight as turn count (points fill
+     the initiative gauge). Per-turn scoring is skill-flat, so which
+     source triggers a bonus doesn't change retention. What does is
+     **fight length and burst**: big flat output and lumpy payoffs drown
+     the turn-count edge.
+   - **Reading a low result:** "this build ends fights too fast or too
+     swingily". Fix output and burst, not triggers.
+
+A **skeleton pool** (A11) still stands in for content: one plain piece
+per archetype per verb it uses, enough to keep acquisition, Shop, Merge
+and full simulated runs working, plus a matching skeleton enemy roster.
+Step 3 authors the real pools against these rules. Enemies are priced
+with the same instrument, because the enemy and player pools share one
+currency.
 
 ## Map & Run Structure
 
@@ -1010,7 +1063,7 @@ node) can appear at all — mirrors how rarity already gates power in the
 subroutine/Mod pools, just applied to risk instead of acquisition cost.
 
 **Effect pool**: reuses existing resources and mechanisms wholesale —
-Heat delta, Data delta, a subroutine/Mod/Burner grant, or (a classic
+Heat delta (since step 2, a multiple of the layer's elite-loss charge), Data delta, a subroutine/Mod/Burner grant, or (a classic
 gamble-tier beat) triggering a bonus fight for a bigger payout. No new
 resource type needed.
 
