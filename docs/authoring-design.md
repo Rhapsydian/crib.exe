@@ -99,6 +99,68 @@ classes come after all four archetypes; until then the class starting
 loadouts stay on skeleton pieces, and the skeleton is retired when the
 classes switch over.
 
+### S8 — Rares stay inside the model; rule-bending belongs to Mods ✅
+
+The user's call. A rare's build-around comes from the existing verbs,
+sources and shapes (Charge, conditions, opponent-watching), never from
+a new piece-level rule like "your fifteens count as runs". Mods are
+where rules bend.
+
+## Checkpoint 1 — Exploit
+
+`src/engine/content/exploit.ts`: 9 pieces, not yet wired into
+acquisition (the skeleton keeps feeding runs until the classes switch
+over). Checked by `scripts/archetype-check.ts`. Raw output:
+`docs/calibration/step3-cp1-exploit.txt`.
+
+| piece | rarity | alpha | beta | price |
+|---|---|---|---|---|
+| Buffer Overflow | C | Credit 1 | each fifteen: +1 (cap 1) | 1.89 |
+| Port Scan | C | Credit 1 | each pair: +1 (cap 2) | 2.15 |
+| Fuzzer | C | Credit 1 | each Exploit-suit card played: +1, +1 Trace (cap 2) | 1.85 |
+| Doorknob Rattle | C | Credit 1 | each go: Slow the opponent 3/8 turn (cap 2) | 1.83 |
+| Credential Stuffing | U | Credit 1 | each opponent fifteen: +1 (cap 2) | 2.15 |
+| Jackpot | U | Credit 1 | while 12+ this hand: +3, +1 Trace | 2.12 |
+| Man in the Middle | U | Credit 2 | opponent's 3rd pair: force a discard next hand | 2.19 |
+| Zero-Day Chain | R | Credit 2 | each fifteen: charge the next piece | 2.00 alone, 2.49 above Port Scan |
+| Race Condition | R | Credit 1 | while the opponent's win gauge is under ½: +2 | 2.14 alone, 2.40 with Suppress 2 |
+
+Tuning from the first draft, all measured:
+
+- **Doorknob Rattle:** Slow ⅛ → **⅜ turn**. Slow is worth less than its
+  size suggests: ⅛ priced 1.42 and ¼ priced 1.71.
+- **Jackpot:** +4 → **+3** (2.52, just over the band).
+- **Man in the Middle:** 2nd → **3rd opponent pair** (2.51 → 2.19).
+- **Zero-Day Chain's build:** above Buffer Overflow, the charge was
+  wasted, because Buffer Overflow's cap-1 beta is already full when a
+  fifteen lands. Above Port Scan it turns fifteens into pair bonuses
+  (2.10 → 2.49). **Authoring rule: a Charge partner needs cap to spare
+  when the charge arrives.**
+- **Race Condition:** under ¼ → **under ½**. The condition reads the
+  opponent's *win* gauge, and Exploit's Slow moves their *initiative*
+  gauge, so no Exploit piece can build toward it. Its build is
+  cross-archetype: Suppress (Daemon's healing) lifts it to 2.40. It's a
+  rare for the Exploit + Daemon class. Re-check it against Daemon's real
+  pieces at checkpoint 2.
+
+Kits:
+
+| kit | threshold wins | retention | Trace per fight |
+|---|---|---|---|
+| skeleton Exploit (CP6's reference) | 100% | 0.67 | 4.27 |
+| commons only | 100% (credit rule ✅) | 0.86 | 4.35 |
+| early (3 pieces) | 100% | 0.94 | 0 |
+| late spike (6) | 100% | 0.59 | 3.92 |
+| late control (6) | 100% | 0.70 | 0 |
+
+- **Retention** stays above the floor everywhere. The late spike build
+  is lowest, at 0.59.
+- **Noise** matches the skeleton's Fuzzer, which produced CP6's 3–5×
+  Heat endings, in every kit that carries Fuzzer or Jackpot. Control
+  kits are quiet. Exploit's Heat identity therefore depends on picking
+  the noisy pieces, so the starting loadouts should include one when
+  the classes are authored. Run-level Heat is re-measured then.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the
