@@ -416,6 +416,14 @@ The instruments are:
      the beta).
 3. **Charge:** one charge a turn into a beta still below its cap is worth
    one extra use of that beta (~1 Credit for a +1 enhance).
+   **A Charge partner needs cap to spare when the charge arrives**
+   (step 3, checkpoint 1). A charge into a beta that is already full is
+   wasted.
+3b. **Growth is priced in a mid-length fight** (step 3, S9). A piece
+   whose alpha grows is priced against a Credit-4 host (~8 hands) rather
+   than the standard Credit-2 host (~10), with its host-2 and host-8
+   (~5 hands) prices reported as its range. Ramp is meant to be strongest
+   in long fights.
 4. **Trace has no flat exchange rate.** It is priced against a layer's
    allowance (1 Trace = 2.5–3.6% of a layer). Its cost is convex in the
    noise a build already makes: free in a quiet build, 5–8 points of run

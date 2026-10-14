@@ -106,6 +106,30 @@ sources and shapes (Charge, conditions, opponent-watching), never from
 a new piece-level rule like "your fifteens count as runs". Mods are
 where rules bend.
 
+### S9 — Growth is priced in a mid-length fight (host Credit 4) ✅
+
+Growth's worth depends on fight length. Measured fight lengths:
+
+| fight | hands |
+|---|---|
+| the standard host-2 duel | ~10 |
+| host 4 | ~8 |
+| host 8 | ~5 |
+| an early 3-piece kit mirror | ~10 |
+| a late 6-piece kit mirror | ~4 |
+
+(A turn is one initiative-gauge fill, about 1.06 per hand at skill 0.85,
+so turns and hands run nearly one to one.)
+
+**Pieces with growth are priced against a Credit-4 host (~8 hands)**, with
+their host-2 and host-8 prices reported as the range. Everything else
+stays at host 2. Ramp is meant to be strongest in long fights, and
+Daemon's healing is what keeps fights long. **This amends DESIGN.md →
+Pricing.**
+
+The user's framing for the pass: be mindful of balance with real
+measurements, but this pass needn't be perfect.
+
 ## Checkpoint 1 — Exploit
 
 `src/engine/content/exploit.ts`: 9 pieces, not yet wired into
@@ -160,6 +184,50 @@ Kits:
   kits are quiet. Exploit's Heat identity therefore depends on picking
   the noisy pieces, so the starting loadouts should include one when
   the classes are authored. Run-level Heat is re-measured then.
+
+## Checkpoint 2 — Daemon
+
+`src/engine/content/daemon.ts`: 9 pieces, not yet wired. Raw output:
+`docs/calibration/step3-cp2-daemon.txt`. Growth pieces are priced at
+host 4 (S9).
+
+| piece | rarity | alpha | beta | price |
+|---|---|---|---|---|
+| Cron Job | C | Credit 1, +0.25/fire (to +2) | every 3rd fire: Suppress 1 | 2.10 (host 2: 2.49, host 8: 1.20) |
+| Watchdog Timer | C | Suppress 1 | every 10 points: Credit 1 | 1.96 |
+| Steady Drip | C | Credit 1, +0.25/fire (to +1) | every 20 points: +1 | 2.20 (band edge) |
+| Patch | C | Suppress 1, +0.25/fire (to +1) | every 2nd fire: Credit 1 | 1.96 |
+| Memory Leak | U | Credit 0, +0.5/fire (to +3) | every 25 points: Suppress 2 | 2.50 (host 2: 2.83, host 8: 1.70) |
+| Heartbeat Monitor | U | Suppress 1 | while the opponent's win gauge is over ½: +3 | 2.44 |
+| Failover | U | Credit 1 | while your win gauge is under ½: +3 | 2.12 |
+| Load Balancer | R | Credit 2 | every 15 points: charge every other piece | 2.00 alone, 2.35 with Cron Job + Watchdog |
+| Fork Bomb | R | Credit 1, +0.25/fire (to +2) | every 4th fire: Credit 3 | 2.60 |
+
+Tuning from the draft, all measured:
+
+- **Growth was overtuned everywhere.** Memory Leak's +1/fire to +4
+  priced 4.3. Reduced to +0.5/fire to +3, with its Suppress 3 → 2.
+  Steady Drip went from +0.5 to +2 down to +0.25 to +1, and Fork Bomb
+  from +0.5 to +4 and Credit 4 down to +0.25 to +2 and Credit 3.
+- **Heartbeat Monitor** +2 → **+3** (1.8 → 2.44).
+- **Failover:** under ¼ +2 → **under ½ +3**. Under ¼ rarely holds in a
+  fight you go on to win.
+- **Load Balancer:** alpha Credit 1 → **2**. Alone, its charges have
+  nothing to feed, so it was 1.0, below the rare floor of "at least a
+  common on its own".
+- **Exploit's Race Condition** +2 → **+3**. Daemon's real Suppress
+  pieces are Suppress 1, not checkpoint 1's Suppress-2 stand-in. With
+  Watchdog Timer it prices 2.53; with Patch and Heartbeat Monitor,
+  2.34; alone, 2.56.
+
+Kits: the credit rule holds; retention is **0.81–1.02**, the highest yet,
+as predicted, because ramp and healing make fights long. Daemon makes no
+noise.
+
+**Watch item: Fork Bomb's build isn't confirmed.** Priced above the
+Haste ¼ stand-in it is 2.60, the same as alone, so the Overclock stand-in
+added nothing. Re-check it against Overclock's real pieces at
+checkpoint 3.
 
 ## Open
 

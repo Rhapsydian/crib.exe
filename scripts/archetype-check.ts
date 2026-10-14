@@ -31,6 +31,7 @@ import { GAUGE_THRESHOLD, BREACH_THRESHOLD } from '../src/engine/encounters';
 import { ARCHETYPE_POOLS, type ArchetypePool } from '../src/engine/subroutines';
 import type { SubroutineDefinition } from '../src/engine/subroutine-types';
 import { EXPLOIT_POOL, EXPLOIT_RARE_BUILDS, EXPLOIT_KITS } from '../src/engine/content/exploit';
+import { DAEMON_POOL, DAEMON_RARE_BUILDS, DAEMON_KITS, DAEMON_CROSS_BUILDS } from '../src/engine/content/daemon';
 
 function parseArgs(argv: string[]): Record<string, string> {
   const out: Record<string, string> = {};
@@ -49,16 +50,25 @@ interface AuthoredArchetype {
   pool: ArchetypePool;
   rareBuilds: Record<string, SubroutineDefinition[]>;
   kits: Record<string, SubroutineDefinition[]>;
+  /** Earlier archetypes' rares re-priced against this one's real pieces. */
+  crossBuilds?: [SubroutineDefinition, SubroutineDefinition[]][];
 }
 const ARCHETYPES: Record<string, AuthoredArchetype> = {
   exploit: { pool: EXPLOIT_POOL, rareBuilds: EXPLOIT_RARE_BUILDS, kits: EXPLOIT_KITS },
+  daemon: { pool: DAEMON_POOL, rareBuilds: DAEMON_RARE_BUILDS, kits: DAEMON_KITS, crossBuilds: DAEMON_CROSS_BUILDS },
 };
 const archetype = ARCHETYPES[args.archetype ?? 'exploit'];
 if (!archetype) throw new Error(`unknown --archetype=${args.archetype}`);
 
 const BANDS = { common: [1.8, 2.2], uncommon: [2.0, 2.5], rare: [2.2, 2.8] } as const;
 const options: MirrorOptions = { seeds, skill: 0.85, gaugeThreshold: GAUGE_THRESHOLD, winThreshold: BREACH_THRESHOLD };
-const HOST = creditPiece(2, 'host');
+// `--host=N`: the host's Credit per turn. 2 is the Pricing rules' home
+// ground; a bigger host shortens the fight, which matters for growth.
+const HOST = creditPiece(Number(args.host ?? 2), 'host');
+/** S9: a piece with growth is priced against a Credit-4 host (~8 hands),
+ * with hosts 2 and 8 (~10 and ~5 hands) reported as its range. */
+const GROWTH_HOST = creditPiece(4, 'host');
+const hasGrowth = (p: SubroutineDefinition) => (p.alpha as { growth?: number }).growth !== undefined;
 const GRID = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5];
 const fmt = (x: number | null | undefined) => (x === null || x === undefined ? '  -- ' : x.toFixed(2).padStart(5));
 const pct = (x: number) => `${(100 * x).toFixed(1)}%`.padStart(6);
@@ -74,23 +84,38 @@ function inBand(price: number | null, band: readonly [number, number]): string {
 }
 
 if (!skip.has('prices')) {
-  console.log(`\nPRICES -- Credit per turn vs a Credit-2 host, skill 0.85, ${seeds} seeds x 2 seats. Isolated duels.`);
+  console.log(`\nPRICES -- Credit per turn vs a Credit-${args.host ?? 2} host, skill 0.85, ${seeds} seeds x 2 seats. Isolated duels.`);
   console.log(`${'piece'.padEnd(22)} ${'rarity'.padEnd(9)} formula  duel  [ low,  high]  band`);
   for (const rarity of ['common', 'uncommon', 'rare'] as const) {
     const pieces = rarity === 'common' ? archetype.pool.commons : rarity === 'uncommon' ? archetype.pool.uncommons : archetype.pool.rares;
     for (const piece of pieces) {
       if (only && !only.has(piece.id)) continue;
       const formula = piecePrice(piece).total;
-      const alone = duel(piece, [HOST], 'after');
+      const host = hasGrowth(piece) && !args.host ? GROWTH_HOST : HOST;
+      const alone = duel(piece, [host], 'after');
       // A rare alone must be at least common-level (S6).
       const aloneBand = rarity === 'rare' ? ([2.0, Infinity] as const) : BANDS[rarity];
       console.log(`${piece.name.padEnd(22)} ${rarity.padEnd(9)} ${fmt(formula)}   ${fmt(alone.price)} [${fmt(alone.low)}, ${fmt(alone.high)}]  ${inBand(alone.price, aloneBand)}${rarity === 'rare' ? ' (alone, >= 2.0)' : ''}`);
+      if (hasGrowth(piece) && !args.host) {
+        const range = [2, 8].map((h) => duel(piece, [creditPiece(h, 'host')], 'after').price);
+        console.log(`${''.padEnd(22)} ${'growth'.padEnd(9)}   --    priced at host 4; range host 2 ${fmt(range[0])}, host 8 ${fmt(range[1])}`);
+      }
       const build = archetype.rareBuilds[piece.id];
       if (rarity === 'rare' && build) {
-        const inBuild = duel(piece, [...build, HOST], 'before');
+        const inBuild = duel(piece, [...build, host], 'before');
         console.log(`${''.padEnd(22)} ${'in build'.padEnd(9)}   --    ${fmt(inBuild.price)} [${fmt(inBuild.low)}, ${fmt(inBuild.high)}]  ${inBand(inBuild.price, BANDS.rare)} (above ${build.map((b) => b.name).join(', ')})`);
       }
     }
+  }
+}
+
+if (!skip.has('cross') && archetype.crossBuilds?.length) {
+  console.log(`
+CROSS-ARCHETYPE BUILDS -- earlier rares against this archetype's real pieces (rare band ${BANDS.rare.join('-')}).`);
+  for (const [rare, build] of archetype.crossBuilds) {
+    if (only && !only.has(rare.id)) continue;
+    const r = duel(rare, [...build, HOST], 'before');
+    console.log(`${rare.name.padEnd(22)} above ${build.map((b) => b.name).join(', ').padEnd(36)} ${fmt(r.price)} [${fmt(r.low)}, ${fmt(r.high)}]  ${inBand(r.price, BANDS.rare)}`);
   }
 }
 
@@ -99,10 +124,10 @@ if (!skip.has('kits')) {
   const cribbage = cribbageSkillEdge(matchup, 2000);
   console.log(`\nKITS -- credit rule, skill retention (0.85 v 0.5; floor ${SKILL_RETENTION_FLOOR}; plain Cribbage ${pct(cribbage.winRate)}), own Trace per fight.`);
   console.log(`${'kit'.padEnd(16)} pieces  threshold-wins  retain  floor   Trace/fight  hands/fight`);
-  // Reference row: the skeleton's Exploit pieces, whose Fuzzer alone
-  // produced CP6's 3-5x Heat endings -- the noise target, measured the
-  // same way.
-  const skeleton = ARCHETYPE_POOLS.exploit;
+  // Reference row: the same archetype's skeleton pieces. For Exploit,
+  // the skeleton's Fuzzer alone produced CP6's 3-5x Heat endings -- the
+  // noise target, measured the same way.
+  const skeleton = ARCHETYPE_POOLS[(args.archetype ?? 'exploit') as keyof typeof ARCHETYPE_POOLS];
   const kits: [string, SubroutineDefinition[]][] = [['(skeleton ref)', [...skeleton.commons, ...skeleton.uncommons]], ...Object.entries(archetype.kits)];
   for (const [name, kit] of kits) {
     // Credit rule and noise: the kit mirrored at equal skill, kit in seat 0
