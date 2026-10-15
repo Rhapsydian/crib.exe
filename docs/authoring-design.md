@@ -520,6 +520,115 @@ acquisition, opportunistic traversal, skill 0.85).
   (gatekeeper losses, 47–78%) is the dominant ending. Win-rate tuning
   waits for the authored enemy roster, per R1.
 
+## Enemies (session 55)
+
+### E1 — The session 27/43/49 enemy design holds, with three updates ✅
+
+Kept: tiers scale authoring effort; regular and elite enemies are
+stronger commons from the player's catalog; every gatekeeper has at
+least one bespoke thematic piece; every enemy needs a credit path; the
+per-layer gatekeeper pass-rate target of 0.78 / 0.72 / 0.66 / 0.60;
+enemy skill by tier; opening punching bags.
+
+Updates:
+
+1. **Regular and elite enemies draw from the authored 36-piece pool.**
+   Depth comes from more and better pieces (uncommons, rares), not just
+   magnitude, which session 49 found to be a weak lever. Per-piece
+   prices make enemy strength a measured number.
+2. **Gatekeepers' bespoke pieces are priced** with the same instrument.
+3. **Two-archetype elites and gatekeepers may carry a class bridge** as
+   a passive (side 1's bridge slot already exists). Gatekeepers still get
+   bespoke passives on top.
+
+### E2 — Initial roster: 18 enemies (6 regular, 4 elite, 8 gatekeepers, 2 per layer) ✅
+
+An initial set, **explicitly to be expanded later** (the user's note),
+like the 36-piece pool (S5). Two gatekeepers per layer gives runs variety
+while keeping each layer's pair tunable against the pass-rate target;
+session 49's within-layer spread is the problem to keep testable. Going
+to 3–4 per layer comes once the first pair holds. Six regulars cover each
+archetype alone plus two pairs; four elites spread across the
+archetypes. Opening punching bags reuse the easiest regular.
+
+### E3 — Difficulty in two stages: power budget, then pass-rate tuning ✅
+
+1. **Author to a power budget set from the player's measured power.**
+   Measure the priced output of real players' loadouts at each layer,
+   then set budgets as fractions of it: regular ≈ 0.6×, elite ≈ 0.9×,
+   gatekeeper ≈ 1.0–1.1× (first guesses; enemy skill is part of
+   strength, so measurement refines them).
+2. **Tune gatekeepers to the pass-rate target** (0.78 / 0.72 / 0.66 /
+   0.60) with `gatekeeper-check.ts` against realistic accumulated
+   states, other layers held still (`--syntheticGatekeepers`). Both of
+   a layer's pair must land near target, keeping within-layer spread
+   small. Regulars and elites are checked loosely: win rates by tier,
+   and no run ending dominated by one enemy.
+
+This was chosen over tuning everything straight to pass rates, the trial
+and error that gave the old roster 11 enemies at a 100% player win rate.
+
+### E4 — Enemy Mods: none on regulars, a bridge on elites, a bridge plus one bespoke Mod on gatekeepers ✅
+
+**Terminology (the user's call): enemies carry Mods, not "passives"**,
+the same word as the player's. Bridges are already Mods, so an enemy's
+bridge is the same thing on the other side. In code, `enemyPassiveIds` /
+`EnemyPassiveId` get renamed to enemy Mods when the roster is built.
+
+- **Regulars: no Mod.** Their identity is their 1–3 pieces; they
+  recur many times a run, so they stay readable and easy to tune.
+- **Elites: one class bridge**, for their archetype pair. It reuses the
+  six priced bridges and teaches what a bridge does from the other side.
+- **Gatekeepers: a bridge plus one bespoke Mod.** The bespoke one
+  carries the set piece's identity and, like any Mod, may bend rules
+  (S8). Eight of them, each priced by duel inside the gatekeeper's
+  budget, on a light registry so more can be added later.
+
+This was chosen over session 27's bespoke passives on every tier (~18
+mechanics, mostly on fights the player sees many times).
+
+### E5 — Process: measure, then one checkpoint per tier ✅
+
+1. Measure the player's priced power by layer (E3 stage 1): a budget
+   table, signed off before any enemy is drafted.
+2. Regulars (6): draft → react → build and price to budget.
+3. Elites (4), each with its bridge.
+4. Gatekeepers (8) with their bespoke Mods and the Mod registry. Drafted
+   together as a deliberate four-layer climb; tuned layer by layer to the
+   pass-rate target (E3 stage 2).
+5. Retire the skeleton roster and `skeleton-pool.ts`; re-measure full
+   runs (victory per class against 10–20%, endings, Eidolon's outlier).
+
+Enemy names reuse the archived session-27 roster where they fit, as the
+pieces did (S3).
+
+### E6 — Honeypot enemies hold back until layer 2 ✅
+
+All Honeypot enemies (regular, elite, gatekeeper) get `minLayer: 2`.
+Layer 1 shows Exploit, Daemon and Overclock, whose effects read directly
+as "it hits me, it heals, it goes fast". Ward and conversion arrive once
+the player has a working loadout. Opening punching bags come from layer
+1, so they are never Honeypot.
+
+### E7 — Trace pressure on a few "tracer" enemies, time-boxed ✅
+
+The user's framing: an enemy that "doesn't bother to contain you so much
+as draw a ton of attention to you." Session 47's `tracePressure` (Trace
+added to the player each time the piece fires) gets its first use:
+
+- one regular tracer, from layer 2, with small pressure;
+- one elite, with larger pressure (win fast or pay in Heat);
+- at most one gatekeeper whose bespoke Mod centres on it.
+
+Priced in Heat via CP6's Trace table (1 Trace ≈ 2.5–3.6% of a layer's
+allowance), outside the Credit budget. Watch item: Exploit, already at
+~5× Heat endings, takes tracers hardest; the run-level re-measure checks
+it stays inside 3–5×.
+
+**Time-box (the user's condition):** if tracers prove difficult to
+balance, don't sink time into them. Backlog Trace pressure as a revisit
+item and replace the tracer enemies with ordinary ones.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the
