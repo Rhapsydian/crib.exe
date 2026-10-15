@@ -65,7 +65,7 @@ import {
 import { playCombat } from '../src/engine/combat';
 import { GAUGE_THRESHOLD, BREACH_THRESHOLD, CONTAINMENT_THRESHOLD } from '../src/engine/encounters';
 import { CLASS_STARTING_LOADOUTS } from '../src/engine/subroutines';
-import { ENEMY_ROSTER } from '../src/engine/enemies';
+import { ENEMY_ROSTER, enemyCombatOptions } from '../src/engine/enemies';
 import { preferMergeWhenAvailable, opportunisticSafehouseStrategy, type SafehouseStrategy } from '../src/engine/merge';
 import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
 import { ALL_CLASS_IDS, DEFAULT_CLASS_ID, type ClassId } from '../src/engine/classes';
@@ -206,7 +206,7 @@ function sweepEnemy(args: Record<string, string>): void {
       gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD],
       winThreshold: [BREACH_THRESHOLD, CONTAINMENT_THRESHOLD],
       classId,
-      enemyPassiveIds: enemy.passiveIds,
+      ...enemyCombatOptions(enemy),
     });
     if (result.winner === 0) playerWins++;
     else if (result.resolvedBy === 'threshold') enemyThresholdWins++;

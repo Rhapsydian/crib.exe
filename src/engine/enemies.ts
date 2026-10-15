@@ -1,5 +1,7 @@
 import { scaledDefinition, type Archetype, type SubroutineDefinition } from './subroutine-types';
-import { ALL_SKELETON_SUBROUTINES } from './skeleton-pool';
+import type { ClassId } from './classes';
+import type { GatekeeperModId } from './gatekeeper-mods';
+import { AUTHORED_REGULARS, AUTHORED_ELITES, AUTHORED_GATEKEEPERS, ENEMY_LAYER_SCALER } from './content/enemies';
 import type { Rng } from './rng';
 import type { LayerGraph, MapNode } from './map-types';
 
@@ -14,31 +16,37 @@ import type { LayerGraph, MapNode } from './map-types';
 
 export type EnemyTier = 'regular' | 'elite' | 'gatekeeper';
 
-/** One id per enemy in the roster. Session 51 deleted the session 27
- * roster -- its kits were built from the scrapped subroutine pool -- and
- * replaced it with a SKELETON roster (A11), which stands in until the
- * roster is re-authored against step 2's pricing rules (DESIGN.md
- * Pricing). The old roster is archived in docs/design-history.md.
- */
+/** One id per enemy in the roster: step 3's authored 18 (E2), defined
+ * in content/enemies.ts. The session-51 skeleton roster and the
+ * session-27 roster before it are archived (docs/design-history.md). */
 export type EnemyId =
   // Regular
-  | 'skeleton-crawler'
-  | 'skeleton-watchdog'
-  | 'skeleton-relay'
-  | 'skeleton-tarpit'
+  | 'pentest-script'
+  | 'quarantine-daemon'
+  | 'relay-node'
+  | 'patch-runner'
+  | 'legacy-firewall'
+  | 'tripwire'
   // Elite
-  | 'skeleton-hunter'
-  | 'skeleton-sentinel'
-  // Gatekeepers, one per layer
-  | 'skeleton-gate-1'
-  | 'skeleton-gate-2'
-  | 'skeleton-gate-3'
-  | 'skeleton-gate-4';
+  | 'zero-day-broker'
+  | 'incident-response'
+  | 'blackout-cell'
+  | 'intrusion-alarm'
+  // Gatekeepers, two per layer
+  | 'the-concierge'
+  | 'firewall-prime'
+  | 'quarantine-ward'
+  | 'zero-sum'
+  | 'adaptive-threat'
+  | 'total-compromise'
+  | 'null-session'
+  | 'root-authority';
 
-/** Enemy passive ids. Empty since session 51: all 34 named passives
- * belonged to the deleted roster, and the skeleton roster carries none.
- * The registry machinery (resolve.ts) survives for the rebuilt roster;
- * new passive ids get added here when it is authored. */
+/** Legacy: the session-27 passive registry's id type. Superseded in step
+ * 3 by enemy Mods (E4) -- a class bridge (`EnemyDefinition.bridge`) plus,
+ * on gatekeepers, a bespoke gatekeeper Mod (`mods`). Still threaded
+ * through playCombat/createCombatState as an always-empty slot; remove
+ * with that positional parameter. */
 export type EnemyPassiveId = never;
 
 export interface EnemyDefinition {
@@ -54,9 +62,13 @@ export interface EnemyDefinition {
    * its tier's pool at every layer afterward, not just this one. */
   minLayer: number;
   loadout: SubroutineDefinition[];
-  /** 0-2 entries -- most enemies carry exactly one, a few Elites carry
-   * two (session 27's "1-2 real passives" for that tier). */
-  passiveIds: EnemyPassiveId[];
+  /** The class bridge it carries as a Mod (E4: elites and gatekeepers). */
+  bridge?: ClassId;
+  /** A gatekeeper's bespoke Mod (E4; gatekeeper-mods.ts). */
+  mods?: GatekeeperModId[];
+  /** Regular/elite only: the authored magnitude at its first layer
+   * (content/enemies.ts). magnitudeScalerFor scales up from it by layer. */
+  scale?: number;
   /** Per-layer difficulty scaler (session 39), gatekeeper-only -- an
    * explicit, individually authored/tunable multiplier applied to this
    * gatekeeper's own loadout magnitude, rather than derived live from a
@@ -119,21 +131,7 @@ export interface EnemyDefinition {
   gaugeThresholdScaler?: number;
 }
 
-const SUBROUTINE_BY_ID: ReadonlyMap<string, SubroutineDefinition> = new Map(
-  ALL_SKELETON_SUBROUTINES.map((subroutine) => [subroutine.id, subroutine]),
-);
 
-/** Looks up a pool subroutine by id -- throws immediately on a
- * typo/missing id rather than silently shipping a gap in an enemy's kit.
- * Enemies may also carry bespoke enemy-only pieces (DESIGN.md: "drawn
- * straight from the player's own catalog... or fully bespoke"), but the
- * skeleton roster uses none, so session 51 deleted enemy-subroutines.ts
- * along with the roster it served. */
-export function pool(id: string): SubroutineDefinition {
-  const found = SUBROUTINE_BY_ID.get(id);
-  if (!found) throw new Error(`enemies.ts: no pool subroutine with id "${id}"`);
-  return found;
-}
 
 /**
  * The SKELETON roster (session 51, A11). Not content: it exists so full
@@ -154,21 +152,23 @@ export function pool(id: string): SubroutineDefinition {
  * the pool afterward); for gatekeeper it's the exact layer that enemy's
  * stable belongs to.
  */
-export const ENEMY_ROSTER: EnemyDefinition[] = [
-  // --- Regular -- one per archetype ---
-  { id: 'skeleton-crawler', name: 'Crawler', tier: 'regular', archetypes: ['exploit'], minLayer: 1, loadout: [pool('probe'), pool('port-knock')], passiveIds: [] },
-  { id: 'skeleton-watchdog', name: 'Watchdog', tier: 'regular', archetypes: ['daemon'], minLayer: 1, loadout: [pool('cron-job'), pool('self-repair')], passiveIds: [] },
-  { id: 'skeleton-relay', name: 'Relay Node', tier: 'regular', archetypes: ['overclock'], minLayer: 1, loadout: [pool('burst-clock'), pool('voltage-boost')], passiveIds: [] },
-  { id: 'skeleton-tarpit', name: 'Tarpit Host', tier: 'regular', archetypes: ['honeypot'], minLayer: 1, loadout: [pool('lure'), pool('tarpit')], passiveIds: [] },
-  // --- Elite ---
-  { id: 'skeleton-hunter', name: 'Hunter Process', tier: 'elite', archetypes: ['exploit', 'overclock'], minLayer: 1, loadout: [pool('probe'), pool('burst-clock'), pool('turbo')], passiveIds: [] },
-  { id: 'skeleton-sentinel', name: 'Sentinel', tier: 'elite', archetypes: ['daemon', 'honeypot'], minLayer: 1, loadout: [pool('cron-job'), pool('lure'), pool('sinkhole')], passiveIds: [] },
-  // --- Gatekeepers, one per layer ---
-  { id: 'skeleton-gate-1', name: 'Perimeter Gate', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 1, loadout: [pool('probe'), pool('cron-job'), pool('port-knock'), pool('respawn')], passiveIds: [], magnitudeScaler: 1 },
-  { id: 'skeleton-gate-2', name: 'LAN Gate', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 2, loadout: [pool('burst-clock'), pool('lure'), pool('turbo'), pool('sinkhole')], passiveIds: [], magnitudeScaler: 1.3 },
-  { id: 'skeleton-gate-3', name: 'Subnet Gate', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 3, loadout: [pool('probe'), pool('lure'), pool('packet-sniffer'), pool('mirror-port')], passiveIds: [], magnitudeScaler: 1.6 },
-  { id: 'skeleton-gate-4', name: 'Core Gate', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 4, loadout: [pool('cron-job'), pool('burst-clock'), pool('rollback'), pool('pipeline')], passiveIds: [], magnitudeScaler: 1.9 },
-];
+/** The roster (step 3; content/enemies.ts). A gatekeeper's authored
+ * scale becomes its stored magnitudeScaler, since it appears at one layer
+ * only. */
+export const ENEMY_ROSTER: EnemyDefinition[] = [...AUTHORED_REGULARS, ...AUTHORED_ELITES, ...AUTHORED_GATEKEEPERS].map(
+  (enemy): EnemyDefinition => ({
+    ...enemy,
+    id: enemy.id as EnemyId,
+    ...(enemy.tier === 'gatekeeper' ? { magnitudeScaler: enemy.scale ?? 1, scale: undefined } : {}),
+  }),
+);
+
+/** The combat options every enemy fight passes for side 1: its class
+ * bridge and gatekeeper Mods (E4). One helper so encounters.ts and the
+ * diagnostics can't drift apart. */
+export function enemyCombatOptions(enemy: EnemyDefinition): { opponentBridge?: ClassId; gatekeeperMods: [GatekeeperModId[], GatekeeperModId[]] } {
+  return { opponentBridge: enemy.bridge, gatekeeperMods: [[], enemy.mods ?? []] };
+}
 
 /** Every enemy eligible for `tier` at `layerIndex` -- a floor for
  * regular/elite (minLayer <= layerIndex, stays eligible afterward), an
@@ -276,12 +276,15 @@ export function enemySkill(tier: EnemyTier, layerIndex: number, fightsResolved: 
 // 0.3-per-layer step gatekeepers were seeded from (bumped from an
 // initial 0.15 -- gatekeeper-check.ts showed 0.15 narrowed the
 // layer-1-hardest gap but didn't close it). TBD/playtesting.
-const REGULAR_ELITE_MAGNITUDE_STEP = 0.3;
 const OPENER_MAGNITUDE_SCALER = 1; // the opener window pins this to no scaling too, same as skill
 
-function enemyMagnitudeScaler(layerIndex: number, fightsResolved: number): number {
+/** Step 3: the authored scale at the enemy's first layer, times
+ * content/enemies.ts's ENEMY_LAYER_SCALER relative to that layer -- a
+ * curve that follows the player's measured power (+38% into layer 2,
+ * then nearly flat), replacing the linear REGULAR_ELITE_MAGNITUDE_STEP. */
+function enemyMagnitudeScaler(enemy: EnemyDefinition, layerIndex: number, fightsResolved: number): number {
   if (isOpenerWindow(fightsResolved)) return OPENER_MAGNITUDE_SCALER;
-  return 1 + REGULAR_ELITE_MAGNITUDE_STEP * (layerIndex - 1);
+  return (enemy.scale ?? 1) * (ENEMY_LAYER_SCALER[layerIndex - 1] / ENEMY_LAYER_SCALER[enemy.minLayer - 1]);
 }
 
 /** The real magnitude scaler for any enemy encounter, regardless of
@@ -291,7 +294,7 @@ function enemyMagnitudeScaler(layerIndex: number, fightsResolved: number): numbe
  * call site for encounters.ts/gatekeeper-check.ts to use either way. */
 export function magnitudeScalerFor(enemy: EnemyDefinition, layerIndex: number, fightsResolved: number): number {
   if (enemy.tier === 'gatekeeper') return enemy.magnitudeScaler ?? 1;
-  return enemyMagnitudeScaler(layerIndex, fightsResolved);
+  return enemyMagnitudeScaler(enemy, layerIndex, fightsResolved);
 }
 
 /** Per-side threshold accessors (session 40) -- the real initiative/

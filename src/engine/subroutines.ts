@@ -9,8 +9,8 @@ import { AUTHORED_STARTING_LOADOUTS } from './content/starting-loadouts';
  * The player's subroutine pool (step 3, `docs/authoring-design.md`): the
  * 36 authored pieces, 9 per archetype (4 common, 3 uncommon, 2 rare;
  * S5), priced against DESIGN.md -> Pricing. Definitions live in
- * content/<archetype>.ts. Replaced the session-51 skeleton, which now
- * feeds only the skeleton enemy roster (skeleton-pool.ts).
+ * content/<archetype>.ts. Replaced the session-51 skeleton pool, retired
+ * with the skeleton enemy roster once the authored roster was wired in.
  *
  * Rarity is encoded structurally -- by which array a piece lives in --
  * rather than as a SubroutineDefinition field (rewards.ts derives its

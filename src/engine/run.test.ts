@@ -345,7 +345,10 @@ describe('playRun', { timeout: 30_000 }, () => {
     // static-loadout sweep no longer representative (see BACKLOG.md).
     const totalOwned = result.playerState.installedLoadout.length + result.playerState.bench.length;
     expect(totalOwned).toBeGreaterThan(3);
-    expect(result.playerState.installedLoadout.length).toBeLessThanOrEqual(INSTALLED_SLOT_CAP);
+    // Mod-granted pieces (Backdoor Access, Auxiliary Process) are
+    // always-slotted by design and sit outside the cap.
+    const slotted = result.playerState.installedLoadout.filter((p) => !result.playerState.grantedByMod[p.id]);
+    expect(slotted.length).toBeLessThanOrEqual(INSTALLED_SLOT_CAP);
   });
 
   it('onBeforeGatekeeperFight (session 39) fires once per gatekeeper fight with the real accumulated state at that moment', () => {

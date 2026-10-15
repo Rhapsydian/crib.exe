@@ -98,11 +98,11 @@ function playerWithBurst(amount: number): RunPlayerState {
 }
 
 describe('combatThresholdsFor -- the meta-progression sockets (session 48)', () => {
-  // Session 51: no skeleton gatekeeper authors a Containment override, so
-  // the authored-65 gatekeeper (the old Null Session) is a fixture built
-  // on a real skeleton gatekeeper rather than a roster lookup.
-  const plainGate = ENEMY_ROSTER.find((e) => e.id === 'skeleton-gate-1')!; // no overrides at all
-  const nullSession: EnemyDefinition = { ...ENEMY_ROSTER.find((e) => e.id === 'skeleton-gate-4')!, winThreshold: 65 };
+  // No authored gatekeeper sets a Containment override, so the
+  // authored-65 gatekeeper is a fixture built on a real one rather than a
+  // roster lookup.
+  const plainGate = ENEMY_ROSTER.find((e) => e.id === 'the-concierge')!; // no overrides at all
+  const nullSession: EnemyDefinition = { ...ENEMY_ROSTER.find((e) => e.id === 'root-authority')!, winThreshold: 65 };
   const base = playerWithBurst(1);
 
   it('falls back to the flat constants when nothing is socketed -- the state of every run today', () => {
@@ -182,9 +182,9 @@ const TEST_FIGHT_NUMBER = 10;
 // fires every turn (D11), so each pick below credits its own gauge
 // reliably; these are the skeleton ids with the most credit in the kit.
 const RELIABLE_ENEMY_ID: Record<'regularFight' | 'eliteFight' | 'gatekeeperFight', EnemyId> = {
-  regularFight: 'skeleton-crawler', // Probe (credit alpha, graded fifteen enhance)
-  eliteFight: 'skeleton-hunter', // Probe + Burst Clock credit alphas, Turbo tempo
-  gatekeeperFight: 'skeleton-gate-4', // layer 4's own gatekeeper, matching TEST_LAYER
+  regularFight: 'pentest-script', // Port Scan + Buffer Overflow: plain credit
+  eliteFight: 'zero-day-broker', // credit alphas and a Charge, no Mod that blunts the player
+  gatekeeperFight: 'root-authority', // layer 4's own gatekeeper, matching TEST_LAYER
 };
 // Both sides pinned to the dumb baseline explicitly -- an explicit
 // override always wins outright over checkpoint C's computed skill-dial
@@ -520,8 +520,24 @@ describe('heatSources (session 50) -- Heat attribution', () => {
         }
       }
     }
-    // Deliberately low: lost regular/elite fights are RARE -- most runs end
-    // at a gatekeeper instead. 120 runs yield low double digits.
+    // Lost regular/elite fights are RARE in real runs -- most end at a
+    // gatekeeper, and since step 3's layer-1 gatekeepers a floor player
+    // rarely survives long enough to lose many. So the sample is topped
+    // up with guaranteed losses: a near-empty player against every
+    // regular and elite node, checked by the same rules.
+    const node = (type: 'regularFight' | 'eliteFight') => createNode('n', type);
+    for (const type of ['regularFight', 'eliteFight'] as const) {
+      for (let seed = 0; seed < 10; seed++) {
+        const outcome = resolveEncounter(node(type), createRng(seed), playerWithBurst(0.1), undefined, undefined, undefined, BASELINE_STRATEGIES, BASELINE_PLAY_STRATEGIES, TEST_LAYER, TEST_FIGHT_NUMBER);
+        const { heatSources, fight } = outcome;
+        expect(heatSources.containmentLoss === 0 || heatSources.attritionLoss === 0).toBe(true);
+        if (!fight || outcome.newState !== 'closed') continue;
+        if (fight.resolvedBy === 'threshold') containmentLosses++;
+        else attritionLosses++;
+        const charged = fight.resolvedBy === 'threshold' ? heatSources.attritionLoss : heatSources.containmentLoss;
+        expect(charged).toBe(0);
+      }
+    }
     expect(containmentLosses + attritionLosses).toBeGreaterThan(5);
   }, 30_000);
 

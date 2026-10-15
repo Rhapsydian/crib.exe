@@ -1,7 +1,7 @@
 // Session 51 port: fixtures rewritten to the alpha/beta subroutine model
 // and the six archetype-pair classes. The Shop now draws from the class's
 // two archetypes only (no Neutral pool, no Cantrips), so rarity checks use
-// real skeleton-pool ids.
+// real authored-pool ids.
 import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import type { RunPlayerState } from './run';

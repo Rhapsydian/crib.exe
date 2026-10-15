@@ -6,6 +6,7 @@ import { CLASS_STARTING_LOADOUTS, ALL_POOL_SUBROUTINES, ALL_SUBROUTINES } from '
 import { hasCreditPath, type SubroutineDefinition } from './subroutine-types';
 import {
   ENEMY_ROSTER,
+  enemyCombatOptions,
   eligibleEnemies,
   pickRegularOrEliteEnemy,
   assignGatekeeperEnemy,
@@ -24,11 +25,26 @@ import {
 // gatekeepers, minLayer > 1 regulars) retired with it.
 
 describe('ENEMY_ROSTER structural integrity', () => {
-  it('skeleton shape: 4 regular, 2 elite, and exactly one gatekeeper per layer', () => {
-    expect(ENEMY_ROSTER.filter((e) => e.tier === 'regular')).toHaveLength(4);
-    expect(ENEMY_ROSTER.filter((e) => e.tier === 'elite')).toHaveLength(2);
+  it('E2 shape: 6 regular, 4 elite, and two gatekeepers per layer', () => {
+    expect(ENEMY_ROSTER.filter((e) => e.tier === 'regular')).toHaveLength(6);
+    expect(ENEMY_ROSTER.filter((e) => e.tier === 'elite')).toHaveLength(4);
     for (let layer = 1; layer <= 4; layer++) {
-      expect(ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper' && e.minLayer === layer), `layer ${layer}`).toHaveLength(1);
+      expect(ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper' && e.minLayer === layer), `layer ${layer}`).toHaveLength(2);
+    }
+  });
+
+  it('E6: Honeypot enemies never appear before layer 2', () => {
+    for (const enemy of ENEMY_ROSTER.filter((e) => e.archetypes.includes('honeypot'))) expect(enemy.minLayer, enemy.id).toBeGreaterThanOrEqual(2);
+  });
+
+  it('E4: regulars carry no Mod; elites a bridge; gatekeepers a bridge and one bespoke Mod', () => {
+    for (const enemy of ENEMY_ROSTER) {
+      if (enemy.tier === 'regular') expect(enemy.bridge ?? enemy.mods, enemy.id).toBeUndefined();
+      if (enemy.tier === 'elite') expect(enemy.bridge, enemy.id).toBeDefined();
+      if (enemy.tier === 'gatekeeper') {
+        expect(enemy.bridge, enemy.id).toBeDefined();
+        expect(enemy.mods, enemy.id).toHaveLength(1);
+      }
     }
   });
 
@@ -57,7 +73,7 @@ describe('ENEMY_ROSTER structural integrity', () => {
 describe('eligibleEnemies', () => {
   it('regular/elite eligibility is a floor -- a layer-1 enemy stays eligible at every later layer', () => {
     for (let layer = 1; layer <= 4; layer++) {
-      expect(eligibleEnemies('regular', layer).some((e) => e.id === 'skeleton-crawler')).toBe(true);
+      expect(eligibleEnemies('regular', layer).some((e) => e.id === 'pentest-script')).toBe(true);
     }
   });
 
@@ -70,8 +86,8 @@ describe('eligibleEnemies', () => {
   });
 
   it('gatekeeper eligibility is an exact match, not a floor', () => {
-    expect(eligibleEnemies('gatekeeper', 1).map((e) => e.id)).toEqual(['skeleton-gate-1']);
-    expect(eligibleEnemies('gatekeeper', 2).map((e) => e.id)).toEqual(['skeleton-gate-2']);
+    expect(eligibleEnemies('gatekeeper', 1).map((e) => e.id)).toEqual(['the-concierge', 'firewall-prime']);
+    expect(eligibleEnemies('gatekeeper', 2).map((e) => e.id)).toEqual(['quarantine-ward', 'zero-sum']);
   });
 });
 
@@ -105,8 +121,13 @@ describe('assignGatekeeperEnemy / gatekeeperEnemyForNode', () => {
     expect(a.nodes[0].assignedEnemyId).toBe(b.nodes[0].assignedEnemyId);
   });
 
-  it("throws loudly when ablation excludes a layer's only gatekeeper (one per layer in the skeleton)", () => {
-    expect(() => assignGatekeeperEnemy(graph(), 1, createRng(1), ['skeleton-gate-1'])).toThrow();
+  it("throws loudly when ablation excludes a layer's whole stable", () => {
+    expect(() => assignGatekeeperEnemy(graph(), 1, createRng(1), ['the-concierge', 'firewall-prime'])).toThrow();
+  });
+
+  it('ablating one of a layer pair leaves the other assigned', () => {
+    const g = assignGatekeeperEnemy(graph(), 1, createRng(1), ['the-concierge']);
+    expect(g.nodes[0].assignedEnemyId).toBe('firewall-prime');
   });
 });
 
@@ -135,7 +156,8 @@ describe('magnitudeScalerFor (session 39 per-layer difficulty scaler)', () => {
   it("reads a gatekeeper's own stored value, not a live layer formula", () => {
     expect(magnitudeScalerFor(gate(1), 1, 10)).toBe(gate(1).magnitudeScaler);
     expect(magnitudeScalerFor(gate(4), 4, 10)).toBe(gate(4).magnitudeScaler);
-    expect(magnitudeScalerFor(gate(1), 1, 10)).not.toBe(magnitudeScalerFor(gate(4), 4, 10));
+    // Quarantine Ward's authored scale (1.35) became its stored value.
+    expect(ENEMY_ROSTER.find((e) => e.id === 'quarantine-ward')!.magnitudeScaler).toBe(1.35);
   });
 
   it('regular/elite are pinned to 1 (no scaling) during the opener window regardless of layer', () => {
@@ -149,10 +171,12 @@ describe('magnitudeScalerFor (session 39 per-layer difficulty scaler)', () => {
     expect(magnitudeScalerFor(elite, 1, 10)).toBeLessThan(magnitudeScalerFor(elite, 4, 10));
   });
 
-  it('regular and elite use the same tier-agnostic formula at a given layer (unlike enemySkill, which is tier-primary)', () => {
-    const regular = ENEMY_ROSTER.find((e) => e.tier === 'regular')!;
-    const elite = ENEMY_ROSTER.find((e) => e.tier === 'elite')!;
-    expect(magnitudeScalerFor(regular, 3, 10)).toBe(magnitudeScalerFor(elite, 3, 10));
+  it("regular/elite: the authored scale at the enemy's first layer, then the player-following layer curve", () => {
+    const pentest = ENEMY_ROSTER.find((e) => e.id === 'pentest-script')!; // first layer 1, scale 1.25
+    const firewall = ENEMY_ROSTER.find((e) => e.id === 'legacy-firewall')!; // first layer 2, scale 1.2
+    expect(magnitudeScalerFor(pentest, 1, 10)).toBeCloseTo(1.25);
+    expect(magnitudeScalerFor(firewall, 2, 10)).toBeCloseTo(1.2);
+    expect(magnitudeScalerFor(pentest, 2, 10) / magnitudeScalerFor(pentest, 1, 10)).toBeCloseTo(1.4);
   });
 });
 
@@ -267,15 +291,14 @@ describe('no enemy touches Trace', () => {
     for (const piece of ALL_SUBROUTINES) expect(piece.tracePressure ?? 0, piece.id).toBe(0);
   });
 
-  // Needs a working resolver -- red until checkpoint 3.
-  it('a real fight against a skeleton enemy resolves to a winner', () => {
-    const enemy = ENEMY_ROSTER.find((e) => e.id === 'skeleton-tarpit')!;
+  it('a real fight against an authored enemy, with its bridge and Mods, resolves to a winner', () => {
+    const enemy = ENEMY_ROSTER.find((e) => e.id === 'quarantine-ward')!;
     const result = playCombat([CLASS_STARTING_LOADOUTS['exploit-honeypot'], enemy.loadout], {
       seed: 5,
       gaugeThreshold: [8, 8],
       winThreshold: [50, 50],
       classId: 'exploit-honeypot',
-      enemyPassiveIds: enemy.passiveIds,
+      ...enemyCombatOptions(enemy),
     });
     expect(result.traceGenerated).toBeGreaterThanOrEqual(0);
     expect(result.winner === 0 || result.winner === 1).toBe(true);

@@ -154,9 +154,11 @@ export const AUTHORED_GATEKEEPERS: AuthoredEnemy[] = [
   // --- Layer 3: the servers ---
   { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 3, bridge: 'daemon-overclock', mods: ['adaptation'],
     loadout: [SELF_MODIFYING_CODE, p('fork-bomb'), p('ping'), p('steady-drip')] },
-  // E7 gatekeeper tracer: does not try hard to contain you; makes you loud before the toll.
+  // E7 gatekeeper tracer: does not try hard to contain you; makes you loud
+  // before the toll. Credential Stuffing, not Jackpot: Jackpot's beta
+  // writes Trace to its owner, and Trace is player-only.
   { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 3, bridge: 'exploit-honeypot', mods: ['spotlight'],
-    loadout: [BEACON, p('port-scan'), p('tarpit'), p('jackpot')] },
+    loadout: [BEACON, p('port-scan'), p('tarpit'), p('credential-stuffing')] },
   // --- Layer 4: the core ---
   { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['exploit', 'overclock', 'honeypot'], minLayer: 4, bridge: 'overclock-honeypot', mods: ['null-session'],
     loadout: [NULL_ROUTE, p('zero-day-chain'), p('priority-override'), p('zero-trust')] },

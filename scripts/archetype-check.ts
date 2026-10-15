@@ -29,7 +29,6 @@ import { playCombat } from '../src/engine/combat';
 import { discardSkillStrategy, pegSkillStrategy } from '../src/engine/ai';
 import { GAUGE_THRESHOLD, BREACH_THRESHOLD } from '../src/engine/encounters';
 import type { ArchetypePool } from '../src/engine/subroutines';
-import { SKELETON_POOLS } from '../src/engine/skeleton-pool';
 import type { SubroutineDefinition } from '../src/engine/subroutine-types';
 import { EXPLOIT_POOL, EXPLOIT_RARE_BUILDS, EXPLOIT_KITS } from '../src/engine/content/exploit';
 import { DAEMON_POOL, DAEMON_RARE_BUILDS, DAEMON_KITS, DAEMON_CROSS_BUILDS } from '../src/engine/content/daemon';
@@ -148,11 +147,10 @@ if (!skip.has('kits')) {
   const cribbage = cribbageSkillEdge(matchup, 2000);
   console.log(`\nKITS -- credit rule, skill retention (0.85 v 0.5; floor ${SKILL_RETENTION_FLOOR}; plain Cribbage ${pct(cribbage.winRate)}), own Trace per fight.`);
   console.log(`${'kit'.padEnd(16)} pieces  threshold-wins  retain  floor   Trace/fight  hands/fight`);
-  // Reference row: the same archetype's skeleton pieces. For Exploit,
-  // the skeleton's Fuzzer alone produced CP6's 3-5x Heat endings -- the
-  // noise target, measured the same way.
-  const skeleton = SKELETON_POOLS[(args.archetype ?? 'exploit') as keyof typeof SKELETON_POOLS];
-  const kits: [string, SubroutineDefinition[]][] = [['(skeleton ref)', [...skeleton.commons, ...skeleton.uncommons]], ...Object.entries(archetype.kits)];
+  // (The skeleton reference row retired with skeleton-pool.ts; its
+  // numbers -- the noise target among them -- are in the step3-cp*
+  // calibration files.)
+  const kits: [string, SubroutineDefinition[]][] = Object.entries(archetype.kits);
   for (const [name, kit] of kits) {
     // Credit rule and noise: the kit mirrored at equal skill, kit in seat 0
     // (only side 0 accumulates Trace), seeds alternating the dealer.

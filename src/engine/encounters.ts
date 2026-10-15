@@ -20,6 +20,7 @@ import {
   scaledEnemyLoadout,
   ENEMY_ROSTER,
   type EnemyDefinition,
+  enemyCombatOptions,
   type EnemyId,
 } from './enemies';
 import {
@@ -547,7 +548,7 @@ function resolveFight(
         startingTrace,
         ...combatThresholdsFor(playerState, enemy, layerIndex, fightNumber),
         classId: playerState.classId,
-        enemyPassiveIds: enemy.passiveIds,
+        ...enemyCombatOptions(enemy),
         ownedModIds: playerState.ownedModIds,
         // Filtered to combat-context Burners only -- a carried map/shop-only
         // Burner has nothing to activate here (checkpoint C).

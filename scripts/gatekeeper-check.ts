@@ -38,7 +38,7 @@ import { playRun, opportunisticTraversal, type GatekeeperFightContext } from '..
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import { playCombat } from '../src/engine/combat';
 import { GAUGE_THRESHOLD, BREACH_THRESHOLD, CONTAINMENT_THRESHOLD } from '../src/engine/encounters';
-import { enemySkill, magnitudeScalerFor, gaugeThresholdFor, winThresholdFor, scaledEnemyLoadout } from '../src/engine/enemies';
+import { enemySkill, magnitudeScalerFor, gaugeThresholdFor, winThresholdFor, scaledEnemyLoadout, enemyCombatOptions } from '../src/engine/enemies';
 import { discardSkillStrategy, pegSkillStrategy } from '../src/engine/ai';
 import { BURNER_DEFINITIONS } from '../src/engine/burners';
 import { ALL_CLASS_IDS, type ClassId } from '../src/engine/classes';
@@ -132,7 +132,7 @@ for (const classId of classes) {
           gaugeThreshold: [GAUGE_THRESHOLD, gaugeThresholdFor(capture.enemy, capture.layerIndex, capture.fightsResolved, GAUGE_THRESHOLD)],
           winThreshold: [BREACH_THRESHOLD, winThresholdFor(capture.enemy, capture.layerIndex, capture.fightsResolved, CONTAINMENT_THRESHOLD)],
           classId: capture.playerState.classId,
-          enemyPassiveIds: capture.enemy.passiveIds,
+          ...enemyCombatOptions(capture.enemy),
           ownedModIds: capture.playerState.ownedModIds,
           carriedBurnerIds: combatBurnerIds,
           discardStrategies: [discardSkillStrategy(playerSkill), discardSkillStrategy(enemySkillValue)],
