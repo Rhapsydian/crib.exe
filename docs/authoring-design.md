@@ -451,6 +451,33 @@ Changes from the draft, measured in these loadouts:
   it is the most build-dependent bridge, and its late retention is the
   lowest (0.53). Revisit in playtesting or with fight-length tuning.
 
+### C4 — Class names ✅
+
+| class | name | source |
+|---|---|---|
+| Exploit + Overclock | **Blackhat** | old roster: "pure offense, reckless, Heat-hungry" |
+| Exploit + Daemon | **Operator** | old roster: "setup-and-strike" |
+| Daemon + Overclock | **Eidolon** | new (the user's). *Daemon* and *eidolon* are both Greek spirit words: the class that summons its daemons and drives them faster |
+| Exploit + Honeypot | **Breacher** | old roster: "hit hard, then hold the position you just took" |
+| Daemon + Honeypot | **Warden** | old roster: "patient and grindy, wins by outlasting" |
+| Overclock + Honeypot | **Ghost** | old roster: the last unlock, the hardest to play |
+
+Saboteur is retired: its identity belonged to the old Malware archetype.
+Other names considered for Daemon + Overclock: Cryptominer, Botmaster,
+Scheduler, Proclist, and Overwatch (rejected: it's a well-known game's
+name, and its meaning is closer to Warden's). Eidolon's known cost is a
+thematic overlap with Ghost.
+
+Class ids stay pair-based (`exploit-overclock`, …); the names are display
+data.
+
+### C5 — Bridge Mod names ✅
+
+Blackhat **Exploit Chain** · Operator **Backdoor Maintenance** · Eidolon
+**Invocation** · Breacher **Foothold** (the old Breacher passive's name) ·
+Warden **Hardened Perimeter** · Ghost **Spoofed Traffic**. In code:
+`ClassDefinition.name` and the bridge Mods' names in `mods.ts`.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the

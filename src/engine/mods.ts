@@ -10,8 +10,8 @@ import { archetypeLadderPosition, rarityLadderPosition } from './loadout';
 
 /**
  * Mod content (Phase 5 checkpoints D/H, session 44 expansion, session 51
- * re-points): the 6 class-exclusive bridge passives (placeholders until
- * real bridges are designed -- see resolve.ts's applyBridgePassive) plus
+ * re-points): the 6 class-exclusive bridge passives (step 3's bespoke
+ * bridges -- rules in resolve.ts's applyBridgeOn* hooks) plus
  * the general pool. Session 51 re-keyed the archetype Mods to the new
  * archetypes, re-pointed Tagged Firmware / Overclocked Accumulator /
  * Threshold Exploit off tags and trigger-easing, and took the three tick
@@ -148,13 +148,13 @@ const AUXILIARY_PROCESS_SUBROUTINE: SubroutineDefinition = {
 };
 
 export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
-  // --- Class-exclusive bridge passives (session 51 placeholders) ---
-  'bridge-exploit-overclock': { id: 'bridge-exploit-overclock', name: 'Bridge (Exploit -> Overclock)', rarity: 'common', effectKind: 'hook', classExclusive: true },
-  'bridge-exploit-daemon': { id: 'bridge-exploit-daemon', name: 'Bridge (Exploit -> Daemon)', rarity: 'common', effectKind: 'hook', classExclusive: true },
-  'bridge-daemon-overclock': { id: 'bridge-daemon-overclock', name: 'Bridge (Daemon -> Overclock)', rarity: 'common', effectKind: 'hook', classExclusive: true },
-  'bridge-exploit-honeypot': { id: 'bridge-exploit-honeypot', name: 'Bridge (Exploit -> Honeypot)', rarity: 'common', effectKind: 'hook', classExclusive: true },
-  'bridge-daemon-honeypot': { id: 'bridge-daemon-honeypot', name: 'Bridge (Daemon -> Honeypot)', rarity: 'common', effectKind: 'hook', classExclusive: true },
-  'bridge-overclock-honeypot': { id: 'bridge-overclock-honeypot', name: 'Bridge (Overclock -> Honeypot)', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  // --- Class-exclusive bridge passives (step 3, C1/C4; rules in resolve.ts's applyBridgeOn*) ---
+  'bridge-exploit-overclock': { id: 'bridge-exploit-overclock', name: 'Exploit Chain', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-exploit-daemon': { id: 'bridge-exploit-daemon', name: 'Backdoor Maintenance', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-daemon-overclock': { id: 'bridge-daemon-overclock', name: 'Invocation', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-exploit-honeypot': { id: 'bridge-exploit-honeypot', name: 'Foothold', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-daemon-honeypot': { id: 'bridge-daemon-honeypot', name: 'Hardened Perimeter', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-overclock-honeypot': { id: 'bridge-overclock-honeypot', name: 'Spoofed Traffic', rarity: 'common', effectKind: 'hook', classExclusive: true },
 
   // --- Common ---
   'static-shield': { id: 'static-shield', name: 'Static Shield', rarity: 'common', effectKind: 'hook' },

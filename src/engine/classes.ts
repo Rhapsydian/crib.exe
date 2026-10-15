@@ -7,10 +7,11 @@ import type { ModId } from './mod-types';
  * pair of the four new archetypes, each with a **bridge** passive that
  * makes one of its archetypes feed the other.
  *
- * PLACEHOLDERS. Class names, bridge passives and unlock order are not
- * designed yet -- they wait for real subroutines (step 3 of the
- * redesign). Until then each class is named for its pair, and its
- * passive is a placeholder bridge Mod (mods.ts).
+ * Step 3 (docs/authoring-design.md C1-C4) named them -- Blackhat,
+ * Operator, Eidolon, Breacher, Warden, Ghost -- and gave each a bespoke
+ * bridge (rules in resolve.ts's applyBridgeOn* hooks, Mods in mods.ts).
+ * Ids stay pair-based; `name` is display data. Starting loadouts still
+ * come from the skeleton until the authored pool is wired in.
  *
  * All 6 ship immediately selectable with no unlock gating -- session
  * 21's persistence-stub decision still holds: there is no save/profile
@@ -30,6 +31,8 @@ export type ClassId =
  * a class gets; the definition and hook logic live in mods.ts/resolve.ts. */
 export interface ClassDefinition {
   id: ClassId;
+  /** Display name (step 3, C4). */
+  name: string;
   archetypes: [Archetype, Archetype];
   startingPassiveId: ModId;
   startingLoadout: SubroutineDefinition[];
@@ -38,36 +41,42 @@ export interface ClassDefinition {
 export const CLASS_DEFINITIONS: Record<ClassId, ClassDefinition> = {
   'exploit-overclock': {
     id: 'exploit-overclock',
+    name: 'Blackhat',
     archetypes: ['exploit', 'overclock'],
     startingPassiveId: 'bridge-exploit-overclock',
     startingLoadout: CLASS_STARTING_LOADOUTS['exploit-overclock'],
   },
   'exploit-daemon': {
     id: 'exploit-daemon',
+    name: 'Operator',
     archetypes: ['exploit', 'daemon'],
     startingPassiveId: 'bridge-exploit-daemon',
     startingLoadout: CLASS_STARTING_LOADOUTS['exploit-daemon'],
   },
   'daemon-overclock': {
     id: 'daemon-overclock',
+    name: 'Eidolon',
     archetypes: ['daemon', 'overclock'],
     startingPassiveId: 'bridge-daemon-overclock',
     startingLoadout: CLASS_STARTING_LOADOUTS['daemon-overclock'],
   },
   'exploit-honeypot': {
     id: 'exploit-honeypot',
+    name: 'Breacher',
     archetypes: ['exploit', 'honeypot'],
     startingPassiveId: 'bridge-exploit-honeypot',
     startingLoadout: CLASS_STARTING_LOADOUTS['exploit-honeypot'],
   },
   'daemon-honeypot': {
     id: 'daemon-honeypot',
+    name: 'Warden',
     archetypes: ['daemon', 'honeypot'],
     startingPassiveId: 'bridge-daemon-honeypot',
     startingLoadout: CLASS_STARTING_LOADOUTS['daemon-honeypot'],
   },
   'overclock-honeypot': {
     id: 'overclock-honeypot',
+    name: 'Ghost',
     archetypes: ['overclock', 'honeypot'],
     startingPassiveId: 'bridge-overclock-honeypot',
     startingLoadout: CLASS_STARTING_LOADOUTS['overclock-honeypot'],
