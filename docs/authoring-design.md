@@ -487,6 +487,39 @@ simplest pairing; Wraith, the hardest, comes last. Not enforced: there is
 no save or profile layer yet, so all six are selectable. It fixes the
 default class (Blackhat).
 
+## Wiring — the authored pool in real runs
+
+`subroutines.ts` now serves the 36 authored pieces and C3's starting
+loadouts. The skeleton pool moved to `skeleton-pool.ts` and feeds only
+the **skeleton enemy roster**, until enemies are authored. Raw output:
+`docs/calibration/step3-wired-run-level.txt` (300 runs per class, synergy
+acquisition, opportunistic traversal, skill 0.85).
+
+| class | victory | heatMaxed + caught | quarantined | own noise/run | skill gap (0.5 → 0.85) |
+|---|---|---|---|---|---|
+| Blackhat | 27.3% | 24.3% | 47.3% | 17.7 | +12.7 pts |
+| Operator | 16.3% | 26.0% | 57.7% | 19.7 | +14.0 |
+| Eidolon | **41.3%** | 6.4% | 52.0% | 0 | +24.7 |
+| Breacher | 17.0% | 29.6% | 53.3% | 21.6 | +14.0 |
+| Warden | 19.0% | 3.3% | 77.7% | 0 | +10.7 |
+| Wraith | 22.7% | 6.3% | 70.3% | 0 | +11.3 |
+
+- **Exploit's Heat target is met:** Heat endings average **26.6%**
+  across the Exploit classes against **5.3%** for the others, about
+  **5×**, at the top of the user's 3–5× band. Own noise is 18–22 Trace a
+  run, up from the skeleton's 7–10, because Fuzzer now starts in every
+  Exploit kit. It lands almost all as "breached, then caught", as CP6
+  predicted. Watch it: one more noisy piece would push past 5×.
+- **Skill still decides runs:** better Cribbage adds 11–25 points of
+  victory in every class. Class-kit retention is 0.66–1.10.
+- **Eidolon is the outlier at 41% victory**, about double the others,
+  consistent with its bridge's late scaling (the Daemon + Overclock
+  watch item). The first tuning candidate.
+- **Victory is 16–27% for the other five,** near the user's 10–20% band.
+  But these runs still face the skeleton enemies, and quarantine
+  (gatekeeper losses, 47–78%) is the dominant ending. Win-rate tuning
+  waits for the authored enemy roster, per R1.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the

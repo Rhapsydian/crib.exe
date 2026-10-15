@@ -65,7 +65,7 @@ const EXTRA: Record<string, SubroutineDefinition[]> = {
 
 const reference = MATCHUPS.map((m) => cribbageSkillEdge(m, 2000));
 if (showReference) {
-  console.log(`\nSKILL RETENTION -- isolated mirrors (no passive/Mods), skeleton content. NOT a balance measurement.`);
+  console.log(`\nSKILL RETENTION -- isolated mirrors (no passive/Mods), current content. NOT a balance measurement.`);
   console.log(`${seeds} seeds x 2 seats per mirror; Cribbage reference 2000 games to 121.\n`);
   console.log(`plain Cribbage, better player wins: ${MATCHUPS.map((m, i) => `${label(m)} ${pct(reference[i].winRate)}`).join('   ')}\n`);
 }
@@ -108,7 +108,7 @@ for (const classId of classes) {
 }
 
 if (!skip.has('runs')) {
-  console.log(`\nRUN LEVEL -- victory by player skill, ${runSeeds} seeds/class (synergy/opportunistic, skeleton content).`);
+  console.log(`\nRUN LEVEL -- victory by player skill, ${runSeeds} seeds/class (synergy/opportunistic, current content).`);
   console.log(`${'class'.padEnd(20)}  skill 0.5   skill 0.85   gap`);
   for (const classId of classes) {
     const victory = [0.5, 0.85].map((skill) => {

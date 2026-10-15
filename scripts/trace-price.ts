@@ -60,7 +60,7 @@ const empty = (): Tally => ({
 const pct = (n: number) => `${((100 * n) / seeds).toFixed(1).padStart(5)}%`;
 const per = (n: number) => (n / seeds).toFixed(1).padStart(6);
 
-console.log(`\nTRACE PRICE -- ${seeds} seeds/class, synergy/opportunistic, skill 0.85, skeleton content. NOT plain full-run metrics.`);
+console.log(`\nTRACE PRICE -- ${seeds} seeds/class, synergy/opportunistic, skill 0.85, current content. NOT plain full-run metrics.`);
 console.log(`Layer allowances ${LAYER_HEAT_ALLOWANCE.join('/')}: 1 Trace = ${LAYER_HEAT_ALLOWANCE.map((a) => `${((100 * 1) / a).toFixed(1)}%`).join(' / ')} of a layer.\n`);
 console.log(`${'class'.padEnd(20)} extra  victory heatMax  caught  quarant  layers | per run: wins  baseline  perf  ownNoise  moves`);
 
