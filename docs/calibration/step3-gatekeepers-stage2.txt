@@ -1,0 +1,37 @@
+# Step 3, enemies, stage 2: gatekeeper pass rates against real accumulated states (gatekeeper-check.ts --seeds=300 --syntheticGatekeepers=1,1,1,1, all six classes, player skill 0.85, real enemy skill dial).
+# Final authored scales: firewall-prime 0.96, the-concierge 1.06, quarantine-ward 1.22, zero-sum 1.17, adaptive-threat 1.18, total-compromise 1.6, null-session 1.35, root-authority 1.07.
+
+## baseline (scales as stage 1)
+L1 firewall-prime      74.1%
+L1 the-concierge       83.1%
+L2 quarantine-ward     59.3%
+L2 zero-sum            91.1%
+L3 adaptive-threat     75.1%
+L3 total-compromise    98.9%
+L4 null-session        91.8%
+L4 root-authority      65.0%
+
+## round 1
+L1 firewall-prime      84.1%
+L1 the-concierge       67.1%
+L2 quarantine-ward     83.7%
+L2 zero-sum            46.2%
+L3 adaptive-threat     64.8%
+L3 total-compromise    49.0%
+L4 null-session        46.4%
+L4 root-authority      68.7%
+
+## final
+L1 firewall-prime      78.0%  target 78%  n=998
+L1 the-concierge       79.8%  target 78%  n=793
+L2 quarantine-ward     72.1%  target 72%  n=778
+L2 zero-sum            74.3%  target 72%  n=899
+L3 adaptive-threat     65.9%  target 66%  n=747
+L3 total-compromise    65.0%  target 66%  n=840
+L4 null-session        60.8%  target 60%  n=756
+L4 root-authority      61.1%  target 60%  n=769
+=== difficulty curve across all classes ===
+  layer 1  skill=0.85  1411/1791 (78.8%)
+  layer 2  skill=0.85  1229/1677 (73.3%)
+  layer 3  skill=0.85  1038/1587 (65.4%)
+  layer 4  skill=0.85  930/1525 (61.0%)

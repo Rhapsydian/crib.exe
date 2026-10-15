@@ -762,6 +762,44 @@ Stage 2 needs the authored gatekeepers in real runs, since
 `gatekeeper-check.ts` pins a gatekeeper inside real runs. That means
 wiring the roster (E5 step 5) before stage 2 rather than after.
 
+### Enemy steps 4b and 5 — wired in, and gatekeepers tuned to the pass-rate curve
+
+**Wired** (`f74c33f`): `ENEMY_ROSTER` is the 18 authored enemies. Each
+enemy fight passes its bridge and gatekeeper Mods (`enemyCombatOptions`).
+Regular and elite magnitude follows `ENEMY_LAYER_SCALER` from the
+enemy's authored first-layer scale; a gatekeeper's authored scale is its
+stored `magnitudeScaler`. `skeleton-pool.ts` is deleted. Total
+Compromise swapped Jackpot for Credential Stuffing, because Jackpot's
+beta writes Trace to its owner and Trace is player-only (a standing
+test). The legacy `EnemyPassiveId` slot remains always empty in
+playCombat's positional signature; remove it with that parameter.
+
+**Stage 2** (E3): `gatekeeper-check.ts`, 300 seeds per class, every layer
+synthetic, so every run reaches every gatekeeper. Each captured state is
+re-fought against the real gatekeeper at the real enemy skill dial.
+Pass rate moves about 1 point per 0.01 of scale, so two rounds of
+interpolation plus one nudge landed it. Raw output:
+`docs/calibration/step3-gatekeepers-stage2.txt`.
+
+| layer | target | gatekeeper | baseline → final | scale |
+|---|---|---|---|---|
+| 1 | 78% | Firewall Prime | 74.1 → **78.0** | 0.96 |
+| 1 | | The Concierge | 83.1 → **79.8** | 1.06 |
+| 2 | 72% | Quarantine Ward | 59.3 → **72.1** | 1.22 |
+| 2 | | Zero-Sum | 91.1 → **74.3** | 1.17 |
+| 3 | 66% | Adaptive Threat | 75.1 → **65.9** | 1.18 |
+| 3 | | Total Compromise | 98.9 → **65.0** | 1.6 |
+| 4 | 60% | Null Session | 91.8 → **60.8** | 1.35 |
+| 4 | | Root Authority | 65.0 → **61.1** | 1.07 |
+
+The curve across all classes is **78.8 / 73.3 / 65.4 / 61.0%** against
+78 / 72 / 66 / 60. **Within-layer spread is at most 2.3 points**, against
+session 49's up to 57: the problem session 49 found is closed.
+
+Noted, not changed: a gatekeeper reached inside the run's opening window
+(the first 3 fights, by beelining) plays at skill 0, because
+`enemySkill`'s opener pin applies to every tier.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the

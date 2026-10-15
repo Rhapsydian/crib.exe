@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { AUTHORED_GATEKEEPERS } from './content/enemies';
 import { createRng } from './rng';
 import { createNode } from './map-types';
 import { playCombat } from './combat';
@@ -156,8 +157,9 @@ describe('magnitudeScalerFor (session 39 per-layer difficulty scaler)', () => {
   it("reads a gatekeeper's own stored value, not a live layer formula", () => {
     expect(magnitudeScalerFor(gate(1), 1, 10)).toBe(gate(1).magnitudeScaler);
     expect(magnitudeScalerFor(gate(4), 4, 10)).toBe(gate(4).magnitudeScaler);
-    // Quarantine Ward's authored scale (1.35) became its stored value.
-    expect(ENEMY_ROSTER.find((e) => e.id === 'quarantine-ward')!.magnitudeScaler).toBe(1.35);
+    // A gatekeeper's authored scale (content/enemies.ts) becomes its stored value.
+    const authored = AUTHORED_GATEKEEPERS.find((e) => e.id === 'quarantine-ward')!;
+    expect(ENEMY_ROSTER.find((e) => e.id === 'quarantine-ward')!.magnitudeScaler).toBe(authored.scale);
   });
 
   it('regular/elite are pinned to 1 (no scaling) during the opener window regardless of layer', () => {
