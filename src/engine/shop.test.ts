@@ -35,9 +35,9 @@ function playerState(data: number): RunPlayerState {
 
 describe('shopCostOf', () => {
   it('scales steeply by rarity tier', () => {
-    const common = shopCostOf('probe'); // Exploit common
-    const uncommon = shopCostOf('fuzzer'); // Exploit uncommon
-    const rare = shopCostOf('packet-sniffer'); // Exploit rare
+    const common = shopCostOf('buffer-overflow'); // Exploit common
+    const uncommon = shopCostOf('jackpot'); // Exploit uncommon
+    const rare = shopCostOf('zero-day-chain'); // Exploit rare
     expect(common).toBeGreaterThan(0);
     expect(uncommon).toBeGreaterThan(common);
     expect(rare).toBeGreaterThan(uncommon);

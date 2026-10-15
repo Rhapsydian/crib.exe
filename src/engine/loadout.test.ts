@@ -181,19 +181,19 @@ describe('hasCreditCapablePiece', () => {
 // The synergy-aware acquisition ladder. Real pool ids are used wherever
 // a test depends on the rarity rung, since rarityOf() derives rarity
 // from which subroutines.ts array a piece lives in -- an invented id
-// would silently read as 'common'. probe = common, fuzzer = uncommon,
-// packet-sniffer = rare (all Exploit).
+// would silently read as 'common'. buffer-overflow = common, jackpot = uncommon,
+// zero-day-chain = rare (all Exploit).
 // ---------------------------------------------------------------------
 
 describe('ladderRank / synergyAwareAcquisition', () => {
   it('credit-gap outranks a higher-rarity off-archetype option', () => {
-    const gapFiller = piece('probe', 'daemon', CREDIT);
-    const shinyButOff = piece('packet-sniffer', 'overclock', CREDIT);
-    expect(synergyAwareAcquisition([shinyButOff, gapFiller], playerState([], []))?.id).toBe('probe');
+    const gapFiller = piece('buffer-overflow', 'daemon', CREDIT);
+    const shinyButOff = piece('zero-day-chain', 'overclock', CREDIT);
+    expect(synergyAwareAcquisition([shinyButOff, gapFiller], playerState([], []))?.id).toBe('buffer-overflow');
   });
 
   it('stops counting a gap once that archetype already credits', () => {
-    const another = piece('probe', 'daemon', CREDIT);
+    const another = piece('buffer-overflow', 'daemon', CREDIT);
     const closed = playerState([piece('installed-daemon', 'daemon', CREDIT)], []);
     expect(ladderRank(another, closed).creditGap).toBe(1);
   });
@@ -215,8 +215,8 @@ describe('ladderRank / synergyAwareAcquisition', () => {
 
   it('breaks a full tie by rarity, preferring the rarer piece', () => {
     const state = playerState([piece('installed-exp', 'exploit', CREDIT)], []);
-    expect(rarityOf('packet-sniffer')).toBe('rare');
-    expect(synergyAwareAcquisition([piece('probe', 'exploit', CREDIT), piece('packet-sniffer', 'exploit', CREDIT)], state)?.id).toBe('packet-sniffer');
+    expect(rarityOf('zero-day-chain')).toBe('rare');
+    expect(synergyAwareAcquisition([piece('buffer-overflow', 'exploit', CREDIT), piece('zero-day-chain', 'exploit', CREDIT)], state)?.id).toBe('zero-day-chain');
   });
 
   it('falls to the earliest option when ranks tie exactly, matching alwaysAcquireFirst', () => {
@@ -405,10 +405,10 @@ describe('acquireSubroutineWithSwap', () => {
   });
 
   it('does not evict an incumbent merely because the candidate is rarer (session 46 regression)', () => {
-    const state = playerState([piece('probe', 'exploit', CREDIT)], []);
-    const result = acquireSubroutineWithSwap(state, piece('packet-sniffer', 'exploit', CREDIT), 1);
-    expect(result.installedLoadout.map((p) => p.id)).toEqual(['probe']);
-    expect(result.bench.map((p) => p.id)).toEqual(['packet-sniffer']);
+    const state = playerState([piece('buffer-overflow', 'exploit', CREDIT)], []);
+    const result = acquireSubroutineWithSwap(state, piece('zero-day-chain', 'exploit', CREDIT), 1);
+    expect(result.installedLoadout.map((p) => p.id)).toEqual(['buffer-overflow']);
+    expect(result.bench.map((p) => p.id)).toEqual(['zero-day-chain']);
   });
 
   it('still evicts on a genuine archetype improvement', () => {

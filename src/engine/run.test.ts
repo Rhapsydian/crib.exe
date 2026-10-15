@@ -60,9 +60,15 @@ const HEAT_MAX = layerHeatAllowance(0);
  * acts only when the class's first archetype fires elevated) can never
  * touch this beta-less Exploit dummy's trajectory -- inert. */
 function overwhelmingStarterLoadout(creditAmount: number): SubroutineDefinition[] {
-  return CLASS_STARTING_LOADOUTS['exploit-overclock'].map((piece): SubroutineDefinition =>
-    piece.id === 'probe' ? { ...piece, alpha: { verb: 'credit', amount: creditAmount } } : piece,
-  );
+  // Step 3: the real 'exploit-overclock' (Blackhat) starting kit, Port
+  // Scan's credit alpha scaled up; Cache Hit's Empower stays real. Fuzzer's
+  // Trace rider is stripped so the kit makes no noise of its own (the Heat
+  // window assertions below rely on that).
+  return CLASS_STARTING_LOADOUTS['exploit-overclock'].map((piece): SubroutineDefinition => {
+    if (piece.id === 'port-scan') return { ...piece, alpha: { verb: 'credit', amount: creditAmount } };
+    if (piece.id === 'fuzzer' && piece.beta && piece.beta.effect.verb === 'enhance') return { ...piece, beta: { ...piece.beta, effect: { verb: 'enhance', amount: piece.beta.effect.amount } } };
+    return piece;
+  });
 }
 
 function loadoutWithBurst(amount: number): SubroutineDefinition[] {

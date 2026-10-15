@@ -62,7 +62,13 @@ describe('alpha/beta model rules', () => {
       for (const effect of [piece.alpha, piece.beta?.effect]) {
         if (!effect) continue;
         const amount = effectAmount(effect);
-        if (amount !== undefined) expect(amount, piece.id).toBeGreaterThan(0);
+        // A growing alpha may start at 0 (step 3: Memory Leak, pure ramp) --
+        // its growth is the magnitude.
+        const grows = effect === piece.alpha && (piece.alpha.growth ?? 0) > 0;
+        // An immediate beta's enhance of 0 is a plain extra fire of the
+        // alpha (D12's "extra fire"; step 3: Ping, "fire again").
+        const extraFire = effect === piece.beta?.effect && piece.beta?.shape === 'immediate' && effect.verb === 'enhance';
+        if (amount !== undefined && !grows && !extraFire) expect(amount, piece.id).toBeGreaterThan(0);
       }
     }
   });

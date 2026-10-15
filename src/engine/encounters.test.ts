@@ -57,13 +57,15 @@ import { postedFightRisk } from './heat';
  * to a synthetic single-piece negligible dummy instead.
  */
 function overwhelmingStarterLoadout(creditAmount: number): SubroutineDefinition[] {
-  // Session 51: the real 'exploit-overclock' starting kit, Probe's credit
-  // alpha scaled up -- Voltage Boost's Empower and Burst Clock's sequence
-  // beta stay at their real values, the same "real kit, one magnitude
-  // scaled" construction the old Buffer Overflow version used.
-  return CLASS_STARTING_LOADOUTS['exploit-overclock'].map((piece): SubroutineDefinition =>
-    piece.id === 'probe' ? { ...piece, alpha: { verb: 'credit', amount: creditAmount } } : piece,
-  );
+  // Step 3: the real 'exploit-overclock' (Blackhat) starting kit, Port
+  // Scan's credit alpha scaled up; Cache Hit's Empower stays real. Fuzzer's
+  // Trace rider is stripped so the kit makes no noise of its own (the Heat
+  // window assertions below rely on that).
+  return CLASS_STARTING_LOADOUTS['exploit-overclock'].map((piece): SubroutineDefinition => {
+    if (piece.id === 'port-scan') return { ...piece, alpha: { verb: 'credit', amount: creditAmount } };
+    if (piece.id === 'fuzzer' && piece.beta && piece.beta.effect.verb === 'enhance') return { ...piece, beta: { ...piece.beta, effect: { verb: 'enhance', amount: piece.beta.effect.amount } } };
+    return piece;
+  });
 }
 
 // classId: 'daemon-honeypot' here, deliberately a class with no Exploit
@@ -338,7 +340,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
   });
 
   it('Safehouse merges instead of resting when Merge material is banked -- costs 0 Heat', () => {
-    const playerWithMaterial: RunPlayerState = { ...OVERWHELMING_PLAYER, material: { probe: 1 } };
+    const playerWithMaterial: RunPlayerState = { ...OVERWHELMING_PLAYER, material: { 'port-scan': 1 } };
     const outcome = resolveEncounter(createNode('n', 'safehouse'), createRng(1), playerWithMaterial);
     expect(outcome).toEqual({
       newState: 'inert',
@@ -348,7 +350,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
       rewardTier: 'none',
       dataAwarded: 0,
       rewardOptions: [],
-      mergeTargetId: 'probe',
+      mergeTargetId: 'port-scan',
       shopPurchase: null,
       rerollCost: 0,
       modRewardOptions: [],

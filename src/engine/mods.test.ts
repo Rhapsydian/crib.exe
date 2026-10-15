@@ -486,7 +486,7 @@ describe('Mods smoke test -- a full run with several Mods active together', () =
       ownedModIdsOverride: ['static-shield', 'light-footing', 'rootkit-persistence', 'auxiliary-process'],
       layerNodeCounts: [4, 4, 4, 4],
     });
-    expect(['heatMaxed', 'quarantined', 'noRouteRemains', 'victory']).toContain(result.outcome);
+    expect(['heatMaxed', 'quarantined', 'noRouteRemains', 'breachedThenCaught', 'victory']).toContain(result.outcome);
     expect(result.playerState.ownedModIds).toEqual(
       expect.arrayContaining(['bridge-exploit-overclock', 'static-shield', 'light-footing', 'rootkit-persistence', 'auxiliary-process']),
     );

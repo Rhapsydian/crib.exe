@@ -1,5 +1,5 @@
 import type { EventDefinition } from './event-types';
-import { pool } from './enemies';
+import { authoredPiece } from './content/starting-loadouts';
 import { MOD_DEFINITIONS } from './mods';
 import { BURNER_DEFINITIONS } from './burners';
 
@@ -106,11 +106,10 @@ export const EVENT_ROSTER: EventDefinition[] = [
         label: 'Hear them out',
         riskTier: 'gamble',
         outcomes: [
-          // Session 51: was Checksum Match, a Neutral piece removed with that
-          // archetype. Probe is the nearest skeleton equivalent (credit that
-          // scales on fifteens); being Exploit, it is off-class for half the
-          // classes -- revisit when real content exists.
-          { probability: 0.5, effect: { subroutineGrant: { specific: pool('probe') } } },
+          // Step 3: the whistleblower hands over stolen credentials --
+          // Credential Stuffing (Exploit uncommon). Off-class for half the
+          // classes, as Probe was before it.
+          { probability: 0.5, effect: { subroutineGrant: { specific: authoredPiece('credential-stuffing') } } },
           { probability: 0.5, effect: { heatLosses: 0.73 } },
         ],
       },

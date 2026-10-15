@@ -1,7 +1,14 @@
 import type { SubroutineDefinition } from '../subroutine-types';
 import type { ArchetypePool } from '../subroutines';
 import type { PricingContext } from './overclock';
-import { creditPiece } from '../pricing';
+
+
+/** A plain Credit piece, for pricing positions. Local rather than
+ * pricing.ts's creditPiece: content must not import the combat engine
+ * (classes -> subroutines -> content would close a cycle). Same shape. */
+function creditPiece(amount: number, id: string): SubroutineDefinition {
+  return { id, name: id, archetype: 'exploit', alpha: { verb: 'credit', amount } };
+}
 
 /**
  * Honeypot's authored pool (step 3, checkpoint 4; `docs/authoring-design.md`).

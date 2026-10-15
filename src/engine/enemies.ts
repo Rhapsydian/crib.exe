@@ -1,5 +1,5 @@
 import { scaledDefinition, type Archetype, type SubroutineDefinition } from './subroutine-types';
-import { ALL_POOL_SUBROUTINES } from './subroutines';
+import { ALL_SKELETON_SUBROUTINES } from './skeleton-pool';
 import type { Rng } from './rng';
 import type { LayerGraph, MapNode } from './map-types';
 
@@ -120,7 +120,7 @@ export interface EnemyDefinition {
 }
 
 const SUBROUTINE_BY_ID: ReadonlyMap<string, SubroutineDefinition> = new Map(
-  ALL_POOL_SUBROUTINES.map((subroutine) => [subroutine.id, subroutine]),
+  ALL_SKELETON_SUBROUTINES.map((subroutine) => [subroutine.id, subroutine]),
 );
 
 /** Looks up a pool subroutine by id -- throws immediately on a
