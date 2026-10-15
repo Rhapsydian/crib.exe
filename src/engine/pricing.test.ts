@@ -108,4 +108,11 @@ describe('priceAddition -- placement and multi-piece additions', () => {
     expect(priceAddition([creditPiece(2)], empower, [0], FAST, 'after').curve[0].winRate).toBe(0.5);
     expect(priceAddition([creditPiece(2)], empower, [0], FAST, 'before').curve[0].winRate).toBeGreaterThan(0.5);
   });
+
+  it('a numeric placement inserts the addition mid-build: Empower above one piece and below another boosts only the lower one', () => {
+    const empower = { id: 'emp', name: 'emp', archetype: 'overclock' as const, alpha: { verb: 'empower' as const, amount: 2, scope: 'next' as const } };
+    // [Credit 2, Empower 2, Credit 2]: the next piece gets +2, the same as
+    // a Credit-2 addition at that slot.
+    expect(priceAddition([creditPiece(2, 'top'), creditPiece(2, 'bottom')], empower, [2], FAST, 1).curve[0].winRate).toBe(0.5);
+  });
 });

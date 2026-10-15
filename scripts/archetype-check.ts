@@ -32,6 +32,7 @@ import { ARCHETYPE_POOLS, type ArchetypePool } from '../src/engine/subroutines';
 import type { SubroutineDefinition } from '../src/engine/subroutine-types';
 import { EXPLOIT_POOL, EXPLOIT_RARE_BUILDS, EXPLOIT_KITS } from '../src/engine/content/exploit';
 import { DAEMON_POOL, DAEMON_RARE_BUILDS, DAEMON_KITS, DAEMON_CROSS_BUILDS } from '../src/engine/content/daemon';
+import { OVERCLOCK_POOL, OVERCLOCK_RARE_BUILDS, OVERCLOCK_KITS, OVERCLOCK_CROSS_BUILDS, OVERCLOCK_CONTEXTS, type PricingContext } from '../src/engine/content/overclock';
 
 function parseArgs(argv: string[]): Record<string, string> {
   const out: Record<string, string> = {};
@@ -48,7 +49,11 @@ const only = args.only ? new Set(args.only.split(',')) : null;
 
 interface AuthoredArchetype {
   pool: ArchetypePool;
-  rareBuilds: Record<string, SubroutineDefinition[]>;
+  /** The build a rare invites: pieces placed below it, or a full
+   * pricing position. */
+  rareBuilds: Record<string, SubroutineDefinition[] | PricingContext>;
+  /** Non-rares priced in their designed position instead of alone. */
+  contexts?: Record<string, PricingContext>;
   kits: Record<string, SubroutineDefinition[]>;
   /** Earlier archetypes' rares re-priced against this one's real pieces. */
   crossBuilds?: [SubroutineDefinition, SubroutineDefinition[]][];
@@ -56,6 +61,7 @@ interface AuthoredArchetype {
 const ARCHETYPES: Record<string, AuthoredArchetype> = {
   exploit: { pool: EXPLOIT_POOL, rareBuilds: EXPLOIT_RARE_BUILDS, kits: EXPLOIT_KITS },
   daemon: { pool: DAEMON_POOL, rareBuilds: DAEMON_RARE_BUILDS, kits: DAEMON_KITS, crossBuilds: DAEMON_CROSS_BUILDS },
+  overclock: { pool: OVERCLOCK_POOL, rareBuilds: OVERCLOCK_RARE_BUILDS, kits: OVERCLOCK_KITS, crossBuilds: OVERCLOCK_CROSS_BUILDS, contexts: OVERCLOCK_CONTEXTS },
 };
 const archetype = ARCHETYPES[args.archetype ?? 'exploit'];
 if (!archetype) throw new Error(`unknown --archetype=${args.archetype}`);
@@ -73,7 +79,7 @@ const GRID = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5];
 const fmt = (x: number | null | undefined) => (x === null || x === undefined ? '  -- ' : x.toFixed(2).padStart(5));
 const pct = (x: number) => `${(100 * x).toFixed(1)}%`.padStart(6);
 
-function duel(addition: SubroutineDefinition, host: SubroutineDefinition[], placement: 'after' | 'before') {
+function duel(addition: SubroutineDefinition, host: SubroutineDefinition[], placement: 'after' | 'before' | number) {
   const { coarse, fine } = refinedPrice(host, addition, GRID, options, placement);
   return fine ?? coarse;
 }
@@ -92,18 +98,21 @@ if (!skip.has('prices')) {
       if (only && !only.has(piece.id)) continue;
       const formula = piecePrice(piece).total;
       const host = hasGrowth(piece) && !args.host ? GROWTH_HOST : HOST;
-      const alone = duel(piece, [host], 'after');
+      const context = archetype.contexts?.[piece.id];
+      const alone = context ? duel(piece, context.host, context.at) : duel(piece, [host], 'after');
       // A rare alone must be at least common-level (S6).
       const aloneBand = rarity === 'rare' ? ([2.0, Infinity] as const) : BANDS[rarity];
-      console.log(`${piece.name.padEnd(22)} ${rarity.padEnd(9)} ${fmt(formula)}   ${fmt(alone.price)} [${fmt(alone.low)}, ${fmt(alone.high)}]  ${inBand(alone.price, aloneBand)}${rarity === 'rare' ? ' (alone, >= 2.0)' : ''}`);
+      const where = context ? ` (in position: ${context.host.map((h) => h.name).join(', ')}; at ${context.at})` : '';
+      console.log(`${piece.name.padEnd(22)} ${rarity.padEnd(9)} ${fmt(formula)}   ${fmt(alone.price)} [${fmt(alone.low)}, ${fmt(alone.high)}]  ${inBand(alone.price, aloneBand)}${rarity === 'rare' ? ' (alone, >= 2.0)' : ''}${where}`);
       if (hasGrowth(piece) && !args.host) {
         const range = [2, 8].map((h) => duel(piece, [creditPiece(h, 'host')], 'after').price);
         console.log(`${''.padEnd(22)} ${'growth'.padEnd(9)}   --    priced at host 4; range host 2 ${fmt(range[0])}, host 8 ${fmt(range[1])}`);
       }
       const build = archetype.rareBuilds[piece.id];
       if (rarity === 'rare' && build) {
-        const inBuild = duel(piece, [...build, host], 'before');
-        console.log(`${''.padEnd(22)} ${'in build'.padEnd(9)}   --    ${fmt(inBuild.price)} [${fmt(inBuild.low)}, ${fmt(inBuild.high)}]  ${inBand(inBuild.price, BANDS.rare)} (above ${build.map((b) => b.name).join(', ')})`);
+        const position = Array.isArray(build) ? { host: [...build, host], at: 0 } : build;
+        const inBuild = duel(piece, position.host, position.at);
+        console.log(`${''.padEnd(22)} ${'in build'.padEnd(9)}   --    ${fmt(inBuild.price)} [${fmt(inBuild.low)}, ${fmt(inBuild.high)}]  ${inBand(inBuild.price, BANDS.rare)} (in ${position.host.map((b) => b.name).join(', ')}; at ${position.at})`);
       }
     }
   }

@@ -148,8 +148,10 @@ function crossing(deltas: number[], values: number[]): number | null {
 }
 
 /** Where the addition sits relative to the host. Order matters for
- * Empower (it boosts only pieces BELOW it) and for sequence betas. */
-export type Placement = 'after' | 'before';
+ * Empower (it boosts only pieces BELOW it) and for sequence betas. A
+ * number inserts it at that index of the host list (step 3: a piece
+ * priced in the middle of a build, with pieces above and below it). */
+export type Placement = 'after' | 'before' | number;
 
 /**
  * R2's host-plus-difference method. Both sides get `host`; the test side
@@ -168,7 +170,8 @@ export function priceAddition(
 ): PriceResult {
   const sorted = [...deltas].sort((a, b) => a - b);
   const added = Array.isArray(addition) ? addition : [addition];
-  const place = (extra: SubroutineDefinition[]): SubroutineDefinition[] => (placement === 'after' ? [...host, ...extra] : [...extra, ...host]);
+  const place = (extra: SubroutineDefinition[]): SubroutineDefinition[] =>
+    placement === 'after' ? [...host, ...extra] : placement === 'before' ? [...extra, ...host] : [...host.slice(0, placement), ...extra, ...host.slice(placement)];
   const test = place(added);
   const padding = Array.from({ length: added.length - 1 }, (_, i) => creditPiece(0, `credit-pad-${i}`));
   const curve = sorted.map((delta) => ({ delta, ...mirrorWinRate(test, place([creditPiece(delta, `credit-delta`), ...padding]), options) }));

@@ -229,6 +229,55 @@ Haste ¼ stand-in it is 2.60, the same as alone, so the Overclock stand-in
 added nothing. Re-check it against Overclock's real pieces at
 checkpoint 3.
 
+## Checkpoint 3 — Overclock
+
+`src/engine/content/overclock.ts`: 9 pieces, not yet wired. Raw output:
+`docs/calibration/step3-cp3-overclock.txt`. Pieces that depend on their
+neighbours are priced in their designed position. `priceAddition` now
+takes a numeric placement, so a piece can be inserted mid-build.
+
+| piece | rarity | alpha | beta | price |
+|---|---|---|---|---|
+| Ping | C | Credit 1 | every 2nd pair: fire again (immediate) | 1.80 |
+| Cache Hit | C | Empower 1 (next) | each fifteen: +1 (cap 1) | 1.89 above a Credit piece |
+| Burst Clock | C | Credit 1 | +1 per Overclock neighbour (cap 2) | 2.10 beside Ping |
+| Elevated Session | C | Credit 1 | every 2nd go: Haste ¾ turn (immediate) | 1.88 |
+| Priority Override | U | Credit 1 | the moment you reach 12+ this hand: Haste ¾ turn | 2.15 |
+| Port Forward | U | Credit 1 | every 2nd pair: Empower 2 (next) | 2.12 above a Credit piece |
+| Grand Slam | U | Credit 1 | +1 per earlier elevated Overclock fire this turn (cap 3) | 2.00 after an Overclock pair |
+| Chain Reaction | R | Credit 2 | per earlier elevated Overclock fire: Empower every piece below +¼ (cap 2) | 2.00 alone, 2.25 in build |
+| Turbo Mode | R | each fire: initiative threshold −1/24, permanent (floor ⅓; 15-point cooldown) | every 2nd fifteen: Credit 3 (immediate) | 2.56 alone, 2.76 with Fork Bomb + Cron Job |
+
+Tuning from the draft, all measured:
+
+- **Flat haste is worth little.** Elevated Session's ⅛-turn alpha haste
+  with its cooldown priced 0.96. The haste moved into the beta, as a big
+  occasional ¾ turn. Priority Override's haste went from ¼ to **¾** as
+  well (1.46 → 2.15).
+- **Measurement trap, now designed out:** inserting a sequence piece
+  beside Burst Clock gives *Burst Clock* an extra Overclock neighbour,
+  so the price measured that neighbour's bonus. Grand Slam's "3.25"
+  didn't move with its cap. Sequence pieces are now priced with a
+  neutral spacer. **Authoring rule: price a sequence piece away from
+  other adjacency pieces, or the price includes their bonus.**
+- **Chain Reaction** scales with every piece below it. Empower +1 each
+  priced 4.25 with only two below, so it's now **+¼** per piece per
+  earlier fire. It grows past band in bigger builds by design, since it
+  is the build-around.
+- **Turbo Mode's** beta Credit 2 → **3** (1.87 alone, under the rare
+  floor).
+- **Fork Bomb's build is confirmed** (the checkpoint 2 watch item): 2.30
+  beside Turbo Mode and 2.90 [2.50, 3.30] beside Elevated Session, both
+  up from its 2.60 with the stand-in. The second is slightly high, which
+  is acceptable for this pass.
+
+Kits: the credit rule holds. **Retention is 0.61–0.92**, above the floor
+but lower than with the draft's weaker haste (commons-only kit 0.88 →
+0.70, late tempo 0.75 → 0.64). Big hastes are the skill cost CP6b
+predicted. **Watch item: late Overclock fights are very short** (2.8–3.6
+hands), the shortest so far, and fight length is what retention tracks.
+Revisit with the win-rate and fight-length tuning after step 3.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the

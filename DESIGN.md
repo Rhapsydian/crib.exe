@@ -424,6 +424,12 @@ The instruments are:
    than the standard Credit-2 host (~10), with its host-2 and host-8
    (~5 hands) prices reported as its range. Ramp is meant to be strongest
    in long fights.
+3c. **Price positional pieces in position** (step 3, checkpoint 3).
+   Empower and sequence pieces are priced where they're designed to sit
+   (`priceAddition`'s numeric placement), with a neutral spacer between
+   them and any other adjacency piece, so the price measures this piece
+   and not the bonus its presence gives a neighbour. Flat haste is worth
+   little; tempo pieces work better as large, occasional hastes.
 4. **Trace has no flat exchange rate.** It is priced against a layer's
    allowance (1 Trace = 2.5–3.6% of a layer). Its cost is convex in the
    noise a build already makes: free in a quiet build, 5–8 points of run

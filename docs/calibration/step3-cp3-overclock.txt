@@ -1,0 +1,26 @@
+
+PRICES -- Credit per turn vs a Credit-2 host, skill 0.85, 200 seeds x 2 seats. Isolated duels.
+piece                  rarity    formula  duel  [ low,  high]  band
+Ping                   common     1.62    1.80 [ 1.70,  1.90]  ok   
+Cache Hit              common      --     1.89 [ 1.80,  1.90]  ok    (in position: host; at 0)
+Burst Clock            common      --     2.10 [ 1.90,  2.30]  ok    (in position: host, Ping; at 2)
+Elevated Session       common      --     1.88 [ 1.80,  1.90]  ok   
+Priority Override      uncommon    --     2.15 [ 2.10,  2.20]  ok   
+Port Forward           uncommon    --     2.12 [ 2.10,  2.20]  ok    (in position: host; at 0)
+Grand Slam             uncommon    --     2.00 [ 1.70,  2.44]  ok    (in position: Ping, Burst Clock, spacer, host; at 3)
+Chain Reaction         rare        --     2.00 [ 1.70,  2.30]  ok    (alone, >= 2.0)
+                       in build    --     2.25 [ 1.80,  2.70]  ok    (in Ping, Burst Clock, spacer, host, below; at 3)
+Turbo Mode             rare        --     2.56 [ 2.50,  2.60]  ok    (alone, >= 2.0)
+                       in build    --     2.76 [ 2.70,  2.80]  ok    (in Fork Bomb, Cron Job, host; at 0)
+
+CROSS-ARCHETYPE BUILDS -- earlier rares against this archetype's real pieces (rare band 2.2-2.8).
+Fork Bomb              above Turbo Mode                            2.30 [ 2.30,  2.40]  ok   
+Fork Bomb              above Elevated Session                      2.90 [ 2.50,  3.30]  HIGH 
+
+KITS -- credit rule, skill retention (0.85 v 0.5; floor 0.5; plain Cribbage  87.4%), own Trace per fight.
+kit              pieces  threshold-wins  retain  floor   Trace/fight  hands/fight
+(skeleton ref)        3  100.0%          0.81   ok        0.00       12.6
+commons only          4  100.0%          0.70   ok        0.00        5.2
+early                 3  100.0%          0.92   ok        0.00        8.4
+late chain            6  100.0%          0.61   ok        0.00        2.8
+late tempo            6  100.0%          0.64   ok        0.00        3.6
