@@ -1,0 +1,25 @@
+# Step 3 complete: full runs with the authored pool, classes and enemy roster (gatekeepers tuned to the stage-2 curve).
+TRACE PRICE -- 300 seeds/class, synergy/opportunistic, skill 0.85, current content. NOT plain full-run metrics.
+Layer allowances 40/36/32/28: 1 Trace = 2.5% / 2.8% / 3.1% / 3.6% of a layer.
+
+class                extra  victory heatMax  caught  quarant  layers | per run: wins  baseline  perf  ownNoise  moves
+exploit-overclock        0   14.3%   2.7%  22.7%  60.3%   1.42 |    3.9   12.8     12.1    16.1     12.0
+exploit-daemon           0   11.0%   3.3%  33.3%  52.3%   1.61 |    4.2   13.9     10.4    22.4     12.5
+daemon-overclock         0   31.0%   0.7%   6.0%  62.0%   1.98 |    5.6   18.6     13.7     0.9     18.3
+exploit-honeypot         0   14.3%   3.7%  38.0%  44.0%   1.78 |    4.5   14.7     10.4    25.9     13.0
+daemon-honeypot          0   27.0%   1.3%   6.3%  64.7%   2.44 |    6.8   23.0     10.7     2.2     22.1
+overclock-honeypot       0   27.7%   1.0%   8.3%  62.3%   2.21 |    6.3   21.0     12.9     1.2     20.5
+
+# skill-check.ts: run-level victory at player skill 0.5 vs 0.85 (150 seeds/class), and late-run class-kit retention (0.85 v 0.5, then 0.85 v 0.25).
+exploit-overclock       4.0%      11.3%       7.3 pts
+exploit-overclock late (3 runs, ~6.3 pieces)              70.0%   0.53                81.7%   0.72
+exploit-daemon          3.3%      10.7%       7.3 pts
+exploit-daemon late (3 runs, ~6.0 pieces)              71.7%   0.58                87.5%   0.85
+daemon-overclock       10.7%      30.7%      20.0 pts
+daemon-overclock late (3 runs, ~6.3 pieces)              72.5%   0.60                90.0%   0.90
+exploit-honeypot        3.3%      12.0%       8.7 pts
+exploit-honeypot late (3 runs, ~6.7 pieces)              75.8%   0.69                88.3%   0.87
+daemon-honeypot         3.3%      26.7%      23.3 pts
+daemon-honeypot late (3 runs, ~6.0 pieces)              86.7%   0.98                95.0%   1.02
+overclock-honeypot      7.3%      24.0%      16.7 pts
+overclock-honeypot late (3 runs, ~6.7 pieces)              78.3%   0.76                90.8%   0.92

@@ -800,6 +800,35 @@ Noted, not changed: a gatekeeper reached inside the run's opening window
 (the first 3 fights, by beelining) plays at skill 0, because
 `enemySkill`'s opener pin applies to every tier.
 
+### Step 3's full-run result
+
+300 runs per class with everything authored: pool, classes and roster.
+Raw output: `docs/calibration/step3-final-run-level.txt`.
+
+| class | victory | Heat endings (maxed + caught) | quarantined | skill gap (0.5 → 0.85) | late retention |
+|---|---|---|---|---|---|
+| Blackhat | 14.3% | 25.4% | 60.3% | +7.3 pts | 0.53 |
+| Operator | 11.0% | 36.6% | 52.3% | +7.3 | 0.58 |
+| Eidolon | **31.0%** | 6.7% | 62.0% | +20.0 | 0.60 |
+| Breacher | 14.3% | **41.7%** | 44.0% | +8.7 | 0.69 |
+| Warden | **27.0%** | 7.6% | 64.7% | +23.3 | 0.98 |
+| Wraith | **27.7%** | 9.3% | 62.3% | +16.7 | 0.76 |
+
+- **The three Exploit classes sit inside the 10–20% band; the three
+  others are above it (27–31%).** Mean 20.9%.
+- **Exploit's Heat ratio is 4.4×**, inside the user's 3–5×. But the
+  absolute rate is now 25–42%, up from 24–30% before the roster, because
+  the tracers add to it. "Breached, then caught" is the commonest way an
+  Exploit run ends. That pins Exploit victory near the band's floor.
+- **Skill matters least for Exploit runs** (+7–9 points against +17–23
+  for the others): their runs end on Heat, which Cribbage skill barely
+  moves. Late-run retention passes the floor everywhere; Blackhat is
+  closest, at 0.53.
+- **Not separable by gatekeeper tuning:** the gatekeepers are on curve
+  for the pooled cohort. The class split comes from Heat (Exploit) and
+  from build strength (Eidolon, the standing watch item). It needs its
+  own pass.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the
