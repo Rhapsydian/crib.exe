@@ -23,7 +23,7 @@ import { GAUGE_THRESHOLD, BREACH_THRESHOLD } from '../src/engine/encounters';
 import { scaledEnemyLoadout } from '../src/engine/enemies';
 import { LAYER_HEAT_ALLOWANCE } from '../src/engine/heat';
 import { CLASS_DEFINITIONS, ALL_CLASS_IDS } from '../src/engine/classes';
-import { AUTHORED_REGULARS, ENEMY_BUDGET, ENEMY_LAYER_SCALER, type AuthoredEnemy } from '../src/engine/content/enemies';
+import { AUTHORED_REGULARS, AUTHORED_ELITES, ENEMY_BUDGET, ENEMY_LAYER_SCALER, type AuthoredEnemy } from '../src/engine/content/enemies';
 
 function parseArgs(argv: string[]): Record<string, string> {
   const out: Record<string, string> = {};
@@ -36,7 +36,7 @@ function parseArgs(argv: string[]): Record<string, string> {
 const args = parseArgs(process.argv.slice(2));
 const seeds = Number(args.seeds ?? 60);
 const only = args.only ? new Set(args.only.split(',')) : null;
-const TIERS: Record<string, AuthoredEnemy[]> = { regular: AUTHORED_REGULARS };
+const TIERS: Record<string, AuthoredEnemy[]> = { regular: AUTHORED_REGULARS, elite: AUTHORED_ELITES };
 const roster = TIERS[args.tier ?? 'regular'];
 
 /** The enemy's magnitude at `layer`: its authored scale, times the
@@ -51,12 +51,12 @@ const options = { seeds, skill: 0.85, gaugeThreshold: GAUGE_THRESHOLD, winThresh
  * Trace accrues), with the pressure minus without it, so the player's own
  * noise (Fuzzer) cancels out. */
 function tracePerFight(enemy: AuthoredEnemy, layer: number): number {
-  const withPressure = traceAgainst(scaledEnemyLoadout(enemy.loadout, scalerAt(enemy, layer)));
-  const without = traceAgainst(scaledEnemyLoadout(enemy.loadout.map((piece) => ({ ...piece, tracePressure: undefined })), scalerAt(enemy, layer)));
+  const withPressure = traceAgainst(scaledEnemyLoadout(enemy.loadout, scalerAt(enemy, layer)), enemy);
+  const without = traceAgainst(scaledEnemyLoadout(enemy.loadout.map((piece) => ({ ...piece, tracePressure: undefined })), scalerAt(enemy, layer)), enemy);
   return withPressure - without;
 }
 
-function traceAgainst(loadout: ReturnType<typeof scaledEnemyLoadout>): number {
+function traceAgainst(loadout: ReturnType<typeof scaledEnemyLoadout>, enemy: AuthoredEnemy): number {
   let trace = 0;
   let fights = 0;
   for (const classId of ALL_CLASS_IDS) {
@@ -68,6 +68,7 @@ function traceAgainst(loadout: ReturnType<typeof scaledEnemyLoadout>): number {
         discardStrategies: [discardSkillStrategy(0.85), discardSkillStrategy(0.85)],
         playStrategies: [pegSkillStrategy(0.85), pegSkillStrategy(0.85)],
         classId,
+        opponentBridge: enemy.bridge,
       });
       trace += r.traceGenerated;
       fights++;
@@ -81,7 +82,7 @@ console.log(`${'enemy'.padEnd(20)} first  budget   power by layer (scaled)      
 for (const enemy of roster) {
   if (only && !only.has(enemy.id)) continue;
   const layers = [1, 2, 3, 4].filter((l) => l >= enemy.minLayer);
-  const powers = layers.map((layer) => kitPower(scaledEnemyLoadout(enemy.loadout, scalerAt(enemy, layer)), options));
+  const powers = layers.map((layer) => kitPower(scaledEnemyLoadout(enemy.loadout, scalerAt(enemy, layer)), { ...options, bridge: enemy.bridge }));
   const budget = ENEMY_BUDGET[enemy.tier][enemy.minLayer - 1];
   const first = powers[0];
   const verdict = first === null ? '?' : Math.abs(first - budget) <= 0.15 * budget ? 'ok (within 15%)' : first < budget ? 'LOW' : 'HIGH';

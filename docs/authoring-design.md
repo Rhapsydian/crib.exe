@@ -706,6 +706,29 @@ kit power by `scripts/roster-check.ts`. Raw output:
 - **Infrastructure:** `kitPower` moved into `pricing.ts`, shared by
   `player-power.ts` and `roster-check.ts`.
 
+### Enemy step 3 — the four elites
+
+`src/engine/content/enemies.ts` (not yet wired). Priced as kit power
+**with each elite's bridge Mod** (`AuthoredEnemy.bridge`; side 1's
+bridge slot). Raw output: `docs/calibration/step3-elites.txt`.
+
+| elite | pair (bridge Mod) | layers | pieces | scale | power by layer (budget 7.7 / 10.5 / 12.0 / 12.3) |
+|---|---|---|---|---|---|
+| Zero-Day Broker | Exploit + Overclock (Exploit Chain) | 1+ | Zero-Day Chain → Port Scan → Credential Stuffing | 0.9 | 8.2 / 9.8 / 12.3 / 12.7 |
+| Incident Response | Exploit + Daemon (Backdoor Maintenance) | 1+ | Race Condition → Heartbeat Monitor → Cron Job | 0.95 | 8.0 / 9.8 / 10.9 / 11.3 |
+| Blackout Cell | Daemon + Honeypot (Hardened Perimeter) | 2+ | Memory Leak → Sinkhole → Basic Auth | 1.5 | — / 10.8 / 11.7 / 12.3 |
+| Intrusion Alarm (tracer) | Overclock + Honeypot (Siphon) | 2+ | Priority Override → Elevated Session (each +⅛ Trace pressure) → Tarpit | 1 | — / 8.7 / 9.9 / 10.1, plus 5.1 Trace a fight (14% of layer 2's allowance) |
+
+- **Trace pressure multiplies with how often a piece fires.** At the
+  drafted ½ a fire, Intrusion Alarm pushed 20 Trace a fight (57% of the
+  allowance): its pieces fire on turns *and* as immediate betas, and the
+  measurement fights starting kits, which make for long fights. At ⅛ it
+  is 5.1, double Tripwire's, which is the intended "win fast or pay".
+  Measured against starting kits, so it's an upper bound; a stronger
+  real player ends the fight sooner.
+- The time-box was not triggered: two tracers balanced with one sizing
+  step each. Run-level Exploit Heat is re-checked at wiring.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the

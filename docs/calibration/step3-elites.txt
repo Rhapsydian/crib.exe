@@ -1,0 +1,15 @@
+# Step 3, enemies: the 4 elites priced as kit power with their bridge Mods (scripts/roster-check.ts --tier=elite), final scales.
+ROSTER CHECK (elite) -- kit power, Credit/turn, 60 seeds x 2 seats; skill 0.85; no Mods. Budget = E3's table.
+enemy                first  budget   power by layer (scaled)                       first-layer verdict
+Zero-Day Broker      L1       7.7   L1 8.2 / 7.7  L2 9.8 / 10.5  L3 12.3 / 12.0  L4 12.7 / 12.3 ok (within 15%)
+Incident Response    L1       7.7   L1 8.0 / 7.7  L2 9.8 / 10.5  L3 10.9 / 12.0  L4 11.3 / 12.3 ok (within 15%)
+Blackout Cell        L2      10.5   L2 10.8 / 10.5  L3 11.7 / 12.0  L4 12.3 / 12.3 ok (within 15%)
+Intrusion Alarm      L2      10.5   L2 8.7 / 10.5  L3 9.9 / 12.0  L4 10.1 / 12.3   LOW
+                     tracer: 5.12 Trace/fight on the player = 14.2% of layer 2's allowance
+
+# first pass (draft scales; Intrusion Alarm pressure 1/2 a fire):
+Zero-Day Broker      L1       7.7   L1 8.7 / 7.7  L2 11.0 / 10.5  L3 13.7 / 12.0  L4 13.8 / 12.3 ok (within 15%)
+Incident Response    L1       7.7   L1 8.2 / 7.7  L2 10.1 / 10.5  L3 11.5 / 12.0  L4 11.6 / 12.3 ok (within 15%)
+Blackout Cell        L2      10.5   L2 7.4 / 10.5  L3 8.5 / 12.0  L4 8.7 / 12.3    LOW
+Intrusion Alarm      L2      10.5   L2 8.7 / 10.5  L3 9.9 / 12.0  L4 10.1 / 12.3   LOW
+                     tracer: 20.48 Trace/fight on the player = 56.9% of layer 2's allowance
