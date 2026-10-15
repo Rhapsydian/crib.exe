@@ -76,8 +76,30 @@ rather than tuned. Work happens on the `archetype-redesign` branch.
      `beta-frequency-data.ts` before the formula can price it.
    - Skeleton regular/elite fights remain near-free; win-rate targets and
      fight length (the game-wide skill dial) come after step 3.
-3. **Author** — archetype subroutines → classes (names, bridge
-   passives, unlock order) → enemy roster.
+3. **Author** — decided live as S1–S11 and C1–C6 (session 54,
+   `docs/authoring-design.md`).
+   1. ✅ archetype subroutines: 36 pieces, 9 per archetype
+      (`src/engine/content/`), each priced into its rarity band and
+      checked by `scripts/archetype-check.ts`;
+   2. ✅ classes: Blackhat, Operator, Eidolon, Breacher, Warden, Wraith,
+      with bespoke bridge passives (~+1.0 Credit/turn,
+      `scripts/class-check.ts`), commons-only starting loadouts and an
+      unlock order; the authored pool is wired into acquisition;
+   3. **enemy roster** — next. Open first question: how enemies are
+      built (the player's pieces, bespoke enemy pieces, or a mix). The
+      skeleton roster still runs on `skeleton-pool.ts`.
+
+   Watch items carried forward:
+   - **Eidolon at 41% victory**, about double the rest; its bridge
+     scales hard late (1.97 Credit/turn). The first tuning candidate.
+   - **Exploit Heat endings at ~5×**, the top of the 3–5× target; one
+     more noisy piece would pass it.
+   - **Late Overclock fights are short** (~3 hands), and retention
+     tracks fight length.
+   - Four Honeypot pieces sit just outside their bands (Honeytoken,
+     Sinkhole, Deep Packet Inspection, Zero Trust alone).
+   - Win-rate tuning (the 10–20% target) waits for the authored roster:
+     quarantine is 47–78% of endings against skeleton gatekeepers.
 
 Resolved by the refactor rather than repaired in place: the dead debuff
 `magnitude` and the dead Occurrence `scaling` (both mechanics are gone;

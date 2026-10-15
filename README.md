@@ -42,6 +42,13 @@ Heat scales with the posted fight prices, and a **skill-retention check**
 guards that Cribbage skill keeps deciding fights. The rules step 3
 authors against are in `DESIGN.md` → Pricing.
 
+Session 54 started step 3, authoring (`docs/authoring-design.md`): the
+**36-piece subroutine pool** is authored and priced, and the six classes
+are named (Blackhat, Operator, Eidolon, Breacher, Warden, Wraith), with
+bespoke bridge passives and commons-only starting loadouts. Real runs
+now draw from the authored pool. The enemy roster is still the skeleton,
+and is next.
+
 What exists, all headless and test-covered:
 
 | area | state |
@@ -103,6 +110,8 @@ kit, reporting threshold vs. attrition wins on each side.
 | `npx tsx scripts/occurrence-frequency.ts` | Real Cribbage occurrence frequency and score distributions, outside the roguelite layer — calibrates content thresholds against actual play |
 | `npx tsx scripts/cribbage-skill-matrix.ts` | What a given "player skill" value actually means, as a skill-vs-skill win-rate grid |
 | `npx tsx scripts/price-check.ts` | What one verb is worth, in Credit per turn: seat-swapped mirror duels, host-plus-difference (`src/engine/pricing.ts`). Raw results in `docs/calibration/` |
+| `npx tsx scripts/archetype-check.ts --archetype=<a>` | One authored archetype's checks: every piece's price against its rarity band (in position where it matters), the credit rule, skill retention, noise |
+| `npx tsx scripts/class-check.ts` | Each class's bridge passive priced against its +1.0 budget, in its starting loadout and a late kit, with retention |
 | `npx tsx scripts/beta-frequency.ts` / `beta-validate.ts` | How often each beta source charges per turn; the beta-pricing formula checked against duels |
 | `npx tsx scripts/trace-price.ts` | What extra Trace per fight costs a run, and how much of each class's Trace is its own noise |
 | `npx tsx scripts/skill-check.ts` | Skill retention: whether Cribbage skill still decides fights with loadouts installed (floor 0.5, DESIGN.md Pricing) |
@@ -169,6 +178,7 @@ That constraint is why the balance tooling above can exist at all.
 | `docs/archetype-redesign.md` | Session 51's decision trail for the archetype and subroutine redesign (A1–A12, plus every implementation call) |
 | `docs/run-economy-design.md` | Session 50's decisions: the per-layer Heat economy (built session 52), the pillar suite, and the per-turn model (D11–D15) |
 | `docs/recalibration-design.md` | Step 2's decision trail (R1–R8) and its checkpoint findings: the Heat build, the pricing instrument, verb and beta prices, Trace, skill retention |
+| `docs/authoring-design.md` | Step 3's decision trail (S1–S11, C1–C6) and each authoring checkpoint's results: the four archetypes, the bridges, the starting loadouts, the wired-in run results |
 | `docs/design-history.md` | `DESIGN.md` sections superseded by session 51, archived verbatim |
 | `BACKLOG.md` | What is still to do, and the current balance picture |
 | `docs/roadmap-history.md` | Completed roadmap work and the per-checkpoint record of how it was built |
