@@ -76,6 +76,10 @@ export interface CombatOptions {
   /** Which starting passive (if any) to check at its hook points --
    * Phase 4 checkpoint B. Only side 0 (the player) ever has a class. */
   classId?: ClassId;
+  /** A class bridge passive for side 1 (step 3, C2) -- diagnostic only,
+   * so a pricing duel can give a bridge to the test side in either seat.
+   * Never set by real play. */
+  opponentBridge?: ClassId;
   /** Which passive(s) side 1 (the enemy) carries this combat -- Phase 5
    * checkpoint B. Defaults to none, same "absent = no passives active"
    * treatment classId already gets. */
@@ -404,6 +408,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     playStrategies = [playLowestLegal, playLowestLegal],
     startingDealer = 0,
     classId,
+    opponentBridge,
     enemyPassiveIds = [],
     ownedModIds = [],
     carriedBurnerIds = [],
@@ -425,7 +430,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   let consecutiveTurns = 0;
   let lastTurnSide: PlayerIndex | null = null;
   let scores: [number, number] = [0, 0];
-  const created = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds);
+  const created = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds, opponentBridge);
   let combatState = applyModOnCombatStartPassives({
     ...created,
     sides: [{ ...created.sides[0], trace: Math.max(0, startingTrace) }, created.sides[1]],

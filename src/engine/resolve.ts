@@ -128,6 +128,10 @@ export interface CombatState {
   /** The player's class, if any (always side 0). Its class-exclusive Mod
    * is folded into ownedModIds by createCombatState. */
   classId?: ClassId;
+  /** Each side's class bridge passive (step 3, C1), by class. Side 0's is
+   * its class's; side 1 has none in real play -- the slot exists so a
+   * pricing duel can give a bridge to the test side in either seat. */
+  bridges: [ClassId | undefined, ClassId | undefined];
   /** Passives side 1 (the enemy) carries. Empty for the skeleton roster. */
   enemyPassiveIds: EnemyPassiveId[];
   /** Mods side 0 (the player) owns, including the class's own. */
@@ -165,6 +169,7 @@ export function createCombatState(
   enemyPassiveIds: EnemyPassiveId[] = [],
   ownedModIds: ModId[] = [],
   carriedBurnerIds: BurnerId[] = [],
+  opponentBridge?: ClassId,
 ): CombatState {
   // The class's own exclusive Mod is always active whenever classId is
   // set -- folded in here rather than required from every caller.
@@ -180,6 +185,7 @@ export function createCombatState(
       createCombatSideState(enemyLoadout, gaugeThreshold[1], winThreshold[1]),
     ],
     classId,
+    bridges: [classId, opponentBridge],
     enemyPassiveIds,
     ownedModIds: effectiveModIds,
     carriedBurnerIds,
@@ -342,21 +348,86 @@ function modAdjustedLoadout(loadout: SubroutineDefinition[], ownedModIds: ModId[
 }
 
 // ---------------------------------------------------------------------
-// The class bridge passive (A8) -- PLACEHOLDER. One generic rule for all
-// six classes until real bridge passives are designed alongside real
-// content: whenever one of the class's FIRST archetype's pieces fires
-// elevated, every piece of its SECOND archetype banks a charge. The
-// example A8 gave ("your A betas add a charge to your B pieces"), applied
-// uniformly so the class identity loop exists for simulation.
+// Class bridge passives (step 3, C1: one bespoke rule per class, each
+// making one archetype feed the other). Every bridge is driven by the
+// owner's own scoring or own turns -- never the opponent's -- since that
+// is the channel Cribbage skill reaches a fight through (CP6b, S11).
+// Amounts are measured against C2's +1.0 Credit/turn budget.
 // ---------------------------------------------------------------------
 
-const BRIDGE_CHARGES = 1; // TBD/playtesting
+/** Exploit + Overclock: an Exploit beta that applies Empowers the next
+ * piece this turn. */
+export const BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER = 0.5;
+/** Exploit + Daemon: each fifteen you score also Suppresses. */
+export const BRIDGE_EXPLOIT_DAEMON_SUPPRESS = 0.5;
+/** Daemon + Overclock: an Overclock beta that applies grows each Daemon
+ * piece by this many of its own growth steps. */
+export const BRIDGE_DAEMON_OVERCLOCK_STEPS = 1;
+/** Exploit + Honeypot: each pair you score banks Ward. */
+export const BRIDGE_EXPLOIT_HONEYPOT_WARD = 1;
+/** Daemon + Honeypot: Suppress you deal banks that much Ward, up to this
+ * much per turn of yours. */
+export const BRIDGE_DAEMON_HONEYPOT_CAP = 1;
+/** Overclock + Honeypot: each turn you take banks Ward. */
+export const BRIDGE_OVERCLOCK_HONEYPOT_WARD = 1;
 
-function applyBridgePassive(combatState: CombatState, side: PlayerIndex, fired: SubroutineDefinition, elevated: boolean): CombatState {
-  if (side !== 0 || !elevated || !combatState.classId) return combatState;
-  const [feeder, fed] = CLASS_DEFINITIONS[combatState.classId].archetypes;
-  if (fired.archetype !== feeder) return combatState;
-  return mapLoadout(combatState, 0, (entry) => (entry.definition.archetype === fed ? addCharges(entry.state, entry.definition, BRIDGE_CHARGES) : entry.state));
+const DAEMON_HONEYPOT_BANKED = 'bridge-daemon-honeypot:banked';
+
+/** A piece fired (on a turn, or as an immediate beta): bridges keyed on
+ * "a beta of archetype A applied". */
+function applyBridgeOnFire(combatState: CombatState, side: PlayerIndex, fired: SubroutineDefinition, elevated: boolean, turn: TurnBuffer | undefined): CombatState {
+  const bridge = combatState.bridges[side];
+  if (!bridge || !elevated) return combatState;
+  if (bridge === 'exploit-overclock' && fired.archetype === 'exploit' && turn) {
+    turn.empowerNext += BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER;
+    return combatState;
+  }
+  if (bridge === 'daemon-overclock' && fired.archetype === 'overclock') {
+    return mapLoadout(combatState, side, (entry) => {
+      const { growth, growthCap } = entry.definition.alpha;
+      if (entry.definition.archetype !== 'daemon' || growth === undefined) return entry.state;
+      const growthTotal = Math.min(entry.state.growthTotal + growth * BRIDGE_DAEMON_OVERCLOCK_STEPS, growthCap ?? Infinity);
+      return { ...entry.state, growthTotal };
+    });
+  }
+  return combatState;
+}
+
+/** A scoring occurrence: bridges keyed on the owner's own scoring. */
+function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOccurrence): CombatState {
+  const side = occurrence.player;
+  const bridge = combatState.bridges[side];
+  if (bridge === 'exploit-daemon' && occurrence.category === 'fifteen') return reduceWinGauge(combatState, opponentOf(side), BRIDGE_EXPLOIT_DAEMON_SUPPRESS);
+  if (bridge === 'exploit-honeypot' && occurrence.category === 'pair') {
+    return withSide(combatState, side, { wardShield: combatState.sides[side].wardShield + BRIDGE_EXPLOIT_HONEYPOT_WARD });
+  }
+  return combatState;
+}
+
+/** The start of one of `side`'s turns. */
+function applyBridgeOnTurnStart(combatState: CombatState, side: PlayerIndex): CombatState {
+  const bridge = combatState.bridges[side];
+  let state = combatState;
+  if (bridge === 'daemon-honeypot') {
+    state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [DAEMON_HONEYPOT_BANKED]: 0 } });
+  }
+  if (bridge === 'overclock-honeypot') {
+    state = withSide(state, side, { wardShield: state.sides[side].wardShield + BRIDGE_OVERCLOCK_HONEYPOT_WARD });
+  }
+  return state;
+}
+
+/** `side` dealt `amount` Suppress: Daemon + Honeypot banks it as Ward. */
+function applyBridgeOnSuppress(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
+  if (combatState.bridges[side] !== 'daemon-honeypot') return combatState;
+  const sideState = combatState.sides[side];
+  const banked = sideState.passiveState[DAEMON_HONEYPOT_BANKED] ?? 0;
+  const ward = Math.max(0, Math.min(amount, BRIDGE_DAEMON_HONEYPOT_CAP - banked));
+  if (ward === 0) return combatState;
+  return withSide(combatState, side, {
+    wardShield: sideState.wardShield + ward,
+    passiveState: { ...sideState.passiveState, [DAEMON_HONEYPOT_BANKED]: banked + ward },
+  });
 }
 
 // Model-independent Mod hooks carried over from Phase 5.
@@ -428,6 +499,7 @@ function mapLoadout(
  * decides for itself whether the scorer is a side it watches. */
 export function applyOccurrence(combatState: CombatState, occurrence: ScoringOccurrence): CombatState {
   let state = withSide(combatState, occurrence.player, { handPoints: combatState.sides[occurrence.player].handPoints + occurrence.magnitude });
+  state = applyBridgeOnOccurrence(state, occurrence);
   for (const side of [0, 1] as PlayerIndex[]) {
     state = mapLoadout(state, side, (entry) => chargeFromOccurrence(entry.state, entry.definition, occurrence, side));
   }
@@ -510,7 +582,7 @@ export function resolveEffect(
       return creditWinGauge(next, caster, incoming.amount - absorbed);
     }
     case 'suppress':
-      return reduceWinGauge(state, target, effect.amount);
+      return applyBridgeOnSuppress(reduceWinGauge(state, target, effect.amount), caster, effect.amount);
     case 'ward':
       return withSide(state, caster, { wardShield: state.sides[caster].wardShield + effect.amount });
     case 'empower':
@@ -673,7 +745,7 @@ export function fireTurn(
   side: PlayerIndex,
   selfContext: { isDealer: boolean },
 ): { combatState: CombatState; events: FireEvent[] } {
-  let state = combatState;
+  let state = applyBridgeOnTurnStart(combatState, side);
   const events: FireEvent[] = [];
   const firedThisTurn: FiredThisTurn[] = [];
   const turn: TurnBuffer = { empowerNext: 0, empowerRest: 0 };
@@ -708,7 +780,7 @@ export function fireTurn(
     const resolved = resolveFire(state, side, i, alpha, beta?.effect, scale, turn);
     state = applyTracePressure(resolved.combatState, side, definition);
     state = mapLoadout(state, side, (e, index) => (index === i ? recordFire(e.state, definition) : e.state));
-    state = applyBridgePassive(state, side, definition, elevated);
+    state = applyBridgeOnFire(state, side, definition, elevated, turn);
 
     events.push({ subroutineId: definition.id, side, alpha, beta: resolved.beta, elevated, charges, immediate: false });
     firedThisTurn.push({ definition, elevated });
@@ -766,6 +838,7 @@ export function fireImmediateBetas(combatState: CombatState, dealer: PlayerIndex
       // An extra alpha fire is a real fire (growth, `fires` progress); a
       // standalone beta effect only counts against the fire cap.
       state = mapLoadout(state, side, (e, index) => (index === i ? (alpha ? recordFire(e.state, definition) : { ...e.state, fireCount: e.state.fireCount + 1 }) : e.state));
+      state = applyBridgeOnFire(state, side, definition, true, undefined);
       const firedCharges = beta.source === 'cards' || beta.source === 'progress' ? entry.state.charges : 1;
       events.push({ subroutineId: definition.id, side, alpha: alpha ?? (definition.alpha as Effect), beta: resolvedBeta, elevated: true, charges: firedCharges, immediate: true });
     }

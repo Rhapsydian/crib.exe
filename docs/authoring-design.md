@@ -356,6 +356,62 @@ immediate Ward 4 at ¾ fired too rarely, 1.27). Four pieces sit at or
 just outside their band edges (Honeytoken, Sinkhole, DPI, Zero Trust
 alone), all within ~0.25, which is acceptable for this pass.
 
+## Classes
+
+Bridge passives are **class-exclusive Mods granted at run start**
+(DESIGN.md → Classes; today six placeholder bridge Mods in `mods.ts`
+share one generic charge rule). Because they're Mods, they may bend
+rules (S8).
+
+### C1 — Bespoke bridges, one small rule-bend per class ✅
+
+Each class's bridge is designed around what its two archetypes do,
+within A8's "one archetype feeds the other". Each needs its own small
+engine hook and its own measurement. The bridge is the class's identity:
+the thing that run has and no other class does. This was chosen over one
+shared rule tuned per class, or a few shared mechanisms.
+
+### C2 — A bridge is worth about +1.0 Credit per turn (band 0.75–1.25) ✅
+
+The bridge is measured in the class's starting loadout and checked in a
+late-run build. It may grow late, but not far past the band. Each class
+kit with its bridge also gets the retention check (floor 0.5; Honeypot
+classes carry their partner-credit piece, per S11). The user's note:
+tune upward later if bridges don't feel impactful enough.
+
+Instrument note: today class passives and Mods apply only to side 0, so
+a mirror can't hold one. Pricing a bridge needs the duel to give it to
+the test side in both seats, a small engine change made at build time.
+
+### Bridges — built and priced
+
+The placeholder rule in `resolve.ts` is replaced by six bespoke hooks
+(`applyBridgeOnFire`, `…OnOccurrence`, `…OnTurnStart`, `…OnSuppress`).
+Each side of a combat now carries its own bridge (`CombatState.bridges`;
+side 1's exists only for pricing duels, via `opponentBridge`). Priced by
+`scripts/class-check.ts` in provisional kits (start = 3 pieces,
+late = 6). Raw output: `docs/calibration/step3-classes-bridges.txt`.
+
+| class | bridge | price start / late | retention start / late |
+|---|---|---|---|
+| Exploit + Overclock | an Exploit beta that applies Empowers the next piece **+½** this turn | 0.73 / 0.87 | 0.89 / 0.73 |
+| Exploit + Daemon | each fifteen you score also Suppresses **½** | 1.12 / 1.00 | 0.97 / 0.81 |
+| Daemon + Overclock | an Overclock beta that applies grows each Daemon piece one step | 0.65 / 1.43 | 0.93 / 0.51 |
+| Exploit + Honeypot | each pair you score banks Ward 1 | 1.26 / 1.37 | 1.04 / 0.88 |
+| Daemon + Honeypot | Suppress you deal banks that much Ward, up to **1** a turn | 1.02 / 1.14 | 1.09 / 0.81 |
+| Overclock + Honeypot | each turn you take banks Ward 1 | 0.98 / 1.05 | 1.07 / 0.80 |
+
+- **Tuned from the draft:** Exploit + Overclock's Empower 1 → ½
+  (1.55 / 1.91); Exploit + Daemon's Suppress 1 → ½ (2.15 / 2.00); Daemon
+  + Honeypot's cap 2 → 1 (1.30 / 2.01).
+- **Daemon + Overclock scales with Overclock betas owned:** low in a
+  3-piece start with only Ping (0.65), high late (1.43). Its starting
+  loadout should carry two Overclock beta pieces; settle it with the
+  loadouts. It also has the lowest late retention (0.51, just over the
+  floor), the Overclock watch item again.
+- Exploit + Overclock (0.73) and Exploit + Honeypot (1.26–1.37) sit
+  just outside the band, which is acceptable for this pass.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the

@@ -130,7 +130,7 @@ export interface PriceResult {
  * drops BELOW 0.5 (both linearly interpolated), and the price is their
  * midpoint. With no exact-0.5 step the two edges coincide with the
  * ordinary crossing. Null if the curve never crosses inside the grid. */
-function crossing(deltas: number[], values: number[]): number | null {
+export function crossing(deltas: number[], values: number[]): number | null {
   const at = (i: number, level: number): number => {
     const [a, b] = [values[i], values[i + 1]];
     return a === b ? deltas[i] : deltas[i] + ((a - level) / (a - b)) * (deltas[i + 1] - deltas[i]);

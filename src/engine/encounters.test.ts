@@ -495,7 +495,9 @@ describe('heatSources (session 50) -- Heat attribution', () => {
     let containmentLosses = 0;
     let attritionLosses = 0;
     for (const classId of ['exploit-overclock', 'daemon-honeypot', 'overclock-honeypot'] as ClassId[]) {
-      for (let seed = 0; seed < 25; seed++) {
+      // Step 3: 40 seeds (was 25) -- the bespoke bridges made the classes
+      // a little stronger, which thinned the loss count to the floor.
+      for (let seed = 0; seed < 40; seed++) {
         // Session 51: floor player skill rather than 0.85. Against the
         // skeleton roster a skill-0.85 player lost 2 regular/elite fights
         // in 150 runs (all six classes), so the non-vacuity floor below
@@ -517,7 +519,7 @@ describe('heatSources (session 50) -- Heat attribution', () => {
       }
     }
     // Deliberately low: lost regular/elite fights are RARE -- most runs end
-    // at a gatekeeper instead. 75 runs yield single digits.
+    // at a gatekeeper instead. 120 runs yield low double digits.
     expect(containmentLosses + attritionLosses).toBeGreaterThan(5);
   }, 30_000);
 

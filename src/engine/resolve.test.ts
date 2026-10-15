@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { Alpha, Archetype, Beta, Effect, SubroutineDefinition } from './subroutine-types';
 import {
+  BRIDGE_DAEMON_HONEYPOT_CAP,
+  BRIDGE_EXPLOIT_DAEMON_SUPPRESS,
+  BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER,
   applyOccurrence,
   createCombatState,
   fireImmediateBetas,
@@ -303,25 +306,53 @@ describe('fireImmediateBetas', () => {
   });
 });
 
-describe('placeholder bridge passive (A8)', () => {
-  // Every class: when a piece of its FIRST archetype fires elevated, every
-  // piece of its SECOND archetype banks a charge. exploit-daemon: Exploit
-  // feeds Daemon.
-  const banking: Beta = { source: 'cards', category: 'go', shape: 'graded', cap: 9, effect: { verb: 'enhance', amount: 1 } };
-  const elevatedExploit = piece('ex', { verb: 'credit', amount: 1 }, { source: 'state', condition: { kind: 'dealer' }, shape: 'whileTrue', effect: { verb: 'enhance', amount: 1 } });
-  const daemon = piece('dm', { verb: 'credit', amount: 1 }, banking, {}, 'daemon');
-  const withClass = (classId: 'exploit-daemon' | undefined) => createCombatState([elevatedExploit, daemon], [], [12, 12], classId, [100, 100]);
+describe('class bridge passives (step 3, C1)', () => {
+  const dealerExploit = piece('ex', { verb: 'credit', amount: 1 }, { source: 'state', condition: { kind: 'dealer' }, shape: 'whileTrue', effect: { verb: 'enhance', amount: 1 } });
+  const credit = (id: string, archetype: Archetype = 'exploit') => piece(id, { verb: 'credit', amount: 1 }, undefined, {}, archetype);
+  const state = (loadout: SubroutineDefinition[], classId?: 'exploit-overclock' | 'exploit-daemon' | 'daemon-overclock' | 'exploit-honeypot' | 'daemon-honeypot' | 'overclock-honeypot') =>
+    createCombatState(loadout, [credit('enemy')], [12, 12], classId, [100, 100]);
 
-  // The Daemon piece fires right after the Exploit one, so it spends the
-  // bridged charge in the same turn -- read it off whether it fired elevated.
-  const daemonElevated = (state: CombatState, isDealer: boolean) => fireTurn(state, 0, { isDealer }).events[1].elevated;
-
-  it("charges the second archetype's pieces when the first archetype's piece fires elevated", () => {
-    expect(daemonElevated(withClass('exploit-daemon'), true)).toBe(true);
+  it('Exploit + Overclock: an Exploit beta that applies Empowers the next piece', () => {
+    const fire = (classId?: 'exploit-overclock') => fireTurn(state([dealerExploit, credit('next', 'overclock')], classId), 0, { isDealer: true }).events[1].alpha;
+    expect(fire('exploit-overclock')).toMatchObject({ amount: 1 + BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER });
+    expect(fire(undefined)).toMatchObject({ amount: 1 });
   });
 
-  it('does nothing when the feeder piece fires un-elevated, or with no class', () => {
-    expect(daemonElevated(withClass('exploit-daemon'), false)).toBe(false);
-    expect(daemonElevated(withClass(undefined), true)).toBe(false);
+  it('Exploit + Daemon: a fifteen you score also Suppresses the opponent', () => {
+    let s = state([credit('a')], 'exploit-daemon');
+    s = { ...s, sides: [s.sides[0], { ...s.sides[1], winGauge: { ...s.sides[1].winGauge, progress: 5 } }] };
+    const after = applyOccurrence(s, { category: 'fifteen', player: 0, magnitude: 2 });
+    expect(after.sides[1].winGauge.progress).toBe(5 - BRIDGE_EXPLOIT_DAEMON_SUPPRESS);
+    expect(applyOccurrence(s, { category: 'pair', player: 0, magnitude: 2 }).sides[1].winGauge.progress).toBe(5);
+  });
+
+  it('Daemon + Overclock: an Overclock beta that applies grows each Daemon piece one step', () => {
+    const daemon = piece('dm', { verb: 'credit', amount: 1, growth: 0.5, growthCap: 4 }, undefined, {}, 'daemon');
+    const oc = piece('oc', { verb: 'credit', amount: 1 }, { source: 'state', condition: { kind: 'dealer' }, shape: 'whileTrue', effect: { verb: 'enhance', amount: 1 } }, {}, 'overclock');
+    // The Daemon piece grows once from its own fire, once more from the bridge.
+    const after = fireTurn(state([oc, daemon], 'daemon-overclock'), 0, { isDealer: true }).combatState;
+    expect(after.sides[0].loadout[1].state.growthTotal).toBe(1);
+  });
+
+  it('Exploit + Honeypot: a pair you score banks Ward', () => {
+    const after = applyOccurrence(state([credit('a')], 'exploit-honeypot'), { category: 'pair', player: 0, magnitude: 2 });
+    expect(after.sides[0].wardShield).toBe(1);
+  });
+
+  it('Daemon + Honeypot: Suppress you deal banks that much Ward, capped per turn', () => {
+    const suppress = piece('sup', { verb: 'suppress', amount: 3 }, undefined, {}, 'daemon');
+    const after = fireTurn(state([suppress], 'daemon-honeypot'), 0, { isDealer: false }).combatState;
+    expect(after.sides[0].wardShield).toBe(Math.min(3, BRIDGE_DAEMON_HONEYPOT_CAP));
+  });
+
+  it('Overclock + Honeypot: each turn you take banks Ward', () => {
+    const after = fireTurn(state([credit('a', 'overclock')], 'overclock-honeypot'), 0, { isDealer: false }).combatState;
+    expect(after.sides[0].wardShield).toBe(1);
+  });
+
+  it('a bridge can sit on side 1 for pricing duels', () => {
+    const s = createCombatState([credit('a')], [credit('b')], [12, 12], undefined, [100, 100], [], [], [], 'overclock-honeypot');
+    expect(fireTurn(s, 1, { isDealer: false }).combatState.sides[1].wardShield).toBe(1);
+    expect(fireTurn(s, 0, { isDealer: false }).combatState.sides[0].wardShield).toBe(0);
   });
 });

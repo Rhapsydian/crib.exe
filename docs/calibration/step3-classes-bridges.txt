@@ -1,0 +1,23 @@
+BRIDGE PRICES -- Credit per turn, budget 0.75-1.25 (C2); 200 seeds x 2 seats; skill 0.85. Isolated duels, provisional kits.
+class                kit    bridge  band   retention (with bridge, 0.85 v 0.5; floor 0.5)
+# final amounts (Exploit+Overclock Empower 0.5, Exploit+Daemon Suppress 0.5, Daemon+Honeypot cap 1; others unchanged):
+exploit-overclock    start   0.73   LOW    0.89 ok
+exploit-overclock    late    0.87   ok     0.73 ok
+exploit-daemon       start   1.12   ok     0.97 ok
+exploit-daemon       late    1.00   ok     0.81 ok
+daemon-honeypot      start   1.02   ok     1.09 ok
+daemon-honeypot      late    1.14   ok     0.81 ok
+daemon-overclock     start   0.65   LOW    0.93 ok
+daemon-overclock     late    1.43   HIGH   0.51 ok
+exploit-honeypot     start   1.26   HIGH   1.04 ok
+exploit-honeypot     late    1.37   HIGH   0.88 ok
+overclock-honeypot   start   0.98   ok     1.07 ok
+overclock-honeypot   late    1.05   ok     0.80 ok
+
+# first pass (all at the draft amounts):
+exploit-overclock    start   1.55   HIGH   0.87 ok
+exploit-overclock    late    1.91   HIGH   0.72 ok
+exploit-daemon       start   2.15   HIGH   1.04 ok
+exploit-daemon       late    2.00   HIGH   0.86 ok
+daemon-honeypot      start   1.30   HIGH   1.12 ok
+daemon-honeypot      late    2.01   HIGH   0.97 ok
