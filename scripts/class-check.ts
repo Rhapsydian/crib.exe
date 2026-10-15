@@ -9,17 +9,16 @@
  * are played in both seats. Also reports skill retention on each kit
  * with its bridge.
  *
- * The kits here are PROVISIONAL: chosen to show each bridge off, following
- * A9 (offense with a credit path, utility from the other archetype, a
- * piece that shows off the passive), a noisy Exploit piece in Exploit
- * classes, and partner credit in Honeypot classes (S11). The real starting
- * loadouts are decided next.
+ * The start kit is each class's authored starting loadout
+ * (`content/starting-loadouts.ts`, C3); the late kit adds three on-class
+ * pieces. Also checks the credit rule (the start kit, mirrored, wins by
+ * threshold).
  *
  * PROVENANCE: isolated duels at skill 0.85, no other Mods. Not a full-run
  * metric.
  *
  * Usage:
- *   npx tsx scripts/class-check.ts [--seeds=200] [--classes=a,b] [--skip=retention]
+ *   npx tsx scripts/class-check.ts [--seeds=200] [--classes=a,b] [--skip=retention] [--alt]
  */
 import { playCombat } from '../src/engine/combat';
 import { discardSkillStrategy, pegSkillStrategy } from '../src/engine/ai';
@@ -29,10 +28,7 @@ import { cribbageSkillEdge, skillRetention, SKILL_RETENTION_FLOOR } from '../src
 import type { ClassId } from '../src/engine/classes';
 import type { PlayerIndex } from '../src/engine/pegging';
 import type { SubroutineDefinition } from '../src/engine/subroutine-types';
-import { EXPLOIT_POOL } from '../src/engine/content/exploit';
-import { DAEMON_POOL } from '../src/engine/content/daemon';
-import { OVERCLOCK_POOL } from '../src/engine/content/overclock';
-import { HONEYPOT_POOL } from '../src/engine/content/honeypot';
+import { AUTHORED_STARTING_LOADOUTS, authoredPiece } from '../src/engine/content/starting-loadouts';
 
 function parseArgs(argv: string[]): Record<string, string> {
   const out: Record<string, string> = {};
@@ -46,48 +42,25 @@ const args = parseArgs(process.argv.slice(2));
 const seeds = Number(args.seeds ?? 200);
 const skip = new Set((args.skip ?? '').split(',').filter(Boolean));
 
-const ALL = [EXPLOIT_POOL, DAEMON_POOL, OVERCLOCK_POOL, HONEYPOT_POOL].flatMap((p) => [...p.commons, ...p.uncommons, ...p.rares]);
-const p = (id: string): SubroutineDefinition => {
-  const found = ALL.find((x) => x.id === id);
-  if (!found) throw new Error(`no piece ${id}`);
-  return found;
-};
+const p = authoredPiece;
+const start = AUTHORED_STARTING_LOADOUTS;
 
-/** Provisional kits: [start (3 pieces), late (6)]. */
+/** [start (the authored starting loadout, C3), late (it plus three
+ * on-class pieces)]. `--alt` adds alternative starts to compare. */
 const KITS: Record<ClassId, [SubroutineDefinition[], SubroutineDefinition[]]> = {
-  // Exploit betas Empower the next piece: alternate Exploit and its targets.
-  'exploit-overclock': [
-    [p('fuzzer'), p('ping'), p('buffer-overflow')],
-    [p('fuzzer'), p('ping'), p('port-scan'), p('burst-clock'), p('jackpot'), p('grand-slam')],
-  ],
-  // Fifteens Suppress: fifteen-heavy Exploit plus Daemon ramp.
-  'exploit-daemon': [
-    [p('fuzzer'), p('watchdog-timer'), p('cron-job')],
-    [p('fuzzer'), p('buffer-overflow'), p('watchdog-timer'), p('cron-job'), p('race-condition'), p('memory-leak')],
-  ],
-  // Overclock betas grow Daemon pieces.
-  'daemon-overclock': [
-    [p('cron-job'), p('ping'), p('steady-drip')],
-    [p('fork-bomb'), p('ping'), p('cron-job'), p('elevated-session'), p('steady-drip'), p('priority-override')],
-  ],
-  // Pairs bank Ward, which Tarpit and Sinkhole spend.
-  'exploit-honeypot': [
-    [p('port-scan'), p('tarpit'), p('fuzzer')],
-    [p('port-scan'), p('tarpit'), p('fuzzer'), p('sinkhole'), p('credential-stuffing'), p('air-gapped-vault')],
-  ],
-  // Suppress banks Ward.
-  'daemon-honeypot': [
-    [p('cron-job'), p('watchdog-timer'), p('tarpit')],
-    [p('cron-job'), p('watchdog-timer'), p('tarpit'), p('patch'), p('sinkhole'), p('heartbeat-monitor')],
-  ],
-  // Every turn banks Ward; Overclock's extra turns bank more.
-  'overclock-honeypot': [
-    [p('ping'), p('tarpit'), p('rate-limiting')],
-    [p('ping'), p('tarpit'), p('burst-clock'), p('elevated-session'), p('sinkhole'), p('honeytoken')],
-  ],
+  'exploit-overclock': [start['exploit-overclock'], [...start['exploit-overclock'], p('burst-clock'), p('jackpot'), p('grand-slam')]],
+  'exploit-daemon': [start['exploit-daemon'], [...start['exploit-daemon'], p('watchdog-timer'), p('race-condition'), p('memory-leak')]],
+  'daemon-overclock': [start['daemon-overclock'], [...start['daemon-overclock'], p('fork-bomb'), p('elevated-session'), p('priority-override')]],
+  'exploit-honeypot': [start['exploit-honeypot'], [...start['exploit-honeypot'], p('sinkhole'), p('credential-stuffing'), p('air-gapped-vault')]],
+  'daemon-honeypot': [start['daemon-honeypot'], [...start['daemon-honeypot'], p('patch'), p('sinkhole'), p('heartbeat-monitor')]],
+  'overclock-honeypot': [start['overclock-honeypot'], [...start['overclock-honeypot'], p('burst-clock'), p('elevated-session'), p('honeytoken')]],
+};
+const ALTERNATIVES: Partial<Record<ClassId, SubroutineDefinition[]>> = {
+  // The drafted start, kept for comparison: one Daemon growth piece.
+  'daemon-overclock': [p('cron-job'), p('ping'), p('elevated-session')],
 };
 
-const GRID = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
+const GRID = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 const BAND = [0.75, 1.25];
 
 function fight(loadouts: [SubroutineDefinition[], SubroutineDefinition[]], seed: number, bridgeSeat: PlayerIndex | null, classId: ClassId, skills: [number, number] = [0.85, 0.85]) {
@@ -120,8 +93,9 @@ function bridgePrice(classId: ClassId, kit: SubroutineDefinition[]): { price: nu
 }
 
 /** Retention of `kit` with its bridge on both sides (a class mirror). */
-function retention(classId: ClassId, kit: SubroutineDefinition[], cribbageWin: number): number {
+function retention(classId: ClassId, kit: SubroutineDefinition[], cribbageWin: number): { retain: number; threshold: number } {
   let wins = 0;
+  let threshold = 0;
   for (let seed = 0; seed < seeds; seed++) {
     for (const highSeat of [0, 1] as PlayerIndex[]) {
       const skills: [number, number] = highSeat === 0 ? [0.85, 0.5] : [0.5, 0.85];
@@ -135,20 +109,25 @@ function retention(classId: ClassId, kit: SubroutineDefinition[], cribbageWin: n
         opponentBridge: classId,
       });
       if (r.winner === highSeat) wins++;
+      if (r.resolvedBy === 'threshold') threshold++;
     }
   }
-  return skillRetention({ winRate: wins / (2 * seeds), se: 0, fights: 2 * seeds }, { winRate: cribbageWin, se: 0, fights: 1 })!;
+  return {
+    retain: skillRetention({ winRate: wins / (2 * seeds), se: 0, fights: 2 * seeds }, { winRate: cribbageWin, se: 0, fights: 1 })!,
+    threshold: threshold / (2 * seeds),
+  };
 }
 
 const classes = args.classes ? (args.classes.split(',') as ClassId[]) : (Object.keys(KITS) as ClassId[]);
 const cribbage = skip.has('retention') ? null : cribbageSkillEdge({ high: 0.85, low: 0.5 }, 2000);
-console.log(`\nBRIDGE PRICES -- Credit per turn, budget ${BAND.join('-')} (C2); ${seeds} seeds x 2 seats; skill 0.85. Isolated duels, provisional kits.`);
-console.log(`${'class'.padEnd(20)} ${'kit'.padEnd(6)} bridge  band   retention (with bridge, 0.85 v 0.5; floor ${SKILL_RETENTION_FLOOR})`);
+console.log(`\nBRIDGE PRICES -- Credit per turn, budget ${BAND.join('-')} (C2); ${seeds} seeds x 2 seats; skill 0.85. Isolated duels, authored starting loadouts.`);
+console.log(`${'class'.padEnd(20)} ${'kit'.padEnd(6)} bridge  band   retention (with bridge, 0.85 v 0.5; floor ${SKILL_RETENTION_FLOOR})   threshold wins (credit rule)`);
 for (const classId of classes) {
-  KITS[classId].forEach((kit, i) => {
+  const kits = [...KITS[classId], ...(args.alt && ALTERNATIVES[classId] ? [ALTERNATIVES[classId]!] : [])];
+  kits.forEach((kit, i) => {
     const { price } = bridgePrice(classId, kit);
     const band = price === null ? '  ?  ' : price < BAND[0] ? 'LOW  ' : price > BAND[1] ? 'HIGH ' : 'ok   ';
     const ret = cribbage ? retention(classId, kit, cribbage.winRate) : null;
-    console.log(`${classId.padEnd(20)} ${(i === 0 ? 'start' : 'late').padEnd(6)} ${price === null ? '  -- ' : price.toFixed(2).padStart(5)}   ${band}  ${ret === null ? '' : `${ret.toFixed(2)} ${ret >= SKILL_RETENTION_FLOOR ? 'ok' : 'FAIL'}`}`);
+    console.log(`${classId.padEnd(20)} ${(['start', 'late', 'alt'][i]).padEnd(6)} ${price === null ? '  -- ' : price.toFixed(2).padStart(5)}   ${band}  ${ret === null ? '' : `${ret.retain.toFixed(2)} ${ret.retain >= SKILL_RETENTION_FLOOR ? 'ok  ' : 'FAIL'}                          ${(100 * ret.threshold).toFixed(0)}%`}`);
   });
 }

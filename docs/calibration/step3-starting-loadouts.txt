@@ -1,0 +1,23 @@
+# Step 3, starting loadouts (C3): bridges priced in the authored starting loadouts. Final bridge amounts: Exploit+Overclock Empower 1, Daemon+Overclock 2 steps, others as in step3-classes-bridges.txt.
+BRIDGE PRICES -- Credit per turn, budget 0.75-1.25 (C2); 200 seeds x 2 seats; skill 0.85. Isolated duels, authored starting loadouts.
+class                kit    bridge  band   retention (with bridge, 0.85 v 0.5; floor 0.5)   threshold wins (credit rule)
+exploit-overclock    start   0.85   ok     0.88 ok                            100%
+exploit-overclock    late    1.28   HIGH   0.70 ok                            100%
+daemon-overclock     start   0.82   ok     0.94 ok                            100%   (Cron Job, Ping, Steady Drip)
+daemon-overclock     late    1.97   HIGH   0.53 ok                            100%
+daemon-overclock     drafted start (Cron Job, Ping, Elevated Session), 2 steps:   0.56   LOW
+exploit-daemon       start   1.07   ok     0.90 ok                            100%
+exploit-daemon       late    1.00   ok     0.81 ok                            100%
+exploit-honeypot     start   1.26   HIGH   1.04 ok                            100%
+exploit-honeypot     late    1.37   HIGH   0.88 ok                            100%
+daemon-honeypot      start   1.02   ok     1.09 ok                            100%
+daemon-honeypot      late    1.14   ok     0.81 ok                            80%
+overclock-honeypot   start   0.98   ok     1.07 ok                            100%
+overclock-honeypot   late    0.91   ok     0.82 ok                            100%
+
+# first pass in these loadouts, at the earlier amounts (Exploit+Overclock Empower 0.5, Daemon+Overclock 1 step):
+exploit-overclock    start   0.40   LOW    0.88 ok                            100%
+exploit-overclock    late    0.55   LOW    0.70 ok                            100%
+daemon-overclock     start   0.40   LOW    0.85 ok                            100%
+daemon-overclock     late    1.43   HIGH   0.51 ok                            100%
+daemon-overclock     alternative (Cron Job, Ping, Steady Drip), 1 step:   0.65   LOW    0.93 ok

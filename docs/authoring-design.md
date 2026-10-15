@@ -412,6 +412,45 @@ late = 6). Raw output: `docs/calibration/step3-classes-bridges.txt`.
 - Exploit + Overclock (0.73) and Exploit + Honeypot (1.26–1.37) sit
   just outside the band, which is acceptable for this pass.
 
+### C3 — Starting loadouts are commons only ✅
+
+Every class starts with plain, readable pieces. Uncommons and rares
+arrive through rewards, the Shop and Events, so a run's first rare is a
+find and steers the run (S1). Three commons is about 6 Credit a turn plus
+the bridge, so classes start level. Daemon + Overclock gets its two
+Overclock beta pieces from commons (Ping, Elevated Session). This was
+chosen over allowing one uncommon where it shows the bridge better.
+
+### Starting loadouts — built and priced
+
+`src/engine/content/starting-loadouts.ts` (not yet wired). Raw output:
+`docs/calibration/step3-starting-loadouts.txt`.
+
+| class | loadout (top → bottom) | bridge start / late | retention start / late |
+|---|---|---|---|
+| Exploit + Overclock | Fuzzer → Cache Hit → Port Scan | 0.85 / 1.28 | 0.88 / 0.70 |
+| Exploit + Daemon | Buffer Overflow → Fuzzer → Cron Job | 1.07 / 1.00 | 0.90 / 0.81 |
+| Daemon + Overclock | Cron Job → Ping → **Steady Drip** | 0.82 / 1.97 | 0.94 / 0.53 |
+| Exploit + Honeypot | Port Scan → Tarpit → Fuzzer | 1.26 / 1.37 | 1.04 / 0.88 |
+| Daemon + Honeypot | Cron Job → Watchdog Timer → Tarpit | 1.02 / 1.14 | 1.09 / 0.81 |
+| Overclock + Honeypot | Ping → Tarpit → Rate Limiting | 0.98 / 0.91 | 1.07 / 0.82 |
+
+Every loadout passes the credit rule: its mirror ends by threshold
+100% of the time (one late kit, 80%).
+
+Changes from the draft, measured in these loadouts:
+
+- **Exploit + Overclock's Empower ½ → back to 1.** Routed through Cache
+  Hit (an Empower piece) it priced 0.40. At 1 it is 0.85 / 1.28.
+- **Daemon + Overclock: 1 → 2 growth steps, and Steady Drip replaces
+  Elevated Session.** The bridge multiplies Overclock betas by Daemon
+  growth pieces, so a 3-piece start needs two of the latter. Measured:
+  0.40 drafted, 0.56 at 2 steps, 0.82 with Steady Drip.
+- **Watch item: Daemon + Overclock scales hard late** (1.97). It is
+  bounded, since bridge growth can't pass a piece's own growth cap, but
+  it is the most build-dependent bridge, and its late retention is the
+  lowest (0.53). Revisit in playtesting or with fight-length tuning.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the

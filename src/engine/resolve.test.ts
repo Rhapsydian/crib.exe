@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Alpha, Archetype, Beta, Effect, SubroutineDefinition } from './subroutine-types';
 import {
   BRIDGE_DAEMON_HONEYPOT_CAP,
+  BRIDGE_DAEMON_OVERCLOCK_STEPS,
   BRIDGE_EXPLOIT_DAEMON_SUPPRESS,
   BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER,
   applyOccurrence,
@@ -326,12 +327,12 @@ describe('class bridge passives (step 3, C1)', () => {
     expect(applyOccurrence(s, { category: 'pair', player: 0, magnitude: 2 }).sides[1].winGauge.progress).toBe(5);
   });
 
-  it('Daemon + Overclock: an Overclock beta that applies grows each Daemon piece one step', () => {
+  it('Daemon + Overclock: an Overclock beta that applies grows each Daemon piece extra steps', () => {
     const daemon = piece('dm', { verb: 'credit', amount: 1, growth: 0.5, growthCap: 4 }, undefined, {}, 'daemon');
     const oc = piece('oc', { verb: 'credit', amount: 1 }, { source: 'state', condition: { kind: 'dealer' }, shape: 'whileTrue', effect: { verb: 'enhance', amount: 1 } }, {}, 'overclock');
-    // The Daemon piece grows once from its own fire, once more from the bridge.
+    // The Daemon piece grows once from its own fire, plus the bridge's steps.
     const after = fireTurn(state([oc, daemon], 'daemon-overclock'), 0, { isDealer: true }).combatState;
-    expect(after.sides[0].loadout[1].state.growthTotal).toBe(1);
+    expect(after.sides[0].loadout[1].state.growthTotal).toBe(0.5 * (1 + BRIDGE_DAEMON_OVERCLOCK_STEPS));
   });
 
   it('Exploit + Honeypot: a pair you score banks Ward', () => {

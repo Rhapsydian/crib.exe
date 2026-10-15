@@ -357,12 +357,12 @@ function modAdjustedLoadout(loadout: SubroutineDefinition[], ownedModIds: ModId[
 
 /** Exploit + Overclock: an Exploit beta that applies Empowers the next
  * piece this turn. */
-export const BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER = 0.5;
+export const BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER = 1;
 /** Exploit + Daemon: each fifteen you score also Suppresses. */
 export const BRIDGE_EXPLOIT_DAEMON_SUPPRESS = 0.5;
 /** Daemon + Overclock: an Overclock beta that applies grows each Daemon
  * piece by this many of its own growth steps. */
-export const BRIDGE_DAEMON_OVERCLOCK_STEPS = 1;
+export const BRIDGE_DAEMON_OVERCLOCK_STEPS = 2;
 /** Exploit + Honeypot: each pair you score banks Ward. */
 export const BRIDGE_EXPLOIT_HONEYPOT_WARD = 1;
 /** Daemon + Honeypot: Suppress you deal banks that much Ward, up to this
