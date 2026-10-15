@@ -8,7 +8,7 @@ import type { ModId } from './mod-types';
  * makes one of its archetypes feed the other.
  *
  * Step 3 (docs/authoring-design.md C1-C4) named them -- Blackhat,
- * Operator, Eidolon, Breacher, Warden, Ghost -- and gave each a bespoke
+ * Operator, Eidolon, Breacher, Warden, Wraith -- and gave each a bespoke
  * bridge (rules in resolve.ts's applyBridgeOn* hooks, Mods in mods.ts).
  * Ids stay pair-based; `name` is display data. Starting loadouts still
  * come from the skeleton until the authored pool is wired in.
@@ -76,7 +76,7 @@ export const CLASS_DEFINITIONS: Record<ClassId, ClassDefinition> = {
   },
   'overclock-honeypot': {
     id: 'overclock-honeypot',
-    name: 'Ghost',
+    name: 'Wraith',
     archetypes: ['overclock', 'honeypot'],
     startingPassiveId: 'bridge-overclock-honeypot',
     startingLoadout: CLASS_STARTING_LOADOUTS['overclock-honeypot'],

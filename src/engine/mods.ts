@@ -154,7 +154,7 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
   'bridge-daemon-overclock': { id: 'bridge-daemon-overclock', name: 'Invocation', rarity: 'common', effectKind: 'hook', classExclusive: true },
   'bridge-exploit-honeypot': { id: 'bridge-exploit-honeypot', name: 'Foothold', rarity: 'common', effectKind: 'hook', classExclusive: true },
   'bridge-daemon-honeypot': { id: 'bridge-daemon-honeypot', name: 'Hardened Perimeter', rarity: 'common', effectKind: 'hook', classExclusive: true },
-  'bridge-overclock-honeypot': { id: 'bridge-overclock-honeypot', name: 'Spoofed Traffic', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-overclock-honeypot': { id: 'bridge-overclock-honeypot', name: 'Siphon', rarity: 'common', effectKind: 'hook', classExclusive: true },
 
   // --- Common ---
   'static-shield': { id: 'static-shield', name: 'Static Shield', rarity: 'common', effectKind: 'hook' },

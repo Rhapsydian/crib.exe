@@ -460,13 +460,14 @@ Changes from the draft, measured in these loadouts:
 | Daemon + Overclock | **Eidolon** | new (the user's). *Daemon* and *eidolon* are both Greek spirit words: the class that summons its daemons and drives them faster |
 | Exploit + Honeypot | **Breacher** | old roster: "hit hard, then hold the position you just took" |
 | Daemon + Honeypot | **Warden** | old roster: "patient and grindy, wins by outlasting" |
-| Overclock + Honeypot | **Ghost** | old roster: the last unlock, the hardest to play |
+| Overclock + Honeypot | **Wraith** | renamed from Ghost (the user's call, after C4): a wraith *drains* you, which is the class's conversion; Ghost suggested evasion. With Eidolon it makes a deliberate two-spirits motif |
 
 Saboteur is retired: its identity belonged to the old Malware archetype.
 Other names considered for Daemon + Overclock: Cryptominer, Botmaster,
 Scheduler, Proclist, and Overwatch (rejected: it's a well-known game's
 name, and its meaning is closer to Warden's). Eidolon's known cost is a
-thematic overlap with Ghost.
+thematic overlap with Ghost, now Wraith (two spirit names, kept as a
+deliberate motif).
 
 Class ids stay pair-based (`exploit-overclock`, …); the names are display
 data.
@@ -475,8 +476,16 @@ data.
 
 Blackhat **Exploit Chain** · Operator **Backdoor Maintenance** · Eidolon
 **Invocation** · Breacher **Foothold** (the old Breacher passive's name) ·
-Warden **Hardened Perimeter** · Ghost **Spoofed Traffic**. In code:
+Warden **Hardened Perimeter** · Wraith **Siphon** (was Ghost's Spoofed Traffic, renamed with the class). In code:
 `ClassDefinition.name` and the bridge Mods' names in `mods.ts`.
+
+### C6 — Unlock order: Blackhat → Operator → Eidolon → Breacher → Warden → Wraith ✅
+
+Kept from A8's provisional order. Each unlock adds at most one new
+archetype beside a familiar one. Honeypot arrives fourth, through its
+simplest pairing; Wraith, the hardest, comes last. Not enforced: there is
+no save or profile layer yet, so all six are selectable. It fixes the
+default class (Blackhat).
 
 ## Open
 
