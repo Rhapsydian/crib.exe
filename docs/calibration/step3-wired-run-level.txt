@@ -1,5 +1,5 @@
 
-TRACE PRICE -- 300 seeds/class, synergy/opportunistic, skill 0.85, skeleton content. NOT plain full-run metrics.
+TRACE PRICE -- 300 seeds/class, synergy/opportunistic, skill 0.85, authored pool + starting loadouts wired, skeleton ENEMIES. NOT plain full-run metrics.
 Layer allowances 40/36/32/28: 1 Trace = 2.5% / 2.8% / 3.1% / 3.6% of a layer.
 
 class                extra  victory heatMax  caught  quarant  layers | per run: wins  baseline  perf  ownNoise  moves
