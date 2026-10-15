@@ -674,6 +674,38 @@ gatekeepers 13.4 / 10.6 / 14.5 / 13.4 (L1–L4), so today's L1 gatekeeper
 sits at 1.3× and L2's at 0.8× the player. That's the within-layer and
 cross-layer unevenness session 49 found, now visible as numbers.
 
+### Enemy step 2 — the six regulars
+
+`src/engine/content/enemies.ts` (not yet wired; E5 step 5). Priced as
+kit power by `scripts/roster-check.ts`. Raw output:
+`docs/calibration/step3-regulars.txt`.
+
+| regular | archetype | layers | pieces | scale | power L1 / L2 / L3 / L4 (budget) |
+|---|---|---|---|---|---|
+| Pentest Script | Exploit | 1+ | Port Scan → Buffer Overflow | 1.25 | 4.9 / 7.4 / 8.4 / 8.4 (5.1 / 7.0 / 8.0 / 8.2) |
+| Quarantine Daemon | Daemon | 1+ | Watchdog Timer → Cron Job | 1.15 | 5.0 / 6.7 / 7.3 / 7.7 |
+| Relay Node | Overclock | 1+ | Ping → Burst Clock | 1.4 | 4.9 / 7.4 / 8.2 / 8.5 |
+| Patch Runner | Exploit + Daemon | 1+ | Port Scan → Patch | 1.3 | 5.5 / 7.5 / 8.3 / 8.7 |
+| Legacy Firewall | Honeypot | 2+ | Basic Auth → Tarpit → Rate Limiting | 1.2 | — / 7.4 / 8.6 / 8.8 |
+| Tripwire (tracer) | Overclock + Exploit | 2+ | Ping (+¼ Trace pressure) → Doorknob Rattle | 1.6 | — / 5.6 / 6.4 / 6.7, plus 2.7 Trace a fight (7.5% of layer 2's allowance) |
+
+- **Authored scale** (`AuthoredEnemy.scale`) lands a two-common kit on
+  budget; two commons as written price ~4–4.5.
+- **A layer scaler that follows the player** (`ENEMY_LAYER_SCALER`, 1 /
+  1.4 / 1.6 / 1.65) replaces enemies.ts's linear +0.3 a layer, which
+  would undershoot layer 2 and overshoot layer 4. It's adopted by the
+  engine at wiring.
+- **Tripwire (E7) balances easily.** Extra Trace is measured as with
+  versus without its pressure, so the player's own noise cancels out.
+  Its Credit is deliberately below budget, since the threat is the Heat.
+  The time-box was not triggered. The run-level check of Exploit's
+  Heat band comes at wiring.
+- **Name:** "Script Kiddie" became **Pentest Script** (working name; the
+  user wasn't keen on "kiddie"). Alternatives offered: Auto-Scanner,
+  Probe Script, Hunter Script.
+- **Infrastructure:** `kitPower` moved into `pricing.ts`, shared by
+  `player-power.ts` and `roster-check.ts`.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the

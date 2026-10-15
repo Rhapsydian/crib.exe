@@ -1,0 +1,10 @@
+# Step 3, enemies: the 6 regulars priced as kit power (scripts/roster-check.ts), authored scales applied, layer scaler [1, 1.4, 1.6, 1.65].
+ROSTER CHECK (regular) -- kit power, Credit/turn, 60 seeds x 2 seats; skill 0.85; no Mods. Budget = E3's table.
+enemy                first  budget   power by layer (scaled)                       first-layer verdict
+Pentest Script       L1       5.1   L1 4.9 / 5.1  L2 7.4 / 7.0  L3 8.4 / 8.0  L4 8.4 / 8.2 ok (within 15%)
+Quarantine Daemon    L1       5.1   L1 5.0 / 5.1  L2 6.7 / 7.0  L3 7.3 / 8.0  L4 7.7 / 8.2 ok (within 15%)
+Relay Node           L1       5.1   L1 4.9 / 5.1  L2 7.4 / 7.0  L3 8.2 / 8.0  L4 8.5 / 8.2 ok (within 15%)
+Patch Runner         L1       5.1   L1 5.5 / 5.1  L2 7.5 / 7.0  L3 8.3 / 8.0  L4 8.7 / 8.2 ok (within 15%)
+Legacy Firewall      L2       7.0   L2 7.4 / 7.0  L3 8.6 / 8.0  L4 8.8 / 8.2       ok (within 15%)
+Tripwire             L2       7.0   L2 5.6 / 7.0  L3 6.4 / 8.0  L4 6.7 / 8.2       LOW
+                     tracer: 2.68 Trace/fight on the player = 7.5% of layer 2's allowance

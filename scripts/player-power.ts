@@ -28,13 +28,10 @@
 import { playRun, opportunisticTraversal, type GatekeeperFightContext } from '../src/engine/run';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
-import { playCombat } from '../src/engine/combat';
-import { discardSkillStrategy, pegSkillStrategy } from '../src/engine/ai';
 import { GAUGE_THRESHOLD, BREACH_THRESHOLD } from '../src/engine/encounters';
-import { creditPiece, crossing } from '../src/engine/pricing';
+import { kitPower as enginePower } from '../src/engine/pricing';
 import { ENEMY_ROSTER, magnitudeScalerFor, scaledEnemyLoadout } from '../src/engine/enemies';
 import { ALL_CLASS_IDS, CLASS_DEFINITIONS, type ClassId } from '../src/engine/classes';
-import type { PlayerIndex } from '../src/engine/pegging';
 import type { SubroutineDefinition } from '../src/engine/subroutine-types';
 import { parseSyntheticGatekeepers } from './synthetic-gatekeepers';
 
@@ -55,30 +52,9 @@ const skip = new Set((args.skip ?? '').split(',').filter(Boolean));
 const GRID = [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 17, 20, 25, 30];
 const always = parseSyntheticGatekeepers('1,1,1,1');
 
-/** Kit power: the Δ where `kit` (with `bridge`) ties Credit Δ. */
+/** Kit power (pricing.ts): the Δ where `kit` (with `bridge`) ties Credit Δ. */
 function kitPower(kit: SubroutineDefinition[], bridge: ClassId | undefined): number | null {
-  const pads = Array.from({ length: Math.max(0, kit.length - 1) }, (_, i) => creditPiece(0, `pad-${i}`));
-  const curve = GRID.map((delta) => {
-    const reference = [creditPiece(delta, 'delta'), ...pads];
-    let wins = 0;
-    for (let seed = 0; seed < seeds; seed++) {
-      for (const seat of [0, 1] as PlayerIndex[]) {
-        const loadouts: [SubroutineDefinition[], SubroutineDefinition[]] = seat === 0 ? [kit, reference] : [reference, kit];
-        const r = playCombat(loadouts, {
-          seed,
-          gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD],
-          winThreshold: [BREACH_THRESHOLD, BREACH_THRESHOLD],
-          discardStrategies: [discardSkillStrategy(0.85), discardSkillStrategy(0.85)],
-          playStrategies: [pegSkillStrategy(0.85), pegSkillStrategy(0.85)],
-          classId: seat === 0 ? bridge : undefined,
-          opponentBridge: seat === 1 ? bridge : undefined,
-        });
-        if (r.winner === seat) wins++;
-      }
-    }
-    return wins / (2 * seeds);
-  });
-  return crossing(GRID, curve);
+  return enginePower(kit, { seeds, skill: 0.85, gaugeThreshold: GAUGE_THRESHOLD, winThreshold: BREACH_THRESHOLD, bridge, grid: GRID });
 }
 
 const summary = (xs: number[]) => {

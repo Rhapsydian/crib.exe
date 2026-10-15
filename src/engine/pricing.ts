@@ -1,4 +1,5 @@
 import type { PlayerIndex } from './pegging';
+import type { ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
 import { playCombat } from './combat';
 import { discardSkillStrategy, pegSkillStrategy } from './ai';
@@ -213,4 +214,40 @@ export function refinedPrice(
   const step = (firstBelow - lastAbove) / (points - 1);
   const fineDeltas = Array.from({ length: points }, (_, i) => lastAbove + i * step);
   return { coarse, fine: priceAddition(host, addition, fineDeltas, options, placement) };
+}
+
+/**
+ * Kit power (step 3, enemies; E3): the flat Credit per turn a whole
+ * loadout ties in a seat-swapped duel. The reference side is one Credit-Δ
+ * piece padded with Credit-0 pieces to the same count. `bridge` gives the
+ * kit its class bridge in either seat. Puts players and enemies on one
+ * scale. Null when the grid never brackets the tie.
+ */
+export function kitPower(
+  kit: SubroutineDefinition[],
+  options: Omit<MirrorOptions, 'seedOffset'> & { bridge?: ClassId; grid?: number[] },
+): number | null {
+  const { seeds, skill, gaugeThreshold, winThreshold, bridge } = options;
+  const grid = options.grid ?? [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 17, 20, 25, 30];
+  const pads = Array.from({ length: Math.max(0, kit.length - 1) }, (_, i) => creditPiece(0, `pad-${i}`));
+  const curve = grid.map((delta) => {
+    const reference = [creditPiece(delta, 'delta'), ...pads];
+    let wins = 0;
+    for (let seed = 0; seed < seeds; seed++) {
+      for (const seat of [0, 1] as PlayerIndex[]) {
+        const loadouts: [SubroutineDefinition[], SubroutineDefinition[]] = seat === 0 ? [kit, reference] : [reference, kit];
+        const r = playCombat(loadouts, {
+          seed,
+          gaugeThreshold: [gaugeThreshold, gaugeThreshold],
+          winThreshold: [winThreshold, winThreshold],
+          ...strategiesFor(skill),
+          classId: seat === 0 ? bridge : undefined,
+          opponentBridge: seat === 1 ? bridge : undefined,
+        });
+        if (r.winner === seat) wins++;
+      }
+    }
+    return wins / (2 * seeds);
+  });
+  return crossing(grid, curve);
 }
