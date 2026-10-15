@@ -1,0 +1,30 @@
+
+PRICES -- Credit per turn vs a Credit-2 host, skill 0.85, 200 seeds x 2 seats. Isolated duels.
+piece                  rarity    formula  duel  [ low,  high]  band
+Tarpit                 common      --     1.91 [ 1.86,  2.00]  ok   
+Honeytoken             common     2.16    2.21 [ 2.14,  2.30]  HIGH  (in position: host, Ward 2 (partner); at 2)
+Basic Auth             common     2.24    1.90 [ 1.80,  2.00]  ok   
+Rate Limiting          common     2.10    2.12 [ 2.01,  2.23]  ok   
+Sinkhole               uncommon    --     1.90 [ 1.80,  2.00]  LOW  
+Fail2Ban               uncommon   2.13    2.21 [ 2.07,  2.33]  ok   
+Deep Packet Inspection uncommon   1.67    1.99 [ 1.90,  2.00]  LOW  
+Zero Trust             rare       2.04    1.77 [ 1.70,  1.85]  LOW   (alone, >= 2.0)
+                       in build    --     2.33 [ 2.21,  2.42]  ok    (in Basic Auth, host; at 0)
+Air-Gapped Vault       rare       2.11    2.00 [ 1.70,  2.30]  ok    (alone, >= 2.0)
+                       in build    --     2.02 [ 2.00,  2.21]  LOW   (in Basic Auth, Rate Limiting, host; at 0)
+
+WARD BYPASS (S10) -- steals priced against a host carrying Ward 2 on both sides, vs their plain price above.
+Fail2Ban               vs Ward host   2.23 [ 2.15,  2.32]
+Zero Trust             vs Ward host   2.21 [ 2.15,  2.30]
+
+KITS -- credit rule, skill retention (0.85 v 0.5; floor 0.5; plain Cribbage  87.4%), own Trace per fight.
+kit              pieces  threshold-wins  retain  floor   Trace/fight  hands/fight
+(skeleton ref)        3  100.0%          0.82   ok        0.00       12.7
+commons only          4  100.0%          0.92   ok        0.00       12.1
+early                 3  100.0%          0.78   ok        0.00       12.4
+turtle                6  100.0%          0.84   ok        0.00        9.1
+late conversion       6  100.0%          0.92   ok        0.00        9.4
+
+# Air-Gapped Vault re-priced with Basic Auth + Deep Packet Inspection as its Ward build:
+Air-Gapped Vault       rare       2.11    2.00 [ 1.70,  2.30]  ok    (alone, >= 2.0)
+                       in build    --     2.47 [ 2.31,  2.50]  ok    (in Basic Auth, Deep Packet Inspection, host; at 0)

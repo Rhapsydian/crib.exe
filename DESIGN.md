@@ -430,6 +430,13 @@ The instruments are:
    them and any other adjacency piece, so the price measures this piece
    and not the bonus its presence gives a neighbour. Flat haste is worth
    little; tempo pieces work better as large, occasional hastes.
+3d. **Conversion must scale with your own turns** (step 3, S11). Ward
+   absorbed is powered by the opponent's attacks, so conversion fuelled
+   by it inverts skill at volume. A Honeypot kit whose offense was mostly
+   that kind of conversion measured retention as low as −1.0. Main
+   conversion spends your own banked Ward; absorbed-fuelled conversion
+   stays small (cap 1–2); and Honeypot pieces carry some plain Credit.
+   Honeypot classes also carry their partner's credit piece.
 4. **Trace has no flat exchange rate.** It is priced against a layer's
    allowance (1 Trace = 2.5–3.6% of a layer). Its cost is convex in the
    noise a build already makes: free in a quiet build, 5–8 points of run

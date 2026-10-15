@@ -32,6 +32,7 @@ import { ARCHETYPE_POOLS, type ArchetypePool } from '../src/engine/subroutines';
 import type { SubroutineDefinition } from '../src/engine/subroutine-types';
 import { EXPLOIT_POOL, EXPLOIT_RARE_BUILDS, EXPLOIT_KITS } from '../src/engine/content/exploit';
 import { DAEMON_POOL, DAEMON_RARE_BUILDS, DAEMON_KITS, DAEMON_CROSS_BUILDS } from '../src/engine/content/daemon';
+import { HONEYPOT_POOL, HONEYPOT_RARE_BUILDS, HONEYPOT_KITS, HONEYPOT_WARD_CHECKS, HONEYPOT_CONTEXTS } from '../src/engine/content/honeypot';
 import { OVERCLOCK_POOL, OVERCLOCK_RARE_BUILDS, OVERCLOCK_KITS, OVERCLOCK_CROSS_BUILDS, OVERCLOCK_CONTEXTS, type PricingContext } from '../src/engine/content/overclock';
 
 function parseArgs(argv: string[]): Record<string, string> {
@@ -57,10 +58,13 @@ interface AuthoredArchetype {
   kits: Record<string, SubroutineDefinition[]>;
   /** Earlier archetypes' rares re-priced against this one's real pieces. */
   crossBuilds?: [SubroutineDefinition, SubroutineDefinition[]][];
+  /** Pieces re-priced against a host carrying Ward (S10's bypass check). */
+  wardChecks?: [SubroutineDefinition, PricingContext][];
 }
 const ARCHETYPES: Record<string, AuthoredArchetype> = {
   exploit: { pool: EXPLOIT_POOL, rareBuilds: EXPLOIT_RARE_BUILDS, kits: EXPLOIT_KITS },
   daemon: { pool: DAEMON_POOL, rareBuilds: DAEMON_RARE_BUILDS, kits: DAEMON_KITS, crossBuilds: DAEMON_CROSS_BUILDS },
+  honeypot: { pool: HONEYPOT_POOL, rareBuilds: HONEYPOT_RARE_BUILDS, kits: HONEYPOT_KITS, wardChecks: HONEYPOT_WARD_CHECKS, contexts: HONEYPOT_CONTEXTS },
   overclock: { pool: OVERCLOCK_POOL, rareBuilds: OVERCLOCK_RARE_BUILDS, kits: OVERCLOCK_KITS, crossBuilds: OVERCLOCK_CROSS_BUILDS, contexts: OVERCLOCK_CONTEXTS },
 };
 const archetype = ARCHETYPES[args.archetype ?? 'exploit'];
@@ -125,6 +129,16 @@ CROSS-ARCHETYPE BUILDS -- earlier rares against this archetype's real pieces (ra
     if (only && !only.has(rare.id)) continue;
     const r = duel(rare, [...build, HOST], 'before');
     console.log(`${rare.name.padEnd(22)} above ${build.map((b) => b.name).join(', ').padEnd(36)} ${fmt(r.price)} [${fmt(r.low)}, ${fmt(r.high)}]  ${inBand(r.price, BANDS.rare)}`);
+  }
+}
+
+if (!skip.has('ward') && archetype.wardChecks?.length) {
+  console.log(`
+WARD BYPASS (S10) -- steals priced against a host carrying Ward 2 on both sides, vs their plain price above.`);
+  for (const [piece, position] of archetype.wardChecks) {
+    if (only && !only.has(piece.id)) continue;
+    const r = duel(piece, position.host, position.at);
+    console.log(`${piece.name.padEnd(22)} vs Ward host  ${fmt(r.price)} [${fmt(r.low)}, ${fmt(r.high)}]`);
   }
 }
 

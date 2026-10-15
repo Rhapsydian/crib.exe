@@ -130,6 +130,33 @@ Pricing.**
 The user's framing for the pass: be mindful of balance with real
 measurements, but this pass needn't be perfect.
 
+### S10 — Conversion keeps its Ward bypass ✅
+
+Credit stolen from the opponent and Credit spent from your own Ward skip
+the opponent's Ward and incoming-credit Mods. Only plain Credit is
+absorbed. The user's call: keep the bypass, since it is what makes
+Honeypot the answer to a defensive opponent. It is contained by keeping
+steals small (1 point) and conditional, and the steal pieces are priced
+a second time against a host carrying Ward, to measure the bypass
+directly.
+
+### S11 — Honeypot carries its own skill-scaled offense; Honeypot classes still carry partner credit ✅
+
+Found at checkpoint 4: when a kit's offense is mostly conversion,
+Cribbage skill helps the opponent. The better player's extra turns send
+more Credit into the weaker player's Ward, where it converts back
+against them. Measured as a retention of −0.62 to −0.85 in
+conversion-only mirrors, against 0.98 with one plain-Credit piece added.
+
+The user's call (option 2, with option 1 as backstop):
+
+- **Two of the four Honeypot commons have a plain Credit alpha**, with
+  conversion in their betas, so Honeypot's own offense scales with your
+  turns.
+- **Backstop:** Honeypot classes still carry the partner archetype's
+  credit piece in their starting loadout (A9), and retention is checked
+  on class kits too.
+
 ## Checkpoint 1 — Exploit
 
 `src/engine/content/exploit.ts`: 9 pieces, not yet wired into
@@ -277,6 +304,57 @@ but lower than with the draft's weaker haste (commons-only kit 0.88 →
 predicted. **Watch item: late Overclock fights are very short** (2.8–3.6
 hands), the shortest so far, and fight length is what retention tracks.
 Revisit with the win-rate and fight-length tuning after step 3.
+
+## Checkpoint 4 — Honeypot
+
+`src/engine/content/honeypot.ts`: 9 pieces, not yet wired. Raw output:
+`docs/calibration/step3-cp4-honeypot.txt`.
+
+| piece | rarity | alpha | beta | price |
+|---|---|---|---|---|
+| Tarpit | C | Ward 2 | while your Ward is over 3: Credit 2 from your Ward | 1.91 |
+| Honeytoken | C | Credit 1 | each Ward absorbed: Credit 1, piercing (cap 2) | 2.21 beside Ward 2 (band edge) |
+| Basic Auth | C | Ward 2 | while your Ward is over 4: Credit 1 | 1.90 |
+| Rate Limiting | C | Credit 1 | each opponent fifteen: Ward 1 (cap 2) | 2.12 |
+| Sinkhole | U | Ward 2 | while your Ward is over 4: Credit 3 from your Ward | 1.90 (just low) |
+| Fail2Ban | U | Credit 1 | each opponent pair: steal 1 | 2.21 |
+| Deep Packet Inspection | U | Ward 1 | while the opponent is past ½: +3 | 1.99 (band edge) |
+| Zero Trust | R | Ward 1 | every 2 Ward absorbed: steal 1 (cap 1) | 1.77 alone (just low), 2.33 with Basic Auth |
+| Air-Gapped Vault | R | Credit 2 | while your Ward is over 8: +3 | 2.00 alone, 2.47 with Basic Auth + DPI |
+
+**The user's watch items, both measured:**
+
+- **Defense that never converts: found and fixed.** The first draft's
+  all-commons kit finished only 2% of mirror fights: both sides' Ward
+  absorbed the other's plain Credit, and the fights stalled to the
+  hand limit. Conversion that bypasses Ward (S10) is what lets Honeypot
+  finish. Every kit now ends by threshold, the turtle included.
+- **Conversion bypassing Ward: measured, contained.** At volume, the
+  first draft's Zero Trust (Ward 2, cap-3 steals) gained +1.3 Credit a
+  turn against a Ward host (3.64 → 4.92). The final small steals gain
+  ~0 (Fail2Ban 2.21 → 2.23, Zero Trust 2.21 against Ward).
+
+**New finding: absorbed-fuelled conversion inverts skill (S11).** Ward
+absorbed is powered by the *opponent's* attacks. When a kit's offense is
+mostly that kind of conversion, the better player's extra turns feed the
+weaker player's conversions. Retention measured −0.33 to −1.02. Two
+things fixed it, both measured:
+
+- plain Credit alphas on Honeytoken and Rate Limiting (S11);
+- **Tarpit rebuilt to spend your own banked Ward** instead of Ward
+  absorbed.
+
+Lower conversion rates alone did not help (−0.4 to −0.56).
+
+**Authoring rule:** Honeypot's main conversion spends your own Ward,
+which scales with your turns. Absorbed-fuelled conversion stays small
+(cap 1–2). Final kits: retention **0.78–0.92**; credit rule ✅.
+
+Other tuning: Fail2Ban now steals on every opponent pair (it was every
+2nd); Deep Packet Inspection is "while the opponent is past ½, +3" (an
+immediate Ward 4 at ¾ fired too rarely, 1.27). Four pieces sit at or
+just outside their band edges (Honeytoken, Sinkhole, DPI, Zero Trust
+alone), all within ~0.25, which is acceptable for this pass.
 
 ## Open
 
