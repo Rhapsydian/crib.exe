@@ -1,6 +1,7 @@
 import type { Archetype, SubroutineDefinition } from '../subroutine-types';
 import type { EnemyTier } from '../enemies';
 import type { ClassId } from '../classes';
+import type { GatekeeperModId } from '../gatekeeper-mods';
 import { authoredPiece } from './starting-loadouts';
 
 /**
@@ -29,6 +30,8 @@ export interface AuthoredEnemy {
   scale?: number;
   /** The class bridge it carries as a Mod (E4: elites and gatekeepers). */
   bridge?: ClassId;
+  /** A gatekeeper's bespoke Mod (E4; gatekeeper-mods.ts). */
+  mods?: GatekeeperModId[];
 }
 
 /** Regular/elite magnitude by layer, following the player's measured
@@ -84,6 +87,81 @@ export const AUTHORED_ELITES: AuthoredEnemy[] = [
   // fire: at 1/2 it pushed ~20 Trace a fight (57% of layer 2's
   // allowance), since its pieces fire on turns AND as immediate betas.
   { id: 'intrusion-alarm', name: 'Intrusion Alarm', tier: 'elite', archetypes: ['overclock', 'honeypot'], minLayer: 2, bridge: 'overclock-honeypot', loadout: [tracing(p('priority-override'), 0.125), tracing(p('elevated-session'), 0.125), p('tarpit')] },
+];
+
+// --- Gatekeepers' bespoke pieces (session 43's rule: every gatekeeper
+// carries at least one; they appear nowhere else). ---
+
+const WELCOME_PACKET: SubroutineDefinition = {
+  id: 'welcome-packet', name: 'Welcome Packet', archetype: 'exploit',
+  alpha: { verb: 'credit', amount: 2 },
+  beta: { source: 'cards', category: 'go', shape: 'immediate', at: 2, effect: { verb: 'enhance', amount: 0 } },
+};
+const DEFAULT_DENY: SubroutineDefinition = {
+  id: 'default-deny', name: 'Default Deny', archetype: 'daemon',
+  alpha: { verb: 'suppress', amount: 2 },
+  beta: { source: 'state', condition: { kind: 'opponentGaugeAbove', fraction: 0.5 }, shape: 'whileTrue', effect: { verb: 'enhance', amount: 2 } },
+};
+const ISOLATION_CHAMBER: SubroutineDefinition = {
+  id: 'isolation-chamber', name: 'Isolation Chamber', archetype: 'honeypot',
+  alpha: { verb: 'ward', amount: 3 },
+  beta: { source: 'state', condition: { kind: 'wardAbove', amount: 6 }, shape: 'whileTrue', effect: { verb: 'suppress', amount: 2 } },
+};
+const BALANCE_SHEET: SubroutineDefinition = {
+  id: 'balance-sheet', name: 'Balance Sheet', archetype: 'honeypot',
+  alpha: { verb: 'credit', amount: 1 },
+  beta: { source: 'state', condition: { kind: 'opponentGaugeAbove', fraction: 0.5 }, shape: 'whileTrue', effect: { verb: 'credit', amount: 1, from: 'opponent' } },
+};
+const SELF_MODIFYING_CODE: SubroutineDefinition = {
+  id: 'self-modifying-code', name: 'Self-Modifying Code', archetype: 'daemon',
+  alpha: { verb: 'credit', amount: 1, growth: 0.5, growthCap: 4 },
+  beta: { source: 'state', condition: { kind: 'handPointsAtLeast', amount: 12 }, shape: 'immediate', effect: { verb: 'enhance', amount: 0 } },
+};
+const BEACON: SubroutineDefinition = {
+  id: 'beacon', name: 'Beacon', archetype: 'honeypot',
+  alpha: { verb: 'ward', amount: 2 },
+  beta: { source: 'cards', category: 'pair', shape: 'graded', cap: 2, effect: { verb: 'enhance', amount: 1 } },
+  tracePressure: 0.25,
+};
+const NULL_ROUTE: SubroutineDefinition = {
+  id: 'null-route', name: 'Null Route', archetype: 'honeypot',
+  alpha: { verb: 'credit', amount: 1 },
+  beta: { source: 'state', condition: { kind: 'opponentGaugeAbove', fraction: 0.75 }, shape: 'whileTrue', effect: { verb: 'credit', amount: 2, from: 'opponent' } },
+};
+const KERNEL_PANIC: SubroutineDefinition = {
+  id: 'kernel-panic', name: 'Kernel Panic', archetype: 'daemon',
+  alpha: { verb: 'credit', amount: 2 },
+  beta: { source: 'progress', metric: 'fires', per: 4, shape: 'stepped', at: 1, effect: { verb: 'suppress', amount: 4 } },
+};
+
+/** Gatekeepers (E2: 2 per layer; E4: a bridge plus one bespoke Mod). A
+ * four-layer climb: one rule each at the perimeter; your tools stop
+ * working as normal in the LAN; the enemy grows or makes you loud in the
+ * servers; three archetypes and hard rule-bends at the core. Several
+ * Mods cap or tax burst, which lengthens fights (CP6b: retention tracks
+ * fight length). */
+export const AUTHORED_GATEKEEPERS: AuthoredEnemy[] = [
+  // --- Layer 1: the perimeter ---
+  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 1, bridge: 'exploit-overclock', mods: ['reception-protocol'],
+    loadout: [WELCOME_PACKET, p('port-scan'), p('cache-hit'), p('burst-clock')] },
+  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 1, bridge: 'exploit-daemon', mods: ['no-way-in'],
+    loadout: [DEFAULT_DENY, p('watchdog-timer'), p('buffer-overflow'), p('cron-job')] },
+  // --- Layer 2: the internal LAN ---
+  { id: 'quarantine-ward', name: 'Quarantine Ward', tier: 'gatekeeper', archetypes: ['daemon', 'honeypot'], minLayer: 2, bridge: 'daemon-honeypot', mods: ['containment'], scale: 1.35,
+    loadout: [ISOLATION_CHAMBER, p('patch'), p('sinkhole'), p('memory-leak')] },
+  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 2, bridge: 'overclock-honeypot', mods: ['zero-sum'],
+    loadout: [BALANCE_SHEET, p('ping'), p('elevated-session'), p('tarpit')] },
+  // --- Layer 3: the servers ---
+  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 3, bridge: 'daemon-overclock', mods: ['adaptation'],
+    loadout: [SELF_MODIFYING_CODE, p('fork-bomb'), p('ping'), p('steady-drip')] },
+  // E7 gatekeeper tracer: does not try hard to contain you; makes you loud before the toll.
+  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 3, bridge: 'exploit-honeypot', mods: ['spotlight'],
+    loadout: [BEACON, p('port-scan'), p('tarpit'), p('jackpot')] },
+  // --- Layer 4: the core ---
+  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['exploit', 'overclock', 'honeypot'], minLayer: 4, bridge: 'overclock-honeypot', mods: ['null-session'],
+    loadout: [NULL_ROUTE, p('zero-day-chain'), p('priority-override'), p('zero-trust')] },
+  { id: 'root-authority', name: 'Root Authority', tier: 'gatekeeper', archetypes: ['exploit', 'daemon', 'overclock'], minLayer: 4, bridge: 'daemon-overclock', mods: ['root-access'],
+    loadout: [KERNEL_PANIC, p('chain-reaction'), p('memory-leak'), p('race-condition')] },
 ];
 
 /** E3's budget table: Credit per turn by tier and first layer. */

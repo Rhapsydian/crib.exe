@@ -23,7 +23,7 @@ import { GAUGE_THRESHOLD, BREACH_THRESHOLD } from '../src/engine/encounters';
 import { scaledEnemyLoadout } from '../src/engine/enemies';
 import { LAYER_HEAT_ALLOWANCE } from '../src/engine/heat';
 import { CLASS_DEFINITIONS, ALL_CLASS_IDS } from '../src/engine/classes';
-import { AUTHORED_REGULARS, AUTHORED_ELITES, ENEMY_BUDGET, ENEMY_LAYER_SCALER, type AuthoredEnemy } from '../src/engine/content/enemies';
+import { AUTHORED_REGULARS, AUTHORED_ELITES, AUTHORED_GATEKEEPERS, ENEMY_BUDGET, ENEMY_LAYER_SCALER, type AuthoredEnemy } from '../src/engine/content/enemies';
 
 function parseArgs(argv: string[]): Record<string, string> {
   const out: Record<string, string> = {};
@@ -36,7 +36,7 @@ function parseArgs(argv: string[]): Record<string, string> {
 const args = parseArgs(process.argv.slice(2));
 const seeds = Number(args.seeds ?? 60);
 const only = args.only ? new Set(args.only.split(',')) : null;
-const TIERS: Record<string, AuthoredEnemy[]> = { regular: AUTHORED_REGULARS, elite: AUTHORED_ELITES };
+const TIERS: Record<string, AuthoredEnemy[]> = { regular: AUTHORED_REGULARS, elite: AUTHORED_ELITES, gatekeeper: AUTHORED_GATEKEEPERS };
 const roster = TIERS[args.tier ?? 'regular'];
 
 /** The enemy's magnitude at `layer`: its authored scale, times the
@@ -69,6 +69,7 @@ function traceAgainst(loadout: ReturnType<typeof scaledEnemyLoadout>, enemy: Aut
         playStrategies: [pegSkillStrategy(0.85), pegSkillStrategy(0.85)],
         classId,
         opponentBridge: enemy.bridge,
+        gatekeeperMods: [[], enemy.mods ?? []],
       });
       trace += r.traceGenerated;
       fights++;
@@ -81,14 +82,15 @@ console.log(`\nROSTER CHECK (${args.tier ?? 'regular'}) -- kit power, Credit/tur
 console.log(`${'enemy'.padEnd(20)} first  budget   power by layer (scaled)                       first-layer verdict`);
 for (const enemy of roster) {
   if (only && !only.has(enemy.id)) continue;
-  const layers = [1, 2, 3, 4].filter((l) => l >= enemy.minLayer);
-  const powers = layers.map((layer) => kitPower(scaledEnemyLoadout(enemy.loadout, scalerAt(enemy, layer)), { ...options, bridge: enemy.bridge }));
+  // Gatekeepers appear at one layer only (eligibleEnemies' exact match).
+  const layers = enemy.tier === 'gatekeeper' ? [enemy.minLayer] : [1, 2, 3, 4].filter((l) => l >= enemy.minLayer);
+  const powers = layers.map((layer) => kitPower(scaledEnemyLoadout(enemy.loadout, scalerAt(enemy, layer)), { ...options, bridge: enemy.bridge, mods: enemy.mods }));
   const budget = ENEMY_BUDGET[enemy.tier][enemy.minLayer - 1];
   const first = powers[0];
   const verdict = first === null ? '?' : Math.abs(first - budget) <= 0.15 * budget ? 'ok (within 15%)' : first < budget ? 'LOW' : 'HIGH';
   const cells = layers.map((l, i) => `L${l} ${powers[i] === null ? '--' : powers[i]!.toFixed(1)} / ${ENEMY_BUDGET[enemy.tier][l - 1].toFixed(1)}`).join('  ');
   console.log(`${enemy.name.padEnd(20)} L${enemy.minLayer}     ${budget.toFixed(1).padStart(5)}   ${cells.padEnd(46)} ${verdict}`);
-  if (enemy.loadout.some((piece) => (piece.tracePressure ?? 0) > 0)) {
+  if (enemy.loadout.some((piece) => (piece.tracePressure ?? 0) > 0) || enemy.mods?.includes('spotlight')) {
     const t = tracePerFight(enemy, enemy.minLayer);
     console.log(`${''.padEnd(20)} tracer: ${t.toFixed(2)} Trace/fight on the player = ${((100 * t) / LAYER_HEAT_ALLOWANCE[enemy.minLayer - 1]).toFixed(1)}% of layer ${enemy.minLayer}'s allowance`);
   }

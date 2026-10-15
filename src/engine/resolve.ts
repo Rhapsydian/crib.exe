@@ -3,6 +3,15 @@ import type { Card } from './cards';
 import type { Archetype, BetaEffect, Effect, SubroutineDefinition, TempoEffect } from './subroutine-types';
 import type { ClassId } from './classes';
 import { CLASS_DEFINITIONS } from './classes';
+import {
+  ADAPTATION_EVERY,
+  ADAPTATION_STEP,
+  NO_WAY_IN_CAP,
+  SPOTLIGHT_TRACE,
+  ZERO_SUM_SHARE,
+  ZERO_SUM_THRESHOLD,
+  type GatekeeperModId,
+} from './gatekeeper-mods';
 import type { EnemyPassiveId } from './enemies';
 import type { ModId } from './mod-types';
 import {
@@ -132,6 +141,9 @@ export interface CombatState {
    * its class's; side 1 has none in real play -- the slot exists so a
    * pricing duel can give a bridge to the test side in either seat. */
   bridges: [ClassId | undefined, ClassId | undefined];
+  /** Each side's gatekeeper Mods (step 3, E4; gatekeeper-mods.ts). Side
+   * 1's are a gatekeeper's own; side 0's exist only for pricing duels. */
+  sideMods: [GatekeeperModId[], GatekeeperModId[]];
   /** Passives side 1 (the enemy) carries. Empty for the skeleton roster. */
   enemyPassiveIds: EnemyPassiveId[];
   /** Mods side 0 (the player) owns, including the class's own. */
@@ -170,6 +182,7 @@ export function createCombatState(
   ownedModIds: ModId[] = [],
   carriedBurnerIds: BurnerId[] = [],
   opponentBridge?: ClassId,
+  sideMods: [GatekeeperModId[], GatekeeperModId[]] = [[], []],
 ): CombatState {
   // The class's own exclusive Mod is always active whenever classId is
   // set -- folded in here rather than required from every caller.
@@ -186,6 +199,7 @@ export function createCombatState(
     ],
     classId,
     bridges: [classId, opponentBridge],
+    sideMods,
     enemyPassiveIds,
     ownedModIds: effectiveModIds,
     carriedBurnerIds,
@@ -195,13 +209,27 @@ export function createCombatState(
 /** Clears both sides' hand-scoped intel and forced discards -- called once
  * per hand, before that hand's deal, so nothing stale carries over. */
 export function clearHandKnowledge(combatState: CombatState): CombatState {
-  const sides = combatState.sides.map((sideState) => ({
-    ...sideState,
-    knownOpponentHand: undefined,
-    knownCrib: undefined,
-    forcedDiscardPair: undefined,
-    handPoints: 0,
-  })) as [CombatSideState, CombatSideState];
+  const sides = combatState.sides.map((sideState, side): CombatSideState => {
+    const hands = (sideState.passiveState[HANDS_SEEN] ?? 0) + 1;
+    // Adaptation: every few hands, the owner's growth caps rise.
+    const adapting = combatState.sideMods[side].includes('adaptation') && hands % ADAPTATION_EVERY === 0;
+    const loadout = adapting
+      ? sideState.loadout.map((entry) => {
+          const { growth, growthCap } = entry.definition.alpha;
+          if (growth === undefined) return entry;
+          return { ...entry, definition: { ...entry.definition, alpha: { ...entry.definition.alpha, growthCap: (growthCap ?? 0) + ADAPTATION_STEP } } };
+        })
+      : sideState.loadout;
+    return {
+      ...sideState,
+      loadout,
+      knownOpponentHand: undefined,
+      knownCrib: undefined,
+      forcedDiscardPair: undefined,
+      handPoints: 0,
+      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0 },
+    };
+  }) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
 }
 
@@ -220,10 +248,38 @@ function withSide(combatState: CombatState, side: PlayerIndex, patch: Partial<Co
 }
 
 /** Credits `side`'s own win gauge -- the one way a gauge ever advances. */
+/** Whether `side` carries gatekeeper Mod `id` (gatekeeper-mods.ts). */
+export function hasSideMod(combatState: CombatState, side: PlayerIndex, id: GatekeeperModId): boolean {
+  return combatState.sideMods[side].includes(id);
+}
+
+// Per-side scratch keys for the gatekeeper Mods' turn/hand bookkeeping.
+const GAINED_THIS_TURN = 'gk:gained';
+const NULL_SESSION_SPENT = 'gk:null-spent';
+const RECEPTION_SPENT = 'gk:reception-spent';
+const ROOT_ACCESS_SPENT = 'gk:root-spent';
+const HANDS_SEEN = 'gk:hands';
+
 export function creditWinGauge(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
   if (amount <= 0) return combatState;
-  const { gauge } = addDuelProgress(combatState.sides[side].winGauge, amount);
-  return withSide(combatState, side, { winGauge: gauge });
+  let state = combatState;
+  const opponent = opponentOf(side);
+  const scratch = state.sides[side].passiveState;
+  // Null Session: the first Credit `side` would gain each turn is discarded.
+  if (hasSideMod(state, opponent, 'null-session') && !scratch[NULL_SESSION_SPENT]) {
+    return withSide(state, side, { passiveState: { ...scratch, [NULL_SESSION_SPENT]: 1 } });
+  }
+  const gained = scratch[GAINED_THIS_TURN] ?? 0;
+  // No Way In: a per-turn cap on what `side` can gain.
+  if (hasSideMod(state, opponent, 'no-way-in')) amount = Math.min(amount, Math.max(0, NO_WAY_IN_CAP - gained));
+  if (amount <= 0) return state;
+  // Zero-Sum: Credit past the threshold in a turn feeds the opponent.
+  if (hasSideMod(state, opponent, 'zero-sum')) {
+    const excess = Math.max(0, gained + amount - ZERO_SUM_THRESHOLD) - Math.max(0, gained - ZERO_SUM_THRESHOLD);
+    if (excess > 0) state = withSide(state, opponent, { winGauge: addDuelProgress(state.sides[opponent].winGauge, excess * ZERO_SUM_SHARE).gauge });
+  }
+  const { gauge } = addDuelProgress(state.sides[side].winGauge, amount);
+  return withSide(state, side, { winGauge: gauge, passiveState: { ...state.sides[side].passiveState, [GAINED_THIS_TURN]: gained + amount } });
 }
 
 /** Reduces `side`'s own win gauge, floored at 0. */
@@ -407,7 +463,9 @@ function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOc
 /** The start of one of `side`'s turns. */
 function applyBridgeOnTurnStart(combatState: CombatState, side: PlayerIndex): CombatState {
   const bridge = combatState.bridges[side];
-  let state = combatState;
+  // Gatekeeper Mods' per-turn counters (No Way In, Zero-Sum, Null
+  // Session) restart with each of this side's turns.
+  let state = withSide(combatState, side, { passiveState: { ...combatState.sides[side].passiveState, [GAINED_THIS_TURN]: 0, [NULL_SESSION_SPENT]: 0 } });
   if (bridge === 'daemon-honeypot') {
     state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [DAEMON_HONEYPOT_BANKED]: 0 } });
   }
@@ -569,7 +627,8 @@ export function resolveEffect(
         const stolen = Math.min(state.sides[target].winGauge.progress, effect.amount);
         return creditWinGauge(reduceWinGauge(state, target, stolen), caster, stolen);
       }
-      if (effect.piercing) return creditWinGauge(state, caster, effect.amount);
+      // Containment: the target's Ward absorbs piercing Credit too.
+      if (effect.piercing && !hasSideMod(state, target, 'containment')) return creditWinGauge(state, caster, effect.amount);
       // Plain credit: the target's incoming-credit Mods, then its Ward.
       // Conversion credits above are transfers, not attacks, and skip both.
       const incoming = applyModIncomingCreditPassives(state, target, effect.amount);
@@ -727,7 +786,8 @@ function resolveFire(
 /** Applies an alpha's own Trace pressure on the opponent (session 47's
  * enemy-side "make the player visible"). */
 function applyTracePressure(combatState: CombatState, side: PlayerIndex, definition: SubroutineDefinition): CombatState {
-  const pressure = definition.tracePressure ?? 0;
+  // Spotlight: every fire of the owner's pieces adds Trace to its opponent.
+  const pressure = (definition.tracePressure ?? 0) + (hasSideMod(combatState, side, 'spotlight') ? SPOTLIGHT_TRACE : 0);
   return pressure > 0 ? applyTrace(combatState, opponentOf(side), pressure) : combatState;
 }
 
@@ -747,6 +807,27 @@ export function fireTurn(
 ): { combatState: CombatState; events: FireEvent[] } {
   let state = applyBridgeOnTurnStart(combatState, side);
   const events: FireEvent[] = [];
+  const pass = fireLoadoutOnce(state, side, selfContext);
+  state = pass.combatState;
+  events.push(...pass.events);
+  // Root Access: on the owner's first turn each hand, the loadout fires twice.
+  if (hasSideMod(state, side, 'root-access') && !state.sides[side].passiveState[ROOT_ACCESS_SPENT]) {
+    state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [ROOT_ACCESS_SPENT]: 1 } });
+    const again = fireLoadoutOnce(state, side, selfContext);
+    state = again.combatState;
+    events.push(...again.events);
+  }
+  return { combatState: tickTimedTempo(state, side), events };
+}
+
+/** One top-to-bottom pass of `side`'s loadout (fireTurn's body). */
+function fireLoadoutOnce(
+  combatState: CombatState,
+  side: PlayerIndex,
+  selfContext: { isDealer: boolean },
+): { combatState: CombatState; events: FireEvent[] } {
+  let state = combatState;
+  const events: FireEvent[] = [];
   const firedThisTurn: FiredThisTurn[] = [];
   const turn: TurnBuffer = { empowerNext: 0, empowerRest: 0 };
   const loadoutLength = state.sides[side].loadout.length;
@@ -759,8 +840,13 @@ export function fireTurn(
     const beta = definition.beta;
     const context = buildTriggerContext(state, side, selfContext.isDealer, firedThisTurn, i);
     const charges = beta ? betaCharges(definition, entry.state, context) : 0;
-    const scale = beta ? betaScale(beta, charges) : 0;
+    let scale = beta ? betaScale(beta, charges) : 0;
     const elevated = scale > 0;
+    // Reception Protocol: the owner's first Exploit beta each hand applies twice.
+    if (elevated && definition.archetype === 'exploit' && hasSideMod(state, side, 'reception-protocol') && !state.sides[side].passiveState[RECEPTION_SPENT]) {
+      scale *= 2;
+      state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [RECEPTION_SPENT]: 1 } });
+    }
 
     let amount = alphaAmount(entry, turn);
     if (beta?.effect.verb === 'enhance' && elevated) amount += beta.effect.amount * scale;
@@ -786,7 +872,7 @@ export function fireTurn(
     firedThisTurn.push({ definition, elevated });
   }
 
-  return { combatState: tickTimedTempo(state, side), events };
+  return { combatState: state, events };
 }
 
 /**

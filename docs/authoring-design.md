@@ -729,6 +729,39 @@ bridge slot). Raw output: `docs/calibration/step3-elites.txt`.
 - The time-box was not triggered: two tracers balanced with one sizing
   step each. Run-level Exploit Heat is re-checked at wiring.
 
+### Enemy step 4a — the eight gatekeepers, built; stage 1 pricing
+
+`src/engine/content/enemies.ts`: 8 gatekeepers with 8 bespoke pieces.
+`src/engine/gatekeeper-mods.ts`: the Mod registry (E4), with eight
+Mods looked up by id at resolve.ts's hook sites: the per-turn Credit
+cap and tax, first-Credit discard, piercing absorption, Trace per fire,
+a doubled first Exploit beta, a double first turn, and rising growth
+caps. Each has a unit test (`gatekeeper-mods.test.ts`). Each side of a
+combat carries `sideMods`; side 0's exist only for pricing duels. Raw
+output: `docs/calibration/step3-gatekeepers-stage1.txt`.
+
+| layer | gatekeeper | bridge | bespoke Mod | stage-1 power (budget) |
+|---|---|---|---|---|
+| 1 | The Concierge | Exploit Chain | Reception Protocol | 9.4 (10.8) |
+| 1 | Firewall Prime | Backdoor Maintenance | No Way In | can't be priced this way |
+| 2 | Quarantine Ward | Hardened Perimeter | Containment | 12.9 (13.8), scale 1.35 |
+| 2 | Zero-Sum | Siphon | Zero-Sum | 12.1 (13.8) |
+| 3 | Adaptive Threat | Invocation | Adaptation | 12.6 (14.2) |
+| 3 | Total Compromise (tracer) | Foothold | Spotlight | 10.1 (14.2), plus 2.9 Trace a fight (9% of layer 3) |
+| 4 | Null Session | Siphon | Null Session | can't be priced this way |
+| 4 | Root Authority | Invocation | Root Access | 13.8 (14.6) |
+
+**Instrument limit, expected:** kit power measures a kit against a
+single flat-Credit opponent. Mods that act on the *opponent's gain* (No
+Way In's cap, Null Session's discard) neutralise that reference
+entirely, so no Credit amount ever ties them. Their strength exists only
+relative to a real player, so they are priced by stage 2, which is
+where every gatekeeper is finally tuned anyway (E3).
+
+Stage 2 needs the authored gatekeepers in real runs, since
+`gatekeeper-check.ts` pins a gatekeeper inside real runs. That means
+wiring the roster (E5 step 5) before stage 2 rather than after.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the

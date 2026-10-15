@@ -6,6 +6,7 @@ import { playPegging, playLowestLegal, type PlayStrategy } from './pegging';
 import { countHandEvents, countCribEvents } from './scoring';
 import type { HandResult, PlayerIndex } from './game';
 import type { SubroutineDefinition } from './subroutine-types';
+import type { GatekeeperModId } from './gatekeeper-mods';
 import type { ClassId } from './classes';
 import type { EnemyPassiveId } from './enemies';
 import type { ModId } from './mod-types';
@@ -80,6 +81,9 @@ export interface CombatOptions {
    * so a pricing duel can give a bridge to the test side in either seat.
    * Never set by real play. */
   opponentBridge?: ClassId;
+  /** Each side's gatekeeper Mods (step 3, E4). Side 1's are a
+   * gatekeeper's; side 0's only for pricing duels. */
+  gatekeeperMods?: [GatekeeperModId[], GatekeeperModId[]];
   /** Which passive(s) side 1 (the enemy) carries this combat -- Phase 5
    * checkpoint B. Defaults to none, same "absent = no passives active"
    * treatment classId already gets. */
@@ -409,6 +413,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     startingDealer = 0,
     classId,
     opponentBridge,
+    gatekeeperMods,
     enemyPassiveIds = [],
     ownedModIds = [],
     carriedBurnerIds = [],
@@ -430,7 +435,7 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
   let consecutiveTurns = 0;
   let lastTurnSide: PlayerIndex | null = null;
   let scores: [number, number] = [0, 0];
-  const created = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds, opponentBridge);
+  const created = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds, opponentBridge, gatekeeperMods);
   let combatState = applyModOnCombatStartPassives({
     ...created,
     sides: [{ ...created.sides[0], trace: Math.max(0, startingTrace) }, created.sides[1]],

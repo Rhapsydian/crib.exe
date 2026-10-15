@@ -1,5 +1,6 @@
 import type { PlayerIndex } from './pegging';
 import type { ClassId } from './classes';
+import type { GatekeeperModId } from './gatekeeper-mods';
 import type { SubroutineDefinition } from './subroutine-types';
 import { playCombat } from './combat';
 import { discardSkillStrategy, pegSkillStrategy } from './ai';
@@ -225,9 +226,9 @@ export function refinedPrice(
  */
 export function kitPower(
   kit: SubroutineDefinition[],
-  options: Omit<MirrorOptions, 'seedOffset'> & { bridge?: ClassId; grid?: number[] },
+  options: Omit<MirrorOptions, 'seedOffset'> & { bridge?: ClassId; mods?: GatekeeperModId[]; grid?: number[] },
 ): number | null {
-  const { seeds, skill, gaugeThreshold, winThreshold, bridge } = options;
+  const { seeds, skill, gaugeThreshold, winThreshold, bridge, mods = [] } = options;
   const grid = options.grid ?? [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 17, 20, 25, 30];
   const pads = Array.from({ length: Math.max(0, kit.length - 1) }, (_, i) => creditPiece(0, `pad-${i}`));
   const curve = grid.map((delta) => {
@@ -243,6 +244,7 @@ export function kitPower(
           ...strategiesFor(skill),
           classId: seat === 0 ? bridge : undefined,
           opponentBridge: seat === 1 ? bridge : undefined,
+          gatekeeperMods: seat === 0 ? [mods, []] : [[], mods],
         });
         if (r.winner === seat) wins++;
       }
