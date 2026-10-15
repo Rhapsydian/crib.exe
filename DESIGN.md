@@ -1447,9 +1447,27 @@ work; they can stay on their current path.
 The session 27 roster — 32 named enemies (12 regular, 8 elite, 12
 gatekeepers), grown by session 43's enemy-only pieces — is archived in
 `docs/design-history.md`. Its kits are built from the old subroutine
-pool and are **deleted, not migrated**, in the session 51 refactor; a
-skeleton roster built from skeleton pieces stands in until the roster is
-re-authored against the pillar calibration (run-economy D10).
+pool and are **deleted, not migrated**, in the session 51 refactor.
+
+**Session 55 authored the replacement** (`src/engine/content/enemies.ts`;
+decisions E1–E7 in `docs/authoring-design.md`): 18 enemies, an initial
+set to grow. That is 6 regulars, 4 elites, and 8 gatekeepers, two per
+layer.
+
+- **Regular and elite** enemies are built from the player's own pieces
+  and priced as kit power against a budget set from the player's
+  measured power by layer. Their magnitude follows that curve
+  (`ENEMY_LAYER_SCALER`).
+- **Regulars carry no Mod.** Elites carry their archetype pair's class
+  bridge.
+- **Gatekeepers** carry a bridge plus one bespoke Mod from
+  `gatekeeper-mods.ts` (the light registry), and at least one bespoke
+  piece. They are tuned to the per-layer pass-rate target above, within
+  2.3 points.
+- **Honeypot enemies start at layer 2.** Three "tracers" (Tripwire,
+  Intrusion Alarm, Total Compromise) add Trace to the player instead of
+  mainly trying to contain them.
+- Enemies carry **Mods** (the user's term), not passives.
 
 What carries forward from it:
 

@@ -85,15 +85,31 @@ rather than tuned. Work happens on the `archetype-redesign` branch.
       with bespoke bridge passives (~+1.0 Credit/turn,
       `scripts/class-check.ts`), commons-only starting loadouts and an
       unlock order; the authored pool is wired into acquisition;
-   3. **enemy roster** — next. Open first question: how enemies are
-      built (the player's pieces, bespoke enemy pieces, or a mix). The
-      skeleton roster still runs on `skeleton-pool.ts`.
+   3. ✅ enemy roster (session 55, E1–E7): 18 enemies, with bridges and
+      eight bespoke gatekeeper Mods (`gatekeeper-mods.ts`). Regulars and
+      elites are priced to a power budget from the player's measured
+      power; gatekeepers are tuned to the 78/72/66/60 pass-rate curve,
+      within 2.3 points. The skeleton is retired.
+
+   **Step 3 is complete.** Next: a **class balance pass**, as its own
+   decision session. The three Exploit classes sit inside 10–20% victory
+   (11–14%) and the other three above it (27–31%). Open questions: how
+   much absolute Exploit Heat to keep (endings now 25–42%, mostly
+   "breached, then caught", with tracers adding to it), and whether the
+   band applies per class or on average. Eidolon (31%) is the first
+   lever.
 
    Watch items carried forward:
-   - **Eidolon at 41% victory**, about double the rest; its bridge
-     scales hard late (1.97 Credit/turn). The first tuning candidate.
-   - **Exploit Heat endings at ~5×**, the top of the 3–5× target; one
-     more noisy piece would pass it.
+   - **Eidolon at 31% victory** with the authored roster, still the
+     highest; its bridge scales hard late (1.97 Credit/turn).
+   - **Exploit Heat:** a 4.4× ratio (inside 3–5×), but 25–42% absolute;
+     the skill gap is smallest for Exploit runs (+7–9 points).
+   - **Player power plateaus after layer 2**, once the 6 slots fill: a
+     progression question (slot unlocks, stronger Merge, rares).
+   - The legacy `EnemyPassiveId` slot in playCombat's positional
+     signature is always empty; remove it with that parameter.
+   - A gatekeeper met inside the opening window (first 3 fights) plays at
+     skill 0: `enemySkill`'s opener pin applies to every tier.
    - **Late Overclock fights are short** (~3 hands), and retention
      tracks fight length.
    - Four Honeypot pieces sit just outside their bands (Honeytoken,

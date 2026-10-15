@@ -46,8 +46,12 @@ Session 54 started step 3, authoring (`docs/authoring-design.md`): the
 **36-piece subroutine pool** is authored and priced, and the six classes
 are named (Blackhat, Operator, Eidolon, Breacher, Warden, Wraith), with
 bespoke bridge passives and commons-only starting loadouts. Real runs
-now draw from the authored pool. The enemy roster is still the skeleton,
-and is next.
+now draw from the authored pool.
+
+Session 55 finished step 3 with the **authored enemy roster**: 18 enemies,
+including eight gatekeepers with bespoke Mods, tuned to the per-layer
+pass-rate curve. Every piece of content in a run is now authored; the
+skeleton is gone. Next is a class balance pass.
 
 What exists, all headless and test-covered:
 
@@ -111,6 +115,8 @@ kit, reporting threshold vs. attrition wins on each side.
 | `npx tsx scripts/cribbage-skill-matrix.ts` | What a given "player skill" value actually means, as a skill-vs-skill win-rate grid |
 | `npx tsx scripts/price-check.ts` | What one verb is worth, in Credit per turn: seat-swapped mirror duels, host-plus-difference (`src/engine/pricing.ts`). Raw results in `docs/calibration/` |
 | `npx tsx scripts/archetype-check.ts --archetype=<a>` | One authored archetype's checks: every piece's price against its rarity band (in position where it matters), the credit rule, skill retention, noise |
+| `npx tsx scripts/player-power.ts` | The player's priced power (kit power) at each layer of real runs — the basis of the enemy budgets |
+| `npx tsx scripts/roster-check.ts --tier=<t>` | Each authored enemy's kit power against its budget, by layer, plus a tracer's extra Trace per fight |
 | `npx tsx scripts/class-check.ts` | Each class's bridge passive priced against its +1.0 budget, in its starting loadout and a late kit, with retention |
 | `npx tsx scripts/beta-frequency.ts` / `beta-validate.ts` | How often each beta source charges per turn; the beta-pricing formula checked against duels |
 | `npx tsx scripts/trace-price.ts` | What extra Trace per fight costs a run, and how much of each class's Trace is its own noise |
