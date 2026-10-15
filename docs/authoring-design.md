@@ -629,6 +629,51 @@ it stays inside 3–5×.
 balance, don't sink time into them. Backlog Trace pressure as a revisit
 item and replace the tracer enemies with ordinary ones.
 
+### Enemy step 1 — the player's power by layer, and the budget table
+
+`scripts/player-power.ts`: 20 runs per class (synergy, opportunistic,
+skill 0.85), every gatekeeper a guaranteed pass so every run reaches all
+four layers. The player is captured at each gatekeeper and priced as
+**kit power**: the flat Credit per turn their loadout (with its bridge)
+ties in a seat-swapped duel. Raw output:
+`docs/calibration/step3-player-power.txt`.
+
+| | start | end of L1 | end of L2 | end of L3 | end of L4 |
+|---|---|---|---|---|---|
+| player kit power (all classes) | 6.8 | 10.3 | 13.1 | 13.5 | 13.9 |
+| pieces installed | 3 | ~4.7 | ~5.9 | ~6.1 | ~6.1 |
+
+**Finding: player power plateaus after layer 2.** The 6 slots fill
+during layer 2, and from then on a layer adds only ~0.4 Credit a turn
+(Merge ranks, better picks). This is not an enemy problem, but it shapes
+the budgets: enemies that kept climbing at layers 3–4 would outrun the
+player. The difficulty climb there comes mostly from enemy skill, which
+rises by layer, plus the modest budget rise below. **Watch item for
+later:** late-run progression feels flat by this measure. Whether layers
+3–4 should offer the player more growth (slot unlocks, stronger Merge,
+rares) is a progression question, not a roster one.
+
+Budgets, using the power the player has *during* the layer (midway
+between its start and end) for regulars and elites, and *end-of-layer*
+power for gatekeepers:
+
+| tier | fraction | L1 | L2 | L3 | L4 |
+|---|---|---|---|---|---|
+| (player during the layer) | | 8.5 | 11.7 | 13.3 | 13.7 |
+| regular | 0.6× | 5.1 | 7.0 | 8.0 | 8.2 |
+| elite | 0.9× | 7.7 | 10.5 | 12.0 | 12.3 |
+| (player at the gatekeeper) | | 10.3 | 13.1 | 13.5 | 13.9 |
+| gatekeeper | 1.0–1.1× | 10.3–11.3 | 13.1–14.4 | 13.5–14.9 | 13.9–15.3 |
+
+Regulars and elites recur across layers, so each is authored to its
+first layer's budget and scales up from there by `magnitudeScalerFor`.
+Its step may need retuning to follow this flatter curve.
+
+Skeleton reference, same instrument: regulars 2.0–11.0, elites 7.2–13.8,
+gatekeepers 13.4 / 10.6 / 14.5 / 13.4 (L1–L4), so today's L1 gatekeeper
+sits at 1.3× and L2's at 0.8× the player. That's the within-layer and
+cross-layer unevenness session 49 found, now visible as numbers.
+
 ## Open
 
 Deferred to the point where they're needed, since neither blocks the

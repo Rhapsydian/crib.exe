@@ -1,0 +1,47 @@
+
+PLAYER POWER BY LAYER -- kit power (flat Credit/turn it ties), at each layer's gatekeeper; 20 runs/class, 30 seeds x 2 seats per price.
+Synergy acquisition, opportunistic traversal, skill 0.85, gatekeepers synthetic (always pass). Bridge included; other Mods not.
+
+class                layer   mean  [ p25,  p75]   pieces
+exploit-overclock    start    6.0
+exploit-overclock        1    9.4  [ 8.5,  9.5]  n=20   4.3
+exploit-overclock        2   14.0  [13.4, 15.1]  n=20   5.8
+exploit-overclock        3   14.5  [13.7, 15.4]  n=18   6.1
+exploit-overclock        4   14.9  [13.7, 15.4]  n=17   6.1
+exploit-daemon       start    7.0
+exploit-daemon           1    9.6  [ 8.7, 10.6]  n=20   4.4
+exploit-daemon           2   12.3  [11.6, 12.9]  n=20   5.8
+exploit-daemon           3   12.7  [11.9, 12.9]  n=18   6.0
+exploit-daemon           4   13.1  [12.2, 13.6]  n=17   6.1
+daemon-overclock     start    6.9
+daemon-overclock         1   11.5  [ 9.8, 13.4]  n=20   5.0
+daemon-overclock         2   14.0  [12.1, 17.3]  n=20   6.0
+daemon-overclock         3   14.2  [12.0, 17.9]  n=19   6.1
+daemon-overclock         4   14.6  [12.3, 17.9]  n=17   6.2
+exploit-honeypot     start    6.9
+exploit-honeypot         1   10.1  [ 9.0, 11.3]  n=20   4.3
+exploit-honeypot         2   13.2  [12.9, 14.2]  n=20   5.8
+exploit-honeypot         3   13.8  [13.0, 14.2]  n=19   6.1
+exploit-honeypot         4   14.2  [13.0, 15.1]  n=17   6.1
+daemon-honeypot      start    7.2
+daemon-honeypot          1   11.1  [10.4, 12.2]  n=20   5.2
+daemon-honeypot          2   12.5  [12.0, 12.9]  n=19   6.1
+daemon-honeypot          3   12.6  [12.0, 13.1]  n=18   6.1
+daemon-honeypot          4   12.8  [12.0, 13.1]  n=17   6.2
+overclock-honeypot   start    6.5
+overclock-honeypot       1    9.9  [ 8.6, 10.8]  n=20   5.0
+overclock-honeypot       2   12.6  [11.6, 13.6]  n=19   5.9
+overclock-honeypot       3   13.2  [12.0, 14.5]  n=18   6.0
+overclock-honeypot       4   13.7  [12.0, 15.1]  n=17   6.1
+
+SKELETON ENEMIES (reference) -- kit power at each eligible layer, with that layer's magnitude scaler; no Mods.
+skeleton-crawler     regular    L1 5.5  L2 7.5  L3 8.8  L4 9.9
+skeleton-watchdog    regular    L1 6.5  L2 8.4  L3 10.1  L4 11.0
+skeleton-relay       regular    L1 2.0  L2 2.5  L3 3.1  L4 3.7
+skeleton-tarpit      regular    L1 4.5  L2 6.0  L3 7.5  L4 9.1
+skeleton-hunter      elite      L1 7.2  L2 8.8  L3 12.4  L4 13.7
+skeleton-sentinel    elite      L1 8.7  L2 10.4  L3 11.9  L4 13.8
+skeleton-gate-1      gatekeeper L1 13.4
+skeleton-gate-2      gatekeeper L2 10.6
+skeleton-gate-3      gatekeeper L3 14.5
+skeleton-gate-4      gatekeeper L4 13.4
