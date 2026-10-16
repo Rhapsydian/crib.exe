@@ -51,7 +51,12 @@ now draw from the authored pool.
 Session 55 finished step 3 with the **authored enemy roster**: 18 enemies,
 including eight gatekeepers with bespoke Mods, tuned to the per-layer
 pass-rate curve. Every piece of content in a run is now authored; the
-skeleton is gone. Next is a class balance pass.
+skeleton is gone.
+
+Session 56's **class balance pass** (`docs/balance-design.md`) put every
+class at 13–19% full-run victory, inside the 10–20% target (was 11–31%).
+It did so with a Credit premium on the noisy Exploit pieces, a lower
+gatekeeper pass-rate curve, and small bridge trims.
 
 What exists, all headless and test-covered:
 
@@ -185,6 +190,7 @@ That constraint is why the balance tooling above can exist at all.
 | `docs/run-economy-design.md` | Session 50's decisions: the per-layer Heat economy (built session 52), the pillar suite, and the per-turn model (D11–D15) |
 | `docs/recalibration-design.md` | Step 2's decision trail (R1–R8) and its checkpoint findings: the Heat build, the pricing instrument, verb and beta prices, Trace, skill retention |
 | `docs/authoring-design.md` | Step 3's decision trail (S1–S11, C1–C6) and each authoring checkpoint's results: the four archetypes, the bridges, the starting loadouts, the wired-in run results |
+| `docs/balance-design.md` | The class balance pass (B1–B7): why the class gap was Heat rather than strength, the noise premium, the revised gatekeeper curve, the final per-class numbers |
 | `docs/design-history.md` | `DESIGN.md` sections superseded by session 51, archived verbatim |
 | `BACKLOG.md` | What is still to do, and the current balance picture |
 | `docs/roadmap-history.md` | Completed roadmap work and the per-checkpoint record of how it was built |
