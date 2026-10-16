@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FightSnapshot } from '../snapshot';
-  import { fightParts, pickedEntry, type Picked } from '../fight';
+  import { fightParts, pickedEntry, pickFromLog, type Picked } from '../fight';
   import Gauges from '../Gauges.svelte';
   import Loadout from '../Loadout.svelte';
   import Table from '../Table.svelte';
@@ -46,12 +46,12 @@
     </div>
     <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} />
   </div>
-  <aside class="side-log"><Log view={f.view} /></aside>
+  <aside class="side-log"><Log view={f.view} onpick={(s, id) => (picked = pickFromLog(snapshot, s, id))} /></aside>
 </div>
 
 {#if logOpen}
   <div class="scrim" onclick={() => (logOpen = false)} role="presentation"></div>
-  <div class="log-sheet"><Log view={f.view} /></div>
+  <div class="log-sheet"><Log view={f.view} onpick={(s, id) => (picked = pickFromLog(snapshot, s, id))} /></div>
 {/if}
 {#if detail}<DetailSheet entry={detail.entry} lastFire={detail.lastFire} enemy={picked?.side === 1} onclose={() => (picked = null)} />{/if}
 

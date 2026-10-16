@@ -3,8 +3,9 @@
   import CardView from './CardView.svelte';
 
   // The table: the pegging pile since the last reset, the running count,
-  // the starter, the crib (face down) and whose crib it is, and how many
-  // cards the opponent still holds.
+  // the starter and who deals (whose crib it is), and how many cards the
+  // opponent still holds. The crib itself isn't drawn -- it is always 4
+  // cards once discards are chosen (the user's call).
   let {
     sequence,
     count,
@@ -19,8 +20,7 @@
   <div class="side">
     <div class="caption">STARTER</div>
     <CardView card={starter} small />
-    <div class="caption crib">{playerIsDealer ? 'YOUR CRIB' : 'THEIR CRIB'}</div>
-    <div class="stack"><CardView faceDown small /><span>×4</span></div>
+    <div class="caption dealer">{playerIsDealer ? 'YOU DEAL' : 'THEY DEAL'}</div>
   </div>
   <div class="pile">
     <div class="count">{count}<span>/31</span></div>
@@ -59,8 +59,9 @@
     color: var(--text-dim);
     letter-spacing: 0.06em;
   }
-  .crib {
+  .dealer {
     margin-top: 4px;
+    color: var(--accent);
   }
   .stack {
     display: flex;

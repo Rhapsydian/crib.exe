@@ -3,14 +3,16 @@
   import TabsLayout from './ui/mockups/TabsLayout.svelte';
   import DrawersLayout from './ui/mockups/DrawersLayout.svelte';
   import CompactLayout from './ui/mockups/CompactLayout.svelte';
+  import FightScreen from './ui/FightScreen.svelte';
 
-  // Milestone 2 layout mockups (docs/playable-design.md P3): three
-  // phone-first layouts of the fight screen over one real, paused fight.
-  // Switch with the pill at the top, or #tabs / #drawers / #compact.
+  // The fight screen (milestone 2), over one real paused fight. The
+  // default is the chosen layout: compact on phones, drawers on desktop.
+  // The three P3 mockups stay reachable at #tabs / #drawers / #compact,
+  // with a switcher, for comparison.
   const snapshot = mockSnapshot();
-  const layouts = ['tabs', 'drawers', 'compact'] as const;
+  const layouts = ['fight', 'tabs', 'drawers', 'compact'] as const;
   type Layout = (typeof layouts)[number];
-  const fromHash = (): Layout => (layouts.find((l) => location.hash === `#${l}`) ?? 'tabs');
+  const fromHash = (): Layout => (layouts.find((l) => location.hash === `#${l}`) ?? 'fight');
   let layout = $state<Layout>(fromHash());
   $effect(() => {
     const onHash = () => (layout = fromHash());
@@ -19,13 +21,17 @@
   });
 </script>
 
-<div class="switcher">
-  {#each layouts as l (l)}
-    <a href="#{l}" class:active={layout === l}>{l}</a>
-  {/each}
-</div>
+{#if layout !== 'fight'}
+  <div class="switcher">
+    {#each layouts as l (l)}
+      <a href="#{l}" class:active={layout === l}>{l}</a>
+    {/each}
+  </div>
+{/if}
 
-{#if layout === 'tabs'}
+{#if layout === 'fight'}
+  <FightScreen {snapshot} />
+{:else if layout === 'tabs'}
   <TabsLayout {snapshot} />
 {:else if layout === 'drawers'}
   <DrawersLayout {snapshot} />
