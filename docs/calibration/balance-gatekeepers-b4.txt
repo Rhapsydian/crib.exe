@@ -1,0 +1,7 @@
+# Balance pass B4: gatekeepers re-tuned to the lowered curve 75/69/63/57 (gatekeeper-check.ts --seeds=300 --syntheticGatekeepers=1,1,1,1, all six classes, player skill 0.85).
+# Scales: firewall-prime 0.99, the-concierge 1.12, quarantine-ward 1.25, zero-sum 1.22, adaptive-threat 1.24, total-compromise 1.63, null-session 1.39, root-authority 1.13.
+=== difficulty curve across all classes ===
+  layer 1  skill=0.85  1360/1791 (75.9%)
+  layer 2  skill=0.85  1174/1684 (69.7%)
+  layer 3  skill=0.85  1010/1605 (62.9%)
+  layer 4  skill=0.85  888/1549 (57.3%)
