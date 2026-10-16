@@ -168,6 +168,46 @@ Fuzzer).
 - The skill gap is ≥ +12.7 for Blackhat and Breacher. Operator's +8.0 is
   within the run-level estimate's noise (150 runs a class, ±~4 points).
 
+### B7 — The gatekeeper curve comes down half a step more, to 70.5 / 64.5 / 58.5 / 52.5 ✅
+
+The user's call: with the classes positioned sensibly against each
+other, one global knob moves all six into the band without touching a
+shared piece. All eight gatekeepers are within 0.6 points of the curve
+(the curve across all classes measures 70.2 / 64.1 / 59.0 / 53.0).
+Adaptive Threat responds non-linearly to scale (its growth caps interact
+with Adaptation), so it took a third round. Raw output:
+`docs/calibration/balance-final.txt`.
+
+## Result — the balance pass is done
+
+| class | victory | Heat endings | skill gap | late retention |
+|---|---|---|---|---|
+| Blackhat | 17.0% | 20% | +10.7 | 0.56 |
+| Operator | 13.3% | 24% | +8.7 | 0.62 |
+| Breacher | 16.0% | 26% | +12.7 | 0.74 |
+| Eidolon | 18.7% | 4% | +13.3 | 0.60 |
+| Warden | 14.3% | 4% | +13.3 | 0.94 |
+| Wraith | 17.0% | 8% | +11.3 | 0.78 |
+
+- **Every class inside 10–20% (B1), all within the 12–18% aim**
+  (Eidolon at its top edge). Session 55's spread was 11–31%.
+- **Exploit Heat endings 20–26%** (B2's 20–30%), a **4.4× ratio**
+  (inside 3–5×).
+- Skill gaps of **+10.7 to +13.3** everywhere except Operator (+8.7),
+  which is within the run-level estimate's noise (±~4 at 150 runs a
+  class). A recheck item, not a failure.
+- Late retention ≥ 0.56 everywhere (floor 0.5).
+
+**Lessons for future passes:**
+- **Find the loss channel before choosing a lever.** Tracers (B2) and
+  bridges (B3) both measured as weak levers here, because the class gap
+  was a second way to lose (Heat), not strength.
+- **Run victory compounds over four layers:** a 3-point cut per layer
+  moved it only ~2 points.
+- **Noisy pieces need a Credit premium** (B5), now a Pricing rule.
+
 ## Open
 
-Being worked through live.
+Carried to BACKLOG: Operator's skill gap (recheck with more runs);
+Blackhat's late retention (0.56, closest to the floor); the progression
+plateau after layer 2.

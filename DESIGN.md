@@ -416,6 +416,11 @@ The instruments are:
      the beta).
 3. **Charge:** one charge a turn into a beta still below its cap is worth
    one extra use of that beta (~1 Credit for a +1 enhance).
+3e. **A piece that makes Trace earns a Credit premium above its rarity
+   band** (session 56, B5; the user's principle). Size it by measured run
+   impact, since Trace's cost depends on how noisy the build already is.
+   Fuzzer and Jackpot carry +1 Credit a turn (alpha 1 → 2) for their
+   noise.
    **A Charge partner needs cap to spare when the charge arrives**
    (step 3, checkpoint 1). A charge into a beta that is already full is
    wasted.
@@ -1318,7 +1323,14 @@ harder** per-layer pass rate:
 
 | layer | 1 | 2 | 3 | 4 |
 |---|---|---|---|---|
-| target pass rate | 0.78 | 0.72 | 0.66 | 0.60 |
+| target pass rate | 0.705 | 0.645 | 0.585 | 0.525 |
+
+**Revised in session 56's balance pass** (`docs/balance-design.md`
+B4–B7), from session 49's 0.78 / 0.72 / 0.66 / 0.60. That curve was
+calibrated when every class shared one way to lose. Exploit classes
+now also lose to Heat, and the curve that puts every class inside
+10–20% victory is about 7.5 points lower at each layer. The
+original reasoning below still describes how the target was derived.
 
 Calibrated, not picked: the compound (0.222) times the measured
 non-gatekeeper survival factor puts the mean full-run win rate at 16.4%,

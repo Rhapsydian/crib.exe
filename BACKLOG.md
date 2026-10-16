@@ -91,19 +91,19 @@ rather than tuned. Work happens on the `archetype-redesign` branch.
       power; gatekeepers are tuned to the 78/72/66/60 pass-rate curve,
       within 2.3 points. The skeleton is retired.
 
-   **Step 3 is complete.** Next: a **class balance pass**, as its own
-   decision session. The three Exploit classes sit inside 10–20% victory
-   (11–14%) and the other three above it (27–31%). Open questions: how
-   much absolute Exploit Heat to keep (endings now 25–42%, mostly
-   "breached, then caught", with tracers adding to it), and whether the
-   band applies per class or on average. Eidolon (31%) is the first
-   lever.
+   **Step 3 is complete.**
+4. ✅ **Class balance pass** (session 56, `docs/balance-design.md`
+   B1–B7). Every class is at 13.3–18.7% victory (was 11–31%). Exploit
+   Heat endings are 20–26% (a 4.4× ratio). Done with a noise premium on
+   Fuzzer and Jackpot (+1 Credit), Fuzzer's Trace at +¾, and the
+   gatekeeper curve lowered to 70.5 / 64.5 / 58.5 / 52.5, plus small
+   Eidolon and Wraith bridge trims.
 
    Watch items carried forward:
-   - **Eidolon at 31% victory** with the authored roster, still the
-     highest; its bridge scales hard late (1.97 Credit/turn).
-   - **Exploit Heat:** a 4.4× ratio (inside 3–5×), but 25–42% absolute;
-     the skill gap is smallest for Exploit runs (+7–9 points).
+   - **Operator's skill gap +8.7** (aim +10), within the run-level
+     estimate's noise: recheck with more runs.
+   - **Blackhat's late retention 0.56**, the closest to the 0.5 floor.
+   - **Bridges and tracers are weak balance levers** (session 56).
    - **Player power plateaus after layer 2**, once the 6 slots fill: a
      progression question (slot unlocks, stronger Merge, rares).
    - The legacy `EnemyPassiveId` slot in playCombat's positional
