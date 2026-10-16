@@ -1,0 +1,177 @@
+# Making crib.exe playable — working decision record
+
+The first UI over the headless engine. Started session 57
+(`/decision-session`, 2026-10-16), after the archetype redesign and the
+class balance pass were merged into `master`.
+
+## Shape (discovery, user)
+
+**Milestones:**
+
+1. **A pausable engine,** with no visible change. The engine can stop at
+   a player decision and resume with the answer, while headless
+   simulation stays fast and every test still passes.
+2. **One playable fight:** hand, discard to the crib, pegging, the show,
+   the loadout firing with a readable log, gauges, Ward and Trace, against
+   one enemy.
+3. **A playable run:** the map, then the reward, Shop, Merge and Event
+   screens, run setup (class choice) and the end screens.
+4. **Polish and playtesting,** including a **style / chrome guide** for
+   Claude to follow (the user's suggestion: it needn't wait for the
+   complete build).
+
+**Platform:**
+
+- **Desktop and mobile, both playable and enjoyable.** This is a hard
+  requirement from the start, not a later port, so layout and input are
+  designed for touch and small screens as well as mouse.
+- **Hosting, eventually:** a custom domain pointed at the GitHub-hosted
+  site, and itch.io. **For testing:** locally in a browser.
+
+**Explaining the game:**
+
+- **A running log the player can review** is required. It fits the
+  hacking theme: a session log of what fired and why.
+- **Tooltips:** what they show and how, to be designed.
+- **An optional tutorial run** (a bespoke, single-layer, hard-coded
+  layout that guides the player) goes on the backlog, not in these
+  milestones.
+
+## Decisions
+
+### P1 — The engine pauses through generators ✅
+
+The engine's main loops (pegging, the hand cycle, combat, the run)
+become generator functions (`function*`). They **yield a decision
+request** (for example "discard: here is the hand") and are resumed with
+the answer via `.next(answer)`. Two drivers run the same engine:
+
+- the **simulation driver** answers every request instantly from the
+  existing AI strategies, so scripts, tests and balance sweeps keep their
+  speed;
+- the **UI driver** shows the request and resumes on the player's input.
+
+Chosen over async/await, which resumes only on a later event-loop tick
+(a several-fold slowdown across a sweep's millions of decisions) and
+would spread `await` through every caller, and over a full state-machine
+rewrite. A paused generator plus the log of answers given so far can
+reconstruct a run, so saving stays possible later. Generators are
+ES2015, supported by every current desktop and mobile browser and by
+Node, and are fully typed in TypeScript (`Generator<Yield, Return,
+Next>`).
+
+### P2 — Portrait-first on phones; desktop spreads the same pieces wider ✅
+
+- **On a phone,** the screen stacks: the opponent's loadout and gauges at
+  the top, the table (pegging pile, count, crib, cut card) in the middle,
+  and your loadout and hand at the bottom, under the thumb.
+- **On desktop,** the same components spread wider, and the log becomes a
+  permanent side panel.
+- Both layouts are built from one set of components, with the phone
+  layout designed first because it is the harder constraint.
+- **Density is the open design problem**, to explore creatively in
+  milestone 2. The user's idea: **tabs** holding different screens
+  (log, loadout detail, etc.) if it doesn't all fit.
+
+Chosen over landscape everywhere (phones rotated) and over full
+designs for both orientations (about double the layout work).
+
+### P3 — Fight-screen layout mockups before the real screen ✅
+
+After milestone 1, and before the fight screen is wired to the engine:
+2–3 phone layout variants as static, clickable pages in the dev server,
+filled with a realistic fake fight state (hand, a pegging pile mid-count,
+both loadouts, gauges, a log). Candidates: **tabs** (Table / Loadouts /
+Log), **drawers** (one table view, loadouts and log sliding over it), and
+a **compact single screen** (minimal icons and gauges, details on tap).
+The user reviews each on a phone, over the home network from the dev
+server, and in a desktop browser, then picks one or mixes them. Chosen
+over building one layout straight onto the engine and iterating.
+
+Order: engine refactor → layout mockups → the real fight screen.
+
+### P4 — Turns are stepped through, piece by piece ✅
+
+When a loadout fires, each piece lights up in turn, its effect animates
+(Credit into a gauge, Ward up, Suppress pushing back), and a line goes
+into the log: about ⅓ s a piece by default. There is a **speed setting**
+(slow / normal / fast) and **tap to skip** to the end of the turn. Enemy
+turns are shown the same way, faster by default. The UI replays the
+engine's existing per-fire event record (`FireEvent`); nothing new is
+needed engine-side. Chosen over instant resolution with a summary line,
+and over instant-by-default with an optional replay: cause and effect,
+and loadout order as a visible puzzle, are what make the design
+readable.
+
+### P5 — Cards: tap to lift, then confirm ✅
+
+- **Discard:** tap two cards to lift them, then "Send to crib". Tapping a
+  lifted card drops it back.
+- **Pegging:** tap a card to lift it, which previews what it would score
+  ("15 for 2"); tap it again to play. A stray tap only lifts.
+- Cards that can't legally be played (they'd pass 31) are dimmed.
+- **Desktop:** the same by click, plus keys 1–6 and Enter.
+
+Chosen over drag and drop (fiddly one-handed on a small screen; can be
+added later as an alternative) and over a single tap playing at once (a
+mis-tap is irreversible in pegging).
+
+### P6 — Tap anything to inspect it ✅
+
+- **Phone:** tapping a piece (or a Mod, Burner, gauge or log line) slides
+  up a **detail sheet** from the bottom; tap outside it to close.
+- **Desktop:** hover shows a quick tooltip; click opens the same panel.
+- **A piece's panel shows:** name, archetype, rarity; both effects in
+  plain words; **live state** (charges banked, growth so far, whether its
+  second effect is active now); and what it did on its last fire.
+- Tapping a log line highlights the piece that caused it.
+- No conflict with play: cards in hand use tap-to-lift (P5); everything
+  else uses tap-to-inspect.
+
+Wording and layout are settled in the mockups (P3). Chosen over
+long-press (less discoverable, clashes with text selection and browser
+menus on a phone) and over always-visible text on each piece (doesn't
+fit the phone).
+
+**The user's note:** "alpha" and "beta" are development labels and may
+not be clear to players. Resolved as P7.
+
+### P7 — Players see "Process" and "Hook" (alpha and beta stay in code) ✅
+
+- **Process:** what a piece does every time your turn fires (the alpha).
+- **Hook:** the extra effect when its condition is met (the beta). That
+  can boost the Process, do something different, or fire instantly
+  outside the turn.
+
+In a panel: "**Process:** Credit 1. **Hook:** each pair you score, +1
+(up to 2)." In programming, a hook is code attached to an event that
+runs when the event happens, the same "when X, do Y" shape. Chosen
+over Escalation (the user liked it, but Hook fits a broader range of
+effects), Interrupt (it implies stopping something, and in Magic it
+means responding to the opponent), Trigger, Callback and Thread. The
+code keeps `alpha` and `beta`; this is display text only.
+
+## Settled in passing (Claude's calls, noted for the record)
+
+- **Milestone 1 converts the combat loops first** (pegging, the hand
+  cycle, combat), since milestone 2 needs only a fight. The run loop
+  (map moves, rewards, Shop, Merge, Events) is converted at the start of
+  milestone 3.
+- **UI work happens on a new branch, `playable`**, off `master`, the
+  same pattern as `archetype-redesign`.
+- **Settings** (turn-step speed, etc.) persist in the browser's local
+  storage. No accounts or server.
+- **Running-log content and granularity**, and the panel wording, are
+  settled in the mockups (P3).
+
+## Backlog items raised here
+
+- An optional **tutorial run**: a bespoke, single-layer, hard-coded
+  layout that guides the player.
+- The **style / chrome guide** (milestone 4).
+- Drag and drop as an alternative card input, if playtesting wants it.
+- Hosting: a custom domain pointed at the GitHub-hosted site, and itch.io.
+
+## Open
+
+None. The plan is ready to execute, starting with milestone 1.

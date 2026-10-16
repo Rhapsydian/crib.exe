@@ -196,13 +196,30 @@ their write-ups are archived in `docs/roadmap-history.md`).
 - **Rename the `Go` occurrence category to `Last-Card`** (banked session
   22) — cosmetic, never actioned. Currently only referenced in
   `docs/roadmap-history.md` and a pegging test.
-- **Resumable orchestration for human-vs-AI play** (session 24) — an
-  architecture question, not an AI one. Every `DiscardStrategy`/
-  `PlayStrategy` call is synchronous today, so there is no way to
-  represent "pause and wait for a human's click." `playPegging`'s loop
-  and `combat.ts`'s hand-lifecycle sequence would need to become
-  externally pausable. Distinct from the skill-dial work, whose scoring
-  logic stays equally useful either way.
+- **Resumable orchestration for human-vs-AI play** (session 24) —
+  **decided in session 57 (P1, `docs/playable-design.md`): the engine's
+  loops become generators**, with a simulation driver and a UI driver.
+  It is milestone 1 of making the game playable.
+
+---
+
+## Making the game playable (session 57, `docs/playable-design.md`)
+
+Planned as P1–P7. Desktop and mobile from the start (portrait-first on
+phones); local browser for testing; eventually a custom domain on the
+GitHub-hosted site and itch.io.
+
+1. **Pausable engine** (generators; combat loops first).
+2. **Layout mockups** (2–3 phone variants: tabs / drawers / compact), then
+   **one playable fight**: tap-to-lift cards, turns stepped through piece
+   by piece, tap anything to inspect it, a running log. Player-facing
+   names "Process" (alpha) and "Hook" (beta).
+3. **A playable run** (run loop converted, map and node screens, class
+   choice, end screens).
+4. **Polish and playtesting**, including a style / chrome guide.
+
+Backlog from this plan: an optional tutorial run (a bespoke, single-layer
+guided layout); drag and drop as an alternative card input; hosting.
 
 ---
 
