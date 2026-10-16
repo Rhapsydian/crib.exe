@@ -203,6 +203,27 @@ every existing caller is unchanged.
   rest don't pin exact fight outcomes. Balance figures do shift, which
   is checkpoint 3's job.
 
+**Checkpoint 3 — balance re-check:** no re-tune needed. Raw output:
+`docs/calibration/live-resolution-recheck.txt`.
+
+| class | before (balance pass) | live |
+|---|---|---|
+| Blackhat | 17.0% | 16.0% |
+| Operator | 13.3% | 13.7% |
+| Breacher | 16.0% | 16.3% |
+| Eidolon | 18.7% | 18.7% |
+| Warden | 14.3% | 14.3% |
+| Wraith | 17.0% | 17.0% |
+
+The gatekeeper curve is 70.2 / 64.3 / 59.2 / 52.7, unchanged. The
+non-Exploit classes are identical: the only thing live resolution
+changes in the simulation is *when suit tallies arrive*, and the only
+suit Hook in the game is Fuzzer. Cribbage choices never depended on
+combat within a hand, and turns already resolved at their exact
+scoring moments. Exploit Heat endings 21–27%, inside B2's band.
+
+**Milestone 1 is complete.**
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

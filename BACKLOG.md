@@ -209,7 +209,9 @@ Planned as P1–P7. Desktop and mobile from the start (portrait-first on
 phones); local browser for testing; eventually a custom domain on the
 GitHub-hosted site and itch.io.
 
-1. **Pausable engine** (generators; combat loops first).
+1. ✅ **Pausable engine** (session 57): `combatGenerator` yields decision
+   requests with a view of the fight; combat resolves live during
+   pegging (P8); balance unchanged; simulation speed held.
 2. **Layout mockups** (2–3 phone variants: tabs / drawers / compact), then
    **one playable fight**: tap-to-lift cards, turns stepped through piece
    by piece, tap anything to inspect it, a running log. Player-facing

@@ -1,0 +1,23 @@
+# Milestone 1 checkpoint 3: balance re-check under live resolution (P8).
+# gatekeeper-check.ts, all layers synthetic, 300 seeds/class (scales unchanged):
+L1 firewall-prime      70.4%  target 70.5%  n=1000
+L1 the-concierge       69.8%  target 70.5%  n=796
+L2 quarantine-ward     64.8%  target 64.5%  n=812
+L2 zero-sum            63.9%  target 64.5%  n=890
+L3 adaptive-threat     58.9%  target 58.5%  n=810
+L3 total-compromise    59.5%  target 58.5%  n=814
+L4 null-session        53.2%  target 52.5%  n=786
+L4 root-authority      52.2%  target 52.5%  n=785
+=== difficulty curve across all classes ===
+  layer 1  skill=0.85  1260/1796 (70.2%)
+  layer 2  skill=0.85  1095/1702 (64.3%)
+  layer 3  skill=0.85  961/1624 (59.2%)
+  layer 4  skill=0.85  828/1571 (52.7%)
+
+# trace-price.ts --extras=0, 300 runs/class:
+exploit-overclock        0   16.0%   1.0%  19.7%  63.0%   1.52 |    4.4   14.7     12.8    12.8     13.6
+exploit-daemon           0   13.7%   2.7%  22.0%  61.7%   1.60 |    4.6   15.2     10.5    17.0     14.2
+exploit-honeypot         0   16.3%   1.7%  25.3%  56.3%   1.86 |    5.0   16.5     11.8    19.9     15.2
+daemon-overclock         0   18.7%   0.7%   3.3%  77.0%   1.46 |    4.8   15.9     11.5     0.7     16.2
+daemon-honeypot          0   14.3%   1.0%   2.7%  81.3%   1.76 |    5.8   19.7      8.7     1.3     19.4
+overclock-honeypot       0   17.0%   0.3%   8.0%  74.7%   1.60 |    5.3   17.8     10.7     0.8     17.7
