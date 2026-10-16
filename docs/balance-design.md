@@ -91,6 +91,59 @@ The user's call:
 - **Watch item, recorded for future passes: bridges are a weak balance
   lever.** Class power differences mostly come from elsewhere.
 
+### B5 — Noisy pieces earn a Credit premium; Heat trims come after ✅
+
+The user's principle, raised mid-pass: *a subroutine that generates Heat
+should have a higher Credit budget, because of the drawback.* Step 3
+priced Fuzzer (1.85) and Jackpot (2.12) on Credit alone, at ordinary
+budgets, because R5 left Trace to be traded "by judgment" and step 3
+never applied that judgment. So Exploit's noise came free, and it holds
+the Exploit classes down. This is the original "bigger but louder" idea.
+
+- **Supersedes B4's lever.** Fuzzer and Jackpot keep their noise as
+  designed, and get a Credit premium, calibrated in real runs until the
+  Exploit classes sit at 15–18% victory. There is no flat Trace-to-Credit
+  rate (CP6: the cost depends on how noisy the build already is).
+- **Then gauge Heat:** any trim to the noise comes after, against the
+  measured Heat endings. B2's 20–30% target may loosen to ~25–35%,
+  since faster wins trim the gatekeeper toll but leave the noise.
+- **Standing rule** for DESIGN.md → Pricing: a piece that makes Trace
+  gets a Credit premium above its rarity band, sized by measured run
+  impact.
+
+### B5 calibration — where it landed
+
+Raw output: `docs/calibration/balance-b5-state.txt`.
+
+- **Noise premium: Fuzzer and Jackpot alpha Credit 1 → 2** (+1 Credit a
+  turn). Measured: +½ → Exploit 16 / 11 / 16%; +¾ → 19 / 14 / 18%; +1
+  (against the final curve) → 16 / 13 / 16%.
+- **The gatekeeper curve came down one more step, to 72 / 66 / 60 / 54.**
+  75 / 69 / 63 / 57 left the non-Exploit classes at 24–26%, since run
+  victory compounds over four layers and a 3-point cut a layer moved it
+  only ~2 points. Re-tuned within ~3 points; the scales are in
+  enemies.ts.
+- **Eidolon:** a class-specific outlier once the others came down. Its
+  start stays Cron Job → Ping → Steady Drip. Elevated Session in its
+  place priced 37.7% and Cache Hit 26.7%. Invocation went 2 → **1**
+  growth step (24 → 22%; half a step, 21%, is within noise). Bridges stay
+  a weak lever.
+- **Wraith:** Siphon 1 → **¾** Ward a turn (21.7 → 21.0%, within noise).
+
+| class | victory | Heat endings | skill gap | late retention |
+|---|---|---|---|---|
+| Blackhat | 16.0% | 22% | +8.7 | 0.65 |
+| Operator | 12.7% | 32% | +8.0 | 0.69 |
+| Breacher | 15.7% | 35% | +11.3 | 0.65 |
+| Eidolon | 22.3% | 4% | +17.3 | 0.60 |
+| Warden | 18.3% | 5% | +14.7 | 0.94 |
+| Wraith | 21.0% | 8% | +15.3 | 0.82 |
+
+The spread is down from 11–31% to 13–22%. The Exploit Heat ratio is
+5.0× (top of 3–5×); Operator and Breacher Heat endings are above 30%;
+two Exploit skill gaps are under +10. Eidolon and Wraith sit about a
+point over 20%, inside one standard error (±2.4).
+
 ## Open
 
 Being worked through live.

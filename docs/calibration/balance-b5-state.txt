@@ -1,0 +1,28 @@
+# Balance pass, state after B5 calibration: Fuzzer + Jackpot alpha Credit 2 (noise premium), gatekeepers on 72/66/60/54, Invocation 1 step, Siphon 0.75 Ward/turn.
+# trace-price.ts --extras=0, 300 runs/class; then skill-check.ts run level (150/class) and late-kit retention.
+exploit-overclock        0   16.0%   1.7%  20.7%  61.7%   1.41 |    4.1   13.6     11.6    15.0     12.3
+exploit-daemon           0   12.7%   2.7%  29.3%  55.3%   1.56 |    4.3   14.3      9.8    20.7     12.8
+exploit-honeypot         0   15.7%   2.3%  33.0%  49.0%   1.79 |    4.7   15.3     10.2    23.8     13.7
+daemon-overclock         0   22.3%   0.7%   3.7%  73.0%   1.55 |    4.9   16.3     11.9     0.7     16.5
+daemon-honeypot          0   18.3%   1.3%   4.0%  75.7%   1.94 |    6.1   20.5      9.1     1.4     20.0
+overclock-honeypot       0   21.0%   0.7%   7.7%  70.3%   1.75 |    5.5   18.5     11.3     0.8     18.2
+
+exploit-overclock       4.7%      13.3%       8.7 pts
+exploit-overclock late (3 runs, ~6.0 pieces)              74.2%   0.65                83.3%   0.75
+exploit-daemon          2.7%      10.7%       8.0 pts
+exploit-daemon late (3 runs, ~6.0 pieces)              75.8%   0.69                89.2%   0.89
+exploit-honeypot        4.0%      15.3%      11.3 pts
+exploit-honeypot late (3 runs, ~6.0 pieces)              74.2%   0.65                91.7%   0.94
+daemon-overclock        6.0%      23.3%      17.3 pts
+daemon-overclock late (3 runs, ~6.3 pieces)              72.5%   0.60                90.0%   0.90
+daemon-honeypot         2.7%      17.3%      14.7 pts
+daemon-honeypot late (3 runs, ~6.3 pieces)              85.0%   0.94                94.2%   1.00
+overclock-honeypot      2.7%      18.0%      15.3 pts
+overclock-honeypot late (3 runs, ~6.3 pieces)              80.8%   0.82                93.3%   0.98
+
+# gatekeepers on 72/66/60/54 (gatekeeper-check.ts, all layers synthetic)
+=== difficulty curve across all classes ===
+  layer 1  skill=0.85  1293/1795 (72.0%)
+  layer 2  skill=0.85  1119/1695 (66.0%)
+  layer 3  skill=0.85  967/1620 (59.7%)
+  layer 4  skill=0.85  869/1563 (55.6%)

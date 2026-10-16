@@ -418,14 +418,14 @@ export const BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER = 1;
 export const BRIDGE_EXPLOIT_DAEMON_SUPPRESS = 0.5;
 /** Daemon + Overclock: an Overclock beta that applies grows each Daemon
  * piece by this many of its own growth steps. */
-export const BRIDGE_DAEMON_OVERCLOCK_STEPS = 2;
+export const BRIDGE_DAEMON_OVERCLOCK_STEPS = 1;
 /** Exploit + Honeypot: each pair you score banks Ward. */
 export const BRIDGE_EXPLOIT_HONEYPOT_WARD = 1;
 /** Daemon + Honeypot: Suppress you deal banks that much Ward, up to this
  * much per turn of yours. */
 export const BRIDGE_DAEMON_HONEYPOT_CAP = 1;
 /** Overclock + Honeypot: each turn you take banks Ward. */
-export const BRIDGE_OVERCLOCK_HONEYPOT_WARD = 1;
+export const BRIDGE_OVERCLOCK_HONEYPOT_WARD = 0.75;
 
 const DAEMON_HONEYPOT_BANKED = 'bridge-daemon-honeypot:banked';
 

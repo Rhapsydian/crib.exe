@@ -629,7 +629,12 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
       if (last.type !== 'encounter') throw new Error('unreachable');
       expect(last.nodeType).toBe('gatekeeperFight');
       expect(last.outcome.newState).toBe('inert');
-      expect(last.heatAfter).toBe(layerHeatAllowance(last.layerIndex, result.playerState.maxHeatBonus));
+      // Caught at the ceiling the player went INTO the fight with: the toll
+      // is checked before the gatekeeper's rewards are collected, so a
+      // Backup Generator won from this very fight (+allowance) arrives
+      // after the catch. Hence a range, not the final allowance exactly.
+      expect(last.heatAfter).toBeGreaterThanOrEqual(layerHeatAllowance(last.layerIndex, 0));
+      expect(last.heatAfter).toBeLessThanOrEqual(layerHeatAllowance(last.layerIndex, result.playerState.maxHeatBonus));
       // The breached layer counts.
       expect(result.layersCompleted).toBe(result.log.filter((e) => e.type === 'layerCleared').length);
     }

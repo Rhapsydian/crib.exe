@@ -5,6 +5,7 @@ import {
   BRIDGE_DAEMON_OVERCLOCK_STEPS,
   BRIDGE_EXPLOIT_DAEMON_SUPPRESS,
   BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER,
+  BRIDGE_OVERCLOCK_HONEYPOT_WARD,
   applyOccurrence,
   createCombatState,
   fireImmediateBetas,
@@ -348,12 +349,12 @@ describe('class bridge passives (step 3, C1)', () => {
 
   it('Overclock + Honeypot: each turn you take banks Ward', () => {
     const after = fireTurn(state([credit('a', 'overclock')], 'overclock-honeypot'), 0, { isDealer: false }).combatState;
-    expect(after.sides[0].wardShield).toBe(1);
+    expect(after.sides[0].wardShield).toBe(BRIDGE_OVERCLOCK_HONEYPOT_WARD);
   });
 
   it('a bridge can sit on side 1 for pricing duels', () => {
     const s = createCombatState([credit('a')], [credit('b')], [12, 12], undefined, [100, 100], [], [], [], 'overclock-honeypot');
-    expect(fireTurn(s, 1, { isDealer: false }).combatState.sides[1].wardShield).toBe(1);
+    expect(fireTurn(s, 1, { isDealer: false }).combatState.sides[1].wardShield).toBe(BRIDGE_OVERCLOCK_HONEYPOT_WARD);
     expect(fireTurn(s, 0, { isDealer: false }).combatState.sides[0].wardShield).toBe(0);
   });
 });
