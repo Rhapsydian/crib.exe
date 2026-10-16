@@ -144,6 +144,30 @@ The spread is down from 11–31% to 13–22%. The Exploit Heat ratio is
 two Exploit skill gaps are under +10. Eidolon and Wraith sit about a
 point over 20%, inside one standard error (±2.4).
 
+### B6 — Fuzzer's noise trimmed to +¾ Trace, the premium kept ✅
+
+The user's call after gauging Heat (B5). Raw output:
+`docs/calibration/balance-fuzzer-trim.txt`.
+
+| class | victory | Heat endings | skill gap | late retention |
+|---|---|---|---|---|
+| Blackhat | 19.7% | 21% | +12.7 | 0.56 |
+| Operator | 15.7% | 27% | +8.0 | 0.62 |
+| Breacher | 18.3% | 29% | +14.0 | 0.74 |
+| Eidolon | 22.3% | 4% | +17.3 | 0.60 |
+| Warden | 18.3% | 5% | +14.7 | 0.94 |
+| Wraith | 21.0% | 8% | +15.3 | 0.82 |
+
+The non-Exploit rows are unchanged from B5 (the trim touches only
+Fuzzer).
+
+- **Exploit Heat endings 21–29%, inside B2's 20–30%; ratio 4.3×**,
+  inside 3–5×.
+- **Victory 15.7–22.3% across the six classes** (session 55: 11–31%).
+  Four are inside 10–20%; Eidolon and Wraith sit 1–2 points over.
+- The skill gap is ≥ +12.7 for Blackhat and Breacher. Operator's +8.0 is
+  within the run-level estimate's noise (150 runs a class, ±~4 points).
+
 ## Open
 
 Being worked through live.
