@@ -1,0 +1,51 @@
+/* crib.exe UI theme (milestone 2 mockups). A working palette, not the
+ * style guide -- that comes in milestone 4. Suit colours follow DESIGN.md
+ * Theming; icon shape, not colour, is the primary suit cue. */
+:root {
+  --bg: #0b0f14;
+  --bg-raised: #121a23;
+  --bg-sunken: #070a0e;
+  --line: #22303d;
+  --text: #d6e2ee;
+  --text-dim: #7d8fa1;
+  --accent: #39ff9c;
+  --danger: #ff4f6d;
+  --warn: #ffb347;
+
+  --suit-exploit: #ff3d8b;
+  --suit-daemon: #3ddc84;
+  --suit-overclock: #29d3ff;
+  --suit-honeypot: #ffc23d;
+
+  --ward: #8fb7ff;
+  --trace: #ff8a3d;
+
+  --mono: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', 'Consolas', monospace;
+  --radius: 6px;
+  --gutter: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+#app {
+  height: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}

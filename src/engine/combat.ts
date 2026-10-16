@@ -389,8 +389,17 @@ function resolveHardTiebreak(): PlayerIndex {
  */
 export type CombatRequest =
   | { kind: 'discard'; side: PlayerIndex; context: DiscardContext; view: CombatView }
-  | { kind: 'play'; side: PlayerIndex; context: PlayContext; view: CombatView }
+  | { kind: 'play'; side: PlayerIndex; context: PlayContext; view: CombatView; pegging: PeggingView }
   | { kind: 'burner'; side: PlayerIndex; context: BurnerActivationContext; view: CombatView };
+
+/** The pegging table as it stands at a play request: what the player
+ * holds (legal or not), and how many cards the opponent has left. */
+export interface PeggingView {
+  hand: Card[];
+  opponentCardsLeft: number;
+  /** Every pegging event so far this hand, both sides, in order. */
+  events: readonly PeggingEvent[];
+}
 
 /** The fight as it stands when a request is yielded -- what a UI draws
  * while the player decides (gauges, Ward, Trace, loadout state, the log).
@@ -729,6 +738,7 @@ export function* combatGenerator(
         side: player,
         context: { legalCards, count, sequence, knownCrib: combatState.sides[player].knownCrib, knownOpponentHand: combatState.sides[player].knownOpponentHand, rng: aiRng },
         view: view(i, dealer),
+        pegging: { hand: pegging.hands[player].slice(), opponentCardsLeft: pegging.hands[(1 - player) as PlayerIndex].length, events: pegging.events },
       }) as Card;
       const played = playPeggingCard(pegging, card);
       winner = yield* resolvePeggingEvent(played, dealer, i);

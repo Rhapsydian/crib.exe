@@ -1,89 +1,60 @@
-<script>
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from './assets/vite.svg'
-  import heroImg from './assets/hero.png'
-  import Counter from './lib/Counter.svelte'
+<script lang="ts">
+  import { mockSnapshot } from './ui/snapshot';
+  import TabsLayout from './ui/mockups/TabsLayout.svelte';
+  import DrawersLayout from './ui/mockups/DrawersLayout.svelte';
+  import CompactLayout from './ui/mockups/CompactLayout.svelte';
+
+  // Milestone 2 layout mockups (docs/playable-design.md P3): three
+  // phone-first layouts of the fight screen over one real, paused fight.
+  // Switch with the pill at the top, or #tabs / #drawers / #compact.
+  const snapshot = mockSnapshot();
+  const layouts = ['tabs', 'drawers', 'compact'] as const;
+  type Layout = (typeof layouts)[number];
+  const fromHash = (): Layout => (layouts.find((l) => location.hash === `#${l}`) ?? 'tabs');
+  let layout = $state<Layout>(fromHash());
+  $effect(() => {
+    const onHash = () => (layout = fromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  });
 </script>
 
-<section id="center">
-  <div class="hero">
-    <img src={heroImg} class="base" width="170" height="179" alt="" />
-    <img src={svelteLogo} class="framework" alt="Svelte logo" />
-    <img src={viteLogo} class="vite" alt="Vite logo" />
-  </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/App.svelte</code> and save to test <code>HMR</code></p>
-  </div>
-  <Counter />
-</section>
+<div class="switcher">
+  {#each layouts as l (l)}
+    <a href="#{l}" class:active={layout === l}>{l}</a>
+  {/each}
+</div>
 
-<div class="ticks"></div>
+{#if layout === 'tabs'}
+  <TabsLayout {snapshot} />
+{:else if layout === 'drawers'}
+  <DrawersLayout {snapshot} />
+{:else}
+  <CompactLayout {snapshot} />
+{/if}
 
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true">
-      <use href="/icons.svg#documentation-icon"></use>
-    </svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank" rel="noreferrer">
-          <img class="logo" src={viteLogo} alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://svelte.dev/" target="_blank" rel="noreferrer">
-          <img class="button-icon" src={svelteLogo} alt="" />
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true">
-      <use href="/icons.svg#social-icon"></use>
-    </svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li>
-        <a href="https://github.com/vitejs/vite" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#github-icon"></use>
-          </svg>
-          GitHub
-        </a>
-      </li>
-      <li>
-        <a href="https://chat.vite.dev/" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#discord-icon"></use>
-          </svg>
-          Discord
-        </a>
-      </li>
-      <li>
-        <a href="https://x.com/vite_js" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#x-icon"></use>
-          </svg>
-          X.com
-        </a>
-      </li>
-      <li>
-        <a href="https://bsky.app/profile/vite.dev" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#bluesky-icon"></use>
-          </svg>
-          Bluesky
-        </a>
-      </li>
-    </ul>
-  </div>
-</section>
-
-<div class="ticks"></div>
-<section id="spacer"></section>
+<style>
+  .switcher {
+    position: fixed;
+    top: calc(4px + env(safe-area-inset-top));
+    right: 6px;
+    z-index: 30;
+    display: flex;
+    gap: 2px;
+    background: rgb(0 0 0 / 70%);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 2px;
+    font-size: 10px;
+  }
+  .switcher a {
+    padding: 2px 8px;
+    border-radius: 999px;
+    color: var(--text-dim);
+    text-decoration: none;
+  }
+  .switcher a.active {
+    background: var(--accent);
+    color: var(--bg);
+  }
+</style>
