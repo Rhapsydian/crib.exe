@@ -1,8 +1,8 @@
 import { createRng, deriveAiNoiseSeed } from './rng';
 import type { Card } from './cards';
 import { createDeck, shuffle } from './deck';
-import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardStrategy } from './deal';
-import { playPegging, playLowestLegal, type PlayStrategy } from './pegging';
+import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardContext, type DiscardStrategy } from './deal';
+import { advancePegging, playLowestLegal, playPeggingCard, startPegging, type PeggingEvent, type PlayContext, type PlayStrategy } from './pegging';
 import { countHandEvents, countCribEvents } from './scoring';
 import type { HandResult, PlayerIndex } from './game';
 import type { SubroutineDefinition } from './subroutine-types';
@@ -18,7 +18,6 @@ import {
   occurrenceFromHisHeels,
   suitPlayedFromPeggingEvent,
   type ScoringOccurrence,
-  type SuitPlayed,
 } from './triggers';
 import { addPoints, shrinkDuelThreshold, type InitiativeGauge } from './gauges';
 import {
@@ -202,15 +201,6 @@ function remainingBurnerIds(carried: BurnerId[], used: BurnerId[]): BurnerId[] {
   return remaining;
 }
 
-/** Every card played during this hand's pegging phase, suit-tagged --
- * processed as its own pass (see the loop in playCombat) rather than
- * interleaved into occurrencesForHand's combined stream, since a
- * non-scoring play produces no ScoringOccurrence at all but still
- * counts toward a suit tally. */
-function suitsPlayedForHand(hand: HandResult): SuitPlayed[] {
-  return hand.peggingEvents.map(suitPlayedFromPeggingEvent).filter((s): s is SuitPlayed => s !== null);
-}
-
 /** A side wins the instant its own win-gauge reaches its own threshold.
  * If both sides somehow cross in the same step (including from an
  * escalation-driven threshold shrink), side 0 resolves first --
@@ -388,28 +378,77 @@ function resolveHardTiebreak(): PlayerIndex {
   return 1;
 }
 
-/** The ordered sequence of scoring occurrences for one hand, in the
- * order they actually happen at the table: cut (his heels), pegging
- * play-by-play, then the show (non-dealer hand, dealer hand, crib). */
-function occurrencesForHand(hand: HandResult): ScoringOccurrence[] {
-  const nonDealer: PlayerIndex = (1 - hand.dealer) as PlayerIndex;
-  const heels = occurrenceFromHisHeels(hand.hisHeelsPoints, hand.dealer);
-  return [
-    ...(heels ? [heels] : []),
-    ...hand.peggingEvents.flatMap(occurrencesFromPeggingEvent),
-    ...occurrencesFromHandEvents(hand.nonDealerHandEvents, nonDealer),
-    ...occurrencesFromHandEvents(hand.dealerHandEvents, hand.dealer),
-    ...occurrencesFromHandEvents(hand.cribEvents, hand.dealer),
-  ];
+
+/**
+ * A decision the combat generator needs answered (milestone 1,
+ * `docs/playable-design.md` P1): which two cards to discard, which card to
+ * peg, or which Burner (if any) to activate before a turn. The generator
+ * yields one and is resumed with the answer -- `[Card, Card]`, a `Card`,
+ * or a `BurnerId | null` respectively. Requests are yielded for BOTH
+ * sides; a driver decides who answers each (the AI, or a human).
+ */
+export type CombatRequest =
+  | { kind: 'discard'; side: PlayerIndex; context: DiscardContext; view: CombatView }
+  | { kind: 'play'; side: PlayerIndex; context: PlayContext; view: CombatView }
+  | { kind: 'burner'; side: PlayerIndex; context: BurnerActivationContext; view: CombatView };
+
+/** The fight as it stands when a request is yielded -- what a UI draws
+ * while the player decides (gauges, Ward, Trace, loadout state, the log).
+ * Read-only: the generator owns the fight. */
+export interface CombatView {
+  combatState: CombatState;
+  log: readonly FireEvent[];
+  hands: readonly HandResult[];
+  /** The hand being played (0-based), and its dealer. */
+  handIndex: number;
+  dealer: PlayerIndex;
 }
 
+export type CombatAnswer = [Card, Card] | Card | BurnerId | null;
+
+/**
+ * Plays a fight to its end, answering every request from the given
+ * strategies (the simulation driver). Behaves as playCombat always has;
+ * the fight itself lives in combatGenerator.
+ */
 export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefinition[]], options: CombatOptions): CombatResult {
+  const {
+    discardStrategies = [discardLowestTwo, discardLowestTwo],
+    playStrategies = [playLowestLegal, playLowestLegal],
+    burnerActivationStrategies = [neverActivateBurner, neverActivateBurner],
+  } = options;
+  const fight = combatGenerator(loadouts, options);
+  let step = fight.next();
+  while (!step.done) {
+    const request = step.value;
+    const answer: CombatAnswer =
+      request.kind === 'discard'
+        ? discardStrategies[request.side](request.context)
+        : request.kind === 'play'
+          ? playStrategies[request.side](request.context)
+          : burnerActivationStrategies[request.side](request.context);
+    step = fight.next(answer);
+  }
+  return step.value;
+}
+
+/**
+ * One fight, as a generator: it yields a CombatRequest at each decision
+ * and is resumed with the answer (see CombatRequest). Combat resolves
+ * LIVE during pegging (P8): each play's suit tally, then its scoring
+ * events, then any turns and instant Hooks they trigger, all resolve
+ * before the next card is chosen -- so a player pegs against the current
+ * gauges. The cut's His Heels resolves at the cut; the show resolves item
+ * by item after pegging. Disrupt still lands on the next hand.
+ */
+export function* combatGenerator(
+  loadouts: [SubroutineDefinition[], SubroutineDefinition[]],
+  options: CombatOptions,
+): Generator<CombatRequest, CombatResult, CombatAnswer> {
   const {
     seed,
     gaugeThreshold,
     winThreshold = [100, 100],
-    discardStrategies = [discardLowestTwo, discardLowestTwo],
-    playStrategies = [playLowestLegal, playLowestLegal],
     startingDealer = 0,
     classId,
     opponentBridge,
@@ -417,7 +456,6 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     enemyPassiveIds = [],
     ownedModIds = [],
     carriedBurnerIds = [],
-    burnerActivationStrategies = [neverActivateBurner, neverActivateBurner],
     startingTrace = 0,
   } = options;
 
@@ -477,6 +515,87 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     return result.winner !== null ? result.winner : resolution(combatState);
   };
 
+  /** Resolves one scoring occurrence live: its charges and instant Hooks,
+   * then the scorer's initiative gauge, then every turn it buys (each
+   * preceded by a Burner request). Returns the winner if it decided the
+   * fight. */
+  const view = (handIndex: number, handDealer: PlayerIndex): CombatView => ({ combatState, log, hands, handIndex, dealer: handDealer });
+
+  function* resolveOccurrence(occurrence: ScoringOccurrence, handDealer: PlayerIndex, handIndex: number): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
+    // Charges first, so a beta charged by this very occurrence applies
+    // on the turn it buys.
+    let winner = step(immediates(applyOccurrence(combatState, occurrence), handDealer, log));
+    if (winner !== null) return winner;
+
+    const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrence.magnitude);
+    combatState = replaceSideGauge(combatState, occurrence.player, gauge);
+
+    if (turnsTriggered > 0) {
+      consecutiveTurns = occurrence.player === lastTurnSide ? consecutiveTurns + turnsTriggered : turnsTriggered;
+      lastTurnSide = occurrence.player;
+      if (consecutiveTurns > MAX_CONSECUTIVE_TURNS) {
+        const side = occurrence.player;
+        const g = combatState.sides[side].gauge;
+        throw new Error(
+          `playCombat: side ${side} has taken ${consecutiveTurns} consecutive turns without the opponent acting -- ` +
+            `a systemic turn loop, not legitimate play (see MAX_CONSECUTIVE_TURNS). ` +
+            `hand=${handIndex} seed=${seed} classId=${classId ?? 'none'} ` +
+            `gauge=${g.progress}/${g.threshold} turnsTriggeredThisOccurrence=${turnsTriggered} ` +
+            `loadout=[${combatState.sides[side].loadout.map((e) => e.definition.id).join(' ')}]`,
+        );
+      }
+    }
+
+    for (let turn = 0; turn < turnsTriggered; turn++) {
+      // Burner activation (checkpoint C): an "opening move" resolved
+      // before this turn's automatic subroutine fires. Side 1 (the
+      // enemy) has no Burner economy -- its strategy defaults to
+      // neverActivateBurner, so this is a genuine no-op for it, not a
+      // special case.
+      const availableBurnerIds = remainingBurnerIds(combatState.carriedBurnerIds, burnersUsedThisCombat);
+      if (availableBurnerIds.length > 0) {
+        const chosenBurnerId = (yield {
+          kind: 'burner',
+          side: occurrence.player,
+          context: { combatState, side: occurrence.player, isDealer: occurrence.player === handDealer, availableBurnerIds },
+          view: view(handIndex, handDealer),
+        }) as BurnerId | null;
+        const burnerDef = chosenBurnerId && availableBurnerIds.includes(chosenBurnerId) ? BURNER_DEFINITIONS[chosenBurnerId] : undefined;
+        if (chosenBurnerId && burnerDef?.combatEffect) {
+          burnersUsedThisCombat.push(chosenBurnerId);
+          const afterBurner = resolveEffect(burnerDef.combatEffect, combatState, occurrence.player);
+          winner = step({ combatState: afterBurner, winner: resolution(afterBurner) });
+          if (winner !== null) return winner;
+        }
+      }
+
+      const fired = fireTurn(combatState, occurrence.player, { isDealer: occurrence.player === handDealer });
+      log.push(...fired.events);
+      winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
+      if (winner !== null) return winner;
+
+      // A turn can bank charges or flip a condition for either side.
+      winner = step(immediates(combatState, handDealer, log));
+      if (winner !== null) return winner;
+    }
+    return null;
+  }
+
+  /** Resolves one pegging event live (P8): a play's suit tally, then its
+   * scoring occurrences; a go point's occurrence. */
+  function* resolvePeggingEvent(event: PeggingEvent, handDealer: PlayerIndex, handIndex: number): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
+    const suitPlayed = suitPlayedFromPeggingEvent(event);
+    if (suitPlayed) {
+      const winner = step(immediates(applySuitPlayed(combatState, suitPlayed), handDealer, log));
+      if (winner !== null) return winner;
+    }
+    for (const occurrence of occurrencesFromPeggingEvent(event)) {
+      const winner = yield* resolveOccurrence(occurrence, handDealer, handIndex);
+      if (winner !== null) return winner;
+    }
+    return null;
+  }
+
   // HARD_RESOLUTION_HAND is the only real bound -- its own unconditional
   // check below always returns by the loop's last iteration, so there's
   // no separate "maxHands" concept above it anymore (removed: user
@@ -517,36 +636,33 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
       if (armed(side, 'forceDiscard')) combatState = forceOpponentDiscard(combatState, side, dealtHands[opponent], dealer === opponent);
     }
 
-    const strategy0: DiscardStrategy = combatState.sides[0].forcedDiscardPair
-      ? () => combatState.sides[0].forcedDiscardPair as [Card, Card]
-      : discardStrategies[0];
-    const strategy1: DiscardStrategy = combatState.sides[1].forcedDiscardPair
-      ? () => combatState.sides[1].forcedDiscardPair as [Card, Card]
-      : discardStrategies[1];
     // Reveal Crib (session 52, the design's intent): the revealing side
     // chooses its discards SEEING the two cards its opponent has already
     // put in the crib -- so the opponent discards first. If both sides
     // armed it, neither gets the edge and the order is unchanged. The
     // first discard of the hand draws from aiRng first either way, so a
     // hand with no Reveal Crib is byte-identical to before.
-    const strategies: [DiscardStrategy, DiscardStrategy] = [strategy0, strategy1];
-    const discardFor = (side: PlayerIndex, knownCribCards?: [Card, Card]) =>
-      discardToCrib(
-        { hand: dealtHands[side], isOwnCrib: dealer === side, knownOpponentHand: combatState.sides[side].knownOpponentHand, knownCribCards, rng: aiRng },
-        strategies[side],
-      );
+    // A forced discard (Disrupt) is decided by the engine, so no request
+    // is yielded for that side.
+    function* discardFor(side: PlayerIndex, knownCribCards?: [Card, Card]): Generator<CombatRequest, ReturnType<typeof discardToCrib>, CombatAnswer> {
+      const context: DiscardContext = { hand: dealtHands[side], isOwnCrib: dealer === side, knownOpponentHand: combatState.sides[side].knownOpponentHand, knownCribCards, rng: aiRng };
+      const forced = combatState.sides[side].forcedDiscardPair;
+      const chosen = forced ?? ((yield { kind: 'discard', side, context, view: view(i, dealer) }) as [Card, Card]);
+      const strategy: DiscardStrategy = () => chosen;
+      return discardToCrib(context, strategy);
+    }
     const revealer: PlayerIndex | null = armed(0, 'revealCrib') !== armed(1, 'revealCrib') ? (armed(0, 'revealCrib') ? 0 : 1) : null;
-    let d0: ReturnType<typeof discardFor>;
-    let d1: ReturnType<typeof discardFor>;
+    let d0: ReturnType<typeof discardToCrib>;
+    let d1: ReturnType<typeof discardToCrib>;
     if (revealer === 0) {
-      d1 = discardFor(1);
-      d0 = discardFor(0, d1.discarded as [Card, Card]);
+      d1 = yield* discardFor(1);
+      d0 = yield* discardFor(0, d1.discarded as [Card, Card]);
     } else if (revealer === 1) {
-      d0 = discardFor(0);
-      d1 = discardFor(1, d0.discarded as [Card, Card]);
+      d0 = yield* discardFor(0);
+      d1 = yield* discardFor(1, d0.discarded as [Card, Card]);
     } else {
-      d0 = discardFor(0);
-      d1 = discardFor(1);
+      d0 = yield* discardFor(0);
+      d1 = yield* discardFor(1);
     }
     const crib = [...d0.discarded, ...d1.discarded];
 
@@ -568,114 +684,77 @@ export function playCombat(loadouts: [SubroutineDefinition[], SubroutineDefiniti
     }
 
     const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
-    // Genuinely per-side now (session 24 tunable-skill AI checkpoint A)
-    // -- each side's own strategy sees only its own recon, not the
-    // other side's.
-    const { scores: peggingScores, events: peggingEvents } = playPegging(
-      kept[0],
-      kept[1],
-      nonDealer,
-      playStrategies,
-      [combatState.sides[0].knownCrib, combatState.sides[1].knownCrib],
-      [combatState.sides[0].knownOpponentHand, combatState.sides[1].knownOpponentHand],
-      aiRng,
-    );
-    scores[0] += peggingScores[0];
-    scores[1] += peggingScores[1];
 
-    const nonDealerHandEvents = countHandEvents(kept[nonDealer], starter);
-    const nonDealerHandScore = nonDealerHandEvents.reduce((sum, e) => sum + e.points, 0);
-    scores[nonDealer] += nonDealerHandScore;
-
-    const dealerHandEvents = countHandEvents(kept[dealer], starter);
-    const dealerHandScore = dealerHandEvents.reduce((sum, e) => sum + e.points, 0);
-    scores[dealer] += dealerHandScore;
-
-    const cribEvents = countCribEvents(crib, starter);
-    const cribScore = cribEvents.reduce((sum, e) => sum + e.points, 0);
-    scores[dealer] += cribScore;
-
+    // The hand's record, pushed up front and filled in as the hand plays,
+    // so a fight that ends mid-hand still records it (its later fields
+    // stay empty).
     const hand: HandResult = {
       dealer,
       starter,
       hisHeelsPoints: heelsPoints,
-      peggingScores,
-      nonDealerHandScore,
-      dealerHandScore,
-      cribScore,
+      peggingScores: [0, 0],
+      nonDealerHandScore: 0,
+      dealerHandScore: 0,
+      cribScore: 0,
       scoresAfter: scores,
-      peggingEvents,
-      nonDealerHandEvents,
-      dealerHandEvents,
-      cribEvents,
+      peggingEvents: [],
+      nonDealerHandEvents: [],
+      dealerHandEvents: [],
+      cribEvents: [],
     };
     hands.push(hand);
 
-    // Suit tallies watch cards played, not scoring events -- its own pass,
-    // since a non-scoring play produces no ScoringOccurrence. Runs ahead
-    // of the occurrence loop (pegging precedes the show anyway).
-    for (const suitPlayed of suitsPlayedForHand(hand)) {
-      winner = step(immediates(applySuitPlayed(combatState, suitPlayed), hand.dealer, log));
+    // The cut: His Heels resolves now.
+    const heels = occurrenceFromHisHeels(heelsPoints, dealer);
+    if (heels) {
+      winner = yield* resolveOccurrence(heels, dealer, i);
       if (winner !== null) return finish(winner);
     }
 
-    for (const occurrence of occurrencesForHand(hand)) {
-      // Charges first, so a beta charged by this very occurrence applies
-      // on the turn it buys.
-      winner = step(immediates(applyOccurrence(combatState, occurrence), hand.dealer, log));
+    // Pegging, live (P8). Each side's own recon (knownCrib/knownOpponentHand)
+    // is static once pegging starts, as before.
+    const pegging = startPegging(kept[0], kept[1], nonDealer);
+    hand.peggingEvents = pegging.events;
+    hand.peggingScores = pegging.scores;
+    for (;;) {
+      const advanced = advancePegging(pegging);
+      for (const event of advanced.events) {
+        winner = yield* resolvePeggingEvent(event, dealer, i);
+        if (winner !== null) return finish(winner);
+      }
+      if (!advanced.decision) break;
+      const { player, legalCards, count, sequence } = advanced.decision;
+      const card = (yield {
+        kind: 'play',
+        side: player,
+        context: { legalCards, count, sequence, knownCrib: combatState.sides[player].knownCrib, knownOpponentHand: combatState.sides[player].knownOpponentHand, rng: aiRng },
+        view: view(i, dealer),
+      }) as Card;
+      const played = playPeggingCard(pegging, card);
+      winner = yield* resolvePeggingEvent(played, dealer, i);
       if (winner !== null) return finish(winner);
+    }
+    scores[0] += pegging.scores[0];
+    scores[1] += pegging.scores[1];
 
-      const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrence.magnitude);
-      combatState = replaceSideGauge(combatState, occurrence.player, gauge);
-
-      if (turnsTriggered > 0) {
-        consecutiveTurns = occurrence.player === lastTurnSide ? consecutiveTurns + turnsTriggered : turnsTriggered;
-        lastTurnSide = occurrence.player;
-        if (consecutiveTurns > MAX_CONSECUTIVE_TURNS) {
-          const side = occurrence.player;
-          const g = combatState.sides[side].gauge;
-          throw new Error(
-            `playCombat: side ${side} has taken ${consecutiveTurns} consecutive turns without the opponent acting -- ` +
-              `a systemic turn loop, not legitimate play (see MAX_CONSECUTIVE_TURNS). ` +
-              `hand=${i} seed=${seed} classId=${classId ?? 'none'} ` +
-              `gauge=${g.progress}/${g.threshold} turnsTriggeredThisOccurrence=${turnsTriggered} ` +
-              `loadout=[${combatState.sides[side].loadout.map((e) => e.definition.id).join(' ')}]`,
-          );
-        }
-      }
-
-      for (let turn = 0; turn < turnsTriggered; turn++) {
-        // Burner activation (checkpoint C): an "opening move" resolved
-        // before this turn's automatic subroutine fires. Side 1 (the
-        // enemy) has no Burner economy -- its strategy defaults to
-        // neverActivateBurner, so this is a genuine no-op for it, not a
-        // special case.
-        const availableBurnerIds = remainingBurnerIds(combatState.carriedBurnerIds, burnersUsedThisCombat);
-        if (availableBurnerIds.length > 0) {
-          const chosenBurnerId = burnerActivationStrategies[occurrence.player]({
-            combatState,
-            side: occurrence.player,
-            isDealer: occurrence.player === hand.dealer,
-            availableBurnerIds,
-          });
-          const burnerDef = chosenBurnerId && availableBurnerIds.includes(chosenBurnerId) ? BURNER_DEFINITIONS[chosenBurnerId] : undefined;
-          if (chosenBurnerId && burnerDef?.combatEffect) {
-            burnersUsedThisCombat.push(chosenBurnerId);
-            const afterBurner = resolveEffect(burnerDef.combatEffect, combatState, occurrence.player);
-            winner = step({ combatState: afterBurner, winner: resolution(afterBurner) });
-            if (winner !== null) return finish(winner);
-          }
-        }
-
-        const fired = fireTurn(combatState, occurrence.player, { isDealer: occurrence.player === hand.dealer });
-        log.push(...fired.events);
-        winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
-        if (winner !== null) return finish(winner);
-
-        // A turn can bank charges or flip a condition for either side.
-        winner = step(immediates(combatState, hand.dealer, log));
-        if (winner !== null) return finish(winner);
-      }
+    // The show, item by item: non-dealer hand, dealer hand, crib.
+    hand.nonDealerHandEvents = countHandEvents(kept[nonDealer], starter);
+    hand.nonDealerHandScore = hand.nonDealerHandEvents.reduce((sum, e) => sum + e.points, 0);
+    scores[nonDealer] += hand.nonDealerHandScore;
+    hand.dealerHandEvents = countHandEvents(kept[dealer], starter);
+    hand.dealerHandScore = hand.dealerHandEvents.reduce((sum, e) => sum + e.points, 0);
+    scores[dealer] += hand.dealerHandScore;
+    hand.cribEvents = countCribEvents(crib, starter);
+    hand.cribScore = hand.cribEvents.reduce((sum, e) => sum + e.points, 0);
+    scores[dealer] += hand.cribScore;
+    const show = [
+      ...occurrencesFromHandEvents(hand.nonDealerHandEvents, nonDealer),
+      ...occurrencesFromHandEvents(hand.dealerHandEvents, dealer),
+      ...occurrencesFromHandEvents(hand.cribEvents, dealer),
+    ];
+    for (const occurrence of show) {
+      winner = yield* resolveOccurrence(occurrence, dealer, i);
+      if (winner !== null) return finish(winner);
     }
 
     dealer = (1 - dealer) as PlayerIndex;

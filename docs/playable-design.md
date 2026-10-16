@@ -174,6 +174,35 @@ Consequences:
 - **Simulation results shift**, so milestone 1 ends with a balance
   re-check (class victory, the gatekeeper curve, Exploit Heat).
 
+## Milestone 1 — progress
+
+**Checkpoint 1** (`096eca6`): pegging split into `startPegging` /
+`advancePegging` / `playPeggingCard`; `playPegging` rebuilt on them,
+event-for-event identical. `scripts/engine-bench.ts` times 960 real
+fights; the baseline is 93 fights/s.
+
+**Checkpoint 2:** `combatGenerator` (combat.ts) yields a `CombatRequest`
+at each decision: `discard` (unless Disrupt forces it), `play`, `burner`.
+It is resumed with the answer. Each request carries a read-only
+`CombatView` (combat state, log, hands, hand index, dealer), which is
+what the UI will draw while the player decides. Requests come for both
+sides; the driver decides who answers. `playCombat` is now the
+simulation driver: it answers every request from the strategies, so
+every existing caller is unchanged.
+
+- **Live resolution (P8):** His Heels resolves at the cut; each pegging
+  play resolves its suit tally, then its scoring, then any turns and
+  instant Hooks, before the next card is chosen; the show resolves item
+  by item. A test asserts a turn fires between two plays of one hand.
+- **A fight can now end mid-hand.** Its last `HandResult` is then
+  partial (pegging so far, no show). The game.ts regression test checks
+  that it is an exact prefix of the full hand.
+- **Speed:** 90 fights/s against the 93 baseline (~3%, near the noise),
+  with the fights themselves now playing out differently.
+- Only one existing test needed changing (that regression test); the
+  rest don't pin exact fight outcomes. Balance figures do shift, which
+  is checkpoint 3's job.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

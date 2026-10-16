@@ -3,7 +3,7 @@ import type { Card } from './cards';
 import { cardValue } from './cards';
 import type { PlayerIndex } from './game';
 import type { Alpha, Beta, SubroutineDefinition } from './subroutine-types';
-import { playCombat, escalationFloorFor, escalationShrinkPerHandFor } from './combat';
+import { playCombat, combatGenerator, escalationFloorFor, escalationShrinkPerHandFor, type CombatAnswer } from './combat';
 import { CLASS_STARTING_LOADOUTS } from './subroutines';
 import { GAUGE_THRESHOLD, BREACH_THRESHOLD } from './encounters';
 import { createRng } from './rng';
@@ -132,6 +132,11 @@ describe('playCombat', () => {
     const result = playCombat([[credit('winner', 1000)], []], { seed: 42, gaugeThreshold: [1, 1] });
     expect(result.hands.length).toBeGreaterThan(0);
     const rng = createRng(42);
+    // Milestone 1 (P8): combat resolves live during pegging, so the fight
+    // can end mid-hand. The last hand is then partial -- its pegging must
+    // be an exact PREFIX of the full replay, and its show is never
+    // counted. Every earlier hand matches the replay exactly.
+    const last = result.hands[result.hands.length - 1];
     for (const hand of result.hands) {
       const shuffled = shuffle(createDeck(), rng);
       const { hands: dealtHands, stock } = deal(shuffled);
@@ -143,6 +148,11 @@ describe('playCombat', () => {
       const nonDealer = (1 - hand.dealer) as PlayerIndex;
       const kept: [Card[], Card[]] = [d0.keptHand, d1.keptHand];
       const { scores: peggingScores, events: peggingEvents } = playPegging(kept[0], kept[1], nonDealer, [playLowestLegal, playLowestLegal]);
+      if (hand === last && hand.peggingEvents.length < peggingEvents.length) {
+        expect(hand.peggingEvents).toEqual(peggingEvents.slice(0, hand.peggingEvents.length));
+        expect(hand.nonDealerHandEvents).toEqual([]);
+        continue;
+      }
       expect(peggingScores).toEqual(hand.peggingScores);
       expect(peggingEvents).toEqual(hand.peggingEvents);
       expect(countHandEvents(kept[nonDealer], starter)).toEqual(hand.nonDealerHandEvents);
@@ -344,5 +354,61 @@ describe('handPointsAtLeast end to end (checkpoint 6b)', () => {
     // At most one edge per hand; a real fight clears 8 points in some hands.
     expect(fires).toBeGreaterThan(0);
     expect(fires).toBeLessThanOrEqual(result.hands.length);
+  });
+});
+
+describe('combatGenerator (milestone 1, P1/P8)', () => {
+  const kits: [SubroutineDefinition[], SubroutineDefinition[]] = [CLASS_STARTING_LOADOUTS['exploit-overclock'], CLASS_STARTING_LOADOUTS['daemon-honeypot']];
+  const options = {
+    seed: 11,
+    gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD] as [number, number],
+    winThreshold: [BREACH_THRESHOLD, BREACH_THRESHOLD] as [number, number],
+    discardStrategies: [discardSkillStrategy(0.85), discardSkillStrategy(0.85)] as [DiscardStrategy, DiscardStrategy],
+    playStrategies: [pegSkillStrategy(0.85), pegSkillStrategy(0.85)] as [PlayStrategy, PlayStrategy],
+  };
+
+  it('driven by hand, it reaches exactly the result playCombat does', () => {
+    const fight = combatGenerator(kits, options);
+    let step = fight.next();
+    const kinds = new Set<string>();
+    const sides = new Set<number>();
+    while (!step.done) {
+      const r = step.value;
+      kinds.add(r.kind);
+      sides.add(r.side);
+      const answer: CombatAnswer = r.kind === 'discard' ? options.discardStrategies[r.side](r.context) : r.kind === 'play' ? options.playStrategies[r.side](r.context) : null;
+      step = fight.next(answer);
+    }
+    expect(step.value).toEqual(playCombat(kits, options));
+    expect(kinds).toEqual(new Set(['discard', 'play']));
+    expect(sides).toEqual(new Set([0, 1]));
+  });
+
+  it('resolves combat live (P8): a turn fires between two pegging decisions of the same hand', () => {
+    const fight = combatGenerator(kits, options);
+    let step = fight.next();
+    let previousPlay: { hand: number; log: number } | null = null;
+    let turnBetweenPlays = false;
+    while (!step.done) {
+      const r = step.value;
+      if (r.kind === 'play') {
+        const now = { hand: r.view.handIndex, log: r.view.log.length };
+        if (previousPlay && previousPlay.hand === now.hand && now.log > previousPlay.log) turnBetweenPlays = true;
+        previousPlay = now;
+      }
+      const answer: CombatAnswer = r.kind === 'discard' ? options.discardStrategies[r.side](r.context) : r.kind === 'play' ? options.playStrategies[r.side](r.context) : null;
+      step = fight.next(answer);
+    }
+    expect(turnBetweenPlays).toBe(true);
+  });
+
+  it('every request carries a view of the fight as it stands', () => {
+    const first = combatGenerator(kits, options).next();
+    expect(first.done).toBe(false);
+    if (!first.done) {
+      expect(first.value.kind).toBe('discard');
+      expect(first.value.view.handIndex).toBe(0);
+      expect(first.value.view.combatState.sides[0].loadout.length).toBeGreaterThan(0);
+    }
   });
 });
