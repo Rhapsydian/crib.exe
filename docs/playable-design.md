@@ -151,6 +151,29 @@ effects), Interrupt (it implies stopping something, and in Magic it
 means responding to the opponent), Trigger, Callback and Thread. The
 code keeps `alpha` and `beta`; this is display text only.
 
+### P8 — Combat resolves live during pegging, suit tallies included ✅
+
+Found while starting milestone 1. Today the engine plays the whole
+Cribbage hand (discards, pegging, show) first, then replays its record
+for combat: every suit tally for the hand up front, then each scoring
+event in order, firing turns at the exact moments they were earned. So
+turns land between plays in *event order*, but every pegging choice is
+made against the combat state as it stood when the hand began.
+
+The user's call: **make it live.** Each pegging play resolves in full
+(its suit tally, then its scoring events, then any turns and instant
+Hooks they trigger) before the next card is chosen, so the player pegs
+with the current gauges and turns visible. The show still resolves item
+by item after pegging, and Disrupt still lands on the next hand.
+
+Consequences:
+- **Suit tallies arrive play by play** instead of all at hand start,
+  so a turn fired early in a hand sees fewer suit charges. Mostly that
+  hits suit Hooks (Fuzzer).
+- **Burner decisions move to mid-pegging**, at the turn they precede.
+- **Simulation results shift**, so milestone 1 ends with a balance
+  re-check (class victory, the gatekeeper curve, Exploit Heat).
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

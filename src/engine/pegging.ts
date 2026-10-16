@@ -122,6 +122,115 @@ export function scoreCardPlay(cardsSinceReset: Card[], count: number): PegScoreB
 }
 
 /**
+ * Step-by-step pegging (milestone 1, `docs/playable-design.md` P1/P8):
+ * the same rules as playPegging, split at the one point a player decides
+ * something -- which card to play -- so a caller can pause there (for a
+ * human, or to resolve combat live after each play). playPegging below is
+ * built on these and behaves exactly as before.
+ *
+ * The state is mutated in place for speed (pegging runs millions of times
+ * in a balance sweep); treat it as owned by one caller.
+ */
+export interface PeggingState {
+  hands: [Card[], Card[]];
+  count: number;
+  sequence: SequenceCard[];
+  turn: PlayerIndex;
+  lastPlayerToAct: PlayerIndex | null;
+  passesInARow: number;
+  scores: [number, number];
+  events: PeggingEvent[];
+  done: boolean;
+}
+
+/** What the player to act must decide: they hold at least one legal card. */
+export interface PeggingDecision {
+  player: PlayerIndex;
+  legalCards: Card[];
+  count: number;
+  sequence: Card[];
+}
+
+export function startPegging(hand0: Card[], hand1: Card[], firstToAct: PlayerIndex): PeggingState {
+  return {
+    hands: [hand0.slice(), hand1.slice()],
+    count: 0,
+    sequence: [],
+    turn: firstToAct,
+    lastPlayerToAct: null,
+    passesInARow: 0,
+    scores: [0, 0],
+    events: [],
+    done: false,
+  };
+}
+
+/** Plays out every forced step (a player with no legal card says "go";
+ * the go point; the end of pegging) until someone must choose a card, or
+ * pegging is over. Returns the events those steps produced, and the
+ * decision now due (null when pegging is done). */
+export function advancePegging(state: PeggingState): { events: PeggingEvent[]; decision: PeggingDecision | null } {
+  const events: PeggingEvent[] = [];
+  const push = (e: PeggingEvent) => {
+    events.push(e);
+    state.events.push(e);
+  };
+  while (!state.done) {
+    if (state.hands[0].length === 0 && state.hands[1].length === 0) {
+      // Natural end of pegging: the very last card played also counts as
+      // "last card" if nothing has resolved it yet (i.e. it wasn't a 31).
+      if (state.lastPlayerToAct !== null) {
+        state.scores[state.lastPlayerToAct] += 1;
+        push({ type: 'go-point', player: state.lastPlayerToAct });
+      }
+      state.done = true;
+      break;
+    }
+    const player = state.turn;
+    const legal = state.hands[player].filter((c) => state.count + cardValue(c) <= 31);
+    if (legal.length > 0) {
+      return { events, decision: { player, legalCards: legal, count: state.count, sequence: state.sequence.map((s) => s.card) } };
+    }
+    push({ type: 'go', player });
+    state.passesInARow += 1;
+    state.turn = (1 - player) as PlayerIndex;
+    if (state.passesInARow === 2) {
+      if (state.lastPlayerToAct !== null) {
+        state.scores[state.lastPlayerToAct] += 1;
+        push({ type: 'go-point', player: state.lastPlayerToAct });
+      }
+      state.count = 0;
+      state.sequence = [];
+      state.lastPlayerToAct = null;
+      state.passesInARow = 0;
+    }
+  }
+  return { events, decision: null };
+}
+
+/** Plays `card` for the player whose decision is due (advancePegging's).
+ * Returns the play event, with what it scored. */
+export function playPeggingCard(state: PeggingState, card: Card): PegPlayEvent {
+  const player = state.turn;
+  state.hands[player] = state.hands[player].filter((c) => !cardsEqual(c, card));
+  state.count += cardValue(card);
+  state.sequence.push({ card, player });
+  const breakdown = scoreCardPlay(state.sequence.map((s) => s.card), state.count);
+  state.scores[player] += breakdown.total;
+  const event: PegPlayEvent = { type: 'play', player, card, count: state.count, score: breakdown.total, breakdown };
+  state.events.push(event);
+  state.lastPlayerToAct = player;
+  state.passesInARow = 0;
+  if (state.count === 31) {
+    state.count = 0;
+    state.sequence = [];
+    state.lastPlayerToAct = null; // already paid via the +2 above, no separate go point
+  }
+  state.turn = (1 - player) as PlayerIndex;
+  return event;
+}
+
+/**
  * Plays out the pegging phase for two already-discarded (4-card) hands.
  * `firstToAct` is a parameter rather than a hardcoded convention — the
  * caller (the real rule is "non-dealer plays first") decides.
@@ -146,67 +255,18 @@ export function playPegging(
    * deterministic without needing a separate stream per side. */
   aiRng?: Rng,
 ): PeggingResult {
-  const hands: [Card[], Card[]] = [hand0.slice(), hand1.slice()];
-  let count = 0;
-  let sequence: SequenceCard[] = [];
-  let turn: PlayerIndex = firstToAct;
-  let lastPlayerToAct: PlayerIndex | null = null;
-  let passesInARow = 0;
-  const events: PeggingEvent[] = [];
-  const scores: [number, number] = [0, 0];
-
-  while (hands[0].length > 0 || hands[1].length > 0) {
-    const player = turn;
-    const legal = hands[player].filter((c) => count + cardValue(c) <= 31);
-
-    if (legal.length > 0) {
-      const card = chooseCard[player]({
-        legalCards: legal,
-        count,
-        sequence: sequence.map((s) => s.card),
-        knownCrib: knownCrib?.[player],
-        knownOpponentHand: knownOpponentHand?.[player],
-        rng: aiRng,
-      });
-      hands[player] = hands[player].filter((c) => !cardsEqual(c, card));
-      count += cardValue(card);
-      sequence.push({ card, player });
-      const breakdown = scoreCardPlay(sequence.map((s) => s.card), count);
-      scores[player] += breakdown.total;
-      events.push({ type: 'play', player, card, count, score: breakdown.total, breakdown });
-      lastPlayerToAct = player;
-      passesInARow = 0;
-
-      if (count === 31) {
-        count = 0;
-        sequence = [];
-        lastPlayerToAct = null; // already paid via the +2 above, no separate go point
-      }
-      turn = (1 - player) as PlayerIndex;
-    } else {
-      events.push({ type: 'go', player });
-      passesInARow += 1;
-      turn = (1 - player) as PlayerIndex;
-
-      if (passesInARow === 2) {
-        if (lastPlayerToAct !== null) {
-          scores[lastPlayerToAct] += 1;
-          events.push({ type: 'go-point', player: lastPlayerToAct });
-        }
-        count = 0;
-        sequence = [];
-        lastPlayerToAct = null;
-        passesInARow = 0;
-      }
-    }
+  const state = startPegging(hand0, hand1, firstToAct);
+  for (let step = advancePegging(state); step.decision; step = advancePegging(state)) {
+    const { player, legalCards, count, sequence } = step.decision;
+    const card = chooseCard[player]({
+      legalCards,
+      count,
+      sequence,
+      knownCrib: knownCrib?.[player],
+      knownOpponentHand: knownOpponentHand?.[player],
+      rng: aiRng,
+    });
+    playPeggingCard(state, card);
   }
-
-  // Natural end of pegging: the very last card played also counts as
-  // "last card" if nothing has resolved it yet (i.e. it wasn't a 31).
-  if (lastPlayerToAct !== null) {
-    scores[lastPlayerToAct] += 1;
-    events.push({ type: 'go-point', player: lastPlayerToAct });
-  }
-
-  return { scores, events };
+  return { scores: state.scores, events: state.events };
 }

@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { Card } from './cards';
-import { cardsEqual } from './cards';
-import { playPegging, type PlayStrategy, type PegPlayEvent } from './pegging';
+import { cardsEqual, cardValue } from './cards';
+import { playPegging, startPegging, advancePegging, playPeggingCard, playLowestLegal, type PlayStrategy, type PegPlayEvent } from './pegging';
+import { createDeck, shuffle } from './deck';
+import { createRng } from './rng';
 
 /** Test-only helper: plays cards in a fixed, explicit overall order,
  * picking whichever queued card is currently legal. Gives full control
@@ -165,5 +167,33 @@ describe('playPegging — per-side strategies (session 24 tunable-skill AI check
     playPegging(hand0, hand1, 0, [strategy0, strategy1], [crib0, undefined]);
     expect(seenBySide0.every((c) => c === crib0)).toBe(true);
     expect(seenBySide1.every((c) => c === undefined)).toBe(true);
+  });
+});
+
+describe('step-by-step pegging (milestone 1)', () => {
+  it('a manual advance/play loop reproduces playPegging exactly, event for event', () => {
+    const rng = createRng(3);
+    for (let trial = 0; trial < 50; trial++) {
+      const deck = shuffle(createDeck(), rng);
+      const h0 = deck.slice(0, 4);
+      const h1 = deck.slice(4, 8);
+      const expected = playPegging(h0, h1, (trial % 2) as 0 | 1);
+      const state = startPegging(h0, h1, (trial % 2) as 0 | 1);
+      for (let step = advancePegging(state); step.decision; step = advancePegging(state)) {
+        playPeggingCard(state, playLowestLegal({ legalCards: step.decision.legalCards, count: step.decision.count, sequence: step.decision.sequence }));
+      }
+      expect(state.events).toEqual(expected.events);
+      expect(state.scores).toEqual(expected.scores);
+    }
+  });
+
+  it('advancePegging only stops for a player who holds a legal card', () => {
+    const state = startPegging(createDeck().slice(0, 4), createDeck().slice(4, 8), 0);
+    for (let step = advancePegging(state); step.decision; step = advancePegging(state)) {
+      expect(step.decision.legalCards.length).toBeGreaterThan(0);
+      for (const c of step.decision.legalCards) expect(step.decision.count + cardValue(c)).toBeLessThanOrEqual(31);
+      playPeggingCard(state, step.decision.legalCards[0]);
+    }
+    expect(state.done).toBe(true);
   });
 });
