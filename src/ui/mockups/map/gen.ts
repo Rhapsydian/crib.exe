@@ -156,6 +156,30 @@ function snapToBackdrop(ids: string[], pos: Positions) {
 
 // ------------------------------------------------------------ scatter
 
+/** Lengths as drawn (the unit square is stretched to a portrait area). */
+const drawnDist = (a: Pt, b: Pt) => Math.hypot((a.x - b.x) * (VIEW.W - 2 * VIEW.P), (a.y - b.y) * (VIEW.H - 2 * VIEW.P));
+
+/** How much longer than the typical gap between neighbours a link may
+ * be. Long links are the shortcuts that collapse the climb, so this is
+ * the main lever on the distance to the gatekeeper (the user: "a bit"
+ * further than the ~3-4 moves free scatter gave). */
+const MAX_LINK_FACTOR = 1.35;
+
+/** Non-crossing near-neighbour links, minus the long ones. The entry
+ * keeps its three nearest (it sits apart, at the bottom) and the
+ * gatekeeper its two nearest (two is what resilience needs; more would
+ * be shortcuts into it); the two are never linked to each other. */
+function climbCandidates(ids: string[], pos: Positions): MapEdge[] {
+  const nearest = ids.map((id) => Math.min(...ids.filter((o) => o !== id).map((o) => drawnDist(pos[id], pos[o])))).sort((a, b) => a - b);
+  const typical = nearest[Math.floor(nearest.length / 2)];
+  const len = (e: MapEdge) => drawnDist(pos[e.a], pos[e.b]);
+  const touches = (e: MapEdge, id: string) => e.a === id || e.b === id;
+  const planar = planarCandidates(ids, pos).filter((e) => !(touches(e, 'n0') && touches(e, 'n1')));
+  const shortest = (id: string, k: number) => planar.filter((e) => touches(e, id)).sort((a, b) => len(a) - len(b)).slice(0, k);
+  const middle = planar.filter((e) => !touches(e, 'n0') && !touches(e, 'n1') && len(e) <= typical * MAX_LINK_FACTOR);
+  return [...middle, ...shortest('n0', 3), ...shortest('n1', 2)];
+}
+
 /** Even scatter in a portrait band (entry bottom-centre, gatekeeper
  * top-centre), near-neighbour links that never cross. */
 export function scatter(n: number, seed: number): GenMap {
@@ -177,8 +201,12 @@ export function scatter(n: number, seed: number): GenMap {
     // Centred on the backdrop's hexes before linking, so the links come
     // from where the nodes are drawn and still never cross.
     snapToBackdrop(ids, pos);
-    const edges = linkUp(ids, 'n0', 'n1', planarCandidates(ids, pos), pos, rng, 2.4);
+    const edges = linkUp(ids, 'n0', 'n1', climbCandidates(ids, pos), pos, rng, 2.4);
     if (!edges) continue;
+    // Nothing may sit behind the gatekeeper: breaching it moves you to the
+    // next layer, so a node reachable only through it could never be used.
+    const withoutGk: LayerGraph = { nodes: [], edges: edges.filter((e) => e.a !== 'n1' && e.b !== 'n1'), entryNodeId: 'n0', gatekeeperNodeId: 'n1' };
+    if (ids.some((id) => id !== 'n1' && !isReachable(withoutGk, 'n0', id))) continue;
     return { graph: { nodes: nodesFor(ids, 'n0', 'n1', rng), edges, entryNodeId: 'n0', gatekeeperNodeId: 'n1' }, pos, resilient: true };
   }
   throw new Error(`scatter: no resilient layer for n=${n}, seed=${seed}`);

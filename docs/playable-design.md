@@ -500,6 +500,15 @@ phone pass.
   defined once (`VIEW`, `backdropCells` in gen.ts) and shared with the
   screen. Same character as free scatter: 2.9-3.7 moves to the
   gatekeeper, ~3 links a node, all resilient (300 maps a size).
+- **A longer climb, nothing behind the gatekeeper** (the user's calls):
+  links longer than 1.35x the typical gap between neighbours are
+  dropped (long links were the shortcuts), the entry keeps its three
+  nearest links and the gatekeeper exactly its two nearest, and the
+  entry and gatekeeper are never linked. A layer is rejected if any node
+  is reachable only through the gatekeeper (breaching it moves you on,
+  so that node could never be used). Moves to the gatekeeper: 8 nodes
+  3.1 (was 2.9), 10 nodes 3.8 (3.4), 12 nodes 4.3 (3.7); ~2.8 links a
+  node; all resilient, none behind the gatekeeper (300 maps a size).
 
 ## Settled in passing (Claude's calls, noted for the record)
 
