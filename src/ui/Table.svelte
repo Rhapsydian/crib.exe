@@ -121,6 +121,10 @@
     color: var(--text-dim);
   }
   .cards {
+    /* One small card tall even when empty, so the count doesn't shift
+       as the pile empties and fills. */
+    min-height: 48px;
+    align-items: center;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;

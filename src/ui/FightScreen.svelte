@@ -204,6 +204,18 @@
     padding: 5px 7px;
     color: var(--accent);
   }
+  /* Always three single-line rows, so the table above doesn't shift as
+     lines arrive or wrap; the full text is in the log drawer. */
+  .ticker > div:not(.more) {
+    height: 1.3em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ticker {
+    min-height: calc(3 * 1.3em + 10px + 12px);
+    overflow: hidden;
+  }
   .ticker .them {
     color: var(--danger);
   }
