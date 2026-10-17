@@ -183,7 +183,7 @@ describe('countHandEvents — discrete events, not lumps', () => {
     ];
     const starter: Card = { rank: 5, suit: 1 };
     const fifteens = countHandEvents(hand, starter).filter((e) => e.category === 'fifteen');
-    expect(fifteens).toEqual([
+    expect(fifteens).toMatchObject([
       { category: 'fifteen', points: 2 },
       { category: 'fifteen', points: 2 },
     ]);
@@ -198,7 +198,7 @@ describe('countHandEvents — discrete events, not lumps', () => {
     ];
     const starter: Card = { rank: 9, suit: 2 };
     const pairs = countHandEvents(hand, starter).filter((e) => e.category === 'pair');
-    expect(pairs).toEqual([
+    expect(pairs).toMatchObject([
       { category: 'pair', points: 2 },
       { category: 'pair', points: 2 },
     ]);
@@ -213,7 +213,7 @@ describe('countHandEvents — discrete events, not lumps', () => {
     ];
     const starter: Card = { rank: 2, suit: 1 };
     const pairs = countHandEvents(hand, starter).filter((e) => e.category === 'pair');
-    expect(pairs).toEqual([{ category: 'pair', points: 6 }]);
+    expect(pairs).toMatchObject([{ category: 'pair', points: 6 }]);
   });
 
   it('orders events fifteens, then pairs, then runs, then flush, then nobs', () => {
@@ -238,5 +238,19 @@ describe('countHand/countCrib — input validation', () => {
   it('throws if given anything other than 4 cards', () => {
     const starter: Card = { rank: 3, suit: 2 };
     expect(() => countHand([{ rank: 4, suit: 0 }], starter)).toThrow();
+  });
+
+  it('names the cards in each scoring event (the show panel lights them up)', () => {
+    const jack: Card = { rank: 11, suit: 2 };
+    const hand: Card[] = [{ rank: 4, suit: 2 }, { rank: 5, suit: 2 }, { rank: 6, suit: 2 }, jack];
+    const starter: Card = { rank: 5, suit: 2 };
+    const events = countHandEvents(hand, starter);
+    const byCategory = (c: string) => events.filter((e) => e.category === c);
+    // 4+5+6 and 4+6+5(starter): two fifteens; J+5, J+5(starter): two more.
+    expect(byCategory('fifteen').map((e) => e.cards.length).sort()).toEqual([2, 2, 3, 3]);
+    expect(byCategory('pair')[0].cards).toEqual([{ rank: 5, suit: 2 }, starter]);
+    expect(byCategory('run')[0].cards).toHaveLength(4); // a double run of 4-5-6
+    expect(byCategory('flush')[0].cards).toHaveLength(5);
+    expect(byCategory('nobs')[0].cards).toEqual([jack]);
   });
 });

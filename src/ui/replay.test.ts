@@ -183,3 +183,25 @@ describe('timeline steps', () => {
     expect(kinds).toEqual(['hand', 'peg', 'points', 'clear', 'peg']);
   });
 });
+
+describe('show state', () => {
+  it('counts a show up score by score, lighting the current one', () => {
+    const five = [card(5), card(10), card(5, 1), card(2), card(9)];
+    const timeline: CombatBeat[] = [
+      { kind: 'hand', handIndex: 0, dealer: 0, firesBefore: 0 },
+      { kind: 'show', owner: 'hand', player: 1, cards: five.slice(0, 4), starter: five[4], total: 4, firesBefore: 0 },
+      { kind: 'points', phase: 'show', occurrence: { category: 'fifteen', player: 1, magnitude: 2 }, gauges: pair(0, 0), cards: [five[0], five[1]], firesBefore: 0 },
+      { kind: 'points', phase: 'show', occurrence: { category: 'pair', player: 1, magnitude: 2 }, gauges: pair(0, 0), cards: [five[0], five[2]], firesBefore: 0 },
+    ];
+    const steps = mergeSteps(timeline, []);
+    const laid = tableAt(steps, 2).show!;
+    expect(laid.scored).toBe(0);
+    expect(laid.lit).toBeNull();
+    const first = tableAt(steps, 3).show!;
+    expect(first.scored).toBe(2);
+    expect(first.lit).toEqual([five[0], five[1]]);
+    const second = tableAt(steps, 4).show!;
+    expect(second.announced).toEqual(['fifteen 2', 'pair 4']);
+    expect(second.lit).toEqual([five[0], five[2]]);
+  });
+});

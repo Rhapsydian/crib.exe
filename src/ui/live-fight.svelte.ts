@@ -13,16 +13,18 @@ import {
 } from '../engine/enemies';
 import { fightBaselineTrace } from '../engine/heat';
 import { CLASS_DEFINITIONS, type ClassId } from '../engine/classes';
-import type { Card } from '../engine/cards';
+import type { BurnerId } from '../engine/burner-types';
 import type { FightSnapshot, PlayerRequest } from './snapshot';
 
 /**
  * The UI driver (P1): runs one real fight through `combatGenerator`.
  * The enemy's requests are answered at once by the same skill-dial AI a
  * real run uses; the player's discard and play requests stop the engine
- * until the screen answers them. Burner requests are declined for now
- * (milestone 2 checkpoint 3 adds the prompt) -- and only come at all when
- * the player carries a Burner, which a test-harness fight never does.
+ * until the screen answers them, as do Burner requests before the
+ * player's own turns (they only come when the player carries a Burner;
+ * the setup screen can give it one of each combat Burner). The engine
+ * offers the carried Burners before the enemy's turns too; those are
+ * declined, as the simulation does.
  *
  * Each pause publishes a fresh `frame` for the screen to draw. When the
  * fight ends, the last frame stays up behind the result.
@@ -31,6 +33,7 @@ export interface FightSetup {
   classId: ClassId;
   enemy: EnemyDefinition;
   seed: number;
+  carriedBurnerIds?: BurnerId[];
 }
 
 export class LiveFight {
@@ -59,14 +62,15 @@ export class LiveFight {
       winThreshold: [BREACH_THRESHOLD, winThresholdFor(enemy, layer, fightNumber, CONTAINMENT_THRESHOLD)],
       classId,
       ...enemyCombatOptions(enemy),
+      carriedBurnerIds: setup.carriedBurnerIds ?? [],
     };
     const enemyLoadout = scaledEnemyLoadout(enemy.loadout, magnitudeScalerFor(enemy, layer, fightNumber));
     this.#fight = combatGenerator([CLASS_DEFINITIONS[classId].startingLoadout, enemyLoadout], options);
     this.#run(this.#fight.next());
   }
 
-  /** The player's answer to the current discard or play request. */
-  answer(answer: [Card, Card] | Card): void {
+  /** The player's answer to the current request. */
+  answer(answer: CombatAnswer): void {
     if (!this.frame || this.result) return;
     this.#run(this.#fight.next(answer));
   }
@@ -74,7 +78,7 @@ export class LiveFight {
   #run(step: IteratorResult<CombatRequest, CombatResult>): void {
     while (!step.done) {
       const r = step.value;
-      if (r.side === 0 && r.kind !== 'burner') {
+      if (r.side === 0) {
         this.frame = this.#frameFor(r);
         return;
       }

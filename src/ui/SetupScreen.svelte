@@ -5,8 +5,12 @@
 
   // Milestone 2's test harness: pick a class and an enemy, then fight.
   // The real run setup (class choice, the map) is milestone 3.
-  let { onstart, classId: initialClass, enemyId: initialEnemy }: { onstart: (classId: ClassId, enemy: EnemyDefinition) => void; classId?: ClassId; enemyId?: string } =
-    $props();
+  let {
+    onstart,
+    classId: initialClass,
+    enemyId: initialEnemy,
+    burners: initialBurners = false,
+  }: { onstart: (classId: ClassId, enemy: EnemyDefinition, burners: boolean) => void; classId?: ClassId; enemyId?: string; burners?: boolean } = $props();
 
   const classes = Object.values(CLASS_DEFINITIONS);
   const tiers: EnemyTier[] = ['regular', 'elite', 'gatekeeper'];
@@ -15,6 +19,8 @@
   // svelte-ignore state_referenced_locally
   let enemyId = $state<string>(initialEnemy ?? ENEMY_ROSTER[0].id);
   const enemy = $derived(ENEMY_ROSTER.find((e) => e.id === enemyId)!);
+  // svelte-ignore state_referenced_locally
+  let burners = $state(initialBurners);
 </script>
 
 <div class="setup">
@@ -41,7 +47,9 @@
     </div>
   {/each}
 
-  <button class="start" onclick={() => onstart(classId, enemy)}>▶ jack in: {CLASS_DEFINITIONS[classId].name} vs {enemy.name}</button>
+  <label class="toggle"><input type="checkbox" bind:checked={burners} /> carry Burners (one Flash Drive, one EMP Charge)</label>
+
+  <button class="start" onclick={() => onstart(classId, enemy, burners)}>▶ jack in: {CLASS_DEFINITIONS[classId].name} vs {enemy.name}</button>
 </div>
 
 <style>
@@ -100,6 +108,14 @@
     margin-left: auto;
     color: var(--text-dim);
     font-size: 10px;
+  }
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text-dim);
   }
   .start {
     margin-top: 14px;

@@ -331,6 +331,36 @@ between-hands banner; the Burner prompt).
   the end of what has happened so far (the enemy took the go and it's
   your card) sweeps at once instead of waiting for your card; the last
   go of a hand sweeps before the show.
+- **The count holds still:** the pile row keeps one card's height when
+  empty, and the phone ticker is three fixed single-line rows.
+
+**Checkpoint 3b — the show, hand transitions, Burners:**
+
+- **Engine:** show scoring events carry their cards (`ShowScoreEvent`,
+  `countHandEvents` / `countCribEvents`). They are derived in a separate
+  pass so `countHand` / `countCrib`, which the AI calls for every
+  candidate discard against every unseen starter, pay nothing: building
+  them inline cost ~20% of simulation speed, the separate pass costs
+  none (96-98 fights/s against 95). New beats: `show` (a hand or the
+  crib laid out, with its total; its `points` beats follow, each with
+  its cards) and `burner` (a Burner spent, with the gauges after).
+- **Show panel** (`src/ui/ShowPanel.svelte`), in the table's place: "your
+  hand" / "their crib" in the owner's colour, the four cards dealt in and
+  the starter set apart, each score lifting and lighting its cards while
+  the rest dim, the running count announced the way it's said at the
+  table ("fifteen 2 · fifteen 4 · pair 6"); a hand that scores nothing
+  says "nineteen (no score)". Show runs are named by their points (run of
+  3-5, double run, double run of 4, triple run, double double run).
+- **Between hands:** a "HAND 4 · you deal · your crib" banner over the
+  table.
+- **Burners:** before each of your turns, while you carry one, the hand
+  area asks "Your turn is about to fire. Burn one?" with each Burner and
+  its effect, or "not now"; a spent Burner pops a callout and a log line.
+  The test-harness setup has a "carry Burners" toggle (one Flash Drive,
+  one EMP Charge). The engine asks before every one of your turns while
+  any remain, as designed.
+- The table area is a fixed height, so the show panel and the banner
+  don't move the layout; a long ticker line no longer widens the page.
 
 ## Settled in passing (Claude's calls, noted for the record)
 

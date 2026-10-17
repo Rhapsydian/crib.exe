@@ -150,12 +150,66 @@ export function countCrib(crib: Card[], starter: Card): HandScoreBreakdown {
   return breakdownFromEvents(buildEvents(crib, starter, cribFlush(crib, starter)));
 }
 
-/** Same underlying computation as countHand, exposed as the discrete
- * event list Phase 2's trigger/gauge system consumes. */
-export function countHandEvents(hand: Card[], starter: Card): HandScoreEvent[] {
-  return buildEvents(hand, starter, handFlush(hand, starter));
+/** A show scoring event with the cards that make it (the starter
+ * included when it takes part) -- what the show panel lights up
+ * (milestone 2 checkpoint 3b). For a run with duplicates, every card of
+ * the run's ranks. */
+export interface ShowScoreEvent extends HandScoreEvent {
+  cards: Card[];
 }
 
-export function countCribEvents(crib: Card[], starter: Card): HandScoreEvent[] {
-  return buildEvents(crib, starter, cribFlush(crib, starter));
+/** Same underlying computation as countHand, exposed as the discrete
+ * event list Phase 2's trigger/gauge system consumes, each with its
+ * cards. */
+export function countHandEvents(hand: Card[], starter: Card): ShowScoreEvent[] {
+  return withCards(buildEvents(hand, starter, handFlush(hand, starter)), hand, starter);
+}
+
+export function countCribEvents(crib: Card[], starter: Card): ShowScoreEvent[] {
+  return withCards(buildEvents(crib, starter, cribFlush(crib, starter)), crib, starter);
+}
+
+/**
+ * Attaches each event's cards, re-deriving them in buildEvents' own
+ * order (fifteens by subset mask, pairs and runs by rank). Kept apart
+ * from buildEvents so countHand/countCrib -- which the AI calls for
+ * every candidate discard against every unseen starter -- pay nothing
+ * for it.
+ */
+function withCards(events: HandScoreEvent[], fourCards: Card[], starter: Card): ShowScoreEvent[] {
+  const five = [...fourCards, starter];
+  const fifteens: Card[][] = [];
+  for (let mask = 1; mask < 1 << five.length; mask++) {
+    const subset = five.filter((_, i) => mask & (1 << i));
+    if (subset.reduce((sum, c) => sum + cardValue(c), 0) === 15) fifteens.push(subset);
+  }
+  const counts = rankCounts(five);
+  const pairRanks = [...counts].filter(([, n]) => n >= 2).map(([rank]) => rank);
+  const ranks = [...counts.keys()].sort((a, b) => a - b);
+  const runs: Card[][] = [];
+  for (let i = 0; i < ranks.length; ) {
+    let j = i;
+    while (j + 1 < ranks.length && ranks[j + 1] === ranks[j] + 1) j++;
+    if (j - i + 1 >= 3) runs.push(five.filter((c) => c.rank >= ranks[i] && c.rank <= ranks[j]));
+    i = j + 1;
+  }
+  let f = 0;
+  let p = 0;
+  let r = 0;
+  return events.map((event): ShowScoreEvent => {
+    switch (event.category) {
+      case 'fifteen':
+        return { ...event, cards: fifteens[f++] };
+      case 'pair': {
+        const rank = pairRanks[p++];
+        return { ...event, cards: five.filter((c) => c.rank === rank) };
+      }
+      case 'run':
+        return { ...event, cards: runs[r++] };
+      case 'flush':
+        return { ...event, cards: event.points === 5 ? five : fourCards };
+      case 'nobs':
+        return { ...event, cards: fourCards.filter((c) => isJack(c) && c.suit === starter.suit) };
+    }
+  });
 }

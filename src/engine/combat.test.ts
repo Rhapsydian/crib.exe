@@ -412,3 +412,41 @@ describe('combatGenerator (milestone 1, P1/P8)', () => {
     }
   });
 });
+
+describe('combat timeline (milestone 2 checkpoints 3a/3b)', () => {
+  const options = {
+    seed: 11,
+    gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD] as [number, number],
+    winThreshold: [400, 400] as [number, number],
+    discardStrategies: [discardSkillStrategy(0.85), discardSkillStrategy(0.85)] as [DiscardStrategy, DiscardStrategy],
+    playStrategies: [pegSkillStrategy(0.85), pegSkillStrategy(0.85)] as [PlayStrategy, PlayStrategy],
+  };
+
+  it('lays out each show (non-dealer, dealer, crib) and its scores add up to the total, with their cards', () => {
+    const result = playCombat([CLASS_STARTING_LOADOUTS['exploit-overclock'], CLASS_STARTING_LOADOUTS['daemon-honeypot']], options);
+    const firstHand = result.timeline.slice(0, result.timeline.findIndex((b, i) => i > 0 && b.kind === 'hand'));
+    const shows = firstHand.filter((b) => b.kind === 'show');
+    expect(shows.map((b) => (b.kind === 'show' ? b.owner : ''))).toEqual(['hand', 'hand', 'crib']);
+    const dealer = result.hands[0].dealer;
+    expect(shows.map((b) => (b.kind === 'show' ? b.player : -1))).toEqual([1 - dealer, dealer, dealer]);
+    for (const show of shows) {
+      if (show.kind !== 'show') continue;
+      const start = firstHand.indexOf(show);
+      const next = firstHand.findIndex((b, i) => i > start && b.kind === 'show');
+      const points = firstHand.slice(start + 1, next === -1 ? undefined : next).filter((b) => b.kind === 'points');
+      expect(points.reduce((sum, b) => sum + (b.kind === 'points' ? b.occurrence.magnitude : 0), 0)).toBe(show.total);
+      for (const b of points) if (b.kind === 'points') expect(b.cards?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('records a Burner spent before a turn', () => {
+    const result = playCombat([CLASS_STARTING_LOADOUTS['exploit-overclock'], CLASS_STARTING_LOADOUTS['daemon-honeypot']], {
+      ...options,
+      carriedBurnerIds: ['flash-drive'],
+      burnerActivationStrategies: [(ctx) => ctx.availableBurnerIds[0] ?? null, () => null],
+    });
+    const burns = result.timeline.filter((b) => b.kind === 'burner');
+    expect(burns).toHaveLength(1);
+    expect(burns[0]).toMatchObject({ kind: 'burner', side: 0, burnerId: 'flash-drive' });
+  });
+});

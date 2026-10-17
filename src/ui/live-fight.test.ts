@@ -41,7 +41,7 @@ describe('LiveFight', () => {
         previous = frame;
         frames++;
         const r = frame.request;
-        live.answer(r.kind === 'discard' ? playerDiscard(r.context) : playerPeg(r.context));
+        live.answer(r.kind === 'discard' ? playerDiscard(r.context) : r.kind === 'play' ? playerPeg(r.context) : null);
       }
 
       const layer = enemy.minLayer;

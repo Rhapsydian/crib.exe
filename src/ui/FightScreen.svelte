@@ -9,7 +9,9 @@
   import Hand from './Hand.svelte';
   import Log from './Log.svelte';
   import DetailSheet from './DetailSheet.svelte';
-  import { scoreLabel, stepLine, tableAt, type Step } from './timeline';
+  import { burnerLabel, scoreLabel, stepLine, tableAt, type Step } from './timeline';
+  import ShowPanel from './ShowPanel.svelte';
+  import type { BurnerId } from '../engine/burner-types';
 
   // The chosen fight-screen layout (the user's picks from the P3 mockups):
   // COMPACT on phones -- everything on one screen, a three-line log
@@ -27,7 +29,14 @@
     onplay,
     ondiscard,
     replay,
-  }: { snapshot: FightSnapshot; onplay?: (card: Card) => void; ondiscard?: (cards: [Card, Card]) => void; replay?: Replay } = $props();
+    onburner,
+  }: {
+    snapshot: FightSnapshot;
+    onplay?: (card: Card) => void;
+    ondiscard?: (cards: [Card, Card]) => void;
+    replay?: Replay;
+    onburner?: (id: BurnerId | null) => void;
+  } = $props();
   const f = $derived(fightParts(snapshot));
   let picked = $state<Picked | null>(null);
   let sheet = $state<'none' | 'log' | 'loadouts'>('none');
@@ -45,11 +54,19 @@
   );
   const callout = $derived.by(() => {
     const step = replay?.current;
-    if (step?.type !== 'beat' || step.beat.kind !== 'points') return null;
-    return { text: scoreLabel(step.beat.occurrence, step.beat.phase), side: step.beat.occurrence.player, key: replay!.shown };
+    if (step?.type !== 'beat') return null;
+    const b = step.beat;
+    // Show scores are announced in the show panel instead.
+    if (b.kind === 'points' && b.phase !== 'show') return { text: scoreLabel(b.occurrence, b.phase), side: b.occurrence.player, key: replay!.shown };
+    if (b.kind === 'burner') return { text: burnerLabel(b.burnerId), side: b.side, key: replay!.shown };
+    return null;
   });
-  // While the replay is still on an earlier hand, the new hand stays
-  // face down.
+  // A new hand: a banner over the table while its beat is up.
+  const banner = $derived.by(() => {
+    const step = replay?.current;
+    if (step?.type !== 'beat' || step.beat.kind !== 'hand') return null;
+    return { title: `HAND ${step.beat.handIndex + 1}`, sub: step.beat.dealer === 0 ? 'you deal · your crib' : 'they deal · their crib', key: replay!.shown };
+  });
   const handReady = $derived(!table || table.handIndex === f.view.handIndex);
   const firingSlot = (side: 0 | 1) => {
     const fire = replay?.firing;
@@ -84,11 +101,20 @@
       <Loadout entries={f.them.loadout} dense firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
     </div>
 
-    {#if table}
-      <Table sequence={[]} pile={table.pile} leaving={table.leaving} count={table.count} starter={table.starter} playerIsDealer={table.dealer === 0} opponentCardsLeft={table.cardsLeft[1]} {callout} />
-    {:else}
-      <Table sequence={f.sequence} count={f.count} starter={f.starter} playerIsDealer={f.playerIsDealer} opponentCardsLeft={f.opponentCardsLeft} />
-    {/if}
+    <div class="table-slot">
+      {#if table?.show}
+        <ShowPanel show={table.show} />
+      {:else if table}
+        <Table sequence={[]} pile={table.pile} leaving={table.leaving} count={table.count} starter={table.starter} playerIsDealer={table.dealer === 0} opponentCardsLeft={table.cardsLeft[1]} {callout} />
+      {:else}
+        <Table sequence={f.sequence} count={f.count} starter={f.starter} playerIsDealer={f.playerIsDealer} opponentCardsLeft={f.opponentCardsLeft} />
+      {/if}
+      {#if banner}
+        {#key banner.key}
+          <div class="banner"><b>{banner.title}</b><span>{banner.sub}</span></div>
+        {/key}
+      {/if}
+    </div>
 
     <button class="ticker" onclick={() => (sheet = 'log')}>
       {#each ticker as line, i (i)}
@@ -101,8 +127,18 @@
       <Loadout entries={f.you.loadout} dense firing={firingSlot(0)} onpick={(i) => (picked = { side: 0, index: i })} />
       <Gauges side={f.you} reading={replay?.gauges?.[0]} isPlayer compact />
     </div>
-    {#if handReady}
-      <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase} playerIsDealer={f.playerIsDealer} {onplay} {ondiscard} />
+    {#if handReady && f.phase === 'burner'}
+      <div class="burner-prompt">
+        <div class="ask">Your turn is about to fire. Burn one?</div>
+        <div class="choices">
+          {#each f.burners as id (id)}
+            <button class="burn" onclick={() => onburner?.(id)}>{burnerLabel(id)}</button>
+          {/each}
+          <button class="keep" onclick={() => onburner?.(null)}>not now</button>
+        </div>
+      </div>
+    {:else if handReady}
+      <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase === 'discard' ? 'discard' : 'play'} playerIsDealer={f.playerIsDealer} {onplay} {ondiscard} />
     {:else}
       <div class="hand-wait">…</div>
     {/if}
@@ -128,6 +164,9 @@
   }
   .main {
     flex: 1;
+    /* Let long single-line content (the ticker) clip instead of widening
+       the column past the screen. */
+    min-width: 0;
     max-width: 640px;
     display: flex;
     flex-direction: column;
@@ -215,11 +254,89 @@
   .ticker {
     min-height: calc(3 * 1.3em + 10px + 12px);
     overflow: hidden;
+    min-width: 0;
+    width: 100%;
   }
   .ticker .them {
     color: var(--danger);
   }
   .ticker .quiet {
+    color: var(--text-dim);
+  }
+  .table-slot {
+    position: relative;
+    height: 104px;
+  }
+  .table-slot > :global(*:not(.banner)) {
+    height: 100%;
+    box-sizing: border-box;
+  }
+  .banner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: rgb(7 10 14 / 88%);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    color: var(--accent);
+    animation: banner 1.1s ease-out forwards;
+    pointer-events: none;
+  }
+  .banner b {
+    font-size: 20px;
+    letter-spacing: 0.12em;
+  }
+  .banner span {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  @keyframes banner {
+    0% {
+      opacity: 0;
+      transform: scaleY(0.2);
+    }
+    15% {
+      opacity: 1;
+      transform: none;
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  .burner-prompt {
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .ask {
+    color: var(--warn);
+  }
+  .choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .burn,
+  .keep {
+    padding: 8px 10px;
+    border-radius: var(--radius);
+    border: 1px solid var(--warn);
+    background: transparent;
+    color: var(--warn);
+    font-size: 12px;
+  }
+  .keep {
+    border-color: var(--line);
     color: var(--text-dim);
   }
   .hand-wait {

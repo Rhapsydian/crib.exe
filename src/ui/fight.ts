@@ -9,23 +9,26 @@ export interface Picked {
 
 /** Everything a layout needs from a paused fight, flattened. During the
  * discard the starter isn't cut yet, so it is undefined, and the whole
- * six-card hand is selectable. */
+ * six-card hand is selectable. A Burner request (before one of your
+ * turns) has no hand to show; the screen asks about the Burner instead. */
 export function fightParts(snapshot: FightSnapshot) {
   const { request } = snapshot;
   const { view } = request;
   const discarding = request.kind === 'discard';
+  const playing = request.kind === 'play';
   return {
     view,
     phase: request.kind,
     you: view.combatState.sides[0],
     them: view.combatState.sides[1],
-    legal: discarding ? request.context.hand : request.context.legalCards,
-    count: discarding ? 0 : request.context.count,
-    sequence: discarding ? [] : request.context.sequence,
-    hand: discarding ? request.context.hand : request.pegging.hand,
-    opponentCardsLeft: discarding ? 6 : request.pegging.opponentCardsLeft,
+    legal: discarding ? request.context.hand : playing ? request.context.legalCards : [],
+    count: playing ? request.context.count : 0,
+    sequence: playing ? request.context.sequence : [],
+    hand: discarding ? request.context.hand : playing ? request.pegging.hand : [],
+    opponentCardsLeft: discarding ? 6 : playing ? request.pegging.opponentCardsLeft : 0,
     starter: discarding ? undefined : view.hands[view.handIndex]?.starter,
     playerIsDealer: view.dealer === 0,
+    burners: request.kind === 'burner' ? request.context.availableBurnerIds : [],
     enemyName: snapshot.enemy.name,
     className: snapshot.className,
   };

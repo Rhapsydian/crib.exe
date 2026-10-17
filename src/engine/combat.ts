@@ -3,7 +3,7 @@ import type { Card } from './cards';
 import { createDeck, shuffle } from './deck';
 import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardContext, type DiscardStrategy } from './deal';
 import { advancePegging, playLowestLegal, playPeggingCard, startPegging, type PeggingEvent, type PlayContext, type PlayStrategy } from './pegging';
-import { countHandEvents, countCribEvents } from './scoring';
+import { countHandEvents, countCribEvents, type ShowScoreEvent } from './scoring';
 import type { HandResult, PlayerIndex } from './game';
 import type { SubroutineDefinition } from './subroutine-types';
 import type { GatekeeperModId } from './gatekeeper-mods';
@@ -443,6 +443,26 @@ export type CombatBeat = (
       /** Both sides' meters once the points are on the gauge, before any
        * turn they buy. */
       gauges: [GaugeReading, GaugeReading];
+      /** At the show, the cards that make the score. */
+      cards?: Card[];
+    }
+  | {
+      /** A hand laid out at the show (checkpoint 3b): the non-dealer's,
+       * then the dealer's, then the crib (the dealer's). Its points beats
+       * follow; `total` is what they add up to. */
+      kind: 'show';
+      owner: 'hand' | 'crib';
+      player: PlayerIndex;
+      cards: Card[];
+      starter: Card;
+      total: number;
+    }
+  | {
+      /** A Burner spent before a turn. */
+      kind: 'burner';
+      side: PlayerIndex;
+      burnerId: BurnerId;
+      gauges: [GaugeReading, GaugeReading];
     }
 ) & { firesBefore: number };
 
@@ -567,7 +587,12 @@ export function* combatGenerator(
   };
   let phase: 'cut' | 'peg' | 'show' = 'cut';
 
-  function* resolveOccurrence(occurrence: ScoringOccurrence, handDealer: PlayerIndex, handIndex: number): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
+  function* resolveOccurrence(
+    occurrence: ScoringOccurrence,
+    handDealer: PlayerIndex,
+    handIndex: number,
+    cards?: Card[],
+  ): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
     // Charges first, so a beta charged by this very occurrence applies
     // on the turn it buys.
     let winner = step(immediates(applyOccurrence(combatState, occurrence), handDealer, log));
@@ -575,7 +600,7 @@ export function* combatGenerator(
 
     const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrence.magnitude);
     combatState = replaceSideGauge(combatState, occurrence.player, gauge);
-    beat({ kind: 'points', phase, occurrence, gauges: readGauges(combatState) });
+    beat({ kind: 'points', phase, occurrence, gauges: readGauges(combatState), ...(cards ? { cards } : {}) });
 
     if (turnsTriggered > 0) {
       consecutiveTurns = occurrence.player === lastTurnSide ? consecutiveTurns + turnsTriggered : turnsTriggered;
@@ -611,6 +636,7 @@ export function* combatGenerator(
         if (chosenBurnerId && burnerDef?.combatEffect) {
           burnersUsedThisCombat.push(chosenBurnerId);
           const afterBurner = resolveEffect(burnerDef.combatEffect, combatState, occurrence.player);
+          beat({ kind: 'burner', side: occurrence.player, burnerId: chosenBurnerId, gauges: readGauges(afterBurner) });
           winner = step({ combatState: afterBurner, winner: resolution(afterBurner) });
           if (winner !== null) return winner;
         }
@@ -792,23 +818,30 @@ export function* combatGenerator(
 
     // The show, item by item: non-dealer hand, dealer hand, crib.
     phase = 'show';
-    hand.nonDealerHandEvents = countHandEvents(kept[nonDealer], starter);
+    const nonDealerEvents = countHandEvents(kept[nonDealer], starter);
+    const dealerEvents = countHandEvents(kept[dealer], starter);
+    const cribEvents = countCribEvents(crib, starter);
+    hand.nonDealerHandEvents = nonDealerEvents;
     hand.nonDealerHandScore = hand.nonDealerHandEvents.reduce((sum, e) => sum + e.points, 0);
     scores[nonDealer] += hand.nonDealerHandScore;
-    hand.dealerHandEvents = countHandEvents(kept[dealer], starter);
+    hand.dealerHandEvents = dealerEvents;
     hand.dealerHandScore = hand.dealerHandEvents.reduce((sum, e) => sum + e.points, 0);
     scores[dealer] += hand.dealerHandScore;
-    hand.cribEvents = countCribEvents(crib, starter);
+    hand.cribEvents = cribEvents;
     hand.cribScore = hand.cribEvents.reduce((sum, e) => sum + e.points, 0);
     scores[dealer] += hand.cribScore;
-    const show = [
-      ...occurrencesFromHandEvents(hand.nonDealerHandEvents, nonDealer),
-      ...occurrencesFromHandEvents(hand.dealerHandEvents, dealer),
-      ...occurrencesFromHandEvents(hand.cribEvents, dealer),
+    const show: [owner: 'hand' | 'crib', player: PlayerIndex, cards: Card[], events: ShowScoreEvent[], total: number][] = [
+      ['hand', nonDealer, kept[nonDealer], nonDealerEvents, hand.nonDealerHandScore],
+      ['hand', dealer, kept[dealer], dealerEvents, hand.dealerHandScore],
+      ['crib', dealer, crib, cribEvents, hand.cribScore],
     ];
-    for (const occurrence of show) {
-      winner = yield* resolveOccurrence(occurrence, dealer, i);
-      if (winner !== null) return finish(winner);
+    for (const [owner, player, cards, events, total] of show) {
+      beat({ kind: 'show', owner, player, cards, starter, total });
+      const occurrences = occurrencesFromHandEvents(events, player);
+      for (let k = 0; k < occurrences.length; k++) {
+        winner = yield* resolveOccurrence(occurrences[k], dealer, i, events[k].cards);
+        if (winner !== null) return finish(winner);
+      }
     }
 
     dealer = (1 - dealer) as PlayerIndex;

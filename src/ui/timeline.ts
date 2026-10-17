@@ -4,7 +4,8 @@ import type { PlayerIndex } from '../engine/game';
 import type { FireEvent, GaugeReading } from '../engine/resolve';
 import type { ScoringOccurrence } from '../engine/triggers';
 import { rankLabel, suitInfo } from './suits';
-import { describeFire } from './describe';
+import { describeEffect, describeFire } from './describe';
+import { BURNER_DEFINITIONS } from '../engine/burners';
 
 /**
  * One thing the screen animates, in fight order: a table beat (a hand
@@ -47,7 +48,7 @@ export function mergeSteps(timeline: readonly CombatBeat[], log: readonly FireEv
 export function stepGauges(step: Step): [GaugeReading, GaugeReading] | null {
   if (step.type === 'clear') return null;
   if (step.type === 'fire') return step.fire.gauges;
-  return step.beat.kind === 'points' ? step.beat.gauges : null;
+  return step.beat.kind === 'points' || step.beat.kind === 'burner' ? step.beat.gauges : null;
 }
 
 /** Who a step belongs to, for pacing and colour. */
@@ -57,6 +58,8 @@ export function stepSide(step: Step): PlayerIndex | null {
   const b = step.beat;
   if (b.kind === 'peg') return b.event.player;
   if (b.kind === 'points') return b.occurrence.player;
+  if (b.kind === 'show') return b.player;
+  if (b.kind === 'burner') return b.side;
   return null;
 }
 
@@ -69,13 +72,17 @@ export function stepDelay(step: Step): number {
   const b = step.beat;
   switch (b.kind) {
     case 'hand':
-      return 700;
+      return 1100;
     case 'cut':
       return 550;
     case 'peg':
       return b.event.type === 'play' ? (b.event.player === 0 ? 300 : 500) : 350;
     case 'points':
-      return 600;
+      return b.phase === 'show' ? 700 : 600;
+    case 'show':
+      return b.total === 0 ? 1000 : 750;
+    case 'burner':
+      return 800;
   }
 }
 
@@ -96,8 +103,24 @@ export interface TableState {
   pile: PileCard[];
   /** The cards sweeping off, while the latest step is a `clear`. */
   leaving: PileCard[];
+  /** The hand being counted at the show, once its show beat is up. */
+  show?: ShowState;
   count: number;
   cardsLeft: [number, number];
+}
+
+export interface ShowState {
+  owner: 'hand' | 'crib';
+  player: PlayerIndex;
+  cards: Card[];
+  starter: Card;
+  /** Points counted so far, and the full count. */
+  scored: number;
+  total: number;
+  /** Each score so far, as announced: "fifteen 2", "pair 4". */
+  announced: string[];
+  /** The cards of the score on screen right now. */
+  lit: Card[] | null;
 }
 
 export function tableAt(steps: readonly Step[], upto: number): TableState {
@@ -123,12 +146,23 @@ export function tableAt(steps: readonly Step[], upto: number): TableState {
     if (s.type !== 'beat') continue;
     const b = s.beat;
     if (b.kind === 'hand') {
+      table.show = undefined;
       table.handIndex = b.handIndex;
       table.dealer = b.dealer;
       table.cardsLeft = [6, 6];
     } else if (b.kind === 'cut') {
       table.starter = b.starter;
       table.cardsLeft = [4, 4];
+    } else if (b.kind === 'show') {
+      table.show = { owner: b.owner, player: b.player, cards: b.cards, starter: b.starter, scored: 0, total: b.total, announced: [], lit: null };
+    } else if (b.kind === 'points' && b.phase === 'show' && table.show) {
+      const scored = table.show.scored + b.occurrence.magnitude;
+      table.show = {
+        ...table.show,
+        scored,
+        announced: [...table.show.announced, `${showWord(b.occurrence)} ${scored}`],
+        lit: i === end - 1 ? (b.cards ?? null) : null,
+      };
     } else if (b.kind === 'peg' && b.event.type === 'play') {
       const e = b.event;
       table.pile = [...table.pile, { card: e.card, player: e.player, key: i }];
@@ -154,7 +188,7 @@ export function scoreLabel(o: ScoringOccurrence, phase: 'cut' | 'peg' | 'show' =
     case 'pair':
       return `${m >= 12 ? 'double pair royal' : m >= 6 ? 'pair royal' : 'pair'} for ${m}`;
     case 'run':
-      return phase === 'show' ? `runs for ${m}` : `run of ${m} for ${m}`;
+      return phase === 'show' ? `${showRunName(m)} for ${m}` : `run of ${m} for ${m}`;
     case 'flush':
       return `flush for ${m}`;
     case 'hisNobs':
@@ -166,6 +200,44 @@ export function scoreLabel(o: ScoringOccurrence, phase: 'cut' | 'peg' | 'show' =
     case 'go':
       return `go for ${m}`;
   }
+}
+
+/** How a score is announced at the show, before the running total:
+ * "fifteen 2, fifteen 4, pair 6, run of three 9". */
+function showWord(o: ScoringOccurrence): string {
+  switch (o.category) {
+    case 'fifteen':
+      return 'fifteen';
+    case 'pair':
+      return o.magnitude >= 12 ? 'double pair royal' : o.magnitude >= 6 ? 'pair royal' : 'pair';
+    case 'run':
+      return showRunName(o.magnitude);
+    case 'flush':
+      return 'flush';
+    case 'hisNobs':
+      return 'nobs';
+    default:
+      return o.category;
+  }
+}
+
+/** A show run named by its points: in five cards, 3-5 is a single run
+ * of that length; more means duplicated ranks (6 a double run of 3, 8 a
+ * double run of 4, 9 a triple run, 12 a double double run). */
+function showRunName(points: number): string {
+  if (points <= 5) return `run of ${points}`;
+  return { 6: 'double run', 8: 'double run of 4', 9: 'triple run', 12: 'double double run' }[points] ?? 'runs';
+}
+
+/** "your hand", "their crib". */
+export function showTitle(owner: 'hand' | 'crib', player: PlayerIndex): string {
+  return `${player === 0 ? 'your' : 'their'} ${owner}`;
+}
+
+/** A Burner's name and what it does. */
+export function burnerLabel(id: keyof typeof BURNER_DEFINITIONS): string {
+  const def = BURNER_DEFINITIONS[id];
+  return def.combatEffect ? `${def.name}: ${describeEffect(def.combatEffect)}` : def.name;
 }
 
 /** A beat's log line (fires are described by describeFire). */
@@ -184,6 +256,10 @@ export function describeBeat(beat: CombatBeat): string {
     }
     case 'points':
       return `${beat.phase === 'show' ? 'show: ' : ''}${scoreLabel(beat.occurrence, beat.phase)}`;
+    case 'show':
+      return `// show: ${showTitle(beat.owner, beat.player)} · ${beat.cards.map(cardLabel).join(', ')} + ${cardLabel(beat.starter)} · ${beat.total === 0 ? 'no score' : `${beat.total} points`}`;
+    case 'burner':
+      return `${beat.side === 0 ? 'you burn' : 'they burn'} ${burnerLabel(beat.burnerId)}`;
   }
 }
 
@@ -204,5 +280,7 @@ export function stepLine(step: Step, names: ReadonlyMap<string, string>): StepLi
     return { text: describeFire(f, names.get(f.subroutineId) ?? f.subroutineId), side: f.side, fire: f, kind: 'fire' };
   }
   const b = step.beat;
-  return { text: describeBeat(b), side: stepSide(step), fire: null, kind: b.kind === 'points' ? 'points' : 'table' };
+  // Section lines (a hand, the cut, a show) have no owner prefix.
+  const side = b.kind === 'show' ? null : stepSide(step);
+  return { text: describeBeat(b), side, fire: null, kind: b.kind === 'points' ? 'points' : 'table' };
 }

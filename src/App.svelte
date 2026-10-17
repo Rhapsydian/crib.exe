@@ -30,19 +30,19 @@
   });
 
   let fight = $state.raw<LiveFight | null>(null);
-  let last = $state<{ classId: ClassId; enemyId: string } | null>(null);
+  let last = $state<{ classId: ClassId; enemyId: string; burners: boolean } | null>(null);
   const newSeed = () => Math.floor(Math.random() * 1_000_000);
-  function start(classId: ClassId, enemy: EnemyDefinition) {
-    last = { classId, enemyId: enemy.id };
-    fight = new LiveFight({ classId, enemy, seed: newSeed() });
+  function start(classId: ClassId, enemy: EnemyDefinition, burners: boolean) {
+    last = { classId, enemyId: enemy.id, burners };
+    fight = new LiveFight({ classId, enemy, seed: newSeed(), carriedBurnerIds: burners ? ['flash-drive', 'emp-charge'] : [] });
   }
 </script>
 
 {#if route === 'live'}
   {#if fight}
-    <LiveFightView {fight} onagain={() => fight && start(fight.setup.classId, fight.setup.enemy)} onsetup={() => (fight = null)} />
+    <LiveFightView {fight} onagain={() => fight && start(fight.setup.classId, fight.setup.enemy, (fight.setup.carriedBurnerIds?.length ?? 0) > 0)} onsetup={() => (fight = null)} />
   {:else}
-    <SetupScreen onstart={start} classId={last?.classId} enemyId={last?.enemyId} />
+    <SetupScreen onstart={start} classId={last?.classId} enemyId={last?.enemyId} burners={last?.burners} />
   {/if}
 {:else if snapshot}
   <div class="switcher">
