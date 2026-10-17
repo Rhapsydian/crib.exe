@@ -201,13 +201,32 @@ export function scatter(n: number, seed: number): GenMap {
     // Centred on the backdrop's hexes before linking, so the links come
     // from where the nodes are drawn and still never cross.
     snapToBackdrop(ids, pos);
-    const edges = linkUp(ids, 'n0', 'n1', climbCandidates(ids, pos), pos, rng, 2.4);
+    const candidates = climbCandidates(ids, pos);
+    const edges = linkUp(ids, 'n0', 'n1', candidates, pos, rng, 2.4);
     if (!edges) continue;
+    const nodes = nodesFor(ids, 'n0', 'n1', rng);
+    // An empty relay must never be a dead end (the user's rule): a
+    // passage to nowhere is a place no one would ever walk. Give each one
+    // its shortest unused link; if it has none, try another layer.
+    let stranded = false;
+    for (const relay of nodes.filter((x) => x.type === 'relay' && x.id !== 'n0')) {
+      const degree = () => edges.filter((e) => e.a === relay.id || e.b === relay.id).length;
+      if (degree() >= 2) continue;
+      const spare = candidates
+        .filter((c) => (c.a === relay.id || c.b === relay.id) && !edges.some((e) => (e.a === c.a && e.b === c.b) || (e.a === c.b && e.b === c.a)))
+        .sort((x, y) => drawnDist(pos[x.a], pos[x.b]) - drawnDist(pos[y.a], pos[y.b]))[0];
+      if (!spare) {
+        stranded = true;
+        break;
+      }
+      edges.push(spare);
+    }
+    if (stranded) continue;
     // Nothing may sit behind the gatekeeper: breaching it moves you to the
     // next layer, so a node reachable only through it could never be used.
     const withoutGk: LayerGraph = { nodes: [], edges: edges.filter((e) => e.a !== 'n1' && e.b !== 'n1'), entryNodeId: 'n0', gatekeeperNodeId: 'n1' };
     if (ids.some((id) => id !== 'n1' && !isReachable(withoutGk, 'n0', id))) continue;
-    return { graph: { nodes: nodesFor(ids, 'n0', 'n1', rng), edges, entryNodeId: 'n0', gatekeeperNodeId: 'n1' }, pos, resilient: true };
+    return { graph: { nodes, edges, entryNodeId: 'n0', gatekeeperNodeId: 'n1' }, pos, resilient: true };
   }
   throw new Error(`scatter: no resilient layer for n=${n}, seed=${seed}`);
 }
