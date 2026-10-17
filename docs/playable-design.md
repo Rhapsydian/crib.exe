@@ -538,7 +538,13 @@ phone pass.
   moves of the gatekeeper; two of the same special node never adjacent.
 - **M8 — a Cache node** (the user's idea): a chance per layer of a
   remote dead end holding a free reward, its risk the extra Heat of the
-  detour and walking back. Details open, below.
+  detour and walking back.
+  - **Contents** (the user's call): randomly one of an elite-tier
+    subroutine pick (one of three, as an elite win offers), a bundle of
+    Data plus 1-2 Burners, or -- rarely, later layers only -- a Mod.
+    Starting odds (Claude's, to tune): layers 1-2 60 / 40 / 0, layers 3-4
+    55 / 40 / 5.
+  - Frequency and placement: open.
 
 ## Settled in passing (Claude's calls, noted for the record)
 
