@@ -1,15 +1,16 @@
 <script lang="ts">
-  import type { NodeType } from '../../../engine/map-types';
-  import { backdropCells, hops, isResilient, scatter, VIEW, type Positions } from './gen';
+  import { backdropCells, hops, isResilient, layerMap, LAYER_SIZE, VIEW, type LayerNumber, type MapKind, type Positions } from './gen';
 
   // Milestone 3 map mockup: the scatter generator (the user's pick), on a
   // faint hex grid; each node is centred on its nearest hex.
   // Only the current layer shows (the user's call: earlier layers can't
   // be revisited). Tap a linked node to walk there.
   let seed = $state(1);
-  let size = $state(12);
+  let layer = $state<LayerNumber>(2);
+  // For review: show a Cache whenever there's room (really 35-50%).
+  let forceCache = $state(false);
 
-  const made = $derived(scatter(size, seed));
+  const made = $derived(layerMap(layer, seed, forceCache));
   const graph = $derived(made.graph);
   const pos = $derived<Positions>(made.pos);
   const stats = $derived({
@@ -17,6 +18,11 @@
     links: graph.edges.length,
     perNode: ((graph.edges.length * 2) / graph.nodes.length).toFixed(1),
     resilient: made.resilient && isResilient(graph),
+  });
+  const counts = $derived.by(() => {
+    const c: Partial<Record<MapKind, number>> = {};
+    for (const n of graph.nodes) if (n.id !== graph.entryNodeId && n.id !== graph.gatekeeperNodeId) c[made.kind[n.id]] = (c[made.kind[n.id]] ?? 0) + 1;
+    return c;
   });
 
   let here = $state('n0');
@@ -40,7 +46,7 @@
   }).join(' ');
   const backdrop = backdropCells();
 
-  const KIND: Record<NodeType, { glyph: string; label: string; tone: string }> = {
+  const KIND: Record<MapKind, { glyph: string; label: string; tone: string }> = {
     regularFight: { glyph: '⚔︎', label: 'fight', tone: 'var(--danger)' },
     eliteFight: { glyph: '☠︎', label: 'elite', tone: 'var(--warn)' },
     gatekeeperFight: { glyph: '⛨︎', label: 'gatekeeper', tone: 'var(--danger)' },
@@ -48,6 +54,7 @@
     shop: { glyph: '$', label: 'shop', tone: 'var(--accent)' },
     event: { glyph: '?', label: 'event', tone: 'var(--mod)' },
     relay: { glyph: '', label: 'relay', tone: 'var(--text-dim)' },
+    cache: { glyph: '◈', label: 'cache', tone: 'var(--suit-honeypot)' },
   };
 
   function step(id: string) {
@@ -64,14 +71,22 @@
     <span>map {seed}</span>
     <button onclick={() => seed++}>›</button>
     <span class="sep"></span>
-    {#each [10, 12, 14] as n (n)}
-      <button class:on={size === n} onclick={() => (size = n)}>{n} nodes</button>
+    {#each [1, 2, 3, 4] as const as l (l)}
+      <button class:on={layer === l} onclick={() => (layer = l)}>L{l}</button>
     {/each}
   </div>
   <div class="bar small">
-    <span class="stat">entry→gatekeeper <b>{stats.hops}</b> · links <b>{stats.links}</b> · {stats.perNode}/node · <b class:bad={!stats.resilient}>{stats.resilient ? 'resilient' : 'NOT resilient'}</b></span>
+    <span class="stat">{LAYER_SIZE[layer]} nodes · entry→gatekeeper <b>{stats.hops}</b> · links <b>{stats.links}</b> · {stats.perNode}/node · <b class:bad={!stats.resilient}>{stats.resilient ? 'resilient' : 'NOT resilient'}</b></span>
     <span class="sep"></span>
     <span class="stat">moves <b>{moves}</b></span>
+  </div>
+  <div class="bar small">
+    <span class="stat">
+      {#each Object.entries(counts) as [k, v] (k)}<span class="count" style="color: {KIND[k as MapKind].tone}">{KIND[k as MapKind].glyph || '·'}{v}</span>{/each}
+      {made.cache ? '· cache!' : ''}
+    </span>
+    <span class="sep"></span>
+    <label class="force"><input type="checkbox" bind:checked={forceCache} /> force a cache</label>
   </div>
 
   <svg viewBox="0 0 {W} {H}" class="map">
@@ -86,9 +101,9 @@
     {/each}
     {#each graph.nodes as n (n.id)}
       {@const p = pos[n.id]}
-      {@const k = KIND[n.type]}
+      {@const k = KIND[made.kind[n.id]]}
       {@const big = n.type === 'gatekeeperFight'}
-      {@const r = n.type === 'relay' ? 2 : big ? 6 : 4.4}
+      {@const r = made.kind[n.id] === 'relay' ? 2 : big ? 6 : 4.4}
       <g class="node" class:can={linked.has(n.id)} class:done={visited.includes(n.id) && n.id !== here} transform="translate({X(p.x)},{Y(p.y)})" onclick={() => step(n.id)} role="button" tabindex="-1" onkeydown={() => {}}>
         <circle {r} style="--tone: {k.tone}" />
         {#if k.glyph}<text y="1.5" style="fill: {k.tone}" font-size={big ? 6 : 4.6}>{k.glyph}</text>{/if}
@@ -201,6 +216,17 @@
     stroke: var(--accent) !important;
     stroke-width: 0.6 !important;
     stroke-dasharray: 1.5 1;
+  }
+  .count {
+    margin-right: 8px;
+    font-weight: 700;
+  }
+  .force {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 4px;
+    align-items: center;
   }
   .legend {
     display: flex;

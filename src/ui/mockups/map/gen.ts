@@ -1,5 +1,6 @@
-import { createNode, isReachable, type LayerGraph, type MapEdge, type MapNode, type NodeType } from '../../../engine/map-types';
+import { createNode, isReachable, type LayerGraph, type MapEdge, type NodeType } from '../../../engine/map-types';
 import { createRng, type Rng } from '../../../engine/rng';
+
 /** A position per node id, in a 0..1 square (x right, y down). */
 export type Positions = Record<string, { x: number; y: number }>;
 
@@ -8,42 +9,59 @@ export type Positions = Record<string, { x: number; y: number }>;
  * pick over subnets, a hybrid and hex-grid variants, after the current
  * generator measured as a hairball: ~3 links a node, hubs of up to 9,
  * the gatekeeper 1-2 moves from the entry). Nodes are placed first with
- * even spacing, then linked only to near neighbours, never crossing, so
- * the map draws itself. It keeps the engine's rules: n nodes, a relay at
- * the entry, the type mix with at least one Safehouse, and resilience
- * (no single lost node can cut the entry off from the gatekeeper).
+ * even spacing, centred on the backdrop's hexes, then linked only to near
+ * neighbours, never crossing, so the map draws itself. Then node types
+ * are dealt from the layer's set mix (M7) under placement rules, and
+ * sometimes a Cache is hung off the far side (M8). It keeps the engine's
+ * resilience rule: no single lost node can cut the entry off from the
+ * gatekeeper.
  *
  * Mockup code: once refined it moves into the engine's map-gen.ts.
  */
+
+/** Node kinds on the map: the engine's types plus the Cache (M8), which
+ * the engine doesn't have yet. */
+export type MapKind = NodeType | 'cache';
+
 export interface GenMap {
   graph: LayerGraph;
   pos: Positions;
+  kind: Record<string, MapKind>;
+  /** The Cache's id, when this layer has one. */
+  cache?: string;
   /** False when the generator gave up on resilience (shown, not hidden). */
   resilient: boolean;
 }
 
 type Pt = { x: number; y: number };
 type Filler = Exclude<NodeType, 'gatekeeperFight'>;
-const WEIGHTS: Record<Filler, number> = { regularFight: 0.4, eliteFight: 0.15, safehouse: 0.15, shop: 0.1, event: 0.1, relay: 0.1 };
+export type LayerNumber = 1 | 2 | 3 | 4;
 
-function pickType(rng: Rng): Filler {
+/** Layer sizes (M5) and each layer's dealt mix (M7): a set core plus
+ * flex slots drawn from FLEX. */
+export const LAYER_SIZE: Record<LayerNumber, number> = { 1: 10, 2: 12, 3: 12, 4: 14 };
+const CORE: Record<LayerNumber, { mix: Partial<Record<Filler, number>>; flex: number }> = {
+  1: { mix: { regularFight: 3, eliteFight: 1, safehouse: 1, shop: 1, event: 1 }, flex: 1 },
+  2: { mix: { regularFight: 4, eliteFight: 1, safehouse: 1, shop: 1, event: 1 }, flex: 2 },
+  3: { mix: { regularFight: 3, eliteFight: 2, safehouse: 1, shop: 1, event: 1 }, flex: 2 },
+  4: { mix: { regularFight: 4, eliteFight: 2, safehouse: 2, shop: 1, event: 1 }, flex: 2 },
+};
+const FLEX: [Filler, number][] = [
+  ['relay', 0.35],
+  ['regularFight', 0.3],
+  ['event', 0.2],
+  ['eliteFight', 0.15],
+];
+/** Chance a layer has a Cache (M8). */
+const CACHE_CHANCE: Record<LayerNumber, number> = { 1: 0.35, 2: 0.5, 3: 0.5, 4: 0.5 };
+
+function pickFlex(rng: Rng): Filler {
   let roll = rng.next();
-  for (const [t, w] of Object.entries(WEIGHTS) as [Filler, number][]) {
+  for (const [t, w] of FLEX) {
     if (roll < w) return t;
     roll -= w;
   }
   return 'regularFight';
-}
-
-/** Node types: entry relay, gatekeeper, the rest by weight, with at
- * least one Safehouse (as map-gen.ts's D7). */
-function nodesFor(ids: string[], entry: string, gk: string, rng: Rng): MapNode[] {
-  const nodes = ids.map((id) => createNode(id, id === entry ? 'relay' : id === gk ? 'gatekeeperFight' : pickType(rng)));
-  if (!nodes.some((n) => n.type === 'safehouse')) {
-    const i = nodes.findIndex((n) => n.id !== entry && n.id !== gk);
-    if (i !== -1) nodes[i] = createNode(nodes[i].id, 'safehouse');
-  }
-  return nodes;
 }
 
 /** The engine's resilience rule: removing any single node other than the
@@ -58,12 +76,13 @@ export function isResilient(graph: LayerGraph): boolean {
   return true;
 }
 
-export function hops(graph: LayerGraph): number {
-  const d: Record<string, number> = { [graph.entryNodeId]: 0 };
-  const q = [graph.entryNodeId];
+/** Breadth-first distances from any of `from`. */
+function bfs(edges: MapEdge[], from: string[]): Record<string, number> {
+  const d: Record<string, number> = Object.fromEntries(from.map((id) => [id, 0]));
+  const q = [...from];
   while (q.length) {
     const id = q.shift()!;
-    for (const e of graph.edges) {
+    for (const e of edges) {
       const x = e.a === id ? e.b : e.b === id ? e.a : null;
       if (x !== null && d[x] === undefined) {
         d[x] = d[id] + 1;
@@ -71,7 +90,11 @@ export function hops(graph: LayerGraph): number {
       }
     }
   }
-  return d[graph.gatekeeperNodeId] ?? Infinity;
+  return d;
+}
+
+export function hops(graph: LayerGraph): number {
+  return bfs(graph.edges, [graph.entryNodeId])[graph.gatekeeperNodeId] ?? Infinity;
 }
 
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -136,12 +159,12 @@ export function backdropCells(): Pt[] {
   return cells;
 }
 
+const toUnit = (p: Pt) => ({ x: (p.x - VIEW.P) / (VIEW.W - 2 * VIEW.P), y: (p.y - VIEW.P) / (VIEW.H - 2 * VIEW.P) });
+const toView = (p: Pt) => ({ x: VIEW.P + p.x * (VIEW.W - 2 * VIEW.P), y: VIEW.P + p.y * (VIEW.H - 2 * VIEW.P) });
+
 /** Nudges every node to the centre of its nearest free backdrop hex
  * inside the padded area (entry and gatekeeper first). */
 function snapToBackdrop(ids: string[], pos: Positions) {
-  const { W, H, P } = VIEW;
-  const toView = (p: Pt) => ({ x: P + p.x * (W - 2 * P), y: P + p.y * (H - 2 * P) });
-  const toUnit = (p: Pt) => ({ x: (p.x - P) / (W - 2 * P), y: (p.y - P) / (H - 2 * P) });
   const free = backdropCells().filter((c) => {
     const u = toUnit(c);
     return u.x >= -0.01 && u.x <= 1.01 && u.y >= -0.01 && u.y <= 1.01;
@@ -154,7 +177,7 @@ function snapToBackdrop(ids: string[], pos: Positions) {
   }
 }
 
-// ------------------------------------------------------------ scatter
+// ------------------------------------------------------------ links
 
 /** Lengths as drawn (the unit square is stretched to a portrait area). */
 const drawnDist = (a: Pt, b: Pt) => Math.hypot((a.x - b.x) * (VIEW.W - 2 * VIEW.P), (a.y - b.y) * (VIEW.H - 2 * VIEW.P));
@@ -165,13 +188,18 @@ const drawnDist = (a: Pt, b: Pt) => Math.hypot((a.x - b.x) * (VIEW.W - 2 * VIEW.
  * further than the ~3-4 moves free scatter gave). */
 const MAX_LINK_FACTOR = 1.35;
 
+/** The median distance from a node to its nearest neighbour, as drawn. */
+function typicalGap(ids: string[], pos: Positions): number {
+  const nearest = ids.map((id) => Math.min(...ids.filter((o) => o !== id).map((o) => drawnDist(pos[id], pos[o])))).sort((a, b) => a - b);
+  return nearest[Math.floor(nearest.length / 2)];
+}
+
 /** Non-crossing near-neighbour links, minus the long ones. The entry
  * keeps its three nearest (it sits apart, at the bottom) and the
  * gatekeeper its two nearest (two is what resilience needs; more would
  * be shortcuts into it); the two are never linked to each other. */
 function climbCandidates(ids: string[], pos: Positions): MapEdge[] {
-  const nearest = ids.map((id) => Math.min(...ids.filter((o) => o !== id).map((o) => drawnDist(pos[id], pos[o])))).sort((a, b) => a - b);
-  const typical = nearest[Math.floor(nearest.length / 2)];
+  const typical = typicalGap(ids, pos);
   const len = (e: MapEdge) => drawnDist(pos[e.a], pos[e.b]);
   const touches = (e: MapEdge, id: string) => e.a === id || e.b === id;
   const planar = planarCandidates(ids, pos).filter((e) => !(touches(e, 'n0') && touches(e, 'n1')));
@@ -180,11 +208,90 @@ function climbCandidates(ids: string[], pos: Positions): MapEdge[] {
   return [...middle, ...shortest('n0', 3), ...shortest('n1', 2)];
 }
 
-/** Even scatter in a portrait band (entry bottom-centre, gatekeeper
- * top-centre), near-neighbour links that never cross. */
-export function scatter(n: number, seed: number): GenMap {
+// ------------------------------------------------------------ types
+
+/**
+ * Deals the layer's mix onto its nodes (M7), retrying shuffles until the
+ * placement rules hold: no elite next to the entry; a Safehouse within two
+ * moves of the gatekeeper; two of the same special node (Safehouse, Shop,
+ * Event) never adjacent; and a relay only where it has two or more links,
+ * so it's never a dead end (M6). Null if no shuffle fits.
+ */
+function dealTypes(ids: string[], edges: MapEdge[], layer: LayerNumber, rng: Rng): Record<string, NodeType> | null {
+  const filler = ids.filter((id) => id !== 'n0' && id !== 'n1');
+  const { mix, flex } = CORE[layer];
+  const deck: Filler[] = (Object.entries(mix) as [Filler, number][]).flatMap(([t, k]) => Array<Filler>(k).fill(t));
+  for (let i = 0; i < flex; i++) deck.push(pickFlex(rng));
+  const neighbours = (id: string) => edges.flatMap((e) => (e.a === id ? [e.b] : e.b === id ? [e.a] : []));
+  const fromGk = bfs(edges, ['n1']);
+  const special = new Set<NodeType>(['safehouse', 'shop', 'event']);
   for (let attempt = 0; attempt < 400; attempt++) {
-    const rng = createRng(seed * 1009 + attempt);
+    const cards = [...deck];
+    for (let i = cards.length - 1; i > 0; i--) {
+      const j = rng.nextInt(i + 1);
+      [cards[i], cards[j]] = [cards[j], cards[i]];
+    }
+    const type: Record<string, NodeType> = { n0: 'relay', n1: 'gatekeeperFight' };
+    filler.forEach((id, i) => (type[id] = cards[i]));
+    const ok =
+      filler.every((id) => type[id] !== 'relay' || neighbours(id).length >= 2) &&
+      neighbours('n0').every((id) => type[id] !== 'eliteFight') &&
+      filler.some((id) => type[id] === 'safehouse' && fromGk[id] <= 2) &&
+      edges.every((e) => !(type[e.a] === type[e.b] && special.has(type[e.a])));
+    if (ok) return type;
+  }
+  return null;
+}
+
+/**
+ * Hangs a Cache (M8) as a dead end off the node farthest from the
+ * shortest entry-to-gatekeeper route (or the next farthest, if there's
+ * no room), on a free hex near it whose link crosses nothing. Null if no
+ * off-route node has room (the layer just has none).
+ */
+function placeCache(ids: string[], edges: MapEdge[], pos: Positions): { id: string; at: Pt; anchor: string } | null {
+  const toEntry = bfs(edges, ['n0']);
+  // The route: walk back from the gatekeeper along decreasing distance.
+  const route = ['n1'];
+  while (route[route.length - 1] !== 'n0') {
+    const at = route[route.length - 1];
+    const back = edges.flatMap((e) => (e.a === at ? [e.b] : e.b === at ? [e.a] : [])).find((x) => toEntry[x] === toEntry[at] - 1);
+    if (!back) return null;
+    route.push(back);
+  }
+  const offRoute = bfs(edges, route);
+  const anchors = ids.filter((id) => id !== 'n0' && id !== 'n1' && offRoute[id] >= 1).sort((a, b) => offRoute[b] - offRoute[a]);
+  if (!anchors.length) return null;
+  const gap = typicalGap(ids, pos);
+  const cells = backdropCells()
+    .map(toUnit)
+    .filter((u) => u.x >= 0 && u.x <= 1 && u.y >= 0.05 && u.y <= 0.95);
+  // The farthest node first; if there's no room beside it, the next.
+  for (const anchor of anchors) {
+    const spots = cells
+      .filter((u) => {
+        const d = drawnDist(u, pos[anchor]);
+        return d >= gap * 0.75 && d <= gap * 1.5;
+      })
+      .filter((u) => !edges.some((e) => e.a !== anchor && e.b !== anchor && segmentsCross(u, pos[anchor], pos[e.a], pos[e.b])))
+      .map((u) => ({ u, room: Math.min(...ids.map((id) => drawnDist(u, pos[id]))) }))
+      .filter((x) => x.room >= gap * 0.65)
+      .sort((a, b) => b.room - a.room);
+    if (spots[0]) return { id: `n${ids.length}`, at: spots[0].u, anchor };
+  }
+  return null;
+}
+
+// ------------------------------------------------------------ a layer
+
+/** One layer: even scatter in a portrait band (entry bottom-centre,
+ * gatekeeper top-centre), near-neighbour links that never cross, the
+ * layer's mix dealt under the placement rules, and maybe a Cache.
+ * `forceCache` shows one whenever there's room (for review). */
+export function layerMap(layer: LayerNumber, seed: number, forceCache = false): GenMap {
+  const n = LAYER_SIZE[layer];
+  for (let attempt = 0; attempt < 400; attempt++) {
+    const rng = createRng(seed * 1009 + layer * 7 + attempt);
     const ids = Array.from({ length: n }, (_, i) => `n${i}`);
     const pos: Positions = { n0: { x: 0.5, y: 0.97 }, n1: { x: 0.5, y: 0.03 } };
     // Best-candidate sampling: each new node is the farthest of a few tries.
@@ -201,32 +308,32 @@ export function scatter(n: number, seed: number): GenMap {
     // Centred on the backdrop's hexes before linking, so the links come
     // from where the nodes are drawn and still never cross.
     snapToBackdrop(ids, pos);
-    const candidates = climbCandidates(ids, pos);
-    const edges = linkUp(ids, 'n0', 'n1', candidates, pos, rng, 2.4);
+    const edges = linkUp(ids, 'n0', 'n1', climbCandidates(ids, pos), pos, rng, 2.4);
     if (!edges) continue;
-    const nodes = nodesFor(ids, 'n0', 'n1', rng);
-    // An empty relay must never be a dead end (the user's rule): a
-    // passage to nowhere is a place no one would ever walk. Give each one
-    // its shortest unused link; if it has none, try another layer.
-    let stranded = false;
-    for (const relay of nodes.filter((x) => x.type === 'relay' && x.id !== 'n0')) {
-      const degree = () => edges.filter((e) => e.a === relay.id || e.b === relay.id).length;
-      if (degree() >= 2) continue;
-      const spare = candidates
-        .filter((c) => (c.a === relay.id || c.b === relay.id) && !edges.some((e) => (e.a === c.a && e.b === c.b) || (e.a === c.b && e.b === c.a)))
-        .sort((x, y) => drawnDist(pos[x.a], pos[x.b]) - drawnDist(pos[y.a], pos[y.b]))[0];
-      if (!spare) {
-        stranded = true;
-        break;
-      }
-      edges.push(spare);
-    }
-    if (stranded) continue;
     // Nothing may sit behind the gatekeeper: breaching it moves you to the
     // next layer, so a node reachable only through it could never be used.
     const withoutGk: LayerGraph = { nodes: [], edges: edges.filter((e) => e.a !== 'n1' && e.b !== 'n1'), entryNodeId: 'n0', gatekeeperNodeId: 'n1' };
     if (ids.some((id) => id !== 'n1' && !isReachable(withoutGk, 'n0', id))) continue;
-    return { graph: { nodes, edges, entryNodeId: 'n0', gatekeeperNodeId: 'n1' }, pos, resilient: true };
+    const type = dealTypes(ids, edges, layer, rng);
+    if (!type) continue;
+    const kind: Record<string, MapKind> = { ...type };
+    const graph: LayerGraph = { nodes: ids.map((id) => createNode(id, type[id])), edges, entryNodeId: 'n0', gatekeeperNodeId: 'n1' };
+    let cache: string | undefined;
+    const roll = rng.next();
+    if (forceCache || roll < CACHE_CHANCE[layer]) {
+      const spot = placeCache(ids, edges, pos);
+      if (spot) {
+        cache = spot.id;
+        pos[spot.id] = spot.at;
+        kind[spot.id] = 'cache';
+        // A dead end on purpose. The engine has no Cache type yet, so the
+        // mockup's graph carries it as an Event; it's on no route, so
+        // resilience is unaffected.
+        graph.nodes.push(createNode(spot.id, 'event'));
+        graph.edges = [...edges, { a: spot.anchor, b: spot.id }];
+      }
+    }
+    return { graph, pos, kind, cache, resilient: true };
   }
-  throw new Error(`scatter: no resilient layer for n=${n}, seed=${seed}`);
+  throw new Error(`layerMap: no layer ${layer} for seed ${seed}`);
 }

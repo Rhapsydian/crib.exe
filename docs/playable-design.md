@@ -544,7 +544,22 @@ phone pass.
     Data plus 1-2 Burners, or -- rarely, later layers only -- a Mod.
     Starting odds (Claude's, to tune): layers 1-2 60 / 40 / 0, layers 3-4
     55 / 40 / 5.
-  - Frequency and placement: open.
+  - **Frequency and placement** (the user's call, Claude's proposal): an
+    extra node on top of the layer's 10/12/12/14, at 35% on layer 1 and
+    50% on layers 2-4 (~2 a run); a dead end hung off the node farthest
+    from the shortest entry-to-gatekeeper route (so always a detour of 2+
+    moves out and back), never off the entry or gatekeeper; visible from
+    the start, with its own symbol.
+- **Built into the mockup** (`layerMap` in `gen.ts`; `#map` now picks a
+  layer, L1-L4, and can force a Cache for review). Types are dealt after
+  linking, so a relay simply goes only where it has 2+ links. Over 300
+  layers each, every rule holds on every map: resilient, nothing behind
+  the gatekeeper, no elite beside the entry, a Safehouse within two
+  moves of the gatekeeper, no matching specials adjacent, no dead-end
+  relay. Caches: 32 / 53 / 44 / 50% of layers (targets 35 / 50 / 50 /
+  50), always a true dead end, always 2+ moves off the shortest route
+  (2.6-3.2 on average, each way); when the farthest node has no room,
+  the next farthest takes it. Climbs: 3.8 / 4.4 / 4.3 / 5.0 moves.
 
 ## Settled in passing (Claude's calls, noted for the record)
 
