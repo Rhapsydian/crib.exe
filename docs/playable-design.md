@@ -491,6 +491,10 @@ phone pass.
   snapped positions) was added for comparison: same 3-4 moves, but
   denser (up to 8 links on a node, more short options once nodes line
   up).
+- **Scatter, free, confirmed for refinement** (the user's call); the
+  other generators, the snapped toggle and the old layout styles are
+  removed from the mockup. A faint hex grid sits behind the map as
+  decoration only (nodes don't snap to it).
 
 ## Settled in passing (Claude's calls, noted for the record)
 
