@@ -10,6 +10,9 @@
   //   tap it again (or Play) to play it. Cards that would pass 31 are
   //   dimmed.
   // Without the callbacks (the mockups) it only shows what it would send.
+  // Desktop keys (P5): 1-6 tap the card in that position, Enter sends the
+  // discard or plays the lifted card. `inactive` (a turn still playing
+  // out) ignores them.
   let {
     hand,
     legal,
@@ -19,6 +22,7 @@
     playerIsDealer = false,
     onplay,
     ondiscard,
+    inactive = false,
   }: {
     hand: Card[];
     legal: Card[];
@@ -28,7 +32,24 @@
     playerIsDealer?: boolean;
     onplay?: (card: Card) => void;
     ondiscard?: (cards: [Card, Card]) => void;
+    inactive?: boolean;
   } = $props();
+
+  function onkey(e: KeyboardEvent) {
+    // defaultPrevented: the fight screen already used this key (Enter
+    // skipping a turn shouldn't also play a card).
+    if (inactive || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!onplay && !ondiscard) return;
+    const n = Number(e.key);
+    if (Number.isInteger(n) && n >= 1 && n <= hand.length) {
+      e.preventDefault();
+      tap(hand[n - 1]);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (phase === 'discard') discard();
+      else play();
+    }
+  }
 
   let lifted = $state<Card[]>([]);
   let mockNote = $state<string | null>(null);
@@ -92,10 +113,15 @@
   </div>
   <div class="hand">
     {#each hand as card, i (i)}
-      <CardView {card} lifted={isLifted(card)} dimmed={!isLegal(card)} onclick={() => tap(card)} />
+      <div class="slot">
+        <CardView {card} lifted={isLifted(card)} dimmed={!isLegal(card)} onclick={() => tap(card)} />
+        <span class="key">{i + 1}</span>
+      </div>
     {/each}
   </div>
 </div>
+
+<svelte:window onkeydown={onkey} />
 
 <style>
   .hand-area {
@@ -125,10 +151,38 @@
     color: var(--accent);
     font-weight: 700;
   }
+  .slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  /* Number-key hints, only where there's a keyboard and a mouse. */
+  .key {
+    display: none;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .key {
+      display: block;
+    }
+  }
   .hand {
     display: flex;
     justify-content: center;
     gap: 6px;
     padding-top: 14px;
+  }
+  /* The narrowest phones (320px): six full cards need 342px, so the hand
+     shrinks a little to fit. */
+  @media (max-width: 359px) {
+    .hand {
+      gap: 3px;
+    }
+    .slot :global(.card) {
+      width: 46px;
+      height: 66px;
+    }
   }
 </style>

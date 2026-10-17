@@ -100,6 +100,32 @@
     return f.view.combatState.sides[side].loadout.findIndex((e) => e.definition.id === fire.subroutineId);
   };
 
+  // Desktop keys (P5): Space / Enter / Esc skip a turn that's playing
+  // out; Esc closes the detail panel or a drawer; at the Burner prompt,
+  // 1-n burn that Burner and Esc keeps them. The hand takes 1-6 / Enter.
+  function onkey(e: KeyboardEvent) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (replay?.playing && (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape')) {
+      e.preventDefault();
+      replay.skip();
+      return;
+    }
+    if (e.key === 'Escape' && (picked || pickedKit)) {
+      picked = null;
+      pickedKit = null;
+      return;
+    }
+    if (e.key === 'Escape' && sheet !== 'none') {
+      sheet = 'none';
+      return;
+    }
+    if (handReady && f.phase === 'burner' && onburner) {
+      const n = Number(e.key);
+      if (Number.isInteger(n) && n >= 1 && n <= f.burners.length) onburner(f.burners[n - 1]);
+      else if (e.key === 'Escape') onburner(null);
+    }
+  }
+
   function pickLog(side: 0 | 1, id: string) {
     // The log drawer stays open underneath, so closing the detail
     // returns the player to where they were in the log.
@@ -111,7 +137,7 @@
   <aside class="panel loadouts-panel" class:open={sheet === 'loadouts'}>
     <button class="close" onclick={() => (sheet = 'none')} aria-label="close loadouts">✕</button>
     <div class="caption">THEIR LOADOUT · fires top → bottom</div>
-    <Loadout entries={f.them.loadout} vertical firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
+    <Loadout entries={f.them.loadout} vertical enemy firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
     {#if theirMods.length}
       <div class="caption sub">THEIR MODS</div>
       <KitList items={theirMods} {flashing} onpick={(k) => (pickedKit = k)} />
@@ -131,12 +157,12 @@
   <main class="main">
     <div class="band enemy">
       <div class="who">
-        <span class="tag">TARGET</span> {f.enemyName}
+        <span class="tag">TARGET</span> <span class="enemy-name">{f.enemyName}</span>
         {#if replay}<button class="speed" onclick={() => replay.cycleSpeed()} title="turn speed">» {replay.speed}</button>{/if}
         <button class="loadouts-button" onclick={() => (sheet = 'loadouts')}>◀ loadouts</button>
       </div>
-      <Gauges side={f.them} reading={replay?.gauges?.[1]} isPlayer={false} compact mods={theirMods.length} flashMods={flashSide(1)} onkit={() => (sheet = 'loadouts')} />
-      <Loadout entries={f.them.loadout} dense firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
+      <Gauges side={f.them} reading={replay?.gauges?.[1]} isPlayer={false} compact mods={theirMods.length} modNames={theirMods.map((m) => m.name)} flashMods={flashSide(1)} onkit={() => (sheet = 'loadouts')} />
+      <Loadout entries={f.them.loadout} dense enemy firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
     </div>
 
     <div class="table-slot">
@@ -174,7 +200,9 @@
         isPlayer
         compact
         mods={yourMods.length}
+        modNames={yourMods.map((m) => m.name)}
         burners={burnersLeft}
+        burnerNames={yourBurners.filter((b) => !b.spent).map((b) => b.name)}
         flashMods={flashSide(0)}
         onkit={() => (sheet = 'loadouts')}
       />
@@ -184,13 +212,13 @@
         <div class="ask">Your turn is about to fire. Burn one?</div>
         <div class="choices">
           {#each f.burners as id (id)}
-            <button class="burn" onclick={() => onburner?.(id)}>{burnerLabel(id)}</button>
+            <button class="burn" onclick={() => onburner?.(id)}><span class="burn-key">{f.burners.indexOf(id) + 1}</span>{burnerLabel(id)}</button>
           {/each}
-          <button class="keep" onclick={() => onburner?.(null)}>not now</button>
+          <button class="keep" onclick={() => onburner?.(null)}>not now<span class="burn-key after">esc</span></button>
         </div>
       </div>
     {:else if handReady}
-      <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase === 'discard' ? 'discard' : 'play'} playerIsDealer={f.playerIsDealer} {onplay} {ondiscard} />
+      <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase === 'discard' ? 'discard' : 'play'} playerIsDealer={f.playerIsDealer} {onplay} {ondiscard} inactive={replay?.playing ?? false} />
     {:else}
       <div class="hand-wait">…</div>
     {/if}
@@ -201,6 +229,8 @@
     <Log view={f.view} {steps} onpick={pickLog} />
   </aside>
 </div>
+
+<svelte:window onkeydown={onkey} />
 
 {#if replay?.playing}
   <button class="skip" onclick={() => replay.skip()} aria-label="skip to the end of the turn"><span>tap to skip ▸▸</span></button>
@@ -246,6 +276,17 @@
     border-radius: 3px;
     border: 1px solid var(--danger);
     color: var(--danger);
+  }
+  .enemy-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .speed,
+  .loadouts-button {
+    white-space: nowrap;
+    flex: none;
   }
   .loadouts-button {
     margin-left: auto;
@@ -433,6 +474,21 @@
   .keep {
     border-color: var(--line);
     color: var(--text-dim);
+  }
+  /* Key hints at the Burner prompt, only with a keyboard and a mouse. */
+  .burn-key {
+    display: none;
+    margin-right: 6px;
+    opacity: 0.6;
+    font-size: 10px;
+  }
+  .burn-key.after {
+    margin: 0 0 0 6px;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .burn-key {
+      display: inline;
+    }
   }
   .hand-wait {
     min-height: 120px;

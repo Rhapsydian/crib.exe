@@ -393,6 +393,29 @@ row; a 7th lies over the 2nd and 3rd and an 8th over the 4th and 5th,
 canted 8° clockwise (a count never runs past 8 cards). Desktop keeps one
 row.
 
+**Checkpoint 4 — desktop input and the phone pass:**
+
+- **Keys (P5):** 1-6 tap the card in that position (a lifted card's
+  number again plays it), Enter sends the discard or plays the lifted
+  card; Space / Enter / Esc skip a turn that's playing out (a skipping
+  Enter never also plays a card); Esc closes the detail panel or a
+  drawer; at the Burner prompt 1-n burn and Esc keeps them. Key hints
+  show under the cards and on the Burner buttons only with a keyboard
+  and a mouse (`hover: hover` and `pointer: fine`).
+- **Hover tips (P6), desktop only** (`src/ui/tip.ts`, one shared tip):
+  a piece in brief (name, Process, Hook, in its owner's voice), each
+  Mod and Burner, the Breach / Containment and Initiative meters, Ward,
+  Trace, and the Mod / Burner chips. A click still opens the full panel.
+- **Numbers:** quarter values show exactly (Fuzzer's +0.75 Trace, no
+  longer "+0.8"); other fractions, scaled enemy values, to one decimal.
+- **Phone pass in the preview:** no sideways or vertical scrolling at
+  320×568, 360×740, 375×667 and 375×812. The 320-wide case needed two
+  fixes: the hand shrinks a little (six full cards need 342px), and the
+  header keeps its buttons on one line, the enemy's name shortening
+  with "…".
+- The real-phone playthrough is the user's (the preview can't stand in
+  for a thumb on glass).
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

@@ -220,8 +220,9 @@ GitHub-hosted site and itch.io.
    fight you can play, test-harness setup) and checkpoint 2 (turns
    stepped through piece by piece) and 3a (pegging animated: card plays,
    score callouts, table lines in the log) and 3b (the show panel, hand
-   banners, the Burner prompt) done; checkpoint 4 (desktop keys and
-   hover, a phone playthrough) next.
+   banners, the Burner prompt) done; Mods and Burners on screen with a
+   trigger flash; checkpoint 4 (desktop keys, hover tips, a phone pass
+   in the preview) done, pending the user's own phone playthrough.
 3. **A playable run** (run loop converted, map and node screens, class
    choice, end screens).
 4. **Polish and playtesting**, including a style / chrome guide.

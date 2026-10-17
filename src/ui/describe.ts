@@ -9,7 +9,14 @@ import type { FireEvent } from '../engine/resolve';
  * engine keeps alpha/beta.
  */
 
-const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, ''));
+// Quarters exactly (0.75, 1.25: the design's own steps, e.g. Fuzzer's
+// +3/4 Trace), anything else -- scaled enemy values -- to one decimal.
+const fmt = (n: number) => {
+  if (Number.isInteger(n)) return String(n);
+  const quarters = n * 4;
+  if (Math.abs(quarters - Math.round(quarters)) < 1e-9) return String(Math.round(quarters) / 4);
+  return n.toFixed(1).replace(/\.0$/, '');
+};
 const turnFraction = (n: number) => {
   const known: Record<string, string> = { '0.125': '⅛', '0.25': '¼', '0.375': '⅜', '0.5': '½', '0.75': '¾', '0.0625': '1/16' };
   return known[String(n)] ?? fmt(n);

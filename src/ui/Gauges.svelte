@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { CombatSideState, GaugeReading } from '../engine/resolve';
+  import { tip } from './tip';
 
   // One side's meters: the win gauge (Breach for you, Containment for
   // them), initiative toward the next turn, Ward, and -- yours only --
@@ -17,6 +18,8 @@
     burners = 0,
     flashMods = false,
     onkit,
+    modNames = [],
+    burnerNames = [],
   }: {
     side: CombatSideState;
     reading?: GaugeReading | null;
@@ -26,7 +29,23 @@
     burners?: number;
     flashMods?: boolean;
     onkit?: () => void;
+    modNames?: string[];
+    burnerNames?: string[];
   } = $props();
+
+  // Hover tips (desktop): what each meter is.
+  const tips = $derived({
+    win: isPlayer
+      ? 'Breach: your win gauge. Your Credit fills it; their Suppress drains it. Fill it to break in.'
+      : 'Containment: their win gauge. Their Credit fills it; your Suppress drains it. If it fills, you are locked out.',
+    init: isPlayer
+      ? 'Initiative: points you score fill it. When it fills, your loadout fires, top to bottom (a turn).'
+      : 'Initiative: points they score fill it. When it fills, their loadout fires (a turn).',
+    ward: isPlayer ? 'Ward: absorbs Credit aimed at you before it reaches their gauge.' : 'Ward: absorbs your Credit before it reaches your gauge.',
+    trace: 'Trace: how visible you are. What you carry out of the fight becomes Heat.',
+    mods: `Mods: ${modNames.join(', ')}. Click to see them.`,
+    burners: `Burners: ${burnerNames.join(', ')}. Offered before each of your turns.`,
+  });
 
   const g = $derived(
     reading ?? {
@@ -44,21 +63,21 @@
 </script>
 
 <div class="gauges" class:compact>
-  <div class="row">
+  <div class="row" use:tip={tips.win}>
     <span class="label">{isPlayer ? 'BREACH' : 'CONTAIN'}</span>
     <div class="bar win" class:enemy={!isPlayer}><span style="width: {win * 100}%"></span></div>
     <span class="num">{fmt(g.win)}/{fmt(g.winThreshold)}</span>
   </div>
-  <div class="row">
+  <div class="row" use:tip={tips.init}>
     <span class="label">INIT</span>
     <div class="bar init"><span style="width: {init * 100}%"></span></div>
     <span class="num">{fmt(g.initiative)}/{fmt(g.initiativeThreshold)}</span>
   </div>
   <div class="row chips">
-    <span class="chip ward" title="Ward">⛨ {fmt(g.ward)}</span>
-    {#if isPlayer}<span class="chip trace" title="Trace">◉ {fmt(g.trace)}</span>{/if}
-    {#if mods > 0}<button class="chip mod" class:flash={flashMods} title="Mods" onclick={onkit}>◆ {mods}</button>{/if}
-    {#if burners > 0}<button class="chip burner" title="Burners" onclick={onkit}>⏏︎ {burners}</button>{/if}
+    <span class="chip ward" use:tip={tips.ward}>⛨ {fmt(g.ward)}</span>
+    {#if isPlayer}<span class="chip trace" use:tip={tips.trace}>◉ {fmt(g.trace)}</span>{/if}
+    {#if mods > 0}<button class="chip mod" class:flash={flashMods} onclick={onkit} use:tip={tips.mods}>◆ {mods}</button>{/if}
+    {#if burners > 0}<button class="chip burner" onclick={onkit} use:tip={tips.burners}>⏏︎ {burners}</button>{/if}
   </div>
 </div>
 

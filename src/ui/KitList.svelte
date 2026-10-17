@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { KitItem } from './kit';
+  import { tip } from './tip';
 
   // A side's Mods (◆) or Burners (⏏︎) in the loadouts drawer / desktop
   // panel. Tap one to read it; a Mod that is acting right now flashes.
@@ -9,7 +10,7 @@
 <ul class="kit">
   {#each items as item (item.key)}
     <li>
-      <button class="item {item.kind}" class:spent={item.spent} class:flash={flashing.has(item.key)} onclick={() => onpick(item)}>
+      <button class="item {item.kind}" class:spent={item.spent} class:flash={flashing.has(item.key)} onclick={() => onpick(item)} use:tip={`${item.name} · ${item.tag}${item.spent ? ' · spent' : ''}\n${item.text}`}>
         <span class="icon">{item.kind === 'mod' ? '◆' : '⏏︎'}</span>
         <span class="name">{item.name}</span>
         {#if item.spent}<span class="note">spent</span>{/if}

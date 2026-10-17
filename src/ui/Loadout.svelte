@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { LoadoutEntry } from '../engine/resolve';
   import SuitIcon from './SuitIcon.svelte';
+  import { tip } from './tip';
+  import { describeHook, describeProcess, forEnemy } from './describe';
 
   // A loadout, top to bottom = firing order. Each piece shows its suit,
   // name, banked charges and whether its Hook is primed; tap to inspect
@@ -12,7 +14,15 @@
     dense = false,
     vertical = false,
     firing = -1,
-  }: { entries: LoadoutEntry[]; onpick: (index: number) => void; dense?: boolean; vertical?: boolean; firing?: number } = $props();
+    enemy = false,
+  }: { entries: LoadoutEntry[]; onpick: (index: number) => void; dense?: boolean; vertical?: boolean; firing?: number; enemy?: boolean } = $props();
+
+  // The hover tip (desktop): the piece in brief.
+  const tipText = (e: LoadoutEntry) => {
+    const voice = (t: string) => (enemy ? forEnemy(t) : t);
+    const d = e.definition;
+    return [d.name, `Process: ${voice(describeProcess(d.alpha))}`, d.beta ? `Hook: ${voice(describeHook(d.beta))}` : null].filter(Boolean).join('\n');
+  };
 
   const initials = (name: string) =>
     name
@@ -27,7 +37,7 @@
 <ol class="loadout" class:dense class:vertical>
   {#each entries as entry, i (i)}
     <li>
-      <button class="piece" class:primed={primed(entry)} class:firing={i === firing} style="--suit: var(--suit-{entry.definition.archetype})" onclick={() => onpick(i)} aria-label={entry.definition.name}>
+      <button class="piece" class:primed={primed(entry)} class:firing={i === firing} style="--suit: var(--suit-{entry.definition.archetype})" onclick={() => onpick(i)} aria-label={entry.definition.name} use:tip={tipText(entry)}>
         <SuitIcon archetype={entry.definition.archetype} size={dense ? 13 : 15} />
         <span class="name">{dense ? initials(entry.definition.name) : entry.definition.name}</span>
         {#if entry.state.charges > 0}<span class="charges">{entry.state.charges}</span>{/if}

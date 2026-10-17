@@ -50,3 +50,22 @@ button {
   font: inherit;
   color: inherit;
 }
+
+/* Hover tips (tip.ts): desktop only, one shared element. */
+.hover-tip {
+  position: fixed;
+  z-index: 100;
+  display: none;
+  max-width: 280px;
+  padding: 6px 9px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-line;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 50%);
+}
