@@ -352,7 +352,18 @@ export interface EncounterOutcome {
    * ever set on an 'event' node; every other node omits the field
    * entirely rather than setting it to an empty object. */
   eventGrant?: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition };
+  /** Burners a Cache's bundle hands over outright (M8); only ever set on
+   * a 'cache' node. */
+  cacheBurners?: BurnerDefinition[];
 }
+
+/** What a Cache holds (M8, the user's call): an elite-tier subroutine
+ * pick, a bundle of Data plus 1-2 Burners, or -- on later layers only, and
+ * rarely -- a Mod pick. Odds by layer (Claude's starting numbers, to
+ * tune): [subroutine, bundle, mod]. */
+const CACHE_ODDS: Record<number, [number, number, number]> = { 1: [0.6, 0.4, 0], 2: [0.6, 0.4, 0], 3: [0.55, 0.4, 0.05], 4: [0.55, 0.4, 0.05] };
+/** A Cache bundle's Data: an elite win's. */
+const CACHE_BUNDLE_DATA = dataForTier('better');
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
 
@@ -1141,6 +1152,35 @@ export function* resolveEncounterRequests(
         burnerRerollCost: 0,
         eventGrant,
       };
+    }
+    case 'cache': {
+      // A free reward, no fight; its price was the detour (M8). The node
+      // goes inert once opened, like any resolved encounter.
+      const [subroutineOdds, bundleOdds] = CACHE_ODDS[layerIndex] ?? CACHE_ODDS[4];
+      const roll = rng.next();
+      const base = {
+        newState: 'inert' as const,
+        heatDelta: 0,
+        heatSources: NO_HEAT_SOURCES,
+        quarantined: false,
+        mergeTargetId: null,
+        shopPurchase: null,
+        rerollCost: 0,
+        modShopPurchase: null,
+        modRerollCost: 0,
+        burnersUsedThisCombat: [],
+        shopBurnerUsed: null,
+        burnerShopPurchase: null,
+        burnerRerollCost: 0,
+      };
+      if (roll < subroutineOdds) {
+        return { ...base, rewardTier: 'better', dataAwarded: 0, rewardOptions: drawRewardOptions(playerState.classId, 'better', rng), modRewardOptions: [], burnerRewardOptions: [] };
+      }
+      if (roll < subroutineOdds + bundleOdds) {
+        const burners = drawBurnerRewardOptions(rng).slice(0, 1 + rng.nextInt(2));
+        return { ...base, rewardTier: 'none', dataAwarded: CACHE_BUNDLE_DATA, rewardOptions: [], modRewardOptions: [], burnerRewardOptions: [], cacheBurners: burners };
+      }
+      return { ...base, rewardTier: 'none', dataAwarded: 0, rewardOptions: [], modRewardOptions: drawModRewardOptions(playerState.classId, playerState.ownedModIds, rng), burnerRewardOptions: [] };
     }
     case 'relay':
       throw new Error('resolveEncounter should never be called on a Relay node -- it has no encounter');

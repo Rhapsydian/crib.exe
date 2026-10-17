@@ -582,6 +582,20 @@ before and after: 0 differ, same speed (39.2 s / 39.5 s).
 `run-requests.test.ts` checks every decision kind appears, no enemy
 request surfaces, and a driver's own answer steers the run.
 
+**Checkpoint 1, part 2 — the new map generator in the engine:**
+`map-gen.ts` is rebuilt from the mockup (scatter on the hex backdrop,
+non-crossing near-neighbour links, resilience, nothing behind the
+gatekeeper, dealt types under the placement rules, the Cache); node
+positions are stored on `MapNode` (`x`, `y`), so the screen draws what
+was generated. `NodeType` gains `cache`; its encounter rolls an elite-tier
+subroutine pick, a bundle (an elite win's Data + 1-2 Burners,
+`cacheBurners`), or on layers 3-4 a Mod pick. Layer sizes 10/12/12/14.
+A caller that forces type weights, or a non-standard size, still rolls
+by weight; layers too small for the rules (the tests' 2-8 node layers)
+get a relaxed pass. The simulated player's opportunistic routing takes a
+Cache right after fights when the detour fits its Heat reserve. The
+`#map` mockup now draws the engine's generator; its prototype is gone.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

@@ -5,7 +5,9 @@
  * DESIGN.md's Map & Run Structure section.
  */
 
-export type NodeType = 'regularFight' | 'eliteFight' | 'gatekeeperFight' | 'safehouse' | 'shop' | 'event' | 'relay';
+/** `cache` (milestone 3, M8): a remote dead end holding a free reward,
+ * its risk the Heat of the detour. */
+export type NodeType = 'regularFight' | 'eliteFight' | 'gatekeeperFight' | 'safehouse' | 'shop' | 'event' | 'relay' | 'cache';
 
 /**
  * `closed` (a lost regular/elite fight) is genuinely impassable, not
@@ -26,6 +28,11 @@ export interface MapNode {
    * pick randomly at resolveFight time instead (encounters.ts) -- no
    * persisted assignment needed. */
   assignedEnemyId?: string;
+  /** Where the node is drawn, 0..1 across and down the map's padded area
+   * (map-gen.ts's MAP_VIEW): the generator lays a layer out, then links
+   * by those positions, so the screen draws what was generated. */
+  x?: number;
+  y?: number;
 }
 
 /** Undirected -- movement is free-roam in either direction. */

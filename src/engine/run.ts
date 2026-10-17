@@ -1,6 +1,6 @@
 import { createRng } from './rng';
 import { isReachable, neighborsOf, type LayerGraph, type MapNode, type NodeType, type RunPosition } from './map-types';
-import { generateLayer } from './map-gen';
+import { generateLayer, LAYER_SIZES, type LayerNumber } from './map-gen';
 import { assignGatekeeperEnemy, eligibleEnemies, gatekeeperEnemyForNode, type EnemyDefinition, type EnemyId } from './enemies';
 import { move } from './traversal';
 import { resolveEncounterRequests, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy, type SyntheticGatekeeper } from './encounters';
@@ -68,7 +68,8 @@ import type { BurnerActivationStrategy } from './combat';
  * legal-not-good scripted players.
  */
 
-const DEFAULT_LAYER_NODE_COUNTS: [number, number, number, number] = [10, 12, 12, 8]; // TBD/playtesting
+// Milestone 3 (M5, the user's call): 10 / 12 / 12 / 14, was 10 / 12 / 12 / 8.
+const DEFAULT_LAYER_NODE_COUNTS: [number, number, number, number] = LAYER_SIZES;
 
 /** The player's own state for the run, threaded into every encounter
  * (Phase 4 checkpoint A). `data` (checkpoint C) accumulates Data awarded
@@ -312,7 +313,8 @@ const OPPORTUNISTIC_RESERVE_MARGIN = 2 * HEAT_PER_MOVE;
  * along the way"). Priority, resolved live one tier at a time:
  *
  * 1. Reachable fight nodes (regular/elite) always win -- direct,
- *    reliable power, no state-dependence.
+ *    reliable power, no state-dependence. Then a Cache (milestone 3),
+ *    a free reward, when its detour fits the reserve.
  * 2. Heat pressure: if current Heat is already high, a reachable
  *    Safehouse outranks everything below (Heat is the run-ending
  *    resource -- relieving it is safety-critical in a way the other
@@ -382,6 +384,12 @@ export const opportunisticTraversal: TraversalStrategy = (graph, position, heat,
 
   const fightTarget = nearestOf([...unresolvedOfType('regularFight'), ...unresolvedOfType('eliteFight')]);
   if (fightTarget) return fightTarget;
+
+  // A Cache (milestone 3, M8): a free reward whose price is the detour,
+  // which the reserve gate above already prices -- so take it when the
+  // walk out and back is affordable.
+  const cacheTarget = nearestOf(unresolvedOfType('cache'));
+  if (cacheTarget) return cacheTarget;
 
   const heatHigh = heat >= HEAT_HIGH_FRACTION * maxHeat;
   if (heatHigh) {
@@ -703,7 +711,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
   const finish = (outcome: RunOutcome): RunResult => ({ outcome, layersCompleted, finalHeat: heat, log, playerState });
 
   for (let layerIndex = 0; layerIndex < layerNodeCounts.length; layerIndex++) {
-    let graph = generateLayer({ rng, nodeCount: layerNodeCounts[layerIndex] });
+    let graph = generateLayer({ rng, nodeCount: layerNodeCounts[layerIndex], layer: (layerIndex + 1) as LayerNumber });
     // Fixes this layer's gatekeeper identity for the whole run (Phase 5
     // checkpoint C) -- kept as a separate post-processing step rather
     // than a generateLayer option, so map-gen.ts itself stays
@@ -930,6 +938,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       }
       if (outcome.eventGrant?.mod) playerState = acquireMod(playerState, outcome.eventGrant.mod);
       if (outcome.eventGrant?.burner) playerState = acquireBurner(playerState, outcome.eventGrant.burner);
+      for (const burner of outcome.cacheBurners ?? []) playerState = acquireBurner(playerState, burner);
       // Loadout reorder (session 46, checkpoint F) -- applied once here,
       // after the whole resolution block, rather than at each of the four
       // places above that can change installedLoadout (reward pick, Shop
