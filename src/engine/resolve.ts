@@ -457,7 +457,7 @@ export const BRIDGE_EXPLOIT_HONEYPOT_WARD = 1;
  * much per turn of yours. */
 export const BRIDGE_DAEMON_HONEYPOT_CAP = 1;
 /** Overclock + Honeypot: each turn you take banks Ward. */
-export const BRIDGE_OVERCLOCK_HONEYPOT_WARD = 0.75;
+export const BRIDGE_OVERCLOCK_HONEYPOT_WARD = 0.5;
 
 const DAEMON_HONEYPOT_BANKED = 'bridge-daemon-honeypot:banked';
 

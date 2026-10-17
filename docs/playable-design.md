@@ -605,6 +605,30 @@ piece's Merge material stays banked by id. `RunOptions.benchCap`
 a run above 3, drops are asked, a driver's named piece is the one
 dropped.
 
+**Checkpoint 1, part 4 — the two-lever Heat pass** (the user's call, run
+while they were away; raw numbers in `docs/calibration/m3-two-lever.txt`):
+
+- On the new maps at the old allowances, victory fell to 1-7% and
+  Heat-maxed endings rose from ~2% to 13-22%: fight Trace is 58-73% of
+  Heat, and every layer now deals more fights to win.
+- **Lever 1, layer allowances 40/36/32/28 -> 76/68/61/53 (x1.9):** swept
+  x1.6 / x1.75 / x1.9 at 300 runs a class; x1.9 restores the shape of
+  Heat endings (Exploit 18-28% maxed or caught, the rest ~10%).
+- **Lever 2, gatekeepers re-tuned to 70.5 / 64.5 / 58.5 / 52.5:** three
+  rounds of gatekeeper-check.ts; final scales Firewall Prime 0.96, The
+  Concierge 1.45, Quarantine Ward 1.6, Zero-Sum 1.48, Adaptive Threat
+  2.19, Total Compromise 2.1, Null Session 2.17, Root Authority 1.74; all
+  within 0.9 points of target (curve 70.2 / 64.2 / 58.1 / 52.3).
+- **Class spread** (300 runs a class): Blackhat 18.7%, Operator 11.0%,
+  Eidolon 19.0%, Breacher 14.3%, Warden 11.7%, Wraith 22.7% (20.7% at
+  600 runs). Wraith was over the band, so per B3 (strong classes come
+  down through their bridge first) **Siphon went 0.75 -> 0.5 Ward a
+  turn**; that moved it ~1.6 points and softened Zero-Sum, which shares
+  the bridge and was re-tuned. Wraith ends at ~21%, at the band's edge
+  -- a decision left for the user (see below).
+- One test assumed old absolute Heat costs (a high-Heat detour) and now
+  derives its Heat from the costs themselves.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

@@ -443,7 +443,8 @@ The instruments are:
    stays small (cap 1–2); and Honeypot pieces carry some plain Credit.
    Honeypot classes also carry their partner's credit piece.
 4. **Trace has no flat exchange rate.** It is priced against a layer's
-   allowance (1 Trace = 2.5–3.6% of a layer). Its cost is convex in the
+   allowance (1 Trace = 2.5–3.6% of a layer at session 53's allowances;
+   1.3–1.9% since milestone 3 raised them). Its cost is convex in the
    noise a build already makes: free in a quiet build, 5–8 points of run
    victory for +1 Trace a fight in a noisy one. **A noisy piece costs
    more in a noisy build.** Exploit's identity target: its classes end
@@ -470,6 +471,22 @@ with the same instrument, because the enemy and player pools share one
 currency.
 
 ## Map & Run Structure
+
+> **Milestone 3 update (session 58, `docs/playable-design.md` M1–M9).**
+> The map shows **only the current layer** (a passed gatekeeper is
+> one-way), replacing the "one continuous, growing diagram" below. Layers
+> are **10 / 12 / 12 / 14** nodes, laid out as a scattered network on a
+> hex backdrop (no two nodes on neighbouring hexes), linked only to near
+> neighbours with no crossings, the gatekeeper 3–6 moves from the entry
+> and never behind anything. Node types are **dealt** per layer from a set
+> mix under placement rules (no elite next to the entry, a Safehouse
+> within two moves of the gatekeeper, no matching specials adjacent, no
+> dead-end relays). A new **Cache** node sometimes hangs as a remote dead
+> end holding a free reward (an elite-tier subroutine pick, Data plus
+> Burners, or rarely a Mod), its price the Heat of the detour. The bench
+> of inactive pieces is capped at 3. Layer Heat allowances rose to
+> 76 / 68 / 61 / 53 and the gatekeepers were re-tuned to the pass-rate
+> curve (`docs/calibration/m3-two-lever.txt`).
 
 The node-map is meant to actually read as a network diagram — nodes are
 machines/systems, edges are the network links you route through — not an

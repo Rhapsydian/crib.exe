@@ -18,7 +18,7 @@ import { CLASS_STARTING_LOADOUTS } from './subroutines';
 import { INSTALLED_SLOT_CAP } from './loadout';
 import type { DiscardStrategy } from './deal';
 import type { PlayStrategy } from './pegging';
-import { layerHeatAllowance, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
+import { layerHeatAllowance, postedFightRisk, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
 import { MATERIAL_HIGH_THRESHOLD } from './merge';
 import { DATA_HIGH_THRESHOLD, DATA_LOW_THRESHOLD } from './shop';
 
@@ -211,7 +211,10 @@ describe('opportunisticTraversal', () => {
     // Heat player can no longer afford the fight plus the toll, and goes
     // straight to the gatekeeper instead.
     const player = { ...createInitialPlayerState('exploit-overclock'), material: { a: MATERIAL_HIGH_THRESHOLD }, data: DATA_HIGH_THRESHOLD };
-    expect(opportunisticTraversal(starGraph(), position, highHeat, player)).toBe('gate');
+    // Set from the costs themselves (milestone 3 raised the allowances):
+    // room for the gatekeeper's toll and three moves, not a fight as well.
+    const tightHeat = HEAT_MAX - postedFightRisk('gatekeeper', 0).worstWin - 3 * HEAT_PER_MOVE;
+    expect(opportunisticTraversal(starGraph(), position, tightHeat, player)).toBe('gate');
   });
 
   it('pulls toward the Safehouse when banked material is high (Heat not high)', () => {

@@ -34,8 +34,16 @@ export const HEAT_PER_MOVE = 2; // TBD/playtesting
  * quarters of it movement. A layer is roughly a quarter of a run, so these
  * start a little above a quarter of the old cap each -- the reset (D4)
  * forgives what used to carry over, and D5's tightening is the ramp.
+ *
+ * Milestone 3 (session 58, the user's two-lever pass): 40/36/32/28 ->
+ * 76/68/61/53 (x1.9). The new maps deal every layer more fights and
+ * elites and climb farther, so players win more fights a layer and each
+ * win posts its Trace; at the old allowances Heat endings jumped from
+ * ~2% to 13-22% maxed. x1.9 restores their shape (Exploit classes 18-28%
+ * maxed or caught, the rest ~10%); the gatekeepers were then re-tuned to
+ * the pass-rate curve (enemies content scales).
  */
-export const LAYER_HEAT_ALLOWANCE: readonly number[] = [40, 36, 32, 28]; // TBD/playtesting
+export const LAYER_HEAT_ALLOWANCE: readonly number[] = [76, 68, 61, 53]; // TBD/playtesting
 
 /** The allowance for a 0-based layer index, plus any Backup Generator
  * bonus (RunPlayerState.maxHeatBonus, now added to every layer). Layers
