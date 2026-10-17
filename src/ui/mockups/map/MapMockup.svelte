@@ -3,19 +3,43 @@
   import { createRng } from '../../../engine/rng';
   import type { NodeType } from '../../../engine/map-types';
   import { force, layered, schematic, type Positions } from './layouts';
+  import { hops, hybrid, isResilient, scatter, subnets, type Region } from './gen';
 
   // Milestone 3 map mockups: one real generated layer (map-gen.ts), drawn
   // three ways. Only the current layer shows (the user's call: earlier
   // layers can't be revisited). Tap a linked node to walk there, to get
   // a feel for moving; each step costs the flat move Heat.
+  // Generators: the engine's current one (drawn three ways), and the
+  // new candidates (each places its own nodes; `hex` puts them on a hex
+  // grid).
+  const generators = ['current', 'scatter', 'subnets', 'hybrid'] as const;
+  type Generator = (typeof generators)[number];
+  let generator = $state<Generator>('scatter');
+  let hex = $state(false);
   const styles = ['layered', 'force', 'schematic'] as const;
   type Style = (typeof styles)[number];
-  let style = $state<Style>('layered');
+  let currentStyle = $state<Style>('layered');
+  const style = $derived<Style | 'free'>(generator === 'current' ? currentStyle : 'free');
   let seed = $state(1);
   let size = $state(12);
 
-  const graph = $derived(generateLayer({ rng: createRng(seed * 7919), nodeCount: size }));
-  const pos = $derived<Positions>(style === 'layered' ? layered(graph) : style === 'force' ? force(graph, seed) : schematic(graph));
+  const made = $derived.by(() => {
+    if (generator === 'current') {
+      const graph = generateLayer({ rng: createRng(seed * 7919), nodeCount: size });
+      const pos = currentStyle === 'layered' ? layered(graph) : currentStyle === 'force' ? force(graph, seed) : schematic(graph);
+      return { graph, pos, regions: [] as Region[], resilient: isResilient(graph) };
+    }
+    return (generator === 'scatter' ? scatter : generator === 'subnets' ? subnets : hybrid)(size, seed, hex);
+  });
+  const graph = $derived(made.graph);
+  const pos = $derived<Positions>(made.pos);
+  const stats = $derived({
+    hops: hops(graph),
+    links: graph.edges.length,
+    perNode: ((graph.edges.length * 2) / graph.nodes.length).toFixed(1),
+    resilient: made.resilient && isResilient(graph),
+  });
+  const hexShape = $derived(generator !== 'current' && hex);
   let here = $state('n0');
   let visited = $state<string[]>(['n0']);
   let moves = $state(0);
@@ -74,9 +98,21 @@
 
 <div class="mock">
   <div class="bar">
-    {#each styles as s (s)}
-      <button class:on={style === s} onclick={() => (style = s)}>{s}</button>
+    {#each generators as g (g)}
+      <button class:on={generator === g} onclick={() => (generator = g)}>{g}</button>
     {/each}
+  </div>
+  <div class="bar small">
+    {#if generator === 'current'}
+      {#each styles as s (s)}
+        <button class:on={currentStyle === s} onclick={() => (currentStyle = s)}>{s}</button>
+      {/each}
+    {:else}
+      <button class:on={!hex} onclick={() => (hex = false)}>free</button>
+      <button class:on={hex} onclick={() => (hex = true)}>hex grid</button>
+    {/if}
+    <span class="sep"></span>
+    <span class="stat">entry→gatekeeper <b>{stats.hops}</b> · links <b>{stats.links}</b> · {stats.perNode}/node · <b class:bad={!stats.resilient}>{stats.resilient ? 'resilient' : 'NOT resilient'}</b></span>
   </div>
   <div class="bar small">
     <button onclick={() => (seed = Math.max(1, seed - 1))}>‹</button>
@@ -97,6 +133,10 @@
       </defs>
       <rect width={W} height={H} fill="url(#grid)" />
     {/if}
+    {#each made.regions as r, i (i)}
+      <rect class="region" x={X(r.x)} y={Y(r.y)} width={r.w * (W - 2 * P)} height={r.h * (H - 2 * P)} rx="3" />
+      <text class="region-label" x={X(r.x) + 1.5} y={Y(r.y) + 3.2}>{r.label}</text>
+    {/each}
     {#each graph.edges as e, i (i)}
       {@const hot = (e.a === here && linked.has(e.b)) || (e.b === here && linked.has(e.a))}
       <path d={trace(pos[e.a], pos[e.b], i)} class="link" class:hot />
@@ -107,7 +147,9 @@
       {@const big = n.type === 'gatekeeperFight'}
       {@const r = n.type === 'relay' ? 2 : big ? 6 : 4.4}
       <g class="node" class:can={linked.has(n.id)} class:done={visited.includes(n.id) && n.id !== here} transform="translate({X(p.x)},{Y(p.y)})" onclick={() => step(n.id)} role="button" tabindex="-1" onkeydown={() => {}}>
-        {#if style === 'schematic' && n.type !== 'relay'}
+        {#if hexShape && n.type !== 'relay'}
+          <polygon points={[0, 1, 2, 3, 4, 5].map((i) => `${Math.cos((Math.PI / 3) * i + Math.PI / 6) * r * 1.12},${Math.sin((Math.PI / 3) * i + Math.PI / 6) * r * 1.12}`).join(' ')} style="--tone: {k.tone}" />
+        {:else if style === 'schematic' && n.type !== 'relay'}
           <rect x={-r} y={-r} width={r * 2} height={r * 2} rx="1.2" style="--tone: {k.tone}" />
         {:else}
           <circle {r} style="--tone: {k.tone}" />
@@ -194,6 +236,7 @@
     }
   }
   .node circle,
+  .node polygon,
   .node rect {
     fill: var(--bg);
     stroke: var(--tone);
@@ -208,6 +251,7 @@
     cursor: pointer;
   }
   .node.can circle:not(.here),
+  .node.can polygon,
   .node.can rect {
     stroke-width: 1;
     filter: drop-shadow(0 0 1.5px var(--tone));
@@ -220,6 +264,26 @@
     stroke: var(--accent) !important;
     stroke-width: 0.6 !important;
     stroke-dasharray: 1.5 1;
+  }
+  .region {
+    fill: rgb(196 155 255 / 5%);
+    stroke: rgb(196 155 255 / 25%);
+    stroke-width: 0.3;
+    stroke-dasharray: 1 1;
+  }
+  .region-label {
+    font-size: 2.6px;
+    fill: rgb(196 155 255 / 60%);
+    font-family: var(--mono);
+  }
+  .stat {
+    color: var(--text-dim);
+  }
+  .stat b {
+    color: var(--text);
+  }
+  .stat b.bad {
+    color: var(--danger);
   }
   .legend {
     display: flex;

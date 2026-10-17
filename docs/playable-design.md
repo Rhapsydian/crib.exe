@@ -453,8 +453,37 @@ phone pass.
   seeded spring layout, entry and gatekeeper pinned), *schematic* (the
   layered rows on a grid, right-angle traces, one lane per link). Tap a
   linked node to walk.
-- **Inactive storage slots** (the user's ask: 2-3 slots to hold a piece
-  you mean to build around): open, see below.
+- **M2 — the bench is the inactive storage, capped at 3** (the user's
+  call). The engine's bench was unlimited; with a cap, a new piece
+  arriving to a full loadout and a full bench means choosing one to drop
+  (the new piece included, i.e. turning the reward down). Pieces swap
+  between loadout and bench any time outside a fight; duplicates still
+  become Merge material without taking a slot. The simulated player gets
+  the same choice, and the class victory check is re-run once.
+- **Map generation is up for redesign** (the user: "a bit of a mess").
+  Measured over 500 layers a size, today's generator (a random tree plus
+  ~n/2 links between any two nodes) averages ~2.9 links a node with hubs
+  of up to 9, and the gatekeeper sits 1.5-1.8 moves from the entry --
+  **one move away in 37-52% of layers**, which all but removes the
+  beeline-or-explore tension. The user asked for mockups of three
+  directions, plus a hex-grid option, all at `#map`
+  (`src/ui/mockups/map/gen.ts`), each placing nodes first and linking
+  only near neighbours so the map draws itself:
+  - *scatter* (even spacing, non-crossing near-neighbour links);
+  - *subnets* (clusters of 2-4; each boundary crossed through a router
+    relay plus one direct link);
+  - *hybrid* (scatter's spacing and links, in regions with two links
+    between neighbouring regions);
+  - *hex* on each: scatter and hybrid build on two non-crossing lanes
+    from entry to gatekeeper, links only between neighbouring cells
+    (hybrid: each hex row a subnet, the lanes the only links between
+    rows); subnets snap to the grid.
+
+  Over 300 maps per size all six pass the resilience rule. Entry to
+  gatekeeper: scatter 2.9-3.7 moves, subnets 3.5-5.0, hybrid 3.2-4.8;
+  hex 3 (8 nodes) or 4 (10-12), fixed by the row count. Busiest node:
+  4 (subnets, hybrid), 5-7 (scatter). Any of them lengthens the walk,
+  so the Heat economy and gatekeeper curve need a re-check after.
 
 ## Settled in passing (Claude's calls, noted for the record)
 
