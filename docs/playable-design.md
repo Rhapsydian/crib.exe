@@ -327,7 +327,10 @@ between-hands banner; the Burner prompt).
   a fresh count is obvious): a UI-only `clear` step is placed once that
   play's scoring and any turns it bought are done, just before the next
   table beat; the cards slide off, tilt and fade (450 ms at normal
-  speed), and the count reads 0 before the next card lands.
+  speed), and the count reads 0 before the next card lands. A reset at
+  the end of what has happened so far (the enemy took the go and it's
+  your card) sweeps at once instead of waiting for your card; the last
+  go of a hand sweeps before the show.
 
 ## Settled in passing (Claude's calls, noted for the record)
 

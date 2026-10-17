@@ -25,7 +25,9 @@ export function mergeSteps(timeline: readonly CombatBeat[], log: readonly FireEv
   let resetPending = false;
   for (const beat of timeline) {
     while (fires < beat.firesBefore) steps.push({ type: 'fire', fire: log[fires++] });
-    if (resetPending && beat.kind !== 'points') {
+    // The reset play's own points stay on the full pile; anything else
+    // (the next card, the show, a new hand) comes after the sweep.
+    if (resetPending && !(beat.kind === 'points' && beat.phase === 'peg')) {
       steps.push({ type: 'clear' });
       resetPending = false;
     }
@@ -33,6 +35,11 @@ export function mergeSteps(timeline: readonly CombatBeat[], log: readonly FireEv
     if (beat.kind === 'peg' && (beat.event.type === 'go-point' || (beat.event.type === 'play' && beat.event.count === 31))) resetPending = true;
   }
   while (fires < log.length) steps.push({ type: 'fire', fire: log[fires++] });
+  // A reset at the end of what has happened so far (the enemy took the
+  // go, now it's your card): sweep now rather than when your card comes.
+  // The engine paused right after it, so the next beat brings no fires
+  // before it and the clear stays at this same index once it arrives.
+  if (resetPending) steps.push({ type: 'clear' });
   return steps;
 }
 

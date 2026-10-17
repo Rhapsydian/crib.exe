@@ -144,6 +144,34 @@ describe('timeline steps', () => {
     expect(after.count).toBe(4);
   });
 
+  it('a reset at the end of the history sweeps without waiting for the next card', () => {
+    const timeline: CombatBeat[] = [
+      { kind: 'hand', handIndex: 0, dealer: 0, firesBefore: 0 },
+      play(1, card(10), 29),
+      { kind: 'peg', event: { type: 'go-point', player: 1 }, firesBefore: 0 },
+      { kind: 'points', phase: 'peg', occurrence: { category: 'go', player: 1, magnitude: 1 }, gauges: pair(0, 0), firesBefore: 0 },
+    ];
+    const log = [fireEvent(1, 'x', 0, 1)];
+    const paused = mergeSteps(timeline, log);
+    expect(paused.at(-1)).toEqual({ type: 'clear' });
+    // Once your card comes, the clear is at the same index.
+    const resumed = mergeSteps([...timeline, play(0, card(5), 5, 1)], log);
+    expect(resumed.slice(0, paused.length)).toEqual(paused);
+    expect(resumed.at(-1)?.type).toBe('beat');
+  });
+
+  it('the last go of a hand sweeps before the show', () => {
+    const timeline: CombatBeat[] = [
+      { kind: 'hand', handIndex: 0, dealer: 0, firesBefore: 0 },
+      play(0, card(10), 10),
+      { kind: 'peg', event: { type: 'go-point', player: 0 }, firesBefore: 0 },
+      { kind: 'points', phase: 'peg', occurrence: { category: 'go', player: 0, magnitude: 1 }, gauges: pair(0, 0), firesBefore: 0 },
+      { kind: 'points', phase: 'show', occurrence: { category: 'fifteen', player: 1, magnitude: 2 }, gauges: pair(0, 0), firesBefore: 0 },
+    ];
+    const kinds = mergeSteps(timeline, []).map((s) => (s.type === 'beat' ? s.beat.kind : s.type));
+    expect(kinds).toEqual(['hand', 'peg', 'peg', 'points', 'clear', 'points']);
+  });
+
   it('a 31 sweeps too, after its points', () => {
     const timeline: CombatBeat[] = [
       { kind: 'hand', handIndex: 0, dealer: 0, firesBefore: 0 },
