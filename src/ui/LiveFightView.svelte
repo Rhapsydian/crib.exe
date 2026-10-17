@@ -1,17 +1,33 @@
 <script lang="ts">
   import type { LiveFight } from './live-fight.svelte';
   import FightScreen from './FightScreen.svelte';
+  import { Replay } from './replay.svelte';
+  import { readGauges } from '../engine/resolve';
+  import { untrack } from 'svelte';
 
   // A live fight on the chosen screen, and its result panel at the end.
+  // Every engine pause is handed to the replay, which steps through the
+  // turns that resolved since the last one (P4); the result panel waits
+  // until the final turn has played out.
   let { fight, onagain, onsetup }: { fight: LiveFight; onagain: () => void; onsetup: () => void } = $props();
+  const replay = new Replay();
+  $effect(() => {
+    const { frame, result } = fight;
+    const log = result?.log ?? frame?.request.view.log;
+    if (!log) return;
+    const live = result ? (log.at(-1)?.gauges ?? readGauges(frame!.request.view.combatState)) : readGauges(frame!.request.view.combatState);
+    // Only a new pause re-runs this, not the replay's own stepping.
+    untrack(() => replay.sync(log, live));
+  });
+  $effect(() => () => replay.reset());
   const pct = (n: number) => `${Math.round(n * 100)}%`;
 </script>
 
 {#if fight.frame}
-  <FightScreen snapshot={fight.frame} onplay={(c) => fight.answer(c)} ondiscard={(c) => fight.answer(c)} />
+  <FightScreen snapshot={fight.frame} {replay} onplay={(c) => fight.answer(c)} ondiscard={(c) => fight.answer(c)} />
 {/if}
 
-{#if fight.result}
+{#if fight.result && !replay.playing}
   {@const r = fight.result}
   <div class="scrim"></div>
   <div class="result" class:won={r.winner === 0}>

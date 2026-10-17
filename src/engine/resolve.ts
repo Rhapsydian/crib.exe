@@ -723,6 +723,33 @@ export interface FireEvent {
   charges: number;
   /** True for an `immediate` beta firing outside the turn. */
   immediate: boolean;
+  /** Both sides' meters just after this fire resolved (milestone 2, the
+   * user's call): what lets the UI's step-through (playable-design P4)
+   * move the gauges piece by piece rather than jump once per turn.
+   * Index 0 is the player's. Not read by the engine. */
+  gauges: [GaugeReading, GaugeReading];
+}
+
+/** One side's meters at a moment, as plain numbers. */
+export interface GaugeReading {
+  win: number;
+  winThreshold: number;
+  initiative: number;
+  initiativeThreshold: number;
+  ward: number;
+  trace: number;
+}
+
+export function readGauges(combatState: CombatState): [GaugeReading, GaugeReading] {
+  const read = (s: CombatSideState): GaugeReading => ({
+    win: s.winGauge.progress,
+    winThreshold: s.winGauge.threshold,
+    initiative: s.gauge.progress,
+    initiativeThreshold: s.gauge.threshold,
+    ward: s.wardShield,
+    trace: s.trace,
+  });
+  return [read(combatState.sides[0]), read(combatState.sides[1])];
 }
 
 /** `index` is the piece's loadout slot, for `adjacent` betas (A12) --
@@ -868,7 +895,7 @@ function fireLoadoutOnce(
     state = mapLoadout(state, side, (e, index) => (index === i ? recordFire(e.state, definition) : e.state));
     state = applyBridgeOnFire(state, side, definition, elevated, turn);
 
-    events.push({ subroutineId: definition.id, side, alpha, beta: resolved.beta, elevated, charges, immediate: false });
+    events.push({ subroutineId: definition.id, side, alpha, beta: resolved.beta, elevated, charges, immediate: false, gauges: readGauges(state) });
     firedThisTurn.push({ definition, elevated });
   }
 
@@ -926,7 +953,7 @@ export function fireImmediateBetas(combatState: CombatState, dealer: PlayerIndex
       state = mapLoadout(state, side, (e, index) => (index === i ? (alpha ? recordFire(e.state, definition) : { ...e.state, fireCount: e.state.fireCount + 1 }) : e.state));
       state = applyBridgeOnFire(state, side, definition, true, undefined);
       const firedCharges = beta.source === 'cards' || beta.source === 'progress' ? entry.state.charges : 1;
-      events.push({ subroutineId: definition.id, side, alpha: alpha ?? (definition.alpha as Effect), beta: resolvedBeta, elevated: true, charges: firedCharges, immediate: true });
+      events.push({ subroutineId: definition.id, side, alpha: alpha ?? (definition.alpha as Effect), beta: resolvedBeta, elevated: true, charges: firedCharges, immediate: true, gauges: readGauges(state) });
     }
   }
   return { combatState: state, events };

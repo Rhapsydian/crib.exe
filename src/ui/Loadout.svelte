@@ -5,7 +5,14 @@
   // A loadout, top to bottom = firing order. Each piece shows its suit,
   // name, banked charges and whether its Hook is primed; tap to inspect
   // (P6). `dense` drops names to initials for the tightest layout.
-  let { entries, onpick, dense = false, vertical = false }: { entries: LoadoutEntry[]; onpick: (index: number) => void; dense?: boolean; vertical?: boolean } = $props();
+  // `firing` is the slot lit up by the turn step-through (P4).
+  let {
+    entries,
+    onpick,
+    dense = false,
+    vertical = false,
+    firing = -1,
+  }: { entries: LoadoutEntry[]; onpick: (index: number) => void; dense?: boolean; vertical?: boolean; firing?: number } = $props();
 
   const initials = (name: string) =>
     name
@@ -20,7 +27,7 @@
 <ol class="loadout" class:dense class:vertical>
   {#each entries as entry, i (i)}
     <li>
-      <button class="piece" class:primed={primed(entry)} style="--suit: var(--suit-{entry.definition.archetype})" onclick={() => onpick(i)} aria-label={entry.definition.name}>
+      <button class="piece" class:primed={primed(entry)} class:firing={i === firing} style="--suit: var(--suit-{entry.definition.archetype})" onclick={() => onpick(i)} aria-label={entry.definition.name}>
         <SuitIcon archetype={entry.definition.archetype} size={dense ? 13 : 15} />
         <span class="name">{dense ? initials(entry.definition.name) : entry.definition.name}</span>
         {#if entry.state.charges > 0}<span class="charges">{entry.state.charges}</span>{/if}
@@ -62,6 +69,21 @@
   }
   .primed {
     box-shadow: 0 0 6px -1px var(--suit);
+  }
+  .firing {
+    background: var(--suit);
+    color: var(--bg);
+    transform: scale(1.06);
+  }
+  /* The icon is drawn in the suit colour (an inline style), which would
+     vanish on the lit piece's suit-coloured fill. */
+  .firing :global(svg) {
+    color: var(--bg) !important;
+  }
+  .piece {
+    transition:
+      background 0.12s,
+      transform 0.12s;
   }
   .name {
     white-space: nowrap;

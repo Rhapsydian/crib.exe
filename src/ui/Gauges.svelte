@@ -1,13 +1,30 @@
 <script lang="ts">
-  import type { CombatSideState } from '../engine/resolve';
+  import type { CombatSideState, GaugeReading } from '../engine/resolve';
 
   // One side's meters: the win gauge (Breach for you, Containment for
   // them), initiative toward the next turn, Ward, and -- yours only --
   // Trace. `compact` collapses to a single line for tight layouts.
-  let { side, isPlayer, compact = false }: { side: CombatSideState; isPlayer: boolean; compact?: boolean } = $props();
+  // `reading`, when given, overrides the side's live state: the turn
+  // step-through (P4) shows the meters as they stood after each fire.
+  let {
+    side,
+    reading,
+    isPlayer,
+    compact = false,
+  }: { side: CombatSideState; reading?: GaugeReading | null; isPlayer: boolean; compact?: boolean } = $props();
 
-  const win = $derived(Math.min(1, side.winGauge.progress / side.winGauge.threshold));
-  const init = $derived(Math.min(1, side.gauge.progress / side.gauge.threshold));
+  const g = $derived(
+    reading ?? {
+      win: side.winGauge.progress,
+      winThreshold: side.winGauge.threshold,
+      initiative: side.gauge.progress,
+      initiativeThreshold: side.gauge.threshold,
+      ward: side.wardShield,
+      trace: side.trace,
+    },
+  );
+  const win = $derived(Math.min(1, g.win / g.winThreshold));
+  const init = $derived(Math.min(1, g.initiative / g.initiativeThreshold));
   const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 </script>
 
@@ -15,16 +32,16 @@
   <div class="row">
     <span class="label">{isPlayer ? 'BREACH' : 'CONTAIN'}</span>
     <div class="bar win" class:enemy={!isPlayer}><span style="width: {win * 100}%"></span></div>
-    <span class="num">{fmt(side.winGauge.progress)}/{fmt(side.winGauge.threshold)}</span>
+    <span class="num">{fmt(g.win)}/{fmt(g.winThreshold)}</span>
   </div>
   <div class="row">
     <span class="label">INIT</span>
     <div class="bar init"><span style="width: {init * 100}%"></span></div>
-    <span class="num">{fmt(side.gauge.progress)}/{fmt(side.gauge.threshold)}</span>
+    <span class="num">{fmt(g.initiative)}/{fmt(g.initiativeThreshold)}</span>
   </div>
   <div class="row chips">
-    <span class="chip ward" title="Ward">⛨ {fmt(side.wardShield)}</span>
-    {#if isPlayer}<span class="chip trace" title="Trace">◉ {fmt(side.trace)}</span>{/if}
+    <span class="chip ward" title="Ward">⛨ {fmt(g.ward)}</span>
+    {#if isPlayer}<span class="chip trace" title="Trace">◉ {fmt(g.trace)}</span>{/if}
   </div>
 </div>
 
@@ -73,6 +90,7 @@
     display: block;
     height: 100%;
     background: var(--accent);
+    transition: width 0.2s ease-out;
   }
   .bar.enemy span {
     background: var(--danger);

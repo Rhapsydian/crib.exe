@@ -263,6 +263,28 @@ redraw). Burner requests auto-decline until checkpoint 3.
   simulation would answer it ends exactly as `playCombat` does (same
   winner, same fire log), for three class/enemy pairs.
 
+**Checkpoint 2 — turns stepped through (P4):**
+
+- **Engine:** `FireEvent.gauges` holds both sides' meters (win gauge and
+  threshold, initiative and threshold, Ward, Trace) just after the fire
+  resolved, recorded in `fireLoadoutOnce` and `fireImmediateBetas`
+  (`readGauges`, resolve.ts). Engine bench: 97 fights/s against the 90
+  baseline, so no measurable cost.
+- **`src/ui/replay.svelte.ts`:** at each engine pause the screen hands it
+  the log and the live gauges; it steps through the new fires: the piece
+  lights up (filled in its suit colour), its log line appears, the gauges
+  move to that fire's reading. 330 ms a fire for yours, 200 ms for the
+  enemy's, at normal speed; the last fire holds lit one more beat.
+- **Speed:** slow ×1.8 / normal / fast ×0.4, cycled by a chip in the
+  header, kept in local storage (`cribexe.turnSpeed`).
+- **Tap anywhere to skip** to the end of the turn ("tap to skip" shows
+  while stepping); the hand can't be played until the turn is done.
+- The result panel waits until the final turn has played out.
+- `src/ui/replay.test.ts` covers the stepping, enemy pace, skip, and a
+  new pause arriving mid-batch.
+- The table (the pile, the starter) still updates at once, ahead of the
+  turns; the hand flow around it is checkpoint 3.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

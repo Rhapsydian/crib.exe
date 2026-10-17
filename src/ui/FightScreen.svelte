@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { FightSnapshot } from './snapshot';
   import type { Card } from '../engine/cards';
+  import type { Replay } from './replay.svelte';
   import { fightParts, pickedEntry, pickFromLog, type Picked } from './fight';
   import Gauges from './Gauges.svelte';
   import Loadout from './Loadout.svelte';
@@ -19,17 +20,27 @@
   // darker background, the table and hand in the centre.
   // `onplay` / `ondiscard` answer the live engine; without them (the
   // fixed mockup moment) the hand only says what it would send.
+  // `replay` steps through each turn's fires (P4): while it plays, the
+  // log, gauges and lit piece follow it, and a tap anywhere skips.
   let {
     snapshot,
     onplay,
     ondiscard,
-  }: { snapshot: FightSnapshot; onplay?: (card: Card) => void; ondiscard?: (cards: [Card, Card]) => void } = $props();
+    replay,
+  }: { snapshot: FightSnapshot; onplay?: (card: Card) => void; ondiscard?: (cards: [Card, Card]) => void; replay?: Replay } = $props();
   const f = $derived(fightParts(snapshot));
   let picked = $state<Picked | null>(null);
   let sheet = $state<'none' | 'log' | 'loadouts'>('none');
   const detail = $derived(pickedEntry(snapshot, picked));
   const names = $derived(new Map(f.view.combatState.sides.flatMap((s) => s.loadout.map((e) => [e.definition.id, e.definition.name] as const))));
-  const ticker = $derived(f.view.log.slice(-3));
+  const log = $derived(replay ? replay.log.slice(0, replay.shown) : f.view.log);
+  const logView = $derived({ ...f.view, log });
+  const ticker = $derived(log.slice(-3));
+  const firingSlot = (side: 0 | 1) => {
+    const fire = replay?.firing;
+    if (!fire || fire.side !== side) return -1;
+    return f.view.combatState.sides[side].loadout.findIndex((e) => e.definition.id === fire.subroutineId);
+  };
 
   function pickLog(side: 0 | 1, id: string) {
     // The log drawer stays open underneath, so closing the detail
@@ -42,19 +53,20 @@
   <aside class="panel loadouts-panel" class:open={sheet === 'loadouts'}>
     <button class="close" onclick={() => (sheet = 'none')} aria-label="close loadouts">✕</button>
     <div class="caption">THEIR LOADOUT · fires top → bottom</div>
-    <Loadout entries={f.them.loadout} vertical onpick={(i) => (picked = { side: 1, index: i })} />
+    <Loadout entries={f.them.loadout} vertical firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
     <div class="caption">YOUR LOADOUT · {f.className}</div>
-    <Loadout entries={f.you.loadout} vertical onpick={(i) => (picked = { side: 0, index: i })} />
+    <Loadout entries={f.you.loadout} vertical firing={firingSlot(0)} onpick={(i) => (picked = { side: 0, index: i })} />
   </aside>
 
   <main class="main">
     <div class="band enemy">
       <div class="who">
         <span class="tag">TARGET</span> {f.enemyName}
+        {#if replay}<button class="speed" onclick={() => replay.cycleSpeed()} title="turn speed">» {replay.speed}</button>{/if}
         <button class="loadouts-button" onclick={() => (sheet = 'loadouts')}>◀ loadouts</button>
       </div>
-      <Gauges side={f.them} isPlayer={false} compact />
-      <Loadout entries={f.them.loadout} dense onpick={(i) => (picked = { side: 1, index: i })} />
+      <Gauges side={f.them} reading={replay?.gauges?.[1]} isPlayer={false} compact />
+      <Loadout entries={f.them.loadout} dense firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
     </div>
 
     <Table sequence={f.sequence} count={f.count} starter={f.starter} playerIsDealer={f.playerIsDealer} opponentCardsLeft={f.opponentCardsLeft} />
@@ -67,18 +79,21 @@
     </button>
 
     <div class="band you">
-      <Loadout entries={f.you.loadout} dense onpick={(i) => (picked = { side: 0, index: i })} />
-      <Gauges side={f.you} isPlayer compact />
+      <Loadout entries={f.you.loadout} dense firing={firingSlot(0)} onpick={(i) => (picked = { side: 0, index: i })} />
+      <Gauges side={f.you} reading={replay?.gauges?.[0]} isPlayer compact />
     </div>
     <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase} playerIsDealer={f.playerIsDealer} {onplay} {ondiscard} />
   </main>
 
   <aside class="panel log-panel" class:open={sheet === 'log'}>
     <button class="close" onclick={() => (sheet = 'none')} aria-label="close log">✕</button>
-    <Log view={f.view} onpick={pickLog} />
+    <Log view={logView} onpick={pickLog} />
   </aside>
 </div>
 
+{#if replay?.playing}
+  <button class="skip" onclick={() => replay.skip()} aria-label="skip to the end of the turn"><span>tap to skip ▸▸</span></button>
+{/if}
 {#if sheet !== 'none'}<div class="scrim" onclick={() => (sheet = 'none')} role="presentation"></div>{/if}
 {#if detail}<DetailSheet entry={detail.entry} lastFire={detail.lastFire} enemy={picked?.side === 1} onclose={() => (picked = null)} />{/if}
 
@@ -125,6 +140,36 @@
     background: var(--bg-raised);
     font-size: 11px;
     color: var(--text-dim);
+  }
+  .speed {
+    margin-left: auto;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .speed + .loadouts-button {
+    margin-left: 0;
+  }
+  .skip {
+    position: fixed;
+    inset: 0;
+    z-index: 14;
+    background: transparent;
+    border: none;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: calc(150px + env(safe-area-inset-bottom));
+  }
+  .skip span {
+    font-size: 11px;
+    color: var(--text-dim);
+    background: rgb(0 0 0 / 60%);
+    padding: 3px 10px;
+    border-radius: 999px;
   }
   .ticker {
     text-align: left;
