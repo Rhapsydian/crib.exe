@@ -79,6 +79,14 @@
   });
   // Mod and Burner callouts float over whichever panel is up (the table
   // or the show), since either can act during the show's turns.
+  // A show score's toast (the user's ask): like pegging's callout, but
+  // floated in the open space above the show panel, clear of its cards
+  // and running count.
+  const showToast = $derived.by(() => {
+    const step = replay?.current;
+    if (step?.type !== 'beat' || step.beat.kind !== 'points' || step.beat.phase !== 'show') return null;
+    return { text: scoreLabel(step.beat.occurrence, 'show'), side: step.beat.occurrence.player, key: replay!.shown };
+  });
   const slotCallout = $derived.by(() => {
     const step = replay?.current;
     if (step?.type !== 'beat') return null;
@@ -172,6 +180,11 @@
         <Table sequence={[]} pile={table.pile} leaving={table.leaving} count={table.count} starter={table.starter} playerIsDealer={table.dealer === 0} opponentCardsLeft={table.cardsLeft[1]} {callout} />
       {:else}
         <Table sequence={f.sequence} count={f.count} starter={f.starter} playerIsDealer={f.playerIsDealer} opponentCardsLeft={f.opponentCardsLeft} />
+      {/if}
+      {#if showToast}
+        {#key showToast.key}
+          <div class="show-toast" class:them={showToast.side === 1}>{showToast.side === 0 ? '+' : '−'} {showToast.text}</div>
+        {/key}
       {/if}
       {#if slotCallout}
         {#key slotCallout.key}
@@ -361,9 +374,49 @@
     position: relative;
     height: 104px;
   }
-  .table-slot > :global(*:not(.banner):not(.slot-callout)) {
+  .table-slot > :global(*:not(.banner):not(.slot-callout):not(.show-toast)) {
     height: 100%;
     box-sizing: border-box;
+  }
+  .show-toast {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 9px);
+    transform: translateX(-50%);
+    z-index: 2;
+    white-space: nowrap;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 13px;
+    pointer-events: none;
+    animation: show-toast 0.9s ease-out forwards;
+  }
+  .show-toast.them {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  @keyframes show-toast {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, 8px) scale(0.85);
+    }
+    15% {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1.04);
+    }
+    70% {
+      opacity: 1;
+      transform: translate(-50%, -2px) scale(1);
+    }
+    /* A short drift: on a 320px phone the gap above the panel is ~32px. */
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -4px);
+    }
   }
   .slot-callout {
     position: absolute;

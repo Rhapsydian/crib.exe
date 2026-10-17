@@ -4,7 +4,7 @@
   import { Replay } from './replay.svelte';
   import { readGauges } from '../engine/resolve';
   import { untrack } from 'svelte';
-  import { mergeSteps, stepGauges } from './timeline';
+  import { mergeSteps, pointsSummary, stepGauges } from './timeline';
 
   // A live fight on the chosen screen, and its result panel at the end.
   // Every engine pause is handed to the replay, which steps through the
@@ -32,6 +32,7 @@
 
 {#if fight.result && !replay.playing}
   {@const r = fight.result}
+  {@const pts = pointsSummary(r.timeline)}
   <div class="scrim"></div>
   <div class="result" class:won={r.winner === 0}>
     <div class="title">{r.winner === 0 ? '>> BREACHED' : '>> CONTAINED'}</div>
@@ -39,6 +40,16 @@
     <div class="line dim">
       breach {pct(r.finalFillFraction[0])} · containment {pct(r.finalFillFraction[1])} · {r.hands.length} hands · seed {fight.setup.seed}
     </div>
+    <table class="points">
+      <thead><tr><th>points scored</th><th class="you">you</th><th class="them">them</th></tr></thead>
+      <tbody>
+        <tr><td>pegging</td><td>{pts[0].pegging}</td><td>{pts[1].pegging}</td></tr>
+        <tr><td>hands</td><td>{pts[0].hands}</td><td>{pts[1].hands}</td></tr>
+        <tr><td>crib</td><td>{pts[0].crib}</td><td>{pts[1].crib}</td></tr>
+        {#if pts[0].heels + pts[1].heels > 0}<tr><td>his heels</td><td>{pts[0].heels}</td><td>{pts[1].heels}</td></tr>{/if}
+        <tr class="total"><td>total · fed initiative</td><td class="you">{pts[0].total}</td><td class="them">{pts[1].total}</td></tr>
+      </tbody>
+    </table>
     <div class="buttons">
       <button onclick={onagain}>fight again</button>
       <button onclick={onsetup}>change setup</button>
@@ -85,6 +96,39 @@
   .dim {
     color: var(--text-dim);
     font-size: 11px;
+  }
+  .points {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  .points th,
+  .points td {
+    padding: 2px 4px;
+    text-align: right;
+  }
+  .points th:first-child,
+  .points td:first-child {
+    text-align: left;
+    color: var(--text-dim);
+  }
+  .points th {
+    font-weight: 400;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--line);
+  }
+  .points .total td {
+    border-top: 1px solid var(--line);
+    font-weight: 700;
+  }
+  .points .you {
+    color: var(--accent);
+  }
+  .points .them {
+    color: var(--danger);
   }
   .buttons {
     display: flex;

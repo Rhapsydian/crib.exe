@@ -419,6 +419,15 @@ row.
   badges, then the meters, then the information badges (Ward, Trace,
   Mods, Burners) on their own line. The enemy's badges used to sit below
   its meters, and a short badge row could ride the meter line.
+- **Show scores get a toast** (the user's ask), like pegging's, in the
+  scorer's colour, floated in the gap above the show panel so it covers
+  neither the panel nor the enemy's section (it fits the ~32px gap on a
+  320px phone).
+- **The result panel sums the points each side scored** (the user's
+  ask): pegging, hands, crib, his heels and the total that fed
+  initiative, counted from the timeline's scoring beats
+  (`pointsSummary`), so a show cut short by the fight's end counts only
+  what was actually scored.
 
 ## Settled in passing (Claude's calls, noted for the record)
 

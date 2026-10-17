@@ -277,6 +277,35 @@ export function describeBeat(beat: CombatBeat): string {
   }
 }
 
+/** Points one side scored over a fight, by where they came from -- the
+ * points that filled its initiative gauge. Counted from the timeline's
+ * scoring beats, so a hand cut short by the fight's end still counts. */
+export interface PointsSummary {
+  pegging: number;
+  hands: number;
+  crib: number;
+  heels: number;
+  total: number;
+}
+
+export function pointsSummary(timeline: readonly CombatBeat[]): [PointsSummary, PointsSummary] {
+  const blank = (): PointsSummary => ({ pegging: 0, hands: 0, crib: 0, heels: 0, total: 0 });
+  const sums: [PointsSummary, PointsSummary] = [blank(), blank()];
+  let showing: 'hand' | 'crib' = 'hand';
+  for (const b of timeline) {
+    if (b.kind === 'show') showing = b.owner;
+    if (b.kind !== 'points') continue;
+    const s = sums[b.occurrence.player];
+    const m = b.occurrence.magnitude;
+    if (b.phase === 'cut') s.heels += m;
+    else if (b.phase === 'peg') s.pegging += m;
+    else if (showing === 'crib') s.crib += m;
+    else s.hands += m;
+    s.total += m;
+  }
+  return sums;
+}
+
 /** A step as a log line: its text, whose it is (colour), and whether it
  * is a fire (fire lines open the piece's detail when tapped). */
 export interface StepLine {

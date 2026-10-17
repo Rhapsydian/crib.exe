@@ -205,3 +205,37 @@ describe('show state', () => {
     expect(second.lit).toEqual([five[0], five[2]]);
   });
 });
+
+describe('points summary (result screen)', () => {
+  it("matches the engine's own per-hand Cribbage scores", async () => {
+    const { playCombat } = await import('../engine/combat');
+    const { CLASS_STARTING_LOADOUTS } = await import('../engine/subroutines');
+    const { discardSkillStrategy, pegSkillStrategy } = await import('../engine/ai');
+    const { pointsSummary } = await import('./timeline');
+    const r = playCombat([CLASS_STARTING_LOADOUTS['exploit-overclock'], CLASS_STARTING_LOADOUTS['daemon-honeypot']], {
+      seed: 21,
+      gaugeThreshold: [12, 12],
+      winThreshold: [400, 400],
+      discardStrategies: [discardSkillStrategy(0.85), discardSkillStrategy(0.85)],
+      playStrategies: [pegSkillStrategy(0.85), pegSkillStrategy(0.85)],
+    });
+    // Compare every completed hand: the fight ends partway through its
+    // last one, and the hand record holds that hand's whole show total
+    // even though only part of it was scored -- which the summary,
+    // counting real scoring beats, rightly leaves out.
+    const lastHand = r.timeline.findLastIndex((b) => b.kind === 'hand');
+    const expected = [0, 1].map(() => ({ pegging: 0, hands: 0, crib: 0, heels: 0, total: 0 }));
+    for (const h of r.hands.slice(0, -1)) {
+      const nonDealer = 1 - h.dealer;
+      expected[0].pegging += h.peggingScores[0];
+      expected[1].pegging += h.peggingScores[1];
+      expected[nonDealer].hands += h.nonDealerHandScore;
+      expected[h.dealer].hands += h.dealerHandScore;
+      expected[h.dealer].crib += h.cribScore;
+      expected[h.dealer].heels += h.hisHeelsPoints;
+    }
+    for (const e of expected) e.total = e.pegging + e.hands + e.crib + e.heels;
+    expect(r.hands.length).toBeGreaterThan(3);
+    expect(pointsSummary(r.timeline.slice(0, lastHand))).toEqual(expected);
+  });
+});
