@@ -566,6 +566,22 @@ phone pass.
   each: no adjacent pairs, the closest pair one empty hex apart; climbs,
   Cache rates and resilience unchanged.
 
+**Checkpoint 1, part 1 — the run as a pausable engine:**
+`src/engine/run-requests.ts` defines `RunRequest`: every decision the run
+used to hand a strategy (map Burner, move, the player's own fight
+decisions, Safehouse Rest/Merge and Merge target, shop Burner, the three
+rerolls and purchases, Event choice, the three reward picks, loadout
+order) is yielded, and the run resumes with the answer. Each request
+carries `fallback`, the exact strategy call made before, so
+`driveWithFallbacks` (now behind `playRun` and `resolveEncounter`, both
+unchanged for their 100+ callers) reproduces the old runs. Inside a
+fight only the player's requests surface; the enemy's are answered in the
+engine (`fightRequests`). Proof: 1,200 runs (6 classes x 100 seeds, the
+default profile and the synergy-aware one with skill 0.85) fingerprinted
+before and after: 0 differ, same speed (39.2 s / 39.5 s).
+`run-requests.test.ts` checks every decision kind appears, no enemy
+request surfaces, and a driver's own answer steers the run.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

@@ -3,7 +3,8 @@ import { isReachable, neighborsOf, type LayerGraph, type MapNode, type NodeType,
 import { generateLayer } from './map-gen';
 import { assignGatekeeperEnemy, eligibleEnemies, gatekeeperEnemyForNode, type EnemyDefinition, type EnemyId } from './enemies';
 import { move } from './traversal';
-import { resolveEncounter, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy, type SyntheticGatekeeper } from './encounters';
+import { resolveEncounterRequests, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy, type SyntheticGatekeeper } from './encounters';
+import { ask, driveWithFallbacks, type RunRequest } from './run-requests';
 import { addHeat, currentHeatCeiling, layerHeatAllowance, postedFightRisk, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
@@ -622,7 +623,17 @@ export interface RunOptions {
   onBeforeGatekeeperFight?: (context: GatekeeperFightContext) => void;
 }
 
+/** runRequests, answered by its fallbacks (the simulation): every
+ * strategy in `options` is called exactly as before the run became
+ * pausable, so results are byte-identical. */
 export function playRun(options: RunOptions): RunResult {
+  return driveWithFallbacks(runRequests(options));
+}
+
+/** A whole run, pausing at each decision (see run-requests.ts): the map,
+ * every encounter's choices, the player's fights, rewards and loadout
+ * order. A UI drives this; playRun answers it with `options`' strategies. */
+export function* runRequests(options: RunOptions): Generator<RunRequest, RunResult, unknown> {
   const {
     seed,
     classId = DEFAULT_CLASS_ID,
@@ -741,7 +752,8 @@ export function playRun(options: RunOptions): RunResult {
       const availableMapBurnerIds = playerState.carriedBurnerIds.filter((id) => BURNER_DEFINITIONS[id].contexts.includes('map'));
       if (availableMapBurnerIds.length > 0) {
         const closedNodeIds = graph.nodes.filter((n) => n.state === 'closed').map((n) => n.id);
-        const picked = mapBurnerStrategy({ graph, position, heat, playerState, availableBurnerIds: availableMapBurnerIds, closedNodeIds });
+        const context: MapBurnerActivationContext = { graph, position, heat, playerState, availableBurnerIds: availableMapBurnerIds, closedNodeIds };
+        const picked = yield* ask({ kind: 'mapBurner', context, fallback: () => mapBurnerStrategy(context) });
         const burnerDef = picked && availableMapBurnerIds.includes(picked.burnerId) ? BURNER_DEFINITIONS[picked.burnerId] : undefined;
         if (picked && burnerDef?.mapEffect) {
           if (burnerDef.mapEffect.kind === 'reopenClosedNode' && picked.targetNodeId && closedNodeIds.includes(picked.targetNodeId)) {
@@ -771,7 +783,15 @@ export function playRun(options: RunOptions): RunResult {
         return finish('noRouteRemains');
       }
 
-      const targetId = traversalStrategy(graph, position, heat, playerState);
+      const [moveGraph, movePosition, moveHeat, movePlayer] = [graph, position, heat, playerState];
+      const targetId = yield* ask({
+        kind: 'move',
+        graph: moveGraph,
+        position: movePosition,
+        heat: moveHeat,
+        playerState: movePlayer,
+        fallback: () => traversalStrategy(moveGraph, movePosition, moveHeat, movePlayer),
+      });
       const moveResult = move(graph, position, targetId);
       position = moveResult.position;
 
@@ -803,7 +823,7 @@ export function playRun(options: RunOptions): RunResult {
           enemy: gatekeeperEnemyForNode(node),
         });
       }
-      const outcome = resolveEncounter(
+      const outcome = yield* resolveEncounterRequests(
         node,
         rng,
         playerState,
@@ -854,7 +874,8 @@ export function playRun(options: RunOptions): RunResult {
       // should still apply correctly, not get silently dropped.
       if (outcome.dataAwarded !== 0) playerState = { ...playerState, data: playerState.data + outcome.dataAwarded };
       if (outcome.rewardOptions.length > 0) {
-        const picked = acquisitionStrategy(outcome.rewardOptions, playerState);
+        const offeredTo = playerState;
+        const picked = yield* ask({ kind: 'reward', reward: 'subroutine', options: outcome.rewardOptions, playerState: offeredTo, fallback: () => acquisitionStrategy(outcome.rewardOptions, offeredTo) });
         if (picked) {
           playerState = subroutineAcquirer(playerState, picked, installedSlotCap);
           // Salvage Protocol (checkpoint E) -- checked against every
@@ -865,14 +886,22 @@ export function playRun(options: RunOptions): RunResult {
       // Mod-choice reward (checkpoint G) -- additive, elite/gatekeeper
       // wins only, never competing with the subroutine reward above.
       if (outcome.modRewardOptions.length > 0) {
-        const pickedMod = modAcquisitionStrategy(outcome.modRewardOptions, playerState);
+        const offeredTo = playerState;
+        const pickedMod = yield* ask({ kind: 'reward', reward: 'mod', options: outcome.modRewardOptions, playerState: offeredTo, fallback: () => modAcquisitionStrategy(outcome.modRewardOptions, offeredTo) });
         if (pickedMod) playerState = acquireMod(playerState, pickedMod);
       }
       // Burner-choice reward (checkpoint F) -- additive, every fight tier
       // including regular, never competing with the subroutine/Mod
       // rewards above.
       if (outcome.burnerRewardOptions.length > 0) {
-        const pickedBurner = burnerAcquisitionStrategy(outcome.burnerRewardOptions, playerState);
+        const offeredTo = playerState;
+        const pickedBurner = yield* ask({
+          kind: 'reward',
+          reward: 'burner',
+          options: outcome.burnerRewardOptions,
+          playerState: offeredTo,
+          fallback: () => burnerAcquisitionStrategy(outcome.burnerRewardOptions, offeredTo),
+        });
         if (pickedBurner) playerState = acquireBurner(playerState, pickedBurner);
       }
       if (outcome.mergeTargetId) playerState = mergeSubroutine(playerState, outcome.mergeTargetId);
@@ -912,7 +941,8 @@ export function playRun(options: RunOptions): RunResult {
       // "mid-combat's only lever is Togglable" rule -- this sits after
       // this node's encounter has fully resolved and before the next
       // node's, which is exactly that window.
-      playerState = reorderStrategy(playerState);
+      const beforeReorder = playerState;
+      playerState = yield* ask({ kind: 'reorder', playerState: beforeReorder, fallback: () => reorderStrategy(beforeReorder) });
       log.push({ type: 'encounter', layerIndex, nodeId: node.id, nodeType: node.type, outcome, heatAfter: heat });
 
       playerState = { ...playerState, heatAllowance: ceiling() };

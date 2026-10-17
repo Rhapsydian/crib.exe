@@ -2,7 +2,8 @@ import type { MapNode, NodeState } from './map-types';
 import type { Rng } from './rng';
 import type { SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
-import { playCombat, type BurnerActivationStrategy, type CombatResult } from './combat';
+import { combatGenerator, neverActivateBurner, type BurnerActivationStrategy, type CombatAnswer, type CombatOptions, type CombatResult } from './combat';
+import { ask, driveWithFallbacks, type RunRequest } from './run-requests';
 import { discardSkillStrategy, pegSkillStrategy } from './ai';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
@@ -493,7 +494,29 @@ function syntheticCombatResult(spec: SyntheticGatekeeper, seed: number, starting
   };
 }
 
-function resolveFight(
+/**
+ * Runs a fight as part of the pausable run: the enemy's requests are
+ * answered here, with the same strategies playCombat would use, and the
+ * player's surface as 'combat' RunRequests whose fallback is that same
+ * strategy call -- so a simulated fight is byte-identical to playCombat.
+ */
+function* fightRequests(loadouts: [SubroutineDefinition[], SubroutineDefinition[]], options: CombatOptions): Generator<RunRequest, CombatResult, unknown> {
+  const discard = options.discardStrategies ?? [discardLowestTwo, discardLowestTwo];
+  const play = options.playStrategies ?? [playLowestLegal, playLowestLegal];
+  const burner = options.burnerActivationStrategies ?? [neverActivateBurner, neverActivateBurner];
+  const fight = combatGenerator(loadouts, options);
+  let step = fight.next();
+  while (!step.done) {
+    const r = step.value;
+    const auto = (): CombatAnswer =>
+      r.kind === 'discard' ? discard[r.side](r.context) : r.kind === 'play' ? play[r.side](r.context) : burner[r.side](r.context);
+    const answer = r.side === 0 ? yield* ask({ kind: 'combat', request: r, fallback: auto }) : auto();
+    step = fight.next(answer);
+  }
+  return step.value;
+}
+
+function* resolveFight(
   kind: FightKind,
   node: MapNode,
   layerIndex: number,
@@ -521,7 +544,7 @@ function resolveFight(
    * resolves for real, whatever the layer's gatekeeper is doing. Same
    * append-at-the-end treatment as every prior checkpoint's new param. */
   syntheticGatekeeper?: SyntheticGatekeeper,
-): EncounterOutcome {
+): Generator<RunRequest, EncounterOutcome, unknown> {
   const enemy = enemyForFight(kind, node, layerIndex, fightNumber, rng, enemyIdOverride);
   const strategies = strategiesForFight(kind, layerIndex, fightNumber, discardStrategies, playStrategies, playerSkill);
   const seed = rng.nextInt(2 ** 31);
@@ -544,7 +567,7 @@ function resolveFight(
   const startingTrace = baselineTrace + (playerState.extraFightTrace ?? 0);
   const result: CombatResult = synthetic
     ? syntheticCombatResult(synthetic, seed, startingTrace)
-    : playCombat([playerState.installedLoadout, scaledLoadout], {
+    : yield* fightRequests([playerState.installedLoadout, scaledLoadout], {
         seed,
         startingTrace,
         ...combatThresholdsFor(playerState, enemy, layerIndex, fightNumber),
@@ -803,7 +826,14 @@ function resolveBurnerGrant(grant: Grant<BurnerDefinition>, rng: Rng): BurnerDef
   return filtered[rng.nextInt(filtered.length)];
 }
 
-export function resolveEncounter(
+/** resolveEncounterRequests, answered by its fallbacks (the simulation):
+ * byte-identical to the synchronous resolveEncounter this used to be. */
+export function resolveEncounter(...args: Parameters<typeof resolveEncounterRequests>): EncounterOutcome {
+  return driveWithFallbacks(resolveEncounterRequests(...args));
+}
+
+/** One node's encounter, pausing at each decision (see run-requests.ts). */
+export function* resolveEncounterRequests(
   node: MapNode,
   rng: Rng,
   playerState: RunPlayerState,
@@ -885,21 +915,22 @@ export function resolveEncounter(
    * forward it. Same append-at-the-end treatment as every prior
    * checkpoint's new param. */
   syntheticGatekeeper?: SyntheticGatekeeper,
-): EncounterOutcome {
+): Generator<RunRequest, EncounterOutcome, unknown> {
   switch (node.type) {
     case 'regularFight':
-      return resolveFight('regular', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies, playerSkill);
+      return yield* resolveFight('regular', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies, playerSkill);
     case 'eliteFight':
-      return resolveFight('elite', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies, playerSkill);
+      return yield* resolveFight('elite', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies, playerSkill);
     case 'gatekeeperFight':
-      return resolveFight('gatekeeper', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies, playerSkill, syntheticGatekeeper);
+      return yield* resolveFight('gatekeeper', node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, enemyIdOverride, burnerActivationStrategies, playerSkill, syntheticGatekeeper);
     case 'safehouse': {
       // DESIGN.md's deliberate Rest-vs-Merge trade-off: one action per
       // visit (the node goes inert either way). Falls back to Rest if
       // the strategy chose 'merge' but nothing is actually banked to
       // spend -- 'merge' with no material would otherwise waste the
       // visit entirely.
-      const targetId = safehouseStrategy(playerState, currentHeat) === 'merge' ? mergeTargetStrategy(playerState) : null;
+      const action = yield* ask({ kind: 'safehouse', playerState, heat: currentHeat, fallback: () => safehouseStrategy(playerState, currentHeat) });
+      const targetId = action === 'merge' ? yield* ask({ kind: 'mergeTarget', playerState, fallback: () => mergeTargetStrategy(playerState) }) : null;
       if (targetId) {
         return {
           newState: 'inert',
@@ -950,7 +981,9 @@ export function resolveEncounter(
       // carried item instead of a standing owned Mod.
       const availableShopBurnerIds = playerState.carriedBurnerIds.filter((id) => BURNER_DEFINITIONS[id].contexts.includes('shop'));
       const chosenShopBurnerId =
-        availableShopBurnerIds.length > 0 ? shopBurnerStrategy(availableShopBurnerIds, playerState) : null;
+        availableShopBurnerIds.length > 0
+          ? yield* ask({ kind: 'shopBurner', burnerIds: availableShopBurnerIds, playerState, fallback: () => shopBurnerStrategy(availableShopBurnerIds, playerState) })
+          : null;
       const activatedShopBurner =
         chosenShopBurnerId && availableShopBurnerIds.includes(chosenShopBurnerId) ? BURNER_DEFINITIONS[chosenShopBurnerId] : undefined;
       const shopBurnerUsed = activatedShopBurner ? activatedShopBurner.id : null;
@@ -968,7 +1001,9 @@ export function resolveEncounter(
       const firstSlate = shopOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor);
       // "Once": the reroll strategy is only ever asked against the
       // first slate, never against a slate it already produced.
-      const rerolled = playerState.data >= REROLL_COST && shopRerollStrategy(firstSlate, playerState);
+      const rerolled =
+        playerState.data >= REROLL_COST &&
+        (yield* ask({ kind: 'shopReroll', slate: 'subroutine', offerings: firstSlate, playerState, fallback: () => shopRerollStrategy(firstSlate, playerState) }));
       const offerings = rerolled
         ? shopOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
         : firstSlate;
@@ -981,7 +1016,9 @@ export function resolveEncounter(
       // Burner coupon is Shop-wide, same as Vendor Discount/Bulk Buyer/
       // Scrap Merchant (session 44).
       const firstModSlate = modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, extraUncommons, discountFraction, rarityFloor);
-      const modRerolled = playerState.data >= REROLL_COST && modShopRerollStrategy(firstModSlate, playerState);
+      const modRerolled =
+        playerState.data >= REROLL_COST &&
+        (yield* ask({ kind: 'shopReroll', slate: 'mod', offerings: firstModSlate, playerState, fallback: () => modShopRerollStrategy(firstModSlate, playerState) }));
       const modOfferings = modRerolled
         ? modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
         : firstModSlate;
@@ -992,7 +1029,9 @@ export function resolveEncounter(
       // accepted for call-site symmetry only (burnerOfferingsForClass is
       // archetype-agnostic, see shop.ts's own header).
       const firstBurnerSlate = burnerOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor);
-      const burnerSlateRerolled = playerState.data >= REROLL_COST && burnerShopRerollStrategy(firstBurnerSlate, playerState);
+      const burnerSlateRerolled =
+        playerState.data >= REROLL_COST &&
+        (yield* ask({ kind: 'shopReroll', slate: 'burner', offerings: firstBurnerSlate, playerState, fallback: () => burnerShopRerollStrategy(firstBurnerSlate, playerState) }));
       const burnerOfferingsSlate = burnerSlateRerolled
         ? burnerOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
         : firstBurnerSlate;
@@ -1007,11 +1046,17 @@ export function resolveEncounter(
         rerollCost + modRerollCost + burnerRerollCost > 0
           ? { ...playerState, data: playerState.data - rerollCost - modRerollCost - burnerRerollCost }
           : playerState;
-      const shopPurchase = shopStrategy(offerings, stateAfterRerolls);
+      const shopPurchase = yield* ask({ kind: 'shopBuy', slate: 'subroutine', offerings, playerState: stateAfterRerolls, fallback: () => shopStrategy(offerings, stateAfterRerolls) });
       const stateAfterShopPurchase = shopPurchase ? { ...stateAfterRerolls, data: stateAfterRerolls.data - shopPurchase.cost } : stateAfterRerolls;
-      const modShopPurchase = modShopStrategy(modOfferings, stateAfterShopPurchase);
+      const modShopPurchase = yield* ask({ kind: 'shopBuy', slate: 'mod', offerings: modOfferings, playerState: stateAfterShopPurchase, fallback: () => modShopStrategy(modOfferings, stateAfterShopPurchase) });
       const stateAfterModPurchase = modShopPurchase ? { ...stateAfterShopPurchase, data: stateAfterShopPurchase.data - modShopPurchase.cost } : stateAfterShopPurchase;
-      const burnerShopPurchase = burnerShopStrategy(burnerOfferingsSlate, stateAfterModPurchase);
+      const burnerShopPurchase = yield* ask({
+        kind: 'shopBuy',
+        slate: 'burner',
+        offerings: burnerOfferingsSlate,
+        playerState: stateAfterModPurchase,
+        fallback: () => burnerShopStrategy(burnerOfferingsSlate, stateAfterModPurchase),
+      });
 
       return {
         newState: 'inert',
@@ -1041,7 +1086,7 @@ export function resolveEncounter(
       // apply here: an Event, like a regular/elite fight, is one-and-
       // done, never needing a stable identity across revisits).
       const eventDef = EVENT_ROSTER[rng.nextInt(EVENT_ROSTER.length)];
-      const choice = eventChoiceStrategy(eventDef, playerState, currentHeat);
+      const choice = yield* ask({ kind: 'event', event: eventDef, playerState, heat: currentHeat, fallback: () => eventChoiceStrategy(eventDef, playerState, currentHeat) });
       const { effect } = rollWeightedOutcome(choice.outcomes, rng);
 
       const eventGrant: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition } = {};
@@ -1068,7 +1113,7 @@ export function resolveEncounter(
       // correct EncounterOutcome, not to opener-window bookkeeping),
       // banked as a real open question rather than silently decided.
       const bonusFightOutcome = effect.bonusFight
-        ? resolveFight(effect.bonusFight.tier, node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, undefined, burnerActivationStrategies, playerSkill)
+        ? yield* resolveFight(effect.bonusFight.tier, node, layerIndex, fightNumber, rng, playerState, discardStrategies, playStrategies, undefined, burnerActivationStrategies, playerSkill)
         : undefined;
 
       const directHeat = eventHeat(effect.heatLosses ?? 0, layerIndex - 1); // heat.ts is 0-based
