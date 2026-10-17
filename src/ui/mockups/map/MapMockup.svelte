@@ -64,7 +64,7 @@
     <span>map {seed}</span>
     <button onclick={() => seed++}>›</button>
     <span class="sep"></span>
-    {#each [10, 12] as n (n)}
+    {#each [10, 12, 14] as n (n)}
       <button class:on={size === n} onclick={() => (size = n)}>{n} nodes</button>
     {/each}
   </div>
