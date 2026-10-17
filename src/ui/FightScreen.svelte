@@ -11,8 +11,9 @@
 
   // The chosen fight-screen layout (the user's picks from the P3 mockups):
   // COMPACT on phones -- everything on one screen, a three-line log
-  // ticker that opens the full log, and a loadouts button (top right)
-  // that slides in the full loadouts drawer -- and DRAWERS on desktop:
+  // ticker that slides the full log in from the left, and a loadouts
+  // button (top right) that slides the full loadouts in from the right
+  // -- and DRAWERS on desktop:
   // full loadouts in a left panel, the log in a right panel, both on a
   // darker background, the table and hand in the centre.
   let { snapshot }: { snapshot: FightSnapshot } = $props();
@@ -136,7 +137,7 @@
     text-align: right;
   }
 
-  /* Phone: both panels are off-canvas sheets. */
+  /* Phone: both panels are off-canvas drawers (log left, loadouts right). */
   .panel {
     position: fixed;
     z-index: 16;
@@ -158,13 +159,12 @@
     padding-top: calc(12px + env(safe-area-inset-top));
   }
   .log-panel {
+    top: 0;
     left: 0;
-    right: 0;
     bottom: 0;
-    max-height: 70%;
-    border-radius: 12px 12px 0 0;
-    border-top: 2px solid var(--accent);
-    transform: translateY(105%);
+    width: 85%;
+    transform: translateX(-105%);
+    padding-top: calc(12px + env(safe-area-inset-top));
     padding-bottom: calc(12px + env(safe-area-inset-bottom));
   }
   .panel.open {
@@ -204,7 +204,6 @@
     }
     .log-panel {
       width: 340px;
-      border-top: none;
     }
     .close,
     .loadouts-button,
