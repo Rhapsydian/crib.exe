@@ -201,6 +201,12 @@
     font-family: var(--mono);
     pointer-events: none;
   }
+  /* No browser focus box or phone tap flash on a tapped node: the dashed
+     ring marks where you are (the user's call). */
+  .node {
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
   .node.can {
     cursor: pointer;
   }
