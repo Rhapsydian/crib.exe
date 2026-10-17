@@ -21,8 +21,9 @@ empowerment) and **Honeypot** (conversion / defense).
 
 ## Status
 
-**The engine is complete; the content is a placeholder skeleton. There is
-no UI yet** — `npm run dev` currently serves the default Svelte scaffold.
+**The engine and its content are complete and balanced. One fight is
+playable in the browser** (`npm run dev`), on desktop and phones; a full
+run in the browser is next.
 
 Session 51 redesigned the archetypes and the subroutine model from
 scratch (`DESIGN.md` → Archetypes & Subroutines; the decision trail is
@@ -58,6 +59,15 @@ class at 13–19% full-run victory, inside the 10–20% target (was 11–31%).
 It did so with a Credit premium on the noisy Exploit pieces, a lower
 gatekeeper pass-rate curve, and small bridge trims.
 
+Session 57 started **making the game playable** (`docs/playable-design.md`,
+P1–P8). The engine now pauses at each player decision (generators) and
+resolves combat live during pegging. On top of it, **one real fight is
+playable**: pick a class and an enemy, then discard, peg, and watch every
+card, score, turn, Mod and Burner play out step by step, with the show
+counted hand by hand and a running session log. Phones get a compact
+screen with side drawers; desktop gets side panels, keyboard controls and
+hover tips.
+
 What exists, all headless and test-covered:
 
 | area | state |
@@ -65,24 +75,23 @@ What exists, all headless and test-covered:
 | Cribbage rules engine | complete, rules-correct, 2-player |
 | Combat wrapper | complete — alpha/beta subroutines, seven verbs, initiative, Breach/Containment |
 | Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
-| Meta-progression | complete — 6 classes (placeholder names and bridge passives), acquisition, Merge, Shop |
-| Content | **skeleton** — 16 subroutines, 10 enemies; 37 Mods, 8 Burners, 8 Events carried over |
-| Balance | **recalibration in progress** — verbs priced; betas next (see `BACKLOG.md`) |
-| UI, art | not started |
+| Meta-progression | complete — 6 classes with bespoke bridge Mods, acquisition, Merge, Shop |
+| Content | **authored** — 36 subroutines, 18 enemies (8 gatekeepers with bespoke Mods); 37 Mods, 8 Burners, 8 Events |
+| Balance | **done** — every class 13–19% full-run victory |
+| UI | **one playable fight** (milestone 2); the run screens are milestone 3 |
+| Art | not started |
 
-The roadmap is now the redesign's three steps: engine refactor (done),
-recalibrate (in progress), then author real content. The balance numbers from sessions 39–50 measured content that no
-longer exists; their *lessons* (gatekeeper matchup dominating class
-spread, trigger frequency over payload magnitude) carry forward in
-`DESIGN.md` and `docs/run-economy-design.md`.
+The playable-game plan's milestones: a pausable engine (done), one
+playable fight (done, pending a phone playthrough), a playable run, then
+polish and playtesting with a style guide.
 
 ## Running it
 
 ```bash
 npm install
-npm test        # Vitest suite (646 tests)
+npm test        # Vitest suite (703 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
-npm run dev     # Vite dev server (scaffold only — no game UI yet)
+npm run dev     # Vite dev server: a test-fight setup, then a playable fight
 ```
 
 ## Balance and diagnostic tools

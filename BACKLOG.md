@@ -229,6 +229,10 @@ GitHub-hosted site and itch.io.
 
 Backlog from this plan: an optional tutorial run (a bespoke, single-layer
 guided layout); drag and drop as an alternative card input; hosting.
+Watch (session 57): the Burner prompt asks before every one of the
+player's turns while one remains, which may get naggy (an "only when I
+tap a Burner" setting); rules text for the ~35 general Mods, due when
+they appear as rewards in milestone 3.
 
 ---
 
