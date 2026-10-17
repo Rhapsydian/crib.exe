@@ -215,7 +215,9 @@ GitHub-hosted site and itch.io.
 2. **Layout mockups** (2–3 phone variants: tabs / drawers / compact), then
    **one playable fight**: tap-to-lift cards, turns stepped through piece
    by piece, tap anything to inspect it, a running log. Player-facing
-   names "Process" (alpha) and "Hook" (beta).
+   names "Process" (alpha) and "Hook" (beta). *In progress:* layout
+   chosen (compact on phones, drawers on desktop); checkpoint 1 (a real
+   fight you can play, test-harness setup) done.
 3. **A playable run** (run loop converted, map and node screens, class
    choice, end screens).
 4. **Polish and playtesting**, including a style / chrome guide.

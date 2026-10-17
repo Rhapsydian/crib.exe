@@ -224,6 +224,45 @@ scoring moments. Exploit Heat endings 21–27%, inside B2's band.
 
 **Milestone 1 is complete.**
 
+## Milestone 2 — progress
+
+**Layout chosen** (from the P3 mockups, the user's picks): **compact** on
+phones, with the full log and the full loadouts as side drawers (log
+from the left, loadouts from the right, opened by the log ticker and a
+top-right button); **drawers** on desktop, with both panels always open
+on a darker background. The crib isn't drawn (it is always 4 cards); a
+"you deal / they deal" label stays. Piece detail opens over the log
+drawer. `src/ui/FightScreen.svelte`; the mockups stay at `#mock`,
+`#tabs`, `#drawers`, `#compact`.
+
+**Wiring plan** (approved): 1. a real fight you can play; 2. turns
+stepped through (P4); 3. the rest of a hand (cut, His Heels, the show
+item by item, hand transitions, Cribbage lines in the log, the burner
+prompt); 4. desktop keys and hover, and a phone playthrough.
+
+- **Per-fire gauge snapshots (the user's call, option 1):** each
+  `FireEvent` gains a small snapshot of both sides' gauges, so the
+  step-through can move the gauges piece by piece. P4 had assumed the
+  existing record was enough; it says what each piece did, not what the
+  gauges read afterward. Checkpoint 2 re-runs the engine bench.
+
+**Checkpoint 1:** `src/ui/live-fight.svelte.ts` is the UI driver: it
+runs `combatGenerator`, answers the enemy's requests with the
+skill-dial AI a real run uses (enemy skill, thresholds, scaling and
+baseline Trace as `resolveFight` sets them, pitched at the enemy's first
+layer past the opener window), and stops at the player's discard and
+play requests. Each pause publishes a fresh copy of the request (the
+engine mutates one state in place; new identities are what make Svelte
+redraw). Burner requests auto-decline until checkpoint 3.
+
+- A test-harness **setup screen** (pick a class and an enemy) and a
+  **result panel** (breached / contained, fight again, change setup).
+- The hand handles the **discard** (lift two, "Send to crib"); the
+  starter shows face down until it is cut.
+- `src/ui/live-fight.test.ts`: a live fight answered the way the
+  simulation would answer it ends exactly as `playCombat` does (same
+  winner, same fire log), for three class/enemy pairs.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

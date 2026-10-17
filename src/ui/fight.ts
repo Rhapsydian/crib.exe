@@ -7,21 +7,24 @@ export interface Picked {
   index: number;
 }
 
-/** Everything a layout needs from a paused fight, flattened. */
+/** Everything a layout needs from a paused fight, flattened. During the
+ * discard the starter isn't cut yet, so it is undefined, and the whole
+ * six-card hand is selectable. */
 export function fightParts(snapshot: FightSnapshot) {
   const { request } = snapshot;
-  const { view, context, pegging } = request;
-  const hand = view.hands[view.handIndex];
+  const { view } = request;
+  const discarding = request.kind === 'discard';
   return {
     view,
+    phase: request.kind,
     you: view.combatState.sides[0],
     them: view.combatState.sides[1],
-    legal: context.legalCards,
-    count: context.count,
-    sequence: context.sequence,
-    hand: pegging.hand,
-    opponentCardsLeft: pegging.opponentCardsLeft,
-    starter: hand.starter,
+    legal: discarding ? request.context.hand : request.context.legalCards,
+    count: discarding ? 0 : request.context.count,
+    sequence: discarding ? [] : request.context.sequence,
+    hand: discarding ? request.context.hand : request.pegging.hand,
+    opponentCardsLeft: discarding ? 6 : request.pegging.opponentCardsLeft,
+    starter: discarding ? undefined : view.hands[view.handIndex]?.starter,
     playerIsDealer: view.dealer === 0,
     enemyName: snapshot.enemy.name,
     className: snapshot.className,

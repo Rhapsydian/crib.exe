@@ -3,7 +3,7 @@
   import CardView from './CardView.svelte';
 
   // The table: the pegging pile since the last reset, the running count,
-  // the starter and who deals (whose crib it is), and how many cards the
+  // the starter (face down until it is cut) and who deals (whose crib it is), and how many cards the
   // opponent still holds. The crib itself isn't drawn -- it is always 4
   // cards once discards are chosen (the user's call).
   let {
@@ -13,13 +13,13 @@
     playerIsDealer,
     opponentCardsLeft,
     small = false,
-  }: { sequence: Card[]; count: number; starter: Card; playerIsDealer: boolean; opponentCardsLeft: number; small?: boolean } = $props();
+  }: { sequence: Card[]; count: number; starter?: Card; playerIsDealer: boolean; opponentCardsLeft: number; small?: boolean } = $props();
 </script>
 
 <div class="table" class:small>
   <div class="side">
     <div class="caption">STARTER</div>
-    <CardView card={starter} small />
+    {#if starter}<CardView card={starter} small />{:else}<CardView faceDown small />{/if}
     <div class="caption dealer">{playerIsDealer ? 'YOU DEAL' : 'THEY DEAL'}</div>
   </div>
   <div class="pile">

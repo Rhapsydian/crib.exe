@@ -4,39 +4,62 @@
   import DrawersLayout from './ui/mockups/DrawersLayout.svelte';
   import CompactLayout from './ui/mockups/CompactLayout.svelte';
   import FightScreen from './ui/FightScreen.svelte';
+  import SetupScreen from './ui/SetupScreen.svelte';
+  import LiveFightView from './ui/LiveFightView.svelte';
+  import { LiveFight } from './ui/live-fight.svelte';
+  import type { ClassId } from './engine/classes';
+  import type { EnemyDefinition } from './engine/enemies';
 
-  // The fight screen (milestone 2), over one real paused fight. The
-  // default is the chosen layout: compact on phones, drawers on desktop.
-  // The three P3 mockups stay reachable at #tabs / #drawers / #compact,
-  // with a switcher, for comparison.
-  const snapshot = mockSnapshot();
-  const layouts = ['fight', 'tabs', 'drawers', 'compact'] as const;
-  type Layout = (typeof layouts)[number];
-  const fromHash = (): Layout => (layouts.find((l) => location.hash === `#${l}`) ?? 'fight');
-  let layout = $state<Layout>(fromHash());
+  // The default page is a live fight (milestone 2): a test-harness setup
+  // screen, then the fight. The fixed mockup moment stays reachable for
+  // comparison -- #mock (the chosen screen) and the three P3 mockups at
+  // #tabs / #drawers / #compact, with a switcher.
+  const mocks = ['mock', 'tabs', 'drawers', 'compact'] as const;
+  type Route = 'live' | (typeof mocks)[number];
+  const fromHash = (): Route => mocks.find((l) => location.hash === `#${l}`) ?? 'live';
+  let route = $state<Route>(fromHash());
   $effect(() => {
-    const onHash = () => (layout = fromHash());
+    const onHash = () => (route = fromHash());
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   });
+
+  let snapshot = $state.raw<ReturnType<typeof mockSnapshot> | null>(null);
+  $effect(() => {
+    if (route !== 'live' && !snapshot) snapshot = mockSnapshot();
+  });
+
+  let fight = $state.raw<LiveFight | null>(null);
+  let last = $state<{ classId: ClassId; enemyId: string } | null>(null);
+  const newSeed = () => Math.floor(Math.random() * 1_000_000);
+  function start(classId: ClassId, enemy: EnemyDefinition) {
+    last = { classId, enemyId: enemy.id };
+    fight = new LiveFight({ classId, enemy, seed: newSeed() });
+  }
 </script>
 
-{#if layout !== 'fight'}
+{#if route === 'live'}
+  {#if fight}
+    <LiveFightView {fight} onagain={() => fight && start(fight.setup.classId, fight.setup.enemy)} onsetup={() => (fight = null)} />
+  {:else}
+    <SetupScreen onstart={start} classId={last?.classId} enemyId={last?.enemyId} />
+  {/if}
+{:else if snapshot}
   <div class="switcher">
-    {#each layouts as l (l)}
-      <a href="#{l}" class:active={layout === l}>{l}</a>
+    {#each mocks as l (l)}
+      <a href="#{l}" class:active={route === l}>{l}</a>
     {/each}
+    <a href="#live">live</a>
   </div>
-{/if}
-
-{#if layout === 'fight'}
-  <FightScreen {snapshot} />
-{:else if layout === 'tabs'}
-  <TabsLayout {snapshot} />
-{:else if layout === 'drawers'}
-  <DrawersLayout {snapshot} />
-{:else}
-  <CompactLayout {snapshot} />
+  {#if route === 'mock'}
+    <FightScreen {snapshot} />
+  {:else if route === 'tabs'}
+    <TabsLayout {snapshot} />
+  {:else if route === 'drawers'}
+    <DrawersLayout {snapshot} />
+  {:else}
+    <CompactLayout {snapshot} />
+  {/if}
 {/if}
 
 <style>

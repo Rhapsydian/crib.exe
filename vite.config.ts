@@ -9,6 +9,6 @@ export default defineConfig({
   server: { host: true },
   test: {
     environment: 'node',
-    include: ['src/engine/**/*.test.ts'],
+    include: ['src/engine/**/*.test.ts', 'src/ui/**/*.test.ts'],
   },
 })

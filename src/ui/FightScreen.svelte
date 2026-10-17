@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { FightSnapshot } from './snapshot';
+  import type { Card } from '../engine/cards';
   import { fightParts, pickedEntry, pickFromLog, type Picked } from './fight';
   import Gauges from './Gauges.svelte';
   import Loadout from './Loadout.svelte';
@@ -16,7 +17,13 @@
   // -- and DRAWERS on desktop:
   // full loadouts in a left panel, the log in a right panel, both on a
   // darker background, the table and hand in the centre.
-  let { snapshot }: { snapshot: FightSnapshot } = $props();
+  // `onplay` / `ondiscard` answer the live engine; without them (the
+  // fixed mockup moment) the hand only says what it would send.
+  let {
+    snapshot,
+    onplay,
+    ondiscard,
+  }: { snapshot: FightSnapshot; onplay?: (card: Card) => void; ondiscard?: (cards: [Card, Card]) => void } = $props();
   const f = $derived(fightParts(snapshot));
   let picked = $state<Picked | null>(null);
   let sheet = $state<'none' | 'log' | 'loadouts'>('none');
@@ -63,7 +70,7 @@
       <Loadout entries={f.you.loadout} dense onpick={(i) => (picked = { side: 0, index: i })} />
       <Gauges side={f.you} isPlayer compact />
     </div>
-    <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} />
+    <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase} playerIsDealer={f.playerIsDealer} {onplay} {ondiscard} />
   </main>
 
   <aside class="panel log-panel" class:open={sheet === 'log'}>

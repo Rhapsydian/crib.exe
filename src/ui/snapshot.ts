@@ -11,8 +11,13 @@ import { authoredPiece } from '../engine/content/starting-loadouts';
  * through a hand that already has some combat history. Nothing on the
  * mockup screens is invented -- every number comes from this paused fight.
  */
+/** The player-facing requests: the two that wait for the player's hand. */
+export type PlayerRequest = Extract<CombatRequest, { kind: 'discard' | 'play' }>;
+
+/** One paused moment of a fight: the mockups' fixed one, or a live
+ * fight's current frame (live-fight.svelte.ts). */
 export interface FightSnapshot {
-  request: Extract<CombatRequest, { kind: 'play' }>;
+  request: PlayerRequest;
   classId: ClassId;
   className: string;
   enemy: EnemyDefinition;
