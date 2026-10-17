@@ -362,6 +362,32 @@ between-hands banner; the Burner prompt).
 - The table area is a fixed height, so the show panel and the banner
   don't move the layout; a long ticker line no longer widens the page.
 
+**Mods and Burners on screen** (the user's ask: they were live in every
+fight but shown nowhere; placement and the trigger flash both the
+user's call, before checkpoint 4):
+
+- **Chips** on each side's gauge row: `◆ n` Mods (both sides) and `⏏ n`
+  Burners left (yours); tapping one opens the loadouts drawer.
+- **The loadouts drawer / desktop left panel** lists THEIR MODS, YOUR
+  MODS and YOUR BURNERS under the loadouts (spent Burners struck
+  through); not in the piece row, which reads as firing order.
+- **The detail panel** has a Mod / Burner variant: name, whose, kind
+  ("Wraith class Mod", "gatekeeper Mod", "Burner · common") and its
+  rules in words.
+- **Rules text for the six class bridge Mods** is written now
+  (`src/ui/kit.ts`, from the engine's own constants, in each owner's
+  voice); the general Mods get theirs in milestone 3, when they appear as
+  rewards. Gatekeeper Mods already had text.
+- **The trigger flash:** every Mod that actually does something is noted
+  in a fight-wide record (`CombatState.modTriggers`, a side record the
+  state copies share). A trigger during a piece's fire rides on that fire
+  (`FireEvent.mods`): the fire's log line gains "· ◆ Null Session" and
+  the chip flashes with it. Others become `mod` beats (a bridge on
+  scoring or a turn's start, Adaptation, start-of-fight Mods) with a
+  "◆ your Siphon" callout over the table or the show panel. Bench: no
+  cost (104 fights/s with it, 96 without, same run).
+- The ⏏ glyph is forced to its text form so phones don't draw an emoji.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

@@ -6,12 +6,27 @@
   // Trace. `compact` collapses to a single line for tight layouts.
   // `reading`, when given, overrides the side's live state: the turn
   // step-through (P4) shows the meters as they stood after each fire.
+  // `mods` / `burners` add ◆ / ⏏︎ count chips (tap: `onkit`); `flashMods`
+  // lights the ◆ chip while one of this side's Mods acts.
   let {
     side,
     reading,
     isPlayer,
     compact = false,
-  }: { side: CombatSideState; reading?: GaugeReading | null; isPlayer: boolean; compact?: boolean } = $props();
+    mods = 0,
+    burners = 0,
+    flashMods = false,
+    onkit,
+  }: {
+    side: CombatSideState;
+    reading?: GaugeReading | null;
+    isPlayer: boolean;
+    compact?: boolean;
+    mods?: number;
+    burners?: number;
+    flashMods?: boolean;
+    onkit?: () => void;
+  } = $props();
 
   const g = $derived(
     reading ?? {
@@ -42,6 +57,8 @@
   <div class="row chips">
     <span class="chip ward" title="Ward">⛨ {fmt(g.ward)}</span>
     {#if isPlayer}<span class="chip trace" title="Trace">◉ {fmt(g.trace)}</span>{/if}
+    {#if mods > 0}<button class="chip mod" class:flash={flashMods} title="Mods" onclick={onkit}>◆ {mods}</button>{/if}
+    {#if burners > 0}<button class="chip burner" title="Burners" onclick={onkit}>⏏︎ {burners}</button>{/if}
   </div>
 </div>
 
@@ -113,5 +130,28 @@
   }
   .trace {
     color: var(--trace);
+  }
+  button.chip {
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+  }
+  .mod {
+    color: var(--mod);
+    border-color: var(--mod);
+  }
+  .burner {
+    color: var(--warn);
+  }
+  .mod.flash {
+    animation: chip-flash 0.5s ease-out;
+  }
+  @keyframes chip-flash {
+    0%,
+    60% {
+      background: var(--mod);
+      color: var(--bg);
+      transform: scale(1.15);
+    }
   }
 </style>

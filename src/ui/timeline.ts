@@ -6,6 +6,8 @@ import type { ScoringOccurrence } from '../engine/triggers';
 import { rankLabel, suitInfo } from './suits';
 import { describeEffect, describeFire } from './describe';
 import { BURNER_DEFINITIONS } from '../engine/burners';
+import type { ModTrigger } from '../engine/resolve';
+import { modName, triggerLabel } from './kit';
 
 /**
  * One thing the screen animates, in fight order: a table beat (a hand
@@ -60,7 +62,15 @@ export function stepSide(step: Step): PlayerIndex | null {
   if (b.kind === 'points') return b.occurrence.player;
   if (b.kind === 'show') return b.player;
   if (b.kind === 'burner') return b.side;
+  if (b.kind === 'mod') return b.side;
   return null;
+}
+
+/** The Mods acting at a step: a Mod beat's own, or a fire's. */
+export function stepMods(step: Step | null): ModTrigger[] {
+  if (!step || step.type === 'clear') return [];
+  if (step.type === 'fire') return step.fire.mods ?? [];
+  return step.beat.kind === 'mod' ? [{ side: step.beat.side, mod: step.beat.mod }] : [];
 }
 
 /** Milliseconds a step holds the screen at normal speed. Your own card is
@@ -83,6 +93,8 @@ export function stepDelay(step: Step): number {
       return b.total === 0 ? 1000 : 750;
     case 'burner':
       return 800;
+    case 'mod':
+      return 550;
   }
 }
 
@@ -260,6 +272,8 @@ export function describeBeat(beat: CombatBeat): string {
       return `// show: ${showTitle(beat.owner, beat.player)} · ${beat.cards.map(cardLabel).join(', ')} + ${cardLabel(beat.starter)} · ${beat.total === 0 ? 'no score' : `${beat.total} points`}`;
     case 'burner':
       return `${beat.side === 0 ? 'you burn' : 'they burn'} ${burnerLabel(beat.burnerId)}`;
+    case 'mod':
+      return `◆ ${triggerLabel(beat)}`;
   }
 }
 
@@ -269,18 +283,20 @@ export interface StepLine {
   text: string;
   side: PlayerIndex | null;
   fire: FireEvent | null;
-  /** Scoring and table lines read quieter than fires. */
-  kind: 'fire' | 'points' | 'table';
+  /** Scoring and table lines read quieter than fires; Mod lines stand
+   * out in the Mod colour. */
+  kind: 'fire' | 'points' | 'table' | 'mod';
 }
 
 export function stepLine(step: Step, names: ReadonlyMap<string, string>): StepLine | null {
   if (step.type === 'clear') return null;
   if (step.type === 'fire') {
     const f = step.fire;
-    return { text: describeFire(f, names.get(f.subroutineId) ?? f.subroutineId), side: f.side, fire: f, kind: 'fire' };
+    const mods = f.mods?.length ? ` · ◆ ${[...new Set(f.mods.map((m) => modName(m.mod)))].join(', ')}` : '';
+    return { text: describeFire(f, names.get(f.subroutineId) ?? f.subroutineId) + mods, side: f.side, fire: f, kind: 'fire' };
   }
   const b = step.beat;
   // Section lines (a hand, the cut, a show) have no owner prefix.
   const side = b.kind === 'show' ? null : stepSide(step);
-  return { text: describeBeat(b), side, fire: null, kind: b.kind === 'points' ? 'points' : 'table' };
+  return { text: describeBeat(b), side, fire: null, kind: b.kind === 'points' ? 'points' : b.kind === 'mod' ? 'mod' : 'table' };
 }

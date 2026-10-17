@@ -450,3 +450,23 @@ describe('combat timeline (milestone 2 checkpoints 3a/3b)', () => {
     expect(burns[0]).toMatchObject({ kind: 'burner', side: 0, burnerId: 'flash-drive' });
   });
 });
+
+describe('Mod triggers (milestone 2, the trigger flash)', () => {
+  it('records a turn-start bridge as a Mod beat and a gatekeeper Mod on the fire it cut', () => {
+    const result = playCombat([CLASS_STARTING_LOADOUTS['overclock-honeypot'], CLASS_STARTING_LOADOUTS['overclock-honeypot']], {
+      seed: 3,
+      gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD],
+      winThreshold: [400, 400],
+      classId: 'overclock-honeypot',
+      gatekeeperMods: [[], ['null-session']],
+      discardStrategies: [discardSkillStrategy(0.85), discardSkillStrategy(0.85)],
+      playStrategies: [pegSkillStrategy(0.85), pegSkillStrategy(0.85)],
+    });
+    const siphons = result.timeline.filter((b) => b.kind === 'mod' && b.side === 0 && b.mod.id === 'bridge-overclock-honeypot');
+    expect(siphons.length).toBeGreaterThan(0);
+    const cut = result.log.filter((f) => f.side === 0 && f.mods?.some((m) => m.side === 1 && m.mod.id === 'null-session'));
+    expect(cut.length).toBeGreaterThan(0);
+    // Every Siphon beat comes right before one of the player's turns.
+    for (const b of siphons) expect(result.log[b.firesBefore]?.side).toBe(0);
+  });
+});

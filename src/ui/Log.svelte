@@ -67,6 +67,10 @@
   .points.you {
     color: var(--accent);
   }
+  .mod {
+    color: var(--mod);
+    cursor: default;
+  }
   .who {
     opacity: 0.6;
     margin-right: 4px;

@@ -151,7 +151,32 @@ export interface CombatState {
   /** Combat-context Burners side 0 carried in -- a start-of-combat
    * snapshot; used ones are surfaced via CombatResult, not removed here. */
   carriedBurnerIds: BurnerId[];
+  /** A side record, not state (milestone 2, the user's ask): every Mod
+   * that actually does something appends here, so the UI can flash it.
+   * One mutable list shared by every copy of the state in a fight (the
+   * spreads carry the reference); combat.ts creates it and drains it --
+   * fires take their own (`FireEvent.mods`), the rest become timeline
+   * beats. Absent outside a fight, where noting is a no-op. */
+  modTriggers?: ModTrigger[];
 }
+
+/** A Mod, either kind: a player/class Mod (mods.ts, bridges included as
+ * `bridge-<class>`) or a gatekeeper's (gatekeeper-mods.ts). */
+export type ModRef = { kind: 'mod'; id: ModId } | { kind: 'gatekeeper'; id: GatekeeperModId };
+
+/** A Mod owned by `side` acting. */
+export interface ModTrigger {
+  side: PlayerIndex;
+  mod: ModRef;
+}
+
+function noteMod(combatState: CombatState, side: PlayerIndex, mod: ModRef): void {
+  combatState.modTriggers?.push({ side, mod });
+}
+const gk = (id: GatekeeperModId): ModRef => ({ kind: 'gatekeeper', id });
+const ownMod = (id: ModId): ModRef => ({ kind: 'mod', id });
+/** A class bridge, as the Mod that carries it. */
+const bridgeMod = (classId: ClassId): ModRef => ({ kind: 'mod', id: `bridge-${classId}` as ModId });
 
 export function createCombatSideState(definitions: SubroutineDefinition[], gaugeThreshold: number, winThreshold: number): CombatSideState {
   return {
@@ -213,6 +238,7 @@ export function clearHandKnowledge(combatState: CombatState): CombatState {
     const hands = (sideState.passiveState[HANDS_SEEN] ?? 0) + 1;
     // Adaptation: every few hands, the owner's growth caps rise.
     const adapting = combatState.sideMods[side].includes('adaptation') && hands % ADAPTATION_EVERY === 0;
+    if (adapting) noteMod(combatState, side as PlayerIndex, gk('adaptation'));
     const loadout = adapting
       ? sideState.loadout.map((entry) => {
           const { growth, growthCap } = entry.definition.alpha;
@@ -267,15 +293,21 @@ export function creditWinGauge(combatState: CombatState, side: PlayerIndex, amou
   const scratch = state.sides[side].passiveState;
   // Null Session: the first Credit `side` would gain each turn is discarded.
   if (hasSideMod(state, opponent, 'null-session') && !scratch[NULL_SESSION_SPENT]) {
+    noteMod(state, opponent, gk('null-session'));
     return withSide(state, side, { passiveState: { ...scratch, [NULL_SESSION_SPENT]: 1 } });
   }
   const gained = scratch[GAINED_THIS_TURN] ?? 0;
   // No Way In: a per-turn cap on what `side` can gain.
-  if (hasSideMod(state, opponent, 'no-way-in')) amount = Math.min(amount, Math.max(0, NO_WAY_IN_CAP - gained));
+  if (hasSideMod(state, opponent, 'no-way-in')) {
+    const capped = Math.min(amount, Math.max(0, NO_WAY_IN_CAP - gained));
+    if (capped < amount) noteMod(state, opponent, gk('no-way-in'));
+    amount = capped;
+  }
   if (amount <= 0) return state;
   // Zero-Sum: Credit past the threshold in a turn feeds the opponent.
   if (hasSideMod(state, opponent, 'zero-sum')) {
     const excess = Math.max(0, gained + amount - ZERO_SUM_THRESHOLD) - Math.max(0, gained - ZERO_SUM_THRESHOLD);
+    if (excess > 0) noteMod(state, opponent, gk('zero-sum'));
     if (excess > 0) state = withSide(state, opponent, { winGauge: addDuelProgress(state.sides[opponent].winGauge, excess * ZERO_SUM_SHARE).gauge });
   }
   const { gauge } = addDuelProgress(state.sides[side].winGauge, amount);
@@ -435,10 +467,12 @@ function applyBridgeOnFire(combatState: CombatState, side: PlayerIndex, fired: S
   const bridge = combatState.bridges[side];
   if (!bridge || !elevated) return combatState;
   if (bridge === 'exploit-overclock' && fired.archetype === 'exploit' && turn) {
+    noteMod(combatState, side, bridgeMod(bridge));
     turn.empowerNext += BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER;
     return combatState;
   }
   if (bridge === 'daemon-overclock' && fired.archetype === 'overclock') {
+    noteMod(combatState, side, bridgeMod(bridge));
     return mapLoadout(combatState, side, (entry) => {
       const { growth, growthCap } = entry.definition.alpha;
       if (entry.definition.archetype !== 'daemon' || growth === undefined) return entry.state;
@@ -453,8 +487,12 @@ function applyBridgeOnFire(combatState: CombatState, side: PlayerIndex, fired: S
 function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOccurrence): CombatState {
   const side = occurrence.player;
   const bridge = combatState.bridges[side];
-  if (bridge === 'exploit-daemon' && occurrence.category === 'fifteen') return reduceWinGauge(combatState, opponentOf(side), BRIDGE_EXPLOIT_DAEMON_SUPPRESS);
+  if (bridge === 'exploit-daemon' && occurrence.category === 'fifteen') {
+    noteMod(combatState, side, bridgeMod(bridge));
+    return reduceWinGauge(combatState, opponentOf(side), BRIDGE_EXPLOIT_DAEMON_SUPPRESS);
+  }
   if (bridge === 'exploit-honeypot' && occurrence.category === 'pair') {
+    noteMod(combatState, side, bridgeMod(bridge));
     return withSide(combatState, side, { wardShield: combatState.sides[side].wardShield + BRIDGE_EXPLOIT_HONEYPOT_WARD });
   }
   return combatState;
@@ -470,6 +508,7 @@ function applyBridgeOnTurnStart(combatState: CombatState, side: PlayerIndex): Co
     state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [DAEMON_HONEYPOT_BANKED]: 0 } });
   }
   if (bridge === 'overclock-honeypot') {
+    noteMod(state, side, bridgeMod(bridge));
     state = withSide(state, side, { wardShield: state.sides[side].wardShield + BRIDGE_OVERCLOCK_HONEYPOT_WARD });
   }
   return state;
@@ -482,6 +521,7 @@ function applyBridgeOnSuppress(combatState: CombatState, side: PlayerIndex, amou
   const banked = sideState.passiveState[DAEMON_HONEYPOT_BANKED] ?? 0;
   const ward = Math.max(0, Math.min(amount, BRIDGE_DAEMON_HONEYPOT_CAP - banked));
   if (ward === 0) return combatState;
+  noteMod(combatState, side, bridgeMod('daemon-honeypot'));
   return withSide(combatState, side, {
     wardShield: sideState.wardShield + ward,
     passiveState: { ...sideState.passiveState, [DAEMON_HONEYPOT_BANKED]: banked + ward },
@@ -498,6 +538,9 @@ const MOD_GAUGE_CROSS_FRACTION = 0.5;
  * first hand. */
 export function applyModOnCombatStartPassives(combatState: CombatState): CombatState {
   let state = combatState;
+  if (hasMod(state, 'warm-boot')) noteMod(state, 0, ownMod('warm-boot'));
+  if (hasMod(state, 'cold-boot')) noteMod(state, 0, ownMod('cold-boot'));
+  if (hasMod(state, 'cache-prefetch')) noteMod(state, 0, ownMod('cache-prefetch'));
   if (hasMod(state, 'warm-boot')) state = withSide(state, 0, { wardShield: state.sides[0].wardShield + MOD_SMALL });
   if (hasMod(state, 'cold-boot')) state = creditWinGauge(state, 0, MOD_SMALL);
   if (hasMod(state, 'cache-prefetch')) state = mapLoadout(state, 0, (entry) => addCharges(entry.state, entry.definition, CACHE_PREFETCH_CHARGES));
@@ -511,12 +554,14 @@ export function applyModGaugeCross50Passives(combatState: CombatState): CombatSt
   if (hasMod(state, 'early-momentum') && passiveStat(state, 0, 'early-momentum:fired') === 0) {
     const gauge = state.sides[0].winGauge;
     if (gauge.progress >= gauge.threshold * MOD_GAUGE_CROSS_FRACTION) {
+      noteMod(state, 0, ownMod('early-momentum'));
       state = creditWinGauge(setPassiveStat(state, 0, 'early-momentum:fired', 1), 0, MOD_SMALL);
     }
   }
   if (hasMod(state, 'first-contact') && passiveStat(state, 0, 'first-contact:fired') === 0) {
     const gauge = state.sides[1].winGauge;
     if (gauge.progress >= gauge.threshold * MOD_GAUGE_CROSS_FRACTION) {
+      noteMod(state, 0, ownMod('first-contact'));
       state = reduceWinGauge(setPassiveStat(state, 0, 'first-contact:fired', 1), 1, MOD_SMALL);
     }
   }
@@ -530,8 +575,12 @@ function applyModIncomingCreditPassives(combatState: CombatState, target: Player
   if (target !== 0) return { combatState, amount };
   let state = combatState;
   let remaining = amount;
-  if (hasMod(state, 'static-shield')) remaining = Math.max(0, remaining - MOD_SMALL);
+  if (hasMod(state, 'static-shield') && remaining > 0) {
+    noteMod(state, 0, ownMod('static-shield'));
+    remaining = Math.max(0, remaining - MOD_SMALL);
+  }
   if (hasMod(state, 'surge-protector') && passiveStat(state, 0, 'surge-protector:used') === 0) {
+    noteMod(state, 0, ownMod('surge-protector'));
     remaining = Math.max(0, remaining - MOD_MEDIUM);
     state = setPassiveStat(state, 0, 'surge-protector:used', 1);
   }
@@ -628,7 +677,10 @@ export function resolveEffect(
         return creditWinGauge(reduceWinGauge(state, target, stolen), caster, stolen);
       }
       // Containment: the target's Ward absorbs piercing Credit too.
-      if (effect.piercing && !hasSideMod(state, target, 'containment')) return creditWinGauge(state, caster, effect.amount);
+      if (effect.piercing) {
+        if (!hasSideMod(state, target, 'containment')) return creditWinGauge(state, caster, effect.amount);
+        noteMod(state, target, gk('containment'));
+      }
       // Plain credit: the target's incoming-credit Mods, then its Ward.
       // Conversion credits above are transfers, not attacks, and skip both.
       const incoming = applyModIncomingCreditPassives(state, target, effect.amount);
@@ -728,6 +780,8 @@ export interface FireEvent {
    * move the gauges piece by piece rather than jump once per turn.
    * Index 0 is the player's. Not read by the engine. */
   gauges: [GaugeReading, GaugeReading];
+  /** Mods that acted during this fire (either side's), for the UI. */
+  mods?: ModTrigger[];
 }
 
 /** One side's meters at a moment, as plain numbers. */
@@ -738,6 +792,14 @@ export interface GaugeReading {
   initiativeThreshold: number;
   ward: number;
   trace: number;
+}
+
+/** The Mod triggers noted since `mark`, taken out of the shared record
+ * to ride on the fire that caused them. */
+function takeMods(combatState: CombatState, mark: number): { mods?: ModTrigger[] } {
+  const sink = combatState.modTriggers;
+  if (!sink || sink.length <= mark) return {};
+  return { mods: sink.splice(mark) };
 }
 
 export function readGauges(combatState: CombatState): [GaugeReading, GaugeReading] {
@@ -814,7 +876,9 @@ function resolveFire(
  * enemy-side "make the player visible"). */
 function applyTracePressure(combatState: CombatState, side: PlayerIndex, definition: SubroutineDefinition): CombatState {
   // Spotlight: every fire of the owner's pieces adds Trace to its opponent.
-  const pressure = (definition.tracePressure ?? 0) + (hasSideMod(combatState, side, 'spotlight') ? SPOTLIGHT_TRACE : 0);
+  const spotlight = hasSideMod(combatState, side, 'spotlight');
+  if (spotlight) noteMod(combatState, side, gk('spotlight'));
+  const pressure = (definition.tracePressure ?? 0) + (spotlight ? SPOTLIGHT_TRACE : 0);
   return pressure > 0 ? applyTrace(combatState, opponentOf(side), pressure) : combatState;
 }
 
@@ -839,6 +903,7 @@ export function fireTurn(
   events.push(...pass.events);
   // Root Access: on the owner's first turn each hand, the loadout fires twice.
   if (hasSideMod(state, side, 'root-access') && !state.sides[side].passiveState[ROOT_ACCESS_SPENT]) {
+    noteMod(state, side, gk('root-access'));
     state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [ROOT_ACCESS_SPENT]: 1 } });
     const again = fireLoadoutOnce(state, side, selfContext);
     state = again.combatState;
@@ -865,12 +930,14 @@ function fireLoadoutOnce(
 
     const { definition } = entry;
     const beta = definition.beta;
+    const modMark = state.modTriggers?.length ?? 0;
     const context = buildTriggerContext(state, side, selfContext.isDealer, firedThisTurn, i);
     const charges = beta ? betaCharges(definition, entry.state, context) : 0;
     let scale = beta ? betaScale(beta, charges) : 0;
     const elevated = scale > 0;
     // Reception Protocol: the owner's first Exploit beta each hand applies twice.
     if (elevated && definition.archetype === 'exploit' && hasSideMod(state, side, 'reception-protocol') && !state.sides[side].passiveState[RECEPTION_SPENT]) {
+      noteMod(state, side, gk('reception-protocol'));
       scale *= 2;
       state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [RECEPTION_SPENT]: 1 } });
     }
@@ -895,7 +962,7 @@ function fireLoadoutOnce(
     state = mapLoadout(state, side, (e, index) => (index === i ? recordFire(e.state, definition) : e.state));
     state = applyBridgeOnFire(state, side, definition, elevated, turn);
 
-    events.push({ subroutineId: definition.id, side, alpha, beta: resolved.beta, elevated, charges, immediate: false, gauges: readGauges(state) });
+    events.push({ subroutineId: definition.id, side, alpha, beta: resolved.beta, elevated, charges, immediate: false, gauges: readGauges(state), ...takeMods(state, modMark) });
     firedThisTurn.push({ definition, elevated });
   }
 
@@ -937,6 +1004,7 @@ export function fireImmediateBetas(combatState: CombatState, dealer: PlayerIndex
       }
 
       // Spend first, for the same reason fireTurn does.
+      const modMark = state.modTriggers?.length ?? 0;
       state = mapLoadout(state, side, (e, index) => (index === i ? { ...spendCharges(e.state), lastConditionTrue: conditionNow } : e.state));
       let alpha: Effect | undefined;
       let resolvedBeta: Effect | undefined;
@@ -953,7 +1021,7 @@ export function fireImmediateBetas(combatState: CombatState, dealer: PlayerIndex
       state = mapLoadout(state, side, (e, index) => (index === i ? (alpha ? recordFire(e.state, definition) : { ...e.state, fireCount: e.state.fireCount + 1 }) : e.state));
       state = applyBridgeOnFire(state, side, definition, true, undefined);
       const firedCharges = beta.source === 'cards' || beta.source === 'progress' ? entry.state.charges : 1;
-      events.push({ subroutineId: definition.id, side, alpha: alpha ?? (definition.alpha as Effect), beta: resolvedBeta, elevated: true, charges: firedCharges, immediate: true, gauges: readGauges(state) });
+      events.push({ subroutineId: definition.id, side, alpha: alpha ?? (definition.alpha as Effect), beta: resolvedBeta, elevated: true, charges: firedCharges, immediate: true, gauges: readGauges(state), ...takeMods(state, modMark) });
     }
   }
   return { combatState: state, events };

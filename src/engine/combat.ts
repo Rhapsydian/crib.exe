@@ -38,6 +38,7 @@ import {
   type CombatSideState,
   type FireEvent,
   type GaugeReading,
+  type ModRef,
   readGauges,
 } from './resolve';
 
@@ -458,6 +459,14 @@ export type CombatBeat = (
       total: number;
     }
   | {
+      /** A Mod that acted outside any fire (a fire carries its own in
+       * `FireEvent.mods`): a bridge on scoring or a turn's start, a
+       * gatekeeper's per-hand Mod, a start-of-fight Mod. */
+      kind: 'mod';
+      side: PlayerIndex;
+      mod: ModRef;
+    }
+  | {
       /** A Burner spent before a turn. */
       kind: 'burner';
       side: PlayerIndex;
@@ -536,6 +545,7 @@ export function* combatGenerator(
   const created = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds, opponentBridge, gatekeeperMods);
   let combatState = applyModOnCombatStartPassives({
     ...created,
+    modTriggers: [],
     sides: [{ ...created.sides[0], trace: Math.max(0, startingTrace) }, created.sides[1]],
   });
   const hands: HandResult[] = [];
@@ -546,7 +556,7 @@ export function* combatGenerator(
   // always empty until burnerActivationStrategies is actually wired up.
   const burnersUsedThisCombat: BurnerId[] = [];
 
-  const finish = (winner: PlayerIndex, resolvedBy: 'threshold' | 'attrition' = 'threshold'): CombatResult => ({
+  const finish = (winner: PlayerIndex, resolvedBy: 'threshold' | 'attrition' = 'threshold'): CombatResult => (flushMods(), {
     winner,
     log,
     timeline,
@@ -581,10 +591,21 @@ export function* combatGenerator(
    * then the scorer's initiative gauge, then every turn it buys (each
    * preceded by a Burner request). Returns the winner if it decided the
    * fight. */
-  const view = (handIndex: number, handDealer: PlayerIndex): CombatView => ({ combatState, log, timeline, hands, handIndex, dealer: handDealer });
+  // Built as the engine pauses, so any Mod triggers still pending go out first.
+  const view = (handIndex: number, handDealer: PlayerIndex): CombatView => {
+    flushMods();
+    return { combatState, log, timeline, hands, handIndex, dealer: handDealer };
+  };
   const beat = (b: DistributiveOmit<CombatBeat, 'firesBefore'>): void => {
     timeline.push({ ...b, firesBefore: log.length } as CombatBeat);
+    flushMods();
   };
+  /** Mod triggers no fire took become beats where they stand. */
+  function flushMods(): void {
+    const sink = combatState.modTriggers;
+    if (!sink || sink.length === 0) return;
+    for (const t of sink.splice(0)) timeline.push({ kind: 'mod', side: t.side, mod: t.mod, firesBefore: log.length });
+  }
   let phase: 'cut' | 'peg' | 'show' = 'cut';
 
   function* resolveOccurrence(
@@ -643,6 +664,9 @@ export function* combatGenerator(
       }
 
       const fired = fireTurn(combatState, occurrence.player, { isDealer: occurrence.player === handDealer });
+      // Triggers left over from the turn (its start: a bridge, Root
+      // Access) go before its fires.
+      flushMods();
       log.push(...fired.events);
       winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
       if (winner !== null) return winner;

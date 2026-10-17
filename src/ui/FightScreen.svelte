@@ -9,7 +9,9 @@
   import Hand from './Hand.svelte';
   import Log from './Log.svelte';
   import DetailSheet from './DetailSheet.svelte';
-  import { burnerLabel, scoreLabel, stepLine, tableAt, type Step } from './timeline';
+  import { burnerLabel, scoreLabel, stepLine, stepMods, tableAt, type Step } from './timeline';
+  import { burnersOf, modKey, modName, modsOf, type KitItem } from './kit';
+  import KitList from './KitList.svelte';
   import ShowPanel from './ShowPanel.svelte';
   import type { BurnerId } from '../engine/burner-types';
 
@@ -41,10 +43,25 @@
   let picked = $state<Picked | null>(null);
   let sheet = $state<'none' | 'log' | 'loadouts'>('none');
   const detail = $derived(pickedEntry(snapshot, picked));
-  const names = $derived(new Map(f.view.combatState.sides.flatMap((s) => s.loadout.map((e) => [e.definition.id, e.definition.name] as const))));
   // Live, the table, the log and the gauges follow the replay's position
   // in the fight's steps; for the mockups, the paused frame as it is.
   const steps = $derived<readonly Step[]>(replay ? replay.steps.slice(0, replay.shown) : f.view.log.map((fire) => ({ type: 'fire', fire })));
+  let pickedKit = $state<KitItem | null>(null);
+  // Mods (both sides) and the player's Burners, spent ones marked from
+  // the Burner beats played so far.
+  const theirMods = $derived(modsOf(f.view.combatState, 1));
+  const yourMods = $derived(modsOf(f.view.combatState, 0));
+  const yourBurners = $derived(
+    burnersOf(
+      f.view.combatState.carriedBurnerIds,
+      steps.flatMap((s) => (s.type === 'beat' && s.beat.kind === 'burner' && s.beat.side === 0 ? [s.beat.burnerId] : [])),
+    ),
+  );
+  const burnersLeft = $derived(yourBurners.filter((b) => !b.spent).length);
+  // The Mods acting at the replay's current step flash (the user's ask).
+  const flashing = $derived(new Set(stepMods(replay?.current ?? null).map((t) => modKey(t.side, t.mod))));
+  const flashSide = (side: 0 | 1) => stepMods(replay?.current ?? null).some((t) => t.side === side);
+  const names = $derived(new Map(f.view.combatState.sides.flatMap((s) => s.loadout.map((e) => [e.definition.id, e.definition.name] as const))));
   const table = $derived(replay ? tableAt(replay.steps, replay.shown) : null);
   const ticker = $derived(
     steps
@@ -58,7 +75,16 @@
     const b = step.beat;
     // Show scores are announced in the show panel instead.
     if (b.kind === 'points' && b.phase !== 'show') return { text: scoreLabel(b.occurrence, b.phase), side: b.occurrence.player, key: replay!.shown };
-    if (b.kind === 'burner') return { text: burnerLabel(b.burnerId), side: b.side, key: replay!.shown };
+    return null;
+  });
+  // Mod and Burner callouts float over whichever panel is up (the table
+  // or the show), since either can act during the show's turns.
+  const slotCallout = $derived.by(() => {
+    const step = replay?.current;
+    if (step?.type !== 'beat') return null;
+    const b = step.beat;
+    if (b.kind === 'burner') return { text: `⏏︎ ${burnerLabel(b.burnerId)}`, side: b.side, key: replay!.shown, tone: 'burner' };
+    if (b.kind === 'mod') return { text: `◆ ${b.side === 0 ? 'your' : 'their'} ${modName(b.mod)}`, side: b.side, key: replay!.shown, tone: 'mod' };
     return null;
   });
   // A new hand: a banner over the table while its beat is up.
@@ -86,8 +112,20 @@
     <button class="close" onclick={() => (sheet = 'none')} aria-label="close loadouts">✕</button>
     <div class="caption">THEIR LOADOUT · fires top → bottom</div>
     <Loadout entries={f.them.loadout} vertical firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
+    {#if theirMods.length}
+      <div class="caption sub">THEIR MODS</div>
+      <KitList items={theirMods} {flashing} onpick={(k) => (pickedKit = k)} />
+    {/if}
     <div class="caption">YOUR LOADOUT · {f.className}</div>
     <Loadout entries={f.you.loadout} vertical firing={firingSlot(0)} onpick={(i) => (picked = { side: 0, index: i })} />
+    {#if yourMods.length}
+      <div class="caption sub">YOUR MODS</div>
+      <KitList items={yourMods} {flashing} onpick={(k) => (pickedKit = k)} />
+    {/if}
+    {#if yourBurners.length}
+      <div class="caption sub">YOUR BURNERS</div>
+      <KitList items={yourBurners} onpick={(k) => (pickedKit = k)} />
+    {/if}
   </aside>
 
   <main class="main">
@@ -97,7 +135,7 @@
         {#if replay}<button class="speed" onclick={() => replay.cycleSpeed()} title="turn speed">» {replay.speed}</button>{/if}
         <button class="loadouts-button" onclick={() => (sheet = 'loadouts')}>◀ loadouts</button>
       </div>
-      <Gauges side={f.them} reading={replay?.gauges?.[1]} isPlayer={false} compact />
+      <Gauges side={f.them} reading={replay?.gauges?.[1]} isPlayer={false} compact mods={theirMods.length} flashMods={flashSide(1)} onkit={() => (sheet = 'loadouts')} />
       <Loadout entries={f.them.loadout} dense firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
     </div>
 
@@ -108,6 +146,11 @@
         <Table sequence={[]} pile={table.pile} leaving={table.leaving} count={table.count} starter={table.starter} playerIsDealer={table.dealer === 0} opponentCardsLeft={table.cardsLeft[1]} {callout} />
       {:else}
         <Table sequence={f.sequence} count={f.count} starter={f.starter} playerIsDealer={f.playerIsDealer} opponentCardsLeft={f.opponentCardsLeft} />
+      {/if}
+      {#if slotCallout}
+        {#key slotCallout.key}
+          <div class="slot-callout {slotCallout.tone}">{slotCallout.text}</div>
+        {/key}
       {/if}
       {#if banner}
         {#key banner.key}
@@ -125,7 +168,16 @@
 
     <div class="band you">
       <Loadout entries={f.you.loadout} dense firing={firingSlot(0)} onpick={(i) => (picked = { side: 0, index: i })} />
-      <Gauges side={f.you} reading={replay?.gauges?.[0]} isPlayer compact />
+      <Gauges
+        side={f.you}
+        reading={replay?.gauges?.[0]}
+        isPlayer
+        compact
+        mods={yourMods.length}
+        burners={burnersLeft}
+        flashMods={flashSide(0)}
+        onkit={() => (sheet = 'loadouts')}
+      />
     </div>
     {#if handReady && f.phase === 'burner'}
       <div class="burner-prompt">
@@ -155,6 +207,7 @@
 {/if}
 {#if sheet !== 'none'}<div class="scrim" onclick={() => (sheet = 'none')} role="presentation"></div>{/if}
 {#if detail}<DetailSheet entry={detail.entry} lastFire={detail.lastFire} enemy={picked?.side === 1} onclose={() => (picked = null)} />{/if}
+{#if pickedKit}<DetailSheet kit={pickedKit} onclose={() => (pickedKit = null)} />{/if}
 
 <style>
   .screen {
@@ -267,9 +320,51 @@
     position: relative;
     height: 104px;
   }
-  .table-slot > :global(*:not(.banner)) {
+  .table-slot > :global(*:not(.banner):not(.slot-callout)) {
     height: 100%;
     box-sizing: border-box;
+  }
+  .slot-callout {
+    position: absolute;
+    left: 50%;
+    top: 8px;
+    transform: translateX(-50%);
+    z-index: 2;
+    max-width: 92%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--bg);
+    border: 1px solid var(--mod);
+    color: var(--mod);
+    font-weight: 700;
+    font-size: 12px;
+    pointer-events: none;
+    animation: slot-callout 0.9s ease-out forwards;
+  }
+  .slot-callout.burner {
+    border-color: var(--warn);
+    color: var(--warn);
+  }
+  @keyframes slot-callout {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, 8px) scale(0.85);
+    }
+    15% {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1.05);
+    }
+    75% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -8px);
+    }
   }
   .banner {
     position: absolute;
@@ -397,6 +492,9 @@
     color: var(--text-dim);
     letter-spacing: 0.06em;
     margin-top: 6px;
+  }
+  .caption.sub {
+    margin-top: 2px;
   }
   .scrim {
     position: fixed;
