@@ -521,6 +521,24 @@ phone pass.
   relay but the entry has at least two links; one left with fewer gets
   its shortest unused link, else the layer is regenerated. Over 300
   layers a size: 807 relays, none a dead end.
+- **M7 — node types are dealt, not rolled** (the user's call). Rolling
+  each node independently (fight 40%, elite 15%, Safehouse 15%, Shop,
+  Event, relay 10% each) left 28-43% of layers with no Shop, as many with
+  no Event, and up to 26% of 14-node layers with 3+ elites. Each layer
+  now gets a set core plus flex slots (fight / elite / Event / relay):
+
+  | layer (nodes) | fights | elites | Safehouse | Shop | Event | flex |
+  |---|---|---|---|---|---|---|
+  | 1 (10) | 3 | 1 | 1 | 1 | 1 | 1 |
+  | 2 (12) | 4 | 1 | 1 | 1 | 1 | 2 |
+  | 3 (12) | 3 | 2 | 1 | 1 | 1 | 2 |
+  | 4 (14) | 4 | 2 | 2 | 1 | 1 | 2 |
+
+  Placement rules: no elite next to the entry; a Safehouse within two
+  moves of the gatekeeper; two of the same special node never adjacent.
+- **M8 — a Cache node** (the user's idea): a chance per layer of a
+  remote dead end holding a free reward, its risk the extra Heat of the
+  detour and walking back. Details open, below.
 
 ## Settled in passing (Claude's calls, noted for the record)
 
