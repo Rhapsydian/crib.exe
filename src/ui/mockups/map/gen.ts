@@ -121,6 +121,39 @@ function linkUp(ids: string[], entry: string, gk: string, cands: MapEdge[], pos:
   return isResilient(graphOf(edges)) ? edges : null;
 }
 
+// ------------------------------------------------------------ the grid
+
+/** The map's drawing area (SVG units, portrait) and its backdrop of
+ * pointy-top hexes of radius R, odd rows shifted right. Shared with the
+ * screen, so a node nudged to a cell sits on the hex that's drawn. */
+export const VIEW = { W: 100, H: 150, P: 9, R: 5 };
+const HEX_W = Math.sqrt(3) * VIEW.R;
+
+export function backdropCells(): Pt[] {
+  const cells: Pt[] = [];
+  for (let r = 0; r * 1.5 * VIEW.R < VIEW.H + VIEW.R; r++)
+    for (let c = -1; c * HEX_W < VIEW.W + HEX_W; c++) cells.push({ x: c * HEX_W + (r % 2) * (HEX_W / 2), y: r * 1.5 * VIEW.R });
+  return cells;
+}
+
+/** Nudges every node to the centre of its nearest free backdrop hex
+ * inside the padded area (entry and gatekeeper first). */
+function snapToBackdrop(ids: string[], pos: Positions) {
+  const { W, H, P } = VIEW;
+  const toView = (p: Pt) => ({ x: P + p.x * (W - 2 * P), y: P + p.y * (H - 2 * P) });
+  const toUnit = (p: Pt) => ({ x: (p.x - P) / (W - 2 * P), y: (p.y - P) / (H - 2 * P) });
+  const free = backdropCells().filter((c) => {
+    const u = toUnit(c);
+    return u.x >= -0.01 && u.x <= 1.01 && u.y >= -0.01 && u.y <= 1.01;
+  });
+  for (const id of ['n0', 'n1', ...ids.filter((i) => i !== 'n0' && i !== 'n1')]) {
+    const v = toView(pos[id]);
+    let best = 0;
+    for (let i = 1; i < free.length; i++) if (dist(free[i], v) < dist(free[best], v)) best = i;
+    pos[id] = toUnit(free.splice(best, 1)[0]);
+  }
+}
+
 // ------------------------------------------------------------ scatter
 
 /** Even scatter in a portrait band (entry bottom-centre, gatekeeper
@@ -141,6 +174,9 @@ export function scatter(n: number, seed: number): GenMap {
       }
       pos[`n${i}`] = best;
     }
+    // Centred on the backdrop's hexes before linking, so the links come
+    // from where the nodes are drawn and still never cross.
+    snapToBackdrop(ids, pos);
     const edges = linkUp(ids, 'n0', 'n1', planarCandidates(ids, pos), pos, rng, 2.4);
     if (!edges) continue;
     return { graph: { nodes: nodesFor(ids, 'n0', 'n1', rng), edges, entryNodeId: 'n0', gatekeeperNodeId: 'n1' }, pos, resilient: true };

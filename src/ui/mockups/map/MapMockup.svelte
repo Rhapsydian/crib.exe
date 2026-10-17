@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { NodeType } from '../../../engine/map-types';
-  import { hops, isResilient, scatter, type Positions } from './gen';
+  import { backdropCells, hops, isResilient, scatter, VIEW, type Positions } from './gen';
 
   // Milestone 3 map mockup: the scatter generator (the user's pick), on a
-  // faint hex grid that is decoration only -- nodes don't snap to it.
+  // faint hex grid; each node is centred on its nearest hex.
   // Only the current layer shows (the user's call: earlier layers can't
   // be revisited). Tap a linked node to walk there.
   let seed = $state(1);
@@ -30,22 +30,15 @@
   });
   const linked = $derived(new Set(graph.edges.flatMap((e) => (e.a === here ? [e.b] : e.b === here ? [e.a] : []))));
 
-  // Drawing area: portrait, padded.
-  const W = 100;
-  const H = 150;
-  const P = 9;
+  // Drawing area and the hex backdrop (shared with the generator).
+  const { W, H, P, R } = VIEW;
   const X = (x: number) => P + x * (W - 2 * P);
   const Y = (y: number) => P + y * (H - 2 * P);
-
-  // The backdrop: pointy-top hexes of radius R, odd rows shifted right.
-  const R = 5;
-  const hexW = Math.sqrt(3) * R;
   const hexPath = Array.from({ length: 6 }, (_, i) => {
     const a = (Math.PI / 3) * i + Math.PI / 6;
     return `${(Math.cos(a) * R).toFixed(2)},${(Math.sin(a) * R).toFixed(2)}`;
   }).join(' ');
-  const backdrop: { x: number; y: number }[] = [];
-  for (let r = 0; r * 1.5 * R < H + R; r++) for (let c = -1; c * hexW < W + hexW; c++) backdrop.push({ x: c * hexW + (r % 2) * (hexW / 2), y: r * 1.5 * R });
+  const backdrop = backdropCells();
 
   const KIND: Record<NodeType, { glyph: string; label: string; tone: string }> = {
     regularFight: { glyph: '⚔︎', label: 'fight', tone: 'var(--danger)' },

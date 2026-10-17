@@ -493,8 +493,13 @@ phone pass.
   up).
 - **Scatter, free, confirmed for refinement** (the user's call); the
   other generators, the snapped toggle and the old layout styles are
-  removed from the mockup. A faint hex grid sits behind the map as
-  decoration only (nodes don't snap to it).
+  removed from the mockup. A faint hex grid sits behind the map.
+- **Nodes centre on the backdrop's hexes** (the user's call): the
+  generator nudges each node to its nearest free hex before linking, so
+  links come from the drawn positions and still never cross. The grid is
+  defined once (`VIEW`, `backdropCells` in gen.ts) and shared with the
+  screen. Same character as free scatter: 2.9-3.7 moves to the
+  gatekeeper, ~3 links a node, all resilient (300 maps a size).
 
 ## Settled in passing (Claude's calls, noted for the record)
 
