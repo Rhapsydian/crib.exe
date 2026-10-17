@@ -106,7 +106,7 @@
       {@const r = made.kind[n.id] === 'relay' ? 2 : big ? 6 : 4.4}
       <g class="node" class:can={linked.has(n.id)} class:done={visited.includes(n.id) && n.id !== here} transform="translate({X(p.x)},{Y(p.y)})" onclick={() => step(n.id)} role="button" tabindex="-1" onkeydown={() => {}}>
         <circle {r} style="--tone: {k.tone}" />
-        {#if k.glyph}<text y="1.5" style="fill: {k.tone}" font-size={big ? 6 : 4.6}>{k.glyph}</text>{/if}
+        {#if k.glyph}<text dominant-baseline="central" style="fill: {k.tone}" font-size={big ? 6 : 4.6}>{k.glyph}</text>{/if}
         {#if n.id === here}<circle r={r + 1.8} class="here" />{/if}
       </g>
     {/each}
