@@ -628,6 +628,43 @@ while they were away; raw numbers in `docs/calibration/m3-two-lever.txt`):
   -- a decision left for the user (see below).
 - One test assumed old absolute Heat costs (a high-Heat detour) and now
   derives its Heat from the costs themselves.
+- **Wraith left at ~21%** (the user's call: "we can do further tuning
+  later").
+
+**Checkpoint 2 — a run you can play** (class choice, the map, fights, the
+end):
+
+- **Engine:** two notices in the run, `fightStart` (the enemy, tier,
+  layer) and `fightEnd` (the full CombatResult) -- nothing to decide,
+  no-op fallbacks, so simulations are unchanged.
+- **`src/ui/live-run.svelte.ts`:** the run's UI driver. The player
+  answers map moves and their own fight decisions; every other decision
+  (rewards, Safehouse, Shop, Event, Cache contents' picks, loadout order,
+  drops, Burners outside fights) is answered for now by the
+  synergy-aware strategies, and each is noted ("took Tarpit (subroutine
+  reward)") until checkpoints 3-4 give them screens.
+- **Class choice** (`ClassSelect.svelte`): six cards (suits, class Mod and
+  its rules, starting pieces); "test a single fight" goes to `#test`.
+- **The map** (`RunMap.svelte` over a shared `MapView.svelte`): layer,
+  class, Heat against the layer's allowance, Data, Mods, Burners; tap a
+  linked node for its card (what it is, what it gives, "Move here · +2
+  Heat"), tap again or Move to go; cleared nodes dim, closed ones are
+  struck through; a loadout drawer (loadout, bench 0-3, Mods); the last
+  auto-decided notes. A banner opens each layer.
+- **Fights** reuse the fight screen through a `FightSession` interface
+  (the test fight and run fights both provide it); the result panel says
+  "continue".
+- **The end** (`RunEnd.svelte`): ROOT ACCESS / QUARANTINED / TRACED /
+  BREACHED, THEN CAUGHT / NO ROUTE, layers breached, fights won, the
+  final loadout, "new contract".
+- **Found and fixed:** a Burner prompt with two of the same Burner (they
+  stack) keyed its buttons by id and broke the screen; it now shows each
+  kind once with a count.
+- `window.__run` exposes the live run in development builds only, for
+  driving a run from the console.
+- Verified in the preview at phone size: a full run played on screen
+  through three layer banners to the end screen; `live-run.test.ts`
+  plays whole runs through the driver and reaches layer 2.
 
 ## Settled in passing (Claude's calls, noted for the record)
 

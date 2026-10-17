@@ -576,6 +576,7 @@ function* resolveFight(
   // Checkpoint 6's diagnostic noise sits on top of the posted baseline as
   // the player's own Trace, so a loss still adds it to R7's charge.
   const startingTrace = baselineTrace + (playerState.extraFightTrace ?? 0);
+  yield* ask({ kind: 'fightStart', enemy, tier: kind, layer: layerIndex, playerState, fallback: () => null });
   const result: CombatResult = synthetic
     ? syntheticCombatResult(synthetic, seed, startingTrace)
     : yield* fightRequests([playerState.installedLoadout, scaledLoadout], {
@@ -593,6 +594,7 @@ function* resolveFight(
         burnerActivationStrategies,
       });
 
+  yield* ask({ kind: 'fightEnd', enemy, tier: kind, result, fallback: () => null });
   if (result.winner === 0) {
     const rewardTier: RewardTier = kind === 'regular' ? 'standard' : 'better';
     // Additive Mod-choice reward on elite/gatekeeper wins only (session

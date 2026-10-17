@@ -121,3 +121,8 @@ export function burnersOf(carried: readonly BurnerId[], spentSoFar: readonly Bur
 export function triggerLabel(t: ModTrigger): string {
   return `${t.side === 0 ? 'your' : 'their'} ${modName(t.mod)}`;
 }
+
+/** A class's own bridge Mod, by name and rules (for class choice). */
+export function classModFor(classId: ClassId): { name: string; text: string } {
+  return { name: MOD_DEFINITIONS[`${BRIDGE_PREFIX}${classId}` as ModId].name, text: BRIDGE_TEXT[classId].you };
+}

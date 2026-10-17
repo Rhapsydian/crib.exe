@@ -135,10 +135,16 @@
     }
     if (handReady && f.phase === 'burner' && onburner) {
       const n = Number(e.key);
-      if (Number.isInteger(n) && n >= 1 && n <= f.burners.length) onburner(f.burners[n - 1]);
+      if (Number.isInteger(n) && n >= 1 && n <= burnerChoices.length) onburner(burnerChoices[n - 1].id);
       else if (e.key === 'Escape') onburner(null);
     }
   }
+
+  // The Burner prompt's choices: each kind once, with how many you carry
+  // (Burners stack, so the same id can be offered twice).
+  const burnerChoices = $derived(
+    [...new Set(f.burners)].map((id) => ({ id, count: f.burners.filter((b) => b === id).length })),
+  );
 
   function pickLog(side: 0 | 1, id: string) {
     // The log drawer stays open underneath, so closing the detail
@@ -230,8 +236,10 @@
       <div class="burner-prompt">
         <div class="ask">Your turn is about to fire. Burn one?</div>
         <div class="choices">
-          {#each f.burners as id (id)}
-            <button class="burn" onclick={() => onburner?.(id)}><span class="burn-key">{f.burners.indexOf(id) + 1}</span>{burnerLabel(id)}</button>
+          {#each burnerChoices as choice, i (choice.id)}
+            <button class="burn" onclick={() => onburner?.(choice.id)}
+              ><span class="burn-key">{i + 1}</span>{burnerLabel(choice.id)}{choice.count > 1 ? ` ×${choice.count}` : ''}</button
+            >
           {/each}
           <button class="keep" onclick={() => onburner?.(null)}>not now<span class="burn-key after">esc</span></button>
         </div>

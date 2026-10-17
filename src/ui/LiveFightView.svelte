@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { LiveFight } from './live-fight.svelte';
+  import type { FightSession, ResultAction } from './fight-session';
   import FightScreen from './FightScreen.svelte';
   import { Replay } from './replay.svelte';
   import { readGauges } from '../engine/resolve';
@@ -10,7 +10,8 @@
   // Every engine pause is handed to the replay, which steps through the
   // turns that resolved since the last one (P4); the result panel waits
   // until the final turn has played out.
-  let { fight, onagain, onsetup }: { fight: LiveFight; onagain: () => void; onsetup: () => void } = $props();
+  // `actions` are the result panel's buttons (fight again / continue).
+  let { fight, actions }: { fight: FightSession; actions: ResultAction[] } = $props();
   const replay = new Replay();
   $effect(() => {
     const { frame, result } = fight;
@@ -36,9 +37,9 @@
   <div class="scrim"></div>
   <div class="result" class:won={r.winner === 0}>
     <div class="title">{r.winner === 0 ? '>> BREACHED' : '>> CONTAINED'}</div>
-    <div class="line">{r.winner === 0 ? `You broke into ${fight.setup.enemy.name}.` : `${fight.setup.enemy.name} locked you out.`}</div>
+    <div class="line">{r.winner === 0 ? `You broke into ${fight.enemyName}.` : `${fight.enemyName} locked you out.`}</div>
     <div class="line dim">
-      breach {pct(r.finalFillFraction[0])} · containment {pct(r.finalFillFraction[1])} · {r.hands.length} hands · seed {fight.setup.seed}
+      breach {pct(r.finalFillFraction[0])} · containment {pct(r.finalFillFraction[1])} · {r.hands.length} hands · {fight.detail}
     </div>
     <table class="points">
       <thead><tr><th>points scored</th><th class="you">you</th><th class="them">them</th></tr></thead>
@@ -51,8 +52,7 @@
       </tbody>
     </table>
     <div class="buttons">
-      <button onclick={onagain}>fight again</button>
-      <button onclick={onsetup}>change setup</button>
+      {#each actions as a (a.label)}<button onclick={a.onclick}>{a.label}</button>{/each}
     </div>
   </div>
 {/if}

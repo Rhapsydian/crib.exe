@@ -1,5 +1,6 @@
 import type { BurnerDefinition, BurnerId } from './burner-types';
-import type { CombatAnswer, CombatRequest } from './combat';
+import type { CombatAnswer, CombatRequest, CombatResult } from './combat';
+import type { EnemyDefinition } from './enemies';
 import type { EventChoice, EventDefinition } from './event-types';
 import type { LayerGraph, RunPosition } from './map-types';
 import type { ModDefinition } from './mod-types';
@@ -31,6 +32,11 @@ export type RunRequest =
   | Ask<'mapBurner', { context: MapBurnerActivationContext }, { burnerId: BurnerId; targetNodeId?: string } | null>
   /** Where to move next: a linked node's id. */
   | Ask<'move', { graph: LayerGraph; position: RunPosition; heat: number; playerState: RunPlayerState }, string>
+  /** Notices (milestone 3 checkpoint 2): a fight is starting / has ended.
+   * Nothing to decide -- a UI shows the enemy, then the result, and
+   * resumes; the fallback is a no-op, so simulations are unchanged. */
+  | Ask<'fightStart', { enemy: EnemyDefinition; tier: 'regular' | 'elite' | 'gatekeeper'; layer: number; playerState: RunPlayerState }, null>
+  | Ask<'fightEnd', { enemy: EnemyDefinition; tier: 'regular' | 'elite' | 'gatekeeper'; result: CombatResult }, null>
   /** One of the player's own decisions inside a fight. */
   | Ask<'combat', { request: CombatRequest }, CombatAnswer>
   /** A Safehouse visit: Rest or Merge. */

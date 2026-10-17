@@ -15,6 +15,7 @@ import { fightBaselineTrace } from '../engine/heat';
 import { CLASS_DEFINITIONS, type ClassId } from '../engine/classes';
 import type { BurnerId } from '../engine/burner-types';
 import type { FightSnapshot, PlayerRequest } from './snapshot';
+import type { FightSession } from './fight-session';
 
 /**
  * The UI driver (P1): runs one real fight through `combatGenerator`.
@@ -36,11 +37,17 @@ export interface FightSetup {
   carriedBurnerIds?: BurnerId[];
 }
 
-export class LiveFight {
+export class LiveFight implements FightSession {
   frame = $state.raw<FightSnapshot | null>(null);
   result = $state.raw<CombatResult | null>(null);
 
   readonly setup: FightSetup;
+  get enemyName(): string {
+    return this.setup.enemy.name;
+  }
+  get detail(): string {
+    return `seed ${this.setup.seed}`;
+  }
   readonly #fight: Generator<CombatRequest, CombatResult, CombatAnswer>;
   readonly #enemyDiscard;
   readonly #enemyPlay;
@@ -101,7 +108,7 @@ export class LiveFight {
 }
 
 /** A deep copy that keeps class instances (the gauges) working. */
-function cloneKeepingPrototypes<T>(value: T, seen = new Map<object, unknown>()): T {
+export function cloneKeepingPrototypes<T>(value: T, seen = new Map<object, unknown>()): T {
   if (value === null || typeof value !== 'object') return value;
   if (seen.has(value)) return seen.get(value) as T;
   if (Array.isArray(value)) {

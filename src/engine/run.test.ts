@@ -182,7 +182,6 @@ describe('opportunisticTraversal', () => {
   }
   const position = { layerIndex: 0, nodeId: 'entry' };
   const lowHeat = 0;
-  const highHeat = Math.ceil(HEAT_HIGH_FRACTION * HEAT_MAX);
 
   it('falls back to beelineToGatekeeper when no playerState is given', () => {
     expect(opportunisticTraversal(starGraph(), position, lowHeat)).toBe('gate');
