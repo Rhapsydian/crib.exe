@@ -218,7 +218,9 @@ GitHub-hosted site and itch.io.
    names "Process" (alpha) and "Hook" (beta). *In progress:* layout
    chosen (compact on phones, drawers on desktop); checkpoint 1 (a real
    fight you can play, test-harness setup) and checkpoint 2 (turns
-   stepped through piece by piece) done.
+   stepped through piece by piece) and 3a (pegging animated: card plays,
+   score callouts, table lines in the log) done; 3b (the show, hand
+   transitions, Burner prompt) next.
 3. **A playable run** (run loop converted, map and node screens, class
    choice, end screens).
 4. **Polish and playtesting**, including a style / chrome guide.

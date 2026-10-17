@@ -1,66 +1,78 @@
 import type { FireEvent, GaugeReading } from '../engine/resolve';
+import { stepDelay, stepGauges, type Step } from './timeline';
 
 /**
- * The turn step-through (playable-design P4). The engine resolves a turn
- * at once; this replays the fires it recorded, one piece at a time: each
- * lights up, its log line appears, and the gauges move to where that fire
- * left them (`FireEvent.gauges`). Enemy fires step faster than yours.
- * `skip()` jumps to the end.
+ * The step-through (playable-design P4, extended in checkpoint 3a). The
+ * engine resolves everything between two player decisions at once; this
+ * replays it a step at a time (timeline.ts's `Step`): a card goes onto
+ * the pile, points land with a callout, a piece lights up as it fires,
+ * and the gauges move to where each step left them. Each step stays up
+ * for its own `stepDelay`, scaled by the speed setting. `skip()` jumps
+ * to the end.
  *
- * The screen feeds it the fight's log and live gauges at every engine
- * pause (`sync`); it steps through whatever is new since the last one.
+ * The screen feeds it the fight's steps and live gauges at every engine
+ * pause (`sync`); it plays whatever is new since the last one.
  */
 export type Speed = 'slow' | 'normal' | 'fast';
 export const SPEEDS: Speed[] = ['slow', 'normal', 'fast'];
 
-/** Milliseconds per fire at normal speed. */
-const STEP_MS = { player: 330, enemy: 200 };
 const SPEED_SCALE: Record<Speed, number> = { slow: 1.8, normal: 1, fast: 0.4 };
 const SPEED_KEY = 'cribexe.turnSpeed';
+/** The pause before a batch's first step, at normal speed. */
+export const LEAD_IN_MS = 120;
 
 export class Replay {
-  /** How many log entries are on screen. */
+  /** How many steps are on screen. */
   shown = $state(0);
   speed = $state<Speed>(loadSpeed());
-  log = $state.raw<readonly FireEvent[]>([]);
-  /** Where the batch being stepped through began, and the gauges as they
-   * stood at the pause before it. */
+  steps = $state.raw<readonly Step[]>([]);
+  /** Where the batch being played began, and the gauges as they stood at
+   * the pause before it. */
   batchStart = $state(0);
   before = $state.raw<[GaugeReading, GaugeReading] | null>(null);
-  /** The beat the last fire stays lit for, after it appears. */
+  /** The last step's own beat, after it appears. */
   holding = $state(false);
 
-  /** True while fires are still being stepped through. */
-  playing = $derived(this.shown < this.log.length || this.holding);
-  /** The fire on screen right now, while stepping. */
-  firing = $derived(this.playing && this.shown > this.batchStart ? this.log[this.shown - 1] : null);
-  /** The gauges to draw: where the current fire left them; the state at
-   * the previous pause before this batch's first fire; null (draw the
-   * live state) once stepping is done. */
-  gauges = $derived<[GaugeReading, GaugeReading] | null>(!this.playing ? null : this.firing ? this.firing.gauges : this.before);
+  /** True while steps are still being played. */
+  playing = $derived(this.shown < this.steps.length || this.holding);
+  /** The step on screen right now, while playing. */
+  current = $derived(this.playing && this.shown > this.batchStart ? this.steps[this.shown - 1] : null);
+  /** The piece firing right now, if the current step is a fire. */
+  firing = $derived<FireEvent | null>(this.current?.type === 'fire' ? this.current.fire : null);
+  /** The gauges to draw while playing: where the latest step that
+   * records them left them, else the state at the previous pause; null
+   * (draw the live state) once done. */
+  gauges = $derived.by<[GaugeReading, GaugeReading] | null>(() => {
+    if (!this.playing) return null;
+    for (let i = this.shown - 1; i >= this.batchStart; i--) {
+      const g = stepGauges(this.steps[i]);
+      if (g) return g;
+    }
+    return this.before;
+  });
 
   #previous: [GaugeReading, GaugeReading] | null = null;
   #timer: ReturnType<typeof setTimeout> | null = null;
 
-  /** A new engine pause: the fight's log so far, and the live gauges. */
-  sync(log: readonly FireEvent[], live: [GaugeReading, GaugeReading]): void {
-    if (log.length < this.shown) this.reset();
-    if (log.length > this.shown) {
-      // A new batch: anything still stepping from the last one finishes.
+  /** A new engine pause: the fight's steps so far, and the live gauges. */
+  sync(steps: readonly Step[], live: [GaugeReading, GaugeReading]): void {
+    if (steps.length < this.shown) this.reset();
+    if (steps.length > this.shown) {
+      // A new batch: anything still playing from the last one finishes.
       this.#clear();
       this.holding = false;
-      this.shown = Math.max(this.shown, this.log.length);
+      this.shown = Math.max(this.shown, this.steps.length);
       this.batchStart = this.shown;
       this.before = this.#previous;
     }
-    this.log = log;
+    this.steps = steps;
     this.#previous = live;
     this.#schedule();
   }
 
   skip(): void {
     this.#clear();
-    this.shown = this.log.length;
+    this.shown = this.steps.length;
     this.holding = false;
   }
 
@@ -79,26 +91,28 @@ export class Replay {
     this.shown = 0;
     this.holding = false;
     this.batchStart = 0;
-    this.log = [];
+    this.steps = [];
     this.before = null;
     this.#previous = null;
   }
 
   #schedule(): void {
-    if (this.#timer || this.shown >= this.log.length) return;
-    const next = this.log[this.shown];
-    const delay = STEP_MS[next.side === 0 ? 'player' : 'enemy'] * SPEED_SCALE[this.speed];
-    this.#timer = setTimeout(() => {
-      this.#timer = null;
-      this.shown++;
-      if (this.shown < this.log.length) return this.#schedule();
-      // The last fire: hold it lit for one more beat.
-      this.holding = true;
+    if (this.#timer) return;
+    const scale = SPEED_SCALE[this.speed];
+    if (this.shown < this.steps.length) {
+      const delay = this.shown === this.batchStart ? LEAD_IN_MS : stepDelay(this.steps[this.shown - 1]);
+      this.#timer = setTimeout(() => {
+        this.#timer = null;
+        this.shown++;
+        if (this.shown === this.steps.length) this.holding = true;
+        this.#schedule();
+      }, delay * scale);
+    } else if (this.holding) {
       this.#timer = setTimeout(() => {
         this.#timer = null;
         this.holding = false;
-      }, delay);
-    }, delay);
+      }, stepDelay(this.steps[this.shown - 1]) * scale);
+    }
   }
 
   #clear(): void {

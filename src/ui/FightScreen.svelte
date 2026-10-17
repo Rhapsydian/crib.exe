@@ -9,7 +9,7 @@
   import Hand from './Hand.svelte';
   import Log from './Log.svelte';
   import DetailSheet from './DetailSheet.svelte';
-  import { describeFire } from './describe';
+  import { scoreLabel, stepLine, tableAt, type Step } from './timeline';
 
   // The chosen fight-screen layout (the user's picks from the P3 mockups):
   // COMPACT on phones -- everything on one screen, a three-line log
@@ -33,9 +33,19 @@
   let sheet = $state<'none' | 'log' | 'loadouts'>('none');
   const detail = $derived(pickedEntry(snapshot, picked));
   const names = $derived(new Map(f.view.combatState.sides.flatMap((s) => s.loadout.map((e) => [e.definition.id, e.definition.name] as const))));
-  const log = $derived(replay ? replay.log.slice(0, replay.shown) : f.view.log);
-  const logView = $derived({ ...f.view, log });
-  const ticker = $derived(log.slice(-3));
+  // Live, the table, the log and the gauges follow the replay's position
+  // in the fight's steps; for the mockups, the paused frame as it is.
+  const steps = $derived<readonly Step[]>(replay ? replay.steps.slice(0, replay.shown) : f.view.log.map((fire) => ({ type: 'fire', fire })));
+  const table = $derived(replay ? tableAt(replay.steps, replay.shown) : null);
+  const ticker = $derived(steps.slice(-3).map((s) => stepLine(s, names)));
+  const callout = $derived.by(() => {
+    const step = replay?.current;
+    if (step?.type !== 'beat' || step.beat.kind !== 'points') return null;
+    return { text: scoreLabel(step.beat.occurrence, step.beat.phase), side: step.beat.occurrence.player, key: replay!.shown };
+  });
+  // While the replay is still on an earlier hand, the new hand stays
+  // face down.
+  const handReady = $derived(!table || table.handIndex === f.view.handIndex);
   const firingSlot = (side: 0 | 1) => {
     const fire = replay?.firing;
     if (!fire || fire.side !== side) return -1;
@@ -69,11 +79,15 @@
       <Loadout entries={f.them.loadout} dense firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
     </div>
 
-    <Table sequence={f.sequence} count={f.count} starter={f.starter} playerIsDealer={f.playerIsDealer} opponentCardsLeft={f.opponentCardsLeft} />
+    {#if table}
+      <Table sequence={[]} pile={table.pile} count={table.count} starter={table.starter} playerIsDealer={table.dealer === 0} opponentCardsLeft={table.cardsLeft[1]} {callout} />
+    {:else}
+      <Table sequence={f.sequence} count={f.count} starter={f.starter} playerIsDealer={f.playerIsDealer} opponentCardsLeft={f.opponentCardsLeft} />
+    {/if}
 
     <button class="ticker" onclick={() => (sheet = 'log')}>
-      {#each ticker as e, i (i)}
-        <div class:them={e.side === 1}>{e.side === 0 ? '$' : '>'} {describeFire(e, names.get(e.subroutineId) ?? e.subroutineId)}</div>
+      {#each ticker as line, i (i)}
+        <div class:them={line.side === 1} class:quiet={line.kind === 'table'}>{line.side === null ? '' : line.side === 0 ? '$ ' : '> '}{line.text}</div>
       {/each}
       <div class="more">tap for full log</div>
     </button>
@@ -82,12 +96,16 @@
       <Loadout entries={f.you.loadout} dense firing={firingSlot(0)} onpick={(i) => (picked = { side: 0, index: i })} />
       <Gauges side={f.you} reading={replay?.gauges?.[0]} isPlayer compact />
     </div>
-    <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase} playerIsDealer={f.playerIsDealer} {onplay} {ondiscard} />
+    {#if handReady}
+      <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase} playerIsDealer={f.playerIsDealer} {onplay} {ondiscard} />
+    {:else}
+      <div class="hand-wait">…</div>
+    {/if}
   </main>
 
   <aside class="panel log-panel" class:open={sheet === 'log'}>
     <button class="close" onclick={() => (sheet = 'none')} aria-label="close log">✕</button>
-    <Log view={logView} onpick={pickLog} />
+    <Log view={f.view} {steps} onpick={pickLog} />
   </aside>
 </div>
 
@@ -183,6 +201,16 @@
   }
   .ticker .them {
     color: var(--danger);
+  }
+  .ticker .quiet {
+    color: var(--text-dim);
+  }
+  .hand-wait {
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
   }
   .more {
     color: var(--text-dim);

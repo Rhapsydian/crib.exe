@@ -114,7 +114,7 @@ export function describeHook(beta: Beta): string {
     case 'stepped':
       return beta.at > 1 ? `after ${beta.at}× ${condition}: ${effect}` : `${condition}: ${effect}`;
     case 'immediate':
-      return `the moment ${condition.replace(/^each /, 'a ').replace(/^while /, '')}${beta.at && beta.at > 1 ? ` (×${beta.at})` : ''}: ${effect}`;
+      return `instant (outside the turn) · the moment ${condition.replace(/^each /, 'a ').replace(/^while /, '')}${beta.at && beta.at > 1 ? ` (×${beta.at})` : ''}: ${effect}`;
     case 'whileTrue':
       return `${condition}: ${effect}`;
   }
@@ -147,7 +147,10 @@ export function forEnemy(text: string): string {
 /** One running-log line for a fire. */
 export function describeFire(event: FireEvent, name: string): string {
   const alpha = describeEffect(event.alpha);
-  const hook = event.beta ? `; Hook: ${describeEffect(event.beta)}` : event.elevated ? ' (Hook)' : '';
-  const line = `${event.immediate ? '⚡ ' : ''}${name}: ${alpha}${hook}`;
+  // An immediate Hook fires outside the turn; the log says so in words
+  // (the user's call: no ⚡ glyph, which phones draw as an emoji).
+  const hookName = event.immediate ? 'instant Hook' : 'Hook';
+  const hook = event.beta ? `; ${hookName}: ${describeEffect(event.beta)}` : event.elevated ? ` (${hookName})` : '';
+  const line = `${name}: ${alpha}${hook}`;
   return event.side === 1 ? forEnemy(line) : line;
 }

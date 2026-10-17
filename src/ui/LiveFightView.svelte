@@ -4,6 +4,7 @@
   import { Replay } from './replay.svelte';
   import { readGauges } from '../engine/resolve';
   import { untrack } from 'svelte';
+  import { mergeSteps } from './timeline';
 
   // A live fight on the chosen screen, and its result panel at the end.
   // Every engine pause is handed to the replay, which steps through the
@@ -13,11 +14,14 @@
   const replay = new Replay();
   $effect(() => {
     const { frame, result } = fight;
-    const log = result?.log ?? frame?.request.view.log;
-    if (!log) return;
-    const live = result ? (log.at(-1)?.gauges ?? readGauges(frame!.request.view.combatState)) : readGauges(frame!.request.view.combatState);
+    const source = result ?? frame?.request.view;
+    if (!source) return;
+    const steps = mergeSteps(source.timeline, source.log);
+    const lastReading = [...steps].reverse().find((s) => s.type === 'fire' || (s.type === 'beat' && s.beat.kind === 'points'));
+    const fromSteps = lastReading ? (lastReading.type === 'fire' ? lastReading.fire.gauges : lastReading.beat.kind === 'points' ? lastReading.beat.gauges : null) : null;
+    const live = result ? (fromSteps ?? readGauges(frame!.request.view.combatState)) : readGauges(frame!.request.view.combatState);
     // Only a new pause re-runs this, not the replay's own stepping.
-    untrack(() => replay.sync(log, live));
+    untrack(() => replay.sync(steps, live));
   });
   $effect(() => () => replay.reset());
   const pct = (n: number) => `${Math.round(n * 100)}%`;

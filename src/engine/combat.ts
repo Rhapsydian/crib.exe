@@ -37,6 +37,8 @@ import {
   type CombatState,
   type CombatSideState,
   type FireEvent,
+  type GaugeReading,
+  readGauges,
 } from './resolve';
 
 /**
@@ -139,6 +141,8 @@ export const neverActivateBurner: BurnerActivationStrategy = () => null;
 export interface CombatResult {
   winner: PlayerIndex;
   log: FireEvent[];
+  /** See CombatBeat. */
+  timeline: CombatBeat[];
   hands: HandResult[];
   /** Each side's own highest win-gauge fill fraction (progress/threshold,
    * 0-1) reached at any point in the match -- session 9's "how far the
@@ -407,6 +411,7 @@ export interface PeggingView {
 export interface CombatView {
   combatState: CombatState;
   log: readonly FireEvent[];
+  timeline: readonly CombatBeat[];
   hands: readonly HandResult[];
   /** The hand being played (0-based), and its dealer. */
   handIndex: number;
@@ -414,6 +419,32 @@ export interface CombatView {
 }
 
 export type CombatAnswer = [Card, Card] | Card | BurnerId | null;
+
+/**
+ * The fight's running timeline (milestone 2 checkpoint 3a): everything
+ * that happens at the table, in order, for the UI to animate -- a hand
+ * starting, the cut, each pegging event (a card played, a go, the go
+ * point), and each scoring occurrence as it lands on the scorer's
+ * initiative gauge. Fires stay in `log`; each beat's `firesBefore` is
+ * the log's length when the beat happened, which places every fire
+ * between the beats exactly. Not read by the engine.
+ */
+/** Omit over each member of a union (plain Omit collapses it). */
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+
+export type CombatBeat = (
+  | { kind: 'hand'; handIndex: number; dealer: PlayerIndex }
+  | { kind: 'cut'; starter: Card; dealer: PlayerIndex }
+  | { kind: 'peg'; event: PeggingEvent }
+  | {
+      kind: 'points';
+      phase: 'cut' | 'peg' | 'show';
+      occurrence: ScoringOccurrence;
+      /** Both sides' meters once the points are on the gauge, before any
+       * turn they buy. */
+      gauges: [GaugeReading, GaugeReading];
+    }
+) & { firesBefore: number };
 
 /**
  * Plays a fight to its end, answering every request from the given
@@ -489,6 +520,7 @@ export function* combatGenerator(
   });
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
+  const timeline: CombatBeat[] = [];
   let peakFillFraction: [number, number] = [0, 0];
   // Checkpoint C populates this from the real activation call site --
   // always empty until burnerActivationStrategies is actually wired up.
@@ -497,6 +529,7 @@ export function* combatGenerator(
   const finish = (winner: PlayerIndex, resolvedBy: 'threshold' | 'attrition' = 'threshold'): CombatResult => ({
     winner,
     log,
+    timeline,
     hands,
     peakFillFraction,
     finalFillFraction: [
@@ -528,7 +561,11 @@ export function* combatGenerator(
    * then the scorer's initiative gauge, then every turn it buys (each
    * preceded by a Burner request). Returns the winner if it decided the
    * fight. */
-  const view = (handIndex: number, handDealer: PlayerIndex): CombatView => ({ combatState, log, hands, handIndex, dealer: handDealer });
+  const view = (handIndex: number, handDealer: PlayerIndex): CombatView => ({ combatState, log, timeline, hands, handIndex, dealer: handDealer });
+  const beat = (b: DistributiveOmit<CombatBeat, 'firesBefore'>): void => {
+    timeline.push({ ...b, firesBefore: log.length } as CombatBeat);
+  };
+  let phase: 'cut' | 'peg' | 'show' = 'cut';
 
   function* resolveOccurrence(occurrence: ScoringOccurrence, handDealer: PlayerIndex, handIndex: number): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
     // Charges first, so a beta charged by this very occurrence applies
@@ -538,6 +575,7 @@ export function* combatGenerator(
 
     const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrence.magnitude);
     combatState = replaceSideGauge(combatState, occurrence.player, gauge);
+    beat({ kind: 'points', phase, occurrence, gauges: readGauges(combatState) });
 
     if (turnsTriggered > 0) {
       consecutiveTurns = occurrence.player === lastTurnSide ? consecutiveTurns + turnsTriggered : turnsTriggered;
@@ -593,6 +631,7 @@ export function* combatGenerator(
   /** Resolves one pegging event live (P8): a play's suit tally, then its
    * scoring occurrences; a go point's occurrence. */
   function* resolvePeggingEvent(event: PeggingEvent, handDealer: PlayerIndex, handIndex: number): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
+    beat({ kind: 'peg', event });
     const suitPlayed = suitPlayedFromPeggingEvent(event);
     if (suitPlayed) {
       const winner = step(immediates(applySuitPlayed(combatState, suitPlayed), handDealer, log));
@@ -629,6 +668,7 @@ export function* combatGenerator(
     // replacing session 24's three hand-lifecycle firing moments and the
     // next-deal Cribbage-layer manipulation queue alike.
     combatState = clearHandKnowledge(combatState);
+    beat({ kind: 'hand', handIndex: i, dealer });
     const disrupt = takePendingDisrupt(combatState);
     combatState = disrupt.combatState;
     const armed = (side: PlayerIndex, action: 'revealHand' | 'revealCrib' | 'forceDiscard'): boolean => disrupt.pending[side].includes(action);
@@ -714,6 +754,8 @@ export function* combatGenerator(
     hands.push(hand);
 
     // The cut: His Heels resolves now.
+    phase = 'cut';
+    beat({ kind: 'cut', starter, dealer });
     const heels = occurrenceFromHisHeels(heelsPoints, dealer);
     if (heels) {
       winner = yield* resolveOccurrence(heels, dealer, i);
@@ -722,6 +764,7 @@ export function* combatGenerator(
 
     // Pegging, live (P8). Each side's own recon (knownCrib/knownOpponentHand)
     // is static once pegging starts, as before.
+    phase = 'peg';
     const pegging = startPegging(kept[0], kept[1], nonDealer);
     hand.peggingEvents = pegging.events;
     hand.peggingScores = pegging.scores;
@@ -748,6 +791,7 @@ export function* combatGenerator(
     scores[1] += pegging.scores[1];
 
     // The show, item by item: non-dealer hand, dealer hand, crib.
+    phase = 'show';
     hand.nonDealerHandEvents = countHandEvents(kept[nonDealer], starter);
     hand.nonDealerHandScore = hand.nonDealerHandEvents.reduce((sum, e) => sum + e.points, 0);
     scores[nonDealer] += hand.nonDealerHandScore;

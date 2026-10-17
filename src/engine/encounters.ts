@@ -483,6 +483,7 @@ function syntheticCombatResult(spec: SyntheticGatekeeper, seed: number, starting
   return {
     winner: won ? 0 : 1,
     log: [],
+    timeline: [],
     hands: [],
     peakFillFraction: won ? [1, 0] : [0, 1],
     finalFillFraction: won ? [1, 0] : [0, 1],

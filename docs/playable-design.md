@@ -285,6 +285,45 @@ redraw). Burner requests auto-decline until checkpoint 3.
 - The table (the pile, the starter) still updates at once, ahead of the
   turns; the hand flow around it is checkpoint 3.
 
+**Checkpoint 3 split (the user's call):** after playing checkpoint 2 the
+user asked for card-play animations (theirs and the enemy's), a scoring
+animation, and an animated show. **3a** is pegging, animated; **3b** is
+the show and hand transitions (the show records which cards make each
+combination; a show panel steps through each hand and the crib; a
+between-hands banner; the Burner prompt).
+
+- **Instant Hooks are spelled out** (the user's call): the log's ⚡
+  marker, which phones drew as a yellow emoji, is now "(instant Hook)";
+  the detail panel's Hook reads "instant (outside the turn) · the moment
+  …".
+
+**Checkpoint 3a — pegging, animated:**
+
+- **Engine:** `CombatBeat` (combat.ts), a timeline beside the fire log:
+  a hand starting, the cut, each pegging event (play, go, go point), and
+  each scoring occurrence as it lands on the scorer's initiative gauge
+  (with both sides' gauges then, and the phase: cut, peg or show). Each
+  beat's `firesBefore` places the fires between beats exactly. On
+  `CombatView.timeline` and `CombatResult.timeline`. Bench: 87 fights/s
+  with it against 84 without, on the same run (the machine was slower
+  that day; no measurable cost).
+- **`src/ui/timeline.ts`** merges beats and fires into one ordered list
+  of steps, rebuilds the table at any step (hand, dealer, starter, the
+  pile since the last reset, the count, cards left), and words each step
+  for the log.
+- **The replay plays steps,** not just fires; each step holds its own
+  beat (your card 300 ms, theirs 500, points 600, a fire 330 / 200, the
+  cut 550, a new hand 700, at normal speed).
+- **Cards:** yours flies up from the hand onto the pile; theirs flips
+  out of their face-down stack. **Scores:** a callout ("+ fifteen for 2",
+  "− pair for 2") pops over the pile in the scorer's colour while their
+  INIT gauge fills. Show scores use the same callout until 3b.
+- **The log** now carries the table too: hands, the cut, each card
+  played with the count, go, and every score, alongside the fires
+  (`$` yours, `>` theirs).
+- While the replay is still on an earlier hand, the next hand's cards
+  wait ("…") instead of showing ahead of the animation.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

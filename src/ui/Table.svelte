@@ -1,11 +1,18 @@
 <script lang="ts">
   import type { Card } from '../engine/cards';
+  import type { PlayerIndex } from '../engine/game';
+  import type { PileCard } from './timeline';
   import CardView from './CardView.svelte';
 
   // The table: the pegging pile since the last reset, the running count,
   // the starter (face down until it is cut) and who deals (whose crib it is), and how many cards the
   // opponent still holds. The crib itself isn't drawn -- it is always 4
   // cards once discards are chosen (the user's call).
+  //
+  // Live (checkpoint 3a): `pile` carries who played each card, so a new
+  // card animates in -- yours up from the hand, theirs flipped out of
+  // their face-down stack -- and `callout` pops a score ("fifteen for 2")
+  // over the pile in the scorer's colour.
   let {
     sequence,
     count,
@@ -13,7 +20,19 @@
     playerIsDealer,
     opponentCardsLeft,
     small = false,
-  }: { sequence: Card[]; count: number; starter?: Card; playerIsDealer: boolean; opponentCardsLeft: number; small?: boolean } = $props();
+    pile,
+    callout,
+  }: {
+    sequence: Card[];
+    count: number;
+    starter?: Card;
+    playerIsDealer: boolean;
+    opponentCardsLeft: number;
+    small?: boolean;
+    pile?: PileCard[];
+    callout?: { text: string; side: PlayerIndex; key: number } | null;
+  } = $props();
+  const cards = $derived<PileCard[]>(pile ?? sequence.map((card, i) => ({ card, player: 0, key: -1 - i })));
 </script>
 
 <div class="table" class:small>
@@ -25,11 +44,18 @@
   <div class="pile">
     <div class="count">{count}<span>/31</span></div>
     <div class="cards">
-      {#each sequence as card, i (i)}
-        <CardView {card} small />
+      {#each cards as c (c.key)}
+        <div class="arrive" class:from-you={pile && c.player === 0} class:from-them={pile && c.player === 1}>
+          <CardView card={c.card} small />
+        </div>
       {/each}
-      {#if sequence.length === 0}<span class="empty">—</span>{/if}
+      {#if cards.length === 0}<span class="empty">—</span>{/if}
     </div>
+    {#if callout}
+      {#key callout.key}
+        <div class="callout" class:them={callout.side === 1}>{callout.side === 0 ? '+' : '−'} {callout.text}</div>
+      {/key}
+    {/if}
   </div>
   <div class="side right">
     <div class="caption">THEY HOLD</div>
@@ -71,6 +97,7 @@
     color: var(--text-dim);
   }
   .pile {
+    position: relative;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -95,5 +122,65 @@
   }
   .empty {
     color: var(--text-dim);
+  }
+  .from-you {
+    animation: from-you 0.28s ease-out;
+  }
+  .from-them {
+    animation: from-them 0.42s ease-out;
+  }
+  @keyframes from-you {
+    from {
+      transform: translateY(140px) scale(1.4);
+      opacity: 0.3;
+    }
+  }
+  @keyframes from-them {
+    0% {
+      transform: translate(90px, 0) rotateY(90deg);
+      opacity: 0.4;
+    }
+    45% {
+      transform: translate(45px, 0) rotateY(0deg);
+      opacity: 1;
+    }
+  }
+  .callout {
+    position: absolute;
+    left: 50%;
+    top: 30%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 13px;
+    pointer-events: none;
+    animation: callout 0.9s ease-out forwards;
+  }
+  .callout.them {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  @keyframes callout {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, 10px) scale(0.8);
+    }
+    15% {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1.1);
+    }
+    70% {
+      opacity: 1;
+      transform: translate(-50%, -14px) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -26px) scale(1);
+    }
   }
 </style>
