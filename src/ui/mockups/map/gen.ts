@@ -199,7 +199,7 @@ function hexLanes(n: number, rng: Rng) {
 /** Option 1: even scatter in a portrait band, near-neighbour links that
  * never cross; with `hex`, cells of a hex field and links only between
  * neighbouring cells. */
-export function scatter(n: number, seed: number, hex: boolean): GenMap {
+export function scatter(n: number, seed: number, hex: boolean, snap = false): GenMap {
   for (let attempt = 0; attempt < 400; attempt++) {
     const rng = createRng(seed * 1009 + attempt);
     const ids = Array.from({ length: n }, (_, i) => `n${i}`);
@@ -228,6 +228,9 @@ export function scatter(n: number, seed: number, hex: boolean): GenMap {
         }
         pos[`n${i}`] = best;
       }
+      // Snapped: the free scatter's shape, aligned to a hex grid; linked
+      // from the snapped positions, so links still never cross.
+      if (snap) snapToHex(ids, pos, n);
     }
     const edges = linkUp(ids, 'n0', 'n1', planarCandidates(ids, pos, allowed), pos, rng, 2.4);
     if (!edges) continue;

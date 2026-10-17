@@ -16,6 +16,8 @@
   type Generator = (typeof generators)[number];
   let generator = $state<Generator>('scatter');
   let hex = $state(false);
+  // Scatter only: the free scatter snapped to a hex grid.
+  let snap = $state(false);
   const styles = ['layered', 'force', 'schematic'] as const;
   type Style = (typeof styles)[number];
   let currentStyle = $state<Style>('layered');
@@ -29,7 +31,8 @@
       const pos = currentStyle === 'layered' ? layered(graph) : currentStyle === 'force' ? force(graph, seed) : schematic(graph);
       return { graph, pos, regions: [] as Region[], resilient: isResilient(graph) };
     }
-    return (generator === 'scatter' ? scatter : generator === 'subnets' ? subnets : hybrid)(size, seed, hex);
+    if (generator === 'scatter') return scatter(size, seed, hex, snap && !hex);
+    return (generator === 'subnets' ? subnets : hybrid)(size, seed, hex);
   });
   const graph = $derived(made.graph);
   const pos = $derived<Positions>(made.pos);
@@ -39,7 +42,7 @@
     perNode: ((graph.edges.length * 2) / graph.nodes.length).toFixed(1),
     resilient: made.resilient && isResilient(graph),
   });
-  const hexShape = $derived(generator !== 'current' && hex);
+  const hexShape = $derived(generator !== 'current' && (hex || (snap && generator === 'scatter')));
   let here = $state('n0');
   let visited = $state<string[]>(['n0']);
   let moves = $state(0);
@@ -108,7 +111,8 @@
         <button class:on={currentStyle === s} onclick={() => (currentStyle = s)}>{s}</button>
       {/each}
     {:else}
-      <button class:on={!hex} onclick={() => (hex = false)}>free</button>
+      <button class:on={!hex && !(snap && generator === 'scatter')} onclick={() => ((hex = false), (snap = false))}>free</button>
+      {#if generator === 'scatter'}<button class:on={snap && !hex} onclick={() => ((hex = false), (snap = true))}>snapped</button>{/if}
       <button class:on={hex} onclick={() => (hex = true)}>hex grid</button>
     {/if}
     <span class="sep"></span>

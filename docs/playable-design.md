@@ -484,6 +484,13 @@ phone pass.
   hex 3 (8 nodes) or 4 (10-12), fixed by the row count. Busiest node:
   4 (subnets, hybrid), 5-7 (scatter). Any of them lengthens the walk,
   so the Heat economy and gatekeeper curve need a re-check after.
+- **M3 — scatter, free, is the user's pick so far;** subnets dropped
+  ("they just add noise to the map and don't have any functional
+  purpose"). Free scatter does not snap to a grid; a *snapped* toggle
+  (the free scatter moved to the nearest hex cell, then linked from the
+  snapped positions) was added for comparison: same 3-4 moves, but
+  denser (up to 8 links on a node, more short options once nodes line
+  up).
 
 ## Settled in passing (Claude's calls, noted for the record)
 
