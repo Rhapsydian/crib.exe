@@ -509,6 +509,10 @@ phone pass.
   so that node could never be used). Moves to the gatekeeper: 8 nodes
   3.1 (was 2.9), 10 nodes 3.8 (3.4), 12 nodes 4.3 (3.7); ~2.8 links a
   node; all resilient, none behind the gatekeeper (300 maps a size).
+- **M4 — no layer under 10 nodes** (the user's call: 8-node layers read
+  as too sparse). The engine's layer sizes go from 10 / 12 / 12 / 8 to
+  **10 / 12 / 12 / 10**, landing with the new generator (and its Heat
+  re-check); the mockup drops the 8-node option.
 
 ## Settled in passing (Claude's calls, noted for the record)
 
