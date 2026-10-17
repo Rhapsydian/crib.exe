@@ -14,7 +14,7 @@
     for (const side of view.combatState.sides) for (const e of side.loadout) m.set(e.definition.id, e.definition.name);
     return m;
   });
-  const lines = $derived((steps ?? view.log.map((fire): Step => ({ type: 'fire', fire }))).slice(-60).map((s) => stepLine(s, names)));
+  const lines = $derived((steps ?? view.log.map((fire): Step => ({ type: 'fire', fire }))).map((s) => stepLine(s, names)).filter((l) => l !== null).slice(-60));
 </script>
 
 <div class="log">

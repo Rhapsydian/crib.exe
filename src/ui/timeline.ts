@@ -11,15 +11,26 @@ import { describeFire } from './describe';
  * starting, the cut, a pegging event, points landing) or a fire. The
  * engine keeps the two in separate records (`timeline`, `log`); each
  * beat's `firesBefore` says where the fires go between them.
+ *
+ * A `clear` step is the UI's own: after a go point or a 31 the pile
+ * resets, and the played cards sweep off (the user's ask) once that
+ * play's scoring and any turns it bought are done, just before the next
+ * table beat.
  */
-export type Step = { type: 'beat'; beat: CombatBeat } | { type: 'fire'; fire: FireEvent };
+export type Step = { type: 'beat'; beat: CombatBeat } | { type: 'fire'; fire: FireEvent } | { type: 'clear' };
 
 export function mergeSteps(timeline: readonly CombatBeat[], log: readonly FireEvent[]): Step[] {
   const steps: Step[] = [];
   let fires = 0;
+  let resetPending = false;
   for (const beat of timeline) {
     while (fires < beat.firesBefore) steps.push({ type: 'fire', fire: log[fires++] });
+    if (resetPending && beat.kind !== 'points') {
+      steps.push({ type: 'clear' });
+      resetPending = false;
+    }
     steps.push({ type: 'beat', beat });
+    if (beat.kind === 'peg' && (beat.event.type === 'go-point' || (beat.event.type === 'play' && beat.event.count === 31))) resetPending = true;
   }
   while (fires < log.length) steps.push({ type: 'fire', fire: log[fires++] });
   return steps;
@@ -27,12 +38,14 @@ export function mergeSteps(timeline: readonly CombatBeat[], log: readonly FireEv
 
 /** The meters a step leaves behind, if it records them. */
 export function stepGauges(step: Step): [GaugeReading, GaugeReading] | null {
+  if (step.type === 'clear') return null;
   if (step.type === 'fire') return step.fire.gauges;
   return step.beat.kind === 'points' ? step.beat.gauges : null;
 }
 
 /** Who a step belongs to, for pacing and colour. */
 export function stepSide(step: Step): PlayerIndex | null {
+  if (step.type === 'clear') return null;
   if (step.type === 'fire') return step.fire.side;
   const b = step.beat;
   if (b.kind === 'peg') return b.event.player;
@@ -44,6 +57,7 @@ export function stepSide(step: Step): PlayerIndex | null {
  * quick (you just chose it); the enemy's gets time to be seen; points
  * give the callout time to read. */
 export function stepDelay(step: Step): number {
+  if (step.type === 'clear') return 450;
   if (step.type === 'fire') return step.fire.side === 0 ? 330 : 200;
   const b = step.beat;
   switch (b.kind) {
@@ -73,12 +87,14 @@ export interface TableState {
   dealer: PlayerIndex;
   starter?: Card;
   pile: PileCard[];
+  /** The cards sweeping off, while the latest step is a `clear`. */
+  leaving: PileCard[];
   count: number;
   cardsLeft: [number, number];
 }
 
 export function tableAt(steps: readonly Step[], upto: number): TableState {
-  const table: TableState = { handIndex: -1, dealer: 0, pile: [], count: 0, cardsLeft: [6, 6] };
+  const table: TableState = { handIndex: -1, dealer: 0, pile: [], leaving: [], count: 0, cardsLeft: [6, 6] };
   // Start from the latest hand beat at or before `upto`.
   let start = 0;
   for (let i = Math.min(upto, steps.length) - 1; i >= 0; i--) {
@@ -88,10 +104,15 @@ export function tableAt(steps: readonly Step[], upto: number): TableState {
       break;
     }
   }
-  // After 31 or the go point the pile stays up until the next card.
-  let resetPending = false;
-  for (let i = start; i < Math.min(upto, steps.length); i++) {
+  const end = Math.min(upto, steps.length);
+  for (let i = start; i < end; i++) {
     const s = steps[i];
+    if (s.type === 'clear') {
+      table.leaving = i === end - 1 ? table.pile : [];
+      table.pile = [];
+      table.count = 0;
+      continue;
+    }
     if (s.type !== 'beat') continue;
     const b = s.beat;
     if (b.kind === 'hand') {
@@ -101,20 +122,11 @@ export function tableAt(steps: readonly Step[], upto: number): TableState {
     } else if (b.kind === 'cut') {
       table.starter = b.starter;
       table.cardsLeft = [4, 4];
-    } else if (b.kind === 'peg') {
+    } else if (b.kind === 'peg' && b.event.type === 'play') {
       const e = b.event;
-      if (e.type === 'play') {
-        if (resetPending) {
-          table.pile = [];
-          resetPending = false;
-        }
-        table.pile = [...table.pile, { card: e.card, player: e.player, key: i }];
-        table.count = e.count;
-        table.cardsLeft[e.player]--;
-        if (e.count === 31) resetPending = true;
-      } else if (e.type === 'go-point') {
-        resetPending = true;
-      }
+      table.pile = [...table.pile, { card: e.card, player: e.player, key: i }];
+      table.count = e.count;
+      table.cardsLeft[e.player]--;
     }
   }
   return table;
@@ -178,7 +190,8 @@ export interface StepLine {
   kind: 'fire' | 'points' | 'table';
 }
 
-export function stepLine(step: Step, names: ReadonlyMap<string, string>): StepLine {
+export function stepLine(step: Step, names: ReadonlyMap<string, string>): StepLine | null {
+  if (step.type === 'clear') return null;
   if (step.type === 'fire') {
     const f = step.fire;
     return { text: describeFire(f, names.get(f.subroutineId) ?? f.subroutineId), side: f.side, fire: f, kind: 'fire' };

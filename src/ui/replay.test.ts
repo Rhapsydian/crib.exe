@@ -99,29 +99,59 @@ describe('timeline steps', () => {
     const log = [fireEvent(0, 'a', 1, 0), fireEvent(1, 'b', 1, 1)];
     const timeline: CombatBeat[] = [{ kind: 'hand', handIndex: 0, dealer: 0, firesBefore: 0 }, play(1, card(5), 5, 0), play(0, card(10), 15, 1)];
     const steps = mergeSteps(timeline, log);
-    expect(steps.map((s) => (s.type === 'fire' ? s.fire.subroutineId : s.beat.kind))).toEqual(['hand', 'peg', 'a', 'peg', 'b']);
+    expect(steps.map((s) => (s.type === 'fire' ? s.fire.subroutineId : s.type === 'beat' ? s.beat.kind : 'clear'))).toEqual(['hand', 'peg', 'a', 'peg', 'b']);
   });
 
-  it('rebuilds the table: pile, count, cards left, and the reset after 31', () => {
+  it('rebuilds the table, and sweeps the pile after a go point', () => {
+    const goPoints = (player: 0 | 1, firesBefore = 0): CombatBeat => ({
+      kind: 'points',
+      phase: 'peg',
+      occurrence: { category: 'go', player, magnitude: 1 },
+      gauges: pair(0, 0),
+      firesBefore,
+    });
     const timeline: CombatBeat[] = [
       { kind: 'hand', handIndex: 2, dealer: 1, firesBefore: 0 },
       { kind: 'cut', starter: card(11), dealer: 1, firesBefore: 0 },
       play(0, card(10), 10),
       play(1, card(10), 20),
-      play(0, card(11), 30),
+      play(0, card(9), 29),
       { kind: 'peg', event: { type: 'go-point', player: 0 }, firesBefore: 0 },
-      play(1, card(4), 4),
+      goPoints(0),
+      play(1, card(4), 4, 1),
     ];
-    const steps = mergeSteps(timeline, []);
-    const mid = tableAt(steps, 6);
+    // One fire (bought by the go point) lands before the sweep.
+    const steps = mergeSteps(timeline, [fireEvent(0, 'a', 1, 0)]);
+    const kinds = steps.map((s) => (s.type === 'beat' ? s.beat.kind : s.type));
+    expect(kinds).toEqual(['hand', 'cut', 'peg', 'peg', 'peg', 'peg', 'points', 'fire', 'clear', 'peg']);
+
+    const mid = tableAt(steps, 8);
     expect(mid.handIndex).toBe(2);
     expect(mid.dealer).toBe(1);
     expect(mid.starter?.rank).toBe(11);
-    expect(mid.pile.map((p) => p.card.rank)).toEqual([10, 10, 11]);
-    expect(mid.count).toBe(30);
+    expect(mid.pile.map((p) => p.card.rank)).toEqual([10, 10, 9]);
+    expect(mid.count).toBe(29);
     expect(mid.cardsLeft).toEqual([2, 3]);
-    const after = tableAt(steps, 7);
+
+    const sweeping = tableAt(steps, 9);
+    expect(sweeping.pile).toEqual([]);
+    expect(sweeping.leaving.map((p) => p.card.rank)).toEqual([10, 10, 9]);
+    expect(sweeping.count).toBe(0);
+
+    const after = tableAt(steps, 10);
+    expect(after.leaving).toEqual([]);
     expect(after.pile.map((p) => p.card.rank)).toEqual([4]);
     expect(after.count).toBe(4);
+  });
+
+  it('a 31 sweeps too, after its points', () => {
+    const timeline: CombatBeat[] = [
+      { kind: 'hand', handIndex: 0, dealer: 0, firesBefore: 0 },
+      play(1, card(10), 31),
+      { kind: 'points', phase: 'peg', occurrence: { category: 'thirtyOne', player: 1, magnitude: 2 }, gauges: pair(0, 0), firesBefore: 0 },
+      play(0, card(5), 5),
+    ];
+    const kinds = mergeSteps(timeline, []).map((s) => (s.type === 'beat' ? s.beat.kind : s.type));
+    expect(kinds).toEqual(['hand', 'peg', 'points', 'clear', 'peg']);
   });
 });

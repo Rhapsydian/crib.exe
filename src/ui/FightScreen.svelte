@@ -37,7 +37,12 @@
   // in the fight's steps; for the mockups, the paused frame as it is.
   const steps = $derived<readonly Step[]>(replay ? replay.steps.slice(0, replay.shown) : f.view.log.map((fire) => ({ type: 'fire', fire })));
   const table = $derived(replay ? tableAt(replay.steps, replay.shown) : null);
-  const ticker = $derived(steps.slice(-3).map((s) => stepLine(s, names)));
+  const ticker = $derived(
+    steps
+      .map((s) => stepLine(s, names))
+      .filter((l) => l !== null)
+      .slice(-3),
+  );
   const callout = $derived.by(() => {
     const step = replay?.current;
     if (step?.type !== 'beat' || step.beat.kind !== 'points') return null;
@@ -80,7 +85,7 @@
     </div>
 
     {#if table}
-      <Table sequence={[]} pile={table.pile} count={table.count} starter={table.starter} playerIsDealer={table.dealer === 0} opponentCardsLeft={table.cardsLeft[1]} {callout} />
+      <Table sequence={[]} pile={table.pile} leaving={table.leaving} count={table.count} starter={table.starter} playerIsDealer={table.dealer === 0} opponentCardsLeft={table.cardsLeft[1]} {callout} />
     {:else}
       <Table sequence={f.sequence} count={f.count} starter={f.starter} playerIsDealer={f.playerIsDealer} opponentCardsLeft={f.opponentCardsLeft} />
     {/if}

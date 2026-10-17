@@ -12,7 +12,8 @@
   // Live (checkpoint 3a): `pile` carries who played each card, so a new
   // card animates in -- yours up from the hand, theirs flipped out of
   // their face-down stack -- and `callout` pops a score ("fifteen for 2")
-  // over the pile in the scorer's colour.
+  // over the pile in the scorer's colour. `leaving` is the pile sweeping
+  // off after a go or a 31, so a fresh count is obvious.
   let {
     sequence,
     count,
@@ -21,6 +22,7 @@
     opponentCardsLeft,
     small = false,
     pile,
+    leaving = [],
     callout,
   }: {
     sequence: Card[];
@@ -30,6 +32,7 @@
     opponentCardsLeft: number;
     small?: boolean;
     pile?: PileCard[];
+    leaving?: PileCard[];
     callout?: { text: string; side: PlayerIndex; key: number } | null;
   } = $props();
   const cards = $derived<PileCard[]>(pile ?? sequence.map((card, i) => ({ card, player: 0, key: -1 - i })));
@@ -49,7 +52,10 @@
           <CardView card={c.card} small />
         </div>
       {/each}
-      {#if cards.length === 0}<span class="empty">—</span>{/if}
+      {#each leaving as c (c.key)}
+        <div class="leave"><CardView card={c.card} small /></div>
+      {/each}
+      {#if cards.length === 0 && leaving.length === 0}<span class="empty">—</span>{/if}
     </div>
     {#if callout}
       {#key callout.key}
@@ -143,6 +149,24 @@
     45% {
       transform: translate(45px, 0) rotateY(0deg);
       opacity: 1;
+    }
+  }
+  .leave {
+    animation: leave 0.4s ease-in forwards;
+  }
+  .leave:nth-child(2) {
+    animation-delay: 0.03s;
+  }
+  .leave:nth-child(3) {
+    animation-delay: 0.06s;
+  }
+  .leave:nth-child(n + 4) {
+    animation-delay: 0.09s;
+  }
+  @keyframes leave {
+    to {
+      transform: translate(-110px, 18px) rotate(-14deg);
+      opacity: 0;
     }
   }
   .callout {
