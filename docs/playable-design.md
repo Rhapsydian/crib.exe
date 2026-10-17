@@ -388,6 +388,11 @@ user's call, before checkpoint 4):
   cost (104 fights/s with it, 96 without, same run).
 - The ⏏ glyph is forced to its text form so phones don't draw an emoji.
 
+**Pile overflow on phones** (the user's call): six pile cards fit in a
+row; a 7th lies over the 2nd and 3rd and an 8th over the 4th and 5th,
+canted 8° clockwise (a count never runs past 8 cards). Desktop keeps one
+row.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

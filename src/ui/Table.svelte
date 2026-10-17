@@ -47,13 +47,13 @@
   <div class="pile">
     <div class="count">{count}<span>/31</span></div>
     <div class="cards">
-      {#each cards as c (c.key)}
-        <div class="arrive" class:from-you={pile && c.player === 0} class:from-them={pile && c.player === 1}>
+      {#each cards as c, i (c.key)}
+        <div class="arrive" class:over7={i === 6} class:over8={i === 7} class:from-you={pile && c.player === 0} class:from-them={pile && c.player === 1}>
           <CardView card={c.card} small />
         </div>
       {/each}
-      {#each leaving as c (c.key)}
-        <div class="leave"><CardView card={c.card} small /></div>
+      {#each leaving as c, i (c.key)}
+        <div class="leave" class:over7={i === 6} class:over8={i === 7}><CardView card={c.card} small /></div>
       {/each}
       {#if cards.length === 0 && leaving.length === 0}<span class="empty">—</span>{/if}
     </div>
@@ -132,6 +132,33 @@
   }
   .empty {
     color: var(--text-dim);
+  }
+  /* Phones fit six pile cards in a row (the user's call): the 7th lies
+     over the 2nd and 3rd, the 8th over the 4th and 5th, canted a little
+     clockwise. The row shrinks to its first six cards so these offsets
+     (one card 34px + a 3px gap = 37px a slot) line up with them; a count
+     never runs past 8 cards. */
+  @media (max-width: 899px) {
+    .cards {
+      position: relative;
+      flex-wrap: nowrap;
+      width: fit-content;
+      margin: 0 auto;
+    }
+    .over7,
+    .over8 {
+      position: absolute;
+      top: calc(50% - 24px);
+      rotate: 8deg;
+      filter: drop-shadow(0 2px 4px rgb(0 0 0 / 70%));
+      z-index: 1;
+    }
+    .over7 {
+      left: 55.5px;
+    }
+    .over8 {
+      left: 129.5px;
+    }
   }
   .from-you {
     animation: from-you 0.28s ease-out;
