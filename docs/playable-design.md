@@ -560,6 +560,11 @@ phone pass.
   50), always a true dead end, always 2+ moves off the shortest route
   (2.6-3.2 on average, each way); when the farthest node has no room,
   the next farthest takes it. Climbs: 3.8 / 4.4 / 4.3 / 5.0 moves.
+- **M9 — no two nodes on neighbouring hexes** (the user's call, after a
+  Safehouse and an elite touched): snapping skips any hex next to one
+  already taken, and the Cache obeys the same spacing. Over 300 layers
+  each: no adjacent pairs, the closest pair one empty hex apart; climbs,
+  Cache rates and resilience unchanged.
 
 ## Settled in passing (Claude's calls, noted for the record)
 

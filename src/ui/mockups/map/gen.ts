@@ -162,8 +162,14 @@ export function backdropCells(): Pt[] {
 const toUnit = (p: Pt) => ({ x: (p.x - VIEW.P) / (VIEW.W - 2 * VIEW.P), y: (p.y - VIEW.P) / (VIEW.H - 2 * VIEW.P) });
 const toView = (p: Pt) => ({ x: VIEW.P + p.x * (VIEW.W - 2 * VIEW.P), y: VIEW.P + p.y * (VIEW.H - 2 * VIEW.P) });
 
+/** Neighbouring hexes' centres are HEX_W apart; anything closer than
+ * this is a neighbour (the next ring out is 1.73x HEX_W away). */
+const NEIGHBOUR_REACH = HEX_W * 1.5;
+
 /** Nudges every node to the centre of its nearest free backdrop hex
- * inside the padded area (entry and gatekeeper first). */
+ * inside the padded area (entry and gatekeeper first), never on a hex
+ * next to one already taken (the user's call: no nodes in adjacent
+ * hexes -- there's always at least one empty hex between two nodes). */
 function snapToBackdrop(ids: string[], pos: Positions) {
   const free = backdropCells().filter((c) => {
     const u = toUnit(c);
@@ -171,9 +177,12 @@ function snapToBackdrop(ids: string[], pos: Positions) {
   });
   for (const id of ['n0', 'n1', ...ids.filter((i) => i !== 'n0' && i !== 'n1')]) {
     const v = toView(pos[id]);
-    let best = 0;
-    for (let i = 1; i < free.length; i++) if (dist(free[i], v) < dist(free[best], v)) best = i;
-    pos[id] = toUnit(free.splice(best, 1)[0]);
+    let best = -1;
+    for (let i = 0; i < free.length; i++) if (best === -1 || dist(free[i], v) < dist(free[best], v)) best = i;
+    const cell = free[best];
+    pos[id] = toUnit(cell);
+    // The chosen hex and its neighbours are no longer free.
+    for (let i = free.length - 1; i >= 0; i--) if (dist(free[i], cell) < NEIGHBOUR_REACH) free.splice(i, 1);
   }
 }
 
@@ -275,7 +284,7 @@ function placeCache(ids: string[], edges: MapEdge[], pos: Positions): { id: stri
       })
       .filter((u) => !edges.some((e) => e.a !== anchor && e.b !== anchor && segmentsCross(u, pos[anchor], pos[e.a], pos[e.b])))
       .map((u) => ({ u, room: Math.min(...ids.map((id) => drawnDist(u, pos[id]))) }))
-      .filter((x) => x.room >= gap * 0.65)
+      .filter((x) => x.room >= gap * 0.65 && x.room >= NEIGHBOUR_REACH)
       .sort((a, b) => b.room - a.room);
     if (spots[0]) return { id: `n${ids.length}`, at: spots[0].u, anchor };
   }
