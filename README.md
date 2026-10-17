@@ -25,6 +25,9 @@ empowerment) and **Honeypot** (conversion / defense).
 playable in the browser** (`npm run dev`), on desktop and phones; a full
 run in the browser is next.
 
+**Play the demo:** <https://rhapsydian.github.io/crib.exe/> — the
+`playable` branch, rebuilt on every push (`.github/workflows/deploy-demo.yml`).
+
 Session 51 redesigned the archetypes and the subroutine model from
 scratch (`DESIGN.md` → Archetypes & Subroutines; the decision trail is
 `docs/archetype-redesign.md`). The engine runs the new model end to end,
