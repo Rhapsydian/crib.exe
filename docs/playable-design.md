@@ -415,6 +415,10 @@ row.
   with "…".
 - The real-phone playthrough is the user's (the preview can't stand in
   for a thumb on glass).
+- **Both sides read the same way** (the user's call): subroutine
+  badges, then the meters, then the information badges (Ward, Trace,
+  Mods, Burners) on their own line. The enemy's badges used to sit below
+  its meters, and a short badge row could ride the meter line.
 
 ## Settled in passing (Claude's calls, noted for the record)
 

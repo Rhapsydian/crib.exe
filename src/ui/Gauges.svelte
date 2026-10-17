@@ -102,8 +102,10 @@
   .compact .row {
     flex: 1 1 140px;
   }
+  /* The information badges (Ward, Trace, Mods, Burners) always take
+     their own line under the meters (the user's call). */
   .compact .chips {
-    flex: none;
+    flex: 1 0 100%;
   }
   .label {
     width: 56px;

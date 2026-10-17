@@ -161,8 +161,8 @@
         {#if replay}<button class="speed" onclick={() => replay.cycleSpeed()} title="turn speed">» {replay.speed}</button>{/if}
         <button class="loadouts-button" onclick={() => (sheet = 'loadouts')}>◀ loadouts</button>
       </div>
-      <Gauges side={f.them} reading={replay?.gauges?.[1]} isPlayer={false} compact mods={theirMods.length} modNames={theirMods.map((m) => m.name)} flashMods={flashSide(1)} onkit={() => (sheet = 'loadouts')} />
       <Loadout entries={f.them.loadout} dense enemy firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
+      <Gauges side={f.them} reading={replay?.gauges?.[1]} isPlayer={false} compact mods={theirMods.length} modNames={theirMods.map((m) => m.name)} flashMods={flashSide(1)} onkit={() => (sheet = 'loadouts')} />
     </div>
 
     <div class="table-slot">
