@@ -470,3 +470,23 @@ describe('Mod triggers (milestone 2, the trigger flash)', () => {
     for (const b of siphons) expect(result.log[b.firesBefore]?.side).toBe(0);
   });
 });
+
+describe('turn beats (the turn toast)', () => {
+  it("mark each turn's start, just ahead of that side's own turn fires", () => {
+    const result = playCombat([CLASS_STARTING_LOADOUTS['exploit-overclock'], CLASS_STARTING_LOADOUTS['daemon-honeypot']], {
+      seed: 8,
+      gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD],
+      winThreshold: [400, 400],
+      discardStrategies: [discardSkillStrategy(0.85), discardSkillStrategy(0.85)],
+      playStrategies: [pegSkillStrategy(0.85), pegSkillStrategy(0.85)],
+    });
+    const turns = result.timeline.filter((b) => b.kind === 'turn');
+    expect(turns.filter((b) => b.kind === 'turn' && b.side === 0).length).toBeGreaterThan(3);
+    expect(turns.filter((b) => b.kind === 'turn' && b.side === 1).length).toBeGreaterThan(3);
+    for (const b of turns) {
+      if (b.kind !== 'turn') continue;
+      const firstTurnFire = result.log.slice(b.firesBefore).find((f) => !f.immediate);
+      if (firstTurnFire) expect(firstTurnFire.side).toBe(b.side);
+    }
+  });
+});

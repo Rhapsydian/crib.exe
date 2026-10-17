@@ -79,13 +79,19 @@
   });
   // Mod and Burner callouts float over whichever panel is up (the table
   // or the show), since either can act during the show's turns.
-  // A show score's toast (the user's ask): like pegging's callout, but
-  // floated in the open space above the show panel, clear of its cards
-  // and running count.
-  const showToast = $derived.by(() => {
+  // Toasts in the open gap above the table / show panel (the user's
+  // asks): a show score, like pegging's callout but clear of the panel's
+  // cards and count; and a turn starting, either side, in either phase
+  // (pegging's own score callout sits over the pile, so they never meet).
+  const gapToast = $derived.by(() => {
     const step = replay?.current;
-    if (step?.type !== 'beat' || step.beat.kind !== 'points' || step.beat.phase !== 'show') return null;
-    return { text: scoreLabel(step.beat.occurrence, 'show'), side: step.beat.occurrence.player, key: replay!.shown };
+    if (step?.type !== 'beat') return null;
+    const b = step.beat;
+    if (b.kind === 'points' && b.phase === 'show') {
+      return { text: `${b.occurrence.player === 0 ? '+' : '−'} ${scoreLabel(b.occurrence, 'show')}`, side: b.occurrence.player, key: replay!.shown, turn: false };
+    }
+    if (b.kind === 'turn') return { text: `▶ ${b.side === 0 ? 'YOUR' : 'THEIR'} TURN`, side: b.side, key: replay!.shown, turn: true };
+    return null;
   });
   const slotCallout = $derived.by(() => {
     const step = replay?.current;
@@ -181,9 +187,9 @@
       {:else}
         <Table sequence={f.sequence} count={f.count} starter={f.starter} playerIsDealer={f.playerIsDealer} opponentCardsLeft={f.opponentCardsLeft} />
       {/if}
-      {#if showToast}
-        {#key showToast.key}
-          <div class="show-toast" class:them={showToast.side === 1}>{showToast.side === 0 ? '+' : '−'} {showToast.text}</div>
+      {#if gapToast}
+        {#key gapToast.key}
+          <div class="gap-toast" class:them={gapToast.side === 1} class:turn={gapToast.turn}>{gapToast.text}</div>
         {/key}
       {/if}
       {#if slotCallout}
@@ -374,11 +380,11 @@
     position: relative;
     height: 104px;
   }
-  .table-slot > :global(*:not(.banner):not(.slot-callout):not(.show-toast)) {
+  .table-slot > :global(*:not(.banner):not(.slot-callout):not(.gap-toast)) {
     height: 100%;
     box-sizing: border-box;
   }
-  .show-toast {
+  .gap-toast {
     position: absolute;
     left: 50%;
     bottom: calc(100% + 9px);
@@ -393,13 +399,22 @@
     font-weight: 700;
     font-size: 13px;
     pointer-events: none;
-    animation: show-toast 0.9s ease-out forwards;
+    animation: gap-toast 0.9s ease-out forwards;
   }
-  .show-toast.them {
+  .gap-toast.them {
     border-color: var(--danger);
     color: var(--danger);
   }
-  @keyframes show-toast {
+  .gap-toast.turn {
+    letter-spacing: 0.1em;
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .gap-toast.turn.them {
+    background: var(--danger);
+    color: var(--bg);
+  }
+  @keyframes gap-toast {
     0% {
       opacity: 0;
       transform: translate(-50%, 8px) scale(0.85);

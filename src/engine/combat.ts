@@ -467,6 +467,12 @@ export type CombatBeat = (
       mod: ModRef;
     }
   | {
+      /** A turn starting (the user's ask: a toast for every turn, either
+       * side). Comes before the turn's Burner offer and its fires. */
+      kind: 'turn';
+      side: PlayerIndex;
+    }
+  | {
       /** A Burner spent before a turn. */
       kind: 'burner';
       side: PlayerIndex;
@@ -640,6 +646,7 @@ export function* combatGenerator(
     }
 
     for (let turn = 0; turn < turnsTriggered; turn++) {
+      beat({ kind: 'turn', side: occurrence.player });
       // Burner activation (checkpoint C): an "opening move" resolved
       // before this turn's automatic subroutine fires. Side 1 (the
       // enemy) has no Burner economy -- its strategy defaults to

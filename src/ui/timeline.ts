@@ -63,6 +63,7 @@ export function stepSide(step: Step): PlayerIndex | null {
   if (b.kind === 'show') return b.player;
   if (b.kind === 'burner') return b.side;
   if (b.kind === 'mod') return b.side;
+  if (b.kind === 'turn') return b.side;
   return null;
 }
 
@@ -95,6 +96,8 @@ export function stepDelay(step: Step): number {
       return 800;
     case 'mod':
       return 550;
+    case 'turn':
+      return 500;
   }
 }
 
@@ -274,6 +277,8 @@ export function describeBeat(beat: CombatBeat): string {
       return `${beat.side === 0 ? 'you burn' : 'they burn'} ${burnerLabel(beat.burnerId)}`;
     case 'mod':
       return `◆ ${triggerLabel(beat)}`;
+    case 'turn':
+      return `▶ ${beat.side === 0 ? 'your' : 'their'} turn`;
   }
 }
 

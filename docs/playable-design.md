@@ -428,6 +428,12 @@ row.
   initiative, counted from the timeline's scoring beats
   (`pointsSummary`), so a show cut short by the fight's end counts only
   what was actually scored.
+- **A toast for every turn** (the user's ask), either side, in pegging
+  and the show: "▶ YOUR TURN" filled green, "▶ THEIR TURN" filled red,
+  in the same gap above the table as the show toasts (pegging's score
+  callout sits over the pile, so the two never meet). The engine records
+  a `turn` beat at each turn's start, ahead of its Burner offer and its
+  fires; the log gains "▶ your turn" lines. Bench: no cost.
 
 ## Settled in passing (Claude's calls, noted for the record)
 
