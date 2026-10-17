@@ -25,8 +25,9 @@
   const ticker = $derived(f.view.log.slice(-3));
 
   function pickLog(side: 0 | 1, id: string) {
+    // The log drawer stays open underneath, so closing the detail
+    // returns the player to where they were in the log.
     picked = pickFromLog(snapshot, side, id);
-    sheet = 'none';
   }
 </script>
 
