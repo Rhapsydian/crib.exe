@@ -435,6 +435,27 @@ row.
   a `turn` beat at each turn's start, ahead of its Burner offer and its
   fires; the log gains "▶ your turn" lines. Bench: no cost.
 
+## Milestone 3 — a playable run (started session 58)
+
+**Proposed checkpoints:** 1. the run loop as a pausable generator
+(combat nested inside; the simulation byte-identical); 2. class choice,
+the map, fights and end screens; 3. rewards and loadout management;
+4. Safehouse, Shop and Event screens, map Burners; 5. save and resume, a
+phone pass.
+
+- **M1 — the map shows only the current layer** (the user's call): a
+  passed gatekeeper is one-way, so earlier layers aren't drawn. This
+  replaces DESIGN.md's "all layers render as one continuous, growing
+  diagram".
+- **Map layout: mockups first** (the user's call), at `#map`, over real
+  generated layers (`src/ui/mockups/map/`): *layered* (rows by hops from
+  the entry, gatekeeper on top, row links bowed into arcs), *force* (a
+  seeded spring layout, entry and gatekeeper pinned), *schematic* (the
+  layered rows on a grid, right-angle traces, one lane per link). Tap a
+  linked node to walk.
+- **Inactive storage slots** (the user's ask: 2-3 slots to hold a piece
+  you mean to build around): open, see below.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand

@@ -6,6 +6,7 @@
   import FightScreen from './ui/FightScreen.svelte';
   import SetupScreen from './ui/SetupScreen.svelte';
   import LiveFightView from './ui/LiveFightView.svelte';
+  import MapMockup from './ui/mockups/map/MapMockup.svelte';
   import { LiveFight } from './ui/live-fight.svelte';
   import type { ClassId } from './engine/classes';
   import type { EnemyDefinition } from './engine/enemies';
@@ -14,7 +15,7 @@
   // screen, then the fight. The fixed mockup moment stays reachable for
   // comparison -- #mock (the chosen screen) and the three P3 mockups at
   // #tabs / #drawers / #compact, with a switcher.
-  const mocks = ['mock', 'tabs', 'drawers', 'compact'] as const;
+  const mocks = ['mock', 'tabs', 'drawers', 'compact', 'map'] as const;
   type Route = 'live' | (typeof mocks)[number];
   const fromHash = (): Route => mocks.find((l) => location.hash === `#${l}`) ?? 'live';
   let route = $state<Route>(fromHash());
@@ -51,7 +52,9 @@
     {/each}
     <a href="#live">live</a>
   </div>
-  {#if route === 'mock'}
+  {#if route === 'map'}
+    <MapMockup />
+  {:else if route === 'mock'}
     <FightScreen {snapshot} />
   {:else if route === 'tabs'}
     <TabsLayout {snapshot} />
