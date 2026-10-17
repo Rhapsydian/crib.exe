@@ -21,6 +21,28 @@ import { rarityOf, type Rarity } from './rewards';
 
 export const INSTALLED_SLOT_CAP = 6; // TBD/playtesting -- floated as flavor only, session 7
 
+/** The bench's cap (milestone 3, M2, the user's call: "not a ton, maybe
+ * 2-3 inactive slots"). It was unlimited; past this, a piece has to go
+ * (run.ts asks which, via a 'drop' request). */
+export const BENCH_CAP = 3;
+
+/** Drops a piece from the bench for good. Its banked Merge material stays
+ * (keyed by id), so a later copy of the same piece keeps its upgrades. A
+ * no-op if `id` isn't on the bench. */
+export function dropFromBench(playerState: RunPlayerState, id: string): RunPlayerState {
+  const index = playerState.bench.findIndex((piece) => piece.id === id);
+  if (index === -1) return playerState;
+  const bench = playerState.bench.slice();
+  bench.splice(index, 1);
+  return { ...playerState, bench };
+}
+
+/** The bench piece the acquisition ladder ranks lowest -- what the
+ * simulated player drops when the bench is over its cap. */
+export function weakestOnBench(playerState: RunPlayerState): string {
+  return playerState.bench.reduce((worst, piece) => (compareLadderRanks(ladderRank(piece, playerState), ladderRank(worst, playerState)) > 0 ? piece : worst)).id;
+}
+
 /** Number of installedLoadout entries that actually count against
  * slotCap -- excludes any entry granted by a Mod (Phase 5 Mods
  * checkpoint F: `grantedByMod` tracks these by subroutine id), which are

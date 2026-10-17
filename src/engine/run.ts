@@ -14,6 +14,9 @@ import {
   installGrantedSubroutine,
   keepAcquisitionOrder,
   INSTALLED_SLOT_CAP,
+  BENCH_CAP,
+  dropFromBench,
+  weakestOnBench,
   type AcquisitionStrategy,
   type ReorderStrategy,
   type SubroutineAcquirer,
@@ -512,6 +515,9 @@ export interface RunOptions {
   burnerAcquisitionStrategy?: BurnerAcquisitionStrategy;
   /** Slot cap for installedLoadout -- checkpoint D. */
   installedSlotCap?: number;
+  /** The bench's cap (BENCH_CAP, milestone 3); Infinity restores the old
+   * unlimited bench. */
+  benchCap?: number;
   /** Rest-vs-Merge choice at a Safehouse -- checkpoint E. Defaults to
    * preferMergeWhenAvailable (legal-not-good). */
   safehouseStrategy?: SafehouseStrategy;
@@ -638,6 +644,21 @@ export function playRun(options: RunOptions): RunResult {
   return driveWithFallbacks(runRequests(options));
 }
 
+/** While the bench is over its cap, asks which bench piece to drop (the
+ * simulated player drops the ladder's weakest). */
+function* settleBench(playerState: RunPlayerState, cap: number): Generator<RunRequest, RunPlayerState, unknown> {
+  let state = playerState;
+  while (state.bench.length > cap) {
+    const over = state;
+    const id = yield* ask({ kind: 'drop', playerState: over, fallback: () => weakestOnBench(over) });
+    const after = dropFromBench(over, id);
+    // An id that isn't on the bench drops the weakest instead, so a bad
+    // answer can't stall the run.
+    state = after.bench.length < over.bench.length ? after : dropFromBench(over, weakestOnBench(over));
+  }
+  return state;
+}
+
 /** A whole run, pausing at each decision (see run-requests.ts): the map,
  * every encounter's choices, the player's fights, rewards and loadout
  * order. A UI drives this; playRun answers it with `options`' strategies. */
@@ -655,6 +676,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
     modAcquisitionStrategy = alwaysAcquireFirstMod,
     burnerAcquisitionStrategy = alwaysAcquireFirstBurner,
     installedSlotCap = INSTALLED_SLOT_CAP,
+    benchCap = BENCH_CAP,
     safehouseStrategy = preferMergeWhenAvailable,
     mergeTargetStrategy = pickMergeTarget,
     reorderStrategy = keepAcquisitionOrder,
@@ -889,6 +911,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
           // Salvage Protocol (checkpoint E) -- checked against every
           // acquired piece, reward or Shop alike, per its own no-op guards.
           playerState = applyOnSubroutineAcquiredMods(playerState, picked);
+          playerState = yield* settleBench(playerState, benchCap);
         }
       }
       // Mod-choice reward (checkpoint G) -- additive, elite/gatekeeper
@@ -918,6 +941,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         playerState = { ...playerState, data: playerState.data - outcome.shopPurchase.cost };
         playerState = subroutineAcquirer(playerState, outcome.shopPurchase.piece, installedSlotCap);
         playerState = applyOnSubroutineAcquiredMods(playerState, outcome.shopPurchase.piece);
+        playerState = yield* settleBench(playerState, benchCap);
       }
       if (outcome.modRerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.modRerollCost };
       if (outcome.modShopPurchase) {
@@ -935,6 +959,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       if (outcome.eventGrant?.subroutine) {
         playerState = subroutineAcquirer(playerState, outcome.eventGrant.subroutine, installedSlotCap);
         playerState = applyOnSubroutineAcquiredMods(playerState, outcome.eventGrant.subroutine);
+        playerState = yield* settleBench(playerState, benchCap);
       }
       if (outcome.eventGrant?.mod) playerState = acquireMod(playerState, outcome.eventGrant.mod);
       if (outcome.eventGrant?.burner) playerState = acquireBurner(playerState, outcome.eventGrant.burner);

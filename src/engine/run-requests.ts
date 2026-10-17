@@ -53,6 +53,8 @@ export type RunRequest =
   | Ask<'reward', { reward: 'subroutine'; options: SubroutineDefinition[]; playerState: RunPlayerState }, SubroutineDefinition | null>
   | Ask<'reward', { reward: 'mod'; options: ModDefinition[]; playerState: RunPlayerState }, ModDefinition | null>
   | Ask<'reward', { reward: 'burner'; options: BurnerDefinition[]; playerState: RunPlayerState }, BurnerDefinition | null>
+  /** The bench is over its cap (BENCH_CAP): which bench piece to drop. */
+  | Ask<'drop', { playerState: RunPlayerState }, string>
   /** The loadout's firing order after an encounter: the reordered state. */
   | Ask<'reorder', { playerState: RunPlayerState }, RunPlayerState>;
 

@@ -567,7 +567,9 @@ describe('gatekeeperOverrides (session 49) -- the synthetic gatekeeper diagnosti
     expect(passed / reached).toBeGreaterThan(0.38);
     expect(passed / reached).toBeLessThan(0.62);
     expect(playRun({ seed: 11, gatekeeperOverrides: [HALF, HALF, HALF, HALF] })).toEqual(playRun({ seed: 11, gatekeeperOverrides: [HALF, HALF, HALF, HALF] }));
-  });
+    // 300 tiny runs plus two full ones: longer since milestone 3's bigger
+    // layers, so past vitest's 5 s default under a parallel full suite.
+  }, 20_000);
 
   it('pins a layer to one real gatekeeper without touching the fight itself', () => {
     const target = eligibleEnemies('gatekeeper', 1)[0].id;

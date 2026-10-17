@@ -596,6 +596,15 @@ get a relaxed pass. The simulated player's opportunistic routing takes a
 Cache right after fights when the detour fits its Heat reserve. The
 `#map` mockup now draws the engine's generator; its prototype is gone.
 
+**Checkpoint 1, part 3 — the bench capped at 3:** `BENCH_CAP` (loadout.ts);
+after any acquisition (a reward, a Shop purchase, an Event grant) a bench
+over its cap raises a `drop` request; the simulated player drops the
+acquisition ladder's weakest bench piece (`weakestOnBench`). A dropped
+piece's Merge material stays banked by id. `RunOptions.benchCap`
+(Infinity restores the old unlimited bench). Tests: the bench never ends
+a run above 3, drops are asked, a driver's named piece is the one
+dropped.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand
