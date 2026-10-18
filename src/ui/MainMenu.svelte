@@ -54,49 +54,58 @@
 
   {#if resumeFailed}<div class="warn">{resumeFailed}</div>{/if}
 
-  <div class="entry-group">
-    <button class="entry learn" class:nudge={firstVisit} onclick={onlearn}>
-      {#if firstVisit}<span class="badge">new to Cribbage? start here</span>{/if}
-      <b>Learn to play</b>
-      <span>Short lessons on the card game, then games with a coach.</span>
+  <!-- Two sections (the user's call): the roguelite -- a run for now;
+       meta-progression and its tutorial join it later -- and vanilla
+       Cribbage. -->
+  <section>
+    <div class="section-title">CRIB.EXE · THE ROGUELITE</div>
+    <button class="entry run" onclick={onrun}>
+      <b>Start a Run</b>
+      <span>{runSave ? `Saved run: ${runSave.className}, layer ${runSave.layer} -- resume it on the next screen.` : 'Break into a network, four layers deep. Every fight is Cribbage.'}</span>
     </button>
-    <!-- A saved Learn-to-play game resumes from here (the user's call);
-         any other level's, under Play Cribbage. -->
-    {#if cribbageSave?.difficulty === 'learn'}{@render resume(cribbageSave)}{/if}
-  </div>
+  </section>
 
-  <div class="entry-group">
-    <button class="entry" onclick={() => (setup = !setup)}>
-      <b>Play Cribbage</b>
-      <span>A game to 121 against the computer.</span>
-    </button>
-    {#if cribbageSave && cribbageSave.difficulty !== 'learn'}{@render resume(cribbageSave)}{/if}
-    {#if setup}
-      <div class="setup">
-        <div class="caption">DIFFICULTY</div>
-        {#each levels as [id, level] (id)}
-          <button class="level" class:chosen={difficulty === id} onclick={() => pick(id)}>
-            <b>{level.name}</b> <span class="dim">{BLURB[id]}</span>
-          </button>
-        {/each}
-        <label class="coach">
-          <input type="checkbox" bind:checked={coach} />
-          <span><b>Coach</b> <span class="dim">explains each phase, reviews your discards and plays, walks through each count</span></span>
-        </label>
-        <label class="coach sub" class:off={!coach}>
-          <input type="checkbox" bind:checked={hints} disabled={!coach} />
-          <span><b>Suggestions</b> <span class="dim">the coach also suggests a discard or play before you choose</span></span>
-        </label>
-        <button class="start" onclick={() => oncribbage(difficulty, coach, hints)}>▶ deal · {DIFFICULTIES[difficulty].name}{coach ? ` · coach on${hints ? '' : ', no suggestions'}` : ''}</button>
-        {#if cribbageSave}<div class="dim small">Starting a new game replaces the saved one.</div>{/if}
-      </div>
-    {/if}
-  </div>
+  <section>
+    <div class="section-title">CRIBBAGE</div>
+    <div class="entry-group">
+      <button class="entry learn" class:nudge={firstVisit} onclick={onlearn}>
+        {#if firstVisit}<span class="badge">new to Cribbage? start here</span>{/if}
+        <b>Learn to play</b>
+        <span>Short lessons on the card game, then games with a coach.</span>
+      </button>
+      <!-- A saved Learn-to-play game resumes from here (the user's call);
+           any other level's, under Play Cribbage. -->
+      {#if cribbageSave?.difficulty === 'learn'}{@render resume(cribbageSave)}{/if}
+    </div>
 
-  <button class="entry run" onclick={onrun}>
-    <b>crib.exe · the run</b>
-    <span>{runSave ? `Saved run: ${runSave.className}, layer ${runSave.layer}.` : 'Break into a network, four layers deep. Every fight is Cribbage.'}</span>
-  </button>
+    <div class="entry-group">
+      <button class="entry" onclick={() => (setup = !setup)}>
+        <b>Play Cribbage</b>
+        <span>A game to 121 against the computer.</span>
+      </button>
+      {#if cribbageSave && cribbageSave.difficulty !== 'learn'}{@render resume(cribbageSave)}{/if}
+      {#if setup}
+        <div class="setup">
+          <div class="caption">DIFFICULTY</div>
+          {#each levels as [id, level] (id)}
+            <button class="level" class:chosen={difficulty === id} onclick={() => pick(id)}>
+              <b>{level.name}</b> <span class="dim">{BLURB[id]}</span>
+            </button>
+          {/each}
+          <label class="coach">
+            <input type="checkbox" bind:checked={coach} />
+            <span><b>Coach</b> <span class="dim">explains each phase, reviews your discards and plays, walks through each count</span></span>
+          </label>
+          <label class="coach sub" class:off={!coach}>
+            <input type="checkbox" bind:checked={hints} disabled={!coach} />
+            <span><b>Suggestions</b> <span class="dim">the coach also suggests a discard or play before you choose</span></span>
+          </label>
+          <button class="start" onclick={() => oncribbage(difficulty, coach, hints)}>▶ deal · {DIFFICULTIES[difficulty].name}{coach ? ` · coach on${hints ? '' : ', no suggestions'}` : ''}</button>
+          {#if cribbageSave}<div class="dim small">Starting a new game replaces the saved one.</div>{/if}
+        </div>
+      {/if}
+    </div>
+  </section>
 </div>
 
 <style>
@@ -124,6 +133,19 @@
   .warn {
     color: var(--warn);
     font-size: 11.5px;
+  }
+  section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .section-title {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--line);
   }
   .entry {
     position: relative;
