@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RichText from './RichText.svelte';
   import type { RunRequest, ShopAction, ShopSlate } from '../engine/run-requests';
   import { BENCH_CAP, INSTALLED_SLOT_CAP } from '../engine/loadout';
   import SuitIcon from './SuitIcon.svelte';
@@ -78,7 +79,7 @@
             <span class="cost">{bought ? 'bought' : `${item.cost}`}</span>
           </div>
           {#if selected === key(item)}
-            {#each item.lines as line (line)}<div class="line">{line}</div>{/each}
+            {#each item.lines as line (line)}<div class="line"><RichText text={line} /></div>{/each}
             {#if item.note}<div class="note">{item.note}</div>{/if}
           {/if}
         </button>

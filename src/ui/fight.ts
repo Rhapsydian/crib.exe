@@ -1,4 +1,5 @@
 import type { FireEvent, LoadoutEntry } from '../engine/resolve';
+import type { Thresholds } from './describe';
 import type { FightSnapshot } from './snapshot';
 
 /** A piece the player tapped: which side, which slot. */
@@ -34,16 +35,21 @@ export function fightParts(snapshot: FightSnapshot) {
   };
 }
 
-export function pickedEntry(snapshot: FightSnapshot, picked: Picked | null): { entry: LoadoutEntry; lastFire?: FireEvent } | null {
+/** The picked subroutine, what it did last, and the live initiative
+ * thresholds its text's turn fractions are worked out against (its side's
+ * and the other's). */
+export function pickedEntry(snapshot: FightSnapshot, picked: Picked | null): { entry: LoadoutEntry; lastFire?: FireEvent; thresholds: Thresholds } | null {
   if (!picked) return null;
   const { view } = snapshot.request;
   const entry = view.combatState.sides[picked.side].loadout[picked.index];
   if (!entry) return null;
   const lastFire = [...view.log].reverse().find((e) => e.side === picked.side && e.subroutineId === entry.definition.id);
-  return { entry, lastFire };
+  const sides = view.combatState.sides;
+  const thresholds = { own: sides[picked.side].gauge.threshold, opponent: sides[picked.side === 0 ? 1 : 0].gauge.threshold };
+  return { entry, lastFire, thresholds };
 }
 
-/** A log line's piece, as a Picked (the first slot with that id). */
+/** A log line's subroutine, as a Picked (the first slot with that id). */
 export function pickFromLog(snapshot: FightSnapshot, side: 0 | 1, subroutineId: string): Picked | null {
   const index = snapshot.request.view.combatState.sides[side].loadout.findIndex((e) => e.definition.id === subroutineId);
   return index === -1 ? null : { side, index };

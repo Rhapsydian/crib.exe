@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RichText from './RichText.svelte';
   import type { RunRequest } from '../engine/run-requests';
   import type { SubroutineDefinition } from '../engine/subroutine-types';
   import { BENCH_CAP } from '../engine/loadout';
@@ -52,7 +53,7 @@
   {#if chosen}
     <div class="detail">
       <div class="name"><SuitIcon archetype={chosen.archetype} size={15} /> <b>{chosen.name}</b> <span class="dim">· {rarityOf(chosen.id)}</span></div>
-      {#each pieceLines(chosen) as line (line)}<div>{line}</div>{/each}
+      {#each pieceLines(chosen) as line (line)}<div><RichText text={line} /></div>{/each}
     </div>
   {/if}
   <div class="consequence">{consequence}</div>

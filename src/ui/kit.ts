@@ -91,66 +91,66 @@ export type GeneralModId = Exclude<ModId, `bridge-${string}`>;
 const pct = (fraction: number) => `${Math.round(fraction * 100)}%`;
 const cap = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
-/** The piece a reactive Mod fires each turn, or a granted Mod installs. */
+/** The subroutine a reactive Mod fires each turn, or a granted Mod installs. */
 const reactivePiece = (id: ModId): SubroutineDefinition => MOD_DEFINITIONS[id].reactiveSubroutine as SubroutineDefinition;
 const grantedPiece = (id: ModId): SubroutineDefinition => MOD_DEFINITIONS[id].grantedSubroutine as SubroutineDefinition;
 
-/** "Each of your turns, a free Overclock piece below your loadout fires: Credit 1." */
+/** "Each of your turns, an extra Overclock subroutine fires after your loadout: Credit 1." */
 const reactiveText = (id: ModId) => {
   const piece = reactivePiece(id);
-  return `Each of your turns, a free ${cap(piece.archetype)} piece below your loadout fires: ${cap(describeProcess(piece.alpha))}.`;
+  return `Each of your turns, an extra ${cap(piece.archetype)} subroutine fires after your loadout: ${describeProcess(piece.alpha)}.`;
 };
 
-/** "Adds the Daemon piece Auxiliary Process to your loadout. Process: ...". */
+/** "Adds the Daemon subroutine Auxiliary Process to your loadout. Process: ...". */
 const grantedText = (id: ModId) => {
   const piece = grantedPiece(id);
-  const hook = piece.beta ? ` Hook: ${describeHook(piece.beta)}.` : '';
-  return `Adds the ${cap(piece.archetype)} piece ${piece.name} to your loadout. Process: ${describeProcess(piece.alpha)}.${hook} It doesn't count toward your loadout limit and can't be removed.`;
+  const hook = piece.beta ? ` Hook: ${describeHook(piece)}.` : '';
+  return `Adds the ${cap(piece.archetype)} subroutine ${piece.name} to your loadout. Process: ${describeProcess(piece.alpha)}.${hook} It doesn't count toward your loadout limit and can't be removed.`;
 };
 
 /** An archetype-exclusive Mod's offer rule, in words. */
-const onlyFor = (id: ModId) => ` Only offered to classes with ${cap(MOD_DEFINITIONS[id].archetype ?? '')} pieces.`;
+const onlyFor = (id: ModId) => ` Only offered to classes with ${cap(MOD_DEFINITIONS[id].archetype ?? '')} subroutines.`;
 
 const amplifierText = (id: ModId) =>
-  `Your ${cap(MOD_DEFINITIONS[id].archetype ?? '')} pieces' Processes that Credit, Suppress or Ward do ${AMPLIFIER_BONUS} more.${onlyFor(id)}`;
+  `Your ${cap(MOD_DEFINITIONS[id].archetype ?? '')} subroutines' Processes Credit, Suppress or Ward ${AMPLIFIER_BONUS} more (whichever they do).${onlyFor(id)}`;
 
 /** The general Mods' rules, in the player's voice (milestone 3). Display
  * only: the rules live in resolve.ts (fight hooks) and mods.ts (run
  * hooks). */
 export const MOD_TEXT: Record<GeneralModId, string> = {
   // --- Common ---
-  'static-shield': `Each plain Credit the opponent gains is reduced by ${MOD_SMALL} before your Ward absorbs it.`,
+  'static-shield': `Each time the opponent Credits (not steals or Ward-spending), it's ${MOD_SMALL} less, before your Ward absorbs it.`,
   'light-footing': `Each move on the map costs ${LIGHT_FOOTING_HEAT_DISCOUNT} less Heat.`,
   'warm-boot': `Start each fight with ${MOD_SMALL} Ward.`,
   'vendor-discount': `Everything in the Shop costs ${pct(VENDOR_DISCOUNT_FRACTION)} less. Doesn't stack with a Burner discount; the bigger one applies.`,
-  'early-momentum': `The first time your Breach gauge reaches half each fight, Credit ${MOD_SMALL}.`,
+  'early-momentum': `The first time your Breach reaches half each fight, Credit ${MOD_SMALL}.`,
   'backup-generator': `Your Heat limit is ${BACKUP_GENERATOR_HEAT_BONUS} higher on every layer.`,
   'petty-cache': `Every fight you win pays ${PETTY_CACHE_DATA_BONUS} extra Data.`,
   'cold-boot': `Start each fight with ${MOD_SMALL} Credit.`,
   'quiet-hours': `Every ${QUIET_HOURS_MOVE_INTERVAL}rd move on the map gives you ${QUIET_HOURS_DATA_BONUS} Data.`,
-  'surge-protector': `The first plain Credit the opponent gains each fight is reduced by ${MOD_MEDIUM} before your Ward absorbs it.`,
-  'first-contact': `The first time the enemy's Containment gauge reaches half each fight, Suppress it ${MOD_SMALL}.`,
+  'surge-protector': `The first time the opponent Credits each fight (not steals or Ward-spending), it's ${MOD_MEDIUM} less, before your Ward absorbs it.`,
+  'first-contact': `The first time their Containment reaches half each fight, Suppress ${MOD_SMALL}.`,
   'petty-theft': `Every regular fight you win pays ${PETTY_THEFT_DATA_BONUS} extra Data.`,
   'boot-sector': reactiveText('boot-sector'),
   'init-script': `The next Mod you gain also gives you ${INIT_SCRIPT_DATA_BONUS} Data.`,
 
   // --- Uncommon ---
-  'firmware-patch': `Your Hooks that Credit, Suppress or Ward do ${FIRMWARE_PATCH_BONUS} more, and so do Hooks that boost a Process that does.`,
+  'firmware-patch': `Your Hooks do ${FIRMWARE_PATCH_BONUS} more whenever they Credit, Suppress or Ward — or make a Process that does bigger.`,
   'daemon-amplifier': amplifierText('daemon-amplifier'),
-  'salvage-protocol': 'The first Daemon piece you gain this run is Merged once for free.',
-  'cache-prefetch': `Your Hooks that count scoring or progress start each fight with ${CACHE_PREFETCH_CHARGES} charge.`,
-  'bulk-buyer': 'The Shop offers 1 extra common piece and 1 extra common Mod.',
+  'salvage-protocol': 'The first Daemon subroutine you gain this run is Merged once for free.',
+  'cache-prefetch': `Your Hooks that count events (scoring, points, fires) start each fight with ${CACHE_PREFETCH_CHARGES === 1 ? 'one extra count' : `${CACHE_PREFETCH_CHARGES} extra counts`} already banked.`,
+  'bulk-buyer': 'The Shop offers 1 extra common subroutine and 1 extra common Mod.',
   'exploit-amplifier': amplifierText('exploit-amplifier'),
   'honeypot-amplifier': amplifierText('honeypot-amplifier'),
   'overclock-amplifier': amplifierText('overclock-amplifier'),
-  'fast-learner': 'The first Overclock piece you gain this run is Merged once for free.',
-  'threshold-exploit': `Hooks that need several hits need ${THRESHOLD_EXPLOIT_REDUCTION} fewer (never fewer than 1).`,
-  'scrap-merchant': 'The Shop offers 1 extra uncommon piece and 1 extra uncommon Mod.',
+  'fast-learner': 'The first Overclock subroutine you gain this run is Merged once for free.',
+  'threshold-exploit': `Hooks that wait for several events ("once you've scored 3 pairs") need ${THRESHOLD_EXPLOIT_REDUCTION === 1 ? 'one' : THRESHOLD_EXPLOIT_REDUCTION} fewer (never fewer than 1).`,
+  'scrap-merchant': 'The Shop offers 1 extra uncommon subroutine and 1 extra uncommon Mod.',
 
   // --- Rare ---
   'auxiliary-process': grantedText('auxiliary-process'),
   'rootkit-persistence': `${reactiveText('rootkit-persistence')}${onlyFor('rootkit-persistence')}`,
-  'black-budget': `After an elite or gatekeeper win, ${pct(BLACK_BUDGET_UPGRADE_CHANCE)} chance your piece reward is redrawn with much better odds of rares.`,
+  'black-budget': `After an elite or gatekeeper win, ${pct(BLACK_BUDGET_UPGRADE_CHANCE)} chance your subroutine reward is redrawn with much better odds of rares.`,
   'heat-sink': `Winning an elite or gatekeeper fight sheds ${HEAT_SINK_HEAT_REFUND} Heat.`,
   'backdoor-access': grantedText('backdoor-access'),
   'session-hijack-relay': `${reactiveText('session-hijack-relay')}${onlyFor('session-hijack-relay')}`,
@@ -211,7 +211,7 @@ export function burnersOf(carried: readonly BurnerId[], spentSoFar: readonly Bur
       side: 0,
       name: def.name,
       tag: `Burner · ${def.rarity}`,
-      text: def.combatEffect ? `${describeEffect(def.combatEffect)}, once, before one of your turns.` : 'No effect in a fight.',
+      text: def.combatEffect ? `${cap(describeEffect(def.combatEffect))}, once, before one of your turns.` : 'No effect in a fight.',
       spent: used !== -1,
     };
   });

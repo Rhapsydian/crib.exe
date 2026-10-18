@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RichText from './RichText.svelte';
   import type { RunPlayerState } from '../engine/run';
   import { BENCH_CAP, INSTALLED_SLOT_CAP } from '../engine/loadout';
   import SuitIcon from './SuitIcon.svelte';
@@ -100,7 +101,7 @@
   {#if piece && selected}
     <div class="detail">
       <div class="name"><SuitIcon archetype={piece.archetype} size={15} /> <b>{piece.name}</b> <span class="dim">· {rarityOf(piece.id)}</span></div>
-      {#each pieceLines(piece) as line (line)}<div class="line">{line}</div>{/each}
+      {#each pieceLines(piece) as line (line)}<div class="line"><RichText text={line} /></div>{/each}
       <div class="actions">
         {#if selected.zone === 'loadout'}
           <button onclick={() => shift(-1)} disabled={installed.indexOf(selected.id) === 0}>▲ up</button>

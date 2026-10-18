@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RichText from './RichText.svelte';
   import type { RunRequest } from '../engine/run-requests';
   import type { SubroutineDefinition } from '../engine/subroutine-types';
   import type { ModDefinition } from '../engine/mod-types';
@@ -71,7 +72,7 @@
           <b>{o.name}</b>
           <span class="tag">{o.tag}</span>
         </div>
-        {#each o.lines as line (line)}<div class="line">{line}</div>{/each}
+        {#each o.lines as line (line)}<div class="line"><RichText text={line} /></div>{/each}
         {#if o.note}<div class="note">{o.note}</div>{/if}
       </button>
     {/each}

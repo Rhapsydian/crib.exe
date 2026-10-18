@@ -10,9 +10,11 @@ import { describeEffect, describeHook, describeProcess } from './describe';
  * loadout.
  */
 
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 /** A Burner's rules, whichever context it belongs to. */
 export function burnerText(def: BurnerDefinition): string {
-  if (def.combatEffect) return `${describeEffect(def.combatEffect)}, once, before one of your turns in a fight.`;
+  if (def.combatEffect) return `${cap(describeEffect(def.combatEffect))}, once, before one of your turns in a fight.`;
   const map = def.mapEffect;
   if (map?.kind === 'freeMove') return 'Your next map move costs no Heat.';
   if (map?.kind === 'reopenClosedNode') return 'Reopens a closed node on the map.';
@@ -30,9 +32,9 @@ export function burnerWhere(def: BurnerDefinition): string {
   return def.contexts.join(' / ');
 }
 
-/** A piece's Process and Hook, as lines. */
+/** A subroutine's Process and Hook, as lines. */
 export function pieceLines(piece: SubroutineDefinition): string[] {
-  return [`Process: ${describeProcess(piece.alpha)}`, ...(piece.beta ? [`Hook: ${describeHook(piece.beta)}`] : [])];
+  return [`Process: ${describeProcess(piece.alpha)}`, ...(piece.beta ? [`Hook: ${describeHook(piece)}`] : [])];
 }
 
 /** What taking `piece` would do: Merge material for an owned piece, else
@@ -43,7 +45,7 @@ export function acquireNote(piece: SubroutineDefinition, player: RunPlayerState,
   const capped = player.installedLoadout.filter((p) => !player.grantedByMod[p.id]).length;
   if (capped < slotCap) return 'Installs at the bottom of your loadout.';
   if (player.bench.length < benchCap) return 'Your loadout is full: it goes to the bench.';
-  return 'Loadout and bench are full: you will choose a piece to drop.';
+  return 'Loadout and bench are full: you will choose a subroutine to drop.';
 }
 
 export { rarityOf };

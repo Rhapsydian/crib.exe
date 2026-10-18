@@ -270,7 +270,7 @@
   <button class="skip" onclick={() => replay.skip()} aria-label="skip to the end of the turn"><span>tap to skip ▸▸</span></button>
 {/if}
 {#if sheet !== 'none'}<div class="scrim" onclick={() => (sheet = 'none')} role="presentation"></div>{/if}
-{#if detail}<DetailSheet entry={detail.entry} lastFire={detail.lastFire} enemy={picked?.side === 1} onclose={() => (picked = null)} />{/if}
+{#if detail}<DetailSheet entry={detail.entry} lastFire={detail.lastFire} thresholds={detail.thresholds} enemy={picked?.side === 1} onclose={() => (picked = null)} />{/if}
 {#if pickedKit}<DetailSheet kit={pickedKit} onclose={() => (pickedKit = null)} />{/if}
 
 <style>

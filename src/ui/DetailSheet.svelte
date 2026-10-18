@@ -4,21 +4,24 @@
   import { rarityOf } from '../engine/rewards';
   import SuitIcon from './SuitIcon.svelte';
   import { archetypeInfo } from './suits';
-  import { describeAlarm, describeFire, describeHook, describeProcess, describeState, forEnemy } from './describe';
+  import { describeAlarm, describeFire, describeHook, describeProcess, describeState, forEnemy, glossaryFor, type Thresholds } from './describe';
+  import RichText from './RichText.svelte';
   import type { KitItem } from './kit';
 
   // The inspect panel (P6): a bottom sheet on phones (a centred card on
   // wide screens). Name, archetype and rarity; Process and Hook in plain
-  // words (P7); live state; what it did last.
+  // words (P7); live state; what it did last; and a one-line glossary of
+  // the terms its text uses (docs/text-audit.md R11).
   // `kit` instead of `entry` shows a Mod or Burner: its name, what kind
   // it is, and its rules in words.
   let {
     entry,
     kit,
     lastFire,
+    thresholds,
     enemy = false,
     onclose,
-  }: { entry?: LoadoutEntry; kit?: KitItem; lastFire?: FireEvent; enemy?: boolean; onclose: () => void } = $props();
+  }: { entry?: LoadoutEntry; kit?: KitItem; lastFire?: FireEvent; thresholds?: Thresholds; enemy?: boolean; onclose: () => void } = $props();
   const voice = (t: string) => (enemy ? forEnemy(t) : t);
 </script>
 
@@ -26,6 +29,8 @@
 {#if entry}
   {@const def = entry.definition}
   {@const info = archetypeInfo(def.archetype)}
+  {@const process = describeProcess(def.alpha, thresholds)}
+  {@const hook = describeHook(def, thresholds)}
   <div class="sheet" role="dialog" aria-label={def.name}>
     <div class="title" style="--suit: {info.color}">
       <SuitIcon archetype={def.archetype} size={20} />
@@ -35,13 +40,14 @@
       </div>
       <button class="close" onclick={onclose} aria-label="close">✕</button>
     </div>
-    <div class="field"><span class="key">Process</span>{voice(describeProcess(def.alpha))}</div>
-    {#if def.beta}<div class="field"><span class="key">Hook</span>{voice(describeHook(def.beta))}</div>{/if}
+    <div class="field"><span class="key">Process</span>{voice(process)}</div>
+    {#if def.beta}<div class="field"><span class="key">Hook</span><RichText text={voice(hook)} /></div>{/if}
     {#if describeAlarm(def)}<div class="field"><span class="key">Alarm</span>{describeAlarm(def)}</div>{/if}
     {#if describeState(def, entry.state).length}
       <div class="state">{describeState(def, entry.state).join(' · ')}</div>
     {/if}
     {#if lastFire}<div class="last">last: {describeFire(lastFire, def.name)}</div>{/if}
+    {@render glossary([process, hook])}
   </div>
 {:else if kit}
   <div class="sheet" role="dialog" aria-label={kit.name}>
@@ -54,8 +60,18 @@
       <button class="close" onclick={onclose} aria-label="close">✕</button>
     </div>
     <div class="field">{kit.text}</div>
+    {@render glossary([kit.text])}
   </div>
 {/if}
+
+{#snippet glossary(texts: string[])}
+  {@const terms = glossaryFor(...texts)}
+  {#if terms.length}
+    <dl class="glossary">
+      {#each terms as g (g.term)}<div><dt>{g.term}</dt> <dd>{g.text}</dd></div>{/each}
+    </dl>
+  {/if}
+{/snippet}
 
 <style>
   .scrim {
@@ -121,6 +137,25 @@
     display: inline-block;
     width: 64px;
     color: var(--text-dim);
+  }
+  .glossary {
+    margin: 4px 0 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .glossary dt {
+    display: inline;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .glossary dd {
+    display: inline;
+    margin: 0;
   }
   .state,
   .last {

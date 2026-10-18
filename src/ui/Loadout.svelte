@@ -2,7 +2,7 @@
   import type { LoadoutEntry } from '../engine/resolve';
   import SuitIcon from './SuitIcon.svelte';
   import { tip } from './tip';
-  import { describeAlarm, describeHook, describeProcess, forEnemy } from './describe';
+  import { describeAlarm, describeHook, describeProcess, forEnemy, plainText } from './describe';
 
   // A loadout, top to bottom = firing order. Each piece shows its suit,
   // name, banked charges and whether its Hook is primed; tap to inspect
@@ -17,11 +17,11 @@
     enemy = false,
   }: { entries: LoadoutEntry[]; onpick: (index: number) => void; dense?: boolean; vertical?: boolean; firing?: number; enemy?: boolean } = $props();
 
-  // The hover tip (desktop): the piece in brief.
+  // The hover tip (desktop): the subroutine in brief.
   const tipText = (e: LoadoutEntry) => {
-    const voice = (t: string) => (enemy ? forEnemy(t) : t);
+    const voice = (t: string) => plainText(enemy ? forEnemy(t) : t);
     const d = e.definition;
-    return [d.name, `Process: ${voice(describeProcess(d.alpha))}`, d.beta ? `Hook: ${voice(describeHook(d.beta))}` : null, describeAlarm(d) ? `Alarm: ${describeAlarm(d)}` : null].filter(Boolean).join('\n');
+    return [d.name, `Process: ${voice(describeProcess(d.alpha))}`, d.beta ? `Hook: ${voice(describeHook(d))}` : null, describeAlarm(d) ? `Alarm: ${describeAlarm(d)}` : null].filter(Boolean).join('\n');
   };
 
   const initials = (name: string) =>
