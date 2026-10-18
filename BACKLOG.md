@@ -231,7 +231,24 @@ GitHub-hosted site and itch.io.
    map Burners, save and resume, a 320px phone pass. Trace removed along
    the way (fights post Heat; Fuzzer and Jackpot feed the enemy's gauge;
    alarms add Heat). Detail: `docs/playable-design.md` → Milestone 3.
-4. **Polish and playtesting**, including a style / chrome guide.
+4. **Vanilla Cribbage, with a learn-to-play mode** (the user, session 58;
+   next, before polish -- testers who know the card game the combat is
+   built on are easier to bring on board). Plain 2-player Cribbage to 121
+   at several difficulties, plus a "Learn to play" difficulty that guides
+   a new player through the game. This is the "basic Cribbage" mode the
+   user asked for in sessions 26 and 39: code that plays a standalone game
+   (`game.ts`'s hands, any race-to-121 loop) is permanent engine code,
+   never scratch. Builds on: `game.ts` (per-side strategies), the AI's
+   0-1 skill dial (difficulties), its discard scoring and hand breakdowns
+   (a coach's explanations), and the fight screen's hand / table / show
+   components. Needs: a pausable race-to-121 game loop in `game.ts` (today
+   it only lives inside `scripts/cribbage-skill-matrix.ts`), a pegboard, a
+   menu entry, an end screen. **Plan it in a decision session** first;
+   open questions: scripted lessons vs a coach riding along in real games
+   (or lessons, then coached games); how many difficulties and their
+   names; whether the hardest makes you count your own hand (muggins);
+   where it sits in the menu.
+5. **Polish and playtesting**, including a style / chrome guide.
 
 Backlog from this plan: an optional tutorial run (a bespoke, single-layer
 guided layout); drag and drop as an alternative card input; hosting.
