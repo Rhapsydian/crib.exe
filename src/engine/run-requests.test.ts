@@ -4,6 +4,7 @@ import { SYNERGY_AWARE_PROFILE } from './profiles';
 import { driveWithFallbacks, type RunRequest } from './run-requests';
 import { arrangeLoadout, replaceInstalledWithNewest } from './loadout';
 import { createInitialPlayerState } from './run';
+import type { BurnerId } from './burner-types';
 
 // The run as a pausable engine (milestone 3 checkpoint 1).
 describe('runRequests', () => {
@@ -172,5 +173,41 @@ describe('loadout management (milestone 3 checkpoint 3)', () => {
     const state = { ...start, bench: [extra], grantedByMod: { [piece.id]: 'auxiliary-process' } };
     expect(replaceInstalledWithNewest(state, piece.id)).toBe(state);
     expect(replaceInstalledWithNewest(state, start.installedLoadout[1].id).installedLoadout[1].id).toBe('extra');
+  });
+});
+
+// The user's call (session 58): a Burner arriving at the carry cap can be
+// swapped in for one you carry.
+describe('Burner swap at the carry cap', () => {
+  const options = (seed: number) => ({ ...SYNERGY_AWARE_PROFILE, seed, classId: 'exploit-overclock' as const, traversalStrategy: opportunisticTraversal, playerSkill: 0.85, carriedBurnerIdsOverride: ['flash-drive', 'flash-drive', 'flash-drive'] as ('flash-drive')[] });
+
+  it('swaps out the Burner the driver names for the new one, or keeps them all', async () => {
+    const { acquireBurnerAsking } = await import('./run');
+    const { BURNER_DEFINITIONS } = await import('./burners');
+    const full = { ...createInitialPlayerState('exploit-overclock'), carriedBurnerIds: ['flash-drive', 'emp-charge', 'skeleton-key'] as BurnerId[] };
+    const incoming = BURNER_DEFINITIONS['stolen-coupon'];
+    const ask = acquireBurnerAsking(full, incoming);
+    const first = ask.next();
+    expect(first.done).toBe(false);
+    expect(first.value).toMatchObject({ kind: 'burnerSwap', incoming });
+    const swapped = ask.next('emp-charge');
+    expect(swapped.done && swapped.value.carriedBurnerIds).toEqual(['flash-drive', 'skeleton-key', 'stolen-coupon']);
+    const keep = acquireBurnerAsking(full, incoming);
+    keep.next();
+    const kept = keep.next(null);
+    expect(kept.done && kept.value.carriedBurnerIds).toEqual(full.carriedBurnerIds);
+    // Below the cap there's nothing to ask.
+    const roomy = acquireBurnerAsking({ ...full, carriedBurnerIds: ['flash-drive'] }, incoming).next();
+    expect(roomy.done && roomy.value.carriedBurnerIds).toEqual(['flash-drive', 'stolen-coupon']);
+  });
+
+  it('answered by its fallback, keeps what you carry', () => {
+    const run = runRequests(options(3));
+    let step = run.next();
+    while (!step.done) {
+      const r = step.value;
+      if (r.kind === 'burnerSwap') expect(r.fallback()).toBeNull();
+      step = run.next(r.fallback());
+    }
   });
 });

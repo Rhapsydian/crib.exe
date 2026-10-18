@@ -62,6 +62,10 @@ export type RunRequest =
   | Ask<'reward', { reward: 'subroutine'; options: SubroutineDefinition[]; playerState: RunPlayerState }, SubroutineDefinition | null>
   | Ask<'reward', { reward: 'mod'; options: ModDefinition[]; playerState: RunPlayerState }, ModDefinition | null>
   | Ask<'reward', { reward: 'burner'; options: BurnerDefinition[]; playerState: RunPlayerState }, BurnerDefinition | null>
+  /** A Burner arriving at the carry cap (BURNER_CAP; the user's call,
+   * session 58): which carried Burner to swap out for it, or null to keep
+   * yours and leave the new one. The simulated player keeps its own. */
+  | Ask<'burnerSwap', { incoming: BurnerDefinition; playerState: RunPlayerState }, BurnerId | null>
   /** The bench is over its cap (BENCH_CAP): which piece to drop -- a
    * bench piece, or an installed one, whose slot the newest bench piece
    * then takes (milestone 3 checkpoint 3). */

@@ -22,7 +22,7 @@ describe('LiveRun', () => {
           moves++;
           deepest = Math.max(deepest, pause.request.position.layerIndex);
           run.answer(pause.request.fallback());
-        } else if (pause.kind === 'reward' || pause.kind === 'drop') {
+        } else if (pause.kind === 'reward' || pause.kind === 'drop' || pause.kind === 'burnerSwap') {
           if (pause.kind === 'reward') rewards++;
           run.answer(pause.request.fallback());
         } else if (run.fight?.result) {
@@ -74,7 +74,7 @@ describe('LiveRun', () => {
         const choice: unknown = pause.request.reward === 'subroutine' && !picked ? options[options.length - 1] : null;
         if (choice) picked = (choice as { id: string }).id;
         run.answer(choice);
-      } else if (pause.kind === 'drop') {
+      } else if (pause.kind === 'drop' || pause.kind === 'burnerSwap') {
         run.answer(pause.request.fallback());
       } else if (run.fight?.result) {
         run.answer(null);

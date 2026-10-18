@@ -183,6 +183,16 @@ function acquireBurner(playerState: RunPlayerState, burner: BurnerDefinition): R
   return { ...playerState, carriedBurnerIds: [...playerState.carriedBurnerIds, burner.id] };
 }
 
+/** acquireBurner, but at the carry cap asks which carried Burner to swap
+ * out for the new one (null keeps them all and leaves the new one, which
+ * is also the simulated player's answer -- so simulations are unchanged). */
+export function* acquireBurnerAsking(playerState: RunPlayerState, burner: BurnerDefinition): Generator<RunRequest, RunPlayerState, unknown> {
+  if (playerState.carriedBurnerIds.length < BURNER_CAP) return acquireBurner(playerState, burner);
+  const out = yield* ask({ kind: 'burnerSwap', incoming: burner, playerState, fallback: (): BurnerId | null => null });
+  if (!out || !playerState.carriedBurnerIds.includes(out)) return playerState;
+  return acquireBurner(removeOneCarriedBurner(playerState, out), burner);
+}
+
 /** Removes exactly one instance of `burnerId` from carriedBurnerIds --
  * duplicates aren't deduplicated (checkpoint B), so this only ever
  * consumes the one copy actually used, same one-for-one bookkeeping
@@ -933,7 +943,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
           playerState: offeredTo,
           fallback: () => burnerAcquisitionStrategy(outcome.burnerRewardOptions, offeredTo),
         });
-        if (pickedBurner) playerState = acquireBurner(playerState, pickedBurner);
+        if (pickedBurner) playerState = yield* acquireBurnerAsking(playerState, pickedBurner);
       }
       if (outcome.mergeTargetId) playerState = mergeSubroutine(playerState, outcome.mergeTargetId);
       if (outcome.rerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.rerollCost };
@@ -951,7 +961,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       if (outcome.burnerRerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.burnerRerollCost };
       if (outcome.burnerShopPurchase) {
         playerState = { ...playerState, data: playerState.data - outcome.burnerShopPurchase.cost };
-        playerState = acquireBurner(playerState, outcome.burnerShopPurchase.burner);
+        playerState = yield* acquireBurnerAsking(playerState, outcome.burnerShopPurchase.burner);
       }
       // An Event grant (checkpoint H) is a direct single item, applied
       // outright -- no acquisitionStrategy step, unlike the *RewardOptions
@@ -962,8 +972,8 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         playerState = yield* settleBench(playerState, benchCap);
       }
       if (outcome.eventGrant?.mod) playerState = acquireMod(playerState, outcome.eventGrant.mod);
-      if (outcome.eventGrant?.burner) playerState = acquireBurner(playerState, outcome.eventGrant.burner);
-      for (const burner of outcome.cacheBurners ?? []) playerState = acquireBurner(playerState, burner);
+      if (outcome.eventGrant?.burner) playerState = yield* acquireBurnerAsking(playerState, outcome.eventGrant.burner);
+      for (const burner of outcome.cacheBurners ?? []) playerState = yield* acquireBurnerAsking(playerState, burner);
       // Loadout reorder (session 46, checkpoint F) -- applied once here,
       // after the whole resolution block, rather than at each of the four
       // places above that can change installedLoadout (reward pick, Shop

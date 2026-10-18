@@ -5,6 +5,7 @@
   import LiveFightView from './LiveFightView.svelte';
   import RewardScreen from './RewardScreen.svelte';
   import DropScreen from './DropScreen.svelte';
+  import BurnerSwapScreen from './BurnerSwapScreen.svelte';
 
   // A run in progress (milestone 3 checkpoints 2-3): the map, a fight, a
   // reward, a full bench, or the end, whichever the run is paused on. A
@@ -37,6 +38,8 @@
   <RewardScreen request={run.pause.request} gained={run.pause.gained} onpick={(choice) => run.answer(choice)} />
 {:else if run.pause?.kind === 'drop'}
   <DropScreen request={run.pause.request} ondrop={(id) => run.answer(id)} />
+{:else if run.pause?.kind === 'burnerSwap'}
+  <BurnerSwapScreen request={run.pause.request} onswap={(out) => run.answer(out)} />
 {:else if run.pause?.kind === 'fight' && run.fight}
   {#key run.fights}
     <LiveFightView fight={run.fight} actions={[{ label: 'continue ▸', onclick: () => run.answer(null) }]} />

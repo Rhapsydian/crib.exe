@@ -13,8 +13,8 @@ import type { FightSnapshot } from './snapshot';
 /**
  * The UI driver for a whole run (milestone 3 checkpoints 2-3): drives
  * run.ts's runRequests. The player answers map moves (or rearranges the
- * loadout there), their own fight decisions, rewards, and what to drop
- * from a full bench. Safehouses, Shops and Events are answered for now by
+ * loadout there), their own fight decisions, rewards, what to drop from a
+ * full bench, and which Burner to swap out at the carry cap. Safehouses, Shops and Events are answered for now by
  * the simulated player's strategies (the synergy-aware profile, the same
  * one the balance sweeps use), and each such choice is noted so the
  * screen can say what was decided; checkpoint 4 gives them screens.
@@ -29,6 +29,7 @@ export type RunPause =
   | { kind: 'fight' }
   | { kind: 'reward'; request: Extract<RunRequest, { kind: 'reward' }>; gained: number }
   | { kind: 'drop'; request: Extract<RunRequest, { kind: 'drop' }> }
+  | { kind: 'burnerSwap'; request: Extract<RunRequest, { kind: 'burnerSwap' }> }
   | { kind: 'over'; result: RunResult };
 
 /** A fight inside the run, as the fight screen sees it. */
@@ -87,7 +88,8 @@ export class LiveRun {
 
   /** The player's answer to what's paused: a node id for a move (or a
    * LoadoutArrangement), a combat answer inside a fight, nothing to
-   * continue after a fight, a reward pick (or null), a piece id to drop. */
+   * continue after a fight, a reward pick (or null), a piece id to drop, a
+   * Burner id to swap out (or null). */
   answer(answer: unknown): void {
     if (!this.pause || this.pause.kind === 'over') return;
     if (this.pause.kind === 'fight' && this.fight?.result) this.fight = null;
@@ -111,6 +113,9 @@ export class LiveRun {
         }
         case 'drop':
           this.pause = { kind: 'drop', request: r };
+          return;
+        case 'burnerSwap':
+          this.pause = { kind: 'burnerSwap', request: r };
           return;
         case 'reorder':
           // Your order stands: the loadout is yours to arrange on the map.

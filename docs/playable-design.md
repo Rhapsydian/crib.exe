@@ -701,8 +701,10 @@ end):
   Learner on Overclock (their `archetype`), so only classes that can use
   them see them; Recon Ping set aside (`BURNERS_SET_ASIDE`) -- no fog of
   war for now, it returns if fog of war does. Every reward screen can be
-  skipped; a Burner that won't fit (carry cap) can't be selected, leaving
-  skip.
+  skipped. **A Burner arriving at the carry cap can be swapped in**
+  (`BurnerSwapScreen.svelte`; a `burnerSwap` request from rewards, Shop
+  buys, Event grants and Caches): swap out a carried one, or keep yours.
+  The simulated player keeps its own, so simulations are unchanged.
 - Verified in the preview at phone size: subroutine, Burner and Mod
   reward screens; reorder, bench and swap in the drawer (checked against
   the engine's state); a drop that turned out an installed piece.
