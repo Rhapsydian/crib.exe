@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, Rank, Suit } from '../engine/cards';
-import { discardHint, discardReview, keepScore, pegHint, pegReview, phaseIntro, showSummary } from './coach';
+import { article, discardHint, discardReview, keepScore, pegHint, pegReview, phaseIntro, showSummary } from './coach';
 import { playCribbageGame } from '../engine/basic-cribbage';
 
 const c = (rank: number, suit = 0): Card => ({ rank: rank as Rank, suit: suit as Suit });
@@ -82,5 +82,11 @@ describe('the coach', () => {
     expect(lesser.text).toBe(
       'You played 6 (no score; then any 5 would give them a run of 4 for 4). I would have played A instead: it gives them less to score off -- its main danger is any 3 making fifteen for 2, against any 5 making a run of 4 for 4 off yours.',
     );
+  });
+
+  it('picks a or an as the word is said', () => {
+    expect(['8', 'A', '11', 'Overclock', 'Exploit', '7', 'K', 'Daemon', 'Honeypot', '10'].map((w) => `${article(w)} ${w}`)).toEqual([
+      'an 8', 'an A', 'an 11', 'an Overclock', 'an Exploit', 'a 7', 'a K', 'a Daemon', 'a Honeypot', 'a 10',
+    ]);
   });
 });

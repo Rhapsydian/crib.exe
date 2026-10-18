@@ -1,7 +1,7 @@
 <script lang="ts">
   import { cardsEqual, cardValue, type Card } from '../engine/cards';
   import { findTargets, matchesTarget, pegGoalMet, type Lesson, type LessonStep } from './lessons';
-  import { discardReview } from './coach';
+  import { article, discardReview } from './coach';
   import CardView from './CardView.svelte';
   import RichText from './RichText.svelte';
 
@@ -92,7 +92,7 @@
       selected = [card];
       feedback = { ok: true, text: step.explain };
     } else {
-      feedback = { ok: false, text: step.goal === 'safeLead' ? `A ${cardValue(card)} lets them make 15 off it. Try again.` : `That makes the count ${pegCount + cardValue(card)} -- no score. Try again.` };
+      feedback = { ok: false, text: step.goal === 'safeLead' ? `${article(String(cardValue(card))) === 'an' ? 'An' : 'A'} ${cardValue(card)} lets them make 15 off it. Try again.` : `That makes the count ${pegCount + cardValue(card)} -- no score. Try again.` };
     }
   }
 

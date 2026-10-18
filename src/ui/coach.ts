@@ -1,7 +1,7 @@
 import { cardsEqual, cardValue, type Card } from '../engine/cards';
 import { cribTableValue, handExpectedValue, pegSkillStrategy, predictBestDiscard, scoreDiscard, unseenCards } from '../engine/ai';
 import type { CribbageBeat } from '../engine/basic-cribbage';
-import { rankLabel } from './suits';
+import { rankLabel, suitInfo } from './suits';
 import { suitToken } from './RichText.svelte';
 
 /**
@@ -21,6 +21,9 @@ import { suitToken } from './RichText.svelte';
  */
 
 const label = (c: Card) => rankLabel(c.rank);
+/** "a" or "an" for a word as it's said: an 8, an A, an 11, an Overclock
+ * (the user's catch); a 7, a Daemon. */
+export const article = (word: string) => (/^(8|11|18|A|[AEIOUaeiou])/.test(word) ? 'an' : 'a');
 const list = (cards: Card[]) => cards.map(label).join(' ');
 const plural = (n: number, word: string) => `${n === 1 ? 'a' : n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -77,7 +80,7 @@ export function keepScore(cards: Card[]): { pts: number; parts: string[] } {
     pts += best.length * times;
     parts.push(`${times > 1 ? `${times} runs` : 'a run'} ${best.map(rankLabel).join('-')} for ${best.length * times}`);
   }
-  if (cards.length === 4 && cards.every((c) => c.suit === cards[0].suit)) (pts += 4), parts.push(`a ${suitToken(cards[0].suit)} flush for 4`);
+  if (cards.length === 4 && cards.every((c) => c.suit === cards[0].suit)) (pts += 4), parts.push(`${article(suitInfo(cards[0].suit).name)} ${suitToken(cards[0].suit)} flush for 4`);
   return { pts, parts };
 }
 
@@ -211,7 +214,8 @@ function judgePlay(
   const cards = (g: { n: number; ranks: Set<number> }) => {
     const rs = [...g.ranks].sort((a, b) => a - b);
     if (rs.length > 1 && rs.every((r) => r >= 10)) return 'any ten-card (10, J, Q, K)';
-    return `${g.n > 1 ? 'any' : 'a'} ${rs.map(rankLabel).join(' or ')}`;
+    const ranks = rs.map(rankLabel).join(' or ');
+    return `${g.n > 1 ? 'any' : article(ranks)} ${ranks}`;
   };
   const threatWho = top ? cards(top[1]) : '';
   const threatWhat = top ? top[0] : '';
@@ -269,7 +273,7 @@ export function pegHint(spot: PegSpot): string {
   const a = alt ? judgePlay(alt, spot) : null;
   const plural = (n: number) => `${n} card${n === 1 ? '' : 's'}`;
   const why = j.scorers ? `${plural(j.scorers)} left can score off it: ${j.scorerText}` : 'Nothing left can score off it right away';
-  const compare = a && alt && a.scorers > j.scorers ? ` A ${label(alt)} leaves ${a.scorers}: ${a.scorerText}.` : '';
+  const compare = a && alt && a.scorers > j.scorers ? ` ${article(label(alt)) === 'an' ? 'An' : 'A'} ${label(alt)} leaves ${a.scorers}: ${a.scorerText}.` : '';
   const worst = ranked[ranked.length - 1];
   const w = worst ? judgePlay(worst, spot) : null;
   const avoid = worst && w && alt && worst.rank !== alt.rank && j.net - w.net >= 0.5 && w.threat ? ` Avoid ${label(worst)}: ${w.threat}.` : '';
