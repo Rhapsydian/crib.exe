@@ -4,7 +4,7 @@ import { generateLayer, LAYER_SIZES, type LayerNumber } from './map-gen';
 import { assignGatekeeperEnemy, eligibleEnemies, gatekeeperEnemyForNode, type EnemyDefinition, type EnemyId } from './enemies';
 import { move } from './traversal';
 import { resolveEncounterRequests, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy, type SyntheticGatekeeper } from './encounters';
-import { ask, driveWithFallbacks, type RunRequest } from './run-requests';
+import { ask, driveWithFallbacks, type LoadoutArrangement, type RunRequest } from './run-requests';
 import { addHeat, currentHeatCeiling, layerHeatAllowance, postedFightRisk, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
@@ -16,6 +16,8 @@ import {
   INSTALLED_SLOT_CAP,
   BENCH_CAP,
   dropFromBench,
+  arrangeLoadout,
+  replaceInstalledWithNewest,
   weakestOnBench,
   type AcquisitionStrategy,
   type ReorderStrategy,
@@ -641,7 +643,7 @@ function* settleBench(playerState: RunPlayerState, cap: number): Generator<RunRe
   while (state.bench.length > cap) {
     const over = state;
     const id = yield* ask({ kind: 'drop', playerState: over, fallback: () => weakestOnBench(over) });
-    const after = dropFromBench(over, id);
+    const after = over.installedLoadout.some((piece) => piece.id === id) ? replaceInstalledWithNewest(over, id) : dropFromBench(over, id);
     // An id that isn't on the bench drops the weakest instead, so a bad
     // answer can't stall the run.
     state = after.bench.length < over.bench.length ? after : dropFromBench(over, weakestOnBench(over));
@@ -801,15 +803,25 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         return finish('noRouteRemains');
       }
 
-      const [moveGraph, movePosition, moveHeat, movePlayer] = [graph, position, heat, playerState];
-      const targetId = yield* ask({
-        kind: 'move',
-        graph: moveGraph,
-        position: movePosition,
-        heat: moveHeat,
-        playerState: movePlayer,
-        fallback: () => traversalStrategy(moveGraph, movePosition, moveHeat, movePlayer),
-      });
+      // A rearranged loadout answers the move pause too (M2: any time
+      // outside a fight); it is applied and the move asked again.
+      let targetId: string;
+      for (;;) {
+        const [moveGraph, movePosition, moveHeat, movePlayer] = [graph, position, heat, playerState];
+        const answer = yield* ask({
+          kind: 'move',
+          graph: moveGraph,
+          position: movePosition,
+          heat: moveHeat,
+          playerState: movePlayer,
+          fallback: (): string | LoadoutArrangement => traversalStrategy(moveGraph, movePosition, moveHeat, movePlayer),
+        });
+        if (typeof answer === 'string') {
+          targetId = answer;
+          break;
+        }
+        playerState = arrangeLoadout(playerState, answer.arrange.installed, answer.arrange.bench, installedSlotCap);
+      }
       const moveResult = move(graph, position, targetId);
       position = moveResult.position;
 

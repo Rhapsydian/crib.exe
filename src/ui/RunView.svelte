@@ -3,9 +3,12 @@
   import RunMap from './RunMap.svelte';
   import RunEnd from './RunEnd.svelte';
   import LiveFightView from './LiveFightView.svelte';
+  import RewardScreen from './RewardScreen.svelte';
+  import DropScreen from './DropScreen.svelte';
 
-  // A run in progress (milestone 3 checkpoint 2): the map, a fight, or the
-  // end, whichever the run is paused on. A banner marks each new layer.
+  // A run in progress (milestone 3 checkpoints 2-3): the map, a fight, a
+  // reward, a full bench, or the end, whichever the run is paused on. A
+  // banner marks each new layer.
   let { run, onagain }: { run: LiveRun; onagain: () => void } = $props();
 
   let lastLayer = -1;
@@ -23,7 +26,17 @@
 </script>
 
 {#if run.pause?.kind === 'move'}
-  <RunMap request={run.pause.request} className={run.className} notes={run.notes} onmove={(id) => run.answer(id)} />
+  <RunMap
+    request={run.pause.request}
+    className={run.className}
+    notes={run.notes}
+    onmove={(id) => run.answer(id)}
+    onarrange={(installed, bench) => run.answer({ arrange: { installed, bench } })}
+  />
+{:else if run.pause?.kind === 'reward'}
+  <RewardScreen request={run.pause.request} gained={run.pause.gained} onpick={(choice) => run.answer(choice)} />
+{:else if run.pause?.kind === 'drop'}
+  <DropScreen request={run.pause.request} ondrop={(id) => run.answer(id)} />
 {:else if run.pause?.kind === 'fight' && run.fight}
   {#key run.fights}
     <LiveFightView fight={run.fight} actions={[{ label: 'continue ▸', onclick: () => run.answer(null) }]} />

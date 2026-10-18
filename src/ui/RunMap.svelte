@@ -3,20 +3,31 @@
   import { HEAT_PER_MOVE } from '../engine/heat';
   import { applyOnMoveMods } from '../engine/mods';
   import { MOD_DEFINITIONS } from '../engine/mods';
+  import { BURNER_DEFINITIONS } from '../engine/burners';
   import MapView from './MapView.svelte';
-  import SuitIcon from './SuitIcon.svelte';
+  import LoadoutEditor from './LoadoutEditor.svelte';
+  import { modText } from './kit';
+  import { burnerText } from './reward-text';
   import { NODE_KIND } from './map-kinds';
 
   // The map screen (milestone 3 checkpoint 2): one layer, where you are,
   // and the run's state. Tap a linked node to see what it is and what the
   // move costs; tap it again, or Move, to go (the same tap-then-confirm as
-  // cards, so a stray tap never spends Heat).
+  // cards, so a stray tap never spends Heat). The loadout drawer edits the
+  // loadout and bench (checkpoint 3), and lists Mods and Burners.
   let {
     request,
     className,
     notes,
     onmove,
-  }: { request: Extract<RunRequest, { kind: 'move' }>; className: string; notes: string[]; onmove: (id: string) => void } = $props();
+    onarrange,
+  }: {
+    request: Extract<RunRequest, { kind: 'move' }>;
+    className: string;
+    notes: string[];
+    onmove: (id: string) => void;
+    onarrange: (installed: string[], bench: string[]) => void;
+  } = $props();
 
   const graph = $derived(request.graph);
   const here = $derived(request.position.nodeId);
@@ -95,19 +106,18 @@
   <div class="scrim" onclick={() => (showLoadout = false)} role="presentation"></div>
   <aside class="drawer">
     <button class="close" onclick={() => (showLoadout = false)} aria-label="close">✕</button>
-    <div class="caption">LOADOUT · fires top → bottom</div>
-    {#each player.installedLoadout as p, i (i)}
-      <div class="piece"><SuitIcon archetype={p.archetype} size={14} /> {p.name}</div>
-    {/each}
-    <div class="caption">BENCH · {player.bench.length}/3</div>
-    {#each player.bench as p, i (i)}
-      <div class="piece dim"><SuitIcon archetype={p.archetype} size={14} /> {p.name}</div>
-    {:else}
-      <div class="dim small">empty</div>
-    {/each}
+    <LoadoutEditor {player} {onarrange} />
     {#if player.ownedModIds.length}
       <div class="caption">MODS</div>
-      {#each player.ownedModIds as id (id)}<div class="piece"><span class="mod-glyph">◆</span> {MOD_DEFINITIONS[id].name}</div>{/each}
+      {#each player.ownedModIds as id (id)}
+        <div class="kit"><div><span class="mod-glyph">◆</span> {MOD_DEFINITIONS[id].name}</div><div class="kit-text">{modText(id)}</div></div>
+      {/each}
+    {/if}
+    {#if player.carriedBurnerIds.length}
+      <div class="caption">BURNERS</div>
+      {#each player.carriedBurnerIds as id, i (i)}
+        <div class="kit"><div><span class="burner-glyph">⏏︎</span> {BURNER_DEFINITIONS[id].name}</div><div class="kit-text">{burnerText(BURNER_DEFINITIONS[id])}</div></div>
+      {/each}
     {/if}
   </aside>
 {/if}
@@ -253,9 +263,6 @@
   .dim {
     color: var(--text-dim);
   }
-  .small {
-    font-size: 11px;
-  }
   .scrim {
     position: fixed;
     inset: 0;
@@ -291,17 +298,23 @@
     letter-spacing: 0.06em;
     margin-top: 8px;
   }
-  .piece {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+  .kit {
     font-size: 12px;
-    padding: 3px 6px;
+    padding: 4px 6px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: var(--bg-raised);
   }
+  .kit-text {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    line-height: 1.35;
+    margin-top: 2px;
+  }
   .mod-glyph {
     color: var(--mod);
+  }
+  .burner-glyph {
+    color: var(--warn);
   }
 </style>

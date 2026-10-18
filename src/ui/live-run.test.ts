@@ -14,12 +14,16 @@ describe('LiveRun', () => {
       let moves = 0;
       let deepest = 0;
       let fightsEnded = 0;
+      let rewards = 0;
       let guard = 0;
       while (run.pause && run.pause.kind !== 'over' && guard++ < 20000) {
         const pause = run.pause;
         if (pause.kind === 'move') {
           moves++;
           deepest = Math.max(deepest, pause.request.position.layerIndex);
+          run.answer(pause.request.fallback());
+        } else if (pause.kind === 'reward' || pause.kind === 'drop') {
+          if (pause.kind === 'reward') rewards++;
           run.answer(pause.request.fallback());
         } else if (run.fight?.result) {
           fightsEnded++;
@@ -33,11 +37,52 @@ describe('LiveRun', () => {
       expect(moves).toBeGreaterThan(2);
       expect(fightsEnded).toBeGreaterThan(0);
       expect(run.fights).toBe(fightsEnded);
-      // Decisions answered for the player are noted.
-      expect(run.notes.length).toBeGreaterThan(0);
+      expect(rewards).toBeGreaterThan(0);
       if (deepest >= 1) reachedLayer2 = true;
     }
     // At least one run breached a gatekeeper and carried on to layer 2.
     expect(reachedLayer2).toBe(true);
+  });
+
+  it('applies the reward the player picks, and their loadout arrangement on the map', () => {
+    const discard = discardSkillStrategy(0.85);
+    const peg = pegSkillStrategy(0.85);
+    const run = new LiveRun('daemon-honeypot', 2);
+    let picked: string | null = null;
+    let arranged = false;
+    let guard = 0;
+    while (run.pause && run.pause.kind !== 'over' && guard++ < 20000) {
+      const pause = run.pause;
+      if (pause.kind === 'move') {
+        const player = pause.request.playerState;
+        if (picked && !arranged) {
+          // The picked piece is owned; move the first installed piece last.
+          expect([...player.installedLoadout, ...player.bench].some((p) => p.id === picked)).toBe(true);
+          const ids = player.installedLoadout.map((p) => p.id);
+          const order = [...ids.slice(1), ids[0]];
+          run.answer({ arrange: { installed: order, bench: player.bench.map((p) => p.id) } });
+          const again = run.pause;
+          expect(again?.kind).toBe('move');
+          if (again?.kind === 'move') expect(again.request.playerState.installedLoadout.map((p) => p.id)).toEqual(order);
+          arranged = true;
+          return;
+        }
+        run.answer(pause.request.fallback());
+      } else if (pause.kind === 'reward') {
+        // Take the LAST option (not what the simulated player would pick).
+        const options = pause.request.options;
+        const choice: unknown = pause.request.reward === 'subroutine' && !picked ? options[options.length - 1] : null;
+        if (choice) picked = (choice as { id: string }).id;
+        run.answer(choice);
+      } else if (pause.kind === 'drop') {
+        run.answer(pause.request.fallback());
+      } else if (run.fight?.result) {
+        run.answer(null);
+      } else {
+        const r = run.fight!.frame!.request;
+        run.answer(r.kind === 'discard' ? discard(r.context) : r.kind === 'play' ? peg(r.context) : null);
+      }
+    }
+    throw new Error('never picked a reward and reached the map');
   });
 });

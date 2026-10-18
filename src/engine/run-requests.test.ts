@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { opportunisticTraversal, playRun, runRequests } from './run';
 import { SYNERGY_AWARE_PROFILE } from './profiles';
 import { driveWithFallbacks, type RunRequest } from './run-requests';
+import { arrangeLoadout, replaceInstalledWithNewest } from './loadout';
+import { createInitialPlayerState } from './run';
 
 // The run as a pausable engine (milestone 3 checkpoint 1).
 describe('runRequests', () => {
@@ -96,5 +98,79 @@ describe('the bench cap (milestone 3, M2)', () => {
       }
     }
     throw new Error('no drop request in 30 runs');
+  });
+});
+
+/** Walks a run with fallbacks until `pick` matches a request, then
+ * returns that request with the generator. */
+function walkTo(options: Parameters<typeof runRequests>[0], pick: (r: RunRequest) => boolean) {
+  const run = runRequests(options);
+  let step = run.next();
+  while (!step.done && !pick(step.value)) step = run.next(step.value.fallback());
+  if (step.done) throw new Error('no matching request');
+  return { run, request: step.value };
+}
+
+// Milestone 3 checkpoint 3: the player manages the loadout.
+describe('loadout management (milestone 3 checkpoint 3)', () => {
+  const options = (seed: number) => ({ ...SYNERGY_AWARE_PROFILE, seed, classId: 'exploit-overclock' as const, traversalStrategy: opportunisticTraversal, playerSkill: 0.85 });
+
+  it('a drop can turn out an installed piece: the newest bench piece takes its slot', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const run = runRequests(options(seed));
+      let step = run.next();
+      while (!step.done) {
+        const r = step.value;
+        if (r.kind === 'drop') {
+          const out = r.playerState.installedLoadout.find((p) => !r.playerState.grantedByMod[p.id])!;
+          const index = r.playerState.installedLoadout.indexOf(out);
+          const newest = r.playerState.bench[r.playerState.bench.length - 1];
+          step = run.next(out.id);
+          while (!step.done && !('playerState' in step.value)) step = run.next(step.value.fallback());
+          const state = step.done ? step.value.playerState : (step.value as { playerState: typeof r.playerState }).playerState;
+          expect(state.installedLoadout.some((p) => p.id === out.id) || state.bench.some((p) => p.id === out.id)).toBe(false);
+          expect(state.installedLoadout[index].id).toBe(newest.id);
+          expect(state.bench.length).toBe(3);
+          return;
+        }
+        step = run.next(r.fallback());
+      }
+    }
+    throw new Error('no drop request in 30 runs');
+  });
+
+  it('a rearranged loadout answers the map pause, then the same move is asked again', () => {
+    const { run, request } = walkTo(options(4), (r) => r.kind === 'move' && r.playerState.installedLoadout.length >= 2);
+    if (request.kind !== 'move') throw new Error('unreachable');
+    const installed = request.playerState.installedLoadout.map((p) => p.id);
+    const reversed = [...installed].reverse();
+    const step = run.next({ arrange: { installed: reversed, bench: request.playerState.bench.map((p) => p.id) } });
+    expect(step.done).toBe(false);
+    const again = step.value as RunRequest;
+    expect(again.kind).toBe('move');
+    if (again.kind !== 'move') return;
+    expect(again.position).toEqual(request.position);
+    expect(again.playerState.installedLoadout.map((p) => p.id)).toEqual(reversed);
+  });
+
+  it('arrangeLoadout refuses anything but the owned pieces within the caps', () => {
+    const start = createInitialPlayerState('exploit-overclock');
+    const ids = start.installedLoadout.map((p) => p.id);
+    expect(arrangeLoadout(start, [...ids].reverse(), []).installedLoadout.map((p) => p.id)).toEqual([...ids].reverse());
+    expect(arrangeLoadout(start, ids.slice(1), [ids[0]]).bench.map((p) => p.id)).toEqual([ids[0]]);
+    // Missing, duplicated or unknown pieces, or a slot cap broken: unchanged.
+    expect(arrangeLoadout(start, ids.slice(1), [])).toBe(start);
+    expect(arrangeLoadout(start, [...ids, ids[0]], [])).toBe(start);
+    expect(arrangeLoadout(start, [...ids.slice(1), 'nope'], [])).toBe(start);
+    expect(arrangeLoadout(start, ids, [], ids.length - 1)).toBe(start);
+  });
+
+  it('replaceInstalledWithNewest leaves a Mod-granted piece alone', () => {
+    const start = createInitialPlayerState('exploit-overclock');
+    const piece = start.installedLoadout[0];
+    const extra = { ...start.installedLoadout[1], id: 'extra' };
+    const state = { ...start, bench: [extra], grantedByMod: { [piece.id]: 'auxiliary-process' } };
+    expect(replaceInstalledWithNewest(state, piece.id)).toBe(state);
+    expect(replaceInstalledWithNewest(state, start.installedLoadout[1].id).installedLoadout[1].id).toBe('extra');
   });
 });

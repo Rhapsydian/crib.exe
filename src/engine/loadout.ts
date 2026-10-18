@@ -37,6 +37,36 @@ export function dropFromBench(playerState: RunPlayerState, id: string): RunPlaye
   return { ...playerState, bench };
 }
 
+/** Drops an INSTALLED piece for good, the newest bench piece taking its
+ * slot (milestone 3 checkpoint 3: a full bench's "drop" can turn out a
+ * loadout piece to keep the new one). A no-op for a piece not installed,
+ * a Mod-granted piece (removal-locked), or an empty bench. */
+export function replaceInstalledWithNewest(playerState: RunPlayerState, id: string): RunPlayerState {
+  if (playerState.grantedByMod[id] || playerState.bench.length === 0) return playerState;
+  const index = playerState.installedLoadout.findIndex((piece) => piece.id === id);
+  if (index === -1) return playerState;
+  const bench = playerState.bench.slice();
+  const newest = bench.pop()!;
+  const installedLoadout = playerState.installedLoadout.slice();
+  installedLoadout[index] = newest;
+  return { ...playerState, installedLoadout, bench };
+}
+
+/** Rearranges the whole loadout at once (milestone 3 checkpoint 3): the
+ * player's installed pieces in firing order, and the rest on the bench.
+ * Returns the state unchanged unless the arrangement is legal: exactly
+ * the owned pieces, each once; every Mod-granted piece still installed;
+ * the slot cap respected (granted pieces don't count); the bench cap
+ * respected. */
+export function arrangeLoadout(playerState: RunPlayerState, installed: readonly string[], bench: readonly string[], slotCap: number = INSTALLED_SLOT_CAP, benchCap: number = BENCH_CAP): RunPlayerState {
+  const owned = new Map([...playerState.installedLoadout, ...playerState.bench].map((piece) => [piece.id, piece]));
+  const ids = [...installed, ...bench];
+  if (ids.length !== owned.size || new Set(ids).size !== ids.length || ids.some((id) => !owned.has(id))) return playerState;
+  if (bench.some((id) => playerState.grantedByMod[id])) return playerState;
+  if (installed.filter((id) => !playerState.grantedByMod[id]).length > slotCap || bench.length > benchCap) return playerState;
+  return { ...playerState, installedLoadout: installed.map((id) => owned.get(id)!), bench: bench.map((id) => owned.get(id)!) };
+}
+
 /** The bench piece the acquisition ladder ranks lowest -- what the
  * simulated player drops when the bench is over its cap. */
 export function weakestOnBench(playerState: RunPlayerState): string {

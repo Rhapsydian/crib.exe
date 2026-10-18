@@ -666,6 +666,43 @@ end):
   through three layer banners to the end screen; `live-run.test.ts`
   plays whole runs through the driver and reaches layer 2.
 
+### Checkpoint 3 — rewards and loadout management
+
+- **Reward screens** (`RewardScreen.svelte`): after a win, one screen per
+  reward -- subroutine, Mod (elite and gatekeeper wins), Burner -- with
+  the Data the encounter paid on the first. Each option shows its rules
+  in words; a piece says where it lands (installs, goes to the bench,
+  becomes Merge material, or forces a drop). Tap to select, take, or
+  skip.
+- **A person's picks are never swapped in for them**: a new piece
+  installs if there's room, otherwise waits on the bench (`LiveRun` runs
+  with plain `acquireSubroutine`, not the simulated player's swap-out),
+  and the after-encounter reorder keeps the player's order.
+- **The loadout drawer edits** (`LoadoutEditor.svelte`, M2: any time
+  outside a fight): tap a piece to read it, move it up or down, bench or
+  install it, or tap a piece on the other side to swap them. Each change
+  answers the map's move pause with a `LoadoutArrangement`; the engine
+  checks it (`arrangeLoadout`: the owned pieces exactly, caps kept,
+  Mod-granted pieces stay installed) and asks the move again. The drawer
+  also lists Mods and Burners with their rules.
+- **A full bench** (`DropScreen.svelte`): drop any piece, the new one
+  marked; dropping an installed piece puts the new one in its slot
+  (`replaceInstalledWithNewest`).
+- **Rules text for the 31 general Mods** (`kit.ts` `MOD_TEXT`,
+  `modText`), written from the code. Noticed along the way: Static
+  Shield (-2 from each plain Credit the opponent gains) may be strong;
+  Black Budget redraws the piece choice rare-weighted rather than
+  upgrading it a tier as its comment says; Salvage Protocol and Fast
+  Learner have no archetype gate, so classes without Daemon/Overclock
+  pieces can be offered dead picks; Surge Protector is spent even when
+  Static Shield already zeroed that Credit.
+- **Known gaps:** Recon Ping's reveal does nothing yet (no fog of war);
+  a Burner offered at the carry cap can't be taken (no discard-to-make-
+  room yet).
+- Verified in the preview at phone size: subroutine, Burner and Mod
+  reward screens; reorder, bench and swap in the drawer (checked against
+  the engine's state); a drop that turned out an installed piece.
+
 ### Detour: Trace removed (session 58, the user's call)
 
 Exploit's Trace was the hard lever: a noisy piece's cost showed up as

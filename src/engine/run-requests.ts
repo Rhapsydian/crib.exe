@@ -30,8 +30,11 @@ type Ask<K extends string, Context, Answer> = { kind: K; fallback: () => Answer 
 export type RunRequest =
   /** A map Burner before moving (null: keep it). */
   | Ask<'mapBurner', { context: MapBurnerActivationContext }, { burnerId: BurnerId; targetNodeId?: string } | null>
-  /** Where to move next: a linked node's id. */
-  | Ask<'move', { graph: LayerGraph; position: RunPosition; heat: number; playerState: RunPlayerState }, string>
+  /** Where to move next: a linked node's id -- or a rearranged loadout
+   * (milestone 3 checkpoint 3, M2: pieces move between loadout and bench
+   * any time outside a fight), applied before the same move is asked
+   * again. The simulated player only ever moves. */
+  | Ask<'move', { graph: LayerGraph; position: RunPosition; heat: number; playerState: RunPlayerState }, string | LoadoutArrangement>
   /** Notices (milestone 3 checkpoint 2): a fight is starting / has ended.
    * Nothing to decide -- a UI shows the enemy, then the result, and
    * resumes; the fallback is a no-op, so simulations are unchanged. */
@@ -59,10 +62,19 @@ export type RunRequest =
   | Ask<'reward', { reward: 'subroutine'; options: SubroutineDefinition[]; playerState: RunPlayerState }, SubroutineDefinition | null>
   | Ask<'reward', { reward: 'mod'; options: ModDefinition[]; playerState: RunPlayerState }, ModDefinition | null>
   | Ask<'reward', { reward: 'burner'; options: BurnerDefinition[]; playerState: RunPlayerState }, BurnerDefinition | null>
-  /** The bench is over its cap (BENCH_CAP): which bench piece to drop. */
+  /** The bench is over its cap (BENCH_CAP): which piece to drop -- a
+   * bench piece, or an installed one, whose slot the newest bench piece
+   * then takes (milestone 3 checkpoint 3). */
   | Ask<'drop', { playerState: RunPlayerState }, string>
   /** The loadout's firing order after an encounter: the reordered state. */
   | Ask<'reorder', { playerState: RunPlayerState }, RunPlayerState>;
+
+/** A whole loadout, rearranged: which owned pieces are installed, in
+ * firing order, and which sit on the bench (loadout.ts's arrangeLoadout
+ * checks it). */
+export interface LoadoutArrangement {
+  arrange: { installed: string[]; bench: string[] };
+}
 
 /** A request's answer type. */
 export type AnswerOf<R extends RunRequest> = ReturnType<R['fallback']>;

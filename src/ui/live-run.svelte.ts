@@ -5,22 +5,30 @@ import { SYNERGY_AWARE_PROFILE } from '../engine/profiles';
 import { opportunisticTraversal, runRequests, type RunResult } from '../engine/run';
 import type { RunRequest } from '../engine/run-requests';
 import { BURNER_DEFINITIONS } from '../engine/burners';
+import { acquireSubroutine } from '../engine/loadout';
 import { cloneKeepingPrototypes } from './live-fight.svelte';
 import type { FightSession } from './fight-session';
 import type { FightSnapshot } from './snapshot';
 
 /**
- * The UI driver for a whole run (milestone 3 checkpoint 2): drives
- * run.ts's runRequests. The player answers map moves and their own fight
- * decisions; every other decision -- rewards, Safehouses, Shops, Events,
- * loadout order, what to drop -- is answered for now by the simulated
- * player's strategies (the synergy-aware profile, the same one the
- * balance sweeps use), and each such choice is noted so the screen can
- * say what was decided. Checkpoints 3 and 4 give those their own screens.
+ * The UI driver for a whole run (milestone 3 checkpoints 2-3): drives
+ * run.ts's runRequests. The player answers map moves (or rearranges the
+ * loadout there), their own fight decisions, rewards, and what to drop
+ * from a full bench. Safehouses, Shops and Events are answered for now by
+ * the simulated player's strategies (the synergy-aware profile, the same
+ * one the balance sweeps use), and each such choice is noted so the
+ * screen can say what was decided; checkpoint 4 gives them screens.
+ *
+ * Two of the simulated player's habits are switched off for a person: a
+ * new piece is never swapped in automatically (it installs if there's
+ * room, or waits on the bench), and the loadout is never reordered for
+ * you (the engine's after-encounter reorder keeps your order).
  */
 export type RunPause =
   | { kind: 'move'; request: Extract<RunRequest, { kind: 'move' }> }
   | { kind: 'fight' }
+  | { kind: 'reward'; request: Extract<RunRequest, { kind: 'reward' }>; gained: number }
+  | { kind: 'drop'; request: Extract<RunRequest, { kind: 'drop' }> }
   | { kind: 'over'; result: RunResult };
 
 /** A fight inside the run, as the fight screen sees it. */
@@ -58,17 +66,28 @@ export class LiveRun {
   readonly className: string;
   readonly seed: number;
   readonly #run: Generator<RunRequest, RunResult, unknown>;
+  /** Data before the current encounter, so the first reward after it can
+   * say what it paid. */
+  #dataMark = 0;
 
   constructor(classId: ClassId, seed: number) {
     this.classId = classId;
     this.className = CLASS_DEFINITIONS[classId].name;
     this.seed = seed;
-    this.#run = runRequests({ ...SYNERGY_AWARE_PROFILE, seed, classId, traversalStrategy: opportunisticTraversal, playerSkill: 0.85 });
+    this.#run = runRequests({
+      ...SYNERGY_AWARE_PROFILE,
+      seed,
+      classId,
+      traversalStrategy: opportunisticTraversal,
+      playerSkill: 0.85,
+      subroutineAcquirer: acquireSubroutine,
+    });
     this.#advance(this.#run.next());
   }
 
-  /** The player's answer to what's paused: a node id for a move, a combat
-   * answer inside a fight, or nothing to continue after a fight. */
+  /** The player's answer to what's paused: a node id for a move (or a
+   * LoadoutArrangement), a combat answer inside a fight, nothing to
+   * continue after a fight, a reward pick (or null), a piece id to drop. */
   answer(answer: unknown): void {
     if (!this.pause || this.pause.kind === 'over') return;
     if (this.pause.kind === 'fight' && this.fight?.result) this.fight = null;
@@ -80,8 +99,23 @@ export class LiveRun {
       const r = step.value;
       switch (r.kind) {
         case 'move':
+          this.#dataMark = r.playerState.data;
           this.pause = { kind: 'move', request: r };
           return;
+        case 'reward': {
+          // The first reward after an encounter carries the Data it paid.
+          const gained = r.playerState.data - this.#dataMark;
+          this.#dataMark = r.playerState.data;
+          this.pause = { kind: 'reward', request: r, gained };
+          return;
+        }
+        case 'drop':
+          this.pause = { kind: 'drop', request: r };
+          return;
+        case 'reorder':
+          // Your order stands: the loadout is yours to arrange on the map.
+          step = this.#run.next(r.playerState);
+          continue;
         case 'fightStart':
           this.fights++;
           this.fight = new RunFight(r.enemy, r.tier, r.layer, (a) => this.answer(a));
