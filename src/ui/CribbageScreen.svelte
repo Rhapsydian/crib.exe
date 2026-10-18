@@ -11,7 +11,7 @@
   import ShowPanel from './ShowPanel.svelte';
   import ScoreBars from './ScoreBars.svelte';
   import CoachPanel, { type CoachSection } from './CoachPanel.svelte';
-  import { discardReview, pegHint, pegReview, phaseIntro, showSummary } from './coach';
+  import { discardHint, discardReview, pegHint, pegReview, phaseIntro, showSummary } from './coach';
 
   // A game of vanilla Cribbage (milestone 4 checkpoint 3): the fight
   // screen's table, hand, show panel, callouts and step-through, with the
@@ -76,7 +76,9 @@
     const first = r.view.handIndex === 0;
     const sections: CoachSection[] = [];
     if (r.kind === 'discard') {
-      sections.push({ title: 'NOW', lines: [phaseIntro('discard', ownCrib, false)] });
+      // A suggestion before you choose, as pegging gets (the user's call);
+      // the review of what you did follows at your first pegging card.
+      sections.push({ title: 'NOW', lines: [discardHint(r.context.hand, ownCrib), phaseIntro('discard', ownCrib, false)] });
       if (first) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('discard', ownCrib, true)] });
       else {
         sections.push({ title: "LAST HAND'S COUNT", lines: showSummary(r.view.timeline) });

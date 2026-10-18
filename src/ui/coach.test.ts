@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, Rank, Suit } from '../engine/cards';
-import { discardReview, keepNotes, pegHint, pegReview, phaseIntro, showSummary } from './coach';
+import { discardHint, discardReview, keepNotes, pegHint, pegReview, phaseIntro, showSummary } from './coach';
 import { playCribbageGame } from '../engine/basic-cribbage';
 
 const c = (rank: number, suit = 0): Card => ({ rank: rank as Rank, suit: suit as Suit });
@@ -19,6 +19,7 @@ describe('the coach', () => {
     const hand = [c(5), c(5, 1), c(11, 2), c(12, 3), c(13), c(2, 2)];
     const good = discardReview(hand, [c(13), c(2, 2)], true);
     expect(good.coach.kept.some((k) => k.rank === 5)).toBe(true);
+    expect(discardHint(hand, true)).toMatch(/^Keep 5 5 .*Throw .* into your crib\.$/);
     const bad = discardReview(hand, [c(5), c(5, 1)], true);
     expect(bad.same).toBe(false);
     expect(bad.coach.average).toBeGreaterThan(bad.yours.average);

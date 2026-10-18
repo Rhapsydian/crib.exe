@@ -9,8 +9,9 @@ import { rankLabel, suitInfo } from './suits';
  * decides when to show them:
  * - phaseIntro: what this part of the hand is about (fuller the first
  *   time in a game, a short reminder after);
- * - discardReview: your keep beside the coach's own, each with its
- *   average points over every possible cut, and what each keeps;
+ * - discardHint / discardReview: the keep the coach suggests, and yours
+ *   beside it afterwards, each with its average points over every
+ *   possible cut, and what each keeps;
  * - pegHint / pegReview: the best pegging play now, and your last one
  *   beside it -- each play judged by what it scores less the opponent's
  *   expected reply over the cards they could hold;
@@ -90,13 +91,24 @@ export function discardReview(hand: Card[], thrown: [Card, Card], ownCrib: boole
   };
   const yours = side(thrown);
   const coach = side(best);
-  const same = best.every((c) => thrown.some((t) => cardsEqual(t, c)));
+  // Good if it's the coach's discard, or within a whisker of it.
+  const same = best.every((c) => thrown.some((t) => cardsEqual(t, c))) || yours.score >= coach.score - 0.3;
   const avg = (n: number) => n.toFixed(1);
   const why = (notes: string[]) => (notes.length ? notes.join(', ') : 'nothing scoring yet');
   const text = same
-    ? `Good discard -- the one I would have made. You kept ${list(yours.kept)} (${why(yours.notes)}), worth about ${avg(yours.average)} with the cut.`
+    ? `Good discard. You kept ${list(yours.kept)} (${why(yours.notes)}), worth about ${avg(yours.average)} with the cut.`
     : `You kept ${list(yours.kept)} (${why(yours.notes)}), about ${avg(yours.average)} with the cut. I would have kept ${list(coach.kept)} (${why(coach.notes)}), about ${avg(coach.average)}${ownCrib ? `, and thrown ${list(coach.thrown)} into your crib` : `, throwing them ${list(coach.thrown)}`}.`;
   return { same, yours: { ...yours }, coach: { ...coach }, text };
+}
+
+/** The discard the coach suggests, before you choose: what to keep and
+ * why, and what to throw. */
+export function discardHint(hand: Card[], ownCrib: boolean): string {
+  const best = predictBestDiscard(hand, ownCrib);
+  const kept = hand.filter((c) => !best.some((p) => cardsEqual(p, c)));
+  const notes = keepNotes(kept);
+  const average = handExpectedValue(kept, unseenCards(hand)).toFixed(1);
+  return `Keep ${list(kept)} (${notes.length ? notes.join(', ') : 'nothing scoring yet -- the cut may help'}), about ${average} with the cut. Throw ${list(best)} ${ownCrib ? 'into your crib' : 'into their crib'}.`;
 }
 
 /** What playing `card` scores right now, in words. */
