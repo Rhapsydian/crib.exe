@@ -938,6 +938,13 @@ game the combat rests on (the user's call). Decisions, live:
     inconsistency): "Keep 9 6 9 6 (4 fifteens, two pairs), about 12.8 with
     the cut. Throw 2 3 into your crib." A discard within a whisker of the
     coach's counts as good in the review.
+  - **The lesser evil, said plainly** (the user's catch: "I would have
+    played A ... then any 3 would give them fifteen" read as encouraging
+    a 15): when the coach's pick still risks something, the review says
+    it's the smaller risk and compares the two threats -- "it gives them
+    less to score off -- its main danger is any 3 making fifteen for 2,
+    against any 5 making a run of 4 for 4 off yours." A good play that
+    still leaves something says every other card gave them more.
   - **Sure points, then the cut** (the user's ask): a keep is described
     as what it's sure to score, part by part, then what the cut adds on
     average -- "Keep 9 6 9 6: 12 points in hand (4 fifteens for 8, a pair

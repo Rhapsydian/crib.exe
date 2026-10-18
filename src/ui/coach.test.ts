@@ -51,7 +51,7 @@ describe('the coach', () => {
     expect(pegReview(spot([c(5), c(9)], 10, [c(10)]), c(5)).text).toMatch(/^Good play: 5 \(fifteen for 2/);
     const missed = pegReview(spot([c(5), c(9)], 10, [c(10)]), c(9));
     expect(missed.same).toBe(false);
-    expect(missed.text).toMatch(/^You played 9 \(no score.*\)\. I would have played 5 \(fifteen for 2/);
+    expect(missed.text).toMatch(/^You played 9 \(no score.*\)\. I would have played 5: fifteen for 2/);
     // Leading a 5 hands them fifteens off any ten-card; a 2 doesn't.
     const lead = pegReview(spot([c(5), c(2)], 0, []), c(5));
     expect(lead.same).toBe(false);
@@ -60,7 +60,14 @@ describe('the coach', () => {
     // any 4 makes 15 -- the K leaves 19, where nothing makes 15 or 31.
     const trap = pegReview(spot([c(13), c(2)], 9, [c(9)]), c(2));
     expect(trap.same).toBe(false);
-    expect(trap.text).toMatch(/You played 2 \(no score; then any 4 would give them fifteen for 2\)\. I would have played K/);
+    expect(trap.text).toMatch(/^You played 2 \(no score; then any 4 would give them fifteen for 2\)\. I would have played K instead/);
     expect(pegReview(spot([c(13), c(2)], 9, [c(9)]), c(13)).same).toBe(true);
+    // The user's hand: on 4-7, a 6 leaves any 5 a run of 4; the A is the
+    // smaller risk (a 3 for fifteen), and the review says so.
+    const lesser = pegReview(spot([c(6, 3), c(1)], 11, [c(4, 2), c(7, 2)]), c(6, 3));
+    expect(lesser.same).toBe(false);
+    expect(lesser.text).toBe(
+      'You played 6 (no score; then any 5 would give them a run of 4 for 4). I would have played A instead: it gives them less to score off -- its main danger is any 3 making fifteen for 2, against any 5 making a run of 4 for 4 off yours.',
+    );
   });
 });

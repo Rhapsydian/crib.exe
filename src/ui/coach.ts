@@ -173,7 +173,7 @@ function missAll(n: number, m: number, k: number): number {
  * points, over every card they could still hold (more cards left, more
  * likely they hold the one that scores). The biggest threat is named.
  */
-function judgePlay(card: Card, spot: PegSpot): { pts: number; what: string[]; risk: number; net: number; threat: string } {
+function judgePlay(card: Card, spot: PegSpot): { pts: number; what: string[]; risk: number; net: number; threat: string; threatWho: string; threatWhat: string } {
   const { pts, what } = playScore(card, spot.count, spot.sequence);
   const after = spot.count + cardValue(card);
   const count = after === 31 ? 0 : after;
@@ -202,8 +202,10 @@ function judgePlay(card: Card, spot: PegSpot): { pts: number; what: string[]; ri
     if (rs.length > 1 && rs.every((r) => r >= 10)) return 'any ten-card (10, J, Q, K)';
     return `${g.n > 1 ? 'any' : 'a'} ${rs.map(rankLabel).join(' or ')}`;
   };
-  const threat = top ? `${cards(top[1])} would give them ${top[0]}` : '';
-  return { pts, what, risk, net: pts - risk, threat };
+  const threatWho = top ? cards(top[1]) : '';
+  const threatWhat = top ? top[0] : '';
+  const threat = top ? `${threatWho} would give them ${threatWhat}` : '';
+  return { pts, what, risk, net: pts - risk, threat, threatWho, threatWhat };
 }
 
 /** The coach's pick: the best net play; the AI at full strength breaks
@@ -233,13 +235,24 @@ export function pegReview(spot: PegSpot, played: Card): { same: boolean; text: s
   const coach = bestPlay(spot);
   const yours = judgePlay(played, spot);
   const theirs = judgePlay(coach, spot);
-  const describe = (j: ReturnType<typeof judgePlay>) => [j.pts ? j.what.join(' and ') : 'no score', j.risk >= 0.5 && j.threat ? `then ${j.threat}` : ''].filter(Boolean).join('; ');
+  const scored = (j: ReturnType<typeof judgePlay>) => (j.pts ? j.what.join(' and ') : 'no score');
+  const risky = (j: ReturnType<typeof judgePlay>) => j.risk >= 0.5 && j.threat;
   // Good if it's the coach's play, or within a whisker of it.
   const same = cardsEqual(coach, played) || yours.net >= theirs.net - 0.2;
-  const text = same
-    ? `Good play: ${label(played)} (${describe(yours)}).`
-    : `You played ${label(played)} (${describe(yours)}). I would have played ${label(coach)} (${describe(theirs)}).`;
-  return { same, text };
+  if (same) {
+    // A good play can still leave them something: say it was the least.
+    const note = risky(yours) && spot.legal.length > 1 ? `; it still leaves ${yours.threatWho} ${yours.threatWhat}, but your other cards gave them more` : risky(yours) ? `; then ${yours.threat}` : '';
+    return { same, text: `Good play: ${label(played)} (${scored(yours)}${note}).` };
+  }
+  const you = `You played ${label(played)} (${scored(yours)}${risky(yours) ? `; then ${yours.threat}` : ''}).`;
+  // Why the coach's card instead: more points, or less handed over --
+  // and when it still risks something, that it's the smaller risk.
+  let why: string;
+  if (theirs.pts > yours.pts) why = `I would have played ${label(coach)}: ${scored(theirs)}${risky(theirs) ? `, even though ${theirs.threat}` : ''}.`;
+  else if (risky(theirs) && risky(yours)) why = `I would have played ${label(coach)} instead: it gives them less to score off -- its main danger is ${theirs.threatWho} making ${theirs.threatWhat}, against ${yours.threatWho} making ${yours.threatWhat} off yours.`;
+  else if (risky(theirs)) why = `I would have played ${label(coach)} instead: it gives them less to score off overall, though ${theirs.threat}.`;
+  else why = `I would have played ${label(coach)} instead: it gives them almost nothing to score off.`;
+  return { same, text: `${you} ${why}` };
 }
 
 /** Last hand's count, walked through: one line per hand counted. */
