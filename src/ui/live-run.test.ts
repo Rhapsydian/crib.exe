@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { discardSkillStrategy, pegSkillStrategy } from '../engine/ai';
 import { LiveRun } from './live-run.svelte';
+import { createRng } from '../engine/rng';
 
 // The run's UI driver (milestone 3 checkpoint 2): a player answering the
 // map and their fights reaches the end of a run.
@@ -100,5 +101,53 @@ describe('LiveRun', () => {
       }
     }
     throw new Error('never picked a reward and reached the map');
+  });
+
+  it('a save replays to exactly where the run was, mid-fight included', () => {
+    const discard = discardSkillStrategy(0.85);
+    const peg = pegSkillStrategy(0.85);
+    const run = new LiveRun('exploit-overclock', 11);
+    const where = (r: LiveRun) =>
+      JSON.stringify({
+        pause: r.pause?.kind,
+        request: r.pause && 'request' in r.pause ? r.pause.request.kind : r.fight?.frame?.request.kind,
+        player: r.pause && 'request' in r.pause && 'playerState' in r.pause.request ? r.pause.request.playerState : null,
+        hand: r.fight?.frame?.request.context && 'hand' in r.fight.frame.request.context ? r.fight.frame.request.context.hand : null,
+        fights: r.fights,
+      });
+    let checked = 0;
+    for (let i = 0; i < 400 && run.pause && run.pause.kind !== 'over'; i++) {
+      const pause = run.pause;
+      if (pause.kind === 'notice') run.answer(null);
+      else if (pause.kind === 'safehouse') run.chooseSafehouse('rest');
+      else if (pause.kind === 'fight') {
+        if (run.fight?.result) run.answer(null);
+        else {
+          // The AI gets its own generator: the request's context shares the
+          // engine's AI-noise generator, and drawing from it would change
+          // the fight in a way a replay (of the answers alone) can't
+          // reproduce. A person never draws from it.
+          const r = run.fight!.frame!.request;
+          const rng = createRng(i);
+          run.answer(r.kind === 'discard' ? discard({ ...r.context, rng }) : r.kind === 'play' ? peg({ ...r.context, rng }) : null);
+        }
+      } else run.answer(pause.request.fallback());
+      // Every so often, save through JSON and resume: same place.
+      if (i % 41 === 20) {
+        const resumed = LiveRun.resume(JSON.parse(JSON.stringify(run.save)));
+        expect(resumed).not.toBeNull();
+        expect(where(resumed!)).toBe(where(run));
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(2);
+  });
+
+  it('a save that no longer fits is refused', () => {
+    const run = new LiveRun('exploit-overclock', 11);
+    run.answer((run.pause as { request: { fallback: () => unknown } }).request.fallback());
+    const save = run.save;
+    save.answers[0] = { k: 'reward', a: 'nope' };
+    expect(LiveRun.resume(save)).toBeNull();
   });
 });

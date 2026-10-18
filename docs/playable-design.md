@@ -750,6 +750,35 @@ end):
   from the map, the Shop Burner prompt. Skeleton Key's reopen was checked
   by tests only (no closed node came up in the preview runs).
 
+### Checkpoint 5 — save and resume; the phone pass
+
+- **A save is the run's answers** (`run-save.ts`): a run is a
+  deterministic function of class, seed and the player's answers, so a
+  save stores those (by id -- a piece id, a choice id, a card's rank and
+  suit) and resuming replays them into a fresh run, landing exactly where
+  it was, mid-fight included. Written to this browser's localStorage after
+  every answer (wrapped: blocked storage just means unsaved), cleared when
+  the run ends. The class screen offers "resume run · class · layer".
+- **Trade-off:** a save doesn't survive a game update that changes rules
+  or content -- a stored answer stops fitting its request, the replay
+  refuses it, and the class screen says so and offers a new run.
+- **Found while testing:** a request's context is a copy that still shares
+  the engine's AI-noise generator (its state lives in a closure). The UI
+  never draws from it, so saves are safe; tests that drive fights with the
+  AI now give it its own generator.
+- **Phone pass:** every run screen checked at 320px wide (a small phone)
+  -- no sideways scrolling anywhere; the map's nodes all on screen; the
+  fight screen's six cards fit; the end screen fits.
+- Verified in the preview: a run played to mid-fight, the page reloaded,
+  resumed -- the same hand, count and answer count; the save cleared at
+  the run's end.
+- **Balance note (found this checkpoint):** victory fell after the
+  set-aside commit (`f0aa007`) -- Blackhat 23 -> 15%, Wraith 26 -> 18%,
+  Warden 13 -> 7% -- measured at the commits either side of the Shop
+  change, which itself moved nothing. Static Shield, overtuned, was
+  carrying the simulated player, and the gatekeepers were tuned with it in
+  the pool. Pending: re-tune the gatekeeper curve without it.
+
 ### Detour: Trace removed (session 58, the user's call)
 
 Exploit's Trace was the hard lever: a noisy piece's cost showed up as

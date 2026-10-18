@@ -9,6 +9,8 @@ import { acquireSubroutine } from '../engine/loadout';
 import { cloneKeepingPrototypes } from './live-fight.svelte';
 import type { FightSession } from './fight-session';
 import type { FightSnapshot } from './snapshot';
+import type { EventChoice } from '../engine/event-types';
+import { SAVE_VERSION, decodeCombat, encodeCombat, type RunSave, type SavedAnswer } from './run-save';
 
 /**
  * The UI driver for a whole run (milestone 3 checkpoints 2-4): drives
@@ -81,6 +83,11 @@ export class LiveRun {
   /** The piece the Safehouse screen chose to Merge, answered when the run
    * asks for the target. */
   #mergeTarget: string | null = null;
+  /** Every answer the player has given, in plain data -- the save
+   * (run-save.ts). */
+  readonly answers: SavedAnswer[] = [];
+  /** Called after each answer, to write the save. */
+  onsave: (() => void) | null = null;
 
   constructor(classId: ClassId, seed: number) {
     this.classId = classId;
@@ -97,20 +104,94 @@ export class LiveRun {
     this.#advance(this.#run.next());
   }
 
-  /** The player's answer to what's paused: a node id for a move (or a
-   * LoadoutArrangement), a combat answer inside a fight, nothing to
-   * continue after a fight, a reward pick (or null), a piece id to drop, a
-   * Burner id to swap out (or null). */
+  /** A run rebuilt from a save: its answers replayed into a fresh run.
+   * Null if any answer no longer fits (the game changed under the save). */
+  static resume(save: RunSave): LiveRun | null {
+    const run = new LiveRun(save.classId, save.seed);
+    for (const saved of save.answers) if (!run.#replay(saved)) return null;
+    return run;
+  }
+
+  /** The save as it stands. */
+  get save(): RunSave {
+    return { version: SAVE_VERSION, classId: this.classId, seed: this.seed, answers: this.answers, summary: { className: this.className, layer: this.#layer, savedAt: Date.now() } };
+  }
+
   /** A Safehouse choice: Rest, or Merge `targetId`. */
   chooseSafehouse(action: 'rest' | 'merge', targetId?: string): void {
     this.#mergeTarget = action === 'merge' ? (targetId ?? null) : null;
     this.answer(action);
   }
 
+  /** The player's answer to what's paused: a node id for a move (or a
+   * LoadoutArrangement or MapBurnerUse), a combat answer inside a fight,
+   * nothing to continue after a fight or a notice, a reward pick (or
+   * null), a piece id to drop, a Burner id to swap out (or null), a Shop
+   * action, an Event choice. */
   answer(answer: unknown): void {
     if (!this.pause || this.pause.kind === 'over') return;
+    this.answers.push(this.#encode(answer));
     if (this.pause.kind === 'fight' && this.fight?.result) this.fight = null;
     this.#advance(this.#run.next(answer));
+    this.onsave?.();
+  }
+
+  /** An answer to the current pause, in plain data (run-save.ts). */
+  #encode(answer: unknown): SavedAnswer {
+    const pause = this.pause!;
+    switch (pause.kind) {
+      case 'fight':
+        return this.fight?.result || !this.fight?.frame ? { k: 'fightEnd', a: null } : encodeCombat(this.fight.frame.request, answer);
+      case 'reward':
+        return { k: 'reward', a: answer ? (answer as { id: string }).id : null };
+      case 'event':
+        return { k: 'event', a: (answer as EventChoice).id };
+      case 'safehouse':
+        return { k: 'safehouse', a: { action: answer, target: this.#mergeTarget } };
+      default:
+        return { k: pause.kind, a: answer ?? null };
+    }
+  }
+
+  /** Replays one saved answer; false if it no longer fits the pause. */
+  #replay(saved: SavedAnswer): boolean {
+    const pause = this.pause;
+    if (!pause || pause.kind === 'over') return false;
+    if (pause.kind === 'fight') {
+      if (this.fight?.result || !this.fight?.frame) {
+        if (saved.k !== 'fightEnd') return false;
+        this.answer(null);
+        return true;
+      }
+      const answer = decodeCombat(this.fight.frame.request, saved);
+      if (answer === undefined) return false;
+      this.answer(answer);
+      return true;
+    }
+    if (saved.k !== pause.kind) return false;
+    switch (pause.kind) {
+      case 'reward': {
+        if (saved.a === null) return this.answer(null), true;
+        const option = (pause.request.options as { id: string }[]).find((o) => o.id === saved.a);
+        if (!option) return false;
+        this.answer(option);
+        return true;
+      }
+      case 'event': {
+        const choice = pause.request.event.choices.find((c) => c.id === saved.a);
+        if (!choice) return false;
+        this.answer(choice);
+        return true;
+      }
+      case 'safehouse': {
+        const { action, target } = saved.a as { action: 'rest' | 'merge'; target: string | null };
+        this.chooseSafehouse(action, target ?? undefined);
+        return true;
+      }
+      default:
+        this.answer(saved.a);
+        return true;
+    }
   }
 
   #advance(step: IteratorResult<RunRequest, RunResult>): void {

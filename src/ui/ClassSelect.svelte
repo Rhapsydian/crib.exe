@@ -7,13 +7,34 @@
   // card shows its two suits, its class Mod (the bridge between them) and
   // its starting pieces. All six are open (meta-progression unlocks come
   // later).
-  let { onstart, ontest }: { onstart: (classId: ClassId) => void; ontest: () => void } = $props();
+  // A saved run (checkpoint 5) shows a resume button above the classes;
+  // starting a new run replaces it.
+  let {
+    onstart,
+    ontest,
+    saved = null,
+    onresume,
+    resumeFailed = false,
+  }: {
+    onstart: (classId: ClassId) => void;
+    ontest: () => void;
+    saved?: { className: string; layer: number; savedAt: number } | null;
+    onresume?: () => void;
+    resumeFailed?: boolean;
+  } = $props();
   const classes = Object.values(CLASS_DEFINITIONS);
   let chosen = $state<ClassId>(classes[0].id);
 </script>
 
 <div class="setup">
   <h1>crib.exe <span>// new contract</span></h1>
+  {#if saved}
+    <button class="resume" onclick={() => onresume?.()}>▶ resume run · {saved.className} · layer {saved.layer}</button>
+    <div class="small dim">Starting a new run below replaces it.</div>
+  {/if}
+  {#if resumeFailed}
+    <div class="small warn">That save is from an older version of the game and couldn't be loaded. Start a new run below.</div>
+  {/if}
   <div class="caption">CHOOSE A CLASS</div>
   <div class="classes">
     {#each classes as c (c.id)}
@@ -108,6 +129,22 @@
     color: var(--accent);
     font-weight: 700;
     font-size: 13px;
+  }
+  .resume {
+    padding: 10px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: rgb(57 255 156 / 8%);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 13px;
+    text-align: left;
+  }
+  .small {
+    font-size: 11px;
+  }
+  .warn {
+    color: var(--warn);
   }
   .test {
     background: none;

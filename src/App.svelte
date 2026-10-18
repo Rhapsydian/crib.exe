@@ -11,6 +11,7 @@
   import { LiveRun } from './ui/live-run.svelte';
   import ClassSelect from './ui/ClassSelect.svelte';
   import RunView from './ui/RunView.svelte';
+  import { clearSave, loadSave, writeSave } from './ui/run-save';
   import type { ClassId } from './engine/classes';
   import type { EnemyDefinition } from './engine/enemies';
 
@@ -42,6 +43,33 @@
   }
 
   let run = $state.raw<LiveRun | null>(null);
+  // Saves (milestone 3 checkpoint 5): a run writes itself after every
+  // answer and clears its save when it ends; the class screen offers to
+  // resume one.
+  let saved = $state.raw(loadSave());
+  let resumeFailed = $state(false);
+  function begin(next: LiveRun) {
+    next.onsave = () => {
+      if (next.pause?.kind === 'over') clearSave();
+      else writeSave(next.save);
+    };
+    if (next.pause?.kind !== 'over') writeSave(next.save);
+    run = next;
+  }
+  function resume() {
+    const save = loadSave();
+    const next = save && LiveRun.resume(save);
+    if (next) begin(next);
+    else {
+      resumeFailed = true;
+      clearSave();
+      saved = null;
+    }
+  }
+  function backToClasses() {
+    run = null;
+    saved = loadSave();
+  }
   // Development builds only: the live run on window.__run, for driving and
   // inspecting a run from the console (never in a production build).
   $effect(() => {
@@ -51,9 +79,15 @@
 
 {#if route === 'run'}
   {#if run}
-    <RunView {run} onagain={() => (run = null)} />
+    <RunView {run} onagain={backToClasses} />
   {:else}
-    <ClassSelect onstart={(classId) => (run = new LiveRun(classId, newSeed()))} ontest={() => (location.hash = '#test')} />
+    <ClassSelect
+      onstart={(classId) => begin(new LiveRun(classId, newSeed()))}
+      ontest={() => (location.hash = '#test')}
+      saved={saved?.summary ?? null}
+      onresume={resume}
+      {resumeFailed}
+    />
   {/if}
 {:else if route === 'test'}
   {#if fight}
