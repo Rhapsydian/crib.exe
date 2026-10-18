@@ -59,8 +59,8 @@ import { postedFightRisk } from './heat';
 function overwhelmingStarterLoadout(creditAmount: number): SubroutineDefinition[] {
   // Step 3: the real 'exploit-overclock' (Blackhat) starting kit, Port
   // Scan's credit alpha scaled up; Cache Hit's Empower stays real. Fuzzer's
-  // Trace rider is stripped so the kit makes no noise of its own (the Heat
-  // window assertions below rely on that).
+  // feed is stripped so the kit gives the enemy nothing (the Heat window
+  // assertions below rely on that).
   return CLASS_STARTING_LOADOUTS['exploit-overclock'].map((piece): SubroutineDefinition => {
     if (piece.id === 'port-scan') return { ...piece, alpha: { verb: 'credit', amount: creditAmount } };
     if (piece.id === 'fuzzer' && piece.beta && piece.beta.effect.verb === 'enhance') return { ...piece, beta: { ...piece.beta, effect: { verb: 'enhance', amount: piece.beta.effect.amount } } };
@@ -235,7 +235,7 @@ function lossOutcomes(nodeType: 'regularFight' | 'eliteFight' | 'gatekeeperFight
 }
 
 describe('resolveEncounter -- regularFight', () => {
-  it('a win goes inert, never quarantines, costs its posted Trace window, grants a standard reward with Data and options', () => {
+  it('a win goes inert, never quarantines, costs its posted Heat window, grants a standard reward with Data and options', () => {
     // Session 52 (D1, R6): a won fight is no longer free -- it costs at
     // least the posted baseline and at most the posted worst-case win
     // (this kit makes no noise of its own).

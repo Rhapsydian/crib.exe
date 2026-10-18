@@ -12,7 +12,6 @@ import {
   scaledEnemyLoadout,
   winThresholdFor,
 } from '../engine/enemies';
-import { fightBaselineTrace } from '../engine/heat';
 import { CLASS_DEFINITIONS, type ClassId } from '../engine/classes';
 import { LiveFight } from './live-fight.svelte';
 
@@ -48,7 +47,6 @@ describe('LiveFight', () => {
       const skill = enemySkill(enemy.tier, layer, OPENER_FIGHT_WINDOW);
       const sim = playCombat([CLASS_DEFINITIONS[classId].startingLoadout, scaledEnemyLoadout(enemy.loadout, magnitudeScalerFor(enemy, layer, OPENER_FIGHT_WINDOW))], {
         seed,
-        startingTrace: fightBaselineTrace(enemy.tier, layer - 1),
         gaugeThreshold: [GAUGE_THRESHOLD, gaugeThresholdFor(enemy, layer, OPENER_FIGHT_WINDOW, GAUGE_THRESHOLD)],
         winThreshold: [BREACH_THRESHOLD, winThresholdFor(enemy, layer, OPENER_FIGHT_WINDOW, CONTAINMENT_THRESHOLD)],
         classId,

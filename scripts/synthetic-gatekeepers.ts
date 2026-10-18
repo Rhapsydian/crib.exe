@@ -26,25 +26,18 @@ import type { GatekeeperOverride } from '../src/engine/run';
 import type { EnemyId } from '../src/engine/enemies';
 
 /**
- * Mean `traceGenerated` on a real gatekeeper WIN, per layer -- measured
- * session 49 over 400 seeds x 6 classes at synergy/opportunistic/skill
- * 0.85. Supplied by default because trace feeds Heat, and Heat is its
- * own run-ending path: a synthetic generating none would lengthen runs
- * for a reason unrelated to gatekeepers.
- *
- * These are MEANS. Real trace is heavily skewed (median 0), and the mean
- * alone undercounts Heat deaths by roughly 1pp of run outcomes -- pass
- * an empirical sample array directly to the engine option if that
- * matters for what is being measured. Also measured under `synergy`
- * acquisition, while gatekeeper-check.ts's own runs use the floor
- * defaults; close enough for a Heat correction, not a calibration
- * target.
+ * Mean alarm Heat (`heatGenerated`) on a real gatekeeper win, per layer.
+ * Since session 58 the only gatekeeper alarm is Total Compromise's (layer
+ * 3: Beacon plus Spotlight), averaged here over the layer's two
+ * gatekeepers. Supplied by default because it feeds Heat, and Heat is
+ * its own run-ending path: a synthetic generating none would lengthen
+ * runs for a reason unrelated to gatekeepers.
  */
-export const MEASURED_GATEKEEPER_TRACE: [number, number, number, number] = [2.8, 2.68, 1.06, 0.76];
+export const MEASURED_GATEKEEPER_ALARM: [number, number, number, number] = [0, 0, 0, 0];
 
 export type GatekeeperOverrides = [GatekeeperOverride?, GatekeeperOverride?, GatekeeperOverride?, GatekeeperOverride?];
 
-export function parseSyntheticGatekeepers(spec: string | undefined, trace: [number, number, number, number] = MEASURED_GATEKEEPER_TRACE): GatekeeperOverrides | undefined {
+export function parseSyntheticGatekeepers(spec: string | undefined, alarm: [number, number, number, number] = MEASURED_GATEKEEPER_ALARM): GatekeeperOverrides | undefined {
   if (spec === undefined) return undefined;
   const slots = spec.split(',');
   if (slots.length !== 4) {
@@ -62,7 +55,7 @@ export function parseSyntheticGatekeepers(spec: string | undefined, trace: [numb
     if (!Number.isFinite(passRate) || passRate < 0 || passRate > 1) {
       throw new Error(`--syntheticGatekeepers slot ${i + 1}: expected a pass rate in [0,1], "real", or "pin:<enemyId>", got "${slot}"`);
     }
-    return { kind: 'synthetic', passRate, traceGenerated: trace[i] };
+    return { kind: 'synthetic', passRate, heatGenerated: alarm[i] };
   }) as GatekeeperOverrides;
 }
 

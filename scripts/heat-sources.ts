@@ -60,7 +60,7 @@ const containmentMult = Number(args.containmentMult ?? 1);
 interface Bucket {
   containmentLoss: number;
   attritionLoss: number;
-  trace: number;
+  fight: number;
   refund: number;
   rest: number;
   event: number;
@@ -76,7 +76,7 @@ interface Bucket {
 }
 
 const empty = (): Bucket => ({
-  containmentLoss: 0, attritionLoss: 0, trace: 0, refund: 0, rest: 0, event: 0, move: 0,
+  containmentLoss: 0, attritionLoss: 0, fight: 0, refund: 0, rest: 0, event: 0, move: 0,
   counterfactualLoss: 0, actualLoss: 0, containmentLossCount: 0, attritionLossCount: 0,
   heatMaxed: 0, runs: 0, finalHeat: 0,
 });
@@ -124,9 +124,9 @@ for (const classId of classes) {
       }
       b.containmentLoss += h.containmentLoss;
       b.attritionLoss += h.attritionLoss;
-      // Session 52: fight Trace is the fight's own (from its posted
-      // baseline) plus R6's performance term -- reported together.
-      b.trace += h.trace + h.performance;
+      // Fight Heat: the posted baseline, R6's performance term and any
+      // enemy alarms -- reported together (Trace before session 58).
+      b.fight += h.baseline + h.performance + h.alarm;
       b.refund += h.refund;
       b.rest += h.rest;
       b.event += h.event;
@@ -162,16 +162,16 @@ console.log(`\n${seeds} seeds/class, ${acquisition}/opportunistic, skill ${PLAYE
 if (containmentMult !== 1) console.log(`counterfactual: containment x${containmentMult}`);
 
 console.log('\n=== gross Heat IN, per run, by source ===');
-console.log('class        moves    trace  contain  attrit    event  |  total   %moves  %trace  %loss');
+console.log('class        moves    fight  contain  attrit    event  |  total   %moves  %fight  %loss');
 for (const c of classes) {
   const b = byClass[c];
   const loss = b.containmentLoss + b.attritionLoss;
-  const total = b.move + b.trace + loss + b.event;
+  const total = b.move + b.fight + loss + b.event;
   console.log(
-    `${c.padEnd(11)} ${(b.move / b.runs).toFixed(1).padStart(6)} ${(b.trace / b.runs).toFixed(1).padStart(8)} ` +
+    `${c.padEnd(11)} ${(b.move / b.runs).toFixed(1).padStart(6)} ${(b.fight / b.runs).toFixed(1).padStart(8)} ` +
       `${(b.containmentLoss / b.runs).toFixed(1).padStart(8)} ${(b.attritionLoss / b.runs).toFixed(1).padStart(7)} ` +
       `${(b.event / b.runs).toFixed(1).padStart(8)}  | ${(total / b.runs).toFixed(1).padStart(6)}  ` +
-      `${pct(b.move, total)}  ${pct(b.trace, total)}  ${pct(loss, total)}`,
+      `${pct(b.move, total)}  ${pct(b.fight, total)}  ${pct(loss, total)}`,
   );
 }
 
@@ -191,7 +191,7 @@ console.log('\n=== Heat OUT per run (outflows), and net ===');
 console.log('class          rest   refund  |  gross in     net   mean final');
 for (const c of classes) {
   const b = byClass[c];
-  const gross = b.move + b.trace + b.containmentLoss + b.attritionLoss + b.event;
+  const gross = b.move + b.fight + b.containmentLoss + b.attritionLoss + b.event;
   const out = b.rest + b.refund; // both already negative
   console.log(
     `${c.padEnd(11)} ${(b.rest / b.runs).toFixed(1).padStart(7)} ${(b.refund / b.runs).toFixed(1).padStart(8)}  | ` +
@@ -217,7 +217,7 @@ if (containmentMult !== 1) {
   console.log('class        actual/run   repriced/run   delta/run   as % of total Heat in');
   for (const c of classes) {
     const b = byClass[c];
-    const total = b.move + b.trace + b.containmentLoss + b.attritionLoss + b.event;
+    const total = b.move + b.fight + b.containmentLoss + b.attritionLoss + b.event;
     const delta = b.counterfactualLoss - b.actualLoss;
     console.log(
       `${c.padEnd(11)} ${(b.actualLoss / b.runs).toFixed(1).padStart(10)} ${(b.counterfactualLoss / b.runs).toFixed(1).padStart(14)} ` +

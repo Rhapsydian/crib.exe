@@ -10,15 +10,16 @@
  *   Reaching it gets you caught.
  * - Clearing a layer's gatekeeper **resets Heat to 0** (D4) -- after the
  *   gatekeeper's own toll has been charged and survived (R8).
- * - Heat comes from three places: a flat cost per map move, the Trace a
- *   fight leaves behind, and the extra cost of losing one.
+ * - Heat comes from four places (session 58, when Trace was removed): a
+ *   flat cost per map move, each fight's own cost, Events, and enemy
+ *   alarms that add Heat directly during a fight.
  *
- * Every fight's Trace has a **posted** part, knowable before committing
- * to the node (D2's rule, the house style for Heat), and a part the player
- * watches accrue on the enemy's Containment gauge during the fight (R6).
- * A fight's full risk is a posted triple: ~baseline on a clean win, up to
- * baseline + performance on a scrappy one, LOSS_MULTIPLIER times that on a
- * loss (R7). A UI can print all three on the node.
+ * A fight's cost is **posted**, knowable before committing to the node
+ * (D2's rule, the house style for Heat): a baseline, plus a performance
+ * term the player watches accrue on the enemy's Containment gauge (R6).
+ * A clean win pays the baseline; a win scraped at 99% pays nearly
+ * baseline + k; a loss pays baseline + LOSS_MULTIPLIER x k (R7, the
+ * user's session 58 form). A UI can print all three on the node.
  *
  * Every number here is a first-pass placeholder, sized against the old
  * run-long budget's proportions and checked on the skeleton -- unpriced,
@@ -38,7 +39,7 @@ export const HEAT_PER_MOVE = 2; // TBD/playtesting
  * Milestone 3 (session 58, the user's two-lever pass): 40/36/32/28 ->
  * 76/68/61/53 (x1.9). The new maps deal every layer more fights and
  * elites and climb farther, so players win more fights a layer and each
- * win posts its Trace; at the old allowances Heat endings jumped from
+ * win posts its Heat; at the old allowances Heat endings jumped from
  * ~2% to 13-22% maxed. x1.9 restores their shape (Exploit classes 18-28%
  * maxed or caught, the rest ~10%); the gatekeepers were then re-tuned to
  * the pass-rate curve (enemies content scales).
@@ -66,19 +67,19 @@ export const HEAT_HIGH_FRACTION = 0.5;
 export const HEAT_LOW_FRACTION = 0.2;
 
 // ---------------------------------------------------------------------
-// Fight Trace (D1, D2, R6, R7, R8)
+// Fight Heat (D1, D2, R6, R7, R8)
 // ---------------------------------------------------------------------
 
 export type FightTier = 'regular' | 'elite' | 'gatekeeper';
 
 /**
- * The posted baseline Trace of a fight, by tier, at layer 1 (D1, D2):
+ * The posted baseline Heat of a fight, by tier, at layer 1 (D1, D2):
  * hitting a node always makes some noise, elite meaningfully more than
  * regular. The gatekeeper's is a small floor (R8): the fight can't be
  * declined, so its price is carried by the performance term, not the
  * posted part.
  */
-const BASELINE_TRACE: Record<FightTier, number> = {
+const BASELINE_HEAT: Record<FightTier, number> = {
   regular: 3, // TBD/playtesting
   elite: 6, // TBD/playtesting
   gatekeeper: 2, // TBD/playtesting -- the floor of R8's toll
@@ -89,52 +90,52 @@ const BASELINE_TRACE: Record<FightTier, number> = {
 const BASELINE_LAYER_STEP = 0.2; // TBD/playtesting
 
 /**
- * The performance term's weight, k (R6): Trace added in proportion to
+ * The performance term's weight, k (R6): Heat added in proportion to
  * the enemy's FINAL Containment fill, 0-1, on a win. A clean stomp (0%)
  * pays only the baseline; a win scraped at 99% pays nearly baseline + k.
  * For the gatekeeper it carries the whole of R8's gamble, so it is much
  * the largest -- the toll the player watches climb on the gatekeeper's
  * gauge.
  */
-const PERFORMANCE_TRACE: Record<FightTier, number> = {
+const PERFORMANCE_HEAT: Record<FightTier, number> = {
   regular: 3, // TBD/playtesting -- equal to the baseline: a scraped win costs ~double a clean one
   elite: 6, // TBD/playtesting
   gatekeeper: 10, // TBD/playtesting
 };
 
-/** R7: a loss costs this multiple of the node's worst-case win. Must stay
- * above 1, or a loss would cost no more than a scraped win. */
+/** R7: a loss pays the baseline plus this multiple of the performance
+ * weight (session 58: the multiple no longer touches the baseline). Must
+ * stay above 1, or a loss would cost no more than a scraped win. */
 export const LOSS_MULTIPLIER = 1.5; // TBD/playtesting
 
 function layerFactor(layerIndex: number): number {
   return 1 + BASELINE_LAYER_STEP * Math.max(0, layerIndex);
 }
 
-/** The posted baseline Trace for a fight at a 0-based layer. Initialised
- * into the fight's own Trace (D1), so the player's cover-your-tracks
- * effects can work against it during the fight. */
-export function fightBaselineTrace(tier: FightTier, layerIndex: number): number {
-  return BASELINE_TRACE[tier] * layerFactor(layerIndex);
+/** The posted baseline Heat for a fight at a 0-based layer, paid win or
+ * lose. */
+export function fightBaselineHeat(tier: FightTier, layerIndex: number): number {
+  return BASELINE_HEAT[tier] * layerFactor(layerIndex);
 }
 
 /** The performance term's full weight, k, at a 0-based layer -- scaled by
  * layer like the baseline, so the posted triple keeps its shape. */
 export function fightPerformanceWeight(tier: FightTier, layerIndex: number): number {
-  return PERFORMANCE_TRACE[tier] * layerFactor(layerIndex);
+  return PERFORMANCE_HEAT[tier] * layerFactor(layerIndex);
 }
 
-/** R6: the performance Trace a won fight adds, from the enemy's final
+/** R6: the performance Heat a won fight adds, from the enemy's final
  * Containment fill (clamped to 0-1 -- the final value, never the peak,
  * which the player cannot see). */
-export function fightPerformanceTrace(tier: FightTier, layerIndex: number, enemyFinalFill: number): number {
+export function fightPerformanceHeat(tier: FightTier, layerIndex: number, enemyFinalFill: number): number {
   return fightPerformanceWeight(tier, layerIndex) * Math.min(1, Math.max(0, enemyFinalFill));
 }
 
-/** R7: the Heat a lost regular/elite fight costs -- LOSS_MULTIPLIER times
- * the node's worst-case win. Gatekeeper losses never reach this: they
- * end the run as Quarantine, bypassing Heat. */
+/** R7: the Heat a lost regular/elite fight costs -- the baseline plus
+ * LOSS_MULTIPLIER times the full performance weight. Gatekeeper losses
+ * never reach this: they end the run as Quarantine, bypassing Heat. */
 export function heatFromLoss(tier: 'regular' | 'elite', layerIndex: number): number {
-  return LOSS_MULTIPLIER * (fightBaselineTrace(tier, layerIndex) + fightPerformanceWeight(tier, layerIndex));
+  return fightBaselineHeat(tier, layerIndex) + LOSS_MULTIPLIER * fightPerformanceWeight(tier, layerIndex);
 }
 
 /** Step 2, checkpoint 6: an Event's Heat, given as a multiple of the
@@ -148,11 +149,11 @@ export function eventHeat(heatLosses: number, layerIndex: number): number {
 }
 
 /** A fight's posted risk, all knowable before committing (D2, R7): what
- * a clean win, the worst win and a loss each cost, before any Trace the
- * player's own noisy effects add. `loss` is undefined for a gatekeeper,
+ * a clean win, the worst win and a loss each cost, before any Heat an
+ * enemy's alarms add. `loss` is undefined for a gatekeeper,
  * whose loss is Quarantine. */
 export function postedFightRisk(tier: FightTier, layerIndex: number): { cleanWin: number; worstWin: number; loss?: number } {
-  const cleanWin = fightBaselineTrace(tier, layerIndex);
+  const cleanWin = fightBaselineHeat(tier, layerIndex);
   const worstWin = cleanWin + fightPerformanceWeight(tier, layerIndex);
   return { cleanWin, worstWin, loss: tier === 'gatekeeper' ? undefined : heatFromLoss(tier, layerIndex) };
 }

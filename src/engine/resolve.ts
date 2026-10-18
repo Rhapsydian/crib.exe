@@ -7,7 +7,7 @@ import {
   ADAPTATION_EVERY,
   ADAPTATION_STEP,
   NO_WAY_IN_CAP,
-  SPOTLIGHT_TRACE,
+  SPOTLIGHT_HEAT,
   ZERO_SUM_SHARE,
   ZERO_SUM_THRESHOLD,
   type GatekeeperModId,
@@ -103,11 +103,11 @@ export interface CombatSideState {
   /** Win threshold at the start of combat (session 48) -- escalation
    * derives its shrink and floor from it. Never mutated. */
   startingWinThreshold: number;
-  /** Noise generated within this fight only (session 47), raised and
-   * lowered by effects' `trace` deltas, floored at 0, surfaced as
-   * CombatResult.traceGenerated and folded into run Heat. The enemy side's
-   * value is never read -- Trace is player-only. */
-  trace: number;
+  /** Heat raised against this side during this fight by the opponent's
+   * alarms (`heatPressure`, Spotlight), surfaced as
+   * CombatResult.heatGenerated and added to run Heat. The enemy side's
+   * value is never read -- Heat is player-only. */
+  heat: number;
   loadout: LoadoutEntry[];
   /** Accumulating shield from Ward: absorbs the opponent's incoming
    * non-piercing Credit until depleted. */
@@ -184,7 +184,7 @@ export function createCombatSideState(definitions: SubroutineDefinition[], gauge
     startingThreshold: gaugeThreshold,
     winGauge: createDuelGauge(winThreshold),
     startingWinThreshold: winThreshold,
-    trace: 0,
+    heat: 0,
     loadout: definitions.map((definition) => ({ definition, state: createInitialState() })),
     wardShield: 0,
     handPoints: 0,
@@ -644,9 +644,12 @@ function empowerable(effect: Effect): boolean {
   return effect.verb === 'credit' || effect.verb === 'suppress' || effect.verb === 'ward';
 }
 
-function applyTrace(combatState: CombatState, side: PlayerIndex, delta: number | undefined): CombatState {
-  if (!delta) return combatState;
-  return withSide(combatState, side, { trace: Math.max(0, combatState.sides[side].trace + delta) });
+/** A noisy effect's drawback (`feed`): progress added straight to the
+ * caster's opponent's win gauge -- no Ward, no Mods. */
+function applyFeed(combatState: CombatState, caster: PlayerIndex, amount: number | undefined): CombatState {
+  if (!amount || amount <= 0) return combatState;
+  const target = opponentOf(caster);
+  return withSide(combatState, target, { winGauge: addDuelProgress(combatState.sides[target].winGauge, amount).gauge });
 }
 
 /**
@@ -662,7 +665,7 @@ export function resolveEffect(
   turn?: TurnBuffer,
 ): CombatState {
   const target = opponentOf(caster);
-  const state = applyTrace(combatState, caster, effect.trace);
+  const state = applyFeed(combatState, caster, effect.feed);
 
   switch (effect.verb) {
     case 'credit': {
@@ -791,7 +794,7 @@ export interface GaugeReading {
   initiative: number;
   initiativeThreshold: number;
   ward: number;
-  trace: number;
+  heat: number;
 }
 
 /** The Mod triggers noted since `mark`, taken out of the shared record
@@ -809,7 +812,7 @@ export function readGauges(combatState: CombatState): [GaugeReading, GaugeReadin
     initiative: s.gauge.progress,
     initiativeThreshold: s.gauge.threshold,
     ward: s.wardShield,
-    trace: s.trace,
+    heat: s.heat,
   });
   return [read(combatState.sides[0]), read(combatState.sides[1])];
 }
@@ -868,18 +871,20 @@ function resolveFire(
     resolvedBeta = betaEffect.verb === 'disrupt' ? betaEffect : withAmount(betaEffect, betaEffect.amount * scale);
     state = resolveEffect(resolvedBeta, state, side, index, turn);
   }
-  if (betaEffect?.verb === 'enhance' && scale > 0) state = applyTrace(state, side, betaEffect.trace);
+  if (betaEffect?.verb === 'enhance' && scale > 0) state = applyFeed(state, side, betaEffect.feed);
   return { combatState: state, beta: resolvedBeta };
 }
 
-/** Applies an alpha's own Trace pressure on the opponent (session 47's
- * enemy-side "make the player visible"). */
-function applyTracePressure(combatState: CombatState, side: PlayerIndex, definition: SubroutineDefinition): CombatState {
-  // Spotlight: every fire of the owner's pieces adds Trace to its opponent.
+/** Applies a piece's alarm: Heat raised against the opponent each time
+ * it fires (session 47's tracers, direct since session 58). */
+function applyHeatPressure(combatState: CombatState, side: PlayerIndex, definition: SubroutineDefinition): CombatState {
+  // Spotlight: every fire of the owner's pieces adds Heat to its opponent.
   const spotlight = hasSideMod(combatState, side, 'spotlight');
   if (spotlight) noteMod(combatState, side, gk('spotlight'));
-  const pressure = (definition.tracePressure ?? 0) + (spotlight ? SPOTLIGHT_TRACE : 0);
-  return pressure > 0 ? applyTrace(combatState, opponentOf(side), pressure) : combatState;
+  const pressure = (definition.heatPressure ?? 0) + (spotlight ? SPOTLIGHT_HEAT : 0);
+  if (pressure <= 0) return combatState;
+  const target = opponentOf(side);
+  return withSide(combatState, target, { heat: combatState.sides[target].heat + pressure });
 }
 
 /**
@@ -958,7 +963,7 @@ function fireLoadoutOnce(
     }
 
     const resolved = resolveFire(state, side, i, alpha, beta?.effect, scale, turn);
-    state = applyTracePressure(resolved.combatState, side, definition);
+    state = applyHeatPressure(resolved.combatState, side, definition);
     state = mapLoadout(state, side, (e, index) => (index === i ? recordFire(e.state, definition) : e.state));
     state = applyBridgeOnFire(state, side, definition, elevated, turn);
 

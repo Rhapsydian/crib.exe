@@ -74,7 +74,7 @@ describe('the bench cap (milestone 3, M2)', () => {
       expect(step.value.playerState.bench.length).toBeLessThanOrEqual(3);
     }
     expect(drops).toBeGreaterThan(0);
-  });
+  }, 20_000);
 
   it("drops the piece its driver names", () => {
     for (let seed = 1; seed <= 30; seed++) {

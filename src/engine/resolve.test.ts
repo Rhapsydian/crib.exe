@@ -87,10 +87,12 @@ describe('resolveEffect -- Suppress, Ward, Trace', () => {
     expect(resolveEffect({ verb: 'ward', amount: 5 }, fight(), 0).sides[0].wardShield).toBe(5);
   });
 
-  it('a trace delta raises or lowers the caster\'s Trace, floored at 0', () => {
-    const loud = resolveEffect({ verb: 'ward', amount: 1, trace: 3 }, fight(), 0);
-    expect(loud.sides[0].trace).toBe(3);
-    expect(resolveEffect({ verb: 'ward', amount: 1, trace: -10 }, loud, 0).sides[0].trace).toBe(0);
+  it("a feed adds straight to the opponent's win gauge, past their Ward", () => {
+    const warded = resolveEffect({ verb: 'ward', amount: 5 }, fight(), 1);
+    const fed = resolveEffect({ verb: 'ward', amount: 1, feed: 3 }, warded, 0);
+    expect(fed.sides[1].winGauge.progress).toBe(3);
+    expect(fed.sides[1].wardShield).toBe(5);
+    expect(fed.sides[0].winGauge.progress).toBe(0);
   });
 });
 

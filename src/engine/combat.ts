@@ -106,11 +106,6 @@ export interface CombatOptions {
    * always return null; both default to `() => null` (no Burner ever
    * activated), preserving every existing call site's behavior exactly. */
   burnerActivationStrategies?: [BurnerActivationStrategy, BurnerActivationStrategy];
-  /** Trace the player side starts the fight with (D1, session 52): the
-   * node's posted baseline, initialised rather than added afterwards so
-   * the player's own cover-your-tracks effects (negative `trace` deltas)
-   * can work against it during the fight. Defaults to 0. */
-  startingTrace?: number;
 }
 
 /** Context passed to a BurnerActivationStrategy for one turn's decision
@@ -159,15 +154,10 @@ export interface CombatResult {
    * is what is on screen when the fight resolves -- R6's performance term
    * reads the enemy's (index 1). */
   finalFillFraction: [number, number];
-  /** Trace the player side (side 0) accumulated during this fight --
-   * raised by riskRewardBurst payloads' traceCost, lowered by
-   * traceReduction. CombatSideState.trace resets each combat, so the
-   * outer run orchestrator needs this surfaced to fold it into
-   * persistent run Heat, same reason peakFillFraction exists. This IS
-   * the Trace-to-Heat conversion: encounters.ts adds it to heatDelta.
-   * Side 1 never accumulates Trace -- Heat is player-only (session 43).
-   */
-  traceGenerated: number;
+  /** Heat the enemy's alarms (`heatPressure`, Spotlight) raised against
+   * the player (side 0) during this fight -- surfaced so encounters.ts can
+   * add it to run Heat, win or lose. Heat is player-only (session 43). */
+  heatGenerated: number;
   /** How the match actually ended (session 27, checkpoint E): 'threshold'
    * -- a side genuinely crossed its own win-gauge threshold, the normal
    * way. 'attrition' -- neither side had, by HARD_RESOLUTION_HAND, so
@@ -179,7 +169,7 @@ export interface CombatResult {
    * defender to have any win-gauge progress at all. */
   resolvedBy: 'threshold' | 'attrition';
   /** Which carried Burner(s) side 0 actually activated this combat --
-   * Phase 5 Burners checkpoint B, mirroring traceGenerated's own
+   * Phase 5 Burners checkpoint B, mirroring heatGenerated's own
    * three-hop pattern (combat.ts -> encounters.ts's EncounterOutcome ->
    * run.ts, which removes these from RunPlayerState.carriedBurnerIds
    * once the fight resolves). Always empty until checkpoint C's
@@ -407,7 +397,7 @@ export interface PeggingView {
 }
 
 /** The fight as it stands when a request is yielded -- what a UI draws
- * while the player decides (gauges, Ward, Trace, loadout state, the log).
+ * while the player decides (gauges, Ward, Heat, loadout state, the log).
  * Read-only: the generator owns the fight. */
 export interface CombatView {
   combatState: CombatState;
@@ -531,7 +521,6 @@ export function* combatGenerator(
     enemyPassiveIds = [],
     ownedModIds = [],
     carriedBurnerIds = [],
-    startingTrace = 0,
   } = options;
 
   const rng = createRng(seed);
@@ -549,11 +538,7 @@ export function* combatGenerator(
   let lastTurnSide: PlayerIndex | null = null;
   let scores: [number, number] = [0, 0];
   const created = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds, opponentBridge, gatekeeperMods);
-  let combatState = applyModOnCombatStartPassives({
-    ...created,
-    modTriggers: [],
-    sides: [{ ...created.sides[0], trace: Math.max(0, startingTrace) }, created.sides[1]],
-  });
+  let combatState = applyModOnCombatStartPassives({ ...created, modTriggers: [] });
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
   const timeline: CombatBeat[] = [];
@@ -572,7 +557,7 @@ export function* combatGenerator(
       Math.min(1, combatState.sides[0].winGauge.progress / combatState.sides[0].winGauge.threshold),
       Math.min(1, combatState.sides[1].winGauge.progress / combatState.sides[1].winGauge.threshold),
     ],
-    traceGenerated: combatState.sides[0].trace,
+    heatGenerated: combatState.sides[0].heat,
     resolvedBy,
     burnersUsedThisCombat,
   });

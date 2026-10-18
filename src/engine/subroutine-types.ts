@@ -81,16 +81,15 @@ export type OccurrenceCategory =
 /**
  * Fields every effect can carry, whatever its verb.
  *
- * `trace` replaces three old mechanisms at once -- the per-piece
- * `traceCost`, the `riskRewardBurst` payload kind and the
- * `traceReduction` payload kind. It is a signed delta to the caster's own
- * Trace, applied each time this effect resolves: positive makes noise
- * (Exploit's "bigger but louder" beta), negative covers your tracks.
- * Trace is floored at 0. Inert on an enemy piece, since Trace is
- * player-only (session 43).
+ * `feed` is a noisy piece's drawback (session 58, replacing Trace): this
+ * much is added straight to the OPPONENT's win gauge each time the effect
+ * resolves -- unshielded by Ward, untouched by Mods. On a player piece it
+ * hands the enemy Containment; on an enemy piece it hands the player
+ * Breach. Paid inside the fight, so the duel sims price it like any
+ * other effect (DESIGN Pricing rule 3e).
  */
 interface EffectBase {
-  trace?: number;
+  feed?: number;
 }
 
 /**
@@ -222,7 +221,7 @@ export type Alpha = Effect & { growth?: number; growthCap?: number };
  * (the "different effect" relationship), or `enhance` -- added to the
  * alpha's own magnitude (the "enhance" relationship, which D13 calls
  * firing *elevated*). */
-export type BetaEffect = Effect | { verb: 'enhance'; amount: number; trace?: number };
+export type BetaEffect = Effect | { verb: 'enhance'; amount: number; feed?: number };
 
 // ---------------------------------------------------------------------
 // Beta criteria: source x shape (A5)
@@ -337,11 +336,11 @@ export interface SubroutineDefinition {
    * Mostly for `immediate` betas, the one path that can re-fire outside
    * the turn gate. Undefined means unlimited. */
   maxFiresPerCombat?: number;
-  /** Trace this piece inflicts on its OPPONENT each time it fires
-   * (session 47) -- enemy-side content. Trace stays player-only as a
-   * resource, but an enemy actively hunting you can still make you
-   * visible. Inert on a player piece. */
-  tracePressure?: number;
+  /** Heat this piece adds to the player's layer each time it fires
+   * (session 47's tracers, made direct in session 58) -- enemy-side
+   * content: an alarm. Heat is player-only, so it is inert on a player
+   * piece. */
+  heatPressure?: number;
 }
 
 /** The magnitude field of an effect, or undefined for a verb with none

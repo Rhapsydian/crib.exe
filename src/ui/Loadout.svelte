@@ -2,7 +2,7 @@
   import type { LoadoutEntry } from '../engine/resolve';
   import SuitIcon from './SuitIcon.svelte';
   import { tip } from './tip';
-  import { describeHook, describeProcess, forEnemy } from './describe';
+  import { describeAlarm, describeHook, describeProcess, forEnemy } from './describe';
 
   // A loadout, top to bottom = firing order. Each piece shows its suit,
   // name, banked charges and whether its Hook is primed; tap to inspect
@@ -21,7 +21,7 @@
   const tipText = (e: LoadoutEntry) => {
     const voice = (t: string) => (enemy ? forEnemy(t) : t);
     const d = e.definition;
-    return [d.name, `Process: ${voice(describeProcess(d.alpha))}`, d.beta ? `Hook: ${voice(describeHook(d.beta))}` : null].filter(Boolean).join('\n');
+    return [d.name, `Process: ${voice(describeProcess(d.alpha))}`, d.beta ? `Hook: ${voice(describeHook(d.beta))}` : null, describeAlarm(d) ? `Alarm: ${describeAlarm(d)}` : null].filter(Boolean).join('\n');
   };
 
   const initials = (name: string) =>

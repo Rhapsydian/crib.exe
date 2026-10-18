@@ -163,7 +163,7 @@
     gap: 6px;
   }
   .label {
-    color: var(--trace);
+    color: var(--heat);
     letter-spacing: 0.05em;
   }
   .bar {
@@ -177,7 +177,7 @@
   .bar span {
     display: block;
     height: 100%;
-    background: var(--trace);
+    background: var(--heat);
     transition: width 0.3s ease-out;
   }
   .bar.hot span {

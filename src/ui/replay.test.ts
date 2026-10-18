@@ -5,7 +5,7 @@ import type { FireEvent, GaugeReading } from '../engine/resolve';
 import { LEAD_IN_MS, Replay } from './replay.svelte';
 import { mergeSteps, tableAt, type Step } from './timeline';
 
-const reading = (win: number): GaugeReading => ({ win, winThreshold: 50, initiative: 0, initiativeThreshold: 12, ward: 0, trace: 0 });
+const reading = (win: number): GaugeReading => ({ win, winThreshold: 50, initiative: 0, initiativeThreshold: 12, ward: 0, heat: 0 });
 const pair = (a: number, b: number): [GaugeReading, GaugeReading] => [reading(a), reading(b)];
 const fireEvent = (side: 0 | 1, id: string, a: number, b: number): FireEvent => ({
   subroutineId: id,

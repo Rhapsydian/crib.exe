@@ -22,28 +22,31 @@ const turnFraction = (n: number) => {
   return known[String(n)] ?? fmt(n);
 };
 
+/** A noisy effect's drawback, in words (`feed`). */
+const feedText = (feed: number | undefined) => (feed ? `, and also gives the opponent ${fmt(feed)}` : '');
+
 export function describeEffect(effect: Effect): string {
-  const trace = effect.trace ? `, +${fmt(effect.trace)} Trace` : '';
+  const feed = feedText(effect.feed);
   switch (effect.verb) {
     case 'credit':
-      if (effect.from === 'opponent') return `steal ${fmt(effect.amount)}${trace}`;
-      if (effect.from === 'ward') return `Credit ${fmt(effect.amount)} from your Ward${trace}`;
-      return `Credit ${fmt(effect.amount)}${effect.piercing ? ' (piercing)' : ''}${trace}`;
+      if (effect.from === 'opponent') return `steal ${fmt(effect.amount)}${feed}`;
+      if (effect.from === 'ward') return `Credit ${fmt(effect.amount)} from your Ward${feed}`;
+      return `Credit ${fmt(effect.amount)}${effect.piercing ? ' (piercing)' : ''}${feed}`;
     case 'suppress':
-      return `Suppress ${fmt(effect.amount)}${trace}`;
+      return `Suppress ${fmt(effect.amount)}${feed}`;
     case 'ward':
-      return `Ward ${fmt(effect.amount)}${trace}`;
+      return `Ward ${fmt(effect.amount)}${feed}`;
     case 'empower':
-      return `Empower ${effect.scope === 'next' ? 'the next piece' : 'every piece below'} +${fmt(effect.amount)}${trace}`;
+      return `Empower ${effect.scope === 'next' ? 'the next piece' : 'every piece below'} +${fmt(effect.amount)}${feed}`;
     case 'tempo': {
       const who = effect.target === 'own' ? 'you' : 'them';
-      if (effect.mode === 'gauge') return effect.target === 'own' ? `Haste ${turnFraction(effect.amount)} turn${trace}` : `Slow them ${turnFraction(effect.amount)} turn${trace}`;
-      return `${effect.target === 'own' ? 'lower' : 'raise'} ${who === 'you' ? 'your' : 'their'} initiative threshold ${turnFraction(effect.amount)}${effect.duration ? ` for ${effect.duration} turn${effect.duration > 1 ? 's' : ''}` : ''}${trace}`;
+      if (effect.mode === 'gauge') return effect.target === 'own' ? `Haste ${turnFraction(effect.amount)} turn${feed}` : `Slow them ${turnFraction(effect.amount)} turn${feed}`;
+      return `${effect.target === 'own' ? 'lower' : 'raise'} ${who === 'you' ? 'your' : 'their'} initiative threshold ${turnFraction(effect.amount)}${effect.duration ? ` for ${effect.duration} turn${effect.duration > 1 ? 's' : ''}` : ''}${feed}`;
     }
     case 'disrupt':
-      return { revealHand: 'reveal their hand next hand', revealCrib: 'reveal the crib next hand', forceDiscard: 'force a discard next hand' }[effect.action] + trace;
+      return { revealHand: 'reveal their hand next hand', revealCrib: 'reveal the crib next hand', forceDiscard: 'force a discard next hand' }[effect.action] + feed;
     case 'charge':
-      return `charge ${effect.target === 'self' ? 'itself' : effect.target === 'next' ? 'the next piece' : 'every other piece'} ${fmt(effect.amount)}${trace}`;
+      return `charge ${effect.target === 'self' ? 'itself' : effect.target === 'next' ? 'the next piece' : 'every other piece'} ${fmt(effect.amount)}${feed}`;
   }
 }
 
@@ -55,7 +58,7 @@ export function describeProcess(alpha: Alpha): string {
 function describeHookEffect(effect: BetaEffect, shape: Beta['shape']): string {
   if (effect.verb === 'enhance') {
     if (shape === 'immediate') return effect.amount === 0 ? 'fire again' : `fire again, +${fmt(effect.amount)}`;
-    return `+${fmt(effect.amount)}${effect.trace ? `, +${fmt(effect.trace)} Trace` : ''}`;
+    return `+${fmt(effect.amount)}${feedText(effect.feed)}`;
   }
   return describeEffect(effect);
 }
@@ -125,6 +128,11 @@ export function describeHook(beta: Beta): string {
     case 'whileTrue':
       return `${condition}: ${effect}`;
   }
+}
+
+/** An enemy piece's alarm (`heatPressure`), or null for none. */
+export function describeAlarm(piece: SubroutineDefinition): string | null {
+  return piece.heatPressure ? `+${fmt(piece.heatPressure)} Heat to you each time it fires` : null;
 }
 
 /** The live-state line in a piece's detail panel. */

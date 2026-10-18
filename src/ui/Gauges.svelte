@@ -3,8 +3,8 @@
   import { tip } from './tip';
 
   // One side's meters: the win gauge (Breach for you, Containment for
-  // them), initiative toward the next turn, Ward, and -- yours only --
-  // Trace. `compact` collapses to a single line for tight layouts.
+  // them), initiative toward the next turn, Ward, and -- yours only, once
+  // an alarm has gone off -- the Heat raised this fight. `compact` collapses to a single line for tight layouts.
   // `reading`, when given, overrides the side's live state: the turn
   // step-through (P4) shows the meters as they stood after each fire.
   // `mods` / `burners` add ◆ / ⏏︎ count chips (tap: `onkit`); `flashMods`
@@ -42,7 +42,7 @@
       ? 'Initiative: points you score fill it. When it fills, your loadout fires, top to bottom (a turn).'
       : 'Initiative: points they score fill it. When it fills, their loadout fires (a turn).',
     ward: isPlayer ? 'Ward: absorbs Credit aimed at you before it reaches their gauge.' : 'Ward: absorbs your Credit before it reaches your gauge.',
-    trace: 'Trace: how visible you are. What you carry out of the fight becomes Heat.',
+    heat: 'Alarms: Heat their alarms have added to this layer so far this fight.',
     mods: `Mods: ${modNames.join(', ')}. Click to see them.`,
     burners: `Burners: ${burnerNames.join(', ')}. Offered before each of your turns.`,
   });
@@ -54,7 +54,7 @@
       initiative: side.gauge.progress,
       initiativeThreshold: side.gauge.threshold,
       ward: side.wardShield,
-      trace: side.trace,
+      heat: side.heat,
     },
   );
   const win = $derived(Math.min(1, g.win / g.winThreshold));
@@ -75,7 +75,7 @@
   </div>
   <div class="row chips">
     <span class="chip ward" use:tip={tips.ward}>⛨ {fmt(g.ward)}</span>
-    {#if isPlayer}<span class="chip trace" use:tip={tips.trace}>◉ {fmt(g.trace)}</span>{/if}
+    {#if isPlayer && g.heat > 0}<span class="chip heat" use:tip={tips.heat}>▲ {fmt(g.heat)}</span>{/if}
     {#if mods > 0}<button class="chip mod" class:flash={flashMods} onclick={onkit} use:tip={tips.mods}>◆ {mods}</button>{/if}
     {#if burners > 0}<button class="chip burner" onclick={onkit} use:tip={tips.burners}>⏏︎ {burners}</button>{/if}
   </div>
@@ -102,7 +102,7 @@
   .compact .row {
     flex: 1 1 140px;
   }
-  /* The information badges (Ward, Trace, Mods, Burners) always take
+  /* The information badges (Ward, alarm Heat, Mods, Burners) always take
      their own line under the meters (the user's call). */
   .compact .chips {
     flex: 1 0 100%;
@@ -149,8 +149,8 @@
   .ward {
     color: var(--ward);
   }
-  .trace {
-    color: var(--trace);
+  .heat {
+    color: var(--heat);
   }
   button.chip {
     background: transparent;

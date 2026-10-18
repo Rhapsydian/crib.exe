@@ -57,18 +57,18 @@ describe('playCombat', () => {
     expect(result.hands.length).toBe(20);
   });
 
-  it("surfaces the player side's Trace from an effect's trace delta", () => {
-    const loud = piece('loud', { verb: 'credit', amount: 20, trace: 4 });
-    const result = playCombat([[loud], []], { seed: 1, gaugeThreshold: [5, 5] });
-    expect(result.winner).toBe(0);
-    expect(result.traceGenerated).toBeGreaterThan(0);
-    expect(result.traceGenerated % 4).toBe(0);
+  it("surfaces the Heat an enemy's alarm raised against the player", () => {
+    const alarm: SubroutineDefinition = { ...piece('alarm', { verb: 'credit', amount: 1 }), heatPressure: 0.5 };
+    const result = playCombat([[credit('a', 1)], [alarm]], { seed: 1, gaugeThreshold: [5, 5], winThreshold: [30, 30] });
+    expect(result.heatGenerated).toBeGreaterThan(0);
+    expect(result.heatGenerated % 0.5).toBe(0);
   });
 
-  it('starts the player at startingTrace (D1), and cover-your-tracks works against it', () => {
-    expect(playCombat([[credit('a', 20)], []], { seed: 1, gaugeThreshold: [5, 5], startingTrace: 6 }).traceGenerated).toBe(6);
-    const quiet = piece('quiet', { verb: 'credit', amount: 20, trace: -2 });
-    expect(playCombat([[quiet], []], { seed: 1, gaugeThreshold: [5, 5], startingTrace: 6 }).traceGenerated).toBeLessThan(6);
+  it("a noisy piece's feed fills the opponent's gauge", () => {
+    const noisy = piece('noisy', { verb: 'credit', amount: 1, feed: 2 });
+    const quiet = playCombat([[credit('a', 1)], []], { seed: 1, gaugeThreshold: [5, 5], winThreshold: [30, 30] });
+    const loud = playCombat([[noisy], []], { seed: 1, gaugeThreshold: [5, 5], winThreshold: [30, 30] });
+    expect(loud.finalFillFraction[1]).toBeGreaterThan(quiet.finalFillFraction[1]);
   });
 
   it("reports each side's FINAL fill, clamped to 1 for the winner, never above the peak", () => {
@@ -79,8 +79,8 @@ describe('playCombat', () => {
     expect(result.finalFillFraction[loser]).toBeLessThanOrEqual(result.peakFillFraction[loser]);
   });
 
-  it('reports zero Trace when nothing makes noise', () => {
-    expect(playCombat([[credit('a', 20)], []], { seed: 1, gaugeThreshold: [5, 5] }).traceGenerated).toBe(0);
+  it('reports zero alarm Heat when no enemy piece raises any', () => {
+    expect(playCombat([[credit('a', 20)], []], { seed: 1, gaugeThreshold: [5, 5] }).heatGenerated).toBe(0);
   });
 
   it('every piece fires its alpha on every turn its side gets (D11) -- no trigger gates it', () => {

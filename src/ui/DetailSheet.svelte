@@ -4,7 +4,7 @@
   import { rarityOf } from '../engine/rewards';
   import SuitIcon from './SuitIcon.svelte';
   import { archetypeInfo } from './suits';
-  import { describeFire, describeHook, describeProcess, describeState, forEnemy } from './describe';
+  import { describeAlarm, describeFire, describeHook, describeProcess, describeState, forEnemy } from './describe';
   import type { KitItem } from './kit';
 
   // The inspect panel (P6): a bottom sheet on phones (a centred card on
@@ -37,6 +37,7 @@
     </div>
     <div class="field"><span class="key">Process</span>{voice(describeProcess(def.alpha))}</div>
     {#if def.beta}<div class="field"><span class="key">Hook</span>{voice(describeHook(def.beta))}</div>{/if}
+    {#if describeAlarm(def)}<div class="field"><span class="key">Alarm</span>{describeAlarm(def)}</div>{/if}
     {#if describeState(def, entry.state).length}
       <div class="state">{describeState(def, entry.state).join(' · ')}</div>
     {/if}

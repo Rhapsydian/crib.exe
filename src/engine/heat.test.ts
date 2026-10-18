@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   addHeat,
   currentHeatCeiling,
-  fightBaselineTrace,
-  fightPerformanceTrace,
+  fightBaselineHeat,
+  fightPerformanceHeat,
   fightPerformanceWeight,
   heatFromLoss,
   eventHeat,
@@ -54,31 +54,30 @@ describe('layer allowances (D4, D5)', () => {
 
 describe('fight Trace (D1, D2, R6)', () => {
   it('posts a baseline for every tier, elite above regular, growing with layer', () => {
-    for (const tier of ['regular', 'elite', 'gatekeeper'] as const) expect(fightBaselineTrace(tier, 0)).toBeGreaterThan(0);
-    expect(fightBaselineTrace('elite', 0)).toBeGreaterThan(fightBaselineTrace('regular', 0));
-    expect(fightBaselineTrace('regular', 3)).toBeGreaterThan(fightBaselineTrace('regular', 0));
+    for (const tier of ['regular', 'elite', 'gatekeeper'] as const) expect(fightBaselineHeat(tier, 0)).toBeGreaterThan(0);
+    expect(fightBaselineHeat('elite', 0)).toBeGreaterThan(fightBaselineHeat('regular', 0));
+    expect(fightBaselineHeat('regular', 3)).toBeGreaterThan(fightBaselineHeat('regular', 0));
   });
 
   it("adds a performance term in proportion to the enemy's FINAL fill, clamped to 0-1", () => {
     const k = fightPerformanceWeight('regular', 0);
-    expect(fightPerformanceTrace('regular', 0, 0)).toBe(0);
-    expect(fightPerformanceTrace('regular', 0, 0.5)).toBeCloseTo(k / 2);
-    expect(fightPerformanceTrace('regular', 0, 1.7)).toBeCloseTo(k);
+    expect(fightPerformanceHeat('regular', 0, 0)).toBe(0);
+    expect(fightPerformanceHeat('regular', 0, 0.5)).toBeCloseTo(k / 2);
+    expect(fightPerformanceHeat('regular', 0, 1.7)).toBeCloseTo(k);
   });
 
   it("puts the gatekeeper's price in the performance term, not the posted floor (R8)", () => {
-    expect(fightPerformanceWeight('gatekeeper', 0)).toBeGreaterThan(fightBaselineTrace('gatekeeper', 0));
-    expect(fightBaselineTrace('gatekeeper', 0)).toBeLessThan(fightBaselineTrace('regular', 0));
+    expect(fightPerformanceWeight('gatekeeper', 0)).toBeGreaterThan(fightBaselineHeat('gatekeeper', 0));
+    expect(fightBaselineHeat('gatekeeper', 0)).toBeLessThan(fightBaselineHeat('regular', 0));
   });
 });
 
 describe('heatFromLoss (R7)', () => {
-  it('is LOSS_MULTIPLIER x the worst-case win, with the multiplier above 1', () => {
+  it('is the baseline plus LOSS_MULTIPLIER x the performance weight, with the multiplier above 1', () => {
     expect(LOSS_MULTIPLIER).toBeGreaterThan(1);
     for (const tier of ['regular', 'elite'] as const) {
       for (let layer = 0; layer < 4; layer++) {
-        const { worstWin } = postedFightRisk(tier, layer);
-        expect(heatFromLoss(tier, layer)).toBeCloseTo(LOSS_MULTIPLIER * worstWin);
+        expect(heatFromLoss(tier, layer)).toBeCloseTo(fightBaselineHeat(tier, layer) + LOSS_MULTIPLIER * fightPerformanceWeight(tier, layer));
       }
     }
   });

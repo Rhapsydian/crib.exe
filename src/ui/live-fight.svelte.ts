@@ -11,7 +11,6 @@ import {
   winThresholdFor,
   type EnemyDefinition,
 } from '../engine/enemies';
-import { fightBaselineTrace } from '../engine/heat';
 import { CLASS_DEFINITIONS, type ClassId } from '../engine/classes';
 import type { BurnerId } from '../engine/burner-types';
 import type { FightSnapshot, PlayerRequest } from './snapshot';
@@ -64,7 +63,6 @@ export class LiveFight implements FightSession {
     this.#enemyPlay = pegSkillStrategy(skill);
     const options: CombatOptions = {
       seed,
-      startingTrace: fightBaselineTrace(enemy.tier, layer - 1),
       gaugeThreshold: [GAUGE_THRESHOLD, gaugeThresholdFor(enemy, layer, fightNumber, GAUGE_THRESHOLD)],
       winThreshold: [BREACH_THRESHOLD, winThresholdFor(enemy, layer, fightNumber, CONTAINMENT_THRESHOLD)],
       classId,

@@ -45,10 +45,11 @@ export const ENEMY_LAYER_SCALER: [number, number, number, number] = [1, 1.4, 1.6
 
 const p = authoredPiece;
 
-/** A piece that also makes the player loud (E7's tracers): session 47's
- * `tracePressure`, Trace added to the player each time it fires. */
+/** A piece that also raises an alarm (E7's tracers): session 47's
+ * pressure, Heat added to the player's layer each time it fires (direct
+ * since session 58). */
 function tracing(piece: SubroutineDefinition, pressure: number): SubroutineDefinition {
-  return { ...piece, id: `${piece.id}-tracer`, tracePressure: pressure };
+  return { ...piece, id: `${piece.id}-tracer`, heatPressure: pressure };
 }
 
 /** Regulars (E2: 6; E4: no Mods). Commons only. */
@@ -84,7 +85,7 @@ export const AUTHORED_ELITES: AuthoredEnemy[] = [
   { id: 'blackout-cell', name: 'Blackout Cell', tier: 'elite', archetypes: ['daemon', 'honeypot'], minLayer: 2, bridge: 'daemon-honeypot', loadout: [p('memory-leak'), p('sinkhole'), p('basic-auth')], scale: 1.5 },
   // E7's elite tracer: fast, banks Ward every turn (Siphon), and every
   // fire makes you louder -- win fast or pay in Heat. Pressure is 1/8 a
-  // fire: at 1/2 it pushed ~20 Trace a fight (57% of layer 2's
+  // fire: at 1/2 it pushed ~20 Heat a fight (57% of layer 2's
   // allowance), since its pieces fire on turns AND as immediate betas.
   { id: 'intrusion-alarm', name: 'Intrusion Alarm', tier: 'elite', archetypes: ['overclock', 'honeypot'], minLayer: 2, bridge: 'overclock-honeypot', loadout: [tracing(p('priority-override'), 0.125), tracing(p('elevated-session'), 0.125), p('tarpit')] },
 ];
@@ -121,7 +122,7 @@ const BEACON: SubroutineDefinition = {
   id: 'beacon', name: 'Beacon', archetype: 'honeypot',
   alpha: { verb: 'ward', amount: 2 },
   beta: { source: 'cards', category: 'pair', shape: 'graded', cap: 2, effect: { verb: 'enhance', amount: 1 } },
-  tracePressure: 0.25,
+  heatPressure: 0.25,
 };
 const NULL_ROUTE: SubroutineDefinition = {
   id: 'null-route', name: 'Null Route', archetype: 'honeypot',
@@ -155,8 +156,8 @@ export const AUTHORED_GATEKEEPERS: AuthoredEnemy[] = [
   { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 3, bridge: 'daemon-overclock', mods: ['adaptation'], scale: 2.19,
     loadout: [SELF_MODIFYING_CODE, p('fork-bomb'), p('ping'), p('steady-drip')] },
   // E7 gatekeeper tracer: does not try hard to contain you; makes you loud
-  // before the toll. Credential Stuffing, not Jackpot: Jackpot's beta
-  // writes Trace to its owner, and Trace is player-only.
+  // before the toll. Credential Stuffing rather than Jackpot, whose beta
+  // feed would hand you Breach.
   { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 3, bridge: 'exploit-honeypot', mods: ['spotlight'], scale: 2.1,
     loadout: [BEACON, p('port-scan'), p('tarpit'), p('credential-stuffing')] },
   // --- Layer 4: the core ---

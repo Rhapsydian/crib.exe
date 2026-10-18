@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Alpha, Archetype, Beta, SubroutineDefinition } from './subroutine-types';
 import { clearHandKnowledge, createCombatState, creditWinGauge, fireTurn, resolveEffect, type CombatState } from './resolve';
-import { NO_WAY_IN_CAP, SPOTLIGHT_TRACE, ZERO_SUM_SHARE, ZERO_SUM_THRESHOLD, ADAPTATION_EVERY, ADAPTATION_STEP, type GatekeeperModId } from './gatekeeper-mods';
+import { NO_WAY_IN_CAP, SPOTLIGHT_HEAT, ZERO_SUM_SHARE, ZERO_SUM_THRESHOLD, ADAPTATION_EVERY, ADAPTATION_STEP, type GatekeeperModId } from './gatekeeper-mods';
 
 // Step 3, E4: the eight gatekeeper Mods. Side 1 carries the Mod (a
 // gatekeeper); side 0 is the player it acts on, unless noted.
@@ -52,9 +52,9 @@ describe('gatekeeper Mods (step 3, E4)', () => {
     expect(progress(resolveEffect({ verb: 'credit', amount: 3, piercing: true }, plain, 0, 0), 0)).toBe(3);
   });
 
-  it("Spotlight: every fire of the owner's pieces adds Trace to the player", () => {
+  it("Spotlight: every fire of the owner's pieces adds Heat to the player", () => {
     const s = withMods([credit('a')], [credit('g1'), credit('g2')], ['spotlight']);
-    expect(fireTurn(s, 1, { isDealer: false }).combatState.sides[0].trace).toBe(2 * SPOTLIGHT_TRACE);
+    expect(fireTurn(s, 1, { isDealer: false }).combatState.sides[0].heat).toBe(2 * SPOTLIGHT_HEAT);
   });
 
   it("Reception Protocol: the owner's first Exploit beta each hand applies twice", () => {

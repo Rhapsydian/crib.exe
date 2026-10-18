@@ -256,41 +256,25 @@ describe('scaledEnemyLoadout', () => {
 });
 
 // ---------------------------------------------------------------------
-// Trace is player-only (session 43's rule, enforced session 47).
+// Alarms (session 47's tracers; direct Heat since session 58).
 // ---------------------------------------------------------------------
 
-describe('no enemy touches Trace', () => {
-  // Session 51 removed Trace-threshold conditions entirely, so "no enemy
-  // piece reads Trace" now holds by construction. What remains is the
-  // write side: an effect's `trace` delta is the caster's own Trace, which
-  // an enemy does not have.
-
-  it('no enemy piece writes Trace', () => {
-    for (const enemy of ENEMY_ROSTER) {
-      for (const piece of enemy.loadout) {
-        for (const effect of [piece.alpha, piece.beta?.effect]) {
-          expect(effect?.trace ?? 0, `${enemy.id}/${piece.id} moves Trace; Trace is player-only`).toBe(0);
-        }
-      }
-    }
-  });
-
-  it('Trace pressure is enemy-only, and never on a shared pool piece', () => {
-    // Enemies may raise the PLAYER's Trace (a threat, like a debuff) while
-    // having none of their own. A pool piece's definition is the same
-    // object the player can draw, so pressure belongs only on bespoke
-    // enemy pieces.
+describe('enemy alarms', () => {
+  it('alarms are enemy-only, and never on a shared pool piece', () => {
+    // Enemies may raise the PLAYER's Heat (a threat, like a debuff). A
+    // pool piece's definition is the same object the player can draw, so
+    // an alarm belongs only on bespoke enemy pieces.
     const poolIds = new Set(ALL_POOL_SUBROUTINES.map((p) => p.id));
     for (const enemy of ENEMY_ROSTER) {
       for (const piece of enemy.loadout) {
-        if (!piece.tracePressure) continue;
-        expect(poolIds.has(piece.id), `${enemy.id}/${piece.id} carries tracePressure but is a shared pool piece`).toBe(false);
+        if (!piece.heatPressure) continue;
+        expect(poolIds.has(piece.id), `${enemy.id}/${piece.id} carries an alarm but is a shared pool piece`).toBe(false);
       }
     }
   });
 
-  it('no player-side piece carries Trace pressure, which would be inert', () => {
-    for (const piece of ALL_SUBROUTINES) expect(piece.tracePressure ?? 0, piece.id).toBe(0);
+  it('no player-side piece carries an alarm, which would be inert', () => {
+    for (const piece of ALL_SUBROUTINES) expect(piece.heatPressure ?? 0, piece.id).toBe(0);
   });
 
   it('a real fight against an authored enemy, with its bridge and Mods, resolves to a winner', () => {
@@ -302,7 +286,7 @@ describe('no enemy touches Trace', () => {
       classId: 'exploit-honeypot',
       ...enemyCombatOptions(enemy),
     });
-    expect(result.traceGenerated).toBeGreaterThanOrEqual(0);
+    expect(result.heatGenerated).toBeGreaterThanOrEqual(0);
     expect(result.winner === 0 || result.winner === 1).toBe(true);
   });
 });

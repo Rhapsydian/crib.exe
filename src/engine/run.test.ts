@@ -62,8 +62,8 @@ const HEAT_MAX = layerHeatAllowance(0);
 function overwhelmingStarterLoadout(creditAmount: number): SubroutineDefinition[] {
   // Step 3: the real 'exploit-overclock' (Blackhat) starting kit, Port
   // Scan's credit alpha scaled up; Cache Hit's Empower stays real. Fuzzer's
-  // Trace rider is stripped so the kit makes no noise of its own (the Heat
-  // window assertions below rely on that).
+  // feed is stripped so the kit gives the enemy nothing (the Heat window
+  // assertions below rely on that).
   return CLASS_STARTING_LOADOUTS['exploit-overclock'].map((piece): SubroutineDefinition => {
     if (piece.id === 'port-scan') return { ...piece, alpha: { verb: 'credit', amount: creditAmount } };
     if (piece.id === 'fuzzer' && piece.beta && piece.beta.effect.verb === 'enhance') return { ...piece, beta: { ...piece.beta, effect: { verb: 'enhance', amount: piece.beta.effect.amount } } };
@@ -187,7 +187,7 @@ describe('opportunisticTraversal', () => {
     expect(opportunisticTraversal(starGraph(), position, lowHeat)).toBe('gate');
   });
 
-  // Session 52: detours are priced at their posted Trace and the reserve
+  // Session 52: detours are priced at their posted Heat and the reserve
   // holds the gatekeeper's toll, so a "high Heat" player on layer 1's
   // tight allowance can afford nothing. These two pin PRIORITY, so they
   // give the player a roomy allowance where high Heat is still affordable.
@@ -453,8 +453,8 @@ describe('playRun', { timeout: 30_000 }, () => {
 
 describe('gatekeeperOverrides (session 49) -- the synthetic gatekeeper diagnostic', () => {
   const TINY_LAYERS: [number, number, number, number] = [2, 2, 2, 2];
-  const ALWAYS: GatekeeperOverride = { kind: 'synthetic', passRate: 1, traceGenerated: 0 };
-  const NEVER: GatekeeperOverride = { kind: 'synthetic', passRate: 0, traceGenerated: 0 };
+  const ALWAYS: GatekeeperOverride = { kind: 'synthetic', passRate: 1, heatGenerated: 0 };
+  const NEVER: GatekeeperOverride = { kind: 'synthetic', passRate: 0, heatGenerated: 0 };
 
   const gatekeeperEntries = (result: ReturnType<typeof playRun>) =>
     result.log.filter((e) => e.type === 'encounter' && e.nodeType === 'gatekeeperFight');
@@ -521,20 +521,20 @@ describe('gatekeeperOverrides (session 49) -- the synthetic gatekeeper diagnosti
     expect(result.layersCompleted).toBe(1);
   });
 
-  it('folds traceGenerated into the run Heat a synthetic win costs', () => {
+  it('folds heatGenerated into the run Heat a synthetic win costs', () => {
     // Same seed either side, so the RNG stream and any owned heat-sink
     // refund are identical up to the layer-1 gatekeeper -- the whole
-    // difference in its heatDelta is the trace supplied.
-    const withoutTrace = playRun({ seed: 7, layerNodeCounts: TINY_LAYERS, gatekeeperOverrides: [ALWAYS] });
-    const withTrace = playRun({ seed: 7, layerNodeCounts: TINY_LAYERS, gatekeeperOverrides: [{ kind: 'synthetic', passRate: 1, traceGenerated: 25 }] });
-    const a = gatekeeperEntries(withoutTrace)[0];
-    const b = gatekeeperEntries(withTrace)[0];
+    // difference in its heatDelta is the alarm Heat supplied.
+    const withoutAlarm = playRun({ seed: 7, layerNodeCounts: TINY_LAYERS, gatekeeperOverrides: [ALWAYS] });
+    const withAlarm = playRun({ seed: 7, layerNodeCounts: TINY_LAYERS, gatekeeperOverrides: [{ kind: 'synthetic', passRate: 1, heatGenerated: 25 }] });
+    const a = gatekeeperEntries(withoutAlarm)[0];
+    const b = gatekeeperEntries(withAlarm)[0];
     expect(a && a.type === 'encounter' && b && b.type === 'encounter' ? b.outcome.heatDelta - a.outcome.heatDelta : 0).toBe(25);
   });
 
-  it('samples an empirical trace distribution rather than collapsing it to a mean', () => {
-    // Real gatekeeper trace is skewed (mean ~2.8, median 0), and feeding
-    // the mean as a constant deletes the tail that drives Heat deaths.
+  it('samples an empirical alarm-Heat distribution rather than collapsing it to a mean', () => {
+    // A skewed sample fed as its mean deletes the tail that drives Heat
+    // deaths.
     // The array form must actually spread across the samples, not pick
     // one deterministically for every fight.
     const samples = [0, 0, 0, 40];
@@ -543,19 +543,19 @@ describe('gatekeeperOverrides (session 49) -- the synthetic gatekeeper diagnosti
       const result = playRun({
         seed,
         layerNodeCounts: TINY_LAYERS,
-        gatekeeperOverrides: [{ kind: 'synthetic', passRate: 1, traceGenerated: samples }],
+        gatekeeperOverrides: [{ kind: 'synthetic', passRate: 1, heatGenerated: samples }],
       });
       const first = gatekeeperEntries(result)[0];
       if (first && first.type === 'encounter') seen.add(first.outcome.heatDelta);
     }
-    // Both a zero-trace and a tail draw must appear; a single value here
+    // Both a zero and a tail draw must appear; a single value here
     // would mean the index is constant and the distribution is fiction.
     expect(seen.size).toBeGreaterThan(1);
     expect(Math.max(...seen)).toBeGreaterThan(Math.min(...seen));
   });
 
   it('honours the pass rate over a seed sweep, and stays deterministic per seed', () => {
-    const HALF: GatekeeperOverride = { kind: 'synthetic', passRate: 0.5, traceGenerated: 0 };
+    const HALF: GatekeeperOverride = { kind: 'synthetic', passRate: 0.5, heatGenerated: 0 };
     let reached = 0;
     let passed = 0;
     for (let seed = 0; seed < 300; seed++) {

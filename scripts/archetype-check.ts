@@ -12,9 +12,9 @@
  *      threshold, not by attrition (A3).
  *   3. RETENTION -- skill retention at 0.85 v 0.5 on every kit, against
  *      the 0.5 floor (DESIGN.md -> Pricing, rule 5).
- *   4. NOISE -- own Trace per fight for every kit. For Exploit, the CP6
- *      reference: ~7-10 Trace a run, about 1-1.5 a fight, reproduced the
- *      3-5x Heat-ending target.
+ *   (4. NOISE, own Trace per fight, went with Trace in session 58: a
+ *      noisy piece's cost is now its `feed`, paid inside the duel and so
+ *      already in every number above.)
  *
  * PROVENANCE: isolated duels and mirrors, equal skill 0.85 except the
  * retention matchup, no passive/Mods. Not a full-run metric.
@@ -145,16 +145,16 @@ WARD BYPASS (S10) -- steals priced against a host carrying Ward 2 on both sides,
 if (!skip.has('kits')) {
   const matchup = { high: 0.85, low: 0.5 };
   const cribbage = cribbageSkillEdge(matchup, 2000);
-  console.log(`\nKITS -- credit rule, skill retention (0.85 v 0.5; floor ${SKILL_RETENTION_FLOOR}; plain Cribbage ${pct(cribbage.winRate)}), own Trace per fight.`);
-  console.log(`${'kit'.padEnd(16)} pieces  threshold-wins  retain  floor   Trace/fight  hands/fight`);
+  console.log(`\nKITS -- credit rule, skill retention (0.85 v 0.5; floor ${SKILL_RETENTION_FLOOR}; plain Cribbage ${pct(cribbage.winRate)}), hands per fight.`);
+  console.log(`${'kit'.padEnd(16)} pieces  threshold-wins  retain  floor   hands/fight`);
   // (The skeleton reference row retired with skeleton-pool.ts; its
   // numbers -- the noise target among them -- are in the step3-cp*
   // calibration files.)
   const kits: [string, SubroutineDefinition[]][] = Object.entries(archetype.kits);
   for (const [name, kit] of kits) {
-    // Credit rule and noise: the kit mirrored at equal skill, kit in seat 0
-    // (only side 0 accumulates Trace), seeds alternating the dealer.
-    let threshold = 0, trace = 0, handsPlayed = 0;
+    // Credit rule: the kit mirrored at equal skill, kit in seat 0, seeds
+    // alternating the dealer.
+    let threshold = 0, handsPlayed = 0;
     for (let seed = 0; seed < seeds; seed++) {
       const r = playCombat([kit, kit], {
         seed,
@@ -164,13 +164,12 @@ if (!skip.has('kits')) {
         playStrategies: [pegSkillStrategy(0.85), pegSkillStrategy(0.85)],
       });
       if (r.resolvedBy === 'threshold') threshold++;
-      trace += r.traceGenerated;
       handsPlayed += r.hands.length;
     }
     const edge = combatSkillEdge(kit, matchup, { seeds, gaugeThreshold: GAUGE_THRESHOLD, winThreshold: BREACH_THRESHOLD });
     const retain = skillRetention(edge, cribbage)!;
     console.log(
-      `${name.padEnd(16)} ${String(kit.length).padStart(6)}  ${pct(threshold / seeds)}         ${retain.toFixed(2).padStart(5)}   ${retain >= SKILL_RETENTION_FLOOR ? 'ok  ' : 'FAIL'}    ${(trace / seeds).toFixed(2).padStart(6)}      ${(handsPlayed / seeds).toFixed(1).padStart(5)}`,
+      `${name.padEnd(16)} ${String(kit.length).padStart(6)}  ${pct(threshold / seeds)}         ${retain.toFixed(2).padStart(5)}   ${retain >= SKILL_RETENTION_FLOOR ? 'ok  ' : 'FAIL'}    ${(handsPlayed / seeds).toFixed(1).padStart(5)}`,
     );
   }
 }

@@ -71,7 +71,7 @@ function traceAgainst(loadout: ReturnType<typeof scaledEnemyLoadout>, enemy: Aut
         opponentBridge: enemy.bridge,
         gatekeeperMods: [[], enemy.mods ?? []],
       });
-      trace += r.traceGenerated;
+      trace += r.heatGenerated;
       fights++;
     }
   }
@@ -90,8 +90,8 @@ for (const enemy of roster) {
   const verdict = first === null ? '?' : Math.abs(first - budget) <= 0.15 * budget ? 'ok (within 15%)' : first < budget ? 'LOW' : 'HIGH';
   const cells = layers.map((l, i) => `L${l} ${powers[i] === null ? '--' : powers[i]!.toFixed(1)} / ${ENEMY_BUDGET[enemy.tier][l - 1].toFixed(1)}`).join('  ');
   console.log(`${enemy.name.padEnd(20)} L${enemy.minLayer}     ${budget.toFixed(1).padStart(5)}   ${cells.padEnd(46)} ${verdict}`);
-  if (enemy.loadout.some((piece) => (piece.tracePressure ?? 0) > 0) || enemy.mods?.includes('spotlight')) {
+  if (enemy.loadout.some((piece) => (piece.heatPressure ?? 0) > 0) || enemy.mods?.includes('spotlight')) {
     const t = tracePerFight(enemy, enemy.minLayer);
-    console.log(`${''.padEnd(20)} tracer: ${t.toFixed(2)} Trace/fight on the player = ${((100 * t) / LAYER_HEAT_ALLOWANCE[enemy.minLayer - 1]).toFixed(1)}% of layer ${enemy.minLayer}'s allowance`);
+    console.log(`${''.padEnd(20)} alarm: ${t.toFixed(2)} Heat/fight on the player = ${((100 * t) / LAYER_HEAT_ALLOWANCE[enemy.minLayer - 1]).toFixed(1)}% of layer ${enemy.minLayer}'s allowance`);
   }
 }

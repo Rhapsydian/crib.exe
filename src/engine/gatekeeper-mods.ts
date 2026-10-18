@@ -36,8 +36,8 @@ export const ZERO_SUM_SHARE = 0.5;
 export const ADAPTATION_EVERY = 3;
 /** ...by this much. */
 export const ADAPTATION_STEP = 1;
-/** Spotlight: Trace added to its opponent every time one of its pieces fires. */
-export const SPOTLIGHT_TRACE = 0.125;
+/** Spotlight: Heat added to its opponent's layer every time one of its pieces fires. */
+export const SPOTLIGHT_HEAT = 0.125;
 
 export const GATEKEEPER_MODS: Record<GatekeeperModId, GatekeeperModDefinition> = {
   'reception-protocol': { id: 'reception-protocol', name: 'Reception Protocol', text: 'Its first Exploit beta each hand applies twice.' },
@@ -45,7 +45,7 @@ export const GATEKEEPER_MODS: Record<GatekeeperModId, GatekeeperModDefinition> =
   containment: { id: 'containment', name: 'Containment', text: 'Its Ward absorbs piercing Credit too.' },
   'zero-sum': { id: 'zero-sum', name: 'Zero-Sum', text: `Whenever you gain more than ${ZERO_SUM_THRESHOLD} Credit in a turn, it gains half the excess.` },
   adaptation: { id: 'adaptation', name: 'Adaptation', text: `Every ${ADAPTATION_EVERY}rd hand, its growth caps rise by ${ADAPTATION_STEP}.` },
-  spotlight: { id: 'spotlight', name: 'Spotlight', text: 'Every fire of its pieces adds Trace to you.' },
+  spotlight: { id: 'spotlight', name: 'Spotlight', text: 'Every fire of its pieces adds Heat to you.' },
   'null-session': { id: 'null-session', name: 'Null Session', text: 'The first Credit you would gain each turn is discarded.' },
   'root-access': { id: 'root-access', name: 'Root Access', text: 'On its first turn each hand, its whole loadout fires twice.' },
 };
