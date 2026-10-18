@@ -40,9 +40,11 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    /* A steady height, so the table above doesn't shift. */
-    height: 132px;
-    flex: none;
+    /* It fills the space between the table and the hand (the user's call)
+       -- a size fixed by the screen, not the text, so nothing shifts --
+       and never shrinks below what a small phone can spare. */
+    flex: 1 1 auto;
+    min-height: 132px;
     min-width: 0;
   }
   .head {
@@ -64,6 +66,8 @@
     padding: 0;
   }
   .body {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;

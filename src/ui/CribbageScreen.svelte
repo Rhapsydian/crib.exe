@@ -223,6 +223,7 @@
     padding-bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
   }
   .top {
+    flex: none;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -266,6 +267,10 @@
   .table-slot {
     position: relative;
     height: 104px;
+    flex: none;
+    /* Room above for the score toasts, even when the coach panel takes up
+       the middle of the screen. */
+    margin-top: 32px;
   }
   .table-slot > :global(*:not(.banner):not(.gap-toast)) {
     height: 100%;
