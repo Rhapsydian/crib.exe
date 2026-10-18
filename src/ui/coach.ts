@@ -223,8 +223,17 @@ function judgePlay(
   const verbOf = (w: string) => (w.startsWith('fifteen') ? 'make fifteen' : w.startsWith('31') ? 'make 31' : w.includes('run') ? 'make a run' : 'pair it');
   const groups = [...byWhat].map(([w, g]) => {
     const rs = [...g.ranks].sort((a, b) => a - b);
-    const name = rs.length > 1 && rs.every((r) => r >= 10) ? 'ten-cards' : rs.map((r) => PLURAL[r]).join(' or ');
-    return { n: g.n, text: `${g.n} ${g.n === 1 ? name.replace(/s$/, '').replace(/sixe$/, 'six') : name} to ${verbOf(w)}` };
+    const single = (r: number) => (g.n === 1 ? PLURAL[r].replace(/s$/, '').replace(/sixe$/, 'six') : PLURAL[r]);
+    // One rank: "4 fives". Several: counted as cards, the ranks in
+    // brackets -- "8 cards (fives or eights)" (the user's wording; "8
+    // fives or eights" read as eight fives).
+    const who =
+      rs.length > 1 && rs.every((r) => r >= 10)
+        ? `${g.n} ten-card${g.n === 1 ? '' : 's'}`
+        : rs.length === 1
+          ? `${g.n} ${single(rs[0])}`
+          : `${g.n} cards (${rs.map((r) => PLURAL[r]).join(' or ')})`;
+    return { n: g.n, text: `${who} to ${verbOf(w)}` };
   });
   const scorers = replies.filter((r) => r.pts > 0).length;
   const ORDER = ['make fifteen', 'make 31', 'make a run', 'pair it'];
@@ -258,12 +267,12 @@ export function pegHint(spot: PegSpot): string {
   const alt = ranked[0];
   const a = alt ? judgePlay(alt, spot) : null;
   const plural = (n: number) => `${n} card${n === 1 ? '' : 's'}`;
-  const why = j.scorers ? `${plural(j.scorers)} left can score off it (${j.scorerText})` : 'nothing left can score off it right away';
-  const compare = a && alt && a.scorers > j.scorers ? ` A ${label(alt)} leaves ${a.scorers} (${a.scorerText}).` : '';
+  const why = j.scorers ? `${plural(j.scorers)} left can score off it: ${j.scorerText}` : 'Nothing left can score off it right away';
+  const compare = a && alt && a.scorers > j.scorers ? ` A ${label(alt)} leaves ${a.scorers}: ${a.scorerText}.` : '';
   const worst = ranked[ranked.length - 1];
   const w = worst ? judgePlay(worst, spot) : null;
-  const avoid = worst && w && !cardsEqual(worst, alt) && j.net - w.net >= 0.5 && w.threat ? ` Avoid ${label(worst)}: ${w.threat}.` : '';
-  return `Play ${label(best)}: ${why}.${compare}${avoid}`;
+  const avoid = worst && w && alt && worst.rank !== alt.rank && j.net - w.net >= 0.5 && w.threat ? ` Avoid ${label(worst)}: ${w.threat}.` : '';
+  return `Play ${label(best)}. ${why}.${compare}${avoid}`;
 }
 
 /** Your last pegging card beside the coach's choice, in the past tense. */

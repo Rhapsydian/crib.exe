@@ -38,8 +38,12 @@ describe('the coach', () => {
     expect(pegHint(spot([c(3), c(10)], 0, []))).toMatch(/^Lead 3: they can't make 15/);
     // The user's question: why lead a 10 over a 7 or 8? With a 5 in hand
     // and a 5 cut, only two fives are left to make fifteen off a 10.
+    // Several ranks are counted as cards (the user's wording).
+    expect(pegHint({ legal: [c(6, 0), c(6, 1), c(6, 2), c(3)], count: 7, sequence: [c(7, 2)], known: [c(6, 0), c(6, 1), c(6, 2), c(3), c(7, 2), c(11, 2), c(1, 1), c(7)], opponentCards: 3 })).toBe(
+      'Play 3. 7 cards left can score off it: 4 fives to make fifteen, 3 threes to pair it. A 6 leaves 13: 4 twos to make fifteen, 8 cards (fives or eights) to make a run, 1 six to pair it.',
+    );
     expect(pegHint({ legal: [c(7, 3), c(5), c(8, 3), c(10, 2)], count: 0, sequence: [], known: [c(7, 3), c(5), c(8, 3), c(10, 2), c(5, 2)], opponentCards: 4 })).toBe(
-      'Play 10: 5 cards left can score off it (2 fives to make fifteen, 3 tens to pair it). A 7 leaves 6 (3 eights to make fifteen, 3 sevens to pair it). Avoid 5: any ten-card (10, J, Q, K) would give them fifteen for 2.',
+      'Play 10. 5 cards left can score off it: 2 fives to make fifteen, 3 tens to pair it. A 7 leaves 6: 3 eights to make fifteen, 3 sevens to pair it. Avoid 5: any ten-card (10, J, Q, K) would give them fifteen for 2.',
     );
   });
 
