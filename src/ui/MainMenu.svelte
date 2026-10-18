@@ -43,26 +43,33 @@
   };
 </script>
 
+{#snippet resume(save: { difficulty: Difficulty; scores: [number, number] })}
+  <button class="resume" onclick={onresumecribbage}>▶ resume game · {DIFFICULTIES[save.difficulty].name} · {save.scores[0]}–{save.scores[1]}</button>
+{/snippet}
+
 <div class="menu">
   <h1>crib.exe</h1>
   <div class="sub">a hacking roguelite where every fight is a game of Cribbage</div>
 
   {#if resumeFailed}<div class="warn">{resumeFailed}</div>{/if}
 
-  <button class="entry learn" class:nudge={firstVisit} onclick={onlearn}>
-    {#if firstVisit}<span class="badge">new to Cribbage? start here</span>{/if}
-    <b>Learn to play</b>
-    <span>Short lessons on the card game, then games with a coach.</span>
-  </button>
+  <div class="entry-group">
+    <button class="entry learn" class:nudge={firstVisit} onclick={onlearn}>
+      {#if firstVisit}<span class="badge">new to Cribbage? start here</span>{/if}
+      <b>Learn to play</b>
+      <span>Short lessons on the card game, then games with a coach.</span>
+    </button>
+    <!-- A saved Learn-to-play game resumes from here (the user's call);
+         any other level's, under Play Cribbage. -->
+    {#if cribbageSave?.difficulty === 'learn'}{@render resume(cribbageSave)}{/if}
+  </div>
 
   <div class="entry-group">
     <button class="entry" onclick={() => (setup = !setup)}>
       <b>Play Cribbage</b>
       <span>A game to 121 against the computer.</span>
     </button>
-    {#if cribbageSave}
-      <button class="resume" onclick={onresumecribbage}>▶ resume game · {DIFFICULTIES[cribbageSave.difficulty].name} · {cribbageSave.scores[0]}–{cribbageSave.scores[1]}</button>
-    {/if}
+    {#if cribbageSave && cribbageSave.difficulty !== 'learn'}{@render resume(cribbageSave)}{/if}
     {#if setup}
       <div class="setup">
         <div class="caption">DIFFICULTY</div>
