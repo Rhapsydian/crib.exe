@@ -143,27 +143,27 @@ const KERNEL_PANIC: SubroutineDefinition = {
  * fight length). */
 export const AUTHORED_GATEKEEPERS: AuthoredEnemy[] = [
   // --- Layer 1: the perimeter ---
-  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 1, bridge: 'exploit-overclock', mods: ['reception-protocol'], scale: 1.35,
+  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 1, bridge: 'exploit-overclock', mods: ['reception-protocol'], scale: 1.31,
     loadout: [WELCOME_PACKET, p('port-scan'), p('cache-hit'), p('burst-clock')] },
-  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 1, bridge: 'exploit-daemon', mods: ['no-way-in'], scale: 0.85,
+  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 1, bridge: 'exploit-daemon', mods: ['no-way-in'], scale: 0.87,
     loadout: [DEFAULT_DENY, p('watchdog-timer'), p('buffer-overflow'), p('cron-job')] },
   // --- Layer 2: the internal LAN ---
-  { id: 'quarantine-ward', name: 'Quarantine Ward', tier: 'gatekeeper', archetypes: ['daemon', 'honeypot'], minLayer: 2, bridge: 'daemon-honeypot', mods: ['containment'], scale: 1.56,
+  { id: 'quarantine-ward', name: 'Quarantine Ward', tier: 'gatekeeper', archetypes: ['daemon', 'honeypot'], minLayer: 2, bridge: 'daemon-honeypot', mods: ['containment'], scale: 1.55,
     loadout: [ISOLATION_CHAMBER, p('patch'), p('sinkhole'), p('memory-leak')] },
-  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 2, bridge: 'overclock-honeypot', mods: ['zero-sum'], scale: 1.36,
+  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 2, bridge: 'overclock-honeypot', mods: ['zero-sum'], scale: 1.38,
     loadout: [BALANCE_SHEET, p('ping'), p('elevated-session'), p('tarpit')] },
   // --- Layer 3: the servers ---
-  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 3, bridge: 'daemon-overclock', mods: ['adaptation'], scale: 1.9,
+  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 3, bridge: 'daemon-overclock', mods: ['adaptation'], scale: 1.95,
     loadout: [SELF_MODIFYING_CODE, p('fork-bomb'), p('ping'), p('steady-drip')] },
   // E7 gatekeeper tracer: does not try hard to contain you; makes you loud
   // before the toll. Credential Stuffing rather than Jackpot, whose beta
   // feed would hand you Breach.
-  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 3, bridge: 'exploit-honeypot', mods: ['spotlight'], scale: 1.86,
+  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 3, bridge: 'exploit-honeypot', mods: ['spotlight'], scale: 1.84,
     loadout: [BEACON, p('port-scan'), p('tarpit'), p('credential-stuffing')] },
   // --- Layer 4: the core ---
-  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['exploit', 'overclock', 'honeypot'], minLayer: 4, bridge: 'overclock-honeypot', mods: ['null-session'], scale: 1.68,
+  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['exploit', 'overclock', 'honeypot'], minLayer: 4, bridge: 'overclock-honeypot', mods: ['null-session'], scale: 1.63,
     loadout: [NULL_ROUTE, p('zero-day-chain'), p('priority-override'), p('zero-trust')] },
-  { id: 'root-authority', name: 'Root Authority', tier: 'gatekeeper', archetypes: ['exploit', 'daemon', 'overclock'], minLayer: 4, bridge: 'daemon-overclock', mods: ['root-access'], scale: 1.37,
+  { id: 'root-authority', name: 'Root Authority', tier: 'gatekeeper', archetypes: ['exploit', 'daemon', 'overclock'], minLayer: 4, bridge: 'daemon-overclock', mods: ['root-access'], scale: 1.42,
     loadout: [KERNEL_PANIC, p('chain-reaction'), p('memory-leak'), p('race-condition')] },
 ];
 

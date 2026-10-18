@@ -950,6 +950,18 @@ game the combat rests on (the user's call). Decisions, live:
     average -- "Keep 9 6 9 6: 12 points in hand (4 fifteens for 8, a pair
     of 9s for 2, a pair of 6s for 2), plus about 0.8 more on average from
     the cut." Suggestion and review alike (`keepScore`).
+  - **A real crib table** (the user's call: both the coach and the AI,
+    then a retune): the AI valued a crib with a rough proxy (pair 2,
+    fifteen 2, a five 1). `scripts/crib-table.ts` now averages every
+    two-card throw's crib exactly over every other pair of crib cards and
+    every cut (5-5 ~9.0, 7-8 ~6.8, 10-K ~3.4; the other two crib cards
+    taken as random) into `crib-table.ts`, which the AI's discards read.
+    The coach shows a throw's worth to whoever owns the crib ("Throw 5 2
+    into your crib, worth about 5.8 to you there on average") -- and now
+    splits the fives on its own crib when that's better. **Retune:** the
+    vanilla ladder held; the gatekeepers drifted up to 3.7 points each
+    way (layers barely moved) and were re-tuned within 0.8; class victory
+    held at 16-26% (`docs/calibration/m4-crib-table-retune.txt`).
   - **A suggestions switch** (the user's call): with it off, the coach
     still explains each phase and reviews your discards and plays, but
     doesn't suggest first. In the setup under the coach, and in the coach
