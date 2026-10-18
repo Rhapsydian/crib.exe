@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, Rank, Suit } from '../engine/cards';
-import { discardReview, keepNotes, pegHint, phaseIntro, showSummary } from './coach';
+import { discardReview, keepNotes, pegHint, pegReview, phaseIntro, showSummary } from './coach';
 import { playCribbageGame } from '../engine/basic-cribbage';
 
 const c = (rank: number, suit = 0): Card => ({ rank: rank as Rank, suit: suit as Suit });
@@ -22,7 +22,7 @@ describe('the coach', () => {
     const bad = discardReview(hand, [c(5), c(5, 1)], true);
     expect(bad.same).toBe(false);
     expect(bad.coach.average).toBeGreaterThan(bad.yours.average);
-    expect(bad.text).toMatch(/I'd keep/);
+    expect(bad.text).toMatch(/I would have kept/);
   });
 
   it('pegging: takes an immediate score, warns off 5 and 21, leads under 5', () => {
@@ -43,5 +43,19 @@ describe('the coach', () => {
   it('introduces each phase, shorter after the first time', () => {
     for (const phase of ['discard', 'peg', 'show'] as const) expect(phaseIntro(phase, true, true).length).toBeGreaterThan(phaseIntro(phase, true, false).length);
     expect(phaseIntro('discard', false, false)).toMatch(/theirs/);
+  });
+
+  it('reviews your last pegging card in the past tense', () => {
+    // Count 10 with a 5 in hand: the 5 makes fifteen.
+    expect(pegReview([c(5), c(9)], 10, [c(10)], c(5)).text).toBe('Good play: 5 (fifteen for 2).');
+    const missed = pegReview([c(5), c(9)], 10, [c(10)], c(9));
+    expect(missed.same).toBe(false);
+    expect(missed.text).toMatch(/^You played 9 \(no score\)\. I would have played 5 \(fifteen for 2\)\.$/);
+    // A lead of 5 or more, when a safer lead was there, is called out.
+    const lead = pegReview([c(6), c(4, 1)], 0, [], c(6));
+    expect(lead.same).toBe(false);
+    expect(lead.text).toMatch(/You played 6 \(no score; it left them a 15 off your lead with a 9\)\. I would have played 4/);
+    // Leaving 21 is called out.
+    expect(pegReview([c(1), c(3)], 20, [c(10), c(10, 1)], c(1)).text).toMatch(/left the count on 21/);
   });
 });

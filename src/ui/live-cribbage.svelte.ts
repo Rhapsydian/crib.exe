@@ -73,6 +73,8 @@ export class LiveCribbage {
   /** The player's latest discard -- the six dealt and the two thrown --
    * for the coach's review. */
   lastDiscard = $state.raw<{ handIndex: number; hand: Card[]; thrown: [Card, Card]; ownCrib: boolean } | null>(null);
+  /** The player's latest pegging card, with the table as it stood. */
+  lastPlay = $state.raw<{ handIndex: number; legal: Card[]; count: number; sequence: Card[]; played: Card } | null>(null);
   readonly answers: SavedAnswer[] = [];
   onsave: (() => void) | null = null;
   readonly #game: Generator<CribbageRequest, CribbageGameResult, CribbageAnswer>;
@@ -112,6 +114,7 @@ export class LiveCribbage {
     const request = this.frame?.request;
     if (!request) return;
     this.answers.push(encodeCombat(request as unknown as CombatRequest, answer));
+    if (request.kind === 'play') this.lastPlay = { handIndex: request.view.handIndex, legal: request.context.legalCards, count: request.context.count, sequence: request.context.sequence, played: answer as Card };
     if (request.kind === 'discard') this.lastDiscard = { handIndex: request.view.handIndex, hand: request.context.hand, thrown: answer as [Card, Card], ownCrib: request.view.dealer === 0 };
     this.#advance(this.#game.next(answer));
     this.onsave?.();

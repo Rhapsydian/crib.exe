@@ -232,6 +232,10 @@
         onkit={() => (sheet = 'loadouts')}
       />
     </div>
+    <!-- A steady slot for the prompt / hand / wait, so the screen above
+         doesn't shift as it changes or as the hand empties (the user's
+         catch, milestone 4). -->
+    <div class="hand-slot">
     {#if handReady && f.phase === 'burner'}
       <div class="burner-prompt">
         <div class="ask">Your turn is about to fire. Burn one?</div>
@@ -249,6 +253,7 @@
     {:else}
       <div class="hand-wait">…</div>
     {/if}
+    </div>
   </main>
 
   <aside class="panel log-panel" class:open={sheet === 'log'}>
@@ -566,7 +571,15 @@
       display: inline;
     }
   }
+  .hand-slot {
+    min-height: 124px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
   .hand-wait {
+    flex: 1;
     min-height: 120px;
     display: flex;
     align-items: center;

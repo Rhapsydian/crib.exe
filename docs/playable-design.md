@@ -911,6 +911,21 @@ game the combat rests on (the user's call). Decisions, live:
   The coach's own choices are the AI's at full strength; averages are
   over every possible cut. Verified in the preview with real taps (a
   deliberately weak discard drew the review above); fits at 320px.
+- **Checkpoint 4 follow-ups (the user's review):**
+  - **No more layout shift:** the hand sits in a fixed-height slot on
+    both the Cribbage and fight screens, so an empty hand or the wait
+    doesn't move anything above it (measured: one position through
+    twelve decisions).
+  - **Titled coach sections:** NOW, then YOUR LAST PLAY / YOUR DISCARD,
+    LAST HAND'S COUNT, and HOW IT WORKS (first time only), so last hand's
+    count is never read as current advice.
+  - **Past tense** for reviews ("I would have kept ... and thrown ...").
+  - **Pegging review** after each of your plays: what it scored and any
+    easy score it handed over, beside the coach's own pick ("You played
+    6 (no score; it left them a 15 off your lead with a 9). I would have
+    played 4 (no score)."). The coach's pick follows its own advice (most
+    points, then no easy score for them; the AI breaks ties), so the
+    hint and the review never disagree.
 - Rules note (Claude's call): a game ends the instant a player reaches
   121, mid-pegging included; the show counts non-dealer, dealer, crib, in
   that order, which decides close games.

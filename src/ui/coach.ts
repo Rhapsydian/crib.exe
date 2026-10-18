@@ -1,5 +1,5 @@
 import { cardsEqual, cardValue, type Card } from '../engine/cards';
-import { handExpectedValue, predictBestDiscard, scoreDiscard, unseenCards } from '../engine/ai';
+import { handExpectedValue, pegSkillStrategy, predictBestDiscard, scoreDiscard, unseenCards } from '../engine/ai';
 import type { CribbageBeat } from '../engine/basic-cribbage';
 import { rankLabel, suitInfo } from './suits';
 
@@ -12,7 +12,8 @@ import { rankLabel, suitInfo } from './suits';
  * - discardReview: your keep beside the coach's own, each with its
  *   average points over every possible cut, and what each keeps;
  * - pegHint: what to play now and why -- take an immediate score, or
- *   avoid handing the opponent an easy 15, 31 or pair;
+ *   avoid handing the opponent an easy 15 or 31;
+ * - pegReview: your last pegging card beside the coach's choice;
  * - showSummary: last hand's count, walked through.
  * The coach's own choices come from the AI at full strength.
  */
@@ -27,7 +28,7 @@ export function phaseIntro(phase: CoachPhase, ownCrib: boolean, first: boolean):
   const whose = ownCrib ? 'You deal, so the crib is yours: cards you throw there score for you.' : "They deal, so the crib is theirs: don't throw them points.";
   if (phase === 'discard') {
     return first
-      ? `Discard: keep 4 cards and put 2 in the crib. Keep cards that score together -- fifteens (cards adding to 15), pairs, runs. ${whose}`
+      ? 'Each hand you keep 4 cards and put 2 in the crib. Keep cards that score together -- fifteens (cards adding to 15), pairs, runs. The crib belongs to the dealer and is counted for them at the end of the hand.'
       : `Discard: keep the 4 that score best. ${whose}`;
   }
   if (phase === 'peg') {
@@ -93,54 +94,84 @@ export function discardReview(hand: Card[], thrown: [Card, Card], ownCrib: boole
   const avg = (n: number) => n.toFixed(1);
   const why = (notes: string[]) => (notes.length ? notes.join(', ') : 'nothing scoring yet');
   const text = same
-    ? `Good discard -- it's the one I'd make. You kept ${list(yours.kept)} (${why(yours.notes)}), worth about ${avg(yours.average)} with the cut.`
-    : `You kept ${list(yours.kept)} (${why(yours.notes)}), about ${avg(yours.average)} with the cut. I'd keep ${list(coach.kept)} (${why(coach.notes)}), about ${avg(coach.average)}${ownCrib ? `, and throw ${list(coach.thrown)} into your crib` : `, throwing them ${list(coach.thrown)}`}.`;
+    ? `Good discard -- the one I would have made. You kept ${list(yours.kept)} (${why(yours.notes)}), worth about ${avg(yours.average)} with the cut.`
+    : `You kept ${list(yours.kept)} (${why(yours.notes)}), about ${avg(yours.average)} with the cut. I would have kept ${list(coach.kept)} (${why(coach.notes)}), about ${avg(coach.average)}${ownCrib ? `, and thrown ${list(coach.thrown)} into your crib` : `, throwing them ${list(coach.thrown)}`}.`;
   return { same, yours: { ...yours }, coach: { ...coach }, text };
+}
+
+/** What playing `card` scores right now, in words. */
+function playScore(card: Card, count: number, sequence: Card[]): { pts: number; what: string[] } {
+  const after = count + cardValue(card);
+  const what: string[] = [];
+  let pts = 0;
+  if (after === 15) (pts += 2), what.push('fifteen for 2');
+  if (after === 31) (pts += 2), what.push('31 for 2');
+  // Pairs with the cards just played.
+  let same = 0;
+  for (let i = sequence.length - 1; i >= 0 && sequence[i].rank === card.rank; i--) same++;
+  if (same) (pts += [0, 2, 6, 12][same]), what.push(['', 'a pair for 2', 'three of a kind for 6', 'four of a kind for 12'][same]);
+  // Runs ending with this card.
+  const seq = [...sequence, card];
+  for (let len = seq.length; len >= 3; len--) {
+    const tail = seq.slice(-len).map((c) => c.rank).sort((a, b) => a - b);
+    if (tail.every((r, i) => i === 0 || r === tail[i - 1] + 1)) {
+      pts += len;
+      what.push(`a run of ${len} for ${len}`);
+      break;
+    }
+  }
+  return { pts, what };
+}
+
+/** The easy score a play hands the opponent, if any: a count of 5 or 21
+ * gives them 15 or 31 with any ten-card (the most common rank there is). */
+function riskOf(card: Card, count: number): string {
+  const after = count + cardValue(card);
+  // A lead of 5 or more can be made into 15 (a lead under 5 can't).
+  if (count === 0 && after >= 5) return `them a 15 off your lead with ${after === 5 ? 'any ten-card' : `a ${rankLabel(15 - after)}`}`;
+  return after === 5 || after === 21 ? `the count on ${after}, so a ten-card makes ${after + 10} for them` : '';
 }
 
 /** What to play now, and why. */
 export function pegHint(legal: Card[], count: number, sequence: Card[]): string {
-  const scoreOf = (card: Card): { pts: number; what: string[] } => {
-    const after = count + cardValue(card);
-    const what: string[] = [];
-    let pts = 0;
-    if (after === 15) (pts += 2), what.push('fifteen for 2');
-    if (after === 31) (pts += 2), what.push('31 for 2');
-    // Pairs with the cards just played.
-    let same = 0;
-    for (let i = sequence.length - 1; i >= 0 && sequence[i].rank === card.rank; i--) same++;
-    if (same) (pts += [0, 2, 6, 12][same]), what.push(['', 'a pair for 2', 'three of a kind for 6', 'four of a kind for 12'][same]);
-    // Runs ending with this card.
-    const seq = [...sequence, card];
-    for (let len = seq.length; len >= 3; len--) {
-      const tail = seq.slice(-len).map((c) => c.rank).sort((a, b) => a - b);
-      if (tail.every((r, i) => i === 0 || r === tail[i - 1] + 1)) {
-        pts += len;
-        what.push(`a run of ${len} for ${len}`);
-        break;
-      }
-    }
-    return { pts, what };
-  };
-  const scoring = legal.map((c) => ({ c, ...scoreOf(c) })).filter((s) => s.pts > 0).sort((a, b) => b.pts - a.pts);
+  const scoring = legal.map((c) => ({ c, ...playScore(c, count, sequence) })).filter((s) => s.pts > 0).sort((a, b) => b.pts - a.pts);
   if (scoring.length) return `Play ${label(scoring[0].c)}: ${scoring[0].what.join(' and ')}.`;
-  // No score: stay away from easy ones for them.
-  // A count of 5 or 21 hands them 15 or 31 with any ten-card (the most
-  // common rank there is).
-  const risky = (card: Card) => {
-    const after = count + cardValue(card);
-    return after === 5 || after === 21 ? `leaves the count on ${after}, so a ten-card makes ${after + 10} for them` : '';
-  };
   if (count === 0) {
     const safe = legal.filter((c) => cardValue(c) < 5);
     if (safe.length) return `Leading: a card under 5 (like ${label(safe[0])}) is safe -- they can't make 15 off it.`;
     const notFive = legal.find((c) => c.rank !== 5);
-    return notFive ? `Leading: avoid a 5 -- any ten-card makes 15 off it. ${label(notFive)} is safer.` : 'Leading a 5 is risky, but it\'s all you have.';
+    return notFive ? `Leading: avoid a 5 -- any ten-card makes 15 off it. ${label(notFive)} is safer.` : "Leading a 5 is risky, but it's all you have.";
   }
-  const warn = legal.map((c) => ({ c, r: risky(c) })).filter((x) => x.r);
+  const warn = legal.map((c) => ({ c, r: riskOf(c, count) })).filter((x) => x.r);
   const ok = legal.filter((c) => !warn.some((w) => cardsEqual(w.c, c)));
-  if (warn.length && ok.length) return `Careful: ${label(warn[0].c)} ${warn[0].r}. ${label(ok[0])} is safer.`;
+  if (warn.length && ok.length) return `Careful: ${label(warn[0].c)} leaves ${warn[0].r}. ${label(ok[0])} is safer.`;
   return 'Nothing scores now. Hold on to cards that could pair or make 15 later.';
+}
+
+/** Your last pegging card beside the coach's choice, in the past tense:
+ * `legal`, `count` and `sequence` as they stood when you played. */
+export function pegReview(legal: Card[], count: number, sequence: Card[], played: Card): { same: boolean; text: string } {
+  // The coach's pick follows its own advice (pegHint): the most points,
+  // then no easy score handed over; the AI at full strength breaks ties.
+  const ai = pegSkillStrategy(1)({ legalCards: legal, count, sequence });
+  const rank = (card: Card) => [playScore(card, count, sequence).pts, riskOf(card, count) ? 0 : 1, cardsEqual(card, ai) ? 1 : 0];
+  const coach = [...legal].sort((a, b) => {
+    const [ra, rb] = [rank(a), rank(b)];
+    return rb[0] - ra[0] || rb[1] - ra[1] || rb[2] - ra[2];
+  })[0];
+  const describe = (card: Card) => {
+    const { pts, what } = playScore(card, count, sequence);
+    const risk = riskOf(card, count);
+    const parts = [pts ? what.join(' and ') : 'no score', risk && `it left ${risk}`].filter(Boolean);
+    return { pts, risk, text: parts.join('; ') };
+  };
+  const yours = describe(played);
+  const theirs = describe(coach);
+  const same = cardsEqual(coach, played) || (yours.pts >= theirs.pts && !(yours.risk && !theirs.risk));
+  const text = same
+    ? `Good play: ${label(played)} (${yours.text}).`
+    : `You played ${label(played)} (${yours.text}). I would have played ${label(coach)} (${theirs.text}).`;
+  return { same, text };
 }
 
 /** Last hand's count, walked through: one line per hand counted. */

@@ -10,8 +10,8 @@
   import Hand from './Hand.svelte';
   import ShowPanel from './ShowPanel.svelte';
   import ScoreBars from './ScoreBars.svelte';
-  import CoachPanel from './CoachPanel.svelte';
-  import { discardReview, pegHint, phaseIntro, showSummary } from './coach';
+  import CoachPanel, { type CoachSection } from './CoachPanel.svelte';
+  import { discardReview, pegHint, pegReview, phaseIntro, showSummary } from './coach';
 
   // A game of vanilla Cribbage (milestone 4 checkpoint 3): the fight
   // screen's table, hand, show panel, callouts and step-through, with the
@@ -68,26 +68,29 @@
     return { title: `HAND ${step.beat.handIndex + 1}`, sub: step.beat.dealer === 0 ? 'you deal · your crib' : 'they deal · their crib', key: replay.shown };
   });
 
-  // What the coach says at this pause (checkpoint 4).
-  type CoachLine = { text: string; kind: 'now' | 'review' | 'count' | 'intro' };
-  const coachLines = $derived.by<CoachLine[]>(() => {
+  // What the coach says at this pause (checkpoint 4): titled sections,
+  // advice for now first, then looking back (CoachPanel).
+  const coachSections = $derived.by<CoachSection[]>(() => {
     if (!game.coach || !r || !handReady) return [];
     const ownCrib = r.view.dealer === 0;
     const first = r.view.handIndex === 0;
-    const lines: CoachLine[] = [];
+    const sections: CoachSection[] = [];
     if (r.kind === 'discard') {
-      lines.push({ text: phaseIntro('discard', ownCrib, first), kind: 'now' });
-      if (!first) {
-        for (const line of showSummary(r.view.timeline)) lines.push({ text: line, kind: 'count' });
-        if (r.view.handIndex === 1) lines.push({ text: phaseIntro('show', ownCrib, true), kind: 'intro' });
+      sections.push({ title: 'NOW', lines: [phaseIntro('discard', ownCrib, false)] });
+      if (first) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('discard', ownCrib, true)] });
+      else {
+        sections.push({ title: "LAST HAND'S COUNT", lines: showSummary(r.view.timeline) });
+        if (r.view.handIndex === 1) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('show', ownCrib, true)] });
       }
     } else {
-      lines.push({ text: pegHint(r.context.legalCards, r.context.count, r.context.sequence), kind: 'now' });
+      sections.push({ title: 'NOW', lines: [pegHint(r.context.legalCards, r.context.count, r.context.sequence)] });
+      const p = game.lastPlay;
+      if (p && p.handIndex === r.view.handIndex) sections.push({ title: 'YOUR LAST PLAY', lines: [pegReview(p.legal, p.count, p.sequence, p.played).text] });
       const d = game.lastDiscard;
-      if (d && d.handIndex === r.view.handIndex) lines.push({ text: discardReview(d.hand, d.thrown, d.ownCrib).text, kind: 'review' });
-      lines.push({ text: phaseIntro('peg', ownCrib, first), kind: 'intro' });
+      if (d && d.handIndex === r.view.handIndex) sections.push({ title: 'YOUR DISCARD', lines: [discardReview(d.hand, d.thrown, d.ownCrib).text] });
+      if (first) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('peg', ownCrib, true)] });
     }
-    return lines;
+    return sections;
   });
 
   const level = $derived(DIFFICULTIES[game.difficulty]);
@@ -134,7 +137,7 @@
     </div>
 
     {#if game.coach}
-      <CoachPanel lines={coachLines} onlog={() => (showLog = true)} />
+      <CoachPanel sections={coachSections} onlog={() => (showLog = true)} />
     {:else}
       <button class="ticker" onclick={() => (showLog = true)}>
         {#each ticker as line, i (i)}
@@ -144,11 +147,15 @@
       </button>
     {/if}
 
-    {#if handReady && r}
-      <Hand {hand} {legal} count={r.kind === 'play' ? r.context.count : 0} sequence={r.kind === 'play' ? r.context.sequence : []} phase={r.kind} playerIsDealer={r.view.dealer === 0} onplay={(c) => game.answer(c)} ondiscard={(c) => game.answer(c)} />
-    {:else}
-      <div class="hand-wait">…</div>
-    {/if}
+    <!-- A fixed slot: the hand, the wait, or an empty hand all take the same
+         height, so nothing above it shifts (the user's catch). -->
+    <div class="hand-slot">
+      {#if handReady && r}
+        <Hand {hand} {legal} count={r.kind === 'play' ? r.context.count : 0} sequence={r.kind === 'play' ? r.context.sequence : []} phase={r.kind} playerIsDealer={r.view.dealer === 0} onplay={(c) => game.answer(c)} ondiscard={(c) => game.answer(c)} />
+      {:else}
+        <div class="hand-wait">…</div>
+      {/if}
+    </div>
   </main>
 </div>
 
@@ -375,8 +382,15 @@
     font-size: 9px;
     text-align: right;
   }
+  .hand-slot {
+    height: 124px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
   .hand-wait {
-    min-height: 120px;
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
