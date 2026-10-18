@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RichText from './RichText.svelte';
   import type { CombatView } from '../engine/combat';
   import { stepLine, type Step } from './timeline';
 
@@ -23,11 +24,11 @@
     {#if line.fire}
       {@const fire = line.fire}
       <button class="line" class:them={line.side === 1} onclick={() => onpick?.(fire.side, fire.subroutineId)}>
-        <span class="who">{line.side === 0 ? '$' : '>'}</span>{line.text}
+        <span class="who">{line.side === 0 ? '$' : '>'}</span><RichText text={line.text} />
       </button>
     {:else}
       <div class="line {line.kind}" class:them={line.side === 1} class:you={line.side === 0}>
-        {#if line.side !== null}<span class="who">{line.side === 0 ? '$' : '>'}</span>{/if}{line.text}
+        {#if line.side !== null}<span class="who">{line.side === 0 ? '$' : '>'}</span>{/if}<RichText text={line.text} />
       </div>
     {/if}
   {/each}

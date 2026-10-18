@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RichText from './RichText.svelte';
   import type { FightSnapshot } from './snapshot';
   import type { Card } from '../engine/cards';
   import type { Replay } from './replay.svelte';
@@ -212,7 +213,7 @@
 
     <button class="ticker" onclick={() => (sheet = 'log')}>
       {#each ticker as line, i (i)}
-        <div class:them={line.side === 1} class:quiet={line.kind === 'table'}>{line.side === null ? '' : line.side === 0 ? '$ ' : '> '}{line.text}</div>
+        <div class:them={line.side === 1} class:quiet={line.kind === 'table'}>{line.side === null ? '' : line.side === 0 ? '$ ' : '> '}<RichText text={line.text} /></div>
       {/each}
       <div class="more">tap for full log</div>
     </button>

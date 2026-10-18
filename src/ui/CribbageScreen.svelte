@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RichText from './RichText.svelte';
   import { untrack } from 'svelte';
   import type { Card } from '../engine/cards';
   import { DIFFICULTIES, WIN_SCORE } from '../engine/basic-cribbage';
@@ -143,7 +144,7 @@
     {:else}
       <button class="ticker" onclick={() => (showLog = true)}>
         {#each ticker as line, i (i)}
-          <div class:them={line.side === 1} class:quiet={line.kind === 'table'}>{line.side === null ? '' : line.side === 0 ? '$ ' : '> '}{line.text}</div>
+          <div class:them={line.side === 1} class:quiet={line.kind === 'table'}>{line.side === null ? '' : line.side === 0 ? '$ ' : '> '}<RichText text={line.text} /></div>
         {/each}
         <div class="more">tap for full log</div>
       </button>
@@ -172,7 +173,7 @@
   <aside class="log">
     <button class="close" onclick={() => (showLog = false)} aria-label="close log">✕</button>
     {#each fullLog as line, i (i)}
-      <div class:them={line.side === 1} class:quiet={line.kind === 'table'}>{line.side === null ? '' : line.side === 0 ? '$ ' : '> '}{line.text}</div>
+      <div class:them={line.side === 1} class:quiet={line.kind === 'table'}>{line.side === null ? '' : line.side === 0 ? '$ ' : '> '}<RichText text={line.text} /></div>
     {/each}
   </aside>
 {/if}
