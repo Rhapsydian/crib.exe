@@ -212,8 +212,8 @@ GitHub-hosted site and itch.io.
 1. ✅ **Pausable engine** (session 57): `combatGenerator` yields decision
    requests with a view of the fight; combat resolves live during
    pegging (P8); balance unchanged; simulation speed held.
-2. **Layout mockups** (2–3 phone variants: tabs / drawers / compact), then
-   **one playable fight**: tap-to-lift cards, turns stepped through piece
+2. ✅ **Layout mockups** (2–3 phone variants: tabs / drawers / compact), then
+   **one playable fight** (session 57): tap-to-lift cards, turns stepped through piece
    by piece, tap anything to inspect it, a running log. Player-facing
    names "Process" (alpha) and "Hook" (beta). *In progress:* layout
    chosen (compact on phones, drawers on desktop); checkpoint 1 (a real
@@ -223,16 +223,39 @@ GitHub-hosted site and itch.io.
    banners, the Burner prompt) done; Mods and Burners on screen with a
    trigger flash; checkpoint 4 (desktop keys, hover tips, a phone pass
    in the preview) done, pending the user's own phone playthrough.
-3. **A playable run** (run loop converted, map and node screens, class
-   choice, end screens).
+3. ✅ **A playable run** (session 58, five checkpoints): the run as a
+   pausable engine, a new map generator (scatter on a hex backdrop,
+   10/12/12/14 nodes, a dealt type mix, a remote Cache), the bench capped
+   at 3, class choice / map / fights / end screens, rewards and loadout
+   management, Safehouse / Shop (bought freely) / Event / Cache screens,
+   map Burners, save and resume, a 320px phone pass. Trace removed along
+   the way (fights post Heat; Fuzzer and Jackpot feed the enemy's gauge;
+   alarms add Heat). Detail: `docs/playable-design.md` → Milestone 3.
 4. **Polish and playtesting**, including a style / chrome guide.
 
 Backlog from this plan: an optional tutorial run (a bespoke, single-layer
 guided layout); drag and drop as an alternative card input; hosting.
 Watch (session 57): the Burner prompt asks before every one of the
 player's turns while one remains, which may get naggy (an "only when I
-tap a Burner" setting); rules text for the ~35 general Mods, due when
-they appear as rewards in milestone 3.
+tap a Burner" setting). Rules text for the general Mods: done (session
+58).
+
+Open from session 58:
+- **Set aside, to revisit:** Static Shield (overtuned: -2 from every plain
+  Credit the opponent gains) and Recon Ping (returns if the map gets fog
+  of war).
+- **Class spread 16–26%:** Warden low (16.3%), Breacher and Wraith high
+  (26.0%); Wraith's tuning was deferred by the user.
+- **Mod findings** from writing their rules text: Black Budget redraws
+  the piece choice rare-weighted, not a tier up as its comment says;
+  Surge Protector is spent even when another effect already zeroed that
+  Credit.
+- **Saves don't survive a game update** that changes rules or content
+  (a replay of answers); a snapshot save would, at the cost of making the
+  run engine resumable from state.
+- **Skeleton Key's reopen** is checked by tests only; play it on a phone.
+- **CI:** the deploy workflow's actions target Node 20 (deprecated;
+  GitHub forces Node 24) -- bump `actions/checkout` and `actions/setup-node`.
 
 ---
 

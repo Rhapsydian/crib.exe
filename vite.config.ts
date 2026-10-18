@@ -13,5 +13,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/engine/**/*.test.ts', 'src/ui/**/*.test.ts'],
+    // Many tests play whole runs; GitHub's runners are slower than a dev
+    // machine and timed them out at Vitest's 5s default (session 58).
+    testTimeout: 30_000,
   },
 })

@@ -21,9 +21,10 @@ empowerment) and **Honeypot** (conversion / defense).
 
 ## Status
 
-**The engine and its content are complete and balanced. One fight is
-playable in the browser** (`npm run dev`), on desktop and phones; a full
-run in the browser is next.
+**The engine and its content are complete and balanced, and a whole run
+is playable in the browser** (`npm run dev`), on desktop and phones:
+class choice, the map, fights, rewards, Safehouses, Shops, Events and
+Caches, with saves. Polish and playtesting are next.
 
 **Play the demo:** <https://rhapsydian.github.io/crib.exe/> — the
 `playable` branch, rebuilt on every push (`.github/workflows/deploy-demo.yml`).
@@ -71,6 +72,17 @@ counted hand by hand and a running session log. Phones get a compact
 screen with side drawers; desktop gets side panels, keyboard controls and
 hover tips.
 
+Session 58 made **a whole run playable** (milestone 3). The run engine
+pauses at every decision; a new map generator lays each layer out on a
+hex backdrop (10/12/12/14 nodes, a dealt mix of node types, a remote
+Cache); and every node has its screen -- rewards, a full bench, Burner
+swaps, the Safehouse, a Shop you can buy freely from, Events, Caches, map
+Burners -- with the loadout editable from the map and the run saved after
+every choice. Along the way **Trace was removed**: fights post Heat
+directly, the noisy Exploit pieces hand the enemy Containment instead,
+and alarm enemies add Heat. Static Shield and Recon Ping were set aside,
+and the gatekeepers were re-tuned twice.
+
 What exists, all headless and test-covered:
 
 | area | state |
@@ -79,22 +91,22 @@ What exists, all headless and test-covered:
 | Combat wrapper | complete — alpha/beta subroutines, seven verbs, initiative, Breach/Containment |
 | Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
 | Meta-progression | complete — 6 classes with bespoke bridge Mods, acquisition, Merge, Shop |
-| Content | **authored** — 36 subroutines, 18 enemies (8 gatekeepers with bespoke Mods); 37 Mods, 8 Burners, 8 Events |
-| Balance | **done** — every class 13–19% full-run victory |
-| UI | **one playable fight** (milestone 2); the run screens are milestone 3 |
+| Content | **authored** — 36 subroutines, 18 enemies (8 gatekeepers with bespoke Mods); 37 Mods, 8 Burners, 8 Events (Static Shield and Recon Ping set aside) |
+| Balance | **re-tuned after milestone 3** — every class 16–26% full-run victory; the gatekeeper curve on target |
+| UI | **a whole run playable** (milestone 3), saved after every choice |
 | Art | not started |
 
-The playable-game plan's milestones: a pausable engine (done), one
-playable fight (done, pending a phone playthrough), a playable run, then
-polish and playtesting with a style guide.
+The playable-game plan's milestones: a pausable engine, one playable
+fight and a playable run (all done), then polish and playtesting with a
+style guide.
 
 ## Running it
 
 ```bash
 npm install
-npm test        # Vitest suite (703 tests)
+npm test        # Vitest suite (730 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
-npm run dev     # Vite dev server: a test-fight setup, then a playable fight
+npm run dev     # Vite dev server: a run (class choice first); #test is the single-fight harness
 ```
 
 ## Balance and diagnostic tools
