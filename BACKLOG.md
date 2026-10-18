@@ -231,7 +231,10 @@ GitHub-hosted site and itch.io.
    map Burners, save and resume, a 320px phone pass. Trace removed along
    the way (fights post Heat; Fuzzer and Jackpot feed the enemy's gauge;
    alarms add Heat). Detail: `docs/playable-design.md` → Milestone 3.
-4. **Vanilla Cribbage, with a learn-to-play mode** (the user, session 58;
+4. ✅ **Vanilla Cribbage, with a learn-to-play mode** (session 59, five
+   checkpoints; decisions V1-V7 in `docs/playable-design.md` → Milestone 4):
+   the game engine to 121, pegboard mockups (minimal bars chosen), the
+   menu / game / end / saves, the coach, five lessons. Planned as: (the user, session 58;
    next, before polish -- testers who know the card game the combat is
    built on are easier to bring on board). Plain 2-player Cribbage to 121
    at several difficulties, plus a "Learn to play" difficulty that guides
@@ -256,6 +259,19 @@ Watch (session 57): the Burner prompt asks before every one of the
 player's turns while one remains, which may get naggy (an "only when I
 tap a Burner" setting). Rules text for the general Mods: done (session
 58).
+
+Open from session 59:
+- **The coach is a first model:** pegging plays are judged one reply
+  deep, against random opponent cards; the crib table takes the other
+  two crib cards as random. Both could be refined (real discard
+  tendencies; deeper pegging look-ahead).
+- **Difficulty levels are AI stand-ins:** Easy (0.6) may still be hard
+  for a true beginner -- watch it in playtesting; moving it is one
+  number.
+- **Self-counting and muggins:** a long-term maybe (the user may never
+  add it).
+- **Pegboard:** the strip and street-board mockups remain at #pegboard if
+  bars ever feel too plain.
 
 Open from session 58:
 - **Set aside, to revisit:** Static Shield (overtuned: -2 from every plain

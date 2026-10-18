@@ -21,10 +21,12 @@ empowerment) and **Honeypot** (conversion / defense).
 
 ## Status
 
-**The engine and its content are complete and balanced, and a whole run
-is playable in the browser** (`npm run dev`), on desktop and phones:
-class choice, the map, fights, rewards, Safehouses, Shops, Events and
-Caches, with saves. Polish and playtesting are next.
+**The engine and its content are complete and balanced, and the game is
+playable in the browser** (`npm run dev`), on desktop and phones: a whole
+roguelite run (class choice, the map, fights, rewards, Safehouses, Shops,
+Events and Caches, with saves), and vanilla Cribbage at four difficulty
+levels, with a coach and five Learn-to-play lessons. Polish and
+playtesting are next.
 
 **Play the demo:** <https://rhapsydian.github.io/crib.exe/> — the
 `playable` branch, rebuilt on every push (`.github/workflows/deploy-demo.yml`).
@@ -83,6 +85,16 @@ directly, the noisy Exploit pieces hand the enemy Containment instead,
 and alarm enemies add Heat. Static Shield and Recon Ping were set aside,
 and the gatekeepers were re-tuned twice.
 
+Session 59 added **vanilla Cribbage** (milestone 4), so testers can learn
+the card game the combat rests on: a main menu split into the roguelite
+and Cribbage; plain Cribbage to 121 at four difficulty levels (tuned to an
+even ladder); a **coach** that suggests discards and plays and reviews
+yours (each pegging play judged by its points less the opponent's
+expected reply; keeps shown as sure points plus the cut's average); a
+real **crib table** for the AI and the coach (with a retune); and five
+short **Learn to play** lessons whose answers come from the engine's own
+scoring.
+
 What exists, all headless and test-covered:
 
 | area | state |
@@ -93,7 +105,7 @@ What exists, all headless and test-covered:
 | Meta-progression | complete — 6 classes with bespoke bridge Mods, acquisition, Merge, Shop |
 | Content | **authored** — 36 subroutines, 18 enemies (8 gatekeepers with bespoke Mods); 37 Mods, 8 Burners, 8 Events (Static Shield and Recon Ping set aside) |
 | Balance | **re-tuned after milestone 3** — every class 16–26% full-run victory; the gatekeeper curve on target |
-| UI | **a whole run playable** (milestone 3), saved after every choice |
+| UI | **a whole run playable** (milestone 3) and **vanilla Cribbage with a coach and lessons** (milestone 4), both saved after every choice |
 | Art | not started |
 
 The playable-game plan's milestones: a pausable engine, one playable
@@ -104,9 +116,9 @@ style guide.
 
 ```bash
 npm install
-npm test        # Vitest suite (730 tests)
+npm test        # Vitest suite (754 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
-npm run dev     # Vite dev server: a run (class choice first); #test is the single-fight harness
+npm run dev     # Vite dev server: the main menu (the roguelite, Cribbage); #test is the single-fight harness
 ```
 
 ## Balance and diagnostic tools
