@@ -313,8 +313,8 @@ describe('Burner shop slate (buying) -- BurnerShopStrategy / BurnerShopRerollStr
       undefined,
       buyCheapest,
     );
-    expect(outcome.burnerShopPurchase).not.toBeNull();
-    expect(BURNER_DEFINITIONS[outcome.burnerShopPurchase!.burner.id]).toBeDefined();
+    expect(outcome.burnerShopPurchases).toHaveLength(1);
+    expect(BURNER_DEFINITIONS[outcome.burnerShopPurchases[0].burner.id]).toBeDefined();
   });
 });
 

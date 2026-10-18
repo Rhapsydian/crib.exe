@@ -326,15 +326,15 @@ describe('resolveEncounter -- non-fight nodes', () => {
       dataAwarded: 0,
       rewardOptions: [],
       mergeTargetId: null,
-      shopPurchase: null,
+      shopPurchases: [],
       rerollCost: 0,
       modRewardOptions: [],
-      modShopPurchase: null,
+      modShopPurchases: [],
       modRerollCost: 0,
       burnersUsedThisCombat: [],
       shopBurnerUsed: null,
       burnerRewardOptions: [],
-      burnerShopPurchase: null,
+      burnerShopPurchases: [],
       burnerRerollCost: 0,
     });
   });
@@ -351,15 +351,15 @@ describe('resolveEncounter -- non-fight nodes', () => {
       dataAwarded: 0,
       rewardOptions: [],
       mergeTargetId: 'port-scan',
-      shopPurchase: null,
+      shopPurchases: [],
       rerollCost: 0,
       modRewardOptions: [],
-      modShopPurchase: null,
+      modShopPurchases: [],
       modRerollCost: 0,
       burnersUsedThisCombat: [],
       shopBurnerUsed: null,
       burnerRewardOptions: [],
-      burnerShopPurchase: null,
+      burnerShopPurchases: [],
       burnerRerollCost: 0,
     });
   });
@@ -370,9 +370,9 @@ describe('resolveEncounter -- non-fight nodes', () => {
     expect(outcome1.quarantined).toBe(false);
     expect(outcome1.rewardTier).toBe('none');
     expect(outcome1.mergeTargetId).toBeNull();
-    expect(outcome1.shopPurchase).toBeNull();
-    expect(outcome1.modShopPurchase).toBeNull();
-    expect(outcome1.burnerShopPurchase).toBeNull();
+    expect(outcome1.shopPurchases).toEqual([]);
+    expect(outcome1.modShopPurchases).toEqual([]);
+    expect(outcome1.burnerShopPurchases).toEqual([]);
     expect(outcome1.eventGrant).toBeDefined();
 
     // Same seed -> same resolved outcome (deterministic, no hidden
@@ -401,16 +401,16 @@ describe('resolveEncounter -- non-fight nodes', () => {
       dataAwarded: 0,
       rewardOptions: [],
       mergeTargetId: null,
-      shopPurchase: null,
+      shopPurchases: [],
       rerollCost: 0,
       // 0 Data affords nothing on either slate -- both decline.
       modRewardOptions: [],
-      modShopPurchase: null,
+      modShopPurchases: [],
       modRerollCost: 0,
       burnersUsedThisCombat: [],
       shopBurnerUsed: null,
       burnerRewardOptions: [],
-      burnerShopPurchase: null,
+      burnerShopPurchases: [],
       burnerRerollCost: 0,
     });
   });
@@ -419,8 +419,8 @@ describe('resolveEncounter -- non-fight nodes', () => {
     const richPlayer: RunPlayerState = { ...OVERWHELMING_PLAYER, data: 1000 };
     const outcome = resolveEncounter(createNode('n', 'shop'), createRng(1), richPlayer);
     expect(outcome.newState).toBe('inert');
-    expect(outcome.shopPurchase).not.toBeNull();
-    expect(outcome.shopPurchase!.cost).toBeLessThanOrEqual(1000);
+    expect(outcome.shopPurchases).toHaveLength(1);
+    expect(outcome.shopPurchases[0].cost).toBeLessThanOrEqual(1000);
   });
 
   it('rerolls once when the first slate has nothing affordable but the reroll itself is', () => {
@@ -429,7 +429,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
     const player: RunPlayerState = { ...OVERWHELMING_PLAYER, data: REROLL_COST };
     const outcome = resolveEncounter(createNode('n', 'shop'), createRng(1), player);
     expect(outcome.rerollCost).toBe(REROLL_COST);
-    expect(outcome.shopPurchase).toBeNull();
+    expect(outcome.shopPurchases).toEqual([]);
   });
 
   it("the post-reroll purchase decision correctly declines when only the pre-reroll balance would have afforded something", () => {
@@ -442,7 +442,7 @@ describe('resolveEncounter -- non-fight nodes', () => {
     const player: RunPlayerState = { ...OVERWHELMING_PLAYER, data: REROLL_COST + 15 };
     const outcome = resolveEncounter(createNode('n', 'shop'), createRng(1), player, preferMergeWhenAvailable, buyCheapestAffordable, alwaysReroll);
     expect(outcome.rerollCost).toBe(REROLL_COST);
-    expect(outcome.shopPurchase).toBeNull();
+    expect(outcome.shopPurchases).toEqual([]);
   });
 
   it('the post-reroll purchase decision still succeeds when genuinely affordable after the reroll cost', () => {
@@ -451,8 +451,8 @@ describe('resolveEncounter -- non-fight nodes', () => {
     const player: RunPlayerState = { ...OVERWHELMING_PLAYER, data: REROLL_COST + 20 };
     const outcome = resolveEncounter(createNode('n', 'shop'), createRng(1), player, preferMergeWhenAvailable, buyCheapestAffordable, alwaysReroll);
     expect(outcome.rerollCost).toBe(REROLL_COST);
-    expect(outcome.shopPurchase).not.toBeNull();
-    expect(outcome.shopPurchase!.cost).toBeLessThanOrEqual(20);
+    expect(outcome.shopPurchases).toHaveLength(1);
+    expect(outcome.shopPurchases[0].cost).toBeLessThanOrEqual(20);
   });
 
   it('throws for a Relay -- it has no encounter to resolve', () => {

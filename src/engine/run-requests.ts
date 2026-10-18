@@ -1,7 +1,7 @@
 import type { BurnerDefinition, BurnerId } from './burner-types';
 import type { CombatAnswer, CombatRequest, CombatResult } from './combat';
 import type { EnemyDefinition } from './enemies';
-import type { EventChoice, EventDefinition } from './event-types';
+import type { EventChoice, EventDefinition, EventEffect } from './event-types';
 import type { LayerGraph, RunPosition } from './map-types';
 import type { ModDefinition } from './mod-types';
 import type { SafehouseAction } from './merge';
@@ -32,14 +32,20 @@ export type RunRequest =
   | Ask<'mapBurner', { context: MapBurnerActivationContext }, { burnerId: BurnerId; targetNodeId?: string } | null>
   /** Where to move next: a linked node's id -- or a rearranged loadout
    * (milestone 3 checkpoint 3, M2: pieces move between loadout and bench
-   * any time outside a fight), applied before the same move is asked
-   * again. The simulated player only ever moves. */
-  | Ask<'move', { graph: LayerGraph; position: RunPosition; heat: number; playerState: RunPlayerState }, string | LoadoutArrangement>
+   * any time outside a fight), or a map Burner to use (checkpoint 4),
+   * applied before the same move is asked again. The simulated player
+   * only ever moves (its map Burners go through 'mapBurner'). */
+  | Ask<'move', { graph: LayerGraph; position: RunPosition; heat: number; playerState: RunPlayerState; freeMove?: boolean }, MoveAnswer>
   /** Notices (milestone 3 checkpoint 2): a fight is starting / has ended.
    * Nothing to decide -- a UI shows the enemy, then the result, and
    * resumes; the fallback is a no-op, so simulations are unchanged. */
   | Ask<'fightStart', { enemy: EnemyDefinition; tier: 'regular' | 'elite' | 'gatekeeper'; layer: number; playerState: RunPlayerState }, null>
   | Ask<'fightEnd', { enemy: EnemyDefinition; tier: 'regular' | 'elite' | 'gatekeeper'; result: CombatResult }, null>
+  /** Notices (milestone 3 checkpoint 4): what an Event's choice came to
+   * (before any bonus fight it starts), and what a Cache held. Nothing to
+   * decide; the fallback is a no-op. */
+  | Ask<'eventResult', { event: EventDefinition; choice: EventChoice; effect: EventEffect; grant: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition }; heat: number }, null>
+  | Ask<'cacheOpened', { contents: 'subroutine' | 'bundle' | 'mod'; data: number; burners: BurnerDefinition[] }, null>
   /** One of the player's own decisions inside a fight. */
   | Ask<'combat', { request: CombatRequest }, CombatAnswer>
   /** A Safehouse visit: Rest or Merge. */
@@ -48,16 +54,12 @@ export type RunRequest =
   | Ask<'mergeTarget', { playerState: RunPlayerState }, string | null>
   /** A shop-context Burner before the slates are drawn (null: none). */
   | Ask<'shopBurner', { burnerIds: BurnerId[]; playerState: RunPlayerState }, BurnerId | null>
-  /** Whether to reroll a slate, once, after seeing its first draw. */
-  | Ask<'shopReroll', { slate: 'subroutine'; offerings: ShopOffering[]; playerState: RunPlayerState }, boolean>
-  | Ask<'shopReroll', { slate: 'mod'; offerings: ModOffering[]; playerState: RunPlayerState }, boolean>
-  | Ask<'shopReroll', { slate: 'burner'; offerings: BurnerOffering[]; playerState: RunPlayerState }, boolean>
-  /** What to buy from a slate (null: nothing). */
-  | Ask<'shopBuy', { slate: 'subroutine'; offerings: ShopOffering[]; playerState: RunPlayerState }, ShopOffering | null>
-  | Ask<'shopBuy', { slate: 'mod'; offerings: ModOffering[]; playerState: RunPlayerState }, ModOffering | null>
-  | Ask<'shopBuy', { slate: 'burner'; offerings: BurnerOffering[]; playerState: RunPlayerState }, BurnerOffering | null>
+  /** A Shop visit, one action at a time (milestone 3 checkpoint 4, the
+   * user's call: buy freely): buy any offering you can afford, each once;
+   * reroll each slate once; leave. Asked again after every action. */
+  | Ask<'shop', { shop: ShopVisit; playerState: RunPlayerState }, ShopAction>
   /** An Event's choice. */
-  | Ask<'event', { event: EventDefinition; playerState: RunPlayerState; heat: number }, EventChoice>
+  | Ask<'event', { event: EventDefinition; playerState: RunPlayerState; heat: number; layer: number }, EventChoice>
   /** A reward pick after a win (null: decline). */
   | Ask<'reward', { reward: 'subroutine'; options: SubroutineDefinition[]; playerState: RunPlayerState }, SubroutineDefinition | null>
   | Ask<'reward', { reward: 'mod'; options: ModDefinition[]; playerState: RunPlayerState }, ModDefinition | null>
@@ -73,12 +75,35 @@ export type RunRequest =
   /** The loadout's firing order after an encounter: the reordered state. */
   | Ask<'reorder', { playerState: RunPlayerState }, RunPlayerState>;
 
+export type ShopSlate = 'subroutine' | 'mod' | 'burner';
+
+/** A Shop visit as it stands: the three slates, what's been bought
+ * (indices into the current slates), which slates have been rerolled,
+ * the Data left, and what a reroll costs this visit. */
+export interface ShopVisit {
+  slates: { subroutine: ShopOffering[]; mod: ModOffering[]; burner: BurnerOffering[] };
+  bought: Record<ShopSlate, number[]>;
+  rerolled: Record<ShopSlate, boolean>;
+  data: number;
+  rerollCost: number;
+}
+
+export type ShopAction = { kind: 'buy'; slate: ShopSlate; index: number } | { kind: 'reroll'; slate: ShopSlate } | { kind: 'leave' };
+
 /** A whole loadout, rearranged: which owned pieces are installed, in
  * firing order, and which sit on the bench (loadout.ts's arrangeLoadout
  * checks it). */
 export interface LoadoutArrangement {
   arrange: { installed: string[]; bench: string[] };
 }
+
+/** A map Burner used from the map pause (Ghost Protocol: the next move
+ * is free; Skeleton Key: reopen `targetNodeId`). */
+export interface MapBurnerUse {
+  useBurner: { burnerId: BurnerId; targetNodeId?: string };
+}
+
+export type MoveAnswer = string | LoadoutArrangement | MapBurnerUse;
 
 /** A request's answer type. */
 export type AnswerOf<R extends RunRequest> = ReturnType<R['fallback']>;

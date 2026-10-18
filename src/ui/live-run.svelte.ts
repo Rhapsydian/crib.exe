@@ -2,7 +2,7 @@ import type { CombatAnswer, CombatResult } from '../engine/combat';
 import type { EnemyDefinition } from '../engine/enemies';
 import { CLASS_DEFINITIONS, type ClassId } from '../engine/classes';
 import { SYNERGY_AWARE_PROFILE } from '../engine/profiles';
-import { opportunisticTraversal, runRequests, type RunResult } from '../engine/run';
+import { gatekeeperReachable, opportunisticTraversal, runRequests, type RunResult } from '../engine/run';
 import type { RunRequest } from '../engine/run-requests';
 import { BURNER_DEFINITIONS } from '../engine/burners';
 import { acquireSubroutine } from '../engine/loadout';
@@ -11,13 +11,14 @@ import type { FightSession } from './fight-session';
 import type { FightSnapshot } from './snapshot';
 
 /**
- * The UI driver for a whole run (milestone 3 checkpoints 2-3): drives
+ * The UI driver for a whole run (milestone 3 checkpoints 2-4): drives
  * run.ts's runRequests. The player answers map moves (or rearranges the
- * loadout there), their own fight decisions, rewards, what to drop from a
- * full bench, and which Burner to swap out at the carry cap. Safehouses, Shops and Events are answered for now by
- * the simulated player's strategies (the synergy-aware profile, the same
- * one the balance sweeps use), and each such choice is noted so the
- * screen can say what was decided; checkpoint 4 gives them screens.
+ * loadout, or uses a map Burner, there), their own fight decisions,
+ * rewards, what to drop from a full bench, which Burner to swap out at
+ * the carry cap, Safehouses, Shops and Events. What's left -- the
+ * pre-move map Burner ask (answered "no" unless the gatekeeper is cut off,
+ * when the simulated player's rescue is used and noted) and the Merge
+ * target (taken from the Safehouse screen's pick) -- is answered here.
  *
  * Two of the simulated player's habits are switched off for a person: a
  * new piece is never swapped in automatically (it installs if there's
@@ -30,6 +31,11 @@ export type RunPause =
   | { kind: 'reward'; request: Extract<RunRequest, { kind: 'reward' }>; gained: number }
   | { kind: 'drop'; request: Extract<RunRequest, { kind: 'drop' }> }
   | { kind: 'burnerSwap'; request: Extract<RunRequest, { kind: 'burnerSwap' }> }
+  | { kind: 'safehouse'; request: Extract<RunRequest, { kind: 'safehouse' }> }
+  | { kind: 'shopBurner'; request: Extract<RunRequest, { kind: 'shopBurner' }> }
+  | { kind: 'shop'; request: Extract<RunRequest, { kind: 'shop' }> }
+  | { kind: 'event'; request: Extract<RunRequest, { kind: 'event' }> }
+  | { kind: 'notice'; request: Extract<RunRequest, { kind: 'eventResult' | 'cacheOpened' }>; layer: number }
   | { kind: 'over'; result: RunResult };
 
 /** A fight inside the run, as the fight screen sees it. */
@@ -70,6 +76,11 @@ export class LiveRun {
   /** Data before the current encounter, so the first reward after it can
    * say what it paid. */
   #dataMark = 0;
+  /** The layer the run is on (1-based), for screens that price by it. */
+  #layer = 1;
+  /** The piece the Safehouse screen chose to Merge, answered when the run
+   * asks for the target. */
+  #mergeTarget: string | null = null;
 
   constructor(classId: ClassId, seed: number) {
     this.classId = classId;
@@ -90,6 +101,12 @@ export class LiveRun {
    * LoadoutArrangement), a combat answer inside a fight, nothing to
    * continue after a fight, a reward pick (or null), a piece id to drop, a
    * Burner id to swap out (or null). */
+  /** A Safehouse choice: Rest, or Merge `targetId`. */
+  chooseSafehouse(action: 'rest' | 'merge', targetId?: string): void {
+    this.#mergeTarget = action === 'merge' ? (targetId ?? null) : null;
+    this.answer(action);
+  }
+
   answer(answer: unknown): void {
     if (!this.pause || this.pause.kind === 'over') return;
     if (this.pause.kind === 'fight' && this.fight?.result) this.fight = null;
@@ -102,6 +119,7 @@ export class LiveRun {
       switch (r.kind) {
         case 'move':
           this.#dataMark = r.playerState.data;
+          this.#layer = r.position.layerIndex + 1;
           this.pause = { kind: 'move', request: r };
           return;
         case 'reward': {
@@ -117,6 +135,37 @@ export class LiveRun {
         case 'burnerSwap':
           this.pause = { kind: 'burnerSwap', request: r };
           return;
+        case 'safehouse':
+          this.pause = { kind: 'safehouse', request: r };
+          return;
+        case 'mergeTarget':
+          step = this.#run.next(this.#mergeTarget);
+          this.#mergeTarget = null;
+          continue;
+        case 'shopBurner':
+          this.pause = { kind: 'shopBurner', request: r };
+          return;
+        case 'shop':
+          this.pause = { kind: 'shop', request: r };
+          return;
+        case 'event':
+          this.pause = { kind: 'event', request: r };
+          return;
+        case 'eventResult':
+        case 'cacheOpened':
+          this.pause = { kind: 'notice', request: r, layer: this.#layer };
+          return;
+        case 'mapBurner': {
+          // Map Burners are used from the map (a move-pause answer); here
+          // only the rescue: with the gatekeeper cut off, the run would end
+          // before the map, so the simulated player's choice (a Skeleton
+          // Key) is used and noted.
+          const { graph, position } = r.context;
+          const rescue = gatekeeperReachable(graph, position.nodeId) ? null : r.fallback();
+          if (rescue) this.notes = [...this.notes, `used ${BURNER_DEFINITIONS[rescue.burnerId].name} to reopen a route`];
+          step = this.#run.next(rescue);
+          continue;
+        }
         case 'reorder':
           // Your order stands: the loadout is yours to arrange on the map.
           step = this.#run.next(r.playerState);
@@ -138,46 +187,13 @@ export class LiveRun {
           this.pause = { kind: 'fight' };
           return;
         default: {
-          const answer = r.fallback();
-          const note = describeAuto(r, answer);
-          if (note) this.notes = [...this.notes, note];
-          step = this.#run.next(answer);
+          // Every kind is handled above; a new one surfaces here as a type
+          // error, and at run time falls back to the simulated player.
+          const unhandled: never = r;
+          step = this.#run.next((unhandled as RunRequest).fallback());
         }
       }
     }
     this.pause = { kind: 'over', result: step.value };
-  }
-}
-
-/** A line for a decision answered for the player (null: not worth one). */
-function describeAuto(r: RunRequest, answer: unknown): string | null {
-  switch (r.kind) {
-    case 'reward': {
-      const picked = answer as { name: string } | null;
-      return picked ? `took ${picked.name} (${r.reward} reward)` : `passed on a ${r.reward} reward`;
-    }
-    case 'safehouse':
-      return answer === 'merge' ? 'Safehouse: merged' : 'Safehouse: rested (-Heat)';
-    case 'mergeTarget':
-      return answer ? `merged ${r.playerState.installedLoadout.concat(r.playerState.bench).find((p) => p.id === answer)?.name ?? answer}` : null;
-    case 'shopBuy': {
-      const bought = answer as { cost: number; piece?: { name: string }; mod?: { name: string }; burner?: { name: string } } | null;
-      if (!bought) return null;
-      const name = bought.piece?.name ?? bought.mod?.name ?? bought.burner?.name ?? 'something';
-      return `Shop: bought ${name} (${bought.cost} Data)`;
-    }
-    case 'shopReroll':
-      return answer ? `Shop: rerolled the ${r.slate} slate` : null;
-    case 'event':
-      return `Event "${r.event.name}": ${(answer as { label: string }).label}`;
-    case 'drop':
-      return `bench full: dropped ${r.playerState.bench.find((p) => p.id === answer)?.name ?? answer}`;
-    case 'mapBurner':
-    case 'shopBurner': {
-      const id = r.kind === 'mapBurner' ? (answer as { burnerId: keyof typeof BURNER_DEFINITIONS } | null)?.burnerId : (answer as keyof typeof BURNER_DEFINITIONS | null);
-      return id ? `used ${BURNER_DEFINITIONS[id].name}` : null;
-    }
-    default:
-      return null;
   }
 }

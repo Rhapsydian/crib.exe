@@ -4,7 +4,7 @@ import { generateLayer, LAYER_SIZES, type LayerNumber } from './map-gen';
 import { assignGatekeeperEnemy, eligibleEnemies, gatekeeperEnemyForNode, type EnemyDefinition, type EnemyId } from './enemies';
 import { move } from './traversal';
 import { resolveEncounterRequests, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy, type SyntheticGatekeeper } from './encounters';
-import { ask, driveWithFallbacks, type LoadoutArrangement, type RunRequest } from './run-requests';
+import { ask, driveWithFallbacks, type MoveAnswer, type RunRequest } from './run-requests';
 import { addHeat, currentHeatCeiling, layerHeatAllowance, postedFightRisk, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
@@ -779,33 +779,38 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       // resolving the session-9 banked node-bypass idea) only holds if
       // reopening can happen before the run gives up, not after.
       let freeMoveActivated = false;
+      // Applies a map Burner (from the pre-move ask, or a person's map
+      // pause -- milestone 3 checkpoint 4). Ignored unless it's carried
+      // and its target, if any, is a closed node.
+      const useMapBurner = (picked: { burnerId: BurnerId; targetNodeId?: string } | null) => {
+        const available = playerState.carriedBurnerIds.filter((id) => BURNER_DEFINITIONS[id].contexts.includes('map'));
+        const burnerDef = picked && available.includes(picked.burnerId) ? BURNER_DEFINITIONS[picked.burnerId] : undefined;
+        if (!picked || !burnerDef?.mapEffect) return;
+        const closedNodeIds = graph.nodes.filter((n) => n.state === 'closed').map((n) => n.id);
+        if (burnerDef.mapEffect.kind === 'reopenClosedNode' && picked.targetNodeId && closedNodeIds.includes(picked.targetNodeId)) {
+          const targetNodeId = picked.targetNodeId;
+          graph = reopenNode(graph, targetNodeId);
+          playerState = removeOneCarriedBurner(playerState, picked.burnerId);
+          log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId, targetNodeId });
+        } else if (burnerDef.mapEffect.kind === 'freeMove' && !freeMoveActivated) {
+          freeMoveActivated = true;
+          playerState = removeOneCarriedBurner(playerState, picked.burnerId);
+          log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId });
+        } else if (burnerDef.mapEffect.kind === 'revealUpcoming') {
+          // Genuine no-op: every node's real type is already visible to
+          // traversalStrategy via `graph` itself -- this engine has no
+          // fog-of-war/hidden-map concept for a script to reveal into
+          // (Recon Ping is set aside until it does). Still consumes the
+          // Burner.
+          playerState = removeOneCarriedBurner(playerState, picked.burnerId);
+          log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId });
+        }
+      };
       const availableMapBurnerIds = playerState.carriedBurnerIds.filter((id) => BURNER_DEFINITIONS[id].contexts.includes('map'));
       if (availableMapBurnerIds.length > 0) {
         const closedNodeIds = graph.nodes.filter((n) => n.state === 'closed').map((n) => n.id);
         const context: MapBurnerActivationContext = { graph, position, heat, playerState, availableBurnerIds: availableMapBurnerIds, closedNodeIds };
-        const picked = yield* ask({ kind: 'mapBurner', context, fallback: () => mapBurnerStrategy(context) });
-        const burnerDef = picked && availableMapBurnerIds.includes(picked.burnerId) ? BURNER_DEFINITIONS[picked.burnerId] : undefined;
-        if (picked && burnerDef?.mapEffect) {
-          if (burnerDef.mapEffect.kind === 'reopenClosedNode' && picked.targetNodeId && closedNodeIds.includes(picked.targetNodeId)) {
-            const targetNodeId = picked.targetNodeId;
-            graph = reopenNode(graph, targetNodeId);
-            playerState = removeOneCarriedBurner(playerState, picked.burnerId);
-            log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId, targetNodeId });
-          } else if (burnerDef.mapEffect.kind === 'freeMove') {
-            freeMoveActivated = true;
-            playerState = removeOneCarriedBurner(playerState, picked.burnerId);
-            log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId });
-          } else if (burnerDef.mapEffect.kind === 'revealUpcoming') {
-            // Genuine no-op: every node's real type is already visible to
-            // traversalStrategy via `graph` itself -- this engine has no
-            // fog-of-war/hidden-map concept for a script to reveal into,
-            // the same "no AI/UI consumes it yet" treatment
-            // subroutine-types.ts's peekCrib documents for the analogous
-            // Cribbage-layer case. Still consumes the Burner.
-            playerState = removeOneCarriedBurner(playerState, picked.burnerId);
-            log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId });
-          }
-        }
+        useMapBurner(yield* ask({ kind: 'mapBurner', context, fallback: () => mapBurnerStrategy(context) }));
       }
 
       if (!gatekeeperReachable(graph, position.nodeId)) {
@@ -813,8 +818,9 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         return finish('noRouteRemains');
       }
 
-      // A rearranged loadout answers the move pause too (M2: any time
-      // outside a fight); it is applied and the move asked again.
+      // A rearranged loadout (M2: any time outside a fight) or a map
+      // Burner (checkpoint 4) answers the move pause too; it is applied and
+      // the move asked again.
       let targetId: string;
       for (;;) {
         const [moveGraph, movePosition, moveHeat, movePlayer] = [graph, position, heat, playerState];
@@ -824,13 +830,15 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
           position: movePosition,
           heat: moveHeat,
           playerState: movePlayer,
-          fallback: (): string | LoadoutArrangement => traversalStrategy(moveGraph, movePosition, moveHeat, movePlayer),
+          freeMove: freeMoveActivated,
+          fallback: (): MoveAnswer => traversalStrategy(moveGraph, movePosition, moveHeat, movePlayer),
         });
         if (typeof answer === 'string') {
           targetId = answer;
           break;
         }
-        playerState = arrangeLoadout(playerState, answer.arrange.installed, answer.arrange.bench, installedSlotCap);
+        if ('useBurner' in answer) useMapBurner(answer.useBurner);
+        else playerState = arrangeLoadout(playerState, answer.arrange.installed, answer.arrange.bench, installedSlotCap);
       }
       const moveResult = move(graph, position, targetId);
       position = moveResult.position;
@@ -904,7 +912,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         playerState = { ...playerState, carriedBurnerIds: remaining };
       }
       // Shop-context "coupon" Burner (checkpoint E) -- same "recorded,
-      // not applied" split as shopPurchase/modShopPurchase below.
+      // not applied" split as shopPurchases/modShopPurchases below.
       if (outcome.shopBurnerUsed) {
         playerState = removeOneCarriedBurner(playerState, outcome.shopBurnerUsed);
       }
@@ -947,21 +955,21 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       }
       if (outcome.mergeTargetId) playerState = mergeSubroutine(playerState, outcome.mergeTargetId);
       if (outcome.rerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.rerollCost };
-      if (outcome.shopPurchase) {
-        playerState = { ...playerState, data: playerState.data - outcome.shopPurchase.cost };
-        playerState = subroutineAcquirer(playerState, outcome.shopPurchase.piece, installedSlotCap);
-        playerState = applyOnSubroutineAcquiredMods(playerState, outcome.shopPurchase.piece);
+      for (const purchase of outcome.shopPurchases) {
+        playerState = { ...playerState, data: playerState.data - purchase.cost };
+        playerState = subroutineAcquirer(playerState, purchase.piece, installedSlotCap);
+        playerState = applyOnSubroutineAcquiredMods(playerState, purchase.piece);
         playerState = yield* settleBench(playerState, benchCap);
       }
       if (outcome.modRerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.modRerollCost };
-      if (outcome.modShopPurchase) {
-        playerState = { ...playerState, data: playerState.data - outcome.modShopPurchase.cost };
-        playerState = acquireMod(playerState, outcome.modShopPurchase.mod);
+      for (const purchase of outcome.modShopPurchases) {
+        playerState = { ...playerState, data: playerState.data - purchase.cost };
+        playerState = acquireMod(playerState, purchase.mod);
       }
       if (outcome.burnerRerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.burnerRerollCost };
-      if (outcome.burnerShopPurchase) {
-        playerState = { ...playerState, data: playerState.data - outcome.burnerShopPurchase.cost };
-        playerState = yield* acquireBurnerAsking(playerState, outcome.burnerShopPurchase.burner);
+      for (const purchase of outcome.burnerShopPurchases) {
+        playerState = { ...playerState, data: playerState.data - purchase.cost };
+        playerState = yield* acquireBurnerAsking(playerState, purchase.burner);
       }
       // An Event grant (checkpoint H) is a direct single item, applied
       // outright -- no acquisitionStrategy step, unlike the *RewardOptions

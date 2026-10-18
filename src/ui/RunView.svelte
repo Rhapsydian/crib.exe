@@ -6,6 +6,11 @@
   import RewardScreen from './RewardScreen.svelte';
   import DropScreen from './DropScreen.svelte';
   import BurnerSwapScreen from './BurnerSwapScreen.svelte';
+  import SafehouseScreen from './SafehouseScreen.svelte';
+  import ShopScreen from './ShopScreen.svelte';
+  import ShopBurnerScreen from './ShopBurnerScreen.svelte';
+  import EventScreen from './EventScreen.svelte';
+  import NoticeScreen from './NoticeScreen.svelte';
 
   // A run in progress (milestone 3 checkpoints 2-3): the map, a fight, a
   // reward, a full bench, or the end, whichever the run is paused on. A
@@ -33,6 +38,7 @@
     notes={run.notes}
     onmove={(id) => run.answer(id)}
     onarrange={(installed, bench) => run.answer({ arrange: { installed, bench } })}
+    onburner={(burnerId, targetNodeId) => run.answer({ useBurner: { burnerId, targetNodeId } })}
   />
 {:else if run.pause?.kind === 'reward'}
   <RewardScreen request={run.pause.request} gained={run.pause.gained} onpick={(choice) => run.answer(choice)} />
@@ -40,6 +46,16 @@
   <DropScreen request={run.pause.request} ondrop={(id) => run.answer(id)} />
 {:else if run.pause?.kind === 'burnerSwap'}
   <BurnerSwapScreen request={run.pause.request} onswap={(out) => run.answer(out)} />
+{:else if run.pause?.kind === 'safehouse'}
+  <SafehouseScreen request={run.pause.request} onchoose={(action, target) => run.chooseSafehouse(action, target)} />
+{:else if run.pause?.kind === 'shopBurner'}
+  <ShopBurnerScreen request={run.pause.request} onpick={(id) => run.answer(id)} />
+{:else if run.pause?.kind === 'shop'}
+  <ShopScreen request={run.pause.request} onact={(action) => run.answer(action)} />
+{:else if run.pause?.kind === 'event'}
+  <EventScreen request={run.pause.request} onchoose={(choice) => run.answer(choice)} />
+{:else if run.pause?.kind === 'notice'}
+  <NoticeScreen request={run.pause.request} layer={run.pause.layer} oncontinue={() => run.answer(null)} />
 {:else if run.pause?.kind === 'fight' && run.fight}
   {#key run.fights}
     <LiveFightView fight={run.fight} actions={[{ label: 'continue ▸', onclick: () => run.answer(null) }]} />

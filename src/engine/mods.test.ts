@@ -622,3 +622,17 @@ describe('Mod pool scoping (session 58)', () => {
     }
   });
 });
+
+describe('Events never grant a set-aside item by name (session 58)', () => {
+  it('no specific Mod or Burner grant is set aside', async () => {
+    const { EVENT_ROSTER } = await import('./events');
+    const { MODS_SET_ASIDE } = await import('./mods');
+    const { BURNERS_SET_ASIDE } = await import('./burners');
+    for (const event of EVENT_ROSTER)
+      for (const choice of event.choices)
+        for (const { effect } of choice.outcomes) {
+          if (effect.modGrant && 'specific' in effect.modGrant) expect(MODS_SET_ASIDE.has(effect.modGrant.specific.id), event.id).toBe(false);
+          if (effect.burnerGrant && 'specific' in effect.burnerGrant) expect(BURNERS_SET_ASIDE.has(effect.burnerGrant.specific.id), event.id).toBe(false);
+        }
+  });
+});

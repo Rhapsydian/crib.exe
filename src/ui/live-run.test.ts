@@ -9,12 +9,14 @@ describe('LiveRun', () => {
     const discard = discardSkillStrategy(0.85);
     const peg = pegSkillStrategy(0.85);
     let reachedLayer2 = false;
+    const visits = new Set<string>();
     for (const seed of [2, 9, 14]) {
       const run = new LiveRun('daemon-honeypot', seed);
       let moves = 0;
       let deepest = 0;
       let fightsEnded = 0;
       let rewards = 0;
+      let notices = 0;
       let guard = 0;
       while (run.pause && run.pause.kind !== 'over' && guard++ < 20000) {
         const pause = run.pause;
@@ -22,8 +24,15 @@ describe('LiveRun', () => {
           moves++;
           deepest = Math.max(deepest, pause.request.position.layerIndex);
           run.answer(pause.request.fallback());
-        } else if (pause.kind === 'reward' || pause.kind === 'drop' || pause.kind === 'burnerSwap') {
+        } else if (pause.kind === 'notice') {
+          notices++;
+          run.answer(null);
+        } else if (pause.kind === 'safehouse') {
+          visits.add('safehouse');
+          run.chooseSafehouse('rest');
+        } else if (pause.kind !== 'fight') {
           if (pause.kind === 'reward') rewards++;
+          visits.add(pause.kind);
           run.answer(pause.request.fallback());
         } else if (run.fight?.result) {
           fightsEnded++;
@@ -38,10 +47,13 @@ describe('LiveRun', () => {
       expect(fightsEnded).toBeGreaterThan(0);
       expect(run.fights).toBe(fightsEnded);
       expect(rewards).toBeGreaterThan(0);
+      void notices;
       if (deepest >= 1) reachedLayer2 = true;
     }
     // At least one run breached a gatekeeper and carried on to layer 2.
     expect(reachedLayer2).toBe(true);
+    // The non-fight screens all came up across the runs.
+    for (const kind of ['safehouse', 'shop', 'event']) expect(visits, kind).toContain(kind);
   });
 
   it('applies the reward the player picks, and their loadout arrangement on the map', () => {
@@ -74,7 +86,11 @@ describe('LiveRun', () => {
         const choice: unknown = pause.request.reward === 'subroutine' && !picked ? options[options.length - 1] : null;
         if (choice) picked = (choice as { id: string }).id;
         run.answer(choice);
-      } else if (pause.kind === 'drop' || pause.kind === 'burnerSwap') {
+      } else if (pause.kind === 'notice') {
+        run.answer(null);
+      } else if (pause.kind === 'safehouse') {
+        run.chooseSafehouse('rest');
+      } else if (pause.kind !== 'fight') {
         run.answer(pause.request.fallback());
       } else if (run.fight?.result) {
         run.answer(null);

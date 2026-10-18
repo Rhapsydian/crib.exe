@@ -22,13 +22,13 @@ describe('runRequests', () => {
       let step = run.next();
       while (!step.done) {
         const r: RunRequest = step.value;
-        kinds.add(r.kind === 'shopReroll' || r.kind === 'shopBuy' || r.kind === 'reward' ? `${r.kind}:${'slate' in r ? r.slate : r.reward}` : r.kind);
+        kinds.add(r.kind === 'reward' ? `${r.kind}:${r.reward}` : r.kind);
         if (r.kind === 'combat' && r.request.side !== 0) enemyRequests++;
         step = run.next(r.fallback());
       }
     }
     expect(enemyRequests).toBe(0);
-    for (const kind of ['move', 'combat', 'reward:subroutine', 'reward:burner', 'reorder', 'safehouse', 'shopBuy:subroutine', 'shopBuy:mod', 'shopBuy:burner', 'event']) {
+    for (const kind of ['move', 'combat', 'reward:subroutine', 'reward:burner', 'reorder', 'safehouse', 'shop', 'event']) {
       expect(kinds, kind).toContain(kind);
     }
   });
@@ -209,5 +209,72 @@ describe('Burner swap at the carry cap', () => {
       if (r.kind === 'burnerSwap') expect(r.fallback()).toBeNull();
       step = run.next(r.fallback());
     }
+  });
+});
+
+// Milestone 3 checkpoint 4: a person's Shop (the user's call: buy freely)
+// and map Burners used from the map pause.
+describe('the Shop as one visit (checkpoint 4)', () => {
+  it('buys several offerings, each once, rerolls each slate once, and leaves', async () => {
+    const { resolveEncounterRequests } = await import('./encounters');
+    const { createNode } = await import('./map-types');
+    const { createRng } = await import('./rng');
+    const player = { ...createInitialPlayerState('exploit-overclock'), data: 1000 };
+    const visit = resolveEncounterRequests(createNode('s', 'shop'), createRng(5), player);
+    let step = visit.next();
+    const next = (answer: unknown) => (step = visit.next(answer));
+    const shop = () => {
+      if (step.done || step.value.kind !== 'shop') throw new Error('expected a shop request');
+      return step.value.shop;
+    };
+    const first = shop();
+    const firstPieces = first.slates.subroutine.map((o) => o.piece.id);
+    next({ kind: 'buy', slate: 'subroutine', index: 0 });
+    next({ kind: 'buy', slate: 'subroutine', index: 0 }); // already bought: ignored
+    next({ kind: 'buy', slate: 'subroutine', index: 1 });
+    next({ kind: 'buy', slate: 'mod', index: 0 });
+    expect(shop().bought.subroutine).toEqual([0, 1]);
+    const spent = first.slates.subroutine[0].cost + first.slates.subroutine[1].cost + first.slates.mod[0].cost;
+    expect(shop().data).toBe(1000 - spent);
+    next({ kind: 'reroll', slate: 'burner' });
+    expect(shop().rerolled.burner).toBe(true);
+    const afterReroll = shop().data;
+    next({ kind: 'reroll', slate: 'burner' }); // once per slate: ignored
+    expect(shop().data).toBe(afterReroll);
+    next({ kind: 'leave' });
+    expect(step.done).toBe(true);
+    if (!step.done) return;
+    expect(step.value.shopPurchases.map((p) => p.piece.id)).toEqual(firstPieces.slice(0, 2));
+    expect(step.value.modShopPurchases).toHaveLength(1);
+    expect(step.value.burnerRerollCost).toBeGreaterThan(0);
+  });
+
+  it('refuses what it cannot afford', async () => {
+    const { resolveEncounterRequests } = await import('./encounters');
+    const { createNode } = await import('./map-types');
+    const { createRng } = await import('./rng');
+    const visit = resolveEncounterRequests(createNode('s', 'shop'), createRng(5), { ...createInitialPlayerState('exploit-overclock'), data: 1 });
+    visit.next();
+    const step = visit.next({ kind: 'buy', slate: 'subroutine', index: 0 });
+    expect(!step.done && step.value.kind === 'shop' && step.value.shop.bought.subroutine).toEqual([]);
+  });
+});
+
+describe('map Burners from the map pause (checkpoint 4)', () => {
+  it('Ghost Protocol makes the next move free', () => {
+    const run = runRequests({ seed: 6, classId: 'exploit-overclock', carriedBurnerIdsOverride: ['ghost-protocol'] });
+    let step = run.next();
+    while (!step.done && step.value.kind !== 'move') step = run.next(step.value.kind === 'mapBurner' ? null : step.value.fallback());
+    if (step.done || step.value.kind !== 'move') throw new Error('no move');
+    const target = step.value.fallback() as string;
+    step = run.next({ useBurner: { burnerId: 'ghost-protocol' } });
+    if (step.done || step.value.kind !== 'move') throw new Error('expected the move asked again');
+    expect(step.value.freeMove).toBe(true);
+    expect(step.value.playerState.carriedBurnerIds).not.toContain('ghost-protocol');
+    step = run.next(target);
+    let result = step;
+    while (!result.done) result = run.next(result.value.fallback());
+    const firstMove = result.value.log.find((e) => e.type === 'move');
+    expect(firstMove && firstMove.type === 'move' && firstMove.heatCost).toBe(0);
   });
 });

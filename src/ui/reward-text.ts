@@ -18,9 +18,10 @@ export function burnerText(def: BurnerDefinition): string {
   if (map?.kind === 'reopenClosedNode') return 'Reopens a closed node on the map.';
   if (map?.kind === 'revealUpcoming') return 'Reveals what the nodes ahead hold.';
   const shop = def.shopEffect;
-  if (shop?.kind === 'discount') return `${Math.round(shop.fraction * 100)}% off one Shop purchase.`;
-  if (shop?.kind === 'freeReroll') return 'One free Shop reroll.';
-  if (shop?.kind === 'rarityFloor') return `The next Shop's pieces are all ${shop.rarity} or better.`;
+  // Shop Burners work on the whole visit they're used on (encounters.ts).
+  if (shop?.kind === 'discount') return `${Math.round(shop.fraction * 100)}% off everything in one Shop visit (doesn't stack with Vendor Discount).`;
+  if (shop?.kind === 'freeReroll') return "One Shop visit's rerolls are free.";
+  if (shop?.kind === 'rarityFloor') return `In one Shop visit, each slate's wildcard offering is ${shop.rarity}.`;
   return 'No effect yet.';
 }
 

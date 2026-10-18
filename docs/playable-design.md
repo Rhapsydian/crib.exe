@@ -709,6 +709,47 @@ end):
   reward screens; reorder, bench and swap in the drawer (checked against
   the engine's state); a drop that turned out an installed piece.
 
+### Checkpoint 4 — Safehouse, Shop, Event and Cache screens; map Burners
+
+- **The Shop is one visit, bought freely** (the user's call): all three
+  slates on one screen; buy any offering you can afford, each once;
+  reroll each slate once; leave. In the engine the visit is a loop of
+  `shop` requests (`ShopVisit` / `ShopAction`), replacing the old fixed
+  sequence of `shopReroll` and `shopBuy` asks; purchases are lists
+  (`shopPurchases`, `modShopPurchases`, `burnerShopPurchases`). The
+  simulated player's answers (`shopFallback`) replay its old sequence --
+  three reroll decisions, then at most one buy per slate -- but all three
+  slates are now drawn up front, so the RNG order changed and seeds see
+  different slates. Shop Burners are offered on entry
+  (`ShopBurnerScreen`), as before.
+- **Safehouse** (`SafehouseScreen`): Rest (Heat before → after) or Merge,
+  listing each piece with banked material and the line(s) one rank
+  changes; the Merge target the run asks next is taken from that pick.
+- **Event** (`EventScreen`): the choices with what each can do -- a sure
+  choice in full, a risky one with its odds, a gamble as unknown -- then
+  a notice of what happened (`eventResult`, before any bonus fight).
+  The event request now carries its layer, to price Heat.
+- **Cache**: a notice of what it held (`cacheOpened`); a piece or Mod
+  choice follows on the reward screen.
+- **Map Burners from the map** (a `MapBurnerUse` answer to the move
+  pause): Ghost Protocol from the card ("next move free", and the move
+  shows as free); Skeleton Key by tapping a closed node. The pre-move
+  `mapBurner` ask is answered "no" for a person, except when the
+  gatekeeper is cut off -- the run would end before the map -- when the
+  simulated player's rescue is used and noted.
+- **Found along the way:** the Dead Man's Switch Event granted Static
+  Shield by name, past the set-aside -- now Surge Protector, with a test
+  that no Event names a set-aside item. The Shop Burner texts were wrong
+  (they work on the whole visit; Insider Tip makes each slate's wildcard
+  rare, not every offering) -- fixed.
+- `LiveRun` now answers nothing for the player by strategy: every
+  request kind has its own handling (an exhaustive switch).
+- Verified in the preview at phone size: the Shop (two buys, a reroll,
+  leaving -- the pieces and Merge material landed), a Merge at a
+  Safehouse, an Event and its outcome, a Cache bundle, Ghost Protocol
+  from the map, the Shop Burner prompt. Skeleton Key's reopen was checked
+  by tests only (no closed node came up in the preview runs).
+
 ### Detour: Trace removed (session 58, the user's call)
 
 Exploit's Trace was the hard lever: a noisy piece's cost showed up as

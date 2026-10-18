@@ -3,7 +3,7 @@ import type { Rng } from './rng';
 import type { SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
 import { combatGenerator, neverActivateBurner, type BurnerActivationStrategy, type CombatAnswer, type CombatOptions, type CombatResult } from './combat';
-import { ask, driveWithFallbacks, type RunRequest } from './run-requests';
+import { ask, driveWithFallbacks, type RunRequest, type ShopAction, type ShopSlate, type ShopVisit } from './run-requests';
 import { discardSkillStrategy, pegSkillStrategy } from './ai';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
@@ -66,7 +66,7 @@ import { EVENT_ROSTER } from './events';
 
 // Was 20 against the old run-long cap of 100; a layer's allowance is now
 // ~30-40 (heat.ts), so Rest keeps roughly the same share of the budget.
-const REST_HEAT_REDUCTION = 12; // TBD/playtesting
+export const REST_HEAT_REDUCTION = 12; // TBD/playtesting
 
 // Phase 5 checkpoint C replaced the old flat single-burst-per-tier
 // dummy loadouts with real named-enemy selection (enemies.ts) -- see
@@ -298,7 +298,7 @@ export interface EncounterOutcome {
    * node) -- checkpoint F. Same split as mergeTargetId: this just
    * records the pick; playRun() applies the actual Data spend and
    * acquisition, since it's the one place holding RunPlayerState. */
-  shopPurchase: ShopOffering | null;
+  shopPurchases: ShopOffering[];
   /** REROLL_COST if a Shop visit spent Data to reroll its slate once,
    * else 0 -- checkpoint F follow-up. Same split as the other
    * playerState-affecting fields: this just records the cost incurred;
@@ -312,7 +312,7 @@ export interface EncounterOutcome {
   /** What a Shop visit bought from the Mod slate, or null -- mirrors
    * shopPurchase for the parallel, independently-generated/rerolled Mod
    * slate (session 30). */
-  modShopPurchase: ModOffering | null;
+  modShopPurchases: ModOffering[];
   /** REROLL_COST if a Shop visit spent Data to reroll the Mod slate
    * once, else 0 -- mirrors rerollCost for the Mod slate's own
    * independent reroll decision. */
@@ -340,7 +340,7 @@ export interface EncounterOutcome {
   /** What a Shop visit bought from the Burner slate, or null -- mirrors
    * shopPurchase/modShopPurchase for the third, independently-generated/
    * rerolled slate (checkpoint F). */
-  burnerShopPurchase: BurnerOffering | null;
+  burnerShopPurchases: BurnerOffering[];
   /** REROLL_COST (or 0 if Loyalty Token's freeReroll was active) if a
    * Shop visit spent Data to reroll the Burner slate once -- mirrors
    * rerollCost/modRerollCost for the Burner slate's own independent
@@ -621,15 +621,15 @@ function* resolveFight(
       dataAwarded: modified.dataAwarded,
       rewardOptions: modified.rewardOptions,
       mergeTargetId: null,
-      shopPurchase: null,
+      shopPurchases: [],
       rerollCost: 0,
       modRewardOptions,
-      modShopPurchase: null,
+      modShopPurchases: [],
       modRerollCost: 0,
       burnersUsedThisCombat: result.burnersUsedThisCombat,
       shopBurnerUsed: null,
       burnerRewardOptions,
-      burnerShopPurchase: null,
+      burnerShopPurchases: [],
       burnerRerollCost: 0,
     };
   }
@@ -647,15 +647,15 @@ function* resolveFight(
       dataAwarded: 0,
       rewardOptions: [],
       mergeTargetId: null,
-      shopPurchase: null,
+      shopPurchases: [],
       rerollCost: 0,
       modRewardOptions: [],
-      modShopPurchase: null,
+      modShopPurchases: [],
       modRerollCost: 0,
       burnersUsedThisCombat: result.burnersUsedThisCombat,
       shopBurnerUsed: null,
       burnerRewardOptions: [],
-      burnerShopPurchase: null,
+      burnerShopPurchases: [],
       burnerRerollCost: 0,
     };
   }
@@ -682,15 +682,15 @@ function* resolveFight(
     dataAwarded: 0,
     rewardOptions: [],
     mergeTargetId: null,
-    shopPurchase: null,
+    shopPurchases: [],
     rerollCost: 0,
     modRewardOptions: [],
-    modShopPurchase: null,
+    modShopPurchases: [],
     modRerollCost: 0,
     burnersUsedThisCombat: result.burnersUsedThisCombat,
     shopBurnerUsed: null,
     burnerRewardOptions: [],
-    burnerShopPurchase: null,
+    burnerShopPurchases: [],
     burnerRerollCost: 0,
   };
 }
@@ -945,15 +945,15 @@ export function* resolveEncounterRequests(
           dataAwarded: 0,
           rewardOptions: [],
           mergeTargetId: targetId,
-          shopPurchase: null,
+          shopPurchases: [],
           rerollCost: 0,
           modRewardOptions: [],
-          modShopPurchase: null,
+          modShopPurchases: [],
           modRerollCost: 0,
           burnersUsedThisCombat: [],
           shopBurnerUsed: null,
           burnerRewardOptions: [],
-          burnerShopPurchase: null,
+          burnerShopPurchases: [],
           burnerRerollCost: 0,
         };
       }
@@ -966,15 +966,15 @@ export function* resolveEncounterRequests(
         dataAwarded: 0,
         rewardOptions: [],
         mergeTargetId: null,
-        shopPurchase: null,
+        shopPurchases: [],
         rerollCost: 0,
         modRewardOptions: [],
-        modShopPurchase: null,
+        modShopPurchases: [],
         modRerollCost: 0,
         burnersUsedThisCombat: [],
         shopBurnerUsed: null,
         burnerRewardOptions: [],
-        burnerShopPurchase: null,
+        burnerShopPurchases: [],
         burnerRerollCost: 0,
       };
     }
@@ -1002,65 +1002,55 @@ export function* resolveEncounterRequests(
       const discountFraction = Math.max(modDiscountFraction, burnerModifiers.discountFraction);
       const rarityFloor = burnerModifiers.rarityFloor;
       const rerollCostThisVisit = burnerModifiers.freeReroll ? 0 : REROLL_COST;
-      const firstSlate = shopOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor);
-      // "Once": the reroll strategy is only ever asked against the
-      // first slate, never against a slate it already produced.
-      const rerolled =
-        playerState.data >= REROLL_COST &&
-        (yield* ask({ kind: 'shopReroll', slate: 'subroutine', offerings: firstSlate, playerState, fallback: () => shopRerollStrategy(firstSlate, playerState) }));
-      const offerings = rerolled
-        ? shopOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
-        : firstSlate;
-      const rerollCost = rerolled ? rerollCostThisVisit : 0;
-
-      // The Mod slate (session 30: "two independent slates in one Shop
-      // visit... both spending from the same Data pool") -- its own
-      // separately-generated, separately-rerollable draw. Insider Tip's
-      // rarityFloor/Loyalty Token's freeReroll apply here too -- a
-      // Burner coupon is Shop-wide, same as Vendor Discount/Bulk Buyer/
-      // Scrap Merchant (session 44).
-      const firstModSlate = modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, extraUncommons, discountFraction, rarityFloor);
-      const modRerolled =
-        playerState.data >= REROLL_COST &&
-        (yield* ask({ kind: 'shopReroll', slate: 'mod', offerings: firstModSlate, playerState, fallback: () => modShopRerollStrategy(firstModSlate, playerState) }));
-      const modOfferings = modRerolled
-        ? modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
-        : firstModSlate;
-      const modRerollCost = modRerolled ? rerollCostThisVisit : 0;
-
-      // The Burner slate (checkpoint F) -- the third independent slate,
-      // same shape/reroll treatment as the Mod slate above. classId is
-      // accepted for call-site symmetry only (burnerOfferingsForClass is
-      // archetype-agnostic, see shop.ts's own header).
-      const firstBurnerSlate = burnerOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor);
-      const burnerSlateRerolled =
-        playerState.data >= REROLL_COST &&
-        (yield* ask({ kind: 'shopReroll', slate: 'burner', offerings: firstBurnerSlate, playerState, fallback: () => burnerShopRerollStrategy(firstBurnerSlate, playerState) }));
-      const burnerOfferingsSlate = burnerSlateRerolled
-        ? burnerOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
-        : firstBurnerSlate;
-      const burnerRerollCost = burnerSlateRerolled ? rerollCostThisVisit : 0;
-
-      // The purchase decisions need to see the post-reroll Data balance
-      // -- otherwise a strategy could "spend" the reroll cost and then
-      // still buy up to the full pre-reroll balance, overspending. All
-      // three rerolls (if any happened) are deducted before any
-      // purchase decision is made.
-      const stateAfterRerolls =
-        rerollCost + modRerollCost + burnerRerollCost > 0
-          ? { ...playerState, data: playerState.data - rerollCost - modRerollCost - burnerRerollCost }
-          : playerState;
-      const shopPurchase = yield* ask({ kind: 'shopBuy', slate: 'subroutine', offerings, playerState: stateAfterRerolls, fallback: () => shopStrategy(offerings, stateAfterRerolls) });
-      const stateAfterShopPurchase = shopPurchase ? { ...stateAfterRerolls, data: stateAfterRerolls.data - shopPurchase.cost } : stateAfterRerolls;
-      const modShopPurchase = yield* ask({ kind: 'shopBuy', slate: 'mod', offerings: modOfferings, playerState: stateAfterShopPurchase, fallback: () => modShopStrategy(modOfferings, stateAfterShopPurchase) });
-      const stateAfterModPurchase = modShopPurchase ? { ...stateAfterShopPurchase, data: stateAfterShopPurchase.data - modShopPurchase.cost } : stateAfterShopPurchase;
-      const burnerShopPurchase = yield* ask({
-        kind: 'shopBuy',
-        slate: 'burner',
-        offerings: burnerOfferingsSlate,
-        playerState: stateAfterModPurchase,
-        fallback: () => burnerShopStrategy(burnerOfferingsSlate, stateAfterModPurchase),
-      });
+      // Milestone 3 checkpoint 4 (the user's call: buy freely): all three
+      // slates are drawn up front and the visit is one loop of actions --
+      // buy any offering you can afford (each once), reroll each slate
+      // once, leave. The simulated player's answers (shopFallback) replay
+      // its old sequence exactly: the three reroll decisions against the
+      // first slates, then at most one buy per slate, then leave.
+      const drawSlate = (slate: ShopSlate) =>
+        slate === 'subroutine'
+          ? shopOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
+          : slate === 'mod'
+            ? modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
+            : burnerOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor);
+      const visit: ShopVisit = {
+        slates: { subroutine: drawSlate('subroutine') as ShopOffering[], mod: drawSlate('mod') as ModOffering[], burner: drawSlate('burner') as BurnerOffering[] },
+        bought: { subroutine: [], mod: [], burner: [] },
+        rerolled: { subroutine: false, mod: false, burner: false },
+        data: playerState.data,
+        rerollCost: rerollCostThisVisit,
+      };
+      const purchases = { subroutine: [] as ShopOffering[], mod: [] as ModOffering[], burner: [] as BurnerOffering[] };
+      const rerollCosts: Record<ShopSlate, number> = { subroutine: 0, mod: 0, burner: 0 };
+      const strategies = { shopRerollStrategy, modShopRerollStrategy, burnerShopRerollStrategy, shopStrategy, modShopStrategy, burnerShopStrategy };
+      let simPhase = 0;
+      for (;;) {
+        const snapshot: ShopVisit = { ...visit, slates: { ...visit.slates }, bought: { subroutine: [...visit.bought.subroutine], mod: [...visit.bought.mod], burner: [...visit.bought.burner] }, rerolled: { ...visit.rerolled } };
+        const phaseAtAsk = simPhase;
+        const action = yield* ask({ kind: 'shop', shop: snapshot, playerState, fallback: () => shopFallback(snapshot, playerState, phaseAtAsk, strategies).action });
+        const sim = shopFallback(snapshot, playerState, phaseAtAsk, strategies);
+        simPhase = sameShopAction(action, sim.action) ? sim.phase + 1 : simPhase;
+        if (action.kind === 'leave') break;
+        if (action.kind === 'reroll') {
+          if (visit.rerolled[action.slate] || visit.data < visit.rerollCost) continue;
+          visit.rerolled[action.slate] = true;
+          visit.data -= visit.rerollCost;
+          rerollCosts[action.slate] += visit.rerollCost;
+          visit.bought[action.slate] = [];
+          if (action.slate === 'subroutine') visit.slates.subroutine = drawSlate('subroutine') as ShopOffering[];
+          else if (action.slate === 'mod') visit.slates.mod = drawSlate('mod') as ModOffering[];
+          else visit.slates.burner = drawSlate('burner') as BurnerOffering[];
+          continue;
+        }
+        const offering = visit.slates[action.slate][action.index];
+        if (!offering || visit.bought[action.slate].includes(action.index) || offering.cost > visit.data) continue;
+        visit.bought[action.slate].push(action.index);
+        visit.data -= offering.cost;
+        if (action.slate === 'subroutine') purchases.subroutine.push(offering as ShopOffering);
+        else if (action.slate === 'mod') purchases.mod.push(offering as ModOffering);
+        else purchases.burner.push(offering as BurnerOffering);
+      }
 
       return {
         newState: 'inert',
@@ -1071,16 +1061,16 @@ export function* resolveEncounterRequests(
         dataAwarded: 0,
         rewardOptions: [],
         mergeTargetId: null,
-        shopPurchase,
-        rerollCost,
+        shopPurchases: purchases.subroutine,
+        rerollCost: rerollCosts.subroutine,
         modRewardOptions: [],
-        modShopPurchase,
-        modRerollCost,
+        modShopPurchases: purchases.mod,
+        modRerollCost: rerollCosts.mod,
         burnersUsedThisCombat: [],
         shopBurnerUsed,
         burnerRewardOptions: [],
-        burnerShopPurchase,
-        burnerRerollCost,
+        burnerShopPurchases: purchases.burner,
+        burnerRerollCost: rerollCosts.burner,
       };
     }
     case 'event': {
@@ -1090,13 +1080,14 @@ export function* resolveEncounterRequests(
       // apply here: an Event, like a regular/elite fight, is one-and-
       // done, never needing a stable identity across revisits).
       const eventDef = EVENT_ROSTER[rng.nextInt(EVENT_ROSTER.length)];
-      const choice = yield* ask({ kind: 'event', event: eventDef, playerState, heat: currentHeat, fallback: () => eventChoiceStrategy(eventDef, playerState, currentHeat) });
+      const choice = yield* ask({ kind: 'event', event: eventDef, playerState, heat: currentHeat, layer: layerIndex, fallback: () => eventChoiceStrategy(eventDef, playerState, currentHeat) });
       const { effect } = rollWeightedOutcome(choice.outcomes, rng);
 
       const eventGrant: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition } = {};
       if (effect.subroutineGrant) eventGrant.subroutine = resolveSubroutineGrant(effect.subroutineGrant, playerState.classId, rng);
       if (effect.modGrant) eventGrant.mod = resolveModGrant(effect.modGrant, playerState.classId, playerState.ownedModIds, rng);
       if (effect.burnerGrant) eventGrant.burner = resolveBurnerGrant(effect.burnerGrant, rng);
+      yield* ask({ kind: 'eventResult', event: eventDef, choice, effect, grant: eventGrant, heat: eventHeat(effect.heatLosses ?? 0, layerIndex - 1), fallback: () => null });
 
       // Bonus fight (checkpoint I) -- a classic gamble-tier beat, reusing
       // resolveFight's existing machinery directly (same module, no
@@ -1133,15 +1124,15 @@ export function* resolveEncounterRequests(
         dataAwarded: (effect.dataDelta ?? 0) + (bonusFightOutcome?.dataAwarded ?? 0),
         rewardOptions: bonusFightOutcome?.rewardOptions ?? [],
         mergeTargetId: null,
-        shopPurchase: null,
+        shopPurchases: [],
         rerollCost: 0,
         modRewardOptions: bonusFightOutcome?.modRewardOptions ?? [],
-        modShopPurchase: null,
+        modShopPurchases: [],
         modRerollCost: 0,
         burnersUsedThisCombat: bonusFightOutcome?.burnersUsedThisCombat ?? [],
         shopBurnerUsed: null,
         burnerRewardOptions: bonusFightOutcome?.burnerRewardOptions ?? [],
-        burnerShopPurchase: null,
+        burnerShopPurchases: [],
         burnerRerollCost: 0,
         eventGrant,
       };
@@ -1157,25 +1148,78 @@ export function* resolveEncounterRequests(
         heatSources: NO_HEAT_SOURCES,
         quarantined: false,
         mergeTargetId: null,
-        shopPurchase: null,
+        shopPurchases: [],
         rerollCost: 0,
-        modShopPurchase: null,
+        modShopPurchases: [],
         modRerollCost: 0,
         burnersUsedThisCombat: [],
         shopBurnerUsed: null,
-        burnerShopPurchase: null,
+        burnerShopPurchases: [],
         burnerRerollCost: 0,
       };
       if (roll < subroutineOdds) {
-        return { ...base, rewardTier: 'better', dataAwarded: 0, rewardOptions: drawRewardOptions(playerState.classId, 'better', rng), modRewardOptions: [], burnerRewardOptions: [] };
+        const rewardOptions = drawRewardOptions(playerState.classId, 'better', rng);
+        yield* ask({ kind: 'cacheOpened', contents: 'subroutine', data: 0, burners: [], fallback: () => null });
+        return { ...base, rewardTier: 'better', dataAwarded: 0, rewardOptions, modRewardOptions: [], burnerRewardOptions: [] };
       }
       if (roll < subroutineOdds + bundleOdds) {
         const burners = drawBurnerRewardOptions(rng).slice(0, 1 + rng.nextInt(2));
+        yield* ask({ kind: 'cacheOpened', contents: 'bundle', data: CACHE_BUNDLE_DATA, burners, fallback: () => null });
         return { ...base, rewardTier: 'none', dataAwarded: CACHE_BUNDLE_DATA, rewardOptions: [], modRewardOptions: [], burnerRewardOptions: [], cacheBurners: burners };
       }
-      return { ...base, rewardTier: 'none', dataAwarded: 0, rewardOptions: [], modRewardOptions: drawModRewardOptions(playerState.classId, playerState.ownedModIds, rng), burnerRewardOptions: [] };
+      const modRewardOptions = drawModRewardOptions(playerState.classId, playerState.ownedModIds, rng);
+      yield* ask({ kind: 'cacheOpened', contents: 'mod', data: 0, burners: [], fallback: () => null });
+      return { ...base, rewardTier: 'none', dataAwarded: 0, rewardOptions: [], modRewardOptions, burnerRewardOptions: [] };
     }
     case 'relay':
       throw new Error('resolveEncounter should never be called on a Relay node -- it has no encounter');
   }
+}
+
+/** The strategies a simulated Shop visit uses. */
+interface ShopStrategies {
+  shopRerollStrategy: ShopRerollStrategy;
+  modShopRerollStrategy: ModShopRerollStrategy;
+  burnerShopRerollStrategy: BurnerShopRerollStrategy;
+  shopStrategy: ShopStrategy;
+  modShopStrategy: ModShopStrategy;
+  burnerShopStrategy: BurnerShopStrategy;
+}
+
+/**
+ * The simulated player's next Shop action from `phase` on, replaying the
+ * pre-checkpoint-4 sequence: phases 0-2 decide each slate's reroll
+ * (against the visit's opening state, as before), 3-5 buy at most one
+ * offering per slate (seeing the Data left), 6 leaves. Returns the action
+ * and the phase it came from; a phase with nothing to do is skipped.
+ */
+function shopFallback(visit: ShopVisit, playerState: RunPlayerState, phase: number, s: ShopStrategies): { action: ShopAction; phase: number } {
+  const slates: ShopSlate[] = ['subroutine', 'mod', 'burner'];
+  const now = { ...playerState, data: visit.data };
+  for (let p = phase; p < 6; p++) {
+    const slate = slates[p % 3];
+    if (p < 3) {
+      if (visit.rerolled[slate] || playerState.data < REROLL_COST || visit.data < visit.rerollCost) continue;
+      const reroll =
+        slate === 'subroutine'
+          ? s.shopRerollStrategy(visit.slates.subroutine, playerState)
+          : slate === 'mod'
+            ? s.modShopRerollStrategy(visit.slates.mod, playerState)
+            : s.burnerShopRerollStrategy(visit.slates.burner, playerState);
+      if (reroll) return { action: { kind: 'reroll', slate }, phase: p };
+      continue;
+    }
+    const pick =
+      slate === 'subroutine' ? s.shopStrategy(visit.slates.subroutine, now) : slate === 'mod' ? s.modShopStrategy(visit.slates.mod, now) : s.burnerShopStrategy(visit.slates.burner, now);
+    const index = pick ? (visit.slates[slate] as { cost: number }[]).indexOf(pick) : -1;
+    if (index !== -1 && pick!.cost <= visit.data) return { action: { kind: 'buy', slate, index }, phase: p };
+  }
+  return { action: { kind: 'leave' }, phase: 6 };
+}
+
+function sameShopAction(a: ShopAction, b: ShopAction): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'leave') return true;
+  if (a.kind === 'reroll') return a.slate === (b as typeof a).slate;
+  return a.slate === (b as typeof a).slate && a.index === (b as typeof a).index;
 }

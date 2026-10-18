@@ -4,6 +4,7 @@
   import { applyOnMoveMods } from '../engine/mods';
   import { MOD_DEFINITIONS } from '../engine/mods';
   import { BURNER_DEFINITIONS } from '../engine/burners';
+  import type { BurnerId } from '../engine/burner-types';
   import MapView from './MapView.svelte';
   import LoadoutEditor from './LoadoutEditor.svelte';
   import { modText } from './kit';
@@ -14,19 +15,23 @@
   // and the run's state. Tap a linked node to see what it is and what the
   // move costs; tap it again, or Move, to go (the same tap-then-confirm as
   // cards, so a stray tap never spends Heat). The loadout drawer edits the
-  // loadout and bench (checkpoint 3), and lists Mods and Burners.
+  // loadout and bench (checkpoint 3), and lists Mods and Burners. Map
+  // Burners are used here (checkpoint 4): Ghost Protocol from the card,
+  // Skeleton Key by tapping a closed node.
   let {
     request,
     className,
     notes,
     onmove,
     onarrange,
+    onburner,
   }: {
     request: Extract<RunRequest, { kind: 'move' }>;
     className: string;
     notes: string[];
     onmove: (id: string) => void;
     onarrange: (installed: string[], bench: string[]) => void;
+    onburner: (burnerId: BurnerId, targetNodeId?: string) => void;
   } = $props();
 
   const graph = $derived(request.graph);
@@ -35,7 +40,8 @@
   const layer = $derived(request.position.layerIndex + 1);
   const allowance = $derived(player.heatAllowance ?? 1);
   const heatPct = $derived(Math.min(100, (request.heat / allowance) * 100));
-  const moveCost = $derived(applyOnMoveMods(player.ownedModIds, HEAT_PER_MOVE));
+  const moveCost = $derived(request.freeMove ? 0 : applyOnMoveMods(player.ownedModIds, HEAT_PER_MOVE));
+  const has = (id: BurnerId) => player.carriedBurnerIds.includes(id);
   const linked = $derived(
     new Set(
       graph.edges
@@ -43,6 +49,8 @@
         .filter((id) => graph.nodes.find((n) => n.id === id)?.state !== 'closed'),
     ),
   );
+  // With a Skeleton Key, closed nodes can be tapped too (to reopen them).
+  const selectable = $derived(has('skeleton-key') ? new Set([...linked, ...graph.nodes.filter((n) => n.state === 'closed').map((n) => n.id)]) : linked);
   let selected = $state<string | null>(null);
   // A new position (a move resolved) clears the selection.
   $effect(() => {
@@ -53,7 +61,8 @@
   let showLoadout = $state(false);
 
   function pick(id: string) {
-    if (selected === id) onmove(id);
+    const closed = graph.nodes.find((n) => n.id === id)?.state === 'closed';
+    if (selected === id && !closed) onmove(id);
     else selected = id;
   }
   const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
@@ -77,7 +86,7 @@
   </div>
 
   <div class="map-area">
-    <MapView {graph} {here} selectable={linked} {selected} onpick={pick} />
+    <MapView {graph} {here} {selectable} {selected} onpick={pick} />
   </div>
 
   <div class="card">
@@ -88,16 +97,27 @@
         <b style="color: {k.tone}">{k.label}</b>
         {#if node.state === 'inert' && node.type !== 'relay'}<span class="dim">· cleared</span>{/if}
       </div>
-      <div class="about">{node.state === 'inert' && node.type !== 'relay' ? 'Already resolved: passing through only costs the move.' : k.about}</div>
-      <button class="move" onclick={() => onmove(node.id)}>Move here · +{fmt(moveCost)} Heat</button>
+      {#if node.state === 'closed'}
+        <div class="about">Closed: a fight lost here shut it. Routes through it are cut.</div>
+        <button class="move burner-use" onclick={() => onburner('skeleton-key', node.id)}>⏏︎ Reopen with Skeleton Key</button>
+      {:else}
+        <div class="about">{node.state === 'inert' && node.type !== 'relay' ? 'Already resolved: passing through only costs the move.' : k.about}</div>
+        <button class="move" onclick={() => onmove(node.id)}>Move here · {moveCost ? `+${fmt(moveCost)} Heat` : 'free'}</button>
+      {/if}
     {:else}
-      <div class="hint">Tap a linked node to see what it is. Each move costs {fmt(moveCost)} Heat; the gatekeeper ⛨︎ leads to the next layer.</div>
+      <div class="hint">
+        Tap a linked node to see what it is. {request.freeMove ? 'Your next move is free (Ghost Protocol).' : `Each move costs ${fmt(moveCost)} Heat.`} The gatekeeper ⛨︎ leads to the next layer.
+        {#if has('skeleton-key') && graph.nodes.some((n) => n.state === 'closed')}Tap a closed node to reopen it with your Skeleton Key.{/if}
+      </div>
+      {#if has('ghost-protocol') && !request.freeMove}
+        <button class="move burner-use" onclick={() => onburner('ghost-protocol')}>⏏︎ Use Ghost Protocol · next move free</button>
+      {/if}
     {/if}
   </div>
 
   {#if notes.length}
     <div class="notes">
-      {#each notes.slice(-2) as n, i (i)}<div>· {n} <span class="dim">(auto for now)</span></div>{/each}
+      {#each notes.slice(-2) as n, i (i)}<div>· {n} <span class="dim">(auto)</span></div>{/each}
     </div>
   {/if}
 </div>
@@ -254,6 +274,10 @@
     color: var(--accent);
     font-weight: 700;
     font-size: 12px;
+  }
+  .move.burner-use {
+    border-color: var(--warn);
+    color: var(--warn);
   }
   .notes {
     font-size: 10.5px;

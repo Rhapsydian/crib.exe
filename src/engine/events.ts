@@ -35,7 +35,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
         label: 'Repurpose its trigger logic',
         riskTier: 'visibleOdds',
         outcomes: [
-          { probability: 0.65, effect: { modGrant: { specific: MOD_DEFINITIONS['static-shield'] } } },
+          { probability: 0.65, effect: { modGrant: { specific: MOD_DEFINITIONS['surge-protector'] } } }, // was Static Shield, set aside (session 58)
           { probability: 0.35, effect: { heatLosses: 0.4 } },
         ],
       },
