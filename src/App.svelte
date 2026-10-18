@@ -17,6 +17,9 @@
   import CribbageScreen from './ui/CribbageScreen.svelte';
   import { LiveCribbage, clearCribbageSave, loadCribbageSave, writeCribbageSave } from './ui/live-cribbage.svelte';
   import type { Difficulty } from './engine/basic-cribbage';
+  import LearnHub from './ui/LearnHub.svelte';
+  import LessonScreen from './ui/LessonScreen.svelte';
+  import { LESSONS, loadProgress, markDone } from './ui/lessons';
   import type { ClassId } from './engine/classes';
   import type { EnemyDefinition } from './engine/enemies';
 
@@ -78,7 +81,14 @@
 
   // The front door (milestone 4, V5): the main menu, then a mode. A run
   // keeps its class screen; a Cribbage game saves itself like a run.
-  let screen = $state<'menu' | 'classes' | 'cribbage'>('menu');
+  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson'>('menu');
+  // Learn to play (checkpoint 5): the hub, a lesson, and progress.
+  let lessonIndex = $state(0);
+  let lessonsDone = $state.raw(loadProgress());
+  function finishLesson() {
+    lessonsDone = markDone(LESSONS[lessonIndex].id);
+    screen = 'learn';
+  }
   let cribbage = $state.raw<LiveCribbage | null>(null);
   let cribbageSaved = $state.raw(loadCribbageSave());
   let menuWarning = $state<string | null>(null);
@@ -147,12 +157,31 @@
         onmenu={toMenu}
       />
     {/key}
+  {:else if screen === 'learn'}
+    <LearnHub
+      done={lessonsDone}
+      resume={cribbageSaved?.difficulty === 'learn' ? { scores: cribbageSaved.summary.scores } : null}
+      onlesson={(i: number) => {
+        lessonIndex = i;
+        screen = 'lesson';
+      }}
+      oncoached={() => beginCribbage(new LiveCribbage('learn', true, newSeed()))}
+      onresume={resumeCribbage}
+      onmenu={toMenu}
+    />
+  {:else if screen === 'lesson'}
+    {#key lessonIndex}
+      <LessonScreen lesson={LESSONS[lessonIndex]} number={lessonIndex + 1} total={LESSONS.length} onexit={() => (screen = 'learn')} onfinish={finishLesson} />
+    {/key}
   {:else if screen === 'menu'}
     <MainMenu
       runSave={saved?.summary ?? null}
       cribbageSave={cribbageSaved ? { difficulty: cribbageSaved.difficulty, scores: cribbageSaved.summary.scores } : null}
       {firstVisit}
-      onlearn={() => beginCribbage(new LiveCribbage('learn', true, newSeed()))}
+      onlearn={() => {
+        markVisited();
+        screen = 'learn';
+      }}
       oncribbage={(d: Difficulty, coach: boolean, hints: boolean) => beginCribbage(new LiveCribbage(d, coach, newSeed(), hints))}
       onresumecribbage={resumeCribbage}
       onrun={() => {

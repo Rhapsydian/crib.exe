@@ -966,6 +966,27 @@ game the combat rests on (the user's call). Decisions, live:
     still explains each phase and reviews your discards and plays, but
     doesn't suggest first. In the setup under the coach, and in the coach
     panel's header mid-game; saved with the game.
+- **Checkpoint 5 done -- Learn to play.**
+  - **Five lessons** as data (`lessons.ts`): the goal and the deal;
+    fifteens, pairs and runs; pegging to 31; the show and the crib;
+    choosing a discard. Steps: read (with cards), find (tap the cards
+    that make each fifteen / pair / run -- the answers are the engine's
+    own scoring events), choice, peg (make 15 / 31 / a pair / lead
+    safely), discard (judged by the coach, retry allowed). The tests
+    check every count against the engine -- which caught three wrong
+    totals in the first draft.
+  - **The lesson player** (`LessonScreen.svelte`): one step at a time,
+    progress dots, back / next (next opens once a step is answered),
+    feedback that explains the right answer.
+  - **The hub** (`LearnHub.svelte`): the lessons in order, ticked when
+    done (kept in this browser) and replayable, the next highlighted;
+    then a coached game (Learn to play, coach on), with its resume. The
+    menu's Learn to play opens it; the first-visit nudge leads here.
+  - Verified in the preview with real taps: the find step (a wrong
+    guess, "found that one already", all three fifteens), choices, a
+    pegging step, a discard retried to "Good discard", progress ticked in
+    the hub. Phone pass: nothing scrolls sideways at 320px on the hub or
+    any lesson step; six cards fit one row.
 - Rules note (Claude's call): a game ends the instant a player reaches
   121, mid-pegging included; the show counts non-dealer, dealer, crib, in
   that order, which decides close games.
