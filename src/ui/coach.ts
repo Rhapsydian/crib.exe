@@ -42,9 +42,11 @@ export function phaseIntro(phase: CoachPhase, ownCrib: boolean, first: boolean):
     : 'The show: hands count with the cut card, non-dealer first.';
 }
 
-/** What a set of cards scores among themselves (no cut card), in words. */
-export function keepNotes(cards: Card[]): string[] {
-  const notes: string[] = [];
+/** What kept cards are sure to score among themselves, before the cut:
+ * the points, and each part in words ("4 fifteens for 8"). */
+export function keepScore(cards: Card[]): { pts: number; parts: string[] } {
+  const parts: string[] = [];
+  let pts = 0;
   // Fifteens: every combination adding to 15.
   let fifteens = 0;
   for (let mask = 1; mask < 1 << cards.length; mask++) {
@@ -52,12 +54,16 @@ export function keepNotes(cards: Card[]): string[] {
     for (let i = 0; i < cards.length; i++) if (mask & (1 << i)) sum += cardValue(cards[i]);
     if (sum === 15) fifteens++;
   }
-  if (fifteens) notes.push(`${plural(fifteens, 'fifteen')} (${fifteens * 2})`);
+  if (fifteens) (pts += fifteens * 2), parts.push(`${plural(fifteens, 'fifteen')} for ${fifteens * 2}`);
   // Pairs (three of a kind is three pairs).
   const byRank = new Map<number, number>();
   for (const c of cards) byRank.set(c.rank, (byRank.get(c.rank) ?? 0) + 1);
-  for (const [rank, n] of byRank) if (n >= 2) notes.push(n === 2 ? `a pair of ${rankLabel(rank)}s (2)` : `${n} ${rankLabel(rank)}s (${n * (n - 1)})`);
-  // The longest run among distinct ranks.
+  for (const [rank, n] of byRank) if (n >= 2) {
+    const p = n * (n - 1);
+    pts += p;
+    parts.push(n === 2 ? `a pair of ${rankLabel(rank)}s for 2` : `${n} ${rankLabel(rank)}s for ${p}`);
+  }
+  // Runs: the longest among the ranks, once per combination of duplicates.
   const ranks = [...byRank.keys()].sort((a, b) => a - b);
   let best: number[] = [];
   let cur: number[] = [];
@@ -65,17 +71,29 @@ export function keepNotes(cards: Card[]): string[] {
     cur = cur.length && r === cur[cur.length - 1] + 1 ? [...cur, r] : [r];
     if (cur.length > best.length) best = cur;
   }
-  if (best.length >= 3) notes.push(`a run ${best.map(rankLabel).join('-')} (${best.length})`);
-  if (cards.length === 4 && cards.every((c) => c.suit === cards[0].suit)) notes.push(`a ${suitInfo(cards[0].suit).name} flush (4)`);
-  const fives = cards.filter((c) => c.rank === 5).length;
-  if (!notes.length && fives) notes.push(`${fives > 1 ? 'fives' : 'a five'}, which make fifteen with any ten-card cut`);
-  return notes;
+  if (best.length >= 3) {
+    const times = best.reduce((m, r) => m * (byRank.get(r) ?? 1), 1);
+    pts += best.length * times;
+    parts.push(`${times > 1 ? `${times} runs` : 'a run'} ${best.map(rankLabel).join('-')} for ${best.length * times}`);
+  }
+  if (cards.length === 4 && cards.every((c) => c.suit === cards[0].suit)) (pts += 4), parts.push(`a ${suitInfo(cards[0].suit).name} flush for 4`);
+  return { pts, parts };
+}
+
+/** A keep in words: what it's sure to score, then what the cut adds on
+ * average (the user's ask: "12 points, plus about 0.8 from the cut"). */
+function keepLine(kept: Card[], unseen: Card[]): { text: string; average: number } {
+  const { pts, parts } = keepScore(kept);
+  const average = handExpectedValue(kept, unseen);
+  const extra = (average - pts).toFixed(1);
+  const text = pts
+    ? `${pts} point${pts === 1 ? '' : 's'} in hand (${parts.join(', ')}), plus about ${extra} more on average from the cut`
+    : `nothing in hand yet, about ${extra} on average from the cut`;
+  return { text, average };
 }
 
 export interface DiscardReview {
   same: boolean;
-  yours: { kept: Card[]; thrown: Card[]; average: number; notes: string[] };
-  coach: { kept: Card[]; thrown: Card[]; average: number; notes: string[] };
   text: string;
 }
 
@@ -85,20 +103,16 @@ export function discardReview(hand: Card[], thrown: [Card, Card], ownCrib: boole
   const best = predictBestDiscard(hand, ownCrib);
   const keep = (pair: Card[]) => hand.filter((c) => !pair.some((p) => cardsEqual(p, c)));
   const unseen = unseenCards(hand);
-  const side = (pair: [Card, Card]) => {
-    const kept = keep(pair);
-    return { kept, thrown: pair, average: handExpectedValue(kept, unseen), notes: keepNotes(kept), score: scoreDiscard(hand, pair, ownCrib) };
-  };
-  const yours = side(thrown);
-  const coach = side(best);
+  const yours = { kept: keep(thrown), score: scoreDiscard(hand, thrown, ownCrib) };
+  const coach = { kept: keep(best), score: scoreDiscard(hand, best, ownCrib) };
   // Good if it's the coach's discard, or within a whisker of it.
   const same = best.every((c) => thrown.some((t) => cardsEqual(t, c))) || yours.score >= coach.score - 0.3;
-  const avg = (n: number) => n.toFixed(1);
-  const why = (notes: string[]) => (notes.length ? notes.join(', ') : 'nothing scoring yet');
+  const y = keepLine(yours.kept, unseen);
+  const c = keepLine(coach.kept, unseen);
   const text = same
-    ? `Good discard. You kept ${list(yours.kept)} (${why(yours.notes)}), worth about ${avg(yours.average)} with the cut.`
-    : `You kept ${list(yours.kept)} (${why(yours.notes)}), about ${avg(yours.average)} with the cut. I would have kept ${list(coach.kept)} (${why(coach.notes)}), about ${avg(coach.average)}${ownCrib ? `, and thrown ${list(coach.thrown)} into your crib` : `, throwing them ${list(coach.thrown)}`}.`;
-  return { same, yours: { ...yours }, coach: { ...coach }, text };
+    ? `Good discard. You kept ${list(yours.kept)}: ${y.text}.`
+    : `You kept ${list(yours.kept)}: ${y.text}. I would have kept ${list(coach.kept)}: ${c.text}${ownCrib ? `, and thrown ${list(best)} into your crib` : `, throwing them ${list(best)}`}.`;
+  return { same, text };
 }
 
 /** The discard the coach suggests, before you choose: what to keep and
@@ -106,9 +120,7 @@ export function discardReview(hand: Card[], thrown: [Card, Card], ownCrib: boole
 export function discardHint(hand: Card[], ownCrib: boolean): string {
   const best = predictBestDiscard(hand, ownCrib);
   const kept = hand.filter((c) => !best.some((p) => cardsEqual(p, c)));
-  const notes = keepNotes(kept);
-  const average = handExpectedValue(kept, unseenCards(hand)).toFixed(1);
-  return `Keep ${list(kept)} (${notes.length ? notes.join(', ') : 'nothing scoring yet -- the cut may help'}), about ${average} with the cut. Throw ${list(best)} ${ownCrib ? 'into your crib' : 'into their crib'}.`;
+  return `Keep ${list(kept)}: ${keepLine(kept, unseenCards(hand)).text}. Throw ${list(best)} ${ownCrib ? 'into your crib' : 'into their crib'}.`;
 }
 
 /** What playing `card` scores right now, in words. */

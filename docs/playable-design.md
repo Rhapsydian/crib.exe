@@ -938,6 +938,11 @@ game the combat rests on (the user's call). Decisions, live:
     inconsistency): "Keep 9 6 9 6 (4 fifteens, two pairs), about 12.8 with
     the cut. Throw 2 3 into your crib." A discard within a whisker of the
     coach's counts as good in the review.
+  - **Sure points, then the cut** (the user's ask): a keep is described
+    as what it's sure to score, part by part, then what the cut adds on
+    average -- "Keep 9 6 9 6: 12 points in hand (4 fifteens for 8, a pair
+    of 9s for 2, a pair of 6s for 2), plus about 0.8 more on average from
+    the cut." Suggestion and review alike (`keepScore`).
   - **A suggestions switch** (the user's call): with it off, the coach
     still explains each phase and reviews your discards and plays, but
     doesn't suggest first. In the setup under the coach, and in the coach

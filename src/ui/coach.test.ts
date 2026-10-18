@@ -1,28 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, Rank, Suit } from '../engine/cards';
-import { discardHint, discardReview, keepNotes, pegHint, pegReview, phaseIntro, showSummary } from './coach';
+import { discardHint, discardReview, keepScore, pegHint, pegReview, phaseIntro, showSummary } from './coach';
 import { playCribbageGame } from '../engine/basic-cribbage';
 
 const c = (rank: number, suit = 0): Card => ({ rank: rank as Rank, suit: suit as Suit });
 
 // Milestone 4 checkpoint 4: the coach's advice, checked on known hands.
 describe('the coach', () => {
-  it('names what a keep scores among itself', () => {
-    expect(keepNotes([c(5), c(5, 1), c(10), c(13)])).toEqual(['4 fifteens (8)', 'a pair of 5s (2)']);
-    expect(keepNotes([c(4), c(5, 1), c(6, 2), c(9)])).toContain('a run 4-5-6 (3)');
-    expect(keepNotes([c(2), c(4), c(8), c(12)]).some((n) => n.includes('flush'))).toBe(true);
-    expect(keepNotes([c(1, 0), c(3, 1), c(5, 2), c(12, 3)])).toEqual(['a fifteen (2)']);
+  it('scores a keep before the cut, part by part', () => {
+    expect(keepScore([c(9), c(6), c(9, 1), c(6, 1)])).toEqual({ pts: 12, parts: ['4 fifteens for 8', 'a pair of 9s for 2', 'a pair of 6s for 2'] });
+    expect(keepScore([c(4), c(4, 1), c(5, 2), c(6)])).toEqual({ pts: 12, parts: ['2 fifteens for 4', 'a pair of 4s for 2', '2 runs 4-5-6 for 6'] });
+    expect(keepScore([c(2), c(4), c(8), c(12)])).toEqual({ pts: 4, parts: [expect.stringContaining('flush for 4')] });
+    expect(keepScore([c(1), c(3, 1), c(7, 2), c(12, 3)]).pts).toBe(0);
   });
 
   it("agrees with an obviously right discard, and explains a worse one", () => {
     // 5 5 J Q K 2: keep the fives and two ten-cards; throw the junk.
     const hand = [c(5), c(5, 1), c(11, 2), c(12, 3), c(13), c(2, 2)];
-    const good = discardReview(hand, [c(13), c(2, 2)], true);
-    expect(good.coach.kept.some((k) => k.rank === 5)).toBe(true);
-    expect(discardHint(hand, true)).toMatch(/^Keep 5 5 .*Throw .* into your crib\.$/);
+    expect(discardReview(hand, [c(13), c(2, 2)], true).same).toBe(true);
+    expect(discardHint(hand, true)).toMatch(/^Keep 5 5 .*: \d+ points in hand \(.*\), plus about \d\.\d more on average from the cut\. Throw .* into your crib\.$/);
     const bad = discardReview(hand, [c(5), c(5, 1)], true);
     expect(bad.same).toBe(false);
-    expect(bad.coach.average).toBeGreaterThan(bad.yours.average);
     expect(bad.text).toMatch(/I would have kept/);
   });
 
