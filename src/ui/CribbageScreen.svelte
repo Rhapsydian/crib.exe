@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { stickToBottom } from './stick-to-bottom';
   import RichText from './RichText.svelte';
   import { untrack } from 'svelte';
   import type { Card } from '../engine/cards';
@@ -170,7 +171,7 @@
 
 {#if showLog}
   <div class="scrim" onclick={() => (showLog = false)} role="presentation"></div>
-  <aside class="log">
+  <aside class="log" use:stickToBottom>
     <button class="close" onclick={() => (showLog = false)} aria-label="close log">✕</button>
     {#each fullLog as line, i (i)}
       <div class:them={line.side === 1} class:quiet={line.kind === 'table'}>{line.side === null ? '' : line.side === 0 ? '$ ' : '> '}<RichText text={line.text} /></div>

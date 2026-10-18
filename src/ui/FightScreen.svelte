@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { stickToBottom } from './stick-to-bottom';
   import RichText from './RichText.svelte';
   import type { FightSnapshot } from './snapshot';
   import type { Card } from '../engine/cards';
@@ -257,7 +258,7 @@
     </div>
   </main>
 
-  <aside class="panel log-panel" class:open={sheet === 'log'}>
+  <aside class="panel log-panel" class:open={sheet === 'log'} use:stickToBottom>
     <button class="close" onclick={() => (sheet = 'none')} aria-label="close log">✕</button>
     <Log view={f.view} {steps} onpick={pickLog} />
   </aside>

@@ -68,6 +68,26 @@
   const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 </script>
 
+<!-- The loadout: a slide-in drawer on phones, a standing left panel on
+     desktop like the fight screen's (the user's ask). -->
+<div class="map-screen">
+<aside class="drawer" class:open={showLoadout}>
+  <button class="close" onclick={() => (showLoadout = false)} aria-label="close">✕</button>
+  <div class="panel-title">LOADOUT</div>
+  <LoadoutEditor {player} {onarrange} />
+  {#if player.ownedModIds.length}
+    <div class="caption">MODS</div>
+    {#each player.ownedModIds as id (id)}
+      <div class="kit"><div><span class="mod-glyph">◆</span> {MOD_DEFINITIONS[id].name}</div><div class="kit-text">{modText(id)}</div></div>
+    {/each}
+  {/if}
+  {#if player.carriedBurnerIds.length}
+    <div class="caption">BURNERS</div>
+    {#each player.carriedBurnerIds as id, i (i)}
+      <div class="kit"><div><span class="burner-glyph">⏏︎</span> {BURNER_DEFINITIONS[id].name}</div><div class="kit-text">{burnerText(BURNER_DEFINITIONS[id])}</div></div>
+    {/each}
+  {/if}
+</aside>
 <div class="run-map">
   <div class="top">
     <span class="layer">LAYER {layer}/4</span>
@@ -122,30 +142,19 @@
   {/if}
 </div>
 
-{#if showLoadout}
-  <div class="scrim" onclick={() => (showLoadout = false)} role="presentation"></div>
-  <aside class="drawer">
-    <button class="close" onclick={() => (showLoadout = false)} aria-label="close">✕</button>
-    <LoadoutEditor {player} {onarrange} />
-    {#if player.ownedModIds.length}
-      <div class="caption">MODS</div>
-      {#each player.ownedModIds as id (id)}
-        <div class="kit"><div><span class="mod-glyph">◆</span> {MOD_DEFINITIONS[id].name}</div><div class="kit-text">{modText(id)}</div></div>
-      {/each}
-    {/if}
-    {#if player.carriedBurnerIds.length}
-      <div class="caption">BURNERS</div>
-      {#each player.carriedBurnerIds as id, i (i)}
-        <div class="kit"><div><span class="burner-glyph">⏏︎</span> {BURNER_DEFINITIONS[id].name}</div><div class="kit-text">{burnerText(BURNER_DEFINITIONS[id])}</div></div>
-      {/each}
-    {/if}
-  </aside>
-{/if}
+</div>
+{#if showLoadout}<div class="scrim" onclick={() => (showLoadout = false)} role="presentation"></div>{/if}
 
 <style>
+  .map-screen {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+  }
   .run-map {
+    flex: 1;
+    min-width: 0;
     max-width: 640px;
-    margin: 0 auto;
     height: 100%;
     box-sizing: border-box;
     display: flex;
@@ -236,7 +245,12 @@
     display: flex;
   }
   .card {
-    min-height: 92px;
+    /* A fixed height (the user's ask): selecting a node fills it in
+       without resizing the map above. Sized for the tallest card (a node,
+       its blurb, the move button); a long blurb is clamped. */
+    height: 132px;
+    flex: none;
+    overflow: hidden;
     box-sizing: border-box;
     padding: 8px 10px;
     border: 1px solid var(--line);
@@ -259,6 +273,11 @@
   .about {
     color: var(--text-dim);
     line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .hint {
     color: var(--text-dim);
@@ -267,6 +286,7 @@
   }
   .move {
     align-self: flex-end;
+    margin-top: auto;
     padding: 6px 14px;
     border-radius: var(--radius);
     border: 1px solid var(--accent);
@@ -300,6 +320,8 @@
     bottom: 0;
     width: min(80%, 320px);
     z-index: 16;
+    transform: translateX(105%);
+    transition: transform 0.18s ease;
     background: var(--bg-sunken);
     border-left: 1px solid var(--line);
     padding: 12px;
@@ -308,6 +330,36 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+  }
+  .drawer.open {
+    transform: none;
+  }
+  .panel-title {
+    display: none;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+  }
+  /* Desktop: the loadout stands open on the left, as in combat. */
+  @media (min-width: 900px) {
+    .drawer {
+      position: static;
+      transform: none;
+      transition: none;
+      width: 300px;
+      flex: none;
+      border-left: none;
+      border-right: 1px solid var(--line);
+      order: -1;
+    }
+    .close,
+    .loadout-button,
+    .scrim {
+      display: none;
+    }
+    .panel-title {
+      display: block;
+    }
   }
   .close {
     align-self: flex-end;
