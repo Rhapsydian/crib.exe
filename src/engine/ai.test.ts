@@ -87,10 +87,16 @@ describe('scoreDiscard', () => {
 });
 
 describe('bestCardToForce', () => {
-  it("forces away the card most valuable for the opponent to keep -- one half of their only pair", () => {
+  it("forces away the card whose loss leaves the opponent's best discard weakest", () => {
+    // Was pinned to "a 7" under the old crib proxy; with real crib values
+    // (crib-table.ts) the A -- which makes fifteen with the 7s -- can be
+    // the bigger loss. What must hold is the minimax itself.
     const hand: Card[] = [card(7, 0), card(7, 1), card(2, 2), card(9, 3), card(12, 0), card(1, 1)];
     const [forced] = bestCardToForce(hand, true);
-    expect(forced.rank).toBe(7);
+    const bestAfterForcing = (f: Card) =>
+      Math.max(...hand.filter((c) => c !== f).map((companion) => scoreDiscard(hand, [f, companion], true)));
+    const outcomes = hand.map(bestAfterForcing);
+    expect(bestAfterForcing(forced)).toBeCloseTo(Math.min(...outcomes));
   });
 
   it('is deterministic for the same hand', () => {

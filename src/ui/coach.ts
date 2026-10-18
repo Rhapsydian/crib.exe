@@ -1,5 +1,5 @@
 import { cardsEqual, cardValue, type Card } from '../engine/cards';
-import { handExpectedValue, pegSkillStrategy, predictBestDiscard, scoreDiscard, unseenCards } from '../engine/ai';
+import { cribTableValue, handExpectedValue, pegSkillStrategy, predictBestDiscard, scoreDiscard, unseenCards } from '../engine/ai';
 import type { CribbageBeat } from '../engine/basic-cribbage';
 import { rankLabel, suitInfo } from './suits';
 
@@ -92,6 +92,13 @@ function keepLine(kept: Card[], unseen: Card[]): { text: string; average: number
   return { text, average };
 }
 
+/** Two cards thrown, in words: whose crib, and what they make there on
+ * average (the crib table: every other two crib cards, every cut). */
+function throwLine(pair: [Card, Card], ownCrib: boolean): string {
+  const v = cribTableValue(pair).toFixed(1);
+  return ownCrib ? `${list(pair)} into your crib, worth about ${v} to you there on average` : `${list(pair)} into their crib, worth about ${v} to them on average`;
+}
+
 export interface DiscardReview {
   same: boolean;
   text: string;
@@ -110,8 +117,8 @@ export function discardReview(hand: Card[], thrown: [Card, Card], ownCrib: boole
   const y = keepLine(yours.kept, unseen);
   const c = keepLine(coach.kept, unseen);
   const text = same
-    ? `Good discard. You kept ${list(yours.kept)}: ${y.text}.`
-    : `You kept ${list(yours.kept)}: ${y.text}. I would have kept ${list(coach.kept)}: ${c.text}${ownCrib ? `, and thrown ${list(best)} into your crib` : `, throwing them ${list(best)}`}.`;
+    ? `Good discard. You kept ${list(yours.kept)}: ${y.text}; and threw ${throwLine(thrown, ownCrib)}.`
+    : `You kept ${list(yours.kept)}: ${y.text}; and threw ${throwLine(thrown, ownCrib)}. I would have kept ${list(coach.kept)}: ${c.text}; and thrown ${throwLine(best, ownCrib)}.`;
   return { same, text };
 }
 
@@ -120,7 +127,7 @@ export function discardReview(hand: Card[], thrown: [Card, Card], ownCrib: boole
 export function discardHint(hand: Card[], ownCrib: boolean): string {
   const best = predictBestDiscard(hand, ownCrib);
   const kept = hand.filter((c) => !best.some((p) => cardsEqual(p, c)));
-  return `Keep ${list(kept)}: ${keepLine(kept, unseenCards(hand)).text}. Throw ${list(best)} ${ownCrib ? 'into your crib' : 'into their crib'}.`;
+  return `Keep ${list(kept)}: ${keepLine(kept, unseenCards(hand)).text}. Throw ${throwLine(best, ownCrib)}.`;
 }
 
 /** What playing `card` scores right now, in words. */

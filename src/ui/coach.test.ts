@@ -17,8 +17,12 @@ describe('the coach', () => {
   it("agrees with an obviously right discard, and explains a worse one", () => {
     // 5 5 J Q K 2: keep the fives and two ten-cards; throw the junk.
     const hand = [c(5), c(5, 1), c(11, 2), c(12, 3), c(13), c(2, 2)];
-    expect(discardReview(hand, [c(13), c(2, 2)], true).same).toBe(true);
-    expect(discardHint(hand, true)).toMatch(/^Keep 5 5 .*: \d+ points in hand \(.*\), plus about \d\.\d more on average from the cut\. Throw .* into your crib\.$/);
+    // With real crib values (crib-table.ts) the coach splits the fives on
+    // its own crib: keep 5 J Q K (a run), throw 5 2 to its crib (~5.8).
+    expect(discardReview(hand, [c(5), c(2, 2)], true).same).toBe(true);
+    expect(discardReview(hand, [c(13), c(2, 2)], true).text).toMatch(/thrown 5 2 into your crib, worth about 5\.8/);
+    expect(discardHint(hand, true)).toMatch(/^Keep 5 J Q K: \d+ points in hand \(.*\), plus about \d\.\d more on average from the cut\. Throw .* into your crib, worth about \d\.\d to you there on average\.$/);
+    expect(discardHint(hand, false)).toMatch(/into their crib, worth about \d\.\d to them on average\.$/);
     const bad = discardReview(hand, [c(5), c(5, 1)], true);
     expect(bad.same).toBe(false);
     expect(bad.text).toMatch(/I would have kept/);
