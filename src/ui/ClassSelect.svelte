@@ -12,12 +12,14 @@
   let {
     onstart,
     ontest,
+    onmenu,
     saved = null,
     onresume,
     resumeFailed = false,
   }: {
     onstart: (classId: ClassId) => void;
     ontest: () => void;
+    onmenu?: () => void;
     saved?: { className: string; layer: number; savedAt: number } | null;
     onresume?: () => void;
     resumeFailed?: boolean;
@@ -27,6 +29,7 @@
 </script>
 
 <div class="setup">
+  {#if onmenu}<button class="back" onclick={onmenu}>◂ menu</button>{/if}
   <h1>crib.exe <span>// new contract</span></h1>
   {#if saved}
     <button class="resume" onclick={() => onresume?.()}>▶ resume run · {saved.className} · layer {saved.layer}</button>
@@ -145,6 +148,14 @@
   }
   .warn {
     color: var(--warn);
+  }
+  .back {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    padding: 2px 0;
   }
   .test {
     background: none;

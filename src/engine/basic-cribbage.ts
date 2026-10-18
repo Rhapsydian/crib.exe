@@ -140,6 +140,9 @@ export interface CribbageView {
   handIndex: number;
   /** The cut card, once cut (null during the discard). */
   starter: Card | null;
+  /** Everything so far, for a UI to animate (the game's own record; read,
+   * don't keep -- copy it). */
+  timeline: readonly CribbageBeat[];
 }
 
 export type CribbageRequest =
@@ -205,7 +208,7 @@ export function* cribbageGame(options: CribbageGameOptions): Generator<CribbageR
 
   for (let handIndex = 0; ; handIndex++) {
     const nonDealer = (1 - dealer) as PlayerIndex;
-    const view = (starter: Card | null): CribbageView => ({ scores: snap(), dealer, handIndex, starter });
+    const view = (starter: Card | null): CribbageView => ({ scores: snap(), dealer, handIndex, starter, timeline });
     timeline.push({ kind: 'hand', handIndex, dealer, scores: snap() });
 
     const { hands: dealt, stock } = deal(shuffle(createDeck(), rng));

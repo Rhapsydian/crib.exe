@@ -13,6 +13,10 @@
   import ClassSelect from './ui/ClassSelect.svelte';
   import RunView from './ui/RunView.svelte';
   import { clearSave, loadSave, writeSave } from './ui/run-save';
+  import MainMenu from './ui/MainMenu.svelte';
+  import CribbageScreen from './ui/CribbageScreen.svelte';
+  import { LiveCribbage, clearCribbageSave, loadCribbageSave, writeCribbageSave } from './ui/live-cribbage.svelte';
+  import type { Difficulty } from './engine/basic-cribbage';
   import type { ClassId } from './engine/classes';
   import type { EnemyDefinition } from './engine/enemies';
 
@@ -71,18 +75,95 @@
     run = null;
     saved = loadSave();
   }
+
+  // The front door (milestone 4, V5): the main menu, then a mode. A run
+  // keeps its class screen; a Cribbage game saves itself like a run.
+  let screen = $state<'menu' | 'classes' | 'cribbage'>('menu');
+  let cribbage = $state.raw<LiveCribbage | null>(null);
+  let cribbageSaved = $state.raw(loadCribbageSave());
+  let menuWarning = $state<string | null>(null);
+  const VISITED_KEY = 'cribexe.visited';
+  const readVisited = () => {
+    try {
+      return localStorage.getItem(VISITED_KEY) === '1';
+    } catch {
+      return true;
+    }
+  };
+  let firstVisit = $state(!readVisited());
+  function markVisited() {
+    firstVisit = false;
+    try {
+      localStorage.setItem(VISITED_KEY, '1');
+    } catch {
+      // Unsaved: the nudge just shows again next time.
+    }
+  }
+  function beginCribbage(next: LiveCribbage) {
+    markVisited();
+    next.onsave = () => {
+      if (next.result) clearCribbageSave();
+      else writeCribbageSave(next.save);
+    };
+    writeCribbageSave(next.save);
+    cribbage = next;
+    screen = 'cribbage';
+  }
+  function resumeCribbage() {
+    const save = loadCribbageSave();
+    const next = save && LiveCribbage.resume(save);
+    if (next) beginCribbage(next);
+    else {
+      menuWarning = "That saved game is from an older version of the game and couldn't be loaded.";
+      clearCribbageSave();
+      cribbageSaved = null;
+    }
+  }
+  function toMenu() {
+    cribbage = null;
+    run = null;
+    saved = loadSave();
+    cribbageSaved = loadCribbageSave();
+    screen = 'menu';
+  }
   // Development builds only: the live run on window.__run, for driving and
   // inspecting a run from the console (never in a production build).
   $effect(() => {
     if (import.meta.env.DEV) (window as unknown as { __run: LiveRun | null }).__run = run;
+  });
+  $effect(() => {
+    if (import.meta.env.DEV) (window as unknown as { __cribbage: LiveCribbage | null }).__cribbage = cribbage;
   });
 </script>
 
 {#if route === 'run'}
   {#if run}
     <RunView {run} onagain={backToClasses} />
+  {:else if screen === 'cribbage' && cribbage}
+    {#key cribbage}
+      <CribbageScreen
+        game={cribbage}
+        onagain={() => cribbage && beginCribbage(new LiveCribbage(cribbage.difficulty, cribbage.coach, newSeed()))}
+        onmenu={toMenu}
+      />
+    {/key}
+  {:else if screen === 'menu'}
+    <MainMenu
+      runSave={saved?.summary ?? null}
+      cribbageSave={cribbageSaved ? { difficulty: cribbageSaved.difficulty, scores: cribbageSaved.summary.scores } : null}
+      {firstVisit}
+      onlearn={() => beginCribbage(new LiveCribbage('learn', true, newSeed()))}
+      oncribbage={(d: Difficulty, coach: boolean) => beginCribbage(new LiveCribbage(d, coach, newSeed()))}
+      onresumecribbage={resumeCribbage}
+      onrun={() => {
+        markVisited();
+        screen = 'classes';
+      }}
+      resumeFailed={menuWarning}
+    />
   {:else}
     <ClassSelect
+      onmenu={toMenu}
       onstart={(classId) => begin(new LiveRun(classId, newSeed()))}
       ontest={() => (location.hash = '#test')}
       saved={saved?.summary ?? null}

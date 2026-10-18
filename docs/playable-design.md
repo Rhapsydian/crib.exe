@@ -868,6 +868,31 @@ game the combat rests on (the user's call). Decisions, live:
   call, from `#pegboard`): two progress bars with each player's back peg
   as a ghost tick and the skunk lines (61, 91) dashed, matching combat's
   gauges. The strip (A) and street board (B) stay in the mockup.
+- **Checkpoint 3 done -- Play Cribbage.**
+  - **A main menu** is the front door (`MainMenu.svelte`): Learn to play
+    (for now it deals a Learn-to-play game; lessons come in checkpoint
+    5), Play Cribbage (its setup opens in place: the four levels and the
+    coach toggle, which defaults per level), and the crib.exe run (the
+    class screen gains a "menu" link back). A first visit highlights Learn
+    to play; choosing any mode clears the nudge. Each mode shows its
+    resume.
+  - **The game screen** (`CribbageScreen.svelte`) reuses the fight
+    screen's machinery: the game's timeline is translated into fight
+    beats (`cribbage-steps.ts`), so the replay stepper, table, show panel,
+    callouts, hand banners and log lines work unchanged, and a score is a
+    gauge filling to 121, which the replay animates into the bars
+    (`ScoreBars.svelte`, V7, the back peg a ghost tick). A full log
+    drawer, speed, skip, desktop keys.
+  - **The end panel**: win or lose, the score, hands, level, any skunk,
+    and the points by pegging / hands / crib / His Heels; play again or
+    back to the menu.
+  - **Saves** like a run's (`live-cribbage.svelte.ts`): answers replayed
+    from the seed; resumable from the menu; cleared at the end.
+  - Verified in the preview: the menu and setup; a discard and the
+    opponent's lead by real taps; a game driven to the end panel; a save
+    resumed after a reload; no overflow at 320px. (The screenshot tool
+    clipped this session's captures, so layout was checked by measuring
+    the page.)
 - Rules note (Claude's call): a game ends the instant a player reaches
   121, mid-pegging included; the show counts non-dealer, dealer, crib, in
   that order, which decides close games.
