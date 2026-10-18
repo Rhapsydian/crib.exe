@@ -180,7 +180,10 @@ function missAll(n: number, m: number, k: number): number {
  * points, over every card they could still hold (more cards left, more
  * likely they hold the one that scores). The biggest threat is named.
  */
-function judgePlay(card: Card, spot: PegSpot): { pts: number; what: string[]; risk: number; net: number; threat: string; threatWho: string; threatWhat: string } {
+function judgePlay(
+  card: Card,
+  spot: PegSpot,
+): { pts: number; what: string[]; risk: number; net: number; threat: string; threatWho: string; threatWhat: string; scorers: number; scorerText: string } {
   const { pts, what } = playScore(card, spot.count, spot.sequence);
   const after = spot.count + cardValue(card);
   const count = after === 31 ? 0 : after;
@@ -212,7 +215,24 @@ function judgePlay(card: Card, spot: PegSpot): { pts: number; what: string[]; ri
   const threatWho = top ? cards(top[1]) : '';
   const threatWhat = top ? top[0] : '';
   const threat = top ? `${threatWho} would give them ${threatWhat}` : '';
-  return { pts, what, risk, net: pts - risk, threat, threatWho, threatWhat };
+  // For comparisons: every card still out that scores off this play,
+  // counted and named by what it does ("2 fives to make fifteen, 3 tens to
+  // pair it"). A card that scores two ways is counted once, under its
+  // first.
+  const PLURAL = ['', 'aces', 'twos', 'threes', 'fours', 'fives', 'sixes', 'sevens', 'eights', 'nines', 'tens', 'jacks', 'queens', 'kings'];
+  const verbOf = (w: string) => (w.startsWith('fifteen') ? 'make fifteen' : w.startsWith('31') ? 'make 31' : w.includes('run') ? 'make a run' : 'pair it');
+  const groups = [...byWhat].map(([w, g]) => {
+    const rs = [...g.ranks].sort((a, b) => a - b);
+    const name = rs.length > 1 && rs.every((r) => r >= 10) ? 'ten-cards' : rs.map((r) => PLURAL[r]).join(' or ');
+    return { n: g.n, text: `${g.n} ${g.n === 1 ? name.replace(/s$/, '').replace(/sixe$/, 'six') : name} to ${verbOf(w)}` };
+  });
+  const scorers = replies.filter((r) => r.pts > 0).length;
+  const ORDER = ['make fifteen', 'make 31', 'make a run', 'pair it'];
+  const scorerText = groups
+    .sort((x, y) => ORDER.findIndex((o) => x.text.endsWith(o)) - ORDER.findIndex((o) => y.text.endsWith(o)))
+    .map((g) => g.text)
+    .join(', ');
+  return { pts, what, risk, net: pts - risk, threat, threatWho, threatWhat, scorers, scorerText };
 }
 
 /** The coach's pick: the best net play; the AI at full strength breaks
@@ -231,10 +251,19 @@ export function pegHint(spot: PegSpot): string {
   const j = judgePlay(best, spot);
   if (j.pts > 0) return `Play ${label(best)}: ${j.what.join(' and ')}.${j.risk >= 1 && j.threat ? ` (Then watch out: ${j.threat}.)` : ''}`;
   if (spot.count === 0 && cardValue(best) < 5) return `Lead ${label(best)}: they can't make 15 off a card under 5.`;
-  const worst = [...spot.legal].sort((a, b) => judgePlay(a, spot).net - judgePlay(b, spot).net)[0];
-  const w = judgePlay(worst, spot);
-  const avoid = !cardsEqual(worst, best) && j.net - w.net >= 0.5 && w.threat ? ` Avoid ${label(worst)}: ${w.threat}.` : '';
-  return `Play ${label(best)}: it gives them the least to score off.${avoid}`;
+  // Why this card: how few cards left can score off it, beside the
+  // runner-up (the user asked why a 10 beat a 7 or 8 -- the fives were
+  // already out). Then the clearly worst card, if there is one.
+  const ranked = [...spot.legal].filter((card) => card.rank !== best.rank).sort((a, b) => judgePlay(b, spot).net - judgePlay(a, spot).net);
+  const alt = ranked[0];
+  const a = alt ? judgePlay(alt, spot) : null;
+  const plural = (n: number) => `${n} card${n === 1 ? '' : 's'}`;
+  const why = j.scorers ? `${plural(j.scorers)} left can score off it (${j.scorerText})` : 'nothing left can score off it right away';
+  const compare = a && alt && a.scorers > j.scorers ? ` A ${label(alt)} leaves ${a.scorers} (${a.scorerText}).` : '';
+  const worst = ranked[ranked.length - 1];
+  const w = worst ? judgePlay(worst, spot) : null;
+  const avoid = worst && w && !cardsEqual(worst, alt) && j.net - w.net >= 0.5 && w.threat ? ` Avoid ${label(worst)}: ${w.threat}.` : '';
+  return `Play ${label(best)}: ${why}.${compare}${avoid}`;
 }
 
 /** Your last pegging card beside the coach's choice, in the past tense. */

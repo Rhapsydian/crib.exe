@@ -36,6 +36,11 @@ describe('the coach', () => {
     expect(pegHint(spot([c(5), c(9)], 10, [c(10)]))).toBe('Play 5: fifteen for 2.');
     expect(pegHint(spot([c(7), c(3)], 7, [c(7, 1)]))).toMatch(/^Play 7: a pair/);
     expect(pegHint(spot([c(3), c(10)], 0, []))).toMatch(/^Lead 3: they can't make 15/);
+    // The user's question: why lead a 10 over a 7 or 8? With a 5 in hand
+    // and a 5 cut, only two fives are left to make fifteen off a 10.
+    expect(pegHint({ legal: [c(7, 3), c(5), c(8, 3), c(10, 2)], count: 0, sequence: [], known: [c(7, 3), c(5), c(8, 3), c(10, 2), c(5, 2)], opponentCards: 4 })).toBe(
+      'Play 10: 5 cards left can score off it (2 fives to make fifteen, 3 tens to pair it). A 7 leaves 6 (3 eights to make fifteen, 3 sevens to pair it). Avoid 5: any ten-card (10, J, Q, K) would give them fifteen for 2.',
+    );
   });
 
   it('walks through the last count, one line per hand counted', () => {

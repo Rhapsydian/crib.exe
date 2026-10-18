@@ -945,6 +945,12 @@ game the combat rests on (the user's call). Decisions, live:
     less to score off -- its main danger is any 3 making fifteen for 2,
     against any 5 making a run of 4 for 4 off yours." A good play that
     still leaves something says every other card gave them more.
+  - **Why this card, counted** (the user asked why lead a 10 over a 7
+    or 8 -- with a 5 in hand and a 5 cut, only two fives were left): the
+    pegging hint now lists every card still out that scores off its
+    pick, beside the runner-up -- "Play 10: 5 cards left can score off it
+    (2 fives to make fifteen, 3 tens to pair it). A 7 leaves 6 (3 eights
+    to make fifteen, 3 sevens to pair it)."
   - **Sure points, then the cut** (the user's ask): a keep is described
     as what it's sure to score, part by part, then what the cut adds on
     average -- "Keep 9 6 9 6: 12 points in hand (4 fifteens for 8, a pair
