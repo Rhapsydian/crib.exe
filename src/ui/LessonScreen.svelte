@@ -3,6 +3,7 @@
   import { findTargets, matchesTarget, pegGoalMet, type Lesson, type LessonStep } from './lessons';
   import { discardReview } from './coach';
   import CardView from './CardView.svelte';
+  import RichText from './RichText.svelte';
 
   // A lesson (milestone 4 checkpoint 5): its steps one at a time. Read
   // steps just continue; the others are done once answered right (a
@@ -167,7 +168,7 @@
       <button class="act" disabled={selected.length !== 2} onclick={throwPair}>throw {selected.length}/2 into {step.ownCrib ? 'your' : 'their'} crib</button>
     {/if}
 
-    {#if feedback}<div class="feedback" class:ok={feedback.ok}>{feedback.text}</div>{/if}
+    {#if feedback}<div class="feedback" class:ok={feedback.ok}><RichText text={feedback.text} /></div>{/if}
   </div>
 
   <div class="nav">

@@ -1,7 +1,8 @@
 import { cardsEqual, cardValue, type Card } from '../engine/cards';
 import { cribTableValue, handExpectedValue, pegSkillStrategy, predictBestDiscard, scoreDiscard, unseenCards } from '../engine/ai';
 import type { CribbageBeat } from '../engine/basic-cribbage';
-import { rankLabel, suitInfo } from './suits';
+import { rankLabel } from './suits';
+import { suitToken } from './RichText.svelte';
 
 /**
  * The coach (milestone 4 checkpoint 4, V1/V3): plain-words help for a
@@ -76,7 +77,7 @@ export function keepScore(cards: Card[]): { pts: number; parts: string[] } {
     pts += best.length * times;
     parts.push(`${times > 1 ? `${times} runs` : 'a run'} ${best.map(rankLabel).join('-')} for ${best.length * times}`);
   }
-  if (cards.length === 4 && cards.every((c) => c.suit === cards[0].suit)) (pts += 4), parts.push(`a ${suitInfo(cards[0].suit).name} flush for 4`);
+  if (cards.length === 4 && cards.every((c) => c.suit === cards[0].suit)) (pts += 4), parts.push(`a ${suitToken(cards[0].suit)} flush for 4`);
   return { pts, parts };
 }
 

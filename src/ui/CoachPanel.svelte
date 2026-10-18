@@ -6,6 +6,7 @@
 </script>
 
 <script lang="ts">
+  import RichText from './RichText.svelte';
   // The coach's panel (milestone 4 checkpoint 4): in the log ticker's
   // place while the coach is on. Titled sections, so advice for now is
   // never mistaken for a look back (the user's catch): NOW first, then
@@ -26,7 +27,7 @@
     {#each sections as section (section.title)}
       <div class="section" class:now={section.title === 'NOW'}>
         <div class="title">{section.title}</div>
-        {#each section.lines as line, i (i)}<div class="line">{line}</div>{/each}
+        {#each section.lines as line, i (i)}<div class="line"><RichText text={line} /></div>{/each}
       </div>
     {:else}
       <div class="line">Watching the play…</div>
