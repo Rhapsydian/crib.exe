@@ -811,6 +811,51 @@ run-end Heat deaths, far from the choice. The user's replacement:
 - Tools: `trace-price.ts` retired; `scripts/run-outcomes.ts` is the
   full-run outcome report.
 
+## Milestone 4 — vanilla Cribbage and learning to play (planned session 58)
+
+Plain 2-player Cribbage to 121 at several difficulties, with a "Learn to
+play" mode, built before the roguelite polish so testers learn the card
+game the combat rests on (the user's call). Decisions, live:
+
+- **V1 — Learn to play is short lessons, then coached games** (the
+  user's call). Four or five lessons on set-up deals (the goal and the
+  deal; counting fifteens, pairs and runs; pegging to 31 and "go"; the
+  show and the crib; choosing a discard), then real games against an easy
+  opponent with a coach that explains each phase, compares your discard
+  with its own, and walks through each count.
+- **V2 — four difficulty levels** (the user's call): Learn to play (AI
+  skill ~0.3, coach on), Easy (~0.4), Normal (~0.75), Hard (1.0). The
+  opponent's skill and the coach's help are separate dials. Exact skill
+  values are tuned at build time with a skill-vs-skill check, so each step
+  is a noticeable step.
+- **V3 — the coach is a toggle at every level** (the user's call): on in
+  Learn to play, off by default elsewhere.
+- **V4 — the game counts every hand, at every level** (the user's call).
+  Counting your own hand, and muggins, is a long-term backlog idea the
+  user may never add.
+- **V5 — a main menu as the front door, with a nudge and no gating**
+  (the user's call): Learn to play (lessons, replayable, ticked off as
+  done; then a coached game), Play Cribbage (difficulty and coach toggle),
+  and the crib.exe run (with its resume). A first visit highlights Learn
+  to play ("new to Cribbage? start here"); nothing is locked.
+- **V6 — a pegboard, mocked up first** (the user's call; plain score bars
+  stay in the running): a straight two-track strip, a folded "street"
+  board and a minimal bar with peg markers, in the game's terminal style,
+  with the skunk line (91) and 121 marked and the back peg leapfrogging.
+- **Checkpoints** (approved): 1. the game engine to 121 (pausable,
+  skunks) and a difficulty calibration script; 2. pegboard mockups; 3.
+  Play Cribbage -- the main menu, difficulty and coach picker, the game
+  screen, the pegboard, an end screen, saves; 4. the coach; 5. Learn to
+  play -- lessons, progress, the coached game, the first-visit nudge, a
+  phone pass.
+- Smaller calls (Claude's): the end screen names a skunk (loser under
+  91) or double skunk (under 61), no match scoring; vanilla games save as
+  a replay of answers, like runs; lessons are authored as data; the
+  coach's on-screen form is designed in its checkpoint.
+- Rules note (Claude's call): a game ends the instant a player reaches
+  121, mid-pegging included; the show counts non-dealer, dealer, crib, in
+  that order, which decides close games.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand
