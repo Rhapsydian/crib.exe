@@ -7,6 +7,7 @@
   import SetupScreen from './ui/SetupScreen.svelte';
   import LiveFightView from './ui/LiveFightView.svelte';
   import MapMockup from './ui/mockups/map/MapMockup.svelte';
+  import PegboardMockup from './ui/mockups/pegboard/PegboardMockup.svelte';
   import { LiveFight } from './ui/live-fight.svelte';
   import { LiveRun } from './ui/live-run.svelte';
   import ClassSelect from './ui/ClassSelect.svelte';
@@ -19,7 +20,7 @@
   // #test is milestone 2's single-fight harness. The mockups stay
   // reachable -- #mock (the chosen fight screen), the three P3 fight
   // mockups at #tabs / #drawers / #compact, and #map -- with a switcher.
-  const mocks = ['mock', 'tabs', 'drawers', 'compact', 'map'] as const;
+  const mocks = ['mock', 'tabs', 'drawers', 'compact', 'map', 'pegboard'] as const;
   type Route = 'run' | 'test' | (typeof mocks)[number];
   const fromHash = (): Route => (location.hash === '#test' ? 'test' : (mocks.find((l) => location.hash === `#${l}`) ?? 'run'));
   let route = $state<Route>(fromHash());
@@ -110,6 +111,8 @@
   </div>
   {#if route === 'map'}
     <MapMockup />
+  {:else if route === 'pegboard'}
+    <PegboardMockup />
   {:else if route === 'mock'}
     <FightScreen {snapshot} />
   {:else if route === 'tabs'}
