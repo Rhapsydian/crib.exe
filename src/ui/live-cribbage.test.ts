@@ -45,6 +45,9 @@ describe('LiveCribbage', () => {
     const resumed = LiveCribbage.resume(JSON.parse(JSON.stringify(game.save)))!;
     expect(resumed).not.toBeNull();
     expect(resumed.coach).toBe(true);
+    expect(resumed.hints).toBe(true);
+    game.hints = false;
+    expect(LiveCribbage.resume(JSON.parse(JSON.stringify(game.save)))!.hints).toBe(false);
     expect(JSON.stringify(resumed.frame!.request.view.scores)).toBe(JSON.stringify(game.frame!.request.view.scores));
     expect(resumed.frame!.steps.length).toBe(game.frame!.steps.length);
     const stale = { ...game.save, answers: [{ k: 'play', a: { rank: 99, suit: 0 } }] };

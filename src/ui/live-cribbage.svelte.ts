@@ -41,6 +41,8 @@ export interface CribbageSave {
   version: number;
   difficulty: Difficulty;
   coach: boolean;
+  /** Coach suggestions before you choose (absent in older saves: on). */
+  hints?: boolean;
   seed: number;
   answers: SavedAnswer[];
   summary: { scores: [number, number]; savedAt: number };
@@ -82,6 +84,9 @@ export class LiveCribbage {
   readonly difficulty: Difficulty;
   /** The coach (V3), switchable mid-game. */
   coach = $state(false);
+  /** The coach's suggestions before you choose (the user's call); with
+   * them off the coach still explains and reviews afterwards. */
+  hints = $state(true);
   readonly seed: number;
   /** The player's latest discard -- the six dealt and the two thrown --
    * for the coach's review. */
@@ -94,9 +99,10 @@ export class LiveCribbage {
   readonly #discard;
   readonly #play;
 
-  constructor(difficulty: Difficulty, coach: boolean, seed: number) {
+  constructor(difficulty: Difficulty, coach: boolean, seed: number, hints = true) {
     this.difficulty = difficulty;
     this.coach = coach;
+    this.hints = hints;
     this.seed = seed;
     const skill = DIFFICULTIES[difficulty].skill;
     this.#discard = discardSkillStrategy(skill);
@@ -106,7 +112,7 @@ export class LiveCribbage {
   }
 
   static resume(save: CribbageSave): LiveCribbage | null {
-    const game = new LiveCribbage(save.difficulty, save.coach, save.seed);
+    const game = new LiveCribbage(save.difficulty, save.coach, save.seed, save.hints ?? true);
     for (const saved of save.answers) {
       const request = game.frame?.request;
       if (!request) return null;
@@ -119,7 +125,7 @@ export class LiveCribbage {
 
   get save(): CribbageSave {
     const scores = this.frame?.request.view.scores ?? this.result?.finalScores ?? [0, 0];
-    return { version: CRIBBAGE_SAVE_VERSION, difficulty: this.difficulty, coach: this.coach, seed: this.seed, answers: this.answers, summary: { scores: [scores[0], scores[1]], savedAt: Date.now() } };
+    return { version: CRIBBAGE_SAVE_VERSION, difficulty: this.difficulty, coach: this.coach, hints: this.hints, seed: this.seed, answers: this.answers, summary: { scores: [scores[0], scores[1]], savedAt: Date.now() } };
   }
 
   /** The player's discard (two cards) or pegging card. */

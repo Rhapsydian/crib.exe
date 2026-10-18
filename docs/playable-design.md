@@ -934,6 +934,14 @@ game the combat rests on (the user's call). Decisions, live:
     yours is within a whisker of the best; otherwise the coach names its
     pick and the threat ("then any 4 would give them fifteen for 2";
     "any ten-card (10, J, Q, K)"). The NOW hint uses the same judgement.
+  - **Discards get a suggestion first**, like pegging (the user caught the
+    inconsistency): "Keep 9 6 9 6 (4 fifteens, two pairs), about 12.8 with
+    the cut. Throw 2 3 into your crib." A discard within a whisker of the
+    coach's counts as good in the review.
+  - **A suggestions switch** (the user's call): with it off, the coach
+    still explains each phase and reviews your discards and plays, but
+    doesn't suggest first. In the setup under the coach, and in the coach
+    panel's header mid-game; saved with the game.
 - Rules note (Claude's call): a game ends the instant a player reaches
   121, mid-pegging included; the show counts non-dealer, dealer, crib, in
   that order, which decides close games.

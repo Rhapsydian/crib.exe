@@ -19,7 +19,7 @@
     cribbageSave: { difficulty: Difficulty; scores: [number, number] } | null;
     firstVisit: boolean;
     onlearn: () => void;
-    oncribbage: (difficulty: Difficulty, coach: boolean) => void;
+    oncribbage: (difficulty: Difficulty, coach: boolean, hints: boolean) => void;
     onresumecribbage: () => void;
     onrun: () => void;
     resumeFailed?: string | null;
@@ -29,6 +29,7 @@
   let setup = $state(false);
   let difficulty = $state<Difficulty>('easy');
   let coach = $state<boolean>(DIFFICULTIES.easy.coach);
+  let hints = $state(true);
   // Picking a level resets the coach to that level's default (on for
   // Learn to play); the toggle can then change it.
   function pick(d: Difficulty) {
@@ -80,9 +81,13 @@
         {/each}
         <label class="coach">
           <input type="checkbox" bind:checked={coach} />
-          <span><b>Coach</b> <span class="dim">explains each phase, compares your discard with its own, walks through each count</span></span>
+          <span><b>Coach</b> <span class="dim">explains each phase, reviews your discards and plays, walks through each count</span></span>
         </label>
-        <button class="start" onclick={() => oncribbage(difficulty, coach)}>▶ deal · {DIFFICULTIES[difficulty].name}{coach ? ' · coach on' : ''}</button>
+        <label class="coach sub" class:off={!coach}>
+          <input type="checkbox" bind:checked={hints} disabled={!coach} />
+          <span><b>Suggestions</b> <span class="dim">the coach also suggests a discard or play before you choose</span></span>
+        </label>
+        <button class="start" onclick={() => oncribbage(difficulty, coach, hints)}>▶ deal · {DIFFICULTIES[difficulty].name}{coach ? ` · coach on${hints ? '' : ', no suggestions'}` : ''}</button>
         {#if cribbageSave}<div class="dim small">Starting a new game replaces the saved one.</div>{/if}
       </div>
     {/if}
@@ -208,6 +213,12 @@
     align-items: flex-start;
     font-size: 12px;
     padding: 4px 2px;
+  }
+  .coach.sub {
+    padding-left: 22px;
+  }
+  .coach.off {
+    opacity: 0.5;
   }
   .coach input {
     margin-top: 2px;

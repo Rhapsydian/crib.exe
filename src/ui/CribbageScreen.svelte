@@ -78,14 +78,14 @@
     if (r.kind === 'discard') {
       // A suggestion before you choose, as pegging gets (the user's call);
       // the review of what you did follows at your first pegging card.
-      sections.push({ title: 'NOW', lines: [discardHint(r.context.hand, ownCrib), phaseIntro('discard', ownCrib, false)] });
+      sections.push({ title: 'NOW', lines: [...(game.hints ? [discardHint(r.context.hand, ownCrib)] : []), phaseIntro('discard', ownCrib, false)] });
       if (first) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('discard', ownCrib, true)] });
       else {
         sections.push({ title: "LAST HAND'S COUNT", lines: showSummary(r.view.timeline) });
         if (r.view.handIndex === 1) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('show', ownCrib, true)] });
       }
     } else {
-      sections.push({ title: 'NOW', lines: [pegHint(pegSpot(r))] });
+      sections.push({ title: 'NOW', lines: [game.hints ? pegHint(pegSpot(r)) : phaseIntro('peg', ownCrib, false)] });
       const p = game.lastPlay;
       if (p && p.handIndex === r.view.handIndex) sections.push({ title: 'YOUR LAST PLAY', lines: [pegReview(p.spot, p.played).text] });
       const d = game.lastDiscard;
@@ -139,7 +139,7 @@
     </div>
 
     {#if game.coach}
-      <CoachPanel sections={coachSections} onlog={() => (showLog = true)} />
+      <CoachPanel sections={coachSections} onlog={() => (showLog = true)} hints={game.hints} onhints={() => (game.hints = !game.hints)} />
     {:else}
       <button class="ticker" onclick={() => (showLog = true)}>
         {#each ticker as line, i (i)}

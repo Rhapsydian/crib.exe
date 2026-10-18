@@ -11,12 +11,15 @@
   // never mistaken for a look back (the user's catch): NOW first, then
   // the review of your last discard or play, last hand's count, and --
   // the first time only -- how this phase works. "log" opens the log.
-  let { sections, onlog }: { sections: CoachSection[]; onlog: () => void } = $props();
+  // `hints` / `onhints`: the suggestions switch (the user's call) -- off,
+  // the coach still explains and reviews, but doesn't suggest first.
+  let { sections, onlog, hints, onhints }: { sections: CoachSection[]; onlog: () => void; hints: boolean; onhints: () => void } = $props();
 </script>
 
 <div class="coach">
   <div class="head">
     <span class="tag">◈ COACH</span>
+    <button class="hints" class:on={hints} aria-pressed={hints} onclick={onhints} title="suggestions before you choose">suggestions {hints ? 'on' : 'off'}</button>
     <button class="log" onclick={onlog}>log ▸</button>
   </div>
   <div class="body">
@@ -57,8 +60,21 @@
     letter-spacing: 0.08em;
     font-weight: 700;
   }
-  .log {
+  .hints {
     margin-left: auto;
+    margin-right: 10px;
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--text-dim);
+    font-size: 10px;
+    padding: 1px 7px;
+  }
+  .hints.on {
+    border-color: var(--mod);
+    color: var(--mod);
+  }
+  .log {
     background: none;
     border: none;
     color: var(--text-dim);

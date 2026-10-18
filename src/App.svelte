@@ -143,7 +143,7 @@
     {#key cribbage}
       <CribbageScreen
         game={cribbage}
-        onagain={() => cribbage && beginCribbage(new LiveCribbage(cribbage.difficulty, cribbage.coach, newSeed()))}
+        onagain={() => cribbage && beginCribbage(new LiveCribbage(cribbage.difficulty, cribbage.coach, newSeed(), cribbage.hints))}
         onmenu={toMenu}
       />
     {/key}
@@ -153,7 +153,7 @@
       cribbageSave={cribbageSaved ? { difficulty: cribbageSaved.difficulty, scores: cribbageSaved.summary.scores } : null}
       {firstVisit}
       onlearn={() => beginCribbage(new LiveCribbage('learn', true, newSeed()))}
-      oncribbage={(d: Difficulty, coach: boolean) => beginCribbage(new LiveCribbage(d, coach, newSeed()))}
+      oncribbage={(d: Difficulty, coach: boolean, hints: boolean) => beginCribbage(new LiveCribbage(d, coach, newSeed(), hints))}
       onresumecribbage={resumeCribbage}
       onrun={() => {
         markVisited();
