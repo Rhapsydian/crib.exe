@@ -11,9 +11,9 @@ import { rankLabel, suitInfo } from './suits';
  *   time in a game, a short reminder after);
  * - discardReview: your keep beside the coach's own, each with its
  *   average points over every possible cut, and what each keeps;
- * - pegHint: what to play now and why -- take an immediate score, or
- *   avoid handing the opponent an easy 15 or 31;
- * - pegReview: your last pegging card beside the coach's choice;
+ * - pegHint / pegReview: the best pegging play now, and your last one
+ *   beside it -- each play judged by what it scores less the opponent's
+ *   expected reply over the cards they could hold;
  * - showSummary: last hand's count, walked through.
  * The coach's own choices come from the AI at full strength.
  */
@@ -123,54 +123,98 @@ function playScore(card: Card, count: number, sequence: Card[]): { pts: number; 
   return { pts, what };
 }
 
-/** The easy score a play hands the opponent, if any: a count of 5 or 21
- * gives them 15 or 31 with any ten-card (the most common rank there is). */
-function riskOf(card: Card, count: number): string {
-  const after = count + cardValue(card);
-  // A lead of 5 or more can be made into 15 (a lead under 5 can't).
-  if (count === 0 && after >= 5) return `them a 15 off your lead with ${after === 5 ? 'any ten-card' : `a ${rankLabel(15 - after)}`}`;
-  return after === 5 || after === 21 ? `the count on ${after}, so a ten-card makes ${after + 10} for them` : '';
+/** The table at a pegging decision, as the coach reads it. */
+export interface PegSpot {
+  legal: Card[];
+  count: number;
+  sequence: Card[];
+  /** Every card the player can see: their hand, the cut, the cards
+   * played this hand. The opponent's cards are among the rest. */
+  known: Card[];
+  /** How many cards the opponent still holds. */
+  opponentCards: number;
+}
+
+/** C(n, k) ratio C(n - m, k) / C(n, k): the chance k random cards from n
+ * miss all m particular ones. */
+function missAll(n: number, m: number, k: number): number {
+  let p = 1;
+  for (let i = 0; i < k; i++) p *= Math.max(0, n - m - i) / (n - i);
+  return p;
+}
+
+/**
+ * A pegging play judged the way a good player does: the points it scores
+ * now, less what it hands the opponent -- their best reply's expected
+ * points, over every card they could still hold (more cards left, more
+ * likely they hold the one that scores). The biggest threat is named.
+ */
+function judgePlay(card: Card, spot: PegSpot): { pts: number; what: string[]; risk: number; net: number; threat: string } {
+  const { pts, what } = playScore(card, spot.count, spot.sequence);
+  const after = spot.count + cardValue(card);
+  const count = after === 31 ? 0 : after;
+  const sequence = after === 31 ? [] : [...spot.sequence, card];
+  const unseen = unseenCards([...spot.known, card]);
+  const replies = unseen.map((u) => (count + cardValue(u) <= 31 ? { u, ...playScore(u, count, sequence) } : { u, pts: 0, what: [] as string[] }));
+  const k = Math.min(spot.opponentCards, unseen.length);
+  // E[best reply] = sum over t of P(they hold a reply worth at least t).
+  let risk = 0;
+  for (let t = 1; t <= 12; t++) {
+    const m = replies.filter((r) => r.pts >= t).length;
+    if (m) risk += 1 - missAll(unseen.length, m, k);
+  }
+  // The threat to name: the reply with the most at stake -- grouped by
+  // what it scores, so every card that makes the same 15 counts together.
+  const byWhat = new Map<string, { n: number; pts: number; ranks: Set<number> }>();
+  for (const r of replies) if (r.pts > 0) {
+    const g = byWhat.get(r.what[0]) ?? { n: 0, pts: r.pts, ranks: new Set<number>() };
+    g.n++;
+    g.ranks.add(r.u.rank);
+    byWhat.set(r.what[0], g);
+  }
+  const top = [...byWhat].sort((a, b) => b[1].n * b[1].pts - a[1].n * a[1].pts)[0];
+  const cards = (g: { n: number; ranks: Set<number> }) => {
+    const rs = [...g.ranks].sort((a, b) => a - b);
+    if (rs.length > 1 && rs.every((r) => r >= 10)) return 'any ten-card (10, J, Q, K)';
+    return `${g.n > 1 ? 'any' : 'a'} ${rs.map(rankLabel).join(' or ')}`;
+  };
+  const threat = top ? `${cards(top[1])} would give them ${top[0]}` : '';
+  return { pts, what, risk, net: pts - risk, threat };
+}
+
+/** The coach's pick: the best net play; the AI at full strength breaks
+ * near-ties. */
+function bestPlay(spot: PegSpot): Card {
+  const ai = pegSkillStrategy(1)({ legalCards: spot.legal, count: spot.count, sequence: spot.sequence });
+  return [...spot.legal].sort((a, b) => {
+    const d = judgePlay(b, spot).net - judgePlay(a, spot).net;
+    return Math.abs(d) > 0.05 ? d : (cardsEqual(b, ai) ? 1 : 0) - (cardsEqual(a, ai) ? 1 : 0);
+  })[0];
 }
 
 /** What to play now, and why. */
-export function pegHint(legal: Card[], count: number, sequence: Card[]): string {
-  const scoring = legal.map((c) => ({ c, ...playScore(c, count, sequence) })).filter((s) => s.pts > 0).sort((a, b) => b.pts - a.pts);
-  if (scoring.length) return `Play ${label(scoring[0].c)}: ${scoring[0].what.join(' and ')}.`;
-  if (count === 0) {
-    const safe = legal.filter((c) => cardValue(c) < 5);
-    if (safe.length) return `Leading: a card under 5 (like ${label(safe[0])}) is safe -- they can't make 15 off it.`;
-    const notFive = legal.find((c) => c.rank !== 5);
-    return notFive ? `Leading: avoid a 5 -- any ten-card makes 15 off it. ${label(notFive)} is safer.` : "Leading a 5 is risky, but it's all you have.";
-  }
-  const warn = legal.map((c) => ({ c, r: riskOf(c, count) })).filter((x) => x.r);
-  const ok = legal.filter((c) => !warn.some((w) => cardsEqual(w.c, c)));
-  if (warn.length && ok.length) return `Careful: ${label(warn[0].c)} leaves ${warn[0].r}. ${label(ok[0])} is safer.`;
-  return 'Nothing scores now. Hold on to cards that could pair or make 15 later.';
+export function pegHint(spot: PegSpot): string {
+  const best = bestPlay(spot);
+  const j = judgePlay(best, spot);
+  if (j.pts > 0) return `Play ${label(best)}: ${j.what.join(' and ')}.${j.risk >= 1 && j.threat ? ` (Then watch out: ${j.threat}.)` : ''}`;
+  if (spot.count === 0 && cardValue(best) < 5) return `Lead ${label(best)}: they can't make 15 off a card under 5.`;
+  const worst = [...spot.legal].sort((a, b) => judgePlay(a, spot).net - judgePlay(b, spot).net)[0];
+  const w = judgePlay(worst, spot);
+  const avoid = !cardsEqual(worst, best) && j.net - w.net >= 0.5 && w.threat ? ` Avoid ${label(worst)}: ${w.threat}.` : '';
+  return `Play ${label(best)}: it gives them the least to score off.${avoid}`;
 }
 
-/** Your last pegging card beside the coach's choice, in the past tense:
- * `legal`, `count` and `sequence` as they stood when you played. */
-export function pegReview(legal: Card[], count: number, sequence: Card[], played: Card): { same: boolean; text: string } {
-  // The coach's pick follows its own advice (pegHint): the most points,
-  // then no easy score handed over; the AI at full strength breaks ties.
-  const ai = pegSkillStrategy(1)({ legalCards: legal, count, sequence });
-  const rank = (card: Card) => [playScore(card, count, sequence).pts, riskOf(card, count) ? 0 : 1, cardsEqual(card, ai) ? 1 : 0];
-  const coach = [...legal].sort((a, b) => {
-    const [ra, rb] = [rank(a), rank(b)];
-    return rb[0] - ra[0] || rb[1] - ra[1] || rb[2] - ra[2];
-  })[0];
-  const describe = (card: Card) => {
-    const { pts, what } = playScore(card, count, sequence);
-    const risk = riskOf(card, count);
-    const parts = [pts ? what.join(' and ') : 'no score', risk && `it left ${risk}`].filter(Boolean);
-    return { pts, risk, text: parts.join('; ') };
-  };
-  const yours = describe(played);
-  const theirs = describe(coach);
-  const same = cardsEqual(coach, played) || (yours.pts >= theirs.pts && !(yours.risk && !theirs.risk));
+/** Your last pegging card beside the coach's choice, in the past tense. */
+export function pegReview(spot: PegSpot, played: Card): { same: boolean; text: string } {
+  const coach = bestPlay(spot);
+  const yours = judgePlay(played, spot);
+  const theirs = judgePlay(coach, spot);
+  const describe = (j: ReturnType<typeof judgePlay>) => [j.pts ? j.what.join(' and ') : 'no score', j.risk >= 0.5 && j.threat ? `then ${j.threat}` : ''].filter(Boolean).join('; ');
+  // Good if it's the coach's play, or within a whisker of it.
+  const same = cardsEqual(coach, played) || yours.net >= theirs.net - 0.2;
   const text = same
-    ? `Good play: ${label(played)} (${yours.text}).`
-    : `You played ${label(played)} (${yours.text}). I would have played ${label(coach)} (${theirs.text}).`;
+    ? `Good play: ${label(played)} (${describe(yours)}).`
+    : `You played ${label(played)} (${describe(yours)}). I would have played ${label(coach)} (${describe(theirs)}).`;
   return { same, text };
 }
 

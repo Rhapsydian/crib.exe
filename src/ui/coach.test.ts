@@ -25,11 +25,14 @@ describe('the coach', () => {
     expect(bad.text).toMatch(/I would have kept/);
   });
 
-  it('pegging: takes an immediate score, warns off 5 and 21, leads under 5', () => {
-    expect(pegHint([c(5), c(9)], 10, [c(10)])).toBe('Play 5: fifteen for 2.');
-    expect(pegHint([c(7), c(3)], 7, [c(7, 1)])).toMatch(/^Play 7: a pair/);
-    expect(pegHint([c(1), c(9)], 4, [c(4)])).toMatch(/Careful: A leaves the count on 5/);
-    expect(pegHint([c(3), c(10)], 0, [])).toMatch(/under 5/);
+  /** A pegging spot: the legal cards (the whole hand here), the count
+   * and the cards on the table, and the cut. */
+  const spot = (legal: Card[], count: number, sequence: Card[], starter = c(13, 3), opponentCards = 3) => ({ legal, count, sequence, known: [...legal, ...sequence, starter], opponentCards });
+
+  it('pegging hint: takes an immediate score, leads under 5', () => {
+    expect(pegHint(spot([c(5), c(9)], 10, [c(10)]))).toBe('Play 5: fifteen for 2.');
+    expect(pegHint(spot([c(7), c(3)], 7, [c(7, 1)]))).toMatch(/^Play 7: a pair/);
+    expect(pegHint(spot([c(3), c(10)], 0, []))).toMatch(/^Lead 3: they can't make 15/);
   });
 
   it('walks through the last count, one line per hand counted', () => {
@@ -45,17 +48,20 @@ describe('the coach', () => {
     expect(phaseIntro('discard', false, false)).toMatch(/theirs/);
   });
 
-  it('reviews your last pegging card in the past tense', () => {
-    // Count 10 with a 5 in hand: the 5 makes fifteen.
-    expect(pegReview([c(5), c(9)], 10, [c(10)], c(5)).text).toBe('Good play: 5 (fifteen for 2).');
-    const missed = pegReview([c(5), c(9)], 10, [c(10)], c(9));
+  it('reviews your last pegging card in the past tense, judging what it handed them', () => {
+    expect(pegReview(spot([c(5), c(9)], 10, [c(10)]), c(5)).text).toMatch(/^Good play: 5 \(fifteen for 2/);
+    const missed = pegReview(spot([c(5), c(9)], 10, [c(10)]), c(9));
     expect(missed.same).toBe(false);
-    expect(missed.text).toMatch(/^You played 9 \(no score\)\. I would have played 5 \(fifteen for 2\)\.$/);
-    // A lead of 5 or more, when a safer lead was there, is called out.
-    const lead = pegReview([c(6), c(4, 1)], 0, [], c(6));
+    expect(missed.text).toMatch(/^You played 9 \(no score.*\)\. I would have played 5 \(fifteen for 2/);
+    // Leading a 5 hands them fifteens off any ten-card; a 2 doesn't.
+    const lead = pegReview(spot([c(5), c(2)], 0, []), c(5));
     expect(lead.same).toBe(false);
-    expect(lead.text).toMatch(/You played 6 \(no score; it left them a 15 off your lead with a 9\)\. I would have played 4/);
-    // Leaving 21 is called out.
-    expect(pegReview([c(1), c(3)], 20, [c(10), c(10, 1)], c(1)).text).toMatch(/left the count on 21/);
+    expect(lead.text).toMatch(/I would have played 2/);
+    // The quiet trap: neither card scores, but a 2 on a 9 leaves 11, where
+    // any 4 makes 15 -- the K leaves 19, where nothing makes 15 or 31.
+    const trap = pegReview(spot([c(13), c(2)], 9, [c(9)]), c(2));
+    expect(trap.same).toBe(false);
+    expect(trap.text).toMatch(/You played 2 \(no score; then any 4 would give them fifteen for 2\)\. I would have played K/);
+    expect(pegReview(spot([c(13), c(2)], 9, [c(9)]), c(13)).same).toBe(true);
   });
 });

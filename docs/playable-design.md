@@ -926,6 +926,14 @@ game the combat rests on (the user's call). Decisions, live:
     played 4 (no score)."). The coach's pick follows its own advice (most
     points, then no easy score for them; the AI breaks ties), so the
     hint and the review never disagree.
+  - **Pegging judged properly** (the user caught "Good play" on bad
+    plays): every play is now valued as the points it scores less the
+    opponent's expected best reply, over every card they could still
+    hold (the deck less your hand, the cut and the cards played; more
+    cards left, more likely they hold the scorer). "Good play" only when
+    yours is within a whisker of the best; otherwise the coach names its
+    pick and the threat ("then any 4 would give them fifteen for 2";
+    "any ten-card (10, J, Q, K)"). The NOW hint uses the same judgement.
 - Rules note (Claude's call): a game ends the instant a player reaches
   121, mid-pegging included; the show counts non-dealer, dealer, crib, in
   that order, which decides close games.

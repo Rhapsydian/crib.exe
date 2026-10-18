@@ -5,6 +5,19 @@ import type { CombatRequest } from '../engine/combat';
 import { cribbageBeats } from './cribbage-steps';
 import { mergeSteps, type Step } from './timeline';
 import { decodeCombat, encodeCombat, type SavedAnswer } from './run-save';
+import type { PegSpot } from './coach';
+
+/** A pegging request as the coach reads it (coach.ts's PegSpot). */
+export function pegSpot(request: Extract<CribbageRequest, { kind: 'play' }>): PegSpot {
+  const played = request.pegging.events.flatMap((e) => (e.type === 'play' ? [e.card] : []));
+  return {
+    legal: request.context.legalCards,
+    count: request.context.count,
+    sequence: request.context.sequence,
+    known: [...request.pegging.hand, ...played, ...(request.view.starter ? [request.view.starter] : [])],
+    opponentCards: request.pegging.opponentCardsLeft,
+  };
+}
 
 /**
  * The UI driver for a game of vanilla Cribbage (milestone 4 checkpoint
@@ -74,7 +87,7 @@ export class LiveCribbage {
    * for the coach's review. */
   lastDiscard = $state.raw<{ handIndex: number; hand: Card[]; thrown: [Card, Card]; ownCrib: boolean } | null>(null);
   /** The player's latest pegging card, with the table as it stood. */
-  lastPlay = $state.raw<{ handIndex: number; legal: Card[]; count: number; sequence: Card[]; played: Card } | null>(null);
+  lastPlay = $state.raw<{ handIndex: number; spot: PegSpot; played: Card } | null>(null);
   readonly answers: SavedAnswer[] = [];
   onsave: (() => void) | null = null;
   readonly #game: Generator<CribbageRequest, CribbageGameResult, CribbageAnswer>;
@@ -114,7 +127,7 @@ export class LiveCribbage {
     const request = this.frame?.request;
     if (!request) return;
     this.answers.push(encodeCombat(request as unknown as CombatRequest, answer));
-    if (request.kind === 'play') this.lastPlay = { handIndex: request.view.handIndex, legal: request.context.legalCards, count: request.context.count, sequence: request.context.sequence, played: answer as Card };
+    if (request.kind === 'play') this.lastPlay = { handIndex: request.view.handIndex, spot: pegSpot(request), played: answer as Card };
     if (request.kind === 'discard') this.lastDiscard = { handIndex: request.view.handIndex, hand: request.context.hand, thrown: answer as [Card, Card], ownCrib: request.view.dealer === 0 };
     this.#advance(this.#game.next(answer));
     this.onsave?.();

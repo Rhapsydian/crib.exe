@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import type { Card } from '../engine/cards';
   import { DIFFICULTIES, WIN_SCORE } from '../engine/basic-cribbage';
-  import type { LiveCribbage } from './live-cribbage.svelte';
+  import { pegSpot, type LiveCribbage } from './live-cribbage.svelte';
   import { Replay } from './replay.svelte';
   import { cribbageBeats, scoreReadings, pegsAfter } from './cribbage-steps';
   import { pointsSummary, scoreLabel, stepLine, tableAt, type Step } from './timeline';
@@ -83,9 +83,9 @@
         if (r.view.handIndex === 1) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('show', ownCrib, true)] });
       }
     } else {
-      sections.push({ title: 'NOW', lines: [pegHint(r.context.legalCards, r.context.count, r.context.sequence)] });
+      sections.push({ title: 'NOW', lines: [pegHint(pegSpot(r))] });
       const p = game.lastPlay;
-      if (p && p.handIndex === r.view.handIndex) sections.push({ title: 'YOUR LAST PLAY', lines: [pegReview(p.legal, p.count, p.sequence, p.played).text] });
+      if (p && p.handIndex === r.view.handIndex) sections.push({ title: 'YOUR LAST PLAY', lines: [pegReview(p.spot, p.played).text] });
       const d = game.lastDiscard;
       if (d && d.handIndex === r.view.handIndex) sections.push({ title: 'YOUR DISCARD', lines: [discardReview(d.hand, d.thrown, d.ownCrib).text] });
       if (first) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('peg', ownCrib, true)] });
