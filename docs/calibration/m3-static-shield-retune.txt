@@ -1,0 +1,29 @@
+# Milestone 3: gatekeeper retune after Static Shield was set aside (session 58).
+# Static Shield (-2 from every plain Credit the opponent gains) was carrying the simulated player; with it out of
+# the pool the curve fell to 67.7 / 60.4 / 46.0 / 33.3 (targets 70.5 / 64.5 / 58.5 / 52.5). Allowances unchanged.
+
+## Before (gatekeeper-check.ts, all layers synthetic, 300/class)
+firewall-prime 69.0  the-concierge 66.2  zero-sum 55.6  quarantine-ward 65.0
+adaptive-threat 47.0  total-compromise 45.1  root-authority 38.7  null-session 27.6
+
+## Final
+firewall-prime        70.5%  target 70.5  off  +0.0  n=858
+the-concierge         70.2%  target 70.5  off  -0.3  n=784
+zero-sum              64.2%  target 64.5  off  -0.3  n=692
+quarantine-ward       65.0%  target 64.5  off  +0.5  n=722
+adaptive-threat       58.7%  target 58.5  off  +0.2  n=543
+total-compromise      58.0%  target 58.5  off  -0.5  n=588
+root-authority        52.7%  target 52.5  off  +0.2  n=514
+null-session          52.7%  target 52.5  off  +0.2  n=482
+layer 1  70.3%   layer 2  64.6%   layer 3  58.6%   layer 4  52.2%  (layer 4 measured 52.7 on the last pass)
+# scales: firewall-prime 0.87->0.85, the-concierge 1.4->1.35, zero-sum 1.44->1.36, quarantine-ward 1.56,
+#         adaptive-threat 2.22->1.9, total-compromise 2.06->1.86, null-session 2.14->1.68, root-authority 1.74->1.37
+
+## Full runs (run-outcomes.ts, 300/class): victory / heatMax / caught / quarantined, layers
+daemon-honeypot       16.3%   0.3%   2.7%  80.3%   1.94
+daemon-overclock      21.7%   1.3%   4.3%  71.0%   1.77
+exploit-daemon        18.7%   2.0%   4.3%  75.0%   1.60
+exploit-honeypot      26.0%   0.7%   4.7%  68.7%   1.96
+exploit-overclock     20.0%   1.0%   6.3%  72.3%   1.48
+overclock-honeypot    26.0%   1.0%   5.7%  66.7%   2.09
+# Without Static Shield, unretuned: 6.3 / 14.3 / 10.3 / 16.7 / 14.7 / 17.3 (DH/DO/ED/EH/EO/OH).

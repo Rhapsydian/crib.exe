@@ -777,7 +777,11 @@ end):
   Warden 13 -> 7% -- measured at the commits either side of the Shop
   change, which itself moved nothing. Static Shield, overtuned, was
   carrying the simulated player, and the gatekeepers were tuned with it in
-  the pool. Pending: re-tune the gatekeeper curve without it.
+  the pool. **Re-tuned** (the user's call): the curve had fallen to
+  67.7 / 60.4 / 46.0 / 33.3; the eight gatekeeper scales were cut (Null
+  Session 2.14 -> 1.68, Root Authority 1.74 -> 1.37 the largest) and now
+  sit within 0.5 of every target. Victory 16.3-26.0% (Warden low, Breacher
+  and Wraith high). `docs/calibration/m3-static-shield-retune.txt`.
 
 ### Detour: Trace removed (session 58, the user's call)
 

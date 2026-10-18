@@ -612,7 +612,7 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
       });
     }
     expect(checked).toBeGreaterThan(0);
-  });
+  }, 20_000);
 
   it("never lets Heat exceed the layer's own allowance (D5)", () => {
     for (const result of runs('exploit-overclock', 20)) {

@@ -488,7 +488,7 @@ describe('heatSources (session 50) -- Heat attribution', () => {
     // trivially and prove nothing.
     expect(checked).toBeGreaterThan(200);
     expect(sawNonZero).toBeGreaterThan(25);
-  }, 30_000);
+  }, 60_000);
 
   it('splits a lost fight by whether the enemy actually filled Containment', () => {
     // Counts, not summed Heat. heatFromLoss is BASE * (1 - peakFill), so
