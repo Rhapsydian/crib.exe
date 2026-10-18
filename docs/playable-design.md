@@ -864,6 +864,10 @@ game the combat rests on (the user's call). Decisions, live:
   the ladder is now even -- a competent player wins 94 / 75 / 58 / 43%,
   each level beats the one below 66-76%
   (`docs/calibration/m4-cribbage-difficulty.txt`).
+- **V7 — the score is shown as minimal bars (mockup C)** (the user's
+  call, from `#pegboard`): two progress bars with each player's back peg
+  as a ghost tick and the skunk lines (61, 91) dashed, matching combat's
+  gauges. The strip (A) and street board (B) stay in the mockup.
 - Rules note (Claude's call): a game ends the instant a player reaches
   121, mid-pegging included; the show counts non-dealer, dealer, crib, in
   that order, which decides close games.
