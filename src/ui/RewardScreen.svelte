@@ -19,7 +19,7 @@
     onpick,
   }: { request: Extract<RunRequest, { kind: 'reward' }>; gained?: number; onpick: (choice: unknown) => void } = $props();
 
-  type Option = { key: string; name: string; tag: string; lines: string[]; note?: string; icon?: SubroutineDefinition['archetype']; value: unknown };
+  type Option = { key: string; name: string; tag: string; lines: string[]; note?: string; icon?: SubroutineDefinition['archetype']; blocked?: boolean; value: unknown };
   const player = $derived(request.playerState);
   const options = $derived.by((): Option[] => {
     if (request.reward === 'subroutine')
@@ -40,6 +40,7 @@
       tag: `${b.rarity} Burner · ${burnerWhere(b)}`,
       lines: [burnerText(b)],
       note: player.carriedBurnerIds.length >= BURNER_CAP ? `You already carry ${BURNER_CAP}, the most you can: this one won't fit.` : undefined,
+      blocked: player.carriedBurnerIds.length >= BURNER_CAP,
       value: b,
     }));
   });
@@ -65,7 +66,7 @@
   <div class="blurb">{BLURB[request.reward]}</div>
   <div class="options">
     {#each options as o (o.key)}
-      <button class="option" class:sel={selected === o.key} class:mod={request.reward === 'mod'} class:burner={request.reward === 'burner'} onclick={() => (selected === o.key ? onpick(o.value) : (selected = o.key))}>
+      <button class="option" class:sel={selected === o.key} class:mod={request.reward === 'mod'} class:burner={request.reward === 'burner'} disabled={o.blocked} onclick={() => (selected === o.key ? onpick(o.value) : (selected = o.key))}>
         <div class="name">
           {#if o.icon}<SuitIcon archetype={o.icon} size={16} />{:else if request.reward === 'mod'}<span class="glyph mod-c">◆</span>{:else}<span class="glyph burner-c">⏏︎</span>{/if}
           <b>{o.name}</b>
@@ -78,7 +79,7 @@
   </div>
   <div class="actions">
     <button class="skip" onclick={() => onpick(null)}>skip</button>
-    <button class="take" disabled={!chosen} onclick={() => chosen && onpick(chosen.value)}>{chosen ? `take ${chosen.name}` : 'tap one to choose'}</button>
+    <button class="take" disabled={!chosen} onclick={() => chosen && onpick(chosen.value)}>{chosen ? `take ${chosen.name}` : options.every((o) => o.blocked) ? 'nothing fits: skip' : 'tap one to choose'}</button>
   </div>
 </div>
 
@@ -134,6 +135,9 @@
     font-size: 12px;
     outline: none;
     -webkit-tap-highlight-color: transparent;
+  }
+  .option:disabled {
+    opacity: 0.55;
   }
   .option.sel {
     border-color: var(--accent);

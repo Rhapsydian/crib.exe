@@ -173,7 +173,9 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
   // Ticks is out of the pool: DoT/HoT are gone, so it had nothing to do.
   'firmware-patch': { id: 'firmware-patch', name: 'Firmware Patch', rarity: 'uncommon', effectKind: 'hook' },
   'daemon-amplifier': { id: 'daemon-amplifier', name: 'Daemon Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'daemon' },
-  'salvage-protocol': { id: 'salvage-protocol', name: 'Salvage Protocol', rarity: 'uncommon', effectKind: 'hook' },
+  // Gated on the archetype it upgrades (session 58, the user's call): a
+  // class with no Daemon pieces would be offered a dead pick.
+  'salvage-protocol': { id: 'salvage-protocol', name: 'Salvage Protocol', rarity: 'uncommon', effectKind: 'hook', archetype: 'daemon' },
   'cache-prefetch': { id: 'cache-prefetch', name: 'Cache Prefetch', rarity: 'uncommon', effectKind: 'hook' },
   'bulk-buyer': { id: 'bulk-buyer', name: 'Bulk Buyer', rarity: 'uncommon', effectKind: 'hook' },
 
@@ -214,7 +216,8 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
   'exploit-amplifier': { id: 'exploit-amplifier', name: 'Exploit Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'exploit' },
   'honeypot-amplifier': { id: 'honeypot-amplifier', name: 'Honeypot Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'honeypot' },
   'overclock-amplifier': { id: 'overclock-amplifier', name: 'Overclock Amplifier', rarity: 'uncommon', effectKind: 'hook', archetype: 'overclock' },
-  'fast-learner': { id: 'fast-learner', name: 'Fast Learner', rarity: 'uncommon', effectKind: 'hook' },
+  // Gated like Salvage Protocol, on Overclock.
+  'fast-learner': { id: 'fast-learner', name: 'Fast Learner', rarity: 'uncommon', effectKind: 'hook', archetype: 'overclock' },
   'threshold-exploit': { id: 'threshold-exploit', name: 'Threshold Exploit', rarity: 'uncommon', effectKind: 'hook' },
   'scrap-merchant': { id: 'scrap-merchant', name: 'Scrap Merchant', rarity: 'uncommon', effectKind: 'hook' },
 
@@ -240,12 +243,18 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
   },
 };
 
+/** Mods set aside: still defined and still working if owned, but never
+ * offered (rewards, Shops, Events). Static Shield (session 58, the
+ * user's call): -2 from every plain Credit the opponent gains cancels
+ * most of an enemy's plain Credit at today's piece sizes. */
+export const MODS_SET_ASIDE: ReadonlySet<ModId> = new Set<ModId>(['static-shield']);
+
 /** The general Mod pool -- every Mod except the 6 class-exclusive
  * starting passives, which never appear in the reward/Shop pool (session
- * 30). Checkpoint G's reward/Shop draw filters this further by rarity
- * and the archetype-exclusion rule. */
+ * 30), and those set aside (MODS_SET_ASIDE). Checkpoint G's reward/Shop
+ * draw filters this further by rarity and the archetype-exclusion rule. */
 export function generalModPool(): ModDefinition[] {
-  return Object.values(MOD_DEFINITIONS).filter((mod) => !mod.classExclusive);
+  return Object.values(MOD_DEFINITIONS).filter((mod) => !mod.classExclusive && !MODS_SET_ASIDE.has(mod.id));
 }
 
 /** The real SubroutineDefinitions owned reactive-subroutine Mods

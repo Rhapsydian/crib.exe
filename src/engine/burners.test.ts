@@ -581,3 +581,14 @@ describe('synergyAwareMapBurnerStrategy', () => {
     expect(synergyAwareMapBurnerStrategy(mapCtx(graphWithBClosed(false), ['flash-drive', 'stolen-coupon']))).toBeNull();
   });
 });
+
+// Session 58, the user's call: Recon Ping set aside until fog of war.
+describe('Burner pool scoping (session 58)', () => {
+  it('never offers a set-aside Burner', async () => {
+    const { BURNERS_SET_ASIDE, generalBurnerPool, drawBurnerRewardOptions } = await import('./burners');
+    expect(BURNERS_SET_ASIDE.has('recon-ping')).toBe(true);
+    expect(generalBurnerPool().some((b) => BURNERS_SET_ASIDE.has(b.id))).toBe(false);
+    const rng = createRng(1);
+    for (let i = 0; i < 200; i++) expect(drawBurnerRewardOptions(rng).some((b) => b.id === 'recon-ping')).toBe(false);
+  });
+});

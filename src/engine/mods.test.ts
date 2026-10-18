@@ -599,3 +599,26 @@ describe('synergyAwareModShopStrategy', () => {
     expect(synergyAwareModShopStrategy([offering(mod('pricy', 'rare'), 175)], daemonHoneypotStateWithData(10))).toBeNull();
   });
 });
+
+// Session 58, the user's calls: Static Shield set aside; the two
+// first-of-an-archetype upgrade Mods offered only to classes with it.
+describe('Mod pool scoping (session 58)', () => {
+  it('never offers a set-aside Mod, to any class', async () => {
+    const { MODS_SET_ASIDE, generalModPool, modPoolForClass } = await import('./mods');
+    const { ALL_CLASS_IDS } = await import('./classes');
+    expect(MODS_SET_ASIDE.has('static-shield')).toBe(true);
+    expect(generalModPool().some((m) => MODS_SET_ASIDE.has(m.id))).toBe(false);
+    for (const classId of ALL_CLASS_IDS) expect(modPoolForClass(classId, []).some((m) => m.id === 'static-shield')).toBe(false);
+  });
+
+  it('offers Salvage Protocol only to Daemon classes and Fast Learner only to Overclock classes', async () => {
+    const { modPoolForClass } = await import('./mods');
+    const { ALL_CLASS_IDS, CLASS_DEFINITIONS } = await import('./classes');
+    for (const classId of ALL_CLASS_IDS) {
+      const ids = modPoolForClass(classId, []).map((m) => m.id);
+      const archetypes = CLASS_DEFINITIONS[classId].archetypes;
+      expect(ids.includes('salvage-protocol'), classId).toBe(archetypes.includes('daemon'));
+      expect(ids.includes('fast-learner'), classId).toBe(archetypes.includes('overclock'));
+    }
+  });
+});

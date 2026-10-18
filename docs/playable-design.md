@@ -696,9 +696,13 @@ end):
   Learner have no archetype gate, so classes without Daemon/Overclock
   pieces can be offered dead picks; Surge Protector is spent even when
   Static Shield already zeroed that Credit.
-- **Known gaps:** Recon Ping's reveal does nothing yet (no fog of war);
-  a Burner offered at the carry cap can't be taken (no discard-to-make-
-  room yet).
+- **The user's follow-ups:** Static Shield set aside (`MODS_SET_ASIDE`:
+  defined, never offered); Salvage Protocol gated on Daemon and Fast
+  Learner on Overclock (their `archetype`), so only classes that can use
+  them see them; Recon Ping set aside (`BURNERS_SET_ASIDE`) -- no fog of
+  war for now, it returns if fog of war does. Every reward screen can be
+  skipped; a Burner that won't fit (carry cap) can't be selected, leaving
+  skip.
 - Verified in the preview at phone size: subroutine, Burner and Mod
   reward screens; reorder, bench and swap in the drawer (checked against
   the engine's state); a drop that turned out an installed piece.

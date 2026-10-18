@@ -86,11 +86,16 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
   },
 };
 
+/** Burners set aside: defined, but never offered. Recon Ping (session
+ * 58, the user's call): its reveal has nothing to reveal without fog of
+ * war on the map; it comes back if fog of war does. */
+export const BURNERS_SET_ASIDE: ReadonlySet<BurnerId> = new Set<BurnerId>(['recon-ping']);
+
 /** The general Burner pool -- archetype-agnostic by default (DESIGN.md:
  * "not tied to the 4 archetypes"), unlike Mods' targeted-archetype
- * exclusion. No class-scoping needed at all. */
+ * exclusion. No class-scoping needed at all. Excludes BURNERS_SET_ASIDE. */
 export function generalBurnerPool(): BurnerDefinition[] {
-  return Object.values(BURNER_DEFINITIONS);
+  return Object.values(BURNER_DEFINITIONS).filter((burner) => !BURNERS_SET_ASIDE.has(burner.id));
 }
 
 /** Shop-context Burner activation's effect on this visit's slate
