@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { playBasicCribbageGame } from './basic-cribbage';
+import { DIFFICULTIES, WIN_SCORE, cribbageGame, playBasicCribbageGame, playCribbageGame, skunkOf } from './basic-cribbage';
 
 describe('playBasicCribbageGame', () => {
   it('ends with the winning side at or above 121', () => {
@@ -93,5 +93,82 @@ describe('playBasicCribbageGame', () => {
   it('plays a long run end-to-end without throwing, with zero UI involved', () => {
     const seeds = Array.from({ length: 30 }, (_, i) => i);
     expect(() => seeds.forEach((seed) => playBasicCribbageGame({ seed }))).not.toThrow();
+  });
+});
+
+// Milestone 4: the playable game (cribbageGame / playCribbageGame).
+describe('cribbageGame (milestone 4)', () => {
+  const seeds = Array.from({ length: 40 }, (_, i) => i + 1);
+
+  it('ends the moment the winner reaches 121: winner on exactly 121, loser below', () => {
+    for (const seed of seeds) {
+      const r = playCribbageGame({ seed, skills: [0.75, 0.75] });
+      expect(r.finalScores[r.winner]).toBe(WIN_SCORE);
+      expect(r.finalScores[(1 - r.winner) as 0 | 1]).toBeLessThan(WIN_SCORE);
+      expect(r.timeline[r.timeline.length - 1].scores).toEqual(r.finalScores);
+      expect(r.skunk).toBe(skunkOf(r.finalScores[(1 - r.winner) as 0 | 1]));
+    }
+  });
+
+  it('can end mid-pegging, not only after a whole hand', () => {
+    const endings = new Set(seeds.map((seed) => playCribbageGame({ seed, skills: [0.75, 0.75] }).timeline.at(-1)!.kind));
+    expect(endings).toContain('peg');
+    expect(endings).toContain('show');
+  });
+
+  it('is deterministic per seed, and the scores only ever climb by what each beat scored', () => {
+    for (const seed of seeds.slice(0, 10)) {
+      const a = playCribbageGame({ seed, skills: [0.4, 1] });
+      expect(JSON.stringify(playCribbageGame({ seed, skills: [0.4, 1] }))).toBe(JSON.stringify(a));
+      let prev: [number, number] = [0, 0];
+      for (const beat of a.timeline) {
+        const gained = [beat.scores[0] - prev[0], beat.scores[1] - prev[1]];
+        const points = beat.kind === 'cut' ? beat.heels : beat.kind === 'show' ? beat.total : beat.kind === 'peg' ? (beat.event.type === 'play' ? beat.event.score : beat.event.type === 'go-point' ? 1 : 0) : 0;
+        const scorer = beat.kind === 'cut' ? beat.dealer : beat.kind === 'show' ? beat.player : beat.kind === 'peg' ? beat.event.player : 0;
+        // The last beat may be capped at 121.
+        expect(gained[scorer]).toBeLessThanOrEqual(points);
+        if (beat !== a.timeline.at(-1)) expect(gained[scorer]).toBe(points);
+        expect(gained[1 - scorer]).toBe(0);
+        prev = beat.scores;
+      }
+    }
+  });
+
+  it("counts the show in order: non-dealer's hand, dealer's hand, the crib", () => {
+    const r = playCribbageGame({ seed: 3, skills: [0.75, 0.75] });
+    const handsBeats = r.timeline.filter((b) => b.kind === 'hand');
+    const first = handsBeats[0];
+    if (first.kind !== 'hand') throw new Error('unreachable');
+    const show = r.timeline.filter((b) => b.kind === 'show').slice(0, 3);
+    expect(show.map((b) => (b.kind === 'show' ? `${b.owner}:${b.player === first.dealer ? 'dealer' : 'non'}` : ''))).toEqual(['hand:non', 'hand:dealer', 'crib:dealer']);
+  });
+
+  it('pauses for both sides: a six-card discard each hand, then each pegging card', () => {
+    const game = cribbageGame({ seed: 5 });
+    let step = game.next();
+    const kinds: string[] = [];
+    for (let i = 0; i < 10 && !step.done; i++) {
+      const r = step.value;
+      kinds.push(`${r.kind}${r.side}`);
+      if (r.kind === 'discard') {
+        expect(r.context.hand).toHaveLength(6);
+        step = game.next([r.context.hand[0], r.context.hand[1]]);
+      } else step = game.next(r.context.legalCards[0]);
+    }
+    expect(kinds.slice(0, 2)).toEqual(['discard0', 'discard1']);
+    expect(kinds.slice(2).every((k) => k === 'play0' || k === 'play1')).toBe(true);
+  });
+
+  it('the better player wins more often', () => {
+    let strongWins = 0;
+    for (let seed = 1; seed <= 200; seed++) if (playCribbageGame({ seed, skills: [1, 0.2], startingDealer: (seed % 2) as 0 | 1 }).winner === 0) strongWins++;
+    expect(strongWins).toBeGreaterThan(110);
+  });
+
+  it('defines the four difficulty levels in rising skill, the coach on only for Learn to play', () => {
+    const levels = Object.values(DIFFICULTIES);
+    expect(levels.map((l) => l.name)).toEqual(['Learn to play', 'Easy', 'Normal', 'Hard']);
+    for (let i = 1; i < levels.length; i++) expect(levels[i].skill).toBeGreaterThan(levels[i - 1].skill);
+    expect(levels.map((l) => l.coach)).toEqual([true, false, false, false]);
   });
 });

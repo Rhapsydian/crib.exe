@@ -1,0 +1,17 @@
+# Milestone 4: vanilla Cribbage difficulty calibration (session 58), scripts/cribbage-difficulty.ts, 1000 games a pairing.
+
+## First pass (V2's proposed skills)
+level      skill   competent (0.85) wins   perfect (1.0) wins   beats the level below
+learn       0.30                    93.6%                94.9%   --
+easy        0.40                    90.9%                92.5%    57.6% vs learn
+normal      0.75                    57.5%                66.2%    86.6% vs easy
+hard        1.00                    42.6%                49.2%    66.2% vs normal
+
+## Sweep (600 games)
+skill 0.30 94.3 | 0.45 88.8 | 0.50 86.2 | 0.55 82.0 | 0.60 75.5 | 0.65 71.8 | 0.75 57.5 | 1.00 42.8   (competent wins)
+
+## Final: Easy 0.4 -> 0.6
+learn       0.30                    93.6%                94.9%   --
+easy        0.60                    75.3%                81.4%    75.9% vs learn
+normal      0.75                    57.5%                66.2%    68.1% vs easy
+hard        1.00                    42.6%                49.2%    66.2% vs normal

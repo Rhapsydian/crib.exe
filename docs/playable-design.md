@@ -824,7 +824,7 @@ game the combat rests on (the user's call). Decisions, live:
   opponent with a coach that explains each phase, compares your discard
   with its own, and walks through each count.
 - **V2 — four difficulty levels** (the user's call): Learn to play (AI
-  skill ~0.3, coach on), Easy (~0.4), Normal (~0.75), Hard (1.0). The
+  skill ~0.3, coach on), Easy (~0.4; tuned to 0.6), Normal (~0.75), Hard (1.0). The
   opponent's skill and the coach's help are separate dials. Exact skill
   values are tuned at build time with a skill-vs-skill check, so each step
   is a noticeable step.
@@ -852,6 +852,18 @@ game the combat rests on (the user's call). Decisions, live:
   91) or double skunk (under 61), no match scoring; vanilla games save as
   a replay of answers, like runs; lessons are authored as data; the
   coach's on-screen form is designed in its checkpoint.
+- **Checkpoint 1 done:** `basic-cribbage.ts` gains `cribbageGame`, the
+  game a person plays -- paused at every discard and pegging card for both
+  sides, ending the instant someone reaches 121 (after His Heels, any
+  pegging event, or a show item; the show in order), with a timeline for
+  the UI and the skunk -- and `playCribbageGame`, its simulation driver.
+  The session-39 `playBasicCribbageGame` (whole hands scored at once)
+  stays as it was: skill-retention and two diagnostics measure with it.
+  **Difficulty tuned** (`scripts/cribbage-difficulty.ts`): the dial is
+  steep low down (0.4 played much like 0.3), so Easy moved 0.4 -> 0.6;
+  the ladder is now even -- a competent player wins 94 / 75 / 58 / 43%,
+  each level beats the one below 66-76%
+  (`docs/calibration/m4-cribbage-difficulty.txt`).
 - Rules note (Claude's call): a game ends the instant a player reaches
   121, mid-pegging included; the show counts non-dealer, dealer, crib, in
   that order, which decides close games.
