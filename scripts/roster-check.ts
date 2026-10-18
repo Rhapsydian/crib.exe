@@ -46,17 +46,15 @@ const scalerAt = (enemy: AuthoredEnemy, layer: number) =>
   (enemy.scale ?? 1) * (enemy.tier === 'gatekeeper' ? 1 : ENEMY_LAYER_SCALER[layer - 1] / ENEMY_LAYER_SCALER[enemy.minLayer - 1]);
 const options = { seeds, skill: 0.85, gaugeThreshold: GAUGE_THRESHOLD, winThreshold: BREACH_THRESHOLD };
 
-/** The EXTRA Trace an enemy's pressure pushes onto the player per fight:
+/** The Heat an enemy's alarms raise against the player per fight:
  * against each class's starting loadout (the player in seat 0, where
- * Trace accrues), with the pressure minus without it, so the player's own
- * noise (Fuzzer) cancels out. */
-function tracePerFight(enemy: AuthoredEnemy, layer: number): number {
-  const withPressure = traceAgainst(scaledEnemyLoadout(enemy.loadout, scalerAt(enemy, layer)), enemy);
-  const without = traceAgainst(scaledEnemyLoadout(enemy.loadout.map((piece) => ({ ...piece, tracePressure: undefined })), scalerAt(enemy, layer)), enemy);
-  return withPressure - without;
+ * alarm Heat accrues). Since session 58 the player makes no Heat of their
+ * own in a fight, so this is the alarm's Heat directly. */
+function alarmPerFight(enemy: AuthoredEnemy, layer: number): number {
+  return alarmAgainst(scaledEnemyLoadout(enemy.loadout, scalerAt(enemy, layer)), enemy);
 }
 
-function traceAgainst(loadout: ReturnType<typeof scaledEnemyLoadout>, enemy: AuthoredEnemy): number {
+function alarmAgainst(loadout: ReturnType<typeof scaledEnemyLoadout>, enemy: AuthoredEnemy): number {
   let trace = 0;
   let fights = 0;
   for (const classId of ALL_CLASS_IDS) {
@@ -91,7 +89,7 @@ for (const enemy of roster) {
   const cells = layers.map((l, i) => `L${l} ${powers[i] === null ? '--' : powers[i]!.toFixed(1)} / ${ENEMY_BUDGET[enemy.tier][l - 1].toFixed(1)}`).join('  ');
   console.log(`${enemy.name.padEnd(20)} L${enemy.minLayer}     ${budget.toFixed(1).padStart(5)}   ${cells.padEnd(46)} ${verdict}`);
   if (enemy.loadout.some((piece) => (piece.heatPressure ?? 0) > 0) || enemy.mods?.includes('spotlight')) {
-    const t = tracePerFight(enemy, enemy.minLayer);
+    const t = alarmPerFight(enemy, enemy.minLayer);
     console.log(`${''.padEnd(20)} alarm: ${t.toFixed(2)} Heat/fight on the player = ${((100 * t) / LAYER_HEAT_ALLOWANCE[enemy.minLayer - 1]).toFixed(1)}% of layer ${enemy.minLayer}'s allowance`);
   }
 }

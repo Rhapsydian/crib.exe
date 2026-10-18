@@ -34,14 +34,17 @@ Two deliberately separate resources, not one shared health stat:
     reaching it gets you caught;
   - clearing a gatekeeper **resets Heat to 0** (D4) — after the
     gatekeeper's toll, charged *after* that fight, has been survived (R8);
-  - every fight's Trace is a **posted baseline** (tier × layer, knowable
+  - every fight's Heat is a **posted baseline** (tier × layer, knowable
     before committing) plus a **performance term** read off the enemy's
     *final* Containment fill on a win (R6) — a scrappy win is louder than
     a clean one, and the player watches that cost build on the enemy's
     gauge;
-  - a **loss** costs a fixed multiple of the node's worst-case win (R7),
-    replacing the flat per-tier charge, so clean win < scrappy win < loss
-    holds everywhere and every node's risk is a posted triple;
+  - a **loss** costs the baseline plus a fixed multiple (1.5×) of the
+    full performance term (R7; session 58 took the multiple off the
+    baseline), so clean win < scrappy win < loss holds everywhere and
+    every node's risk is a posted triple;
+  - **alarm** enemies add Heat directly while they fight (`heatPressure`,
+    the Spotlight Mod) — session 58;
   - every layer has at least one Safehouse (D7);
   - an **Event's Heat** is a multiple of the layer's elite-loss charge
     (`eventHeat`), so Events scale with depth like every posted price
@@ -73,7 +76,19 @@ Two deliberately separate resources, not one shared health stat:
   every map-node move costs a flat amount of Heat (also TBD/playtesting),
   regardless of direction or destination — see Map & Run Structure's
   free-roam movement model. **A third source (session 47)**: Trace
-  carried out of a fight, below.
+  carried out of a fight, below — removed in session 58.
+- **Trace — removed in session 58 (the user's call).** It was hard to
+  balance: a noisy piece's cost landed as run-end Heat deaths, far from
+  the choice that caused it. What replaced it:
+  - a fight's Heat is posted directly (above), with no Trace in between;
+  - a noisy piece's drawback is **feed** — progress handed straight to
+    the opponent's win gauge (Fuzzer and Jackpot give the enemy
+    Containment). It is paid inside the fight, so duels price it, and
+    enemies can carry noisy pieces too (they hand you Breach);
+  - enemies that "make you loud" are **alarms**: Heat added directly to
+    the player's layer each time one of their pieces fires.
+
+  The original Trace notes follow, for the record.
 - **Trace** (session 47) — in-fight noise, and the *only* Heat-adjacent
   quantity that exists inside combat. It starts at 0 every fight, is
   raised by subroutines that make noise (a Credit beta that hits harder
@@ -249,8 +264,8 @@ effect kinds.
 Lasting effects (what the old catalog called debuffs) are durations on
 Tempo or Suppress, not a separate kind. Variants of Credit that used to
 be their own payload kinds — ignore Ward (old *piercing*), scale off
-earlier fires this turn (old *chain-finisher*), bigger but costs Trace
-(old *risk/reward*) — are beta modifiers on Credit. Converting banked
+earlier fires this turn (old *chain-finisher*), bigger but feeds the
+opponent (old *risk/reward*; costs Trace until session 58) — are beta modifiers on Credit. Converting banked
 Ward into Credit, or taking from the opponent's gauge, are Honeypot
 betas.
 
@@ -282,8 +297,8 @@ A beta's criteria are a **source** (what it watches) combined with a
 Charges reset when spent, like every fire-then-wait rule before it.
 Cut from the old catalog: hand-outcome triggers, His Heels as a trigger
 (one occurrence per game, dealer only, outside either player's control),
-Trace-threshold conditions (Trace survives as a beta *cost*, not a
-criterion), and Togglable.
+Trace-threshold conditions (Trace survived as a beta *cost* until
+session 58 removed it), and Togglable.
 
 ### Loadout order and chains
 
@@ -389,7 +404,8 @@ The instruments are:
   Credit Δ, solving for the Δ that ties.
 - `src/engine/beta-pricing.ts`: the formula.
 - `scripts/beta-validate.ts`: checks the formula against duels.
-- `scripts/trace-price.ts`: prices Trace.
+- `scripts/feed-price.ts`: prices a noisy piece's feed against its band
+  (`trace-price.ts` retired with Trace, session 58).
 - `scripts/skill-check.ts`: skill retention.
 
 **Authoring rules for step 3:**
@@ -416,11 +432,12 @@ The instruments are:
      the beta).
 3. **Charge:** one charge a turn into a beta still below its cap is worth
    one extra use of that beta (~1 Credit for a +1 enhance).
-3e. **A piece that makes Trace earns a Credit premium above its rarity
-   band** (session 56, B5; the user's principle). Size it by measured run
-   impact, since Trace's cost depends on how noisy the build already is.
-   Fuzzer and Jackpot carry +1 Credit a turn (alpha 1 → 2) for their
-   noise.
+3e. **A noisy piece earns a Credit premium above its rarity band, paid
+   for by its feed** (session 56, B5; the user's principle; feed since
+   session 58). Fuzzer and Jackpot carry +1 Credit a turn (alpha 1 → 2);
+   their feed is sized so the piece, premium and feed together, prices
+   back at its band (`scripts/feed-price.ts`). Feed resolves inside the
+   fight, so the duel prices it — no run-level measurement needed.
    **A Charge partner needs cap to spare when the charge arrives**
    (step 3, checkpoint 1). A charge into a beta that is already full is
    wasted.
@@ -442,13 +459,12 @@ The instruments are:
    conversion spends your own banked Ward; absorbed-fuelled conversion
    stays small (cap 1–2); and Honeypot pieces carry some plain Credit.
    Honeypot classes also carry their partner's credit piece.
-4. **Trace has no flat exchange rate.** It is priced against a layer's
-   allowance (1 Trace = 2.5–3.6% of a layer at session 53's allowances;
-   1.3–1.9% since milestone 3 raised them). Its cost is convex in the
-   noise a build already makes: free in a quiet build, 5–8 points of run
-   victory for +1 Trace a fight in a noisy one. **A noisy piece costs
-   more in a noisy build.** Exploit's identity target: its classes end
-   on Heat **3–5×** as often as the others (user, session 53).
+4. **Trace had no flat exchange rate** (retired with Trace, session 58).
+   It was priced against a layer's allowance, and its cost was convex in
+   the noise a build already made — the reason it was hard to balance.
+   Exploit's old identity target (its classes ending on Heat 3–5× as
+   often as the others, session 53) went with it: Exploit's noise is now
+   tempo handed to the enemy, not Heat.
 5. **Skill retention ≥ 0.5.** Cribbage skill must keep deciding fights.
    - **The measure:** a loadout mirror's skill edge (the better player's
      win rate − 0.5) over plain Cribbage's, at the same skills.
@@ -486,7 +502,11 @@ currency.
 > Burners, or rarely a Mod), its price the Heat of the detour. The bench
 > of inactive pieces is capped at 3. Layer Heat allowances rose to
 > 76 / 68 / 61 / 53 and the gatekeepers were re-tuned to the pass-rate
-> curve (`docs/calibration/m3-two-lever.txt`).
+> curve (`docs/calibration/m3-two-lever.txt`). Then **Trace was removed**
+> (see Resources): fights post Heat directly, Fuzzer and Jackpot feed
+> the opponent's gauge, alarms add Heat; the allowances held and the
+> gatekeepers were re-tuned once more
+> (`docs/calibration/m3-trace-removal.txt`).
 
 The node-map is meant to actually read as a network diagram — nodes are
 machines/systems, edges are the network links you route through — not an
@@ -1425,8 +1445,8 @@ more archetypes than that when the identity calls for it. Subroutines can
 be drawn straight from the player's own catalog (`subroutines.ts`) or be
 fully bespoke to one enemy, especially for a heavily thematic identity.
 Since session 51, enemies use the same four archetypes, seven verbs and
-source × shape criteria as the player; Trace-cost modifiers stay
-player-only, because Trace is. (The old rule that Root was rare on
+source × shape criteria as the player. Since session 58 they can carry
+noisy pieces too: an enemy's feed hands the player Breach. (The old rule that Root was rare on
 regular enemies retired with Root; whether any new archetype should be
 held back from early fights is a roster-authoring question.)
 
@@ -1494,8 +1514,9 @@ layer.
   piece. They are tuned to the per-layer pass-rate target above, within
   2.3 points.
 - **Honeypot enemies start at layer 2.** Three "tracers" (Tripwire,
-  Intrusion Alarm, Total Compromise) add Trace to the player instead of
-  mainly trying to contain them.
+  Intrusion Alarm, Total Compromise) are alarms: they add Heat to the
+  player directly (Trace until session 58) instead of mainly trying to
+  contain them.
 - Enemies carry **Mods** (the user's term), not passives.
 
 What carries forward from it:
@@ -1631,6 +1652,7 @@ session 51 and are easy to revisit.
   calibration.
 - **Heat numbers** — the per-layer allowance, fight baselines, the
   performance weight and the loss multiplier are first-pass placeholders
-  (`heat.ts`); step 2 prices Trace against a layer's allowance (R5).
+  (`heat.ts`); step 2 priced Trace against a layer's allowance (R5),
+  retired with Trace in session 58.
 - **Meta-progression** — undesigned; must credit "breached, then caught"
   below a full continue (R8).

@@ -33,7 +33,7 @@ import type { EnemyId } from '../src/engine/enemies';
  * its own run-ending path: a synthetic generating none would lengthen
  * runs for a reason unrelated to gatekeepers.
  */
-export const MEASURED_GATEKEEPER_ALARM: [number, number, number, number] = [0, 0, 0, 0];
+export const MEASURED_GATEKEEPER_ALARM: [number, number, number, number] = [0, 0, 1.8, 0]; // Total Compromise ~3.6 a fight (roster-check), halved
 
 export type GatekeeperOverrides = [GatekeeperOverride?, GatekeeperOverride?, GatekeeperOverride?, GatekeeperOverride?];
 

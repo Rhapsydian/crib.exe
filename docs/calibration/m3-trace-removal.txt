@@ -1,0 +1,47 @@
+# Milestone 3 detour: Trace removed (session 58, the user's call).
+# Fights post Heat directly (loss = baseline + 1.5x performance weight); Fuzzer/Jackpot riders became `feed`
+# (progress handed to the opponent's win gauge); tracers and Spotlight became alarms (direct Heat).
+
+## Feed pricing (feed-price.ts, Credit-2 host, 200 seeds x 2 seats, skill 0.85)
+Fuzzer  band (alpha 1, no feed): 1.86 [1.80, 1.90]
+  alpha 2, feed 0    2.92   feed 0.5 2.61   feed 1 2.34   feed 1.5 1.97   feed 1.75 1.91 [1.76, 2.00]  <- chosen   feed 2 1.78
+Jackpot band (alpha 1, no feed): 2.12 [2.10, 2.20]
+  alpha 2, feed 0    2.97   feed 1 2.63   feed 2 2.42   feed 2.5 (interpolated ~2.1)  <- chosen   feed 3 1.96   feed 3.5 1.91   feed 4 1.72
+
+## Alarm Heat (roster-check.ts, 60 seeds, each class's starting loadout)
+Total Compromise (L3 gatekeeper): 3.59 Heat/fight = 5.9% of layer 3's allowance
+Intrusion Alarm (L2 elite):       5.33 Heat/fight = 7.8% of layer 2's allowance
+synthetic-gatekeepers.ts default alarm: [0, 0, 1.8, 0]
+
+## Before the retune (run-outcomes.ts, 300/class): victory / heatMax / caught / quarantined
+exploit-overclock  21.7 / 2.0 / 4.7 / 71.3
+exploit-daemon     14.0 / 1.7 / 4.7 / 79.0
+daemon-overclock   21.3 / 1.3 / 3.7 / 73.3
+exploit-honeypot   14.3 / 1.3 / 5.3 / 79.0
+daemon-honeypot    11.0 / 0.7 / 3.3 / 85.0
+overclock-honeypot 23.0 / 1.0 / 6.3 / 68.7
+gatekeeper curve slipped: 64.7 / 61.6 / 57.7 / 50.7 (targets 70.5 / 64.5 / 58.5 / 52.5)
+
+## Gatekeepers, final (gatekeeper-check.ts, all layers synthetic, 300/class); allowances unchanged (76/68/61/53)
+firewall-prime        69.9%  target 70.5  off  -0.6  n=854
+the-concierge         70.7%  target 70.5  off  +0.2  n=777
+quarantine-ward       64.0%  target 64.5  off  -0.5  n=659
+zero-sum              65.2%  target 64.5  off  +0.7  n=792
+adaptive-threat       59.0%  target 58.5  off  +0.5  n=619
+total-compromise      58.3%  target 58.5  off  -0.2  n=631
+null-session          52.2%  target 52.5  off  -0.3  n=579
+root-authority        52.3%  target 52.5  off  -0.2  n=570
+layer 1  70.3%   layer 2  64.6%   layer 3  58.6%   layer 4  52.2%
+# scales: firewall-prime 0.96->0.87, the-concierge 1.45->1.4, quarantine-ward 1.6->1.56, zero-sum 1.48->1.44,
+#         adaptive-threat 2.19->2.22, total-compromise 2.1->2.06, null-session 2.17->2.14, root-authority 1.74
+
+## Full runs, final (run-outcomes.ts, 300/class)
+class                victory heatMax  caught  quarant  layers | per run: wins  baseline  perf  alarm   loss  moves
+daemon-honeypot       12.7%   1.0%   4.0%  82.3%   1.83 |   14.0   59.1      9.4    3.4    0.0   50.4
+daemon-overclock      23.3%   2.0%   3.7%  70.7%   1.84 |   13.2   56.2     18.2    1.5    0.2   47.2
+exploit-daemon        14.3%   2.0%   5.0%  78.0%   1.48 |   11.5   48.2     17.0    1.3    0.4   41.7
+exploit-honeypot      17.0%   1.7%   7.0%  74.0%   1.75 |   12.8   53.9     21.0    1.6    0.1   45.6
+exploit-overclock     23.3%   2.0%   4.7%  69.7%   1.61 |   11.7   49.3     22.3    0.9    0.2   41.6
+overclock-honeypot    25.7%   1.3%   6.7%  64.7%   2.09 |   14.4   60.8     16.5    2.3    0.4   50.7
+# vs the two-lever pass: victory 18.7/11.0/19.0/14.3/11.7/22.7 -> 23.3/14.3/23.3/17.0/12.7/25.7 (EO/ED/DO/EH/DH/OH);
+# Heat endings (maxed + caught) Exploit 17-21% -> 6-9%, others 5-8% -> 5-8%.

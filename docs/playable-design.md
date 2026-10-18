@@ -666,6 +666,34 @@ end):
   through three layer banners to the end screen; `live-run.test.ts`
   plays whole runs through the driver and reaches layer 2.
 
+### Detour: Trace removed (session 58, the user's call)
+
+Exploit's Trace was the hard lever: a noisy piece's cost showed up as
+run-end Heat deaths, far from the choice. The user's replacement:
+
+- **Fights post Heat directly.** A fight costs its baseline, plus Heat
+  per % of Containment at the end; a loss costs the baseline plus 150%
+  of the full Containment term (the user's example: 5, +6 at 60%, +15 on
+  a loss). Today's loss multiplied the baseline too; now it doesn't.
+- **Noisy pieces feed the opponent's gauge.** Fuzzer's and Jackpot's
+  riders (`feed`) add straight to the opponent's win gauge -- your
+  Containment, or an enemy's Breach if it carries one. The +1 Credit
+  premium stays; the feed is priced so the piece duels back at its
+  rarity band (`scripts/feed-price.ts`): **Fuzzer 1.75, Jackpot 2.5**.
+- **Alarms add Heat directly.** Tripwire, Intrusion Alarm, Total
+  Compromise and the Spotlight Mod (`heatPressure`), win or lose.
+- Heat sources are now: moves, fights, Events, alarms.
+- **Retune:** allowances held (76/68/61/53) -- Heat endings fell to 5-9%
+  for every class. The gatekeepers slipped 1-6 points (the Exploit kits
+  pay their feed in-fight now) and were re-tuned within 0.7 of the
+  curve. Victory 12.7-25.7% (Warden low, Wraith high).
+  `docs/calibration/m3-trace-removal.txt`.
+- **On screen:** a noisy piece reads "...and also gives the opponent 1¾";
+  an enemy's alarm piece shows an Alarm line; a ▲ chip on your gauges
+  shows Heat its alarms raised this fight.
+- Tools: `trace-price.ts` retired; `scripts/run-outcomes.ts` is the
+  full-run outcome report.
+
 ## Settled in passing (Claude's calls, noted for the record)
 
 - **Milestone 1 converts the combat loops first** (pegging, the hand
