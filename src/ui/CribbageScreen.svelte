@@ -10,13 +10,18 @@
   import Hand from './Hand.svelte';
   import ShowPanel from './ShowPanel.svelte';
   import ScoreBars from './ScoreBars.svelte';
+  import CoachPanel from './CoachPanel.svelte';
+  import { discardReview, pegHint, phaseIntro, showSummary } from './coach';
 
   // A game of vanilla Cribbage (milestone 4 checkpoint 3): the fight
   // screen's table, hand, show panel, callouts and step-through, with the
   // score as two bars (V7) in place of the gauges and loadouts. Each
   // engine pause hands the replay the game so far; it plays out what's
   // new -- the opponent's cards, the scores, the show -- before your hand
-  // is live again. The end panel names the winner and any skunk.
+  // is live again. The end panel names the winner and any skunk. With
+  // the coach on (V3; a header pill switches it), its panel takes the log
+  // ticker's place: advice for the decision in front of you, then a
+  // review of your discard, last hand's count, and what the phase is.
   let { game, onagain, onmenu }: { game: LiveCribbage; onagain: () => void; onmenu: () => void } = $props();
 
   const replay = new Replay();
@@ -63,6 +68,28 @@
     return { title: `HAND ${step.beat.handIndex + 1}`, sub: step.beat.dealer === 0 ? 'you deal · your crib' : 'they deal · their crib', key: replay.shown };
   });
 
+  // What the coach says at this pause (checkpoint 4).
+  type CoachLine = { text: string; kind: 'now' | 'review' | 'count' | 'intro' };
+  const coachLines = $derived.by<CoachLine[]>(() => {
+    if (!game.coach || !r || !handReady) return [];
+    const ownCrib = r.view.dealer === 0;
+    const first = r.view.handIndex === 0;
+    const lines: CoachLine[] = [];
+    if (r.kind === 'discard') {
+      lines.push({ text: phaseIntro('discard', ownCrib, first), kind: 'now' });
+      if (!first) {
+        for (const line of showSummary(r.view.timeline)) lines.push({ text: line, kind: 'count' });
+        if (r.view.handIndex === 1) lines.push({ text: phaseIntro('show', ownCrib, true), kind: 'intro' });
+      }
+    } else {
+      lines.push({ text: pegHint(r.context.legalCards, r.context.count, r.context.sequence), kind: 'now' });
+      const d = game.lastDiscard;
+      if (d && d.handIndex === r.view.handIndex) lines.push({ text: discardReview(d.hand, d.thrown, d.ownCrib).text, kind: 'review' });
+      lines.push({ text: phaseIntro('peg', ownCrib, first), kind: 'intro' });
+    }
+    return lines;
+  });
+
   const level = $derived(DIFFICULTIES[game.difficulty]);
   const over = $derived(game.result && !replay.playing ? game.result : null);
   const pts = $derived(over ? pointsSummary(cribbageBeats(over.timeline)) : null);
@@ -81,6 +108,7 @@
     <div class="top">
       <div class="who">
         <span class="tag">CRIBBAGE</span> <span class="level">{level.name}</span>
+        <button class="pill" class:on={game.coach} aria-pressed={game.coach} onclick={() => (game.coach = !game.coach)} title="the coach: {game.coach ? 'on' : 'off'}">◈ coach</button>
         <button class="pill" onclick={() => replay.cycleSpeed()} title="speed">» {replay.speed}</button>
         <button class="pill" onclick={onmenu}>menu</button>
       </div>
@@ -105,12 +133,16 @@
       {/if}
     </div>
 
-    <button class="ticker" onclick={() => (showLog = true)}>
-      {#each ticker as line, i (i)}
-        <div class:them={line.side === 1} class:quiet={line.kind === 'table'}>{line.side === null ? '' : line.side === 0 ? '$ ' : '> '}{line.text}</div>
-      {/each}
-      <div class="more">tap for full log</div>
-    </button>
+    {#if game.coach}
+      <CoachPanel lines={coachLines} onlog={() => (showLog = true)} />
+    {:else}
+      <button class="ticker" onclick={() => (showLog = true)}>
+        {#each ticker as line, i (i)}
+          <div class:them={line.side === 1} class:quiet={line.kind === 'table'}>{line.side === null ? '' : line.side === 0 ? '$ ' : '> '}{line.text}</div>
+        {/each}
+        <div class="more">tap for full log</div>
+      </button>
+    {/if}
 
     {#if handReady && r}
       <Hand {hand} {legal} count={r.kind === 'play' ? r.context.count : 0} sequence={r.kind === 'play' ? r.context.sequence : []} phase={r.kind} playerIsDealer={r.view.dealer === 0} onplay={(c) => game.answer(c)} ondiscard={(c) => game.answer(c)} />
@@ -203,6 +235,10 @@
   }
   .level {
     color: var(--text);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .pill {
     padding: 3px 10px;
@@ -215,6 +251,10 @@
   }
   .pill:first-of-type {
     margin-left: auto;
+  }
+  .pill.on {
+    border-color: var(--mod);
+    color: var(--mod);
   }
   .table-slot {
     position: relative;

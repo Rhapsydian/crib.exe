@@ -1,3 +1,4 @@
+import type { Card } from '../engine/cards';
 import { cribbageGame, DIFFICULTIES, type CribbageAnswer, type CribbageGameResult, type CribbageRequest, type Difficulty } from '../engine/basic-cribbage';
 import { discardSkillStrategy, pegSkillStrategy } from '../engine/ai';
 import type { CombatRequest } from '../engine/combat';
@@ -66,8 +67,12 @@ export class LiveCribbage {
   /** The whole game as steps, at the end. */
   finalSteps = $state.raw<Step[]>([]);
   readonly difficulty: Difficulty;
-  readonly coach: boolean;
+  /** The coach (V3), switchable mid-game. */
+  coach = $state(false);
   readonly seed: number;
+  /** The player's latest discard -- the six dealt and the two thrown --
+   * for the coach's review. */
+  lastDiscard = $state.raw<{ handIndex: number; hand: Card[]; thrown: [Card, Card]; ownCrib: boolean } | null>(null);
   readonly answers: SavedAnswer[] = [];
   onsave: (() => void) | null = null;
   readonly #game: Generator<CribbageRequest, CribbageGameResult, CribbageAnswer>;
@@ -107,6 +112,7 @@ export class LiveCribbage {
     const request = this.frame?.request;
     if (!request) return;
     this.answers.push(encodeCombat(request as unknown as CombatRequest, answer));
+    if (request.kind === 'discard') this.lastDiscard = { handIndex: request.view.handIndex, hand: request.context.hand, thrown: answer as [Card, Card], ownCrib: request.view.dealer === 0 };
     this.#advance(this.#game.next(answer));
     this.onsave?.();
   }

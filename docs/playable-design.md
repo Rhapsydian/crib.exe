@@ -893,6 +893,24 @@ game the combat rests on (the user's call). Decisions, live:
     resumed after a reload; no overflow at 320px. (The screenshot tool
     clipped this session's captures, so layout was checked by measuring
     the page.)
+- **Checkpoint 4 done -- the coach** (`coach.ts`, `CoachPanel.svelte`).
+  Its on-screen form (Claude's call, for the user's review): a panel in
+  the log ticker's place while the coach is on (the full log one tap
+  away), a "◈ coach" pill in the game's header to switch it mid-game.
+  What it says, at each of your decisions:
+  - at a discard: what discarding is for (fuller the first hand) and
+    whose crib it is; from the second hand, last hand's count walked
+    through ("Their hand: 3 fifteens for 6, a run for 3 = 9"), and after
+    the first show, what the show is;
+  - at a pegging card: a hint -- take an immediate score ("Play 5:
+    fifteen for 2"), else avoid leaving 5 or 21 (a ten-card makes 15 or
+    31), and lead under 5 -- then a review of your discard beside its own
+    ("You kept 4 K 8 A (a fifteen), about 4.2 with the cut. I'd keep 4 3 3
+    8 (2 fifteens, a pair of 3s), about 8.7, and throw K A into your
+    crib") and what pegging is.
+  The coach's own choices are the AI's at full strength; averages are
+  over every possible cut. Verified in the preview with real taps (a
+  deliberately weak discard drew the review above); fits at 320px.
 - Rules note (Claude's call): a game ends the instant a player reaches
   121, mid-pegging included; the show counts non-dealer, dealer, crib, in
   that order, which decides close games.
