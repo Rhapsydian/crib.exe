@@ -273,13 +273,31 @@ describe('the Shop as one visit (checkpoint 4)', () => {
     const proceeds = subroutineSellPrice(benched.id) + burnerSellPrice(BURNER_DEFINITIONS['cold-wallet']);
     expect(burnerSellPrice(BURNER_DEFINITIONS['cold-wallet'])).toBe(50);
     expect(shop().data).toBe(proceeds);
-    expect(shop().sold).toEqual({ subroutine: [benched.id], burner: ['cold-wallet'] });
+    expect(shop().sold).toEqual({ subroutine: [benched.id], copy: [], burner: ['cold-wallet'] });
     next({ kind: 'leave' });
     if (!step.done) throw new Error('expected the visit to end');
     const after = applyShopSales(player, step.value.shopSales!);
     expect(after.bench).toEqual([]);
     expect(after.carriedBurnerIds).toEqual(['flash-drive']);
     expect(after.data).toBe(proceeds);
+  });
+
+  it('sells banked copies, and a ranked subroutine at a premium that takes its rank with it (session 61)', async () => {
+    const { subroutineSellPrice, SELL_RANK_PREMIUM } = await import('./shop');
+    const { applyShopSales } = await import('./run');
+    const { upgradedDefinition } = await import('./merge');
+    const base = createInitialPlayerState('exploit-overclock');
+    const ranked = upgradedDefinition(upgradedDefinition(base.installedLoadout[0]));
+    const player = { ...base, data: 0, bench: [ranked], rank: { [ranked.id]: 2 }, material: { [ranked.id]: 2 } };
+    // A starting piece is a common: buys for 20, sells for 10, +25% a rank.
+    expect(SELL_RANK_PREMIUM).toBe(0.25);
+    expect(subroutineSellPrice(ranked.id)).toBe(10);
+    expect(subroutineSellPrice(ranked.id, 2)).toBe(15);
+    const after = applyShopSales(player, { subroutine: [ranked.id], copy: [ranked.id], burner: [] });
+    expect(after.bench).toEqual([]);
+    expect(after.rank[ranked.id]).toBeUndefined();
+    expect(after.material[ranked.id]).toBe(1);
+    expect(after.data).toBe(subroutineSellPrice(ranked.id, 2) + subroutineSellPrice(ranked.id));
   });
 
   it('never offers a sell-only Burner in the Shop', async () => {

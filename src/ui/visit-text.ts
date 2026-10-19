@@ -1,7 +1,6 @@
 import type { EventChoice, EventEffect, Grant } from '../engine/event-types';
 import { eventHeat } from '../engine/heat';
 import { upgradedDefinition, MERGE_RANK_CAP } from '../engine/merge';
-import type { RunPlayerState } from '../engine/run';
 import type { SubroutineDefinition } from '../engine/subroutine-types';
 import { pieceLines } from './reward-text';
 
@@ -40,20 +39,19 @@ export function choiceOutcomes(choice: EventChoice, layer: number): string[] {
   return choice.outcomes.map((o) => `${Math.round(o.probability * 100)}%: ${effectPhrases(o.effect, layer).join(', ')}`);
 }
 
-/** The pieces a Merge can upgrade right now: banked material and below the
- * rank cap. */
-export function mergeable(player: RunPlayerState): { piece: SubroutineDefinition; rank: number; material: number }[] {
-  return [...player.installedLoadout, ...player.bench]
-    .filter((p) => (player.material[p.id] ?? 0) > 0 && (player.rank[p.id] ?? 0) < MERGE_RANK_CAP)
-    .map((piece) => ({ piece, rank: player.rank[piece.id] ?? 0, material: player.material[piece.id] ?? 0 }));
-}
-
-/** A piece's lines before and after one Merge rank, only those that
+/** A piece's lines before and after `ranks` Merge ranks, only those that
  * change. */
-export function mergeChange(piece: SubroutineDefinition): { before: string; after: string }[] {
+export function mergeChange(piece: SubroutineDefinition, ranks = 1): { before: string; after: string }[] {
   const before = pieceLines(piece);
-  const after = pieceLines(upgradedDefinition(piece));
+  let upgraded = piece;
+  for (let i = 0; i < ranks; i++) upgraded = upgradedDefinition(upgraded);
+  const after = pieceLines(upgraded);
   return after.map((line, i) => ({ before: before[i] ?? '', after: line })).filter((c) => c.before !== c.after);
 }
 
 export { MERGE_RANK_CAP };
+
+/** A Merge rank as a short mark ("II"), empty at rank 0. */
+export function rankMark(rank: number | undefined): string {
+  return ['', 'I', 'II', 'III', 'IV', 'V'][rank ?? 0] ?? `${rank}`;
+}

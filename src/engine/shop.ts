@@ -196,9 +196,14 @@ export function burnerShopCostOf(rarity: Rarity, discountFraction = 0): number {
 // ---------------------------------------------------------------------
 
 export const SELL_FRACTION = 0.5;
+/** A ranked subroutine sells for this much more per Merge rank (the
+ * user's "small premium", session 61). */
+export const SELL_RANK_PREMIUM = 0.25;
 
-export function subroutineSellPrice(id: string): number {
-  return Math.floor(SHOP_COST_BY_RARITY[rarityOf(id)] * SELL_FRACTION);
+/** A subroutine's sale price at `rank` -- a benched one, or (rank 0) a
+ * banked copy. */
+export function subroutineSellPrice(id: string, rank = 0): number {
+  return Math.floor(SHOP_COST_BY_RARITY[rarityOf(id)] * SELL_FRACTION * (1 + SELL_RANK_PREMIUM * rank));
 }
 
 export function burnerSellPrice(burner: BurnerDefinition): number {

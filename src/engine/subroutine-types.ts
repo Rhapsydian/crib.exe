@@ -374,6 +374,10 @@ export interface SubroutineDefinition {
    * content: an alarm. Heat is player-only, so it is inert on a player
    * piece. */
   heatPressure?: number;
+  /** Merge ranks this copy has (merge.ts's upgradedDefinition counts
+   * them; session 61) -- display and sell price only; the engine reads
+   * the upgraded numbers, never this. Absent means rank 0. */
+  rank?: number;
 }
 
 /** The magnitude field of an effect, or undefined for a verb with none

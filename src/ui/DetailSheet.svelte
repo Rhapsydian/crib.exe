@@ -6,6 +6,7 @@
   import { archetypeInfo } from './suits';
   import { describeAlarm, describeFire, describeHook, describeProcess, describeState, forEnemy, glossaryFor, type Thresholds } from './describe';
   import RichText from './RichText.svelte';
+  import { rankMark } from './visit-text';
   import type { KitItem } from './kit';
 
   // The inspect panel (P6): a bottom sheet on phones (a centred card on
@@ -36,7 +37,7 @@
       <SuitIcon archetype={def.archetype} size={20} />
       <div>
         <div class="name">{def.name}</div>
-        <div class="meta">{info.name} · {rarityOf(def.id)}</div>
+        <div class="meta">{info.name} · {rarityOf(def.id)}{def.rank ? ` · rank ${rankMark(def.rank)} (Merged ${def.rank === 1 ? 'once' : def.rank === 2 ? 'twice' : `${def.rank} times`})` : ''}</div>
       </div>
       <button class="close" onclick={onclose} aria-label="close">✕</button>
     </div>

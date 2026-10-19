@@ -86,15 +86,16 @@ export interface ShopVisit {
   rerolled: Record<ShopSlate, boolean>;
   data: number;
   rerollCost: number;
-  /** Sold so far this visit (session 61): benched subroutine ids and
-   * carried Burner ids, one entry per item sold. */
-  sold: { subroutine: string[]; burner: BurnerId[] };
+  /** Sold so far this visit (session 61): benched subroutine ids, banked
+   * copies' ids and carried Burner ids, one entry per item sold. */
+  sold: { subroutine: string[]; copy: string[]; burner: BurnerId[] };
 }
 
 export type ShopAction =
   | { kind: 'buy'; slate: ShopSlate; index: number }
   | { kind: 'reroll'; slate: ShopSlate }
   | { kind: 'sell'; item: 'subroutine'; id: string }
+  | { kind: 'sell'; item: 'copy'; id: string }
   | { kind: 'sell'; item: 'burner'; id: BurnerId }
   | { kind: 'leave' };
 

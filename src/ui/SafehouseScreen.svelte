@@ -2,19 +2,19 @@
   import type { RunRequest } from '../engine/run-requests';
   import { REST_HEAT_REDUCTION } from '../engine/encounters';
   import SuitIcon from './SuitIcon.svelte';
-  import { MERGE_RANK_CAP, mergeChange, mergeable } from './visit-text';
+  import { MERGE_RANK_CAP, mergeChange, rankMark } from './visit-text';
+  import { mergePlan } from '../engine/merge';
 
   // A Safehouse (milestone 3 checkpoint 4): one action per visit -- Rest
-  // to shed Heat, or Merge to upgrade a piece you hold banked material
-  // for (a duplicate you picked up).
+  // to shed Heat, or Merge. Since session 61 (the user's call) a Merge
+  // spends every banked copy you hold, ranking each subroutine as far as
+  // its copies allow; the screen shows the whole plan.
   let { request, onchoose }: { request: Extract<RunRequest, { kind: 'safehouse' }>; onchoose: (action: 'rest' | 'merge', targetId?: string) => void } = $props();
 
   const player = $derived(request.playerState);
   const allowance = $derived(player.heatAllowance ?? 1);
-  const options = $derived(mergeable(player));
+  const plan = $derived(mergePlan(player));
   const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
-  let selected = $state<string | null>(null);
-  const chosen = $derived(options.find((o) => o.piece.id === selected));
 </script>
 
 <div class="safe">
@@ -26,20 +26,20 @@
     <div class="line">Heat {fmt(request.heat)} → {fmt(Math.max(0, request.heat - REST_HEAT_REDUCTION))} of {fmt(allowance)}.</div>
   </button>
 
-  <div class="caption">MERGE · upgrade a piece one rank (up to {MERGE_RANK_CAP})</div>
-  {#each options as o (o.piece.id)}
-    <button class="option" class:sel={selected === o.piece.id} onclick={() => (selected === o.piece.id ? onchoose('merge', o.piece.id) : (selected = o.piece.id))}>
-      <div class="name"><SuitIcon archetype={o.piece.archetype} size={15} /> <b>{o.piece.name}</b> <span class="tag">rank {o.rank} → {o.rank + 1} · {o.material} banked</span></div>
-      {#each mergeChange(o.piece) as c (c.after)}
-        <div class="line dim">{c.before}</div>
-        <div class="line up">→ {c.after}</div>
+  <div class="caption">MERGE · spend every banked copy (each subroutine up to rank {rankMark(MERGE_RANK_CAP)})</div>
+  {#if plan.length}
+    <div class="option merge">
+      {#each plan as o (o.piece.id)}
+        <div class="name"><SuitIcon archetype={o.piece.archetype} size={15} /> <b>{o.piece.name}</b> <span class="tag">rank {rankMark(o.from) || '0'} → {rankMark(o.to)}</span></div>
+        {#each mergeChange(o.piece, o.to - o.from) as c (c.after)}
+          <div class="line dim">{c.before}</div>
+          <div class="line up">→ {c.after}</div>
+        {/each}
       {/each}
-    </button>
+    </div>
+    <button class="confirm" onclick={() => onchoose('merge', plan[0].piece.id)}>merge everything</button>
   {:else}
-    <div class="empty">Nothing to merge: pick up a second copy of a piece you own to bank Merge material.</div>
-  {/each}
-  {#if chosen}
-    <button class="confirm" onclick={() => onchoose('merge', chosen.piece.id)}>merge {chosen.piece.name}</button>
+    <div class="empty">Nothing to merge: pick up a second copy of a subroutine you own to bank a copy for Merging.</div>
   {/if}
 </div>
 
@@ -88,9 +88,9 @@
   .option.rest {
     border-color: var(--heat);
   }
-  .option.sel {
+  .option.merge {
     border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent) inset;
+    gap: 4px;
   }
   .name {
     display: flex;

@@ -2,6 +2,7 @@
   import type { LoadoutEntry } from '../engine/resolve';
   import SuitIcon from './SuitIcon.svelte';
   import { tip } from './tip';
+  import { rankMark } from './visit-text';
   import { describeAlarm, describeHook, describeProcess, forEnemy, plainText } from './describe';
 
   // A loadout, top to bottom = firing order. Each piece shows its suit,
@@ -21,7 +22,7 @@
   const tipText = (e: LoadoutEntry) => {
     const voice = (t: string) => plainText(enemy ? forEnemy(t) : t);
     const d = e.definition;
-    return [d.name, `Process: ${voice(describeProcess(d.alpha))}`, d.beta ? `Hook: ${voice(describeHook(d))}` : null, describeAlarm(d) ? `Alarm: ${describeAlarm(d)}` : null].filter(Boolean).join('\n');
+    return [`${d.name}${d.rank ? ` ${rankMark(d.rank)}` : ''}`, `Process: ${voice(describeProcess(d.alpha))}`, d.beta ? `Hook: ${voice(describeHook(d))}` : null, describeAlarm(d) ? `Alarm: ${describeAlarm(d)}` : null].filter(Boolean).join('\n');
   };
 
   const initials = (name: string) =>
@@ -40,6 +41,7 @@
       <button class="piece" class:primed={primed(entry)} class:firing={i === firing} style="--suit: var(--suit-{entry.definition.archetype})" onclick={() => onpick(i)} aria-label={entry.definition.name} use:tip={tipText(entry)}>
         <SuitIcon archetype={entry.definition.archetype} size={dense ? 13 : 15} />
         <span class="name">{dense ? initials(entry.definition.name) : entry.definition.name}</span>
+        {#if entry.definition.rank}<span class="rank" title="Merge rank">{rankMark(entry.definition.rank)}</span>{/if}
         {#if entry.state.charges > 0}<span class="charges">{entry.state.charges}</span>{/if}
       </button>
     </li>
@@ -72,6 +74,12 @@
     cursor: pointer;
     width: 100%;
     text-align: left;
+  }
+  .rank {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.04em;
   }
   .dense .piece {
     padding: 2px 5px;

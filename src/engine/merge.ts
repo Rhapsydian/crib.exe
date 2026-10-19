@@ -75,16 +75,17 @@ function loosenedShape(beta: Beta): Beta {
  *   unless the piece has no magnitude anywhere.
  */
 export function upgradedDefinition(definition: SubroutineDefinition): SubroutineDefinition {
+  const ranked = { ...definition, rank: (definition.rank ?? 0) + 1 };
   const { beta } = definition;
   if (beta && beta.effect.verb !== 'disrupt') {
     const tempoUnits = beta.effect.verb === 'enhance' ? isTempo(definition.alpha) : isTempo(beta.effect);
-    return { ...definition, beta: { ...beta, effect: bumpedEffect(beta.effect, tempoUnits) } };
+    return { ...ranked, beta: { ...beta, effect: bumpedEffect(beta.effect, tempoUnits) } };
   }
   if (beta) {
     const loosened = loosenedShape(beta);
-    if (loosened !== beta) return { ...definition, beta: loosened };
+    if (loosened !== beta) return { ...ranked, beta: loosened };
   }
-  return { ...definition, alpha: bumpedEffect(definition.alpha) };
+  return { ...ranked, alpha: bumpedEffect(definition.alpha) };
 }
 
 /** Spends 1 banked material to rank up the owned copy of `id` (found in
@@ -115,6 +116,30 @@ export function mergeSubroutine(playerState: RunPlayerState, id: string): RunPla
     material: { ...playerState.material, [id]: material - 1 },
     rank: { ...playerState.rank, [id]: rank + 1 },
   };
+}
+
+/** A Safehouse Merge (session 61, the user's call): spends every banked
+ * copy, across every owned subroutine, ranking each as far as its copies
+ * allow (up to MERGE_RANK_CAP). Copies past the cap stay banked (they
+ * sell at a Shop). */
+export function mergeEverything(playerState: RunPlayerState): RunPlayerState {
+  let state = playerState;
+  for (const id of Object.keys(state.material)) {
+    for (;;) {
+      const next = mergeSubroutine(state, id);
+      if (next === state) break;
+      state = next;
+    }
+  }
+  return state;
+}
+
+/** What mergeEverything would do: each subroutine it ranks, from and to. */
+export function mergePlan(playerState: RunPlayerState): { piece: SubroutineDefinition; from: number; to: number }[] {
+  const after = mergeEverything(playerState);
+  return [...playerState.installedLoadout, ...playerState.bench]
+    .map((piece) => ({ piece, from: playerState.rank[piece.id] ?? 0, to: after.rank[piece.id] ?? 0 }))
+    .filter((p) => p.to > p.from);
 }
 
 /** What a script does at a Safehouse: Rest (reduce Heat) or Merge --

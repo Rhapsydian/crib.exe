@@ -304,7 +304,7 @@ export interface EncounterOutcome {
   /** What a Shop visit sold (session 61): benched subroutine ids and
    * carried Burner ids, applied by playRun before the purchases (whose
    * Data the sales may have paid for). */
-  shopSales?: { subroutine: string[]; burner: BurnerId[] };
+  shopSales?: { subroutine: string[]; copy: string[]; burner: BurnerId[] };
   /** REROLL_COST if a Shop visit spent Data to reroll its slate once,
    * else 0 -- checkpoint F follow-up. Same split as the other
    * playerState-affecting fields: this just records the cost incurred;
@@ -1026,7 +1026,7 @@ export function* resolveEncounterRequests(
         rerolled: { subroutine: false, mod: false, burner: false },
         data: playerState.data,
         rerollCost: rerollCostThisVisit,
-        sold: { subroutine: [], burner: [] },
+        sold: { subroutine: [], copy: [], burner: [] },
       };
       const purchases = { subroutine: [] as ShopOffering[], mod: [] as ModOffering[], burner: [] as BurnerOffering[] };
       const rerollCosts: Record<ShopSlate, number> = { subroutine: 0, mod: 0, burner: 0 };
@@ -1038,7 +1038,7 @@ export function* resolveEncounterRequests(
           slates: { ...visit.slates },
           bought: { subroutine: [...visit.bought.subroutine], mod: [...visit.bought.mod], burner: [...visit.bought.burner] },
           rerolled: { ...visit.rerolled },
-          sold: { subroutine: [...visit.sold.subroutine], burner: [...visit.sold.burner] },
+          sold: { subroutine: [...visit.sold.subroutine], copy: [...visit.sold.copy], burner: [...visit.sold.burner] },
         };
         const phaseAtAsk = simPhase;
         const action = yield* ask({ kind: 'shop', shop: snapshot, playerState, fallback: () => shopFallback(snapshot, playerState, phaseAtAsk, strategies).action });
@@ -1057,14 +1057,22 @@ export function* resolveEncounterRequests(
           continue;
         }
         if (action.kind === 'sell') {
-          // Selling (session 61): a benched subroutine or a carried Burner
-          // not already sold this visit; its price joins this visit's Data.
+          // Selling (session 61): a benched subroutine, a banked copy or a
+          // carried Burner not already sold this visit; its price joins
+          // this visit's Data.
           const sold = visit.sold[action.item] as string[];
-          const owned = action.item === 'subroutine' ? playerState.bench.map((p) => p.id) : playerState.carriedBurnerIds;
-          const ownedCount = owned.filter((id) => id === action.id).length;
+          const ownedCount =
+            action.item === 'subroutine'
+              ? playerState.bench.filter((p) => p.id === action.id).length
+              : action.item === 'copy'
+                ? (playerState.material[action.id] ?? 0)
+                : playerState.carriedBurnerIds.filter((id) => id === action.id).length;
           if (ownedCount <= sold.filter((id) => id === action.id).length) continue;
           sold.push(action.id);
-          visit.data += action.item === 'subroutine' ? subroutineSellPrice(action.id) : burnerSellPrice(BURNER_DEFINITIONS[action.id]);
+          visit.data +=
+            action.item === 'burner'
+              ? burnerSellPrice(BURNER_DEFINITIONS[action.id])
+              : subroutineSellPrice(action.id, action.item === 'subroutine' ? (playerState.bench.find((p) => p.id === action.id)?.rank ?? 0) : 0);
           continue;
         }
         const offering = visit.slates[action.slate][action.index];
@@ -1086,7 +1094,7 @@ export function* resolveEncounterRequests(
         rewardOptions: [],
         mergeTargetId: null,
         shopPurchases: purchases.subroutine,
-        shopSales: visit.sold.subroutine.length + visit.sold.burner.length > 0 ? { subroutine: visit.sold.subroutine, burner: visit.sold.burner } : undefined,
+        shopSales: visit.sold.subroutine.length + visit.sold.copy.length + visit.sold.burner.length > 0 ? { ...visit.sold } : undefined,
         rerollCost: rerollCosts.subroutine,
         modRewardOptions: [],
         modShopPurchases: purchases.mod,

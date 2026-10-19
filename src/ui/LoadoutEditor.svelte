@@ -4,6 +4,7 @@
   import { BENCH_CAP, INSTALLED_SLOT_CAP } from '../engine/loadout';
   import SuitIcon from './SuitIcon.svelte';
   import { pieceLines, rarityOf } from './reward-text';
+  import { rankMark } from './visit-text';
 
   // The loadout, editable between fights (milestone 3 checkpoint 3, M2).
   // Tap a piece to select it and read it; then move it up or down, bench
@@ -84,7 +85,8 @@
     <button class="piece" class:sel={selected?.id === p.id} onclick={() => tap('loadout', p.id)}>
       <span class="n">{i + 1}</span>
       <SuitIcon archetype={p.archetype} size={14} />
-      {p.name}
+      {p.name}{#if p.rank}&nbsp;<span class="rank">{rankMark(p.rank)}</span>{/if}
+      {#if player.material[p.id]}<span class="banked" title="banked copies, for Merging at a Safehouse">+{player.material[p.id]} banked</span>{/if}
       {#if locked(p.id)}<span class="tag">Mod-granted</span>{/if}
     </button>
   {/each}
@@ -92,7 +94,8 @@
   {#each player.bench as p (p.id)}
     <button class="piece benched" class:sel={selected?.id === p.id} onclick={() => tap('bench', p.id)}>
       <SuitIcon archetype={p.archetype} size={14} />
-      {p.name}
+      {p.name}{#if p.rank}&nbsp;<span class="rank">{rankMark(p.rank)}</span>{/if}
+      {#if player.material[p.id]}<span class="banked" title="banked copies, for Merging at a Safehouse">+{player.material[p.id]} banked</span>{/if}
     </button>
   {:else}
     <div class="empty">empty</div>
@@ -100,7 +103,7 @@
 
   {#if piece && selected}
     <div class="detail">
-      <div class="name"><SuitIcon archetype={piece.archetype} size={15} /> <b>{piece.name}</b> <span class="dim">· {rarityOf(piece.id)}</span></div>
+      <div class="name"><SuitIcon archetype={piece.archetype} size={15} /> <b>{piece.name}</b> <span class="dim">· {rarityOf(piece.id)}{piece.rank ? ` · rank ${rankMark(piece.rank)}` : ''}{player.material[piece.id] ? ` · ${player.material[piece.id]} banked` : ''}</span></div>
       {#each pieceLines(piece) as line (line)}<div class="line"><RichText text={line} /></div>{/each}
       <div class="actions">
         {#if selected.zone === 'loadout'}
@@ -120,6 +123,16 @@
 </div>
 
 <style>
+  .rank {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .banked {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--accent);
+  }
   .editor {
     display: flex;
     flex-direction: column;

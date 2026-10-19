@@ -24,7 +24,7 @@ import {
   type SubroutineAcquirer,
 } from './loadout';
 import {
-  mergeSubroutine,
+  mergeEverything,
   pickMergeTarget,
   preferMergeWhenAvailable,
   MATERIAL_HIGH_THRESHOLD,
@@ -955,7 +955,9 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         });
         if (pickedBurner) playerState = yield* acquireBurnerAsking(playerState, pickedBurner);
       }
-      if (outcome.mergeTargetId) playerState = mergeSubroutine(playerState, outcome.mergeTargetId);
+      // A Safehouse Merge spends every banked copy (session 61); the target
+      // id now only says a Merge happened.
+      if (outcome.mergeTargetId) playerState = mergeEverything(playerState);
       // Sales first (session 61): their Data may have paid for the buys.
       if (outcome.shopSales) playerState = applyShopSales(playerState, outcome.shopSales);
       if (outcome.rerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.rerollCost };
@@ -1148,16 +1150,26 @@ export const synergyAwareMapBurnerStrategy: MapBurnerStrategy = (ctx) => {
   return null;
 };
 
-/** A Shop visit's sales (session 61): each sold benched subroutine and
- * carried Burner leaves (one copy each), and its price is paid in Data. */
-export function applyShopSales(playerState: RunPlayerState, sales: { subroutine: string[]; burner: BurnerId[] }): RunPlayerState {
+/** A Shop visit's sales (session 61): each sold benched subroutine,
+ * banked copy and carried Burner leaves (one each), and its price is paid
+ * in Data. A sold subroutine takes its Merge rank with it (a copy found
+ * later starts again at rank 0); its banked copies stay. */
+export function applyShopSales(playerState: RunPlayerState, sales: { subroutine: string[]; copy: string[]; burner: BurnerId[] }): RunPlayerState {
   let bench = [...playerState.bench];
   let carried = [...playerState.carriedBurnerIds];
+  const material = { ...playerState.material };
+  const rank = { ...playerState.rank };
   let data = playerState.data;
   for (const id of sales.subroutine) {
     const i = bench.findIndex((p) => p.id === id);
     if (i === -1) continue;
+    data += subroutineSellPrice(id, bench[i].rank ?? 0);
     bench = [...bench.slice(0, i), ...bench.slice(i + 1)];
+    delete rank[id];
+  }
+  for (const id of sales.copy) {
+    if ((material[id] ?? 0) <= 0) continue;
+    material[id] -= 1;
     data += subroutineSellPrice(id);
   }
   for (const id of sales.burner) {
@@ -1166,5 +1178,5 @@ export function applyShopSales(playerState: RunPlayerState, sales: { subroutine:
     carried = [...carried.slice(0, i), ...carried.slice(i + 1)];
     data += burnerSellPrice(BURNER_DEFINITIONS[id]);
   }
-  return { ...playerState, bench, carriedBurnerIds: carried, data };
+  return { ...playerState, bench, carriedBurnerIds: carried, material, rank, data };
 }

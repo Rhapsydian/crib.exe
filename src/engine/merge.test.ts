@@ -8,6 +8,8 @@ import { playRun, opportunisticTraversal, type RunPlayerState } from './run';
 import { scaledDefinition, type Archetype, type Beta, type SubroutineDefinition } from './subroutine-types';
 import {
   mergeSubroutine,
+  mergeEverything,
+  mergePlan,
   preferMergeWhenAvailable,
   opportunisticSafehouseStrategy,
   pickMergeTarget,
@@ -150,9 +152,28 @@ describe('upgradedDefinition -- Disrupt betas loosen their shape (session 51)', 
     expect(upgraded.alpha).toEqual({ verb: 'credit', amount: 3 }); // +1 (MERGE_MAGNITUDE_BONUS)
   });
 
-  it('is a true no-op for a piece with no magnitude anywhere (Disrupt alpha, no beta)', () => {
+  it('changes nothing but its rank for a piece with no magnitude anywhere (Disrupt alpha, no beta)', () => {
     const original = piece('d', { alpha: { verb: 'disrupt', action: 'revealHand' }, beta: undefined });
-    expect(upgradedDefinition(original)).toEqual(original);
+    expect(upgradedDefinition(original)).toEqual({ ...original, rank: 1 });
+  });
+
+  it('counts its ranks on the definition (session 61)', () => {
+    expect(upgradedDefinition(upgradedDefinition(piece('a'))).rank).toBe(2);
+  });
+});
+
+describe('mergeEverything (session 61: a Safehouse Merge spends every banked copy)', () => {
+  it('ranks every subroutine as far as its copies allow, up to the cap, leaving the rest banked', () => {
+    const state = playerState({ installedLoadout: [piece('a'), piece('b')], bench: [piece('c')], material: { a: 2, b: MERGE_RANK_CAP + 2, c: 1, gone: 3 } });
+    const after = mergeEverything(state);
+    expect(after.rank).toEqual({ a: 2, b: MERGE_RANK_CAP, c: 1 });
+    expect(after.material).toEqual({ a: 0, b: 2, c: 0, gone: 3 });
+    expect(after.installedLoadout.map((p) => p.rank)).toEqual([2, MERGE_RANK_CAP]);
+    expect(mergePlan(state).map((p) => [p.piece.id, p.from, p.to])).toEqual([
+      ['a', 0, 2],
+      ['b', 0, MERGE_RANK_CAP],
+      ['c', 0, 1],
+    ]);
   });
 });
 

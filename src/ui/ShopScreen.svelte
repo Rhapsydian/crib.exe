@@ -8,6 +8,8 @@
   import type { Archetype } from '../engine/subroutine-types';
   import { BURNER_DEFINITIONS } from '../engine/burners';
   import { burnerSellPrice, subroutineSellPrice } from '../engine/shop';
+  import { ALL_SUBROUTINES } from '../engine/subroutines';
+  import { rankMark } from './visit-text';
   import type { BurnerId } from '../engine/burner-types';
 
   // A Shop (milestone 3 checkpoint 4, the user's call: buy freely): three
@@ -15,8 +17,9 @@
   // each once; reroll each slate once; leave when done. Tap an item to
   // select it, then buy. What you buy is yours when you leave (a full
   // bench or Burner pouch asks then). Below the slates, SELL (session
-  // 61): benched subroutines and carried Burners, for half their price
-  // (Cold Wallet: its own), the Data available at once.
+  // 61): benched subroutines (+25% a Merge rank), banked copies and
+  // carried Burners, for half their price (Cold Wallet: its own), the
+  // Data available at once.
   let { request, onact }: { request: Extract<RunRequest, { kind: 'shop' }>; onact: (action: ShopAction) => void } = $props();
 
   const shop = $derived(request.shop);
@@ -59,11 +62,19 @@
       return false;
     });
   };
-  type Sellable = { key: string; item: 'subroutine' | 'burner'; id: string; name: string; tag: string; lines: string[]; icon?: Archetype; price: number };
+  type Sellable = { key: string; item: 'subroutine' | 'copy' | 'burner'; id: string; name: string; tag: string; lines: string[]; icon?: Archetype; price: number };
   const sellables = $derived.by((): Sellable[] => [
     ...without(player.bench.map((p) => p.id), shop.sold.subroutine).map((id, i) => {
       const piece = player.bench.find((p) => p.id === id)!;
-      return { key: `sell:s:${i}:${id}`, item: 'subroutine' as const, id, name: piece.name, tag: `${rarityOf(id)} · benched`, lines: pieceLines(piece), icon: piece.archetype, price: subroutineSellPrice(id) };
+      const mark = rankMark(piece.rank);
+      return { key: `sell:s:${i}:${id}`, item: 'subroutine' as const, id, name: `${piece.name}${mark ? ` ${mark}` : ''}`, tag: `${rarityOf(id)} · benched`, lines: pieceLines(piece), icon: piece.archetype, price: subroutineSellPrice(id, piece.rank ?? 0) };
+    }),
+    // Banked copies, one row per copy left (a copy is rank 0).
+    ...Object.entries(player.material).flatMap(([id, n]) => {
+      const left = n - shop.sold.copy.filter((c) => c === id).length;
+      const piece = ALL_SUBROUTINES.find((p) => p.id === id) ?? player.installedLoadout.find((p) => p.id === id) ?? player.bench.find((p) => p.id === id);
+      if (!piece || left <= 0) return [];
+      return Array.from({ length: left }, (_, i) => ({ key: `sell:c:${i}:${id}`, item: 'copy' as const, id, name: piece.name, tag: `${rarityOf(id)} · banked copy`, lines: ['A spare copy, banked for Merging at a Safehouse.'], icon: piece.archetype, price: subroutineSellPrice(id) }));
     }),
     ...without(player.carriedBurnerIds, shop.sold.burner).map((id, i) => {
       const def = BURNER_DEFINITIONS[id];
@@ -71,7 +82,9 @@
     }),
   ]);
   const sell = (s: Sellable) =>
-    onact(s.item === 'subroutine' ? { kind: 'sell', item: 'subroutine', id: s.id } : { kind: 'sell', item: 'burner', id: s.id as BurnerId });
+    onact(
+      s.item === 'burner' ? { kind: 'sell', item: 'burner', id: s.id as BurnerId } : s.item === 'copy' ? { kind: 'sell', item: 'copy', id: s.id } : { kind: 'sell', item: 'subroutine', id: s.id },
+    );
 
   let selected = $state<string | null>(null);
   const key = (i: Item) => `${i.slate}:${i.index}`;
@@ -123,7 +136,7 @@
   {/each}
 
   {#if sellables.length}
-    <div class="section-head"><span class="caption">SELL · benched subroutines and Burners</span></div>
+    <div class="section-head"><span class="caption">SELL · benched subroutines, banked copies, Burners</span></div>
     {#each sellables as s (s.key)}
       <div class="item" class:sel={selected === s.key}>
         <button class="body" onclick={() => (selected = selected === s.key ? null : s.key)}>
