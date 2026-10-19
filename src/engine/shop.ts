@@ -189,8 +189,25 @@ export function burnerShopCostOf(rarity: Rarity, discountFraction = 0): number {
   return Math.round(BURNER_SHOP_COST_BY_RARITY[rarity] * (1 - discountFraction));
 }
 
+// ---------------------------------------------------------------------
+// Selling (session 61, the user's playtest call): benched subroutines and
+// carried Burners sell at a Shop for half their buying price by rarity
+// (never a profit on a buy), or a Burner's own sellValue (Cold Wallet).
+// ---------------------------------------------------------------------
+
+export const SELL_FRACTION = 0.5;
+
+export function subroutineSellPrice(id: string): number {
+  return Math.floor(SHOP_COST_BY_RARITY[rarityOf(id)] * SELL_FRACTION);
+}
+
+export function burnerSellPrice(burner: BurnerDefinition): number {
+  return burner.sellValue ?? Math.floor(BURNER_SHOP_COST_BY_RARITY[burner.rarity] * SELL_FRACTION);
+}
+
 function burnerPoolByRarity(): Record<Rarity, BurnerDefinition[]> {
-  const pool = generalBurnerPool();
+  // A sell-only Burner is never offered: it would buy and resell at a profit.
+  const pool = generalBurnerPool().filter((burner) => burner.contexts.length > 0);
   return {
     common: pool.filter((burner) => burner.rarity === 'common'),
     uncommon: pool.filter((burner) => burner.rarity === 'uncommon'),

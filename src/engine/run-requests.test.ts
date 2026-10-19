@@ -249,6 +249,47 @@ describe('the Shop as one visit (checkpoint 4)', () => {
     expect(step.value.burnerRerollCost).toBeGreaterThan(0);
   });
 
+  it('sells benched subroutines and carried Burners for Data, each copy once (session 61)', async () => {
+    const { resolveEncounterRequests } = await import('./encounters');
+    const { createNode } = await import('./map-types');
+    const { createRng } = await import('./rng');
+    const { subroutineSellPrice, burnerSellPrice } = await import('./shop');
+    const { BURNER_DEFINITIONS } = await import('./burners');
+    const { applyShopSales } = await import('./run');
+    const base = createInitialPlayerState('exploit-overclock');
+    const benched = base.installedLoadout[0];
+    const player = { ...base, data: 0, bench: [benched], carriedBurnerIds: ['cold-wallet', 'flash-drive'] as BurnerId[] };
+    const visit = resolveEncounterRequests(createNode('s', 'shop'), createRng(5), player);
+    let step = visit.next();
+    const next = (answer: unknown) => (step = visit.next(answer));
+    const shop = () => {
+      if (step.done || step.value.kind !== 'shop') throw new Error('expected a shop request');
+      return step.value.shop;
+    };
+    next({ kind: 'sell', item: 'subroutine', id: benched.id });
+    next({ kind: 'sell', item: 'subroutine', id: benched.id }); // only one copy: ignored
+    next({ kind: 'sell', item: 'burner', id: 'cold-wallet' });
+    next({ kind: 'sell', item: 'burner', id: 'emp-charge' }); // not carried: ignored
+    const proceeds = subroutineSellPrice(benched.id) + burnerSellPrice(BURNER_DEFINITIONS['cold-wallet']);
+    expect(burnerSellPrice(BURNER_DEFINITIONS['cold-wallet'])).toBe(50);
+    expect(shop().data).toBe(proceeds);
+    expect(shop().sold).toEqual({ subroutine: [benched.id], burner: ['cold-wallet'] });
+    next({ kind: 'leave' });
+    if (!step.done) throw new Error('expected the visit to end');
+    const after = applyShopSales(player, step.value.shopSales!);
+    expect(after.bench).toEqual([]);
+    expect(after.carriedBurnerIds).toEqual(['flash-drive']);
+    expect(after.data).toBe(proceeds);
+  });
+
+  it('never offers a sell-only Burner in the Shop', async () => {
+    const { burnerOfferingsForClass } = await import('./shop');
+    const { createRng } = await import('./rng');
+    for (let seed = 0; seed < 200; seed++) {
+      expect(burnerOfferingsForClass('exploit-overclock', createRng(seed)).map((o) => o.burner.id)).not.toContain('cold-wallet');
+    }
+  });
+
   it('refuses what it cannot afford', async () => {
     const { resolveEncounterRequests } = await import('./encounters');
     const { createNode } = await import('./map-types');

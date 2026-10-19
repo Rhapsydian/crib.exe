@@ -24,7 +24,7 @@ export const LEAD_IN_MS = 120;
 export class Replay {
   /** How many steps are on screen. */
   shown = $state(0);
-  speed = $state<Speed>(loadSpeed());
+  speed = $state<Speed>('normal');
   steps = $state.raw<readonly Step[]>([]);
   /** Where the batch being played began, and the gauges as they stood at
    * the pause before it. */
@@ -53,6 +53,15 @@ export class Replay {
 
   #previous: [GaugeReading, GaugeReading] | null = null;
   #timer: ReturnType<typeof setTimeout> | null = null;
+  #speedKey: string;
+
+  /** `speedKey` / `defaultSpeed`: where the speed choice is remembered
+   * and what it starts at -- Learn to play keeps its own, starting slow
+   * (session 61), so a learner's choice never changes normal play's. */
+  constructor(speedKey = SPEED_KEY, defaultSpeed: Speed = 'normal') {
+    this.#speedKey = speedKey;
+    this.speed = loadSpeed(speedKey, defaultSpeed);
+  }
 
   /** A new engine pause: the fight's steps so far, and the live gauges. */
   sync(steps: readonly Step[], live: [GaugeReading, GaugeReading]): void {
@@ -79,7 +88,7 @@ export class Replay {
   cycleSpeed(): void {
     this.speed = SPEEDS[(SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length];
     try {
-      localStorage.setItem(SPEED_KEY, this.speed);
+      localStorage.setItem(this.#speedKey, this.speed);
     } catch {
       // Storage can be unavailable (private windows); the choice still
       // holds for this session.
@@ -121,12 +130,12 @@ export class Replay {
   }
 }
 
-function loadSpeed(): Speed {
+function loadSpeed(key: string, fallback: Speed): Speed {
   try {
-    const saved = localStorage.getItem(SPEED_KEY);
+    const saved = localStorage.getItem(key);
     if (saved && (SPEEDS as string[]).includes(saved)) return saved as Speed;
   } catch {
     // See cycleSpeed.
   }
-  return 'normal';
+  return fallback;
 }

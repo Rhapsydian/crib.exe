@@ -86,9 +86,17 @@ export interface ShopVisit {
   rerolled: Record<ShopSlate, boolean>;
   data: number;
   rerollCost: number;
+  /** Sold so far this visit (session 61): benched subroutine ids and
+   * carried Burner ids, one entry per item sold. */
+  sold: { subroutine: string[]; burner: BurnerId[] };
 }
 
-export type ShopAction = { kind: 'buy'; slate: ShopSlate; index: number } | { kind: 'reroll'; slate: ShopSlate } | { kind: 'leave' };
+export type ShopAction =
+  | { kind: 'buy'; slate: ShopSlate; index: number }
+  | { kind: 'reroll'; slate: ShopSlate }
+  | { kind: 'sell'; item: 'subroutine'; id: string }
+  | { kind: 'sell'; item: 'burner'; id: BurnerId }
+  | { kind: 'leave' };
 
 /** A whole loadout, rearranged: which owned pieces are installed, in
  * firing order, and which sit on the bench (loadout.ts's arrangeLoadout

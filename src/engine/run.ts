@@ -48,6 +48,8 @@ import {
   type ShopBurnerStrategy,
   type BurnerShopStrategy,
   type BurnerShopRerollStrategy,
+  subroutineSellPrice,
+  burnerSellPrice,
 } from './shop';
 import type { DiscardStrategy } from './deal';
 import type { PlayStrategy } from './pegging';
@@ -954,6 +956,8 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         if (pickedBurner) playerState = yield* acquireBurnerAsking(playerState, pickedBurner);
       }
       if (outcome.mergeTargetId) playerState = mergeSubroutine(playerState, outcome.mergeTargetId);
+      // Sales first (session 61): their Data may have paid for the buys.
+      if (outcome.shopSales) playerState = applyShopSales(playerState, outcome.shopSales);
       if (outcome.rerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.rerollCost };
       for (const purchase of outcome.shopPurchases) {
         playerState = { ...playerState, data: playerState.data - purchase.cost };
@@ -1143,3 +1147,24 @@ export const synergyAwareMapBurnerStrategy: MapBurnerStrategy = (ctx) => {
 
   return null;
 };
+
+/** A Shop visit's sales (session 61): each sold benched subroutine and
+ * carried Burner leaves (one copy each), and its price is paid in Data. */
+export function applyShopSales(playerState: RunPlayerState, sales: { subroutine: string[]; burner: BurnerId[] }): RunPlayerState {
+  let bench = [...playerState.bench];
+  let carried = [...playerState.carriedBurnerIds];
+  let data = playerState.data;
+  for (const id of sales.subroutine) {
+    const i = bench.findIndex((p) => p.id === id);
+    if (i === -1) continue;
+    bench = [...bench.slice(0, i), ...bench.slice(i + 1)];
+    data += subroutineSellPrice(id);
+  }
+  for (const id of sales.burner) {
+    const i = carried.indexOf(id);
+    if (i === -1) continue;
+    carried = [...carried.slice(0, i), ...carried.slice(i + 1)];
+    data += burnerSellPrice(BURNER_DEFINITIONS[id]);
+  }
+  return { ...playerState, bench, carriedBurnerIds: carried, data };
+}

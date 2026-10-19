@@ -202,7 +202,7 @@ export function burnersOf(carried: readonly BurnerId[], spentSoFar: readonly Bur
       side: 0,
       name: def.name,
       tag: `Burner · ${def.rarity}`,
-      text: def.combatEffect ? `${cap(describeEffect(def.combatEffect))}, once, before one of your turns.` : 'No effect in a fight.',
+      text: def.combatEffect ? `${cap(describeEffect(def.combatEffect))}, once, at the start of one of your turns.` : 'No effect in a fight.',
       spent: used !== -1,
     };
   });

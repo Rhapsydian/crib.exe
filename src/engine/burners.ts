@@ -24,6 +24,16 @@ export const STOLEN_COUPON_DISCOUNT_FRACTION = 0.25;
 
 export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
   // --- Combat (2) ---
+  // --- Sell-only (1, session 61; the user's playtest idea) ---
+  // An offline crypto wallet, liberated: no use, but it sells for a lot at
+  // the next Shop. Never in a Shop's own slate (buy-and-resell).
+  'cold-wallet': {
+    id: 'cold-wallet',
+    name: 'Cold Wallet',
+    rarity: 'uncommon',
+    contexts: [],
+    sellValue: 50,
+  },
   'flash-drive': {
     id: 'flash-drive',
     name: 'Flash Drive',

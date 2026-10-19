@@ -46,6 +46,8 @@ import {
   type BurnerShopStrategy,
   type BurnerShopRerollStrategy,
   type ShopBurnerStrategy,
+  subroutineSellPrice,
+  burnerSellPrice,
 } from './shop';
 import type { ModDefinition, ModId } from './mod-types';
 import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersForOwnedMods, modPoolForClass } from './mods';
@@ -299,6 +301,10 @@ export interface EncounterOutcome {
    * records the pick; playRun() applies the actual Data spend and
    * acquisition, since it's the one place holding RunPlayerState. */
   shopPurchases: ShopOffering[];
+  /** What a Shop visit sold (session 61): benched subroutine ids and
+   * carried Burner ids, applied by playRun before the purchases (whose
+   * Data the sales may have paid for). */
+  shopSales?: { subroutine: string[]; burner: BurnerId[] };
   /** REROLL_COST if a Shop visit spent Data to reroll its slate once,
    * else 0 -- checkpoint F follow-up. Same split as the other
    * playerState-affecting fields: this just records the cost incurred;
@@ -1020,13 +1026,20 @@ export function* resolveEncounterRequests(
         rerolled: { subroutine: false, mod: false, burner: false },
         data: playerState.data,
         rerollCost: rerollCostThisVisit,
+        sold: { subroutine: [], burner: [] },
       };
       const purchases = { subroutine: [] as ShopOffering[], mod: [] as ModOffering[], burner: [] as BurnerOffering[] };
       const rerollCosts: Record<ShopSlate, number> = { subroutine: 0, mod: 0, burner: 0 };
       const strategies = { shopRerollStrategy, modShopRerollStrategy, burnerShopRerollStrategy, shopStrategy, modShopStrategy, burnerShopStrategy };
       let simPhase = 0;
       for (;;) {
-        const snapshot: ShopVisit = { ...visit, slates: { ...visit.slates }, bought: { subroutine: [...visit.bought.subroutine], mod: [...visit.bought.mod], burner: [...visit.bought.burner] }, rerolled: { ...visit.rerolled } };
+        const snapshot: ShopVisit = {
+          ...visit,
+          slates: { ...visit.slates },
+          bought: { subroutine: [...visit.bought.subroutine], mod: [...visit.bought.mod], burner: [...visit.bought.burner] },
+          rerolled: { ...visit.rerolled },
+          sold: { subroutine: [...visit.sold.subroutine], burner: [...visit.sold.burner] },
+        };
         const phaseAtAsk = simPhase;
         const action = yield* ask({ kind: 'shop', shop: snapshot, playerState, fallback: () => shopFallback(snapshot, playerState, phaseAtAsk, strategies).action });
         const sim = shopFallback(snapshot, playerState, phaseAtAsk, strategies);
@@ -1041,6 +1054,17 @@ export function* resolveEncounterRequests(
           if (action.slate === 'subroutine') visit.slates.subroutine = drawSlate('subroutine') as ShopOffering[];
           else if (action.slate === 'mod') visit.slates.mod = drawSlate('mod') as ModOffering[];
           else visit.slates.burner = drawSlate('burner') as BurnerOffering[];
+          continue;
+        }
+        if (action.kind === 'sell') {
+          // Selling (session 61): a benched subroutine or a carried Burner
+          // not already sold this visit; its price joins this visit's Data.
+          const sold = visit.sold[action.item] as string[];
+          const owned = action.item === 'subroutine' ? playerState.bench.map((p) => p.id) : playerState.carriedBurnerIds;
+          const ownedCount = owned.filter((id) => id === action.id).length;
+          if (ownedCount <= sold.filter((id) => id === action.id).length) continue;
+          sold.push(action.id);
+          visit.data += action.item === 'subroutine' ? subroutineSellPrice(action.id) : burnerSellPrice(BURNER_DEFINITIONS[action.id]);
           continue;
         }
         const offering = visit.slates[action.slate][action.index];
@@ -1062,6 +1086,7 @@ export function* resolveEncounterRequests(
         rewardOptions: [],
         mergeTargetId: null,
         shopPurchases: purchases.subroutine,
+        shopSales: visit.sold.subroutine.length + visit.sold.burner.length > 0 ? { subroutine: visit.sold.subroutine, burner: visit.sold.burner } : undefined,
         rerollCost: rerollCosts.subroutine,
         modRewardOptions: [],
         modShopPurchases: purchases.mod,
@@ -1221,5 +1246,6 @@ function sameShopAction(a: ShopAction, b: ShopAction): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'leave') return true;
   if (a.kind === 'reroll') return a.slate === (b as typeof a).slate;
+  if (a.kind === 'sell') return a.item === (b as typeof a).item && a.id === (b as typeof a).id;
   return a.slate === (b as typeof a).slate && a.index === (b as typeof a).index;
 }

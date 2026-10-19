@@ -6,12 +6,17 @@
   import { modText } from './kit';
   import { acquireNote, burnerText, burnerWhere, pieceLines, rarityOf } from './reward-text';
   import type { Archetype } from '../engine/subroutine-types';
+  import { BURNER_DEFINITIONS } from '../engine/burners';
+  import { burnerSellPrice, subroutineSellPrice } from '../engine/shop';
+  import type { BurnerId } from '../engine/burner-types';
 
   // A Shop (milestone 3 checkpoint 4, the user's call: buy freely): three
   // slates -- subroutines, Mods, Burners. Buy anything you can afford,
   // each once; reroll each slate once; leave when done. Tap an item to
   // select it, then buy. What you buy is yours when you leave (a full
-  // bench or Burner pouch asks then).
+  // bench or Burner pouch asks then). Below the slates, SELL (session
+  // 61): benched subroutines and carried Burners, for half their price
+  // (Cold Wallet: its own), the Data available at once.
   let { request, onact }: { request: Extract<RunRequest, { kind: 'shop' }>; onact: (action: ShopAction) => void } = $props();
 
   const shop = $derived(request.shop);
@@ -43,6 +48,31 @@
       items: shop.slates.burner.map((o, index) => ({ slate: 'burner', index, name: o.burner.name, tag: `${o.burner.rarity} · ${burnerWhere(o.burner)}`, lines: [burnerText(o.burner)], glyph: '⏏︎', cost: o.cost })),
     },
   ]);
+  // What's left to sell: the bench and carried Burners, less what this
+  // visit already sold (one entry per copy).
+  const without = <T extends string>(ids: T[], sold: T[]) => {
+    const left = [...sold];
+    return ids.filter((id) => {
+      const i = left.indexOf(id);
+      if (i === -1) return true;
+      left.splice(i, 1);
+      return false;
+    });
+  };
+  type Sellable = { key: string; item: 'subroutine' | 'burner'; id: string; name: string; tag: string; lines: string[]; icon?: Archetype; price: number };
+  const sellables = $derived.by((): Sellable[] => [
+    ...without(player.bench.map((p) => p.id), shop.sold.subroutine).map((id, i) => {
+      const piece = player.bench.find((p) => p.id === id)!;
+      return { key: `sell:s:${i}:${id}`, item: 'subroutine' as const, id, name: piece.name, tag: `${rarityOf(id)} · benched`, lines: pieceLines(piece), icon: piece.archetype, price: subroutineSellPrice(id) };
+    }),
+    ...without(player.carriedBurnerIds, shop.sold.burner).map((id, i) => {
+      const def = BURNER_DEFINITIONS[id];
+      return { key: `sell:b:${i}:${id}`, item: 'burner' as const, id, name: def.name, tag: `${def.rarity} Burner`, lines: [burnerText(def)], price: burnerSellPrice(def) };
+    }),
+  ]);
+  const sell = (s: Sellable) =>
+    onact(s.item === 'subroutine' ? { kind: 'sell', item: 'subroutine', id: s.id } : { kind: 'sell', item: 'burner', id: s.id as BurnerId });
+
   let selected = $state<string | null>(null);
   const key = (i: Item) => `${i.slate}:${i.index}`;
   const isBought = (i: Item) => shop.bought[i.slate].includes(i.index);
@@ -91,6 +121,28 @@
       </div>
     {/each}
   {/each}
+
+  {#if sellables.length}
+    <div class="section-head"><span class="caption">SELL · benched subroutines and Burners</span></div>
+    {#each sellables as s (s.key)}
+      <div class="item" class:sel={selected === s.key}>
+        <button class="body" onclick={() => (selected = selected === s.key ? null : s.key)}>
+          <div class="name">
+            {#if s.icon}<SuitIcon archetype={s.icon} size={14} />{:else}<span class="glyph">⏏︎</span>{/if}
+            <b>{s.name}</b>
+            <span class="tag">{s.tag}</span>
+            <span class="cost">+{s.price}</span>
+          </div>
+          {#if selected === s.key}
+            {#each s.lines as line (line)}<div class="line"><RichText text={line} /></div>{/each}
+          {/if}
+        </button>
+        {#if selected === s.key}
+          <button class="buy" onclick={() => { sell(s); selected = null; }}>sell · +{s.price} Data</button>
+        {/if}
+      </div>
+    {/each}
+  {/if}
 
   <button class="leave" onclick={() => onact({ kind: 'leave' })}>leave the Shop ▸</button>
 </div>

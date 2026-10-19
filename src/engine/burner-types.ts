@@ -23,7 +23,9 @@ export type BurnerId =
   // Shop (3)
   | 'stolen-coupon'
   | 'loyalty-token'
-  | 'insider-tip';
+  | 'insider-tip'
+  // Sell-only (1, session 61): no use; worth Data at a Shop
+  | 'cold-wallet';
 
 /** A Burner can be usable in more than one context -- each context maps
  * to one optional effect field on BurnerDefinition below. */
@@ -54,4 +56,7 @@ export interface BurnerDefinition {
   mapEffect?: MapBurnerEffect;
   /** Only present when contexts includes 'shop'. */
   shopEffect?: ShopBurnerEffect;
+  /** What it sells for at a Shop, when not the usual half its buying
+   * price -- Cold Wallet's whole point (session 61). */
+  sellValue?: number;
 }

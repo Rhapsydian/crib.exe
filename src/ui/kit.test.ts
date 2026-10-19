@@ -19,6 +19,6 @@ describe('kit (Mods and Burners on screen)', () => {
   it('marks spent Burners one for one', () => {
     const items = burnersOf(['flash-drive', 'flash-drive', 'emp-charge'], ['flash-drive']);
     expect(items.map((b) => b.spent)).toEqual([true, false, false]);
-    expect(items[2].text).toBe('Suppress 8, once, before one of your turns.');
+    expect(items[2].text).toBe('Suppress 8, once, at the start of one of your turns.');
   });
 });

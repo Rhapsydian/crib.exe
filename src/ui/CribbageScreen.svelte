@@ -26,7 +26,9 @@
   // review of your discard, last hand's count, and what the phase is.
   let { game, onagain, onmenu }: { game: LiveCribbage; onagain: () => void; onmenu: () => void } = $props();
 
-  const replay = new Replay();
+  // Learn to play remembers its own speed, starting slow (session 61).
+  // (Each game mounts its own screen, so reading the difficulty once is right.)
+  const replay = untrack(() => game.difficulty) === 'learn' ? new Replay('cribexe.turnSpeed.learn', 'slow') : new Replay();
   $effect(() => {
     const steps = game.result ? game.finalSteps : (game.frame?.steps ?? []);
     const scores = game.result?.finalScores ?? game.frame?.request.view.scores ?? [0, 0];

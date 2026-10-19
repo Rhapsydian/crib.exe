@@ -232,6 +232,12 @@ function gradedCap(effect: BetaEffect, capCount: number, enhance: boolean): stri
   return `at most ${fmt(effect.amount * capCount)}${enhance ? ' more' : ''}`;
 }
 
+/** An effect's instruction ("Credit 1", "give every other ...") as what
+ * a subroutine does ("Credits 1", "gives every other ..."). */
+function thirdPerson(text: string): string {
+  return text.replace(/^(\w+)/, (verb) => (/(s|sh|ch|x)$/.test(verb) ? `${verb}es` : `${verb}s`));
+}
+
 /** A Hook in a sentence -- what sets it off, and what it does. */
 export function describeHook(piece: SubroutineDefinition, thresholds: Thresholds = USUAL): string {
   const beta = piece.beta;
@@ -284,6 +290,11 @@ export function describeHook(piece: SubroutineDefinition, thresholds: Thresholds
       : `For ${forEach} ${events.noun} ${since}, ${does} (${most})${noise}`;
   }
   if (beta.shape === 'stepped') {
+    // Points carry over toward the next step, and the Hook waits for its
+    // next fire (session 61: "since it last fired" misread as a reset).
+    if (beta.at === 1 && beta.source === 'progress' && beta.metric === 'points') {
+      return `Every ${beta.per} points you score, its next fire ${enhance ? does : `also ${thirdPerson(describeEffect(effect as Effect, thresholds))}`}${noise}`;
+    }
     if (beta.at === 1) return enhance ? `${cap(does)} if ${events.clause(1)} ${since}${noise}` : `If ${events.clause(1)} ${since}, ${does}${noise}`;
     return `Once ${events.clause(beta.at)} since its Hook last went off, ${enhance ? 'it ' : ''}${does}${noise}`;
   }
