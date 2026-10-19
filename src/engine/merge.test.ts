@@ -157,6 +157,13 @@ describe('upgradedDefinition -- Disrupt betas loosen their shape (session 51)', 
     expect(upgradedDefinition(original)).toEqual({ ...original, rank: 1 });
   });
 
+  it('lets a growing subroutine grow further, alongside its Hook (session 61)', () => {
+    const grower = piece('g', { alpha: { verb: 'credit', amount: 1, growth: 0.25, growthCap: 2 } });
+    const up = upgradedDefinition(grower);
+    expect(up.alpha).toMatchObject({ growthCap: 2 + MERGE_MAGNITUDE_BONUS });
+    expect(upgradedDefinition(piece('n')).alpha).not.toHaveProperty('growthCap');
+  });
+
   it('counts its ranks on the definition (session 61)', () => {
     expect(upgradedDefinition(upgradedDefinition(piece('a'))).rank).toBe(2);
   });

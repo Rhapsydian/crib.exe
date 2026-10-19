@@ -75,7 +75,13 @@ function loosenedShape(beta: Beta): Beta {
  *   unless the piece has no magnitude anywhere.
  */
 export function upgradedDefinition(definition: SubroutineDefinition): SubroutineDefinition {
-  const ranked = { ...definition, rank: (definition.rank ?? 0) + 1 };
+  // A growing subroutine (Daemon's ramp) also grows further: its strength
+  // is mostly growth, which a bigger Hook barely touched, so Merge-led
+  // Daemon kits fell behind (session 61). Tempo growth gets the tempo step.
+  const { growth, growthCap } = definition.alpha;
+  const alpha =
+    growth === undefined ? definition.alpha : { ...definition.alpha, growthCap: (growthCap ?? 0) + (isTempo(definition.alpha) ? MERGE_TEMPO_BONUS : MERGE_MAGNITUDE_BONUS) };
+  const ranked = { ...definition, alpha, rank: (definition.rank ?? 0) + 1 };
   const { beta } = definition;
   if (beta && beta.effect.verb !== 'disrupt') {
     const tempoUnits = beta.effect.verb === 'enhance' ? isTempo(definition.alpha) : isTempo(beta.effect);
@@ -85,7 +91,7 @@ export function upgradedDefinition(definition: SubroutineDefinition): Subroutine
     const loosened = loosenedShape(beta);
     if (loosened !== beta) return { ...ranked, beta: loosened };
   }
-  return { ...ranked, alpha: bumpedEffect(definition.alpha) };
+  return { ...ranked, alpha: bumpedEffect(alpha) };
 }
 
 /** Spends 1 banked material to rank up the owned copy of `id` (found in
