@@ -1,5 +1,4 @@
 import { scaledDefinition, type Archetype, type SubroutineDefinition } from './subroutine-types';
-import type { ClassId } from './classes';
 import type { GatekeeperModId } from './gatekeeper-mods';
 import { AUTHORED_REGULARS, AUTHORED_ELITES, AUTHORED_GATEKEEPERS, ENEMY_LAYER_SCALER } from './content/enemies';
 import type { Rng } from './rng';
@@ -43,8 +42,8 @@ export type EnemyId =
   | 'root-authority';
 
 /** Legacy: the session-27 passive registry's id type. Superseded in step
- * 3 by enemy Mods (E4) -- a class bridge (`EnemyDefinition.bridge`) plus,
- * on gatekeepers, a bespoke gatekeeper Mod (`mods`). Still threaded
+ * 3 by enemy Mods (E4) -- on gatekeepers, a bespoke gatekeeper Mod
+ * (`mods`). Enemies carried class bridges too until session 60. Still threaded
  * through playCombat/createCombatState as an always-empty slot; remove
  * with that positional parameter. */
 export type EnemyPassiveId = never;
@@ -62,8 +61,6 @@ export interface EnemyDefinition {
    * its tier's pool at every layer afterward, not just this one. */
   minLayer: number;
   loadout: SubroutineDefinition[];
-  /** The class bridge it carries as a Mod (E4: elites and gatekeepers). */
-  bridge?: ClassId;
   /** A gatekeeper's bespoke Mod (E4; gatekeeper-mods.ts). */
   mods?: GatekeeperModId[];
   /** Regular/elite only: the authored magnitude at its first layer
@@ -163,11 +160,11 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [...AUTHORED_REGULARS, ...AUTHORE
   }),
 );
 
-/** The combat options every enemy fight passes for side 1: its class
- * bridge and gatekeeper Mods (E4). One helper so encounters.ts and the
- * diagnostics can't drift apart. */
-export function enemyCombatOptions(enemy: EnemyDefinition): { opponentBridge?: ClassId; gatekeeperMods: [GatekeeperModId[], GatekeeperModId[]] } {
-  return { opponentBridge: enemy.bridge, gatekeeperMods: [[], enemy.mods ?? []] };
+/** The combat options every enemy fight passes for side 1: its
+ * gatekeeper Mods (E4). Class Mods are the player's alone (session 60).
+ * One helper so encounters.ts and the diagnostics can't drift apart. */
+export function enemyCombatOptions(enemy: EnemyDefinition): { gatekeeperMods: [GatekeeperModId[], GatekeeperModId[]] } {
+  return { gatekeeperMods: [[], enemy.mods ?? []] };
 }
 
 /** Every enemy eligible for `tier` at `layerIndex` -- a floor for

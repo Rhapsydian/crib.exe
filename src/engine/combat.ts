@@ -607,7 +607,7 @@ export function* combatGenerator(
   ): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
     // Charges first, so a beta charged by this very occurrence applies
     // on the turn it buys.
-    let winner = step(immediates(applyOccurrence(combatState, occurrence), handDealer, log));
+    let winner = step(immediates(applyOccurrence(combatState, occurrence, handDealer), handDealer, log));
     if (winner !== null) return winner;
 
     const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrence.magnitude);

@@ -8,12 +8,12 @@ describe('kit (Mods and Burners on screen)', () => {
     const loadout = CLASS_DEFINITIONS['overclock-honeypot'].startingLoadout;
     const state = createCombatState(loadout, loadout, [12, 12], 'overclock-honeypot', [50, 50], [], [], [], 'exploit-daemon', [[], ['null-session']]);
     const yours = modsOf(state, 0);
-    expect(yours.map((m) => m.name)).toEqual(['Siphon']);
+    expect(yours.map((m) => m.name)).toEqual(['Phase Shift']);
     expect(yours[0].tag).toBe('Wraith class Mod');
-    expect(yours[0].text).toMatch(/^Each of your turns banks/);
+    expect(yours[0].text).toMatch(/^The first fifteen you score each hand you deal: Ward/);
     const theirs = modsOf(state, 1);
     expect(theirs.map((m) => m.name)).toEqual(['Backdoor Maintenance', 'Null Session']);
-    expect(theirs[0].text).toBe('Each fifteen it scores also Suppresses you 0.5.');
+    expect(theirs[0].text).toBe('Each fifteen it scores: Suppress 0.5.');
   });
 
   it('marks spent Burners one for one', () => {

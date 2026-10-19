@@ -149,12 +149,12 @@ const AUXILIARY_PROCESS_SUBROUTINE: SubroutineDefinition = {
 
 export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
   // --- Class-exclusive bridge passives (step 3, C1/C4; rules in resolve.ts's applyBridgeOn*) ---
-  'bridge-exploit-overclock': { id: 'bridge-exploit-overclock', name: 'Exploit Chain', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-exploit-overclock': { id: 'bridge-exploit-overclock', name: 'Lateral Movement', rarity: 'common', effectKind: 'hook', classExclusive: true },
   'bridge-exploit-daemon': { id: 'bridge-exploit-daemon', name: 'Backdoor Maintenance', rarity: 'common', effectKind: 'hook', classExclusive: true },
   'bridge-daemon-overclock': { id: 'bridge-daemon-overclock', name: 'Invocation', rarity: 'common', effectKind: 'hook', classExclusive: true },
   'bridge-exploit-honeypot': { id: 'bridge-exploit-honeypot', name: 'Foothold', rarity: 'common', effectKind: 'hook', classExclusive: true },
   'bridge-daemon-honeypot': { id: 'bridge-daemon-honeypot', name: 'Hardened Perimeter', rarity: 'common', effectKind: 'hook', classExclusive: true },
-  'bridge-overclock-honeypot': { id: 'bridge-overclock-honeypot', name: 'Siphon', rarity: 'common', effectKind: 'hook', classExclusive: true },
+  'bridge-overclock-honeypot': { id: 'bridge-overclock-honeypot', name: 'Phase Shift', rarity: 'common', effectKind: 'hook', classExclusive: true },
 
   // --- Common ---
   'static-shield': { id: 'static-shield', name: 'Static Shield', rarity: 'common', effectKind: 'hook' },

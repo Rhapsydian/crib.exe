@@ -66,7 +66,6 @@ function alarmAgainst(loadout: ReturnType<typeof scaledEnemyLoadout>, enemy: Aut
         discardStrategies: [discardSkillStrategy(0.85), discardSkillStrategy(0.85)],
         playStrategies: [pegSkillStrategy(0.85), pegSkillStrategy(0.85)],
         classId,
-        opponentBridge: enemy.bridge,
         gatekeeperMods: [[], enemy.mods ?? []],
       });
       trace += r.heatGenerated;
@@ -82,7 +81,7 @@ for (const enemy of roster) {
   if (only && !only.has(enemy.id)) continue;
   // Gatekeepers appear at one layer only (eligibleEnemies' exact match).
   const layers = enemy.tier === 'gatekeeper' ? [enemy.minLayer] : [1, 2, 3, 4].filter((l) => l >= enemy.minLayer);
-  const powers = layers.map((layer) => kitPower(scaledEnemyLoadout(enemy.loadout, scalerAt(enemy, layer)), { ...options, bridge: enemy.bridge, mods: enemy.mods }));
+  const powers = layers.map((layer) => kitPower(scaledEnemyLoadout(enemy.loadout, scalerAt(enemy, layer)), { ...options, mods: enemy.mods }));
   const budget = ENEMY_BUDGET[enemy.tier][enemy.minLayer - 1];
   const first = powers[0];
   const verdict = first === null ? '?' : Math.abs(first - budget) <= 0.15 * budget ? 'ok (within 15%)' : first < budget ? 'LOW' : 'HIGH';

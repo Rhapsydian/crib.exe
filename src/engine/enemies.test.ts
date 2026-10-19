@@ -38,14 +38,11 @@ describe('ENEMY_ROSTER structural integrity', () => {
     for (const enemy of ENEMY_ROSTER.filter((e) => e.archetypes.includes('honeypot'))) expect(enemy.minLayer, enemy.id).toBeGreaterThanOrEqual(2);
   });
 
-  it('E4: regulars carry no Mod; elites a bridge; gatekeepers a bridge and one bespoke Mod', () => {
+  it('E4: regulars and elites carry no Mod; gatekeepers one bespoke Mod; no enemy a class Mod', () => {
     for (const enemy of ENEMY_ROSTER) {
-      if (enemy.tier === 'regular') expect(enemy.bridge ?? enemy.mods, enemy.id).toBeUndefined();
-      if (enemy.tier === 'elite') expect(enemy.bridge, enemy.id).toBeDefined();
-      if (enemy.tier === 'gatekeeper') {
-        expect(enemy.bridge, enemy.id).toBeDefined();
-        expect(enemy.mods, enemy.id).toHaveLength(1);
-      }
+      expect(enemyCombatOptions(enemy), enemy.id).not.toHaveProperty('opponentBridge');
+      if (enemy.tier === 'gatekeeper') expect(enemy.mods, enemy.id).toHaveLength(1);
+      else expect(enemy.mods, enemy.id).toBeUndefined();
     }
   });
 
@@ -277,7 +274,7 @@ describe('enemy alarms', () => {
     for (const piece of ALL_SUBROUTINES) expect(piece.heatPressure ?? 0, piece.id).toBe(0);
   });
 
-  it('a real fight against an authored enemy, with its bridge and Mods, resolves to a winner', () => {
+  it('a real fight against an authored enemy, with its Mods, resolves to a winner', () => {
     const enemy = ENEMY_ROSTER.find((e) => e.id === 'quarantine-ward')!;
     const result = playCombat([CLASS_STARTING_LOADOUTS['exploit-honeypot'], enemy.loadout], {
       seed: 5,

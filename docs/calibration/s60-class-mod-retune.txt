@@ -1,0 +1,36 @@
+# Session 60: class Mod redesign (docs/class-mod-redesign.md K1-K8) and gatekeeper retune.
+# Enemies no longer carry class Mods (K6), so the gatekeepers were re-tuned first, then the
+# class Mod amounts. gatekeeper-check.ts, all layers synthetic, 300/class; run-outcomes.ts 300/class.
+
+## Gatekeepers after losing their class Mods (before retune)
+firewall-prime 85.3  the-concierge 72.7  zero-sum 77.5  quarantine-ward 72.9
+adaptive-threat 70.4  total-compromise 72.1  root-authority 53.0  null-session 55.5
+
+## Final (zero-sum 1.48 -> 65.8, 1.50 -> 63.0; set to 1.49 between them, not re-measured)
+firewall-prime        70.2%  target 70.5  off  -0.3
+the-concierge         70.7%  target 70.5  off  +0.2
+zero-sum              ~64.4  target 64.5  (interpolated)
+quarantine-ward       64.3%  target 64.5  off  -0.2
+adaptive-threat       58.7%  target 58.5  off  +0.2
+total-compromise      58.1%  target 58.5  off  -0.4
+root-authority        53.0%  target 52.5  off  +0.5
+null-session          52.3%  target 52.5  off  -0.2
+# scales: firewall-prime 0.87->1.03, the-concierge 1.31->1.33, zero-sum 1.38->1.49, quarantine-ward 1.55->1.69,
+#         adaptive-threat 1.95->2.32, total-compromise 1.84->2.02, null-session 1.63->1.67, root-authority 1.42
+
+## Full runs: victory by class
+                      before redesign   first cut   final
+exploit-overclock          21.3%          32.7%     22.7%   (Lateral Movement 1/6 -> 1/12 turn per pair)
+exploit-daemon             19.0%          16.7%     16.7%
+daemon-overclock           20.7%          20.7%     20.7%
+exploit-honeypot           26.3%          24.7%     25.0%
+daemon-honeypot            16.3%          18.7%     19.3%
+overclock-honeypot         23.7%          32.7%     27.0%   (Phase Shift: see below)
+# "first cut" = new Mods at first amounts, gatekeepers retuned.
+
+## Phase Shift (Wraith) variants
+no class Mod                                           22.7%
+each fifteen: Ward 0.25                                27.0%
+each fifteen: Ward 0.25 + 1/48 turn                    32.0%
+first fifteen each hand: Ward 0.5 + 1/12 turn          30.3%
+first fifteen each hand you deal: Ward 0.5 + 1/12 turn 27.0%   <- chosen (round amounts; the user's call)

@@ -26,10 +26,19 @@ const fmt = (n: number) => {
   if (Math.abs(quarters - Math.round(quarters)) < 1e-9) return String(Math.round(quarters) / 4);
   return n.toFixed(1).replace(/\.0$/, '');
 };
-const turnFraction = (n: number) => {
-  const known: Record<string, string> = { '0.125': '⅛', '0.25': '¼', '0.375': '⅜', '0.5': '½', '0.75': '¾', '0.0625': '1/16' };
-  return known[String(n)] ?? fmt(n);
-};
+const FRACTIONS: [number, string][] = [
+  [1 / 48, '1/48'],
+  [1 / 24, '1/24'],
+  [1 / 12, '1/12'],
+  [1 / 16, '1/16'],
+  [1 / 8, '⅛'],
+  [1 / 6, '⅙'],
+  [1 / 4, '¼'],
+  [3 / 8, '⅜'],
+  [1 / 2, '½'],
+  [3 / 4, '¾'],
+];
+const turnFraction = (n: number) => FRACTIONS.find(([v]) => Math.abs(v - n) < 1e-9)?.[1] ?? fmt(n);
 /** A share of a gauge, in words: "half", "three-quarters". */
 const gaugeShare = (n: number) => ({ '0.25': 'a quarter', '0.5': 'half', '0.75': 'three-quarters' })[String(n)] ?? `${Math.round(n * 100)}%`;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

@@ -25,17 +25,20 @@ import {
 } from '../engine/mods';
 import type { SubroutineDefinition } from '../engine/subroutine-types';
 import {
-  BRIDGE_DAEMON_HONEYPOT_CAP,
-  BRIDGE_DAEMON_OVERCLOCK_STEPS,
+  BRIDGE_DAEMON_HONEYPOT_SUPPRESS,
+  BRIDGE_DAEMON_HONEYPOT_WARD,
+  BRIDGE_DAEMON_OVERCLOCK_GROWTH,
   BRIDGE_EXPLOIT_DAEMON_SUPPRESS,
   BRIDGE_EXPLOIT_HONEYPOT_WARD,
-  BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER,
+  BRIDGE_EXPLOIT_OVERCLOCK_HASTE,
+  BRIDGE_OVERCLOCK_HONEYPOT_HASTE,
+  BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND,
   BRIDGE_OVERCLOCK_HONEYPOT_WARD,
   type CombatState,
   type ModRef,
   type ModTrigger,
 } from '../engine/resolve';
-import { describeEffect, describeHook, describeProcess } from './describe';
+import { describeEffect, describeHook, describeProcess, forEnemy } from './describe';
 
 /**
  * Mods and Burners for the screen: what each side has, in words, and
@@ -55,33 +58,21 @@ export interface KitItem {
   spent?: boolean;
 }
 
-/** The class bridge Mods' rules, in each owner's voice (the user's call:
- * written for the six classes; the general Mods' are MOD_TEXT below). */
-const BRIDGE_TEXT: Record<ClassId, { you: string; it: string }> = {
-  'exploit-overclock': {
-    you: `When one of your Exploit Hooks applies, the next piece that turn is Empowered +${BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER}.`,
-    it: `When one of its Exploit Hooks applies, its next piece that turn is Empowered +${BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER}.`,
-  },
-  'exploit-daemon': {
-    you: `Each fifteen you score also Suppresses them ${BRIDGE_EXPLOIT_DAEMON_SUPPRESS}.`,
-    it: `Each fifteen it scores also Suppresses you ${BRIDGE_EXPLOIT_DAEMON_SUPPRESS}.`,
-  },
-  'daemon-overclock': {
-    you: `When one of your Overclock Hooks applies, each of your Daemon pieces grows ${BRIDGE_DAEMON_OVERCLOCK_STEPS} step.`,
-    it: `When one of its Overclock Hooks applies, each of its Daemon pieces grows ${BRIDGE_DAEMON_OVERCLOCK_STEPS} step.`,
-  },
-  'exploit-honeypot': {
-    you: `Each pair you score banks ${BRIDGE_EXPLOIT_HONEYPOT_WARD} Ward.`,
-    it: `Each pair it scores banks it ${BRIDGE_EXPLOIT_HONEYPOT_WARD} Ward.`,
-  },
-  'daemon-honeypot': {
-    you: `Suppress you deal also banks that much Ward, up to ${BRIDGE_DAEMON_HONEYPOT_CAP} each turn.`,
-    it: `Suppress it deals also banks it that much Ward, up to ${BRIDGE_DAEMON_HONEYPOT_CAP} each turn.`,
-  },
-  'overclock-honeypot': {
-    you: `Each of your turns banks ${BRIDGE_OVERCLOCK_HONEYPOT_WARD} Ward.`,
-    it: `Each of its turns banks it ${BRIDGE_OVERCLOCK_HONEYPOT_WARD} Ward.`,
-  },
+/** Initiative added to the owner's own gauge, in words ("add ⅙ of a
+ * turn (2 initiative) to your initiative gauge"). */
+const hasteText = (fraction: number) => describeEffect({ verb: 'tempo', target: 'own', mode: 'gauge', amount: fraction });
+/** "half of one fire's growth". */
+const growthShare = (share: number) => (share === 0.5 ? 'half of' : share === 0.25 ? 'a quarter of' : `${share}×`);
+
+/** The class Mods' rules, in the player's voice; the enemy's is forEnemy's
+ * (session 60's redesign: each triggers on a fifteen or a pair). */
+const BRIDGE_TEXT: Record<ClassId, string> = {
+  'exploit-overclock': `Each pair you score: ${hasteText(BRIDGE_EXPLOIT_OVERCLOCK_HASTE)}.`,
+  'exploit-daemon': `Each fifteen you score: Suppress ${BRIDGE_EXPLOIT_DAEMON_SUPPRESS}.`,
+  'daemon-overclock': `Each fifteen you score grows each of your Daemon subroutines by ${growthShare(BRIDGE_DAEMON_OVERCLOCK_GROWTH)} one fire's growth (still up to its cap).`,
+  'exploit-honeypot': `Each pair you score: Ward ${BRIDGE_EXPLOIT_HONEYPOT_WARD}.`,
+  'daemon-honeypot': `Each pair you score: Suppress ${BRIDGE_DAEMON_HONEYPOT_SUPPRESS} and Ward ${BRIDGE_DAEMON_HONEYPOT_WARD}.`,
+  'overclock-honeypot': `${BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND === 1 ? 'The first fifteen' : `The first ${BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND} fifteens`} you score each hand you deal: Ward ${BRIDGE_OVERCLOCK_HONEYPOT_WARD}, and ${hasteText(BRIDGE_OVERCLOCK_HONEYPOT_HASTE)}.`,
 };
 
 /** Every Mod that can appear as a reward, in the Shop or from an Event
@@ -173,7 +164,7 @@ function modItem(side: PlayerIndex, mod: ModRef): KitItem {
   const base = { key: modKey(side, mod), kind: 'mod' as const, side, name: modName(mod) };
   if (mod.kind === 'gatekeeper') return { ...base, tag: 'gatekeeper Mod', text: GATEKEEPER_MODS[mod.id].text };
   const cls = bridgeClass(mod.id);
-  if (cls) return { ...base, tag: `${CLASS_DEFINITIONS[cls].name} class Mod`, text: BRIDGE_TEXT[cls][side === 0 ? 'you' : 'it'] };
+  if (cls) return { ...base, tag: `${CLASS_DEFINITIONS[cls].name} class Mod`, text: side === 0 ? BRIDGE_TEXT[cls] : forEnemy(BRIDGE_TEXT[cls]) };
   return { ...base, tag: `${MOD_DEFINITIONS[mod.id].rarity} Mod`, text: modText(mod.id) };
 }
 
@@ -181,7 +172,7 @@ function modItem(side: PlayerIndex, mod: ModRef): KitItem {
  * general Mod's (reward and Shop screens). */
 export function modText(id: ModId): string {
   const cls = bridgeClass(id);
-  if (cls) return BRIDGE_TEXT[cls].you;
+  if (cls) return BRIDGE_TEXT[cls];
   return MOD_TEXT[id as GeneralModId] ?? MOD_TEXT_PENDING;
 }
 
@@ -217,12 +208,12 @@ export function burnersOf(carried: readonly BurnerId[], spentSoFar: readonly Bur
   });
 }
 
-/** "your Siphon", "their Null Session". */
+/** "your Phase Shift", "their Null Session". */
 export function triggerLabel(t: ModTrigger): string {
   return `${t.side === 0 ? 'your' : 'their'} ${modName(t.mod)}`;
 }
 
 /** A class's own bridge Mod, by name and rules (for class choice). */
 export function classModFor(classId: ClassId): { name: string; text: string } {
-  return { name: MOD_DEFINITIONS[`${BRIDGE_PREFIX}${classId}` as ModId].name, text: BRIDGE_TEXT[classId].you };
+  return { name: MOD_DEFINITIONS[`${BRIDGE_PREFIX}${classId}` as ModId].name, text: BRIDGE_TEXT[classId] };
 }

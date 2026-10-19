@@ -253,7 +253,7 @@ export function clearHandKnowledge(combatState: CombatState): CombatState {
       knownCrib: undefined,
       forcedDiscardPair: undefined,
       handPoints: 0,
-      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0 },
+      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0 },
     };
   }) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
@@ -437,95 +437,93 @@ function modAdjustedLoadout(loadout: SubroutineDefinition[], ownedModIds: ModId[
 
 // ---------------------------------------------------------------------
 // Class bridge passives (step 3, C1: one bespoke rule per class, each
-// making one archetype feed the other). Every bridge is driven by the
-// owner's own scoring or own turns -- never the opponent's -- since that
-// is the channel Cribbage skill reaches a fight through (CP6b, S11).
-// Amounts are measured against C2's +1.0 Credit/turn budget.
+// making one archetype feed the other). Session 60 (docs/class-mod-
+// redesign.md, K1-K5): every bridge now triggers on a fifteen or a pair
+// the owner scores -- three each -- since the owner's own scoring is the
+// channel Cribbage skill reaches a fight through (CP6b, S11). Fifteens
+// come about twice as often as pairs, so a pair bridge pays about twice
+// as much. Amounts are measured against C2's +1.0 Credit/turn budget.
 // ---------------------------------------------------------------------
 
-/** Exploit + Overclock: an Exploit beta that applies Empowers the next
- * piece this turn. */
-export const BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER = 1;
+/** Exploit + Overclock (K2): each pair you score adds this fraction of a
+ * turn to your initiative gauge. */
+export const BRIDGE_EXPLOIT_OVERCLOCK_HASTE = 1 / 12;
 /** Exploit + Daemon: each fifteen you score also Suppresses. */
 export const BRIDGE_EXPLOIT_DAEMON_SUPPRESS = 0.5;
-/** Daemon + Overclock: an Overclock beta that applies grows each Daemon
- * piece by this many of its own growth steps. */
-export const BRIDGE_DAEMON_OVERCLOCK_STEPS = 1;
+/** Daemon + Overclock (K3): each fifteen you score grows each Daemon
+ * piece by this share of one fire's growth (still up to its cap). */
+export const BRIDGE_DAEMON_OVERCLOCK_GROWTH = 0.5;
 /** Exploit + Honeypot: each pair you score banks Ward. */
 export const BRIDGE_EXPLOIT_HONEYPOT_WARD = 1;
-/** Daemon + Honeypot: Suppress you deal banks that much Ward, up to this
- * much per turn of yours. */
-export const BRIDGE_DAEMON_HONEYPOT_CAP = 1;
-/** Overclock + Honeypot: each turn you take banks Ward. */
+/** Daemon + Honeypot (K4): each pair you score Suppresses this much and
+ * banks this much Ward. */
+export const BRIDGE_DAEMON_HONEYPOT_SUPPRESS = 0.5;
+export const BRIDGE_DAEMON_HONEYPOT_WARD = 0.5;
+/** Overclock + Honeypot (K5): the first fifteen(s) you score each hand
+ * you deal bank this much Ward and add this fraction of a turn to your initiative
+ * gauge (1/12: one point at the usual threshold of 12). Limited per hand
+ * rather than shrunk to tiny amounts, the user's call: small fractions
+ * read badly. */
 export const BRIDGE_OVERCLOCK_HONEYPOT_WARD = 0.5;
+export const BRIDGE_OVERCLOCK_HONEYPOT_HASTE = 1 / 12;
+export const BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND = 1;
+const OVERCLOCK_HONEYPOT_THIS_HAND = 'bridge-overclock-honeypot:hand';
 
-const DAEMON_HONEYPOT_BANKED = 'bridge-daemon-honeypot:banked';
+const bankWard = (combatState: CombatState, side: PlayerIndex, amount: number) =>
+  withSide(combatState, side, { wardShield: combatState.sides[side].wardShield + amount });
+const haste = (combatState: CombatState, side: PlayerIndex, fraction: number) =>
+  resolveTempo({ verb: 'tempo', target: 'own', mode: 'gauge', amount: fraction }, combatState, side);
 
-/** A piece fired (on a turn, or as an immediate beta): bridges keyed on
- * "a beta of archetype A applied". */
-function applyBridgeOnFire(combatState: CombatState, side: PlayerIndex, fired: SubroutineDefinition, elevated: boolean, turn: TurnBuffer | undefined): CombatState {
+/** A scoring occurrence: every bridge is keyed on the owner's own
+ * fifteens or pairs. `dealer` is this hand's dealer (Phase Shift only
+ * works on hands its owner deals). */
+function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOccurrence, dealer: PlayerIndex | undefined): CombatState {
+  const side = occurrence.player;
   const bridge = combatState.bridges[side];
-  if (!bridge || !elevated) return combatState;
-  if (bridge === 'exploit-overclock' && fired.archetype === 'exploit' && turn) {
+  if (!bridge) return combatState;
+  const fifteen = occurrence.category === 'fifteen';
+  const pair = occurrence.category === 'pair';
+  if (bridge === 'exploit-daemon' && fifteen) {
     noteMod(combatState, side, bridgeMod(bridge));
-    turn.empowerNext += BRIDGE_EXPLOIT_OVERCLOCK_EMPOWER;
-    return combatState;
+    return reduceWinGauge(combatState, opponentOf(side), BRIDGE_EXPLOIT_DAEMON_SUPPRESS);
   }
-  if (bridge === 'daemon-overclock' && fired.archetype === 'overclock') {
+  if (bridge === 'exploit-honeypot' && pair) {
+    noteMod(combatState, side, bridgeMod(bridge));
+    return bankWard(combatState, side, BRIDGE_EXPLOIT_HONEYPOT_WARD);
+  }
+  if (bridge === 'exploit-overclock' && pair) {
+    noteMod(combatState, side, bridgeMod(bridge));
+    return haste(combatState, side, BRIDGE_EXPLOIT_OVERCLOCK_HASTE);
+  }
+  if (bridge === 'daemon-overclock' && fifteen) {
     noteMod(combatState, side, bridgeMod(bridge));
     return mapLoadout(combatState, side, (entry) => {
       const { growth, growthCap } = entry.definition.alpha;
       if (entry.definition.archetype !== 'daemon' || growth === undefined) return entry.state;
-      const growthTotal = Math.min(entry.state.growthTotal + growth * BRIDGE_DAEMON_OVERCLOCK_STEPS, growthCap ?? Infinity);
+      const growthTotal = Math.min(entry.state.growthTotal + growth * BRIDGE_DAEMON_OVERCLOCK_GROWTH, growthCap ?? Infinity);
       return { ...entry.state, growthTotal };
     });
   }
-  return combatState;
-}
-
-/** A scoring occurrence: bridges keyed on the owner's own scoring. */
-function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOccurrence): CombatState {
-  const side = occurrence.player;
-  const bridge = combatState.bridges[side];
-  if (bridge === 'exploit-daemon' && occurrence.category === 'fifteen') {
+  if (bridge === 'daemon-honeypot' && pair) {
     noteMod(combatState, side, bridgeMod(bridge));
-    return reduceWinGauge(combatState, opponentOf(side), BRIDGE_EXPLOIT_DAEMON_SUPPRESS);
+    return bankWard(reduceWinGauge(combatState, opponentOf(side), BRIDGE_DAEMON_HONEYPOT_SUPPRESS), side, BRIDGE_DAEMON_HONEYPOT_WARD);
   }
-  if (bridge === 'exploit-honeypot' && occurrence.category === 'pair') {
+  if (bridge === 'overclock-honeypot' && fifteen && dealer === side) {
+    const sideState = combatState.sides[side];
+    const used = sideState.passiveState[OVERCLOCK_HONEYPOT_THIS_HAND] ?? 0;
+    if (used >= BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND) return combatState;
     noteMod(combatState, side, bridgeMod(bridge));
-    return withSide(combatState, side, { wardShield: combatState.sides[side].wardShield + BRIDGE_EXPLOIT_HONEYPOT_WARD });
+    const counted = withSide(combatState, side, { passiveState: { ...sideState.passiveState, [OVERCLOCK_HONEYPOT_THIS_HAND]: used + 1 } });
+    return haste(bankWard(counted, side, BRIDGE_OVERCLOCK_HONEYPOT_WARD), side, BRIDGE_OVERCLOCK_HONEYPOT_HASTE);
   }
   return combatState;
 }
 
 /** The start of one of `side`'s turns. */
 function applyBridgeOnTurnStart(combatState: CombatState, side: PlayerIndex): CombatState {
-  const bridge = combatState.bridges[side];
   // Gatekeeper Mods' per-turn counters (No Way In, Zero-Sum, Null
   // Session) restart with each of this side's turns.
-  let state = withSide(combatState, side, { passiveState: { ...combatState.sides[side].passiveState, [GAINED_THIS_TURN]: 0, [NULL_SESSION_SPENT]: 0 } });
-  if (bridge === 'daemon-honeypot') {
-    state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [DAEMON_HONEYPOT_BANKED]: 0 } });
-  }
-  if (bridge === 'overclock-honeypot') {
-    noteMod(state, side, bridgeMod(bridge));
-    state = withSide(state, side, { wardShield: state.sides[side].wardShield + BRIDGE_OVERCLOCK_HONEYPOT_WARD });
-  }
-  return state;
-}
-
-/** `side` dealt `amount` Suppress: Daemon + Honeypot banks it as Ward. */
-function applyBridgeOnSuppress(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
-  if (combatState.bridges[side] !== 'daemon-honeypot') return combatState;
-  const sideState = combatState.sides[side];
-  const banked = sideState.passiveState[DAEMON_HONEYPOT_BANKED] ?? 0;
-  const ward = Math.max(0, Math.min(amount, BRIDGE_DAEMON_HONEYPOT_CAP - banked));
-  if (ward === 0) return combatState;
-  noteMod(combatState, side, bridgeMod('daemon-honeypot'));
-  return withSide(combatState, side, {
-    wardShield: sideState.wardShield + ward,
-    passiveState: { ...sideState.passiveState, [DAEMON_HONEYPOT_BANKED]: banked + ward },
-  });
+  return withSide(combatState, side, { passiveState: { ...combatState.sides[side].passiveState, [GAINED_THIS_TURN]: 0, [NULL_SESSION_SPENT]: 0 } });
 }
 
 // Model-independent Mod hooks carried over from Phase 5.
@@ -604,9 +602,9 @@ function mapLoadout(
 /** Feeds one scoring occurrence into every piece on both sides --
  * cards betas, points-progress betas, and points cooldowns. Each piece
  * decides for itself whether the scorer is a side it watches. */
-export function applyOccurrence(combatState: CombatState, occurrence: ScoringOccurrence): CombatState {
+export function applyOccurrence(combatState: CombatState, occurrence: ScoringOccurrence, dealer?: PlayerIndex): CombatState {
   let state = withSide(combatState, occurrence.player, { handPoints: combatState.sides[occurrence.player].handPoints + occurrence.magnitude });
-  state = applyBridgeOnOccurrence(state, occurrence);
+  state = applyBridgeOnOccurrence(state, occurrence, dealer);
   for (const side of [0, 1] as PlayerIndex[]) {
     state = mapLoadout(state, side, (entry) => chargeFromOccurrence(entry.state, entry.definition, occurrence, side));
   }
@@ -696,7 +694,7 @@ export function resolveEffect(
       return creditWinGauge(next, caster, incoming.amount - absorbed);
     }
     case 'suppress':
-      return applyBridgeOnSuppress(reduceWinGauge(state, target, effect.amount), caster, effect.amount);
+      return reduceWinGauge(state, target, effect.amount);
     case 'ward':
       return withSide(state, caster, { wardShield: state.sides[caster].wardShield + effect.amount });
     case 'empower':
@@ -965,7 +963,6 @@ function fireLoadoutOnce(
     const resolved = resolveFire(state, side, i, alpha, beta?.effect, scale, turn);
     state = applyHeatPressure(resolved.combatState, side, definition);
     state = mapLoadout(state, side, (e, index) => (index === i ? recordFire(e.state, definition) : e.state));
-    state = applyBridgeOnFire(state, side, definition, elevated, turn);
 
     events.push({ subroutineId: definition.id, side, alpha, beta: resolved.beta, elevated, charges, immediate: false, gauges: readGauges(state), ...takeMods(state, modMark) });
     firedThisTurn.push({ definition, elevated });
@@ -1024,7 +1021,6 @@ export function fireImmediateBetas(combatState: CombatState, dealer: PlayerIndex
       // An extra alpha fire is a real fire (growth, `fires` progress); a
       // standalone beta effect only counts against the fire cap.
       state = mapLoadout(state, side, (e, index) => (index === i ? (alpha ? recordFire(e.state, definition) : { ...e.state, fireCount: e.state.fireCount + 1 }) : e.state));
-      state = applyBridgeOnFire(state, side, definition, true, undefined);
       const firedCharges = beta.source === 'cards' || beta.source === 'progress' ? entry.state.charges : 1;
       events.push({ subroutineId: definition.id, side, alpha: alpha ?? (definition.alpha as Effect), beta: resolvedBeta, elevated: true, charges: firedCharges, immediate: true, gauges: readGauges(state), ...takeMods(state, modMark) });
     }
