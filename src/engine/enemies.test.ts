@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { AUTHORED_GATEKEEPERS } from './content/enemies';
+import { GATEKEEPER_MODS } from './gatekeeper-mods';
 import { createRng } from './rng';
 import { createNode } from './map-types';
 import { playCombat } from './combat';
@@ -38,11 +39,14 @@ describe('ENEMY_ROSTER structural integrity', () => {
     for (const enemy of ENEMY_ROSTER.filter((e) => e.archetypes.includes('honeypot'))) expect(enemy.minLayer, enemy.id).toBeGreaterThanOrEqual(2);
   });
 
-  it('E4: regulars and elites carry no Mod; gatekeepers one bespoke Mod; no enemy a class Mod', () => {
+  it('E4: regulars carry no Mod; elites and gatekeepers one Mod of their own tier; no enemy a class Mod', () => {
     for (const enemy of ENEMY_ROSTER) {
       expect(enemyCombatOptions(enemy), enemy.id).not.toHaveProperty('opponentBridge');
-      if (enemy.tier === 'gatekeeper') expect(enemy.mods, enemy.id).toHaveLength(1);
-      else expect(enemy.mods, enemy.id).toBeUndefined();
+      if (enemy.tier === 'regular') expect(enemy.mods, enemy.id).toBeUndefined();
+      else {
+        expect(enemy.mods, enemy.id).toHaveLength(1);
+        expect(GATEKEEPER_MODS[enemy.mods![0]].tier, enemy.id).toBe(enemy.tier);
+      }
     }
   });
 

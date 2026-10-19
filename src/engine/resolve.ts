@@ -10,6 +10,11 @@ import {
   SPOTLIGHT_HEAT,
   ZERO_SUM_SHARE,
   ZERO_SUM_THRESHOLD,
+  ROLLBACK_AT,
+  ROLLBACK_TO,
+  POWER_SIPHON_GROWTH,
+  ESCALATION_STEP,
+  ESCALATION_MAX,
   type GatekeeperModId,
 } from './gatekeeper-mods';
 import type { EnemyPassiveId } from './enemies';
@@ -310,8 +315,31 @@ export function creditWinGauge(combatState: CombatState, side: PlayerIndex, amou
     if (excess > 0) noteMod(state, opponent, gk('zero-sum'));
     if (excess > 0) state = withSide(state, opponent, { winGauge: addDuelProgress(state.sides[opponent].winGauge, excess * ZERO_SUM_SHARE).gauge });
   }
-  const { gauge } = addDuelProgress(state.sides[side].winGauge, amount);
+  let { gauge } = addDuelProgress(state.sides[side].winGauge, amount);
+  // Rollback (EM2): the first time `side`'s gauge passes the mark (short of
+  // a win -- a gain that goes straight to full beats it), it drops back.
+  if (hasSideMod(state, opponent, 'rollback') && !state.sides[opponent].passiveState[ROLLBACK_SPENT]) {
+    if (gauge.progress >= gauge.threshold * ROLLBACK_AT && gauge.progress < gauge.threshold) {
+      noteMod(state, opponent, gk('rollback'));
+      gauge = { ...gauge, progress: gauge.threshold * ROLLBACK_TO };
+      state = withSide(state, opponent, { passiveState: { ...state.sides[opponent].passiveState, [ROLLBACK_SPENT]: 1 } });
+    }
+  }
   return withSide(state, side, { winGauge: gauge, passiveState: { ...state.sides[side].passiveState, [GAINED_THIS_TURN]: gained + amount } });
+}
+
+const ROLLBACK_SPENT = 'rollback:spent';
+const ESCALATION_STEPS = 'escalation:steps';
+
+/** Grows each of `side`'s growing subroutines by `fires` fires' worth of
+ * its own growth, still up to its cap -- Eidolon's class Mod and Power
+ * Siphon. */
+function growDaemons(combatState: CombatState, side: PlayerIndex, fires: number, archetype?: Archetype): CombatState {
+  return mapLoadout(combatState, side, (entry) => {
+    const { growth, growthCap } = entry.definition.alpha;
+    if (growth === undefined || (archetype && entry.definition.archetype !== archetype)) return entry.state;
+    return { ...entry.state, growthTotal: Math.min(entry.state.growthTotal + growth * fires, growthCap ?? Infinity) };
+  });
 }
 
 /** Reduces `side`'s own win gauge, floored at 0. */
@@ -497,12 +525,7 @@ function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOc
   }
   if (bridge === 'daemon-overclock' && fifteen) {
     noteMod(combatState, side, bridgeMod(bridge));
-    return mapLoadout(combatState, side, (entry) => {
-      const { growth, growthCap } = entry.definition.alpha;
-      if (entry.definition.archetype !== 'daemon' || growth === undefined) return entry.state;
-      const growthTotal = Math.min(entry.state.growthTotal + growth * BRIDGE_DAEMON_OVERCLOCK_GROWTH, growthCap ?? Infinity);
-      return { ...entry.state, growthTotal };
-    });
+    return growDaemons(combatState, side, BRIDGE_DAEMON_OVERCLOCK_GROWTH, 'daemon');
   }
   if (bridge === 'daemon-honeypot' && pair) {
     noteMod(combatState, side, bridgeMod(bridge));
@@ -523,7 +546,16 @@ function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOc
 function applyBridgeOnTurnStart(combatState: CombatState, side: PlayerIndex): CombatState {
   // Gatekeeper Mods' per-turn counters (No Way In, Zero-Sum, Null
   // Session) restart with each of this side's turns.
-  return withSide(combatState, side, { passiveState: { ...combatState.sides[side].passiveState, [GAINED_THIS_TURN]: 0, [NULL_SESSION_SPENT]: 0 } });
+  let state = withSide(combatState, side, { passiveState: { ...combatState.sides[side].passiveState, [GAINED_THIS_TURN]: 0, [NULL_SESSION_SPENT]: 0 } });
+  // Escalation (EM4): each of the owner's turns lowers its own initiative
+  // threshold a step, up to the cap (a share of the starting threshold).
+  const steps = state.sides[side].passiveState[ESCALATION_STEPS] ?? 0;
+  if (hasSideMod(state, side, 'escalation') && (steps + 1) * ESCALATION_STEP <= ESCALATION_MAX + 1e-9) {
+    noteMod(state, side, gk('escalation'));
+    state = resolveTempo({ verb: 'tempo', target: 'own', mode: 'threshold', amount: ESCALATION_STEP }, state, side);
+    state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [ESCALATION_STEPS]: steps + 1 } });
+  }
+  return state;
 }
 
 // Model-independent Mod hooks carried over from Phase 5.
@@ -607,6 +639,13 @@ export function applyOccurrence(combatState: CombatState, occurrence: ScoringOcc
   state = applyBridgeOnOccurrence(state, occurrence, dealer);
   for (const side of [0, 1] as PlayerIndex[]) {
     state = mapLoadout(state, side, (entry) => chargeFromOccurrence(entry.state, entry.definition, occurrence, side));
+    // Reverse Engineering (EM1): the opponent's fifteens and pairs also
+    // count toward this side's Hooks, as if this side had scored them.
+    if (occurrence.player !== side && (occurrence.category === 'fifteen' || occurrence.category === 'pair') && hasSideMod(state, side, 'reverse-engineering')) {
+      noteMod(state, side, gk('reverse-engineering'));
+      const mirrored = { ...occurrence, player: side };
+      state = mapLoadout(state, side, (entry) => chargeFromOccurrence(entry.state, entry.definition, mirrored, side));
+    }
   }
   return state;
 }
@@ -691,6 +730,11 @@ export function resolveEffect(
       // Absorbed Ward feeds the defender's `absorbed` betas -- Honeypot's
       // conversion fuel.
       if (absorbed > 0) next = mapLoadout(next, target, (entry) => chargeFromAbsorbed(entry.state, entry.definition, absorbed));
+      // Power Siphon (EM3): an absorption grows the defender's growing subroutines.
+      if (absorbed > 0 && hasSideMod(next, target, 'power-siphon')) {
+        noteMod(next, target, gk('power-siphon'));
+        next = growDaemons(next, target, POWER_SIPHON_GROWTH);
+      }
       return creditWinGauge(next, caster, incoming.amount - absorbed);
     }
     case 'suppress':

@@ -66,25 +66,25 @@ export const AUTHORED_REGULARS: AuthoredEnemy[] = [
   { id: 'tripwire', name: 'Tripwire', tier: 'regular', archetypes: ['overclock', 'exploit'], minLayer: 2, loadout: [tracing(p('ping'), 0.25), p('doorknob-rattle')], scale: 1.6 },
 ];
 
-/** Elites (E2: 4; no Mods since session 60 -- class Mods are the
- * player's alone, the user's call). Better pieces
+/** Elites (E2: 4; each one small rule-bending Mod -- docs/enemy-review.md
+ * EM1-EM4; class Mods are the player's alone since session 60). Better pieces
  * than regulars -- a rare or uncommons (E1). Each pair is a class's, so
  * the four cover every archetype twice. */
 export const AUTHORED_ELITES: AuthoredEnemy[] = [
   // The spike engine: each fifteen charges Port Scan.
-  { id: 'zero-day-broker', name: 'Zero-Day Broker', tier: 'elite', archetypes: ['exploit', 'overclock'], minLayer: 1, loadout: [p('zero-day-chain'), p('port-scan'), p('credential-stuffing')], scale: 0.9 },
+  { id: 'zero-day-broker', name: 'Zero-Day Broker', tier: 'elite', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['reverse-engineering'], loadout: [p('zero-day-chain'), p('port-scan'), p('credential-stuffing')], scale: 1.05 },
   // Keeps you down: its fifteens Suppress you (Backdoor Maintenance),
   // Heartbeat heals hardest while you lead, Race Condition pays while
   // you're under half.
-  { id: 'incident-response', name: 'Incident Response', tier: 'elite', archetypes: ['exploit', 'daemon'], minLayer: 1, loadout: [p('race-condition'), p('heartbeat-monitor'), p('cron-job')], scale: 0.95 },
+  { id: 'incident-response', name: 'Incident Response', tier: 'elite', archetypes: ['exploit', 'daemon'], minLayer: 1, mods: ['rollback'], loadout: [p('race-condition'), p('heartbeat-monitor'), p('cron-job')], scale: 0.93 },
   // The grinder: its Suppress banks Ward (Hardened Perimeter), it walls
   // up, and Memory Leak ramps the longer you take.
-  { id: 'blackout-cell', name: 'Blackout Cell', tier: 'elite', archetypes: ['daemon', 'honeypot'], minLayer: 2, loadout: [p('memory-leak'), p('sinkhole'), p('basic-auth')], scale: 1.5 },
+  { id: 'blackout-cell', name: 'Blackout Cell', tier: 'elite', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['power-siphon'], loadout: [p('memory-leak'), p('sinkhole'), p('basic-auth')], scale: 1.47 },
   // E7's elite tracer: fast, and every
   // fire makes you louder -- win fast or pay in Heat. Pressure is 1/8 a
   // fire: at 1/2 it pushed ~20 Heat a fight (57% of layer 2's
   // allowance), since its pieces fire on turns AND as immediate betas.
-  { id: 'intrusion-alarm', name: 'Intrusion Alarm', tier: 'elite', archetypes: ['overclock', 'honeypot'], minLayer: 2, loadout: [tracing(p('priority-override'), 0.125), tracing(p('elevated-session'), 0.125), p('tarpit')] },
+  { id: 'intrusion-alarm', name: 'Intrusion Alarm', tier: 'elite', archetypes: ['overclock', 'honeypot'], minLayer: 2, mods: ['escalation'], loadout: [tracing(p('priority-override'), 0.125), tracing(p('elevated-session'), 0.125), p('tarpit')], scale: 1.12 },
 ];
 
 // --- Gatekeepers' bespoke pieces (session 43's rule: every gatekeeper

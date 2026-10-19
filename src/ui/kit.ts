@@ -162,7 +162,7 @@ export function modName(mod: ModRef): string {
 
 function modItem(side: PlayerIndex, mod: ModRef): KitItem {
   const base = { key: modKey(side, mod), kind: 'mod' as const, side, name: modName(mod) };
-  if (mod.kind === 'gatekeeper') return { ...base, tag: 'gatekeeper Mod', text: GATEKEEPER_MODS[mod.id].text };
+  if (mod.kind === 'gatekeeper') return { ...base, tag: `${GATEKEEPER_MODS[mod.id].tier} Mod`, text: GATEKEEPER_MODS[mod.id].text };
   const cls = bridgeClass(mod.id);
   if (cls) return { ...base, tag: `${CLASS_DEFINITIONS[cls].name} class Mod`, text: side === 0 ? BRIDGE_TEXT[cls] : forEnemy(BRIDGE_TEXT[cls]) };
   return { ...base, tag: `${MOD_DEFINITIONS[mod.id].rarity} Mod`, text: modText(mod.id) };

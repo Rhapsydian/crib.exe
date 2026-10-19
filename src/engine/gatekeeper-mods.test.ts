@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Alpha, Archetype, Beta, SubroutineDefinition } from './subroutine-types';
-import { clearHandKnowledge, createCombatState, creditWinGauge, fireTurn, resolveEffect, type CombatState } from './resolve';
-import { NO_WAY_IN_CAP, SPOTLIGHT_HEAT, ZERO_SUM_SHARE, ZERO_SUM_THRESHOLD, ADAPTATION_EVERY, ADAPTATION_STEP, type GatekeeperModId } from './gatekeeper-mods';
+import { applyOccurrence, clearHandKnowledge, createCombatState, creditWinGauge, fireTurn, resolveEffect, type CombatState } from './resolve';
+import { NO_WAY_IN_CAP, SPOTLIGHT_HEAT, ZERO_SUM_SHARE, ZERO_SUM_THRESHOLD, ADAPTATION_EVERY, ADAPTATION_STEP, ESCALATION_MAX, POWER_SIPHON_GROWTH, ROLLBACK_TO, type GatekeeperModId } from './gatekeeper-mods';
 
 // Step 3, E4: the eight gatekeeper Mods. Side 1 carries the Mod (a
 // gatekeeper); side 0 is the player it acts on, unless noted.
@@ -80,5 +80,43 @@ describe('gatekeeper Mods (step 3, E4)', () => {
     let s = withMods([credit('a')], [piece('g', { verb: 'credit', amount: 1, growth: 0.5, growthCap: 2 }, undefined, 'daemon')], ['adaptation']);
     for (let i = 0; i < ADAPTATION_EVERY; i++) s = clearHandKnowledge(s);
     expect(s.sides[1].loadout[0].definition.alpha.growthCap).toBe(2 + ADAPTATION_STEP);
+  });
+});
+
+// Session 60, EM1-EM4: the four elite Mods (same shape: side 1 carries it).
+describe('elite Mods (session 60)', () => {
+  it("Reverse Engineering: the player's fifteens and pairs count toward the owner's Hooks", () => {
+    const hooked = piece('h', { verb: 'credit', amount: 1 }, { source: 'cards', category: 'pair', shape: 'graded', cap: 3, effect: { verb: 'enhance', amount: 1 } });
+    const s = withMods([credit('a')], [hooked], ['reverse-engineering']);
+    const pair = { category: 'pair', player: 0, magnitude: 2 } as const;
+    expect(applyOccurrence(s, pair).sides[1].loadout[0].state.charges).toBe(1);
+    expect(applyOccurrence(s, { ...pair, category: 'run', magnitude: 3 }).sides[1].loadout[0].state.charges).toBe(0);
+    const plain = { ...s, sideMods: [[], []] as [GatekeeperModId[], GatekeeperModId[]] };
+    expect(applyOccurrence(plain, pair).sides[1].loadout[0].state.charges).toBe(0);
+  });
+
+  it("Rollback: the first time the player's gauge passes the mark it drops back, once a fight", () => {
+    let s = withMods([credit('a')], [credit('g')], ['rollback']);
+    s = creditWinGauge(s, 0, 80);
+    expect(progress(s, 0)).toBe(100 * ROLLBACK_TO);
+    s = creditWinGauge(s, 0, 30);
+    expect(progress(s, 0)).toBe(80);
+    // A gain that goes straight to full still wins.
+    expect(progress(creditWinGauge(withMods([credit('a')], [credit('g')], ['rollback']), 0, 100), 0)).toBe(100);
+  });
+
+  it("Power Siphon: an absorption grows the owner's growing subroutines", () => {
+    const grower = piece('gr', { verb: 'credit', amount: 1, growth: 0.5, growthCap: 2 }, undefined, 'daemon');
+    let s = withMods([credit('a')], [grower], ['power-siphon']);
+    s = { ...s, sides: [s.sides[0], { ...s.sides[1], wardShield: 5 }] };
+    const after = resolveEffect({ verb: 'credit', amount: 3 }, s, 0, 0);
+    expect(after.sides[1].loadout[0].state.growthTotal).toBe(0.5 * POWER_SIPHON_GROWTH);
+  });
+
+  it("Escalation: each of the owner's turns lowers its initiative threshold, up to the cap", () => {
+    let s = withMods([credit('a')], [credit('g')], ['escalation']);
+    for (let i = 0; i < 8; i++) s = fireTurn(s, 1, { isDealer: false }).combatState;
+    expect(s.sides[1].gauge.threshold).toBeCloseTo(12 * (1 - ESCALATION_MAX));
+    expect(s.sides[0].gauge.threshold).toBe(12);
   });
 });

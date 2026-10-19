@@ -11,7 +11,7 @@
  * layer's Heat allowance.
  *
  * PROVENANCE: duels at equal skill 0.85 (real fights use the enemy skill
- * dial), no Mods. Not a full-run metric.
+ * dial), with each enemy's own Mods (not class Mods). Not a full-run metric.
  *
  * Usage:
  *   npx tsx scripts/roster-check.ts [--tier=regular] [--seeds=60] [--only=id,...]
@@ -75,7 +75,7 @@ function alarmAgainst(loadout: ReturnType<typeof scaledEnemyLoadout>, enemy: Aut
   return trace / fights;
 }
 
-console.log(`\nROSTER CHECK (${args.tier ?? 'regular'}) -- kit power, Credit/turn, ${seeds} seeds x 2 seats; skill 0.85; no Mods. Budget = E3's table.`);
+console.log(`\nROSTER CHECK (${args.tier ?? 'regular'}) -- kit power, Credit/turn, ${seeds} seeds x 2 seats; skill 0.85; with enemy Mods. Budget = E3's table.`);
 console.log(`${'enemy'.padEnd(20)} first  budget   power by layer (scaled)                       first-layer verdict`);
 for (const enemy of roster) {
   if (only && !only.has(enemy.id)) continue;
