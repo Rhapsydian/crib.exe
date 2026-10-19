@@ -107,6 +107,18 @@ Wipe: your Hook counts; Strip: your Ward) and twelve enemy subroutines
 built on them, and the roster grew to 27 -- new regulars for every
 layer, two deep elites -- named as the network defending itself.
 
+Session 61 worked through the user's playtest notes: Burners are armed
+with a toggle under your gauges (used at the start of your next turn,
+the prompt gone); the map is centred on desktop and its lines flow out
+from your node; Caches offer only uncommon and rare subroutines; a
+played card leaves the hand at once; Learn to play starts slow. Shops
+now **buy** benched subroutines, banked copies and Burners (half price,
++25% a Merge rank), with **Cold Wallet**, a sell-only Burner. A
+Safehouse Merge now **spends every banked copy** at once, ranks show on
+every subroutine (I-III) with "+N banked" in the loadout editor, and a
+ranked growing subroutine grows further. The gatekeepers were re-tuned
+after it, and Operator's and Warden's class Mods buffed.
+
 What exists, all headless and test-covered:
 
 | area | state |
@@ -114,9 +126,9 @@ What exists, all headless and test-covered:
 | Cribbage rules engine | complete, rules-correct, 2-player |
 | Combat wrapper | complete — alpha/beta subroutines, seven verbs plus three enemy-only (Trace, Wipe, Strip), initiative, Breach/Containment |
 | Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
-| Meta-progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge, Shop |
-| Content | **authored** — 36 player subroutines, 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod); 37 Mods, 8 Burners, 8 Events (Static Shield and Recon Ping set aside) |
-| Balance | **re-tuned in session 60** — every class 16–22% full-run victory; the gatekeeper curve on target |
+| Meta-progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge (everything at once, at a Safehouse), a Shop that buys and sells |
+| Content | **authored** — 36 player subroutines, 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod); 37 Mods, 9 Burners (Cold Wallet sell-only), 8 Events (Static Shield and Recon Ping set aside) |
+| Balance | **re-tuned in session 61** — every class 18–22% full-run victory; the gatekeeper curve on target |
 | UI | **a whole run playable** (milestone 3) and **vanilla Cribbage with a coach and lessons** (milestone 4), both saved after every choice |
 | Art | not started |
 

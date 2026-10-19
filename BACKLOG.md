@@ -262,10 +262,25 @@ GitHub-hosted site and itch.io.
 
 Backlog from this plan: an optional tutorial run (a bespoke, single-layer
 guided layout); drag and drop as an alternative card input; hosting.
-Watch (session 57): the Burner prompt asks before every one of the
-player's turns while one remains, which may get naggy (an "only when I
-tap a Burner" setting). Rules text for the general Mods: done (session
-58).
+~~Watch (session 57): the Burner prompt may get naggy~~ -- replaced in
+session 61 by a toggle under your gauges (one armed at a time, used at
+the start of your next turn). Rules text for the general Mods: done
+(session 58).
+
+Open from session 61:
+- **Not yet seen in the browser:** the Shop's Sell section, the
+  Safehouse's "merge everything", rank marks and "+N banked" (they only
+  appear once a run has banked copies) -- tests cover the engine side;
+  check them in the next playtest.
+- **The leftover pegging card** fix was made from the code (the bug
+  wasn't reproduced on demand) -- confirm in playtesting.
+- **Zero-Sum** has a strength cliff between scale 1.50 and 1.53 (its
+  "Credit past 4 a turn" rule); left at 1.50.
+- **Selling isn't in the simulation:** the simulated player never sells,
+  so more Data from selling isn't in the balance numbers.
+- **Saves:** Shop and Safehouse answers changed shape (sell actions;
+  Merge spends everything), so runs saved before session 61 may not
+  resume cleanly (the known saves-vs-updates issue).
 
 Open from session 60:
 - **Player-side content pass** (above): new subroutines, Mods, Burners.
