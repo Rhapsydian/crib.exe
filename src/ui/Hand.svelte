@@ -41,9 +41,9 @@
     if (inactive || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
     if (!onplay && !ondiscard) return;
     const n = Number(e.key);
-    if (Number.isInteger(n) && n >= 1 && n <= hand.length) {
+    if (Number.isInteger(n) && n >= 1 && n <= shown.length) {
       e.preventDefault();
-      tap(hand[n - 1]);
+      tap(shown[n - 1]);
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (phase === 'discard') discard();
@@ -53,11 +53,18 @@
 
   let lifted = $state<Card[]>([]);
   let mockNote = $state<string | null>(null);
+  // Cards already played or sent to the crib, hidden until the engine's
+  // next pause brings a new hand. A play that ends the fight brings none
+  // (the last frame stays up behind the result), so without this the
+  // played card stayed in the hand (session 61's playtest bug).
+  let sent = $state<Card[]>([]);
+  const shown = $derived(hand.filter((c) => !sent.some((s) => cardsEqual(s, c))));
 
-  // A new request (the hand changed) drops whatever was lifted.
+  // A new request (the hand changed) drops whatever was lifted or sent.
   $effect(() => {
     void hand;
     lifted = [];
+    sent = [];
   });
 
   const isLegal = (c: Card) => legal.some((l) => cardsEqual(l, c));
@@ -72,7 +79,8 @@
   });
 
   function tap(card: Card) {
-    if (!isLegal(card)) return;
+    // Waiting on the engine after a play or discard: nothing to tap.
+    if (sent.length > 0 || !isLegal(card)) return;
     if (phase === 'discard') {
       if (isLifted(card)) lifted = lifted.filter((l) => !cardsEqual(l, card));
       else if (lifted.length < 2) lifted = [...lifted, card];
@@ -85,14 +93,20 @@
     const card = lifted[0];
     if (!card) return;
     lifted = [];
-    if (onplay) onplay(card);
+    if (onplay) {
+      sent = [card];
+      onplay(card);
+    }
     else mockNote = `would play ${card.rank}/${card.suit} → engine`;
   }
   function discard() {
     if (lifted.length !== 2) return;
     const cards: [Card, Card] = [lifted[0], lifted[1]];
     lifted = [];
-    if (ondiscard) ondiscard(cards);
+    if (ondiscard) {
+      sent = cards;
+      ondiscard(cards);
+    }
     else mockNote = 'would send 2 cards to the crib → engine';
   }
 </script>
@@ -112,7 +126,7 @@
     {/if}
   </div>
   <div class="hand">
-    {#each hand as card, i (i)}
+    {#each shown as card, i (i)}
       <div class="slot">
         <CardView {card} lifted={isLifted(card)} dimmed={!isLegal(card)} onclick={() => tap(card)} />
         <span class="key">{i + 1}</span>

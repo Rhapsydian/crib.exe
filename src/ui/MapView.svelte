@@ -39,9 +39,11 @@
     {/each}
   </g>
   {#each graph.edges as e, i (i)}
-    {@const a = pos(e.a)}
-    {@const b = pos(e.b)}
     {@const hot = (e.a === here && selectable.has(e.b)) || (e.b === here && selectable.has(e.a))}
+    <!-- Edges are undirected; draw each from the current node outward, so
+         a hot line's dashes always flow away from where you are. -->
+    {@const a = pos(e.b === here ? e.b : e.a)}
+    {@const b = pos(e.b === here ? e.a : e.b)}
     <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} class="link" class:hot />
   {/each}
   {#each graph.nodes as n (n.id)}

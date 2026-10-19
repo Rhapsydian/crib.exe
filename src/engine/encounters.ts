@@ -8,7 +8,7 @@ import { discardSkillStrategy, pegSkillStrategy } from './ai';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
 import { currentHeatCeiling, eventHeat, fightBaselineHeat, fightPerformanceHeat, heatFromLoss } from './heat';
-import { drawRewardOptions, drawUpgradedRewardOptions, rewardPoolForClass, rarityOf, type RewardTier } from './rewards';
+import { drawCacheRewardOptions, drawRewardOptions, drawUpgradedRewardOptions, rewardPoolForClass, rarityOf, type RewardTier } from './rewards';
 import { dataForTier } from './data';
 import { pickMergeTarget, preferMergeWhenAvailable, type MergeTargetStrategy, type SafehouseStrategy } from './merge';
 import {
@@ -1158,7 +1158,7 @@ export function* resolveEncounterRequests(
         burnerRerollCost: 0,
       };
       if (roll < subroutineOdds) {
-        const rewardOptions = drawRewardOptions(playerState.classId, 'better', rng);
+        const rewardOptions = drawCacheRewardOptions(playerState.classId, rng);
         yield* ask({ kind: 'cacheOpened', contents: 'subroutine', data: 0, burners: [], fallback: () => null });
         return { ...base, rewardTier: 'better', dataAwarded: 0, rewardOptions, modRewardOptions: [], burnerRewardOptions: [] };
       }

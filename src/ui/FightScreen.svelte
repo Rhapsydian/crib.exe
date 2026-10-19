@@ -16,6 +16,7 @@
   import KitList from './KitList.svelte';
   import ShowPanel from './ShowPanel.svelte';
   import type { BurnerId } from '../engine/burner-types';
+  import { BURNER_DEFINITIONS } from '../engine/burners';
 
   // The chosen fight-screen layout (the user's picks from the P3 mockups):
   // COMPACT on phones -- everything on one screen, a three-line log
@@ -60,6 +61,36 @@
     ),
   );
   const burnersLeft = $derived(yourBurners.filter((b) => !b.spent).length);
+
+  // Burners are armed, not prompted for (the user's playtest call,
+  // session 61): a toggle under your gauges per kind of combat Burner
+  // you still carry. One at a time -- arming another disarms the first.
+  // An armed Burner is used at the start of your next turn: the engine
+  // already asks just after the turn beat and before the fires, so it
+  // plays out right after "your turn" shows, then disarms.
+  const spentIds = $derived(steps.flatMap((s) => (s.type === 'beat' && s.beat.kind === 'burner' && s.beat.side === 0 ? [s.beat.burnerId] : [])));
+  const armable = $derived.by(() => {
+    const spent = [...spentIds];
+    const left = f.view.combatState.carriedBurnerIds.filter((id) => {
+      const i = spent.indexOf(id);
+      if (i !== -1) {
+        spent.splice(i, 1);
+        return false;
+      }
+      return BURNER_DEFINITIONS[id].combatEffect !== undefined;
+    });
+    return [...new Set(left)].map((id) => ({ id, count: left.filter((b) => b === id).length }));
+  });
+  let armed = $state<BurnerId | null>(null);
+  // The engine's Burner pause: answer it at once with whatever is armed.
+  let answered: FightSnapshot | null = null;
+  $effect(() => {
+    if (f.phase !== 'burner' || !onburner || answered === snapshot) return;
+    answered = snapshot;
+    const use = armed !== null && f.burners.includes(armed) ? armed : null;
+    if (use) armed = null;
+    onburner(use);
+  });
   // The Mods acting at the replay's current step flash (the user's ask).
   const flashing = $derived(new Set(stepMods(replay?.current ?? null).map((t) => modKey(t.side, t.mod))));
   const flashSide = (side: 0 | 1) => stepMods(replay?.current ?? null).some((t) => t.side === side);
@@ -117,8 +148,8 @@
   };
 
   // Desktop keys (P5): Space / Enter / Esc skip a turn that's playing
-  // out; Esc closes the detail panel or a drawer; at the Burner prompt,
-  // 1-n burn that Burner and Esc keeps them. The hand takes 1-6 / Enter.
+  // out; Esc closes the detail panel or a drawer. The hand takes 1-6 /
+  // Enter.
   function onkey(e: KeyboardEvent) {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (replay?.playing && (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape')) {
@@ -135,18 +166,7 @@
       sheet = 'none';
       return;
     }
-    if (handReady && f.phase === 'burner' && onburner) {
-      const n = Number(e.key);
-      if (Number.isInteger(n) && n >= 1 && n <= burnerChoices.length) onburner(burnerChoices[n - 1].id);
-      else if (e.key === 'Escape') onburner(null);
-    }
   }
-
-  // The Burner prompt's choices: each kind once, with how many you carry
-  // (Burners stack, so the same id can be offered twice).
-  const burnerChoices = $derived(
-    [...new Set(f.burners)].map((id) => ({ id, count: f.burners.filter((b) => b === id).length })),
-  );
 
   function pickLog(side: 0 | 1, id: string) {
     // The log drawer stays open underneath, so closing the detail
@@ -233,24 +253,22 @@
         flashMods={flashSide(0)}
         onkit={() => (sheet = 'loadouts')}
       />
+      {#if onburner && armable.length}
+        <div class="arm-row">
+          {#each armable as b (b.id)}
+            <button class="arm" class:on={armed === b.id} aria-pressed={armed === b.id} onclick={() => (armed = armed === b.id ? null : b.id)}
+              >⏏︎ {burnerLabel(b.id)}{b.count > 1 ? ` ×${b.count}` : ''}</button
+            >
+          {/each}
+          <span class="arm-note">{armed ? 'used at the start of your next turn' : 'arm a Burner for your next turn'}</span>
+        </div>
+      {/if}
     </div>
     <!-- A steady slot for the prompt / hand / wait, so the screen above
          doesn't shift as it changes or as the hand empties (the user's
          catch, milestone 4). -->
     <div class="hand-slot">
-    {#if handReady && f.phase === 'burner'}
-      <div class="burner-prompt">
-        <div class="ask">Your turn is about to fire. Burn one?</div>
-        <div class="choices">
-          {#each burnerChoices as choice, i (choice.id)}
-            <button class="burn" onclick={() => onburner?.(choice.id)}
-              ><span class="burn-key">{i + 1}</span>{burnerLabel(choice.id)}{choice.count > 1 ? ` ×${choice.count}` : ''}</button
-            >
-          {/each}
-          <button class="keep" onclick={() => onburner?.(null)}>not now<span class="burn-key after">esc</span></button>
-        </div>
-      </div>
-    {:else if handReady}
+    {#if handReady && f.phase !== 'burner'}
       <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase === 'discard' ? 'discard' : 'play'} playerIsDealer={f.playerIsDealer} {onplay} {ondiscard} inactive={replay?.playing ?? false} />
     {:else}
       <div class="hand-wait">…</div>
@@ -529,49 +547,31 @@
       opacity: 0;
     }
   }
-  .burner-prompt {
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 8px;
-    font-size: 12px;
-  }
-  .ask {
-    color: var(--warn);
-  }
-  .choices {
+  .arm-row {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 6px;
+    margin-top: 4px;
+    font-size: 11px;
   }
-  .burn,
-  .keep {
-    padding: 8px 10px;
+  .arm {
+    padding: 4px 8px;
     border-radius: var(--radius);
-    border: 1px solid var(--warn);
+    border: 1px solid var(--line);
     background: transparent;
-    color: var(--warn);
-    font-size: 12px;
-  }
-  .keep {
-    border-color: var(--line);
     color: var(--text-dim);
+    font-size: 11px;
+    cursor: pointer;
   }
-  /* Key hints at the Burner prompt, only with a keyboard and a mouse. */
-  .burn-key {
-    display: none;
-    margin-right: 6px;
-    opacity: 0.6;
+  .arm.on {
+    border-color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 18%, transparent);
+    color: var(--warn);
+  }
+  .arm-note {
+    color: var(--text-dim);
     font-size: 10px;
-  }
-  .burn-key.after {
-    margin: 0 0 0 6px;
-  }
-  @media (hover: hover) and (pointer: fine) {
-    .burn-key {
-      display: inline;
-    }
   }
   .hand-slot {
     min-height: 124px;

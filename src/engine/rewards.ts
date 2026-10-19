@@ -139,6 +139,16 @@ export function drawRewardOptions(classId: ClassId, tier: RewardTier, rng: Rng):
   return weightedSampleWithoutReplacement(weighted, REWARD_OPTIONS_COUNT, rng);
 }
 
+/** A Cache's subroutines are uncommon or better (the user's playtest
+ * call, session 61): 'better''s odds with the commons taken out. */
+const CACHE_RARITY_WEIGHTS: Record<Rarity, number> = { common: 0, uncommon: 40, rare: 20 };
+
+/** A Cache's subroutine choice: REWARD_OPTIONS_COUNT distinct pieces, no
+ * commons (starting-loadout pieces count as commons, so they're out too). */
+export function drawCacheRewardOptions(classId: ClassId, rng: Rng): SubroutineDefinition[] {
+  return weightedSampleWithoutReplacement(weightedRewardPool(classId, CACHE_RARITY_WEIGHTS), REWARD_OPTIONS_COUNT, rng);
+}
+
 // TBD/playtesting -- a real shot at rares beyond even 'better', Black
 // Budget's own "upgrade rarity by one tier" (Mods checkpoint H).
 const UPGRADED_RARITY_WEIGHTS: Record<Rarity, number> = { common: 20, uncommon: 40, rare: 40 };

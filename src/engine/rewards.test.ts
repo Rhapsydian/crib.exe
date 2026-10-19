@@ -4,6 +4,7 @@ import {
   rarityOf,
   rewardPoolForClass,
   offClassPoolForClass,
+  drawCacheRewardOptions,
   drawRewardOptions,
   REWARD_OPTIONS_COUNT,
 } from './rewards';
@@ -58,6 +59,19 @@ describe('offClassPoolForClass', () => {
     expect(offClass.length).toBeGreaterThan(0);
     for (const piece of offClass) expect(archetypes).not.toContain(piece.archetype);
     expect(new Set(offClass.map((p) => p.archetype))).toEqual(new Set(['overclock', 'honeypot']));
+  });
+});
+
+describe('drawCacheRewardOptions', () => {
+  it('offers only uncommon or rare pieces, three distinct', () => {
+    for (const classId of ALL_CLASS_IDS) {
+      for (let seed = 0; seed < 40; seed++) {
+        const offer = drawCacheRewardOptions(classId, createRng(seed));
+        expect(offer).toHaveLength(REWARD_OPTIONS_COUNT);
+        expect(new Set(offer.map((p) => p.id)).size).toBe(REWARD_OPTIONS_COUNT);
+        for (const p of offer) expect(rarityOf(p.id), `${classId} ${p.id}`).not.toBe('common');
+      }
+    }
   });
 });
 

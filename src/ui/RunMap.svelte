@@ -152,7 +152,7 @@
     justify-content: center;
   }
   .run-map {
-    flex: 1;
+    flex: 1 1 640px;
     min-width: 0;
     max-width: 640px;
     height: 100%;
@@ -359,6 +359,14 @@
     }
     .panel-title {
       display: block;
+    }
+    /* A matching empty column on the right, so the map itself sits in
+       the middle of the screen (the user's ask). It gives way first
+       when the window is too narrow for both. */
+    .map-screen::after {
+      content: '';
+      flex: 0 100 300px;
+      min-width: 0;
     }
   }
   .close {
