@@ -183,7 +183,7 @@ const TEST_FIGHT_NUMBER = 10;
 // reliably; these are the skeleton ids with the most credit in the kit.
 const RELIABLE_ENEMY_ID: Record<'regularFight' | 'eliteFight' | 'gatekeeperFight', EnemyId> = {
   regularFight: 'pentest-script', // Port Scan + Buffer Overflow: plain credit
-  eliteFight: 'zero-day-broker', // credit alphas and a Charge, no Mod that blunts the player
+  eliteFight: 'threat-intel-feed', // credit alphas and a Charge, no Mod that blunts the player
   gatekeeperFight: 'root-authority', // layer 4's own gatekeeper, matching TEST_LAYER
 };
 // Both sides pinned to the dumb baseline explicitly -- an explicit

@@ -22,7 +22,9 @@ export type GatekeeperModId =
   | 'reverse-engineering'
   | 'rollback'
   | 'power-siphon'
-  | 'escalation';
+  | 'escalation'
+  | 'evidence-chain'
+  | 'resource-quota';
 
 export interface GatekeeperModDefinition {
   id: GatekeeperModId;
@@ -78,5 +80,7 @@ export const GATEKEEPER_MODS: Record<GatekeeperModId, GatekeeperModDefinition> =
     text: `Whenever its Ward absorbs your Credit, each of its growing subroutines grows ${POWER_SIPHON_GROWTH === 1 ? "as much as one fire's growth" : `${POWER_SIPHON_GROWTH} fires' worth`}.`,
     tier: 'elite',
   },
+  'evidence-chain': { id: 'evidence-chain', name: 'Evidence Chain', text: 'Whenever it gives you Heat, it also Credits that much.', tier: 'elite' },
+  'resource-quota': { id: 'resource-quota', name: 'Resource Quota', text: "Your bottom subroutine doesn't fire.", tier: 'elite' },
   escalation: { id: 'escalation', name: 'Escalation', text: `Each of its turns lowers its initiative threshold by ${pct(ESCALATION_STEP)} (at most ${pct(ESCALATION_MAX)} in all), so its turns come faster.`, tier: 'elite' },
 };

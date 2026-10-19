@@ -27,9 +27,10 @@ import {
 // gatekeepers, minLayer > 1 regulars) retired with it.
 
 describe('ENEMY_ROSTER structural integrity', () => {
-  it('E2 shape: 6 regular, 4 elite, and two gatekeepers per layer', () => {
-    expect(ENEMY_ROSTER.filter((e) => e.tier === 'regular')).toHaveLength(6);
-    expect(ENEMY_ROSTER.filter((e) => e.tier === 'elite')).toHaveLength(4);
+  it('E2 shape (grown in session 60, CP4): 13 regular, 6 elite, two gatekeepers per layer; every layer adds new regulars', () => {
+    expect(ENEMY_ROSTER.filter((e) => e.tier === 'regular')).toHaveLength(13);
+    expect(ENEMY_ROSTER.filter((e) => e.tier === 'elite')).toHaveLength(6);
+    for (let layer = 1; layer <= 4; layer++) expect(ENEMY_ROSTER.some((e) => e.tier === 'regular' && e.minLayer === layer), `layer ${layer}`).toBe(true);
     for (let layer = 1; layer <= 4; layer++) {
       expect(ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper' && e.minLayer === layer), `layer ${layer}`).toHaveLength(2);
     }

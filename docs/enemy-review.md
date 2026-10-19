@@ -20,9 +20,9 @@ Frame: each bends **one rule the player can feel**, like a gatekeeper
 Mod but smaller; thematic to the elite and its two archetypes; never a
 class Mod. The elites' scales are re-tuned after all four exist.
 
-- **EM1. Zero-Day Broker (Exploit/Overclock): Reverse Engineering** --
+- **EM1. Threat Intel Feed (was Zero-Day Broker; Exploit/Overclock): Reverse Engineering** --
   every fifteen and pair you score also counts toward its Hooks. A
-  broker profiting from your moves; its spike engine (Zero-Day Chain on
+  defender studying your moves; its spike engine (Zero-Day Chain on
   fifteens, Port Scan on pairs) runs off your scoring too. Chosen over
   "your hand is revealed to it" (the player barely feels it).
 
@@ -60,7 +60,7 @@ layer, without -> with the Mod, at the old scales:
 
 | Elite | Mod | Without | With | Mod worth |
 |---|---|---|---|---|
-| Zero-Day Broker | Reverse Engineering | 6.4 | 6.6 | +0.2 |
+| Threat Intel Feed | Reverse Engineering | 6.4 | 6.6 | +0.2 |
 | Incident Response | Rollback | 6.8 | 7.9 | +1.1 |
 | Blackout Cell | Power Siphon | 10.1 | 10.7 | +0.6 |
 | Intrusion Alarm | Escalation | 6.8 | 7.8 | +1.0 |
@@ -69,7 +69,7 @@ layer, without -> with the Mod, at the old scales:
 - Reverse Engineering is worth almost nothing: its Hooks' caps (Port
   Scan up to 2, Zero-Day Chain 1 a fire) fill up anyway. It's felt, but
   doesn't change the numbers.
-- Scales re-tuned to E3's budget: Zero-Day Broker 0.9 -> 1.05 (7.7 /
+- Scales re-tuned to E3's budget: Threat Intel Feed 0.9 -> 1.05 (7.7 /
   7.7), Incident Response 0.95 -> 0.93 (7.9 / 7.7), Blackout Cell 1.5 ->
   1.47 (10.6 / 10.5), Intrusion Alarm 1 -> 1.12 (9.2 / 10.5 -- authored
   under budget on purpose, its Heat alarm making up the rest; it was 8.7
@@ -90,9 +90,9 @@ pool get flagged.
   Chosen over the existing seven effects only: enemies built from those
   would differ mostly in their numbers.
 - **CP2. Twelve enemy-only subroutines**, three per archetype, each new
-  effect four times (src/engine/content/enemy-subroutines.ts): Payload
-  Wiper, Credential Dump, Privilege Drop (Exploit); Log Rotation,
-  Persistence Agent, Garbage Collector (Daemon); Throttle, Packet Storm,
+  effect four times (src/engine/content/enemy-subroutines.ts): Session
+  Reset, Audit Log, Privilege Drop (Exploit); Log Rotation,
+  Endpoint Agent, Garbage Collector (Daemon); Throttle, Packet Filter,
   Context Switch (Overclock); Honeynet, Countermeasure, Canary Token
   (Honeypot). Trace Hooks trigger on the enemy's own play, never yours
   (Canary Token, on your Breach, is the exception). Player-pool
@@ -105,9 +105,48 @@ pool get flagged.
   Strip act in the fight, so kit power prices them; Trace is a run cost,
   reported by roster-check.ts as Heat per fight against the layer's
   allowance, like alarms.
+- **CP3. Names read as defenders** (the user: you play the intruder, so
+  enemies are the network defending itself, not attacker tools). Renamed:
+  Payload Wiper -> Session Reset, Credential Dump -> Audit Log,
+  Persistence Agent -> Endpoint Agent, Packet Storm -> Packet Filter, and
+  the elite Zero-Day Broker -> Threat Intel Feed.
+- **CP4. Roster breadth: 7 regulars, 2 deep elites.** Regulars: Session
+  Monitor (L1), Wireless IDS, Log Shipper (L2), Honeyfarm, EDR Sensor
+  (L3), Integrity Monitor, Firewall Cluster (L4). Elites: **Threat Hunter**
+  (L3, Exploit/Honeypot; Audit Log, Honeynet, Fail2Ban) with **EM5
+  Evidence Chain** -- whenever it gives you Heat (Trace or an alarm), it
+  Credits that much; **Hypervisor** (L4, Daemon/Overclock; Priority
+  Override, Context Switch, Fork Bomb -- Context Switch needs an Overclock
+  neighbour) with **EM6 Resource Quota** -- your bottom subroutine (not a
+  reactive Mod's) doesn't fire. Regulars per layer 4/6/6/6 -> 5/8/10/12;
+  elites 2/4/4/4 -> 2/4/5/6.
+- **Sandbox rejected for Hypervisor** ("your Instant Hooks wait for your
+  next turn"): with-and-without duels against the six classes moved win
+  rates by 0-1 points -- four classes start with no Instant Hooks, and an
+  extra fire is worth the same later. Resource Quota, same test with
+  6-subroutine loadouts: -13 to -23 points for five classes (0 for one
+  whose bottom slot did little -- the intended answer: order your weakest
+  last).
+- **Pricing method for these enemies: parity** (scripts/enemy-parity.ts).
+  Kit power duels a plain Credit reference with no Hooks or Ward, so it
+  can't see Wipe, Strip or Resource Quota; and win rate saturates (the
+  player wins nearly every regular fight). Instead: the enemy's
+  Containment fill at the fight's end, against six 6-subroutine class
+  loadouts, matched to its tier's existing enemies at its first layer;
+  Heat-heavy ones sit 70-85% of that, like Intrusion Alarm and Tripwire.
+- **Trace cut** after the first pricing (Heat per fight was up to a third
+  of a layer's allowance): Audit Log every 2 fifteens -> every 4;
+  Honeynet every 2 absorbed, at most 2 -> every 3, at most 1; Canary
+  Token 2 Heat -> 1. Wireless IDS and Log Shipper gained a third
+  subroutine (Tarpit, Steady Drip): two-piece Wipe/Strip kits had too
+  little to scale.
+- **Result:** final scales Session Monitor 1.4, Wireless IDS 2.6, Log
+  Shipper 2.1, Honeyfarm 2.15, EDR Sensor 1.4, Integrity Monitor 1.6,
+  Firewall Cluster 1.52, Threat Hunter 1.75, Hypervisor 1.25. Full runs
+  (300/class): victory Blackhat 21.0, Operator 16.0, Eidolon 20.3,
+  Breacher 20.3, Warden 17.0, Wraith 22.0 -- the tightest spread yet;
+  alarm Heat per run up a little (1.5-5.9), Heat-maxed runs 1.3-3.0%.
 
 ## Open
 
-- Roster breadth: put the twelve into regulars and elites -- new regulars
-  for layers 3-4, two deep elites -- priced to budget.
 - The player-side content pass (subroutines, Mods, Burners).

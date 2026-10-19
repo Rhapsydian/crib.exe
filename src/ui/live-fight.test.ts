@@ -20,7 +20,7 @@ import { LiveFight } from './live-fight.svelte';
 describe('LiveFight', () => {
   const cases: [ClassId, string][] = [
     ['exploit-overclock', 'pentest-script'],
-    ['daemon-honeypot', 'zero-day-broker'],
+    ['daemon-honeypot', 'threat-intel-feed'],
     ['overclock-honeypot', 'quarantine-ward'],
   ];
 

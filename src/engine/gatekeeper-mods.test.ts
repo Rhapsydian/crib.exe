@@ -119,4 +119,23 @@ describe('elite Mods (session 60)', () => {
     expect(s.sides[1].gauge.threshold).toBeCloseTo(12 * (1 - ESCALATION_MAX));
     expect(s.sides[0].gauge.threshold).toBe(12);
   });
+
+  it('Evidence Chain: Heat the owner gives the player also Credits the owner', () => {
+    const s = withMods([credit('a')], [credit('g')], ['evidence-chain']);
+    const after = resolveEffect({ verb: 'trace', amount: 2 }, s, 1, 0);
+    expect(after.sides[0].heat).toBe(2);
+    expect(progress(after, 1)).toBe(2);
+    // Alarms count too.
+    const alarmed = withMods([credit('a')], [{ ...credit('g'), heatPressure: 1 }], ['evidence-chain']);
+    expect(progress(fireTurn(alarmed, 1, { isDealer: false }).combatState, 1)).toBe(1 + 1);
+  });
+
+  it("Resource Quota: the player's bottom installed subroutine doesn't fire", () => {
+    const s = withMods([credit('top', 1), credit('bottom', 5)], [credit('g')], ['resource-quota']);
+    const turn = fireTurn(s, 0, { isDealer: false });
+    expect(turn.events.map((e) => e.subroutineId)).toEqual(['top']);
+    expect(progress(turn.combatState, 0)).toBe(1);
+    // The owner's own loadout is unaffected.
+    expect(fireTurn(s, 1, { isDealer: false }).events.map((e) => e.subroutineId)).toEqual(['g']);
+  });
 });

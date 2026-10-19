@@ -766,10 +766,8 @@ export function resolveEffect(
       });
     }
     // The enemy-only effects (CP1), each on the caster's opponent.
-    case 'trace': {
-      const victim = opponentOf(caster);
-      return withSide(state, victim, { heat: state.sides[victim].heat + effect.amount });
-    }
+    case 'trace':
+      return giveHeat(state, caster, effect.amount);
     case 'wipe':
       return mapLoadout(state, opponentOf(caster), (entry) => removeCharges(entry.state, effect.amount));
     case 'strip': {
@@ -936,9 +934,20 @@ function applyHeatPressure(combatState: CombatState, side: PlayerIndex, definiti
   const spotlight = hasSideMod(combatState, side, 'spotlight');
   if (spotlight) noteMod(combatState, side, gk('spotlight'));
   const pressure = (definition.heatPressure ?? 0) + (spotlight ? SPOTLIGHT_HEAT : 0);
-  if (pressure <= 0) return combatState;
+  return giveHeat(combatState, side, pressure);
+}
+
+/** `side` raises `amount` Heat on its opponent -- alarms, Spotlight and
+ * Trace alike. Evidence Chain (EM5): the owner also Credits that much. */
+function giveHeat(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
+  if (amount <= 0) return combatState;
   const target = opponentOf(side);
-  return withSide(combatState, target, { heat: combatState.sides[target].heat + pressure });
+  let state = withSide(combatState, target, { heat: combatState.sides[target].heat + amount });
+  if (hasSideMod(state, side, 'evidence-chain')) {
+    noteMod(state, side, gk('evidence-chain'));
+    state = creditWinGauge(state, side, amount);
+  }
+  return state;
 }
 
 /**
@@ -972,6 +981,15 @@ export function fireTurn(
 }
 
 /** One top-to-bottom pass of `side`'s loadout (fireTurn's body). */
+/** The index of `side`'s bottom installed subroutine: reactive Mods'
+ * pieces (appended after the loadout, side 0 only) don't count. */
+function bottomInstalledIndex(combatState: CombatState, side: PlayerIndex): number {
+  const loadout = combatState.sides[side].loadout;
+  const reactive = side === 0 ? new Set(reactiveModSubroutines(combatState.ownedModIds).map((d) => d.id)) : new Set<string>();
+  for (let i = loadout.length - 1; i >= 0; i--) if (!reactive.has(loadout[i].definition.id)) return i;
+  return -1;
+}
+
 function fireLoadoutOnce(
   combatState: CombatState,
   side: PlayerIndex,
@@ -982,9 +1000,16 @@ function fireLoadoutOnce(
   const firedThisTurn: FiredThisTurn[] = [];
   const turn: TurnBuffer = { empowerNext: 0, empowerRest: 0 };
   const loadoutLength = state.sides[side].loadout.length;
+  // Resource Quota (EM6): the side's bottom installed subroutine doesn't
+  // fire -- the last entry that isn't a reactive Mod's appended piece.
+  const quotaSkip = hasSideMod(state, opponentOf(side), 'resource-quota') ? bottomInstalledIndex(state, side) : -1;
 
   for (let i = 0; i < loadoutLength; i++) {
     const entry = state.sides[side].loadout[i];
+    if (i === quotaSkip) {
+      noteMod(state, opponentOf(side), gk('resource-quota'));
+      continue;
+    }
     if (!withinFiringGates(entry.definition, entry.state)) continue;
 
     const { definition } = entry;

@@ -1,6 +1,20 @@
 import type { Archetype, SubroutineDefinition } from '../subroutine-types';
 import type { EnemyTier } from '../enemies';
 import type { GatekeeperModId } from '../gatekeeper-mods';
+import {
+  AUDIT_LOG,
+  CANARY_TOKEN,
+  CONTEXT_SWITCH,
+  COUNTERMEASURE,
+  ENDPOINT_AGENT,
+  GARBAGE_COLLECTOR,
+  HONEYNET,
+  LOG_ROTATION,
+  PACKET_FILTER,
+  PRIVILEGE_DROP,
+  SESSION_RESET,
+  THROTTLE,
+} from './enemy-subroutines';
 import { authoredPiece } from './starting-loadouts';
 
 /**
@@ -64,27 +78,51 @@ export const AUTHORED_REGULARS: AuthoredEnemy[] = [
   { id: 'legacy-firewall', name: 'Legacy Firewall', tier: 'regular', archetypes: ['honeypot'], minLayer: 2, loadout: [p('basic-auth'), p('tarpit'), p('rate-limiting')], scale: 1.2 },
   // E7's regular tracer: barely fights back, slows you, makes you loud.
   { id: 'tripwire', name: 'Tripwire', tier: 'regular', archetypes: ['overclock', 'exploit'], minLayer: 2, loadout: [tracing(p('ping'), 0.25), p('doorknob-rattle')], scale: 1.6 },
+  // --- Session 60's content pass (docs/enemy-review.md CP2-CP4): enemy-only
+  // subroutines, and new faces for the deep layers. Named as defenders.
+  // A gentle first Wipe: its pairs chip your Hook counts.
+  { id: 'session-monitor', name: 'Session Monitor', tier: 'regular', archetypes: ['exploit'], minLayer: 1, loadout: [SESSION_RESET, p('buffer-overflow')], scale: 1.4 },
+  // Strips your Ward: its gos and its own Ward both eat yours.
+  { id: 'wireless-ids', name: 'Wireless IDS', tier: 'regular', archetypes: ['overclock', 'honeypot'], minLayer: 2, loadout: [PACKET_FILTER, COUNTERMEASURE, p('tarpit')], scale: 2.6 },
+  // Your Hook engines leak on its clock.
+  { id: 'log-shipper', name: 'Log Shipper', tier: 'regular', archetypes: ['daemon'], minLayer: 2, loadout: [LOG_ROTATION, p('patch'), p('steady-drip')], scale: 2.1 },
+  // Makes you loud: hitting its shield and passing half both cost Heat.
+  { id: 'honeyfarm', name: 'Honeyfarm', tier: 'regular', archetypes: ['honeypot'], minLayer: 3, loadout: [HONEYNET, CANARY_TOKEN, p('basic-auth')], scale: 2.15 },
+  // Grows, and costs Heat the longer it lives.
+  { id: 'edr-sensor', name: 'EDR Sensor', tier: 'regular', archetypes: ['daemon', 'exploit'], minLayer: 3, loadout: [ENDPOINT_AGENT, AUDIT_LOG, p('steady-drip')], scale: 1.4 },
+  // A Wipe cluster: punishes Hook-heavy loadouts late in the fight.
+  { id: 'integrity-monitor', name: 'Integrity Monitor', tier: 'regular', archetypes: ['overclock', 'daemon'], minLayer: 4, loadout: [p('burst-clock'), CONTEXT_SWITCH, GARBAGE_COLLECTOR], scale: 1.6 },
+  // Slows you, and strips Ward as you get close.
+  { id: 'firewall-cluster', name: 'Firewall Cluster', tier: 'regular', archetypes: ['exploit', 'overclock'], minLayer: 4, loadout: [PRIVILEGE_DROP, THROTTLE, p('port-scan')], scale: 1.52 },
 ];
 
 /** Elites (E2: 4; each one small rule-bending Mod -- docs/enemy-review.md
  * EM1-EM4; class Mods are the player's alone since session 60). Better pieces
- * than regulars -- a rare or uncommons (E1). Each pair is a class's, so
- * the four cover every archetype twice. */
+ * than regulars -- a rare or uncommons (E1). The first four pair a class's
+ * archetypes, covering each twice; session 60 added two for the deep
+ * layers. */
 export const AUTHORED_ELITES: AuthoredEnemy[] = [
-  // The spike engine: each fifteen charges Port Scan.
-  { id: 'zero-day-broker', name: 'Zero-Day Broker', tier: 'elite', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['reverse-engineering'], loadout: [p('zero-day-chain'), p('port-scan'), p('credential-stuffing')], scale: 1.05 },
-  // Keeps you down: its fifteens Suppress you (Backdoor Maintenance),
-  // Heartbeat heals hardest while you lead, Race Condition pays while
-  // you're under half.
+  // The spike engine: each fifteen charges Port Scan, and your fifteens
+  // and pairs count toward its Hooks too (Reverse Engineering).
+  { id: 'threat-intel-feed', name: 'Threat Intel Feed', tier: 'elite', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['reverse-engineering'], loadout: [p('zero-day-chain'), p('port-scan'), p('credential-stuffing')], scale: 1.05 },
+  // Keeps you down: Heartbeat heals hardest while you lead, Race
+  // Condition pays while you're under half, and the first time you pass
+  // three-quarters it rolls you back to half (Rollback).
   { id: 'incident-response', name: 'Incident Response', tier: 'elite', archetypes: ['exploit', 'daemon'], minLayer: 1, mods: ['rollback'], loadout: [p('race-condition'), p('heartbeat-monitor'), p('cron-job')], scale: 0.93 },
-  // The grinder: its Suppress banks Ward (Hardened Perimeter), it walls
-  // up, and Memory Leak ramps the longer you take.
+  // The grinder: it walls up, Memory Leak ramps the longer you take, and
+  // hitting its Ward speeds the ramp (Power Siphon).
   { id: 'blackout-cell', name: 'Blackout Cell', tier: 'elite', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['power-siphon'], loadout: [p('memory-leak'), p('sinkhole'), p('basic-auth')], scale: 1.47 },
-  // E7's elite tracer: fast, and every
+  // E7's elite tracer: fast and getting faster (Escalation), and every
   // fire makes you louder -- win fast or pay in Heat. Pressure is 1/8 a
   // fire: at 1/2 it pushed ~20 Heat a fight (57% of layer 2's
   // allowance), since its pieces fire on turns AND as immediate betas.
   { id: 'intrusion-alarm', name: 'Intrusion Alarm', tier: 'elite', archetypes: ['overclock', 'honeypot'], minLayer: 2, mods: ['escalation'], loadout: [tracing(p('priority-override'), 0.125), tracing(p('elevated-session'), 0.125), p('tarpit')], scale: 1.12 },
+  // Builds a case: its fifteens and its Ward absorbing your Credit give you
+  // Heat, and every bit of Heat it gives you Credits it too (Evidence Chain).
+  { id: 'threat-hunter', name: 'Threat Hunter', tier: 'elite', archetypes: ['exploit', 'honeypot'], minLayer: 3, mods: ['evidence-chain'], loadout: [AUDIT_LOG, HONEYNET, p('fail2ban')], scale: 1.75 },
+  // Rations your CPU: your bottom subroutine never fires (Resource Quota).
+  // Context Switch sits beside Priority Override so its Hook can apply.
+  { id: 'hypervisor', name: 'Hypervisor', tier: 'elite', archetypes: ['daemon', 'overclock'], minLayer: 4, mods: ['resource-quota'], loadout: [p('priority-override'), CONTEXT_SWITCH, p('fork-bomb')], scale: 1.25 },
 ];
 
 // --- Gatekeepers' bespoke pieces (session 43's rule: every gatekeeper
