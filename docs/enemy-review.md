@@ -75,6 +75,39 @@ layer, without -> with the Mod, at the old scales:
   under budget on purpose, its Heat alarm making up the rest; it was 8.7
   with its old class Mod).
 
+## Content pass
+
+The user: the content pool is shallow on both sides (enemies and the
+player's subroutines, Mods, Burners); start with enemies. Enemy-only
+subroutines are their own set; any that could later join the player
+pool get flagged.
+
+- **CP1. Three new enemy-only effects**, each aimed at something the
+  player builds before the fight:
+  - **Trace** -- you gain N Heat (a run cost, priced like `feed`/alarms).
+  - **Wipe** -- your Hooks lose N counts (Charge's opposite).
+  - **Strip** -- you lose N Ward.
+  Chosen over the existing seven effects only: enemies built from those
+  would differ mostly in their numbers.
+- **CP2. Twelve enemy-only subroutines**, three per archetype, each new
+  effect four times (src/engine/content/enemy-subroutines.ts): Payload
+  Wiper, Credential Dump, Privilege Drop (Exploit); Log Rotation,
+  Persistence Agent, Garbage Collector (Daemon); Throttle, Packet Storm,
+  Context Switch (Overclock); Honeynet, Countermeasure, Canary Token
+  (Honeypot). Trace Hooks trigger on the enemy's own play, never yours
+  (Canary Token, on your Breach, is the exception). Player-pool
+  candidates: none as written (all use enemy-only effects).
+- **Built:** the effects resolve in resolve.ts (Wipe via triggers.ts's
+  removeCharges); Trace and Wipe never scale with an enemy's layer (Heat
+  and whole counts read the same everywhere); text reads from your side
+  ("you gain 1 Heat", "each of your Hooks loses 1 count", "you lose 2
+  Ward"); glossary entries for Heat and Wipe's counts. Pricing: Wipe and
+  Strip act in the fight, so kit power prices them; Trace is a run cost,
+  reported by roster-check.ts as Heat per fight against the layer's
+  allowance, like alarms.
+
 ## Open
 
-- Enemy-only subroutines and roster breadth (the content pass).
+- Roster breadth: put the twelve into regulars and elites -- new regulars
+  for layers 3-4, two deep elites -- priced to budget.
+- The player-side content pass (subroutines, Mods, Burners).

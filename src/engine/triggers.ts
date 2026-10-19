@@ -143,6 +143,13 @@ export function addCharges(state: SubroutineRuntimeState, definition: Subroutine
   return { ...state, charges: state.charges + n };
 }
 
+/** Takes up to `n` banked charges away -- the Wipe verb (CP1), Charge's
+ * opposite. Live sources hold none, so it can't touch them. */
+export function removeCharges(state: SubroutineRuntimeState, n: number): SubroutineRuntimeState {
+  if (n <= 0 || state.charges <= 0) return state;
+  return { ...state, charges: Math.max(0, state.charges - n) };
+}
+
 /** Banks raw progress toward a `progress` beta of the given metric,
  * converting each whole `per` into a charge and carrying the remainder. */
 function bankProgress(

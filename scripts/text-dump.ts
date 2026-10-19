@@ -13,6 +13,7 @@ import { MOD_DEFINITIONS } from '../src/engine/mods';
 import { BURNER_DEFINITIONS } from '../src/engine/burners';
 import { burnerText } from '../src/ui/reward-text';
 import { AUTHORED_GATEKEEPERS } from '../src/engine/content/enemies';
+import { ENEMY_SUBROUTINES } from '../src/engine/content/enemy-subroutines';
 
 console.log('## Subroutines (player pool)\n');
 for (const p of ALL_POOL_SUBROUTINES) {
@@ -23,6 +24,10 @@ const seen = new Set(ALL_POOL_SUBROUTINES.map((p) => p.id));
 for (const g of AUTHORED_GATEKEEPERS) for (const p of g.loadout) {
   if (seen.has(p.id)) continue;
   seen.add(p.id);
+  console.log(`- **${p.name}** (${p.archetype}) — Process: ${forEnemy(describeProcess(p.alpha))}${p.beta ? ` · Hook: ${forEnemy(describeHook(p))}` : ''}`);
+}
+console.log('\n## Enemy-only subroutines (in the enemy voice)\n');
+for (const p of ENEMY_SUBROUTINES) {
   console.log(`- **${p.name}** (${p.archetype}) — Process: ${forEnemy(describeProcess(p.alpha))}${p.beta ? ` · Hook: ${forEnemy(describeHook(p))}` : ''}`);
 }
 console.log('\n## General Mods\n');

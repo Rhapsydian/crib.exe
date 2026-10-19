@@ -31,6 +31,7 @@ import {
 import type { BurnerId } from './burner-types';
 import {
   addCharges,
+  removeCharges,
   betaCharges,
   betaScale,
   chargeFromAbsorbed,
@@ -763,6 +764,17 @@ export function resolveEffect(
               : loadoutIndex !== undefined && index === loadoutIndex + 1;
         return hit ? addCharges(entry.state, entry.definition, effect.amount) : entry.state;
       });
+    }
+    // The enemy-only effects (CP1), each on the caster's opponent.
+    case 'trace': {
+      const victim = opponentOf(caster);
+      return withSide(state, victim, { heat: state.sides[victim].heat + effect.amount });
+    }
+    case 'wipe':
+      return mapLoadout(state, opponentOf(caster), (entry) => removeCharges(entry.state, effect.amount));
+    case 'strip': {
+      const victim = opponentOf(caster);
+      return withSide(state, victim, { wardShield: Math.max(0, state.sides[victim].wardShield - effect.amount) });
     }
   }
 }

@@ -197,6 +197,33 @@ export interface ChargeEffect extends EffectBase {
   target: 'self' | 'next' | 'all';
 }
 
+/**
+ * The three enemy-only effects (session 60, docs/enemy-review.md CP1),
+ * each aimed at something the player builds before the fight. Authored
+ * only on enemy subroutines (content/enemy-subroutines.ts); a test keeps
+ * them out of the player pool.
+ *
+ * - **Trace**: the opponent gains `amount` Heat -- a run cost, inert on
+ *   the enemy side (Heat is the player's alone). Never scaled with the
+ *   enemy's layer: Heat amounts read the same at every layer.
+ * - **Wipe**: each of the opponent's Hooks loses `amount` banked counts
+ *   (Charge's opposite; only counting Hooks hold counts). Whole counts,
+ *   so never scaled either.
+ * - **Strip**: the opponent loses `amount` Ward.
+ */
+export interface TraceEffect extends EffectBase {
+  verb: 'trace';
+  amount: number;
+}
+export interface WipeEffect extends EffectBase {
+  verb: 'wipe';
+  amount: number;
+}
+export interface StripEffect extends EffectBase {
+  verb: 'strip';
+  amount: number;
+}
+
 export type Effect =
   | CreditEffect
   | SuppressEffect
@@ -204,11 +231,17 @@ export type Effect =
   | EmpowerEffect
   | TempoEffect
   | DisruptEffect
-  | ChargeEffect;
+  | ChargeEffect
+  | TraceEffect
+  | WipeEffect
+  | StripEffect;
 
 export type Verb = Effect['verb'];
 
-export const VERBS: readonly Verb[] = ['credit', 'suppress', 'ward', 'empower', 'tempo', 'disrupt', 'charge'];
+export const VERBS: readonly Verb[] = ['credit', 'suppress', 'ward', 'empower', 'tempo', 'disrupt', 'charge', 'trace', 'wipe', 'strip'];
+
+/** The enemy-only verbs (CP1). */
+export const ENEMY_ONLY_VERBS: readonly Verb[] = ['trace', 'wipe', 'strip'];
 
 /** An alpha is one effect, plus an optional `growth`: added to its
  * magnitude each time the piece fires (A5). That is how Ramp -- Daemon's
@@ -391,8 +424,10 @@ export function matchesSequence(match: Extract<BetaSource, { source: 'sequence' 
  * per-layer enemy scaling. A multiplier of 1 returns the piece unchanged. */
 export function scaledDefinition(piece: SubroutineDefinition, multiplier: number): SubroutineDefinition {
   if (multiplier === 1) return piece;
+  // Disrupt has no amount; Trace (Heat) and Wipe (whole counts) read the
+  // same at every layer (CP1).
   const scale = <T extends Effect | BetaEffect>(effect: T): T =>
-    effect.verb === 'disrupt' ? effect : { ...effect, amount: effect.amount * multiplier };
+    effect.verb === 'disrupt' || effect.verb === 'trace' || effect.verb === 'wipe' ? effect : { ...effect, amount: effect.amount * multiplier };
   // Spread so the growth writes below can never mutate the source piece
   // (scale() returns a Disrupt effect as-is).
   const alpha = { ...scale(piece.alpha) } as Alpha;
