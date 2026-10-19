@@ -102,9 +102,10 @@ export const AUTHORED_REGULARS: AuthoredEnemy[] = [
  * archetypes, covering each twice; session 60 added two for the deep
  * layers. */
 export const AUTHORED_ELITES: AuthoredEnemy[] = [
-  // The spike engine: each fifteen charges Port Scan, and your fifteens
-  // and pairs count toward its Hooks too (Reverse Engineering).
-  { id: 'threat-intel-feed', name: 'Threat Intel Feed', tier: 'elite', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['reverse-engineering'], loadout: [p('zero-day-chain'), p('port-scan'), p('credential-stuffing')], scale: 1.05 },
+  // The spike engine: each fifteen charges Ping, Ping fires again on
+  // pairs, and your fifteens and pairs count toward its Hooks too
+  // (Reverse Engineering) -- Ping's Hook has no cap, so they really add.
+  { id: 'threat-intel-feed', name: 'Threat Intel Feed', tier: 'elite', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['reverse-engineering'], loadout: [p('zero-day-chain'), p('ping'), p('port-scan')], scale: 1 },
   // Keeps you down: Heartbeat heals hardest while you lead, Race
   // Condition pays while you're under half, and the first time you pass
   // three-quarters it rolls you back to half (Rollback).

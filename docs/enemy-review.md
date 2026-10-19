@@ -67,8 +67,7 @@ layer, without -> with the Mod, at the old scales:
 
 - Escalation is worth about +15%, not over-tuned (the user's concern).
 - Reverse Engineering is worth almost nothing: its Hooks' caps (Port
-  Scan up to 2, Zero-Day Chain 1 a fire) fill up anyway. It's felt, but
-  doesn't change the numbers.
+  Scan up to 2, Zero-Day Chain 1 a fire) fill up anyway (fixed below).
 - Scales re-tuned to E3's budget: Threat Intel Feed 0.9 -> 1.05 (7.7 /
   7.7), Incident Response 0.95 -> 0.93 (7.9 / 7.7), Blackout Cell 1.5 ->
   1.47 (10.6 / 10.5), Intrusion Alarm 1 -> 1.12 (9.2 / 10.5 -- authored
@@ -146,6 +145,14 @@ pool get flagged.
   (300/class): victory Blackhat 21.0, Operator 16.0, Eidolon 20.3,
   Breacher 20.3, Warden 17.0, Wraith 22.0 -- the tightest spread yet;
   alarm Heat per run up a little (1.5-5.9), Heat-maxed runs 1.3-3.0%.
+- **EM1 follow-up: Reverse Engineering given something to feed.** Its
+  Hooks were all capped (Zero-Day Chain 1 a fire, Port Scan 2) or already
+  counted your scoring (Credential Stuffing), so the Mod was worth +0.2.
+  Credential Stuffing -> Ping (no cap: fires again every 2 pairs):
+  Threat Intel Feed is now Zero-Day Chain, Ping, Port Scan, the Mod worth
+  +1.4 kit power (6.7 -> 8.1), scale 1.05 -> 1.0 (budget 7.7). Rejected:
+  Ping + Port Scan + Turbo Mode (the Mod worth +5.1 -- most of the
+  elite's strength, too swingy for a layer-1 elite).
 
 ## Open
 
