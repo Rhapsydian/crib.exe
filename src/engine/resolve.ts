@@ -478,7 +478,7 @@ function modAdjustedLoadout(loadout: SubroutineDefinition[], ownedModIds: ModId[
  * turn to your initiative gauge. */
 export const BRIDGE_EXPLOIT_OVERCLOCK_HASTE = 1 / 12;
 /** Exploit + Daemon: each fifteen you score also Suppresses. */
-export const BRIDGE_EXPLOIT_DAEMON_SUPPRESS = 0.5;
+export const BRIDGE_EXPLOIT_DAEMON_SUPPRESS = 1;
 /** Daemon + Overclock (K3): each fifteen you score grows each Daemon
  * piece by this share of one fire's growth (still up to its cap). */
 export const BRIDGE_DAEMON_OVERCLOCK_GROWTH = 0.5;
@@ -486,8 +486,8 @@ export const BRIDGE_DAEMON_OVERCLOCK_GROWTH = 0.5;
 export const BRIDGE_EXPLOIT_HONEYPOT_WARD = 1;
 /** Daemon + Honeypot (K4): each pair you score Suppresses this much and
  * banks this much Ward. */
-export const BRIDGE_DAEMON_HONEYPOT_SUPPRESS = 0.5;
-export const BRIDGE_DAEMON_HONEYPOT_WARD = 0.5;
+export const BRIDGE_DAEMON_HONEYPOT_SUPPRESS = 1;
+export const BRIDGE_DAEMON_HONEYPOT_WARD = 1.5;
 /** Overclock + Honeypot (K5): the first fifteen(s) you score each hand
  * you deal bank this much Ward and add this fraction of a turn to your initiative
  * gauge (1/12: one point at the usual threshold of 12). Limited per hand
