@@ -251,7 +251,14 @@ GitHub-hosted site and itch.io.
    (or lessons, then coached games); how many difficulties and their
    names; whether the hardest makes you count your own hand (muggins);
    where it sits in the menu.
-5. **Polish and playtesting**, including a style / chrome guide.
+5. 🔄 **Polish and playtesting**, including a style / chrome guide. Session
+   60 chose content polish before the style guide (the user: the guide
+   would mostly codify the existing look): UI fixes, a text audit
+   (`docs/text-audit.md`), the class Mod redesign
+   (`docs/class-mod-redesign.md`), and the enemy review and content pass
+   (`docs/enemy-review.md`). **Next: the player-side content pass** --
+   subroutines, Mods, Burners (the user: the pool is shallow on both
+   sides; enemies went first).
 
 Backlog from this plan: an optional tutorial run (a bespoke, single-layer
 guided layout); drag and drop as an alternative card input; hosting.
@@ -259,6 +266,21 @@ Watch (session 57): the Burner prompt asks before every one of the
 player's turns while one remains, which may get naggy (an "only when I
 tap a Burner" setting). Rules text for the general Mods: done (session
 58).
+
+Open from session 60:
+- **Player-side content pass** (above): new subroutines, Mods, Burners.
+  Enemy-only effects (Trace, Wipe, Strip) stay off the player pool; a
+  player-side Suspend ("your bottom subroutine skips a turn") was floated
+  as a possible future effect.
+- **Watch in playtesting:** Threat Hunter is the loudest elite (about
+  twice Intrusion Alarm's Heat a fight, by design); Rollback is a big
+  once-a-fight swing; Resource Quota rewards ordering your weakest
+  subroutine last, which the simulated player doesn't optimise.
+- **Pricing tools:** kit power (roster-check) can't see effects aimed at
+  the player's Hooks or Ward, or Mods like Resource Quota; enemies
+  carrying those are priced by parity (`scripts/enemy-parity.ts`).
+- **Zero-Sum's gatekeeper scale** (1.49) was set between two
+  measurements, not re-measured.
 
 Open from session 59:
 - **The coach is a first model:** pegging plays are judged one reply
@@ -277,8 +299,8 @@ Open from session 58:
 - **Set aside, to revisit:** Static Shield (overtuned: -2 from every plain
   Credit the opponent gains) and Recon Ping (returns if the map gets fog
   of war).
-- **Class spread 16–26%:** Warden low (16.3%), Breacher and Wraith high
-  (26.0%); Wraith's tuning was deferred by the user.
+- ~~**Class spread 16–26%**~~ -- resolved in session 60: 16–22% after
+  the class Mod redesign and the new elites.
 - **Mod findings** from writing their rules text: Black Budget redraws
   the piece choice rare-weighted, not a tier up as its comment says;
   Surge Protector is spent even when another effect already zeroed that

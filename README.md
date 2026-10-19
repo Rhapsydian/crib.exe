@@ -26,7 +26,7 @@ playable in the browser** (`npm run dev`), on desktop and phones: a whole
 roguelite run (class choice, the map, fights, rewards, Safehouses, Shops,
 Events and Caches, with saves), and vanilla Cribbage at four difficulty
 levels, with a coach and five Learn-to-play lessons. Polish and
-playtesting are next.
+playtesting are under way (session 60: text, class Mods, enemies).
 
 **Play the demo:** <https://rhapsydian.github.io/crib.exe/> — the
 `playable` branch, rebuilt on every push (`.github/workflows/deploy-demo.yml`).
@@ -95,22 +95,34 @@ real **crib table** for the AI and the coach (with a retune); and five
 short **Learn to play** lessons whose answers come from the engine's own
 scoring.
 
+Session 60 started **polish**, with content: UI fixes (the log follows,
+the loadout stands on the map's left on desktop, the map no longer
+resizes); a **text audit** of every rules text (`docs/text-audit.md`:
+"subroutine", what gets bigger, initiative spelled out, a glossary in the
+detail panel); the six **class Mods redesigned** to trigger on a fifteen
+or a pair, three each (`docs/class-mod-redesign.md`); and an **enemy
+review** (`docs/enemy-review.md`): class Mods became the player's alone,
+each elite got a rule-bending Mod, three enemy-only effects (Trace: Heat;
+Wipe: your Hook counts; Strip: your Ward) and twelve enemy subroutines
+built on them, and the roster grew to 27 -- new regulars for every
+layer, two deep elites -- named as the network defending itself.
+
 What exists, all headless and test-covered:
 
 | area | state |
 |---|---|
 | Cribbage rules engine | complete, rules-correct, 2-player |
-| Combat wrapper | complete — alpha/beta subroutines, seven verbs, initiative, Breach/Containment |
+| Combat wrapper | complete — alpha/beta subroutines, seven verbs plus three enemy-only (Trace, Wipe, Strip), initiative, Breach/Containment |
 | Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
-| Meta-progression | complete — 6 classes with bespoke bridge Mods, acquisition, Merge, Shop |
-| Content | **authored** — 36 subroutines, 18 enemies (8 gatekeepers with bespoke Mods); 37 Mods, 8 Burners, 8 Events (Static Shield and Recon Ping set aside) |
-| Balance | **re-tuned after milestone 3** — every class 16–26% full-run victory; the gatekeeper curve on target |
+| Meta-progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge, Shop |
+| Content | **authored** — 36 player subroutines, 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod); 37 Mods, 8 Burners, 8 Events (Static Shield and Recon Ping set aside) |
+| Balance | **re-tuned in session 60** — every class 16–22% full-run victory; the gatekeeper curve on target |
 | UI | **a whole run playable** (milestone 3) and **vanilla Cribbage with a coach and lessons** (milestone 4), both saved after every choice |
 | Art | not started |
 
 The playable-game plan's milestones: a pausable engine, one playable
 fight and a playable run (all done), then polish and playtesting with a
-style guide.
+style guide (in progress).
 
 ## Running it
 
@@ -157,7 +169,9 @@ kit, reporting threshold vs. attrition wins on each side.
 | `npx tsx scripts/price-check.ts` | What one verb is worth, in Credit per turn: seat-swapped mirror duels, host-plus-difference (`src/engine/pricing.ts`). Raw results in `docs/calibration/` |
 | `npx tsx scripts/archetype-check.ts --archetype=<a>` | One authored archetype's checks: every piece's price against its rarity band (in position where it matters), the credit rule, skill retention, noise |
 | `npx tsx scripts/player-power.ts` | The player's priced power (kit power) at each layer of real runs — the basis of the enemy budgets |
-| `npx tsx scripts/roster-check.ts --tier=<t>` | Each authored enemy's kit power against its budget, by layer, plus an alarm's Heat per fight |
+| `npx tsx scripts/roster-check.ts --tier=<t>` | Each authored enemy's kit power against its budget, by layer, plus its Heat per fight (alarms, Spotlight, Trace) |
+| `npx tsx scripts/enemy-parity.ts --layer=<n> --tier=<t>` | An enemy's Containment fill against six 6-subroutine class loadouts, next to its tier's others -- prices what kit power can't see (Wipe, Strip, Resource Quota) |
+| `npx tsx scripts/text-dump.ts` | Every player-facing rules text (subroutines, enemy subroutines, Mods, Burners) as Markdown, for a wording review |
 | `npx tsx scripts/class-check.ts` | Each class's bridge passive priced against its +1.0 budget, in its starting loadout and a late kit, with retention |
 | `npx tsx scripts/beta-frequency.ts` / `beta-validate.ts` | How often each beta source charges per turn; the beta-pricing formula checked against duels |
 | `npx tsx scripts/feed-price.ts` | Prices a noisy piece's feed (Fuzzer, Jackpot) against its rarity band |
