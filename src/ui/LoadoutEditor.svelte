@@ -7,8 +7,9 @@
   import { rankMark } from './visit-text';
 
   // The loadout, editable between fights (milestone 3 checkpoint 3, M2).
-  // Tap a piece to select it and read it; then move it up or down, bench
-  // it, install it, or tap a piece on the other side to swap the two.
+  // Tap a subroutine to select it and read it; then move it up or down,
+  // bench it, or install it. (Tapping one on the other side used to swap
+  // the two; removed in session 61 -- the user found it a pain.)
   // Every change goes to the engine at once (`onarrange`), which checks it
   // and hands back the new state.
   let { player, onarrange }: { player: RunPlayerState; onarrange: (installed: string[], bench: string[]) => void } = $props();
@@ -34,24 +35,7 @@
   }
 
   function tap(zone: Zone, id: string) {
-    const s = selected;
-    if (s && s.id === id) {
-      selected = null;
-      return;
-    }
-    // A piece on each side: swap them, each taking the other's place.
-    if (s && s.zone !== zone) {
-      const inId = zone === 'loadout' ? id : s.id;
-      const outId = zone === 'loadout' ? s.id : id;
-      if (locked(inId)) return;
-      send(
-        installed.map((x) => (x === inId ? outId : x)),
-        bench.map((x) => (x === outId ? inId : x)),
-      );
-      selected = null;
-      return;
-    }
-    selected = { zone, id };
+    selected = selected?.id === id ? null : { zone, id };
   }
 
   function shift(delta: number) {
@@ -115,8 +99,8 @@
         {/if}
       </div>
       <div class="hint">
-        {#if selected.zone === 'bench'}Or tap a loadout piece to swap them.{:else if bench.length}Or tap a bench piece to swap them.{/if}
-        {#if locked(selected.id)} A Mod-granted piece can't leave the loadout.{/if}
+        {#if selected.zone === 'bench' && capped >= INSTALLED_SLOT_CAP}Your loadout is full: bench a subroutine first.{/if}
+        {#if locked(selected.id)}A Mod-granted subroutine can't leave the loadout.{/if}
       </div>
     </div>
   {/if}

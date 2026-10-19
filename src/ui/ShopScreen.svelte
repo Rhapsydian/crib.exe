@@ -90,9 +90,14 @@
   const key = (i: Item) => `${i.slate}:${i.index}`;
   const isBought = (i: Item) => shop.bought[i.slate].includes(i.index);
   // A reroll replaces a slate: drop a selection that pointed into it.
+  // (A Sell row's selection counts too: without it, tapping one cleared
+  // itself at once and the row never opened -- session 61's playtest bug.)
   $effect(() => {
     void shop;
-    if (selected && !sections.some((s) => s.items.some((i) => key(i) === selected && !isBought(i)))) selected = null;
+    if (!selected) return;
+    const buying = sections.some((s) => s.items.some((i) => key(i) === selected && !isBought(i)));
+    const selling = sellables.some((s) => s.key === selected);
+    if (!buying && !selling) selected = null;
   });
 </script>
 
