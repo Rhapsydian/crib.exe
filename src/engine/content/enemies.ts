@@ -180,14 +180,14 @@ const KERNEL_PANIC: SubroutineDefinition = {
  * fight length). */
 export const AUTHORED_GATEKEEPERS: AuthoredEnemy[] = [
   // --- Layer 1: the perimeter ---
-  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['reception-protocol'], scale: 1.33,
+  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['reception-protocol'], scale: 1.32,
     loadout: [WELCOME_PACKET, p('port-scan'), p('cache-hit'), p('burst-clock')] },
-  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 1, mods: ['no-way-in'], scale: 1.03,
+  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 1, mods: ['no-way-in'], scale: 1.015,
     loadout: [DEFAULT_DENY, p('watchdog-timer'), p('buffer-overflow'), p('cron-job')] },
   // --- Layer 2: the internal LAN ---
-  { id: 'quarantine-ward', name: 'Quarantine Ward', tier: 'gatekeeper', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['containment'], scale: 1.69,
+  { id: 'quarantine-ward', name: 'Quarantine Ward', tier: 'gatekeeper', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['containment'], scale: 1.76,
     loadout: [ISOLATION_CHAMBER, p('patch'), p('sinkhole'), p('memory-leak')] },
-  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 2, mods: ['zero-sum'], scale: 1.49,
+  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 2, mods: ['zero-sum'], scale: 1.5,
     loadout: [BALANCE_SHEET, p('ping'), p('elevated-session'), p('tarpit')] },
   // --- Layer 3: the servers ---
   { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 3, mods: ['adaptation'], scale: 2.32,
@@ -195,12 +195,12 @@ export const AUTHORED_GATEKEEPERS: AuthoredEnemy[] = [
   // E7 gatekeeper tracer: does not try hard to contain you; makes you loud
   // before the toll. Credential Stuffing rather than Jackpot, whose beta
   // feed would hand you Breach.
-  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 3, mods: ['spotlight'], scale: 2.02,
+  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 3, mods: ['spotlight'], scale: 2.14,
     loadout: [BEACON, p('port-scan'), p('tarpit'), p('credential-stuffing')] },
   // --- Layer 4: the core ---
-  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['exploit', 'overclock', 'honeypot'], minLayer: 4, mods: ['null-session'], scale: 1.67,
+  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['exploit', 'overclock', 'honeypot'], minLayer: 4, mods: ['null-session'], scale: 1.95,
     loadout: [NULL_ROUTE, p('zero-day-chain'), p('priority-override'), p('zero-trust')] },
-  { id: 'root-authority', name: 'Root Authority', tier: 'gatekeeper', archetypes: ['exploit', 'daemon', 'overclock'], minLayer: 4, mods: ['root-access'], scale: 1.42,
+  { id: 'root-authority', name: 'Root Authority', tier: 'gatekeeper', archetypes: ['exploit', 'daemon', 'overclock'], minLayer: 4, mods: ['root-access'], scale: 1.73,
     loadout: [KERNEL_PANIC, p('chain-reaction'), p('memory-leak'), p('race-condition')] },
 ];
 
