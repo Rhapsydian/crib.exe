@@ -10,7 +10,7 @@ import { playLowestLegal, type PlayStrategy } from './pegging';
 import { currentHeatCeiling, eventHeat, fightBaselineHeat, fightPerformanceHeat, heatFromLoss } from './heat';
 import { drawCacheRewardOptions, drawRewardOptions, drawUpgradedRewardOptions, rewardPoolForClass, rarityOf, type RewardTier } from './rewards';
 import { dataForTier } from './data';
-import { pickMergeTarget, preferMergeWhenAvailable, type MergeTargetStrategy, type SafehouseStrategy } from './merge';
+import { MERGE_RANK_CAP, pickMergeTarget, preferMergeWhenAvailable, type MergeTargetStrategy, type SafehouseStrategy } from './merge';
 import {
   pickRegularOrEliteEnemy,
   gatekeeperEnemyForNode,
@@ -52,7 +52,7 @@ import {
 import type { ModDefinition, ModId } from './mod-types';
 import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersForOwnedMods, modPoolForClass } from './mods';
 import type { BurnerId, BurnerDefinition } from './burner-types';
-import { BURNER_DEFINITIONS, shopModifiersForActivatedBurner, drawBurnerRewardOptions, generalBurnerPool } from './burners';
+import { BURNER_CAP, BURNER_DEFINITIONS, shopModifiersForActivatedBurner, drawBurnerRewardOptions, generalBurnerPool } from './burners';
 import type { ClassId } from './classes';
 import type { EventDefinition, EventChoice, EventRiskTier, Grant } from './event-types';
 import { EVENT_ROSTER } from './events';
@@ -925,6 +925,9 @@ export function* resolveEncounterRequests(
    * forward it. Same append-at-the-end treatment as every prior
    * checkpoint's new param. */
   syntheticGatekeeper?: SyntheticGatekeeper,
+  /** The simulated player shops like a person (session 62; RunOptions'
+   * shopSpendFreely). Same append-at-the-end treatment. */
+  shopSpendFreely = false,
 ): Generator<RunRequest, EncounterOutcome, unknown> {
   switch (node.type) {
     case 'regularFight':
@@ -1030,7 +1033,7 @@ export function* resolveEncounterRequests(
       };
       const purchases = { subroutine: [] as ShopOffering[], mod: [] as ModOffering[], burner: [] as BurnerOffering[] };
       const rerollCosts: Record<ShopSlate, number> = { subroutine: 0, mod: 0, burner: 0 };
-      const strategies = { shopRerollStrategy, modShopRerollStrategy, burnerShopRerollStrategy, shopStrategy, modShopStrategy, burnerShopStrategy };
+      const strategies = { shopRerollStrategy, modShopRerollStrategy, burnerShopRerollStrategy, shopStrategy, modShopStrategy, burnerShopStrategy, spendFreely: shopSpendFreely };
       let simPhase = 0;
       for (;;) {
         const snapshot: ShopVisit = {
@@ -1217,6 +1220,7 @@ interface ShopStrategies {
   shopStrategy: ShopStrategy;
   modShopStrategy: ModShopStrategy;
   burnerShopStrategy: BurnerShopStrategy;
+  spendFreely: boolean;
 }
 
 /**
@@ -1230,6 +1234,9 @@ function shopFallback(visit: ShopVisit, playerState: RunPlayerState, phase: numb
   const slates: ShopSlate[] = ['subroutine', 'mod', 'burner'];
   const now = { ...playerState, data: visit.data };
   for (let p = phase; p < 6; p++) {
+    // Spending freely (session 62): after the reroll decisions, one open
+    // phase -- sell what can't be used, then buy until nothing is wanted.
+    if (s.spendFreely && p >= 3) return spendFreelyAction(visit, playerState, s);
     const slate = slates[p % 3];
     if (p < 3) {
       if (visit.rerolled[slate] || playerState.data < REROLL_COST || visit.data < visit.rerollCost) continue;
@@ -1246,6 +1253,55 @@ function shopFallback(visit: ShopVisit, playerState: RunPlayerState, phase: numb
       slate === 'subroutine' ? s.shopStrategy(visit.slates.subroutine, now) : slate === 'mod' ? s.modShopStrategy(visit.slates.mod, now) : s.burnerShopStrategy(visit.slates.burner, now);
     const index = pick ? (visit.slates[slate] as { cost: number }[]).indexOf(pick) : -1;
     if (index !== -1 && pick!.cost <= visit.data) return { action: { kind: 'buy', slate, index }, phase: p };
+  }
+  return { action: { kind: 'leave' }, phase: 6 };
+}
+
+/** One step of a person-like Shop visit (session 62): sell the first thing
+ * the simulated player can't use, else buy the first offering its
+ * strategies want and can afford (each slate's strategy sees only what's
+ * still for sale), else leave. Stateless: it reads the visit's sold and
+ * bought lists, so replaying it is safe. */
+function spendFreelyAction(visit: ShopVisit, playerState: RunPlayerState, s: ShopStrategies): { action: ShopAction; phase: number } {
+  const SPEND = 3;
+  const left = <T extends string>(ids: readonly T[], sold: readonly T[]) => {
+    const pool = [...sold];
+    return ids.filter((id) => {
+      const i = pool.indexOf(id);
+      if (i === -1) return true;
+      pool.splice(i, 1);
+      return false;
+    });
+  };
+  // Sell: the bench (pieces already swapped out), banked copies that can't
+  // become a Merge (rank capped, or no longer owned), and sell-only Burners.
+  const bench = left(playerState.bench.map((p) => p.id), visit.sold.subroutine);
+  if (bench.length) return { action: { kind: 'sell', item: 'subroutine', id: bench[0] }, phase: SPEND };
+  const stillOwned = new Set([...playerState.installedLoadout.map((p) => p.id), ...bench]);
+  for (const [id, n] of Object.entries(playerState.material)) {
+    const unusable = !stillOwned.has(id) || (playerState.rank[id] ?? 0) >= MERGE_RANK_CAP;
+    if (unusable && n > visit.sold.copy.filter((c) => c === id).length) return { action: { kind: 'sell', item: 'copy', id }, phase: SPEND };
+  }
+  const wallets = left(playerState.carriedBurnerIds, visit.sold.burner).filter((id) => BURNER_DEFINITIONS[id].contexts.length === 0);
+  if (wallets.length) return { action: { kind: 'sell', item: 'burner', id: wallets[0] }, phase: SPEND };
+  // Buy: whatever each slate's strategy wants among what's still for sale
+  // -- Mods first (what a person spends on: the user's 22-Mod run), then
+  // subroutines, then Burners while there's room under the carry cap (a
+  // Burner past it only asks for a swap).
+  const now = { ...playerState, data: visit.data };
+  const burnerRoom = BURNER_CAP - (wallets.length + left(playerState.carriedBurnerIds, visit.sold.burner).filter((id) => BURNER_DEFINITIONS[id].contexts.length > 0).length) - visit.bought.burner.length;
+  for (const slate of ['mod', 'subroutine', 'burner'] as ShopSlate[]) {
+    if (slate === 'burner' && burnerRoom <= 0) continue;
+    const all = visit.slates[slate] as { cost: number }[];
+    const forSale = all.filter((_, i) => !visit.bought[slate].includes(i));
+    const pick =
+      slate === 'subroutine'
+        ? s.shopStrategy(forSale as ShopOffering[], now)
+        : slate === 'mod'
+          ? s.modShopStrategy(forSale as ModOffering[], now)
+          : s.burnerShopStrategy(forSale as BurnerOffering[], now);
+    const index = pick ? all.indexOf(pick) : -1;
+    if (index !== -1 && pick!.cost <= visit.data && !visit.bought[slate].includes(index)) return { action: { kind: 'buy', slate, index }, phase: SPEND };
   }
   return { action: { kind: 'leave' }, phase: 6 };
 }

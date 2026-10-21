@@ -300,6 +300,30 @@ describe('the Shop as one visit (checkpoint 4)', () => {
     expect(after.data).toBe(subroutineSellPrice(ranked.id, 2) + subroutineSellPrice(ranked.id));
   });
 
+  it('the simulated player spending freely sells what it cannot use, buys past one per slate, and leaves (session 62)', async () => {
+    const { resolveEncounterRequests } = await import('./encounters');
+    const { createNode } = await import('./map-types');
+    const { createRng } = await import('./rng');
+    const { synergyAwareShopStrategy, synergyAwareModShopStrategy, synergyAwareBurnerShopStrategy } = await import('./shop');
+    const base = createInitialPlayerState('exploit-overclock');
+    const player = { ...base, data: 400, bench: [base.installedLoadout[2]], installedLoadout: base.installedLoadout.slice(0, 2), carriedBurnerIds: ['cold-wallet'] as BurnerId[] };
+    const visit = resolveEncounterRequests(
+      createNode('s', 'shop'), createRng(5), player, undefined, synergyAwareShopStrategy, undefined, undefined, undefined, 1, 0, undefined,
+      synergyAwareModShopStrategy, undefined, undefined, synergyAwareBurnerShopStrategy, undefined, undefined, undefined, 0, undefined, undefined, undefined, true,
+    );
+    let step = visit.next();
+    const actions: string[] = [];
+    for (let guard = 0; !step.done && guard < 200; guard++) {
+      const r = step.value;
+      if (r.kind === 'shop') actions.push((r.fallback() as { kind: string }).kind);
+      step = visit.next(r.fallback());
+    }
+    expect(step.done).toBe(true);
+    expect(actions.slice(0, 2)).toEqual(['sell', 'sell']);
+    expect(actions.filter((a) => a === 'buy').length).toBeGreaterThan(3);
+    expect(actions.at(-1)).toBe('leave');
+  });
+
   it('never offers a sell-only Burner in the Shop', async () => {
     const { burnerOfferingsForClass } = await import('./shop');
     const { createRng } = await import('./rng');

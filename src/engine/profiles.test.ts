@@ -38,6 +38,7 @@ describe('SYNERGY_AWARE_PROFILE', () => {
         'modShopStrategy',
         'reorderStrategy',
         'shopBurnerStrategy',
+        'shopSpendFreely',
         'shopStrategy',
         'subroutineAcquirer',
       ].sort(),

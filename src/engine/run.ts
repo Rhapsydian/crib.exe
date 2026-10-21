@@ -613,6 +613,12 @@ export interface RunOptions {
    * resolveEncounter. Defaults to pickMergeTarget, unchanged behavior
    * for every existing caller. */
   mergeTargetStrategy?: MergeTargetStrategy;
+  /** The simulated player shops like a person (session 62): at every
+   * Shop it sells what it can't use (bench, unmergeable banked copies,
+   * Cold Wallet), then keeps buying whatever its Shop strategies want
+   * and can afford -- not at most one per slate. Off by default; the
+   * synergy profile turns it on. */
+  shopSpendFreely?: boolean;
   /** How the installed loadout is reordered after each node's encounter
    * fully resolves (session 46, Gameplay Simulation Heuristics
    * checkpoint F) -- firing order is a real lever (see loadout.ts's
@@ -683,6 +689,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
     benchCap = BENCH_CAP,
     safehouseStrategy = preferMergeWhenAvailable,
     mergeTargetStrategy = pickMergeTarget,
+    shopSpendFreely = false,
     reorderStrategy = keepAcquisitionOrder,
     subroutineAcquirer = acquireSubroutine,
     shopStrategy = buyCheapestAffordable,
@@ -896,6 +903,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         playerSkill,
         mergeTargetStrategy,
         override?.kind === 'synthetic' ? override : undefined,
+        shopSpendFreely,
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };

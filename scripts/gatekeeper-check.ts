@@ -43,6 +43,7 @@ import { discardSkillStrategy, pegSkillStrategy } from '../src/engine/ai';
 import { BURNER_DEFINITIONS } from '../src/engine/burners';
 import { ALL_CLASS_IDS, type ClassId } from '../src/engine/classes';
 import { parseSyntheticGatekeepers, describeSyntheticGatekeepers } from './synthetic-gatekeepers';
+import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
 
 const ALL_CLASSES: ClassId[] = ALL_CLASS_IDS;
 // Session 39: the player's own standing default for realistic diagnostics
@@ -101,7 +102,10 @@ function bump(map: Record<string, number>, key: string): void {
 for (const classId of classes) {
   for (let seed = 0; seed < seeds; seed++) {
     const captures: GatekeeperFightContext[] = [];
+    // Session 62: the same player run-outcomes.ts models (it ran without
+    // the synergy profile until now, so the two tools disagreed).
     playRun({
+      ...SYNERGY_AWARE_PROFILE,
       seed,
       classId,
       traversalStrategy: opportunisticTraversal,

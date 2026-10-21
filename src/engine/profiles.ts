@@ -70,6 +70,10 @@ export const SYNERGY_AWARE_PROFILE: Omit<RunOptions, 'seed'> = {
   // Checkpoint E -- Merge target (rank-cap aware, so a Safehouse visit
   // that can't merge falls back to Rest instead of wasting itself).
   mergeTargetStrategy: synergyAwareMergeTarget,
+  // Session 62 -- shop like a person: sell what it can't use, then buy
+  // everything it wants and can afford (was one buy per slate, never a
+  // sale: the sim reached layer 4 holding 136-206 Data).
+  shopSpendFreely: true,
   // Checkpoint F/G -- firing order, and swap-out on a full loadout.
   reorderStrategy: synergyAwareReorder,
   subroutineAcquirer: acquireSubroutineWithSwap,
