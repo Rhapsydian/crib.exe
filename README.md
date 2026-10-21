@@ -119,6 +119,17 @@ every subroutine (I-III) with "+N banked" in the loadout editor, and a
 ranked growing subroutine grows further. The gatekeepers were re-tuned
 after it, and Operator's and Warden's class Mods buffed.
 
+Session 62 reworked **the economy**. The simulated player now shops like
+a person (sells what it can't use, buys freely), which showed the real
+picture: players gathered ~20 Mods and were winning ~40-50% of runs.
+Shops now offer a smaller, pricier Mod slate (3 items, double prices)
+and costlier rerolls; an elite win is **one choice, a subroutine
+(uncommon or better) or a Mod**; fights pay ~25% less Data. The balance
+tools now model the same player, the target moved to **15-20% victory
+by class (~16% average)**, and the gatekeepers, elites and three class
+Mods (Breacher, Eidolon, Operator) were tuned to it. The loadout editor
+can swap a subroutine in or out when a side is full.
+
 What exists, all headless and test-covered:
 
 | area | state |
@@ -128,7 +139,7 @@ What exists, all headless and test-covered:
 | Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
 | Meta-progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge (everything at once, at a Safehouse), a Shop that buys and sells |
 | Content | **authored** — 36 player subroutines, 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod); 37 Mods, 9 Burners (Cold Wallet sell-only), 8 Events (Static Shield and Recon Ping set aside) |
-| Balance | **re-tuned in session 61** — every class 18–22% full-run victory; the gatekeeper curve on target |
+| Balance | **re-tuned in session 62** — 15–20% target, ~16% average (classes 14.7–20.7%); gatekeeper curve 73.5/67/61/55 on target |
 | UI | **a whole run playable** (milestone 3) and **vanilla Cribbage with a coach and lessons** (milestone 4), both saved after every choice |
 | Art | not started |
 

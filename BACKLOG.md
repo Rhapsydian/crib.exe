@@ -278,32 +278,29 @@ session 61 by a toggle under your gauges (one armed at a time, used at
 the start of your next turn). Rules text for the general Mods: done
 (session 58).
 
-**Next session -- start here: the economy (session 61's measurement).**
-The user's layer-4 Eidolon run beat Root Authority in one hand, entering
-Shops with 200+ Data and holding 22 general Mods. `scripts/build-check.ts`
-re-fought that build: 99% against both layer-4 gatekeepers in ~1.3
-hands; **without its general Mods, 57-58%** (near the 52.5% target).
-Merge ranks barely matter (-1 to -2 points); the Overclock chain
-finishers -6 to -10; Amplifiers/Firmware -2 to -4. The Mods are the
-pile, not any one. The simulated player (synergy profile) reaches the
-same gatekeeper with ~10.4 Mods and **136-206 Data unspent**: Data is
-plentiful for everyone, but the sim buys at most one thing per Shop slate
-and never sells, so the balance numbers model a player who leaves half
-the economy unused. Plan:
-1. Teach the simulated player to spend like a person: buy every
-   affordable, useful offering per Shop visit; sell bench pieces and
-   spare copies.
-2. Re-measure (expect victory well above the 10-20% band).
-3. Tune the economy, not the fights: Data income and/or Mod prices,
-   fewer Mod offers (elites, gatekeepers, Events), possibly a Mod cap
-   like the Burner cap. Re-tuning gatekeepers to absorb 22 Mods would
-   punish anyone who doesn't hoard.
-Also: `gatekeeper-check.ts` simulates runs without SYNERGY_AWARE_PROFILE
-while `run-outcomes.ts` uses it -- align them.
+~~**The economy (session 61's measurement)**~~ -- done in session 62
+(see the session log): the simulated player shops like a person; a 3-item
+Mod slate at double prices; rerolls 25; elites offer a subroutine OR a
+Mod; ~25% less Data; the gatekeeper curve eased to 73.5/67/61/55 for the
+user's new 15-20% target; class Mods for Breacher, Eidolon, Operator.
+Mods at the layer-4 gatekeeper ~12 (target ~10 by run's end).
 
 ~~**Loadout swap (UX)**~~ -- done in session 62: on a full side,
 "install"/"to bench" become "swap in"/"swap to bench" and ask which
 subroutine on the other side to exchange (dashed targets, cancel).
+
+Open from session 62:
+- **Mods:** ~12 at the layer-4 gatekeeper (Shop 4.6, elites 4.1,
+  gatekeepers 3.0); the user's target is ~10 by the end of a run. Watch
+  in playtesting; trims left: Mod rewards from gatekeepers, Event Mods.
+- **Data still left over:** the simulated player reaches layer 4 with
+  ~90-140 Data unspent -- the Shop runs out of wanted things before the
+  player runs out of Data.
+- **Eidolon (20.7%) and Breacher (14.7%)** sit at the band's edges --
+  within noise; watch.
+- **Zero-Sum's strength cliff** (1.49-1.53) persists.
+- **Not seen in the browser:** the elite choose-one screen in a real run
+  (the screen itself was checked mounted with a real reward).
 
 Open from session 61:
 - **Not yet seen in the browser:** the Shop's Sell section, the
