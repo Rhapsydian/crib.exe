@@ -277,6 +277,9 @@ export interface EncounterOutcome {
      * clears 0.1 is not a fight at all, and win rate alone cannot say
      * so. */
     peakFillFraction: [number, number];
+    /** Both sides' FINAL win-gauge fill, 0-1 (session 63: a trace
+     * evasion's head start reads the enemy's). */
+    finalFillFraction: [number, number];
     /** Hands actually played, for the same reason. */
     hands: number;
   };
@@ -633,7 +636,7 @@ function* resolveFight(
       newState: 'inert',
       heatDelta: baseline + alarm + performance - modified.heatRefund, // Heat Sink (session 44); addHeat already floors at 0
       heatSources: { ...NO_HEAT_SOURCES, baseline, alarm, performance, refund: -modified.heatRefund },
-      fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, hands: result.hands.length },
+      fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, finalFillFraction: result.finalFillFraction, hands: result.hands.length },
       quarantined: false,
       rewardTier,
       dataAwarded: modified.dataAwarded,
@@ -662,7 +665,7 @@ function* resolveFight(
       heatDelta: 0,
       // A gatekeeper loss bypasses Heat entirely (heat.ts) -- nothing to attribute.
       heatSources: NO_HEAT_SOURCES,
-      fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, hands: result.hands.length },
+      fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, finalFillFraction: result.finalFillFraction, hands: result.hands.length },
       quarantined: true,
       rewardTier: 'none',
       dataAwarded: 0,
@@ -697,7 +700,7 @@ function* resolveFight(
       attritionLoss: result.resolvedBy === 'threshold' ? 0 : lossHeat,
       alarm,
     },
-    fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, hands: result.hands.length },
+    fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, finalFillFraction: result.finalFillFraction, hands: result.hands.length },
     quarantined: false,
     rewardTier: 'none',
     dataAwarded: 0,

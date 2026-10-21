@@ -272,6 +272,17 @@ export class LiveRun {
           step = this.#run.next(rescue);
           continue;
         }
+        case 'evasionStart':
+        case 'evasion':
+          // Trace evasion checkpoint 2 (session 63): played by the simulated
+          // player for now -- deterministic, so a save replays it -- until
+          // checkpoint 3 gives it its screens.
+          step = this.#run.next(r.fallback());
+          continue;
+        case 'evasionEnd':
+          this.notes = [...this.notes, `trace evasion vs ${r.enemy.name}: ${r.result.finalScores[0]}-${r.result.finalScores[1]}, ${r.result.escaped ? 'slipped away' : 'traced'}`];
+          step = this.#run.next(null);
+          continue;
         case 'reorder':
           // Your order stands: the loadout is yours to arrange on the map.
           step = this.#run.next(r.playerState);

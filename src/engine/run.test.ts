@@ -644,4 +644,31 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
       expect(result.layersCompleted).toBe(result.log.filter((e) => e.type === 'layerCleared').length);
     }
   }, 75_000); // 150 full runs
+
+  it('trace evasion (session 63): a maxed toll after a gatekeeper win plays an evasion; escape goes on, a loss is caught', () => {
+    let escaped = 0;
+    let traced = 0;
+    for (const result of [...runs('exploit-overclock', 150), ...runs('exploit-daemon', 150)]) {
+      result.log.forEach((event, i) => {
+        if (event.type !== 'evasion') return;
+        const before = result.log[i - 1];
+        expect(before.type === 'encounter' && before.nodeType === 'gatekeeperFight' && before.outcome.newState === 'inert').toBe(true);
+        expect(event.escaped).toBe(event.finalScores[0] > event.finalScores[1]);
+        const after = result.log.slice(i + 1);
+        if (event.escaped) {
+          escaped++;
+          // On to the next layer, or the run is won.
+          expect(after.some((e) => e.type === 'layerGenerated') || result.outcome === 'victory').toBe(true);
+        } else {
+          traced++;
+          expect(result.outcome).toBe('breachedThenCaught');
+          expect(after.filter((e) => e.type === 'encounter')).toHaveLength(0);
+        }
+      });
+      // A run only ends "breached, then caught" after losing an evasion.
+      if (result.outcome === 'breachedThenCaught') expect(result.log.some((e) => e.type === 'evasion' && !e.escaped)).toBe(true);
+    }
+    expect(escaped).toBeGreaterThan(0);
+    expect(traced).toBeGreaterThan(0);
+  }, 150_000);
 });

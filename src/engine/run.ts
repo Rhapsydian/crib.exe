@@ -1,7 +1,8 @@
 import { createRng } from './rng';
 import { isReachable, neighborsOf, type LayerGraph, type MapNode, type NodeType, type RunPosition } from './map-types';
 import { generateLayer, LAYER_SIZES, type LayerNumber } from './map-gen';
-import { assignGatekeeperEnemy, eligibleEnemies, gatekeeperEnemyForNode, type EnemyDefinition, type EnemyId } from './enemies';
+import { assignGatekeeperEnemy, eligibleEnemies, enemySkill, gatekeeperEnemyForNode, type EnemyDefinition, type EnemyId } from './enemies';
+import { traceEvasion } from './evasion';
 import { move } from './traversal';
 import { resolveEncounterRequests, alwaysFirstEventChoice, type EncounterOutcome, type EventChoiceStrategy, type SyntheticGatekeeper } from './encounters';
 import { ask, driveWithFallbacks, type MoveAnswer, type RunRequest } from './run-requests';
@@ -226,6 +227,9 @@ export type RunEvent =
   | { type: 'mapBurnerActivated'; layerIndex: number; burnerId: BurnerId; targetNodeId?: string }
   | { type: 'encounter'; layerIndex: number; nodeId: string; nodeType: NodeType; outcome: EncounterOutcome; heatAfter: number }
   | { type: 'layerCleared'; layerIndex: number }
+  /** A trace evasion (session 63): its head start, the final scores and
+   * whether you slipped away. */
+  | { type: 'evasion'; layerIndex: number; headStart: number; finalScores: [number, number]; escaped: boolean }
   | { type: 'runEnded'; outcome: RunOutcome };
 
 export interface RunResult {
@@ -950,6 +954,25 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       if (outcome.shopBurnerUsed) {
         playerState = removeOneCarriedBurner(playerState, outcome.shopBurnerUsed);
       }
+      // Trace evasion (session 63, docs/trace-evasion-design.md): a beaten
+      // gatekeeper whose toll maxed your Heat tries to trace you. Played
+      // before any rewards, which only follow an escape.
+      let evaded = false;
+      let evasionEvent: RunEvent | null = null;
+      if (afterEncounter.maxed && node.type === 'gatekeeperFight' && outcome.newState === 'inert' && outcome.fight) {
+        const enemy = gatekeeperEnemyForNode(node);
+        const result = yield* traceEvasion(enemy, layerIndex, outcome.fight.finalFillFraction[1], rng.nextInt(2 ** 31), enemySkill('gatekeeper', layerIndex + 1, fightsResolved - 1), playerSkill);
+        evasionEvent = { type: 'evasion', layerIndex, headStart: result.headStart, finalScores: result.finalScores, escaped: result.escaped };
+        if (!result.escaped) {
+          log.push({ type: 'encounter', layerIndex, nodeId: node.id, nodeType: node.type, outcome, heatAfter: heat });
+          log.push(evasionEvent);
+          layersCompleted++;
+          log.push({ type: 'layerCleared', layerIndex });
+          log.push({ type: 'runEnded', outcome: 'breachedThenCaught' });
+          return finish('breachedThenCaught');
+        }
+        evaded = true;
+      }
       // !== 0, not > 0: combat/Data-tier rewards are always non-negative
       // in practice, but an Event's dataDelta (checkpoint H) is a
       // genuine signed delta -- a future negative-cost Event choice
@@ -1072,6 +1095,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       const beforeReorder = playerState;
       playerState = yield* ask({ kind: 'reorder', playerState: beforeReorder, fallback: () => reorderStrategy(beforeReorder) });
       log.push({ type: 'encounter', layerIndex, nodeId: node.id, nodeType: node.type, outcome, heatAfter: heat });
+      if (evasionEvent) log.push(evasionEvent);
 
       playerState = { ...playerState, heatAllowance: ceiling() };
 
@@ -1084,7 +1108,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         layersCompleted++;
         log.push({ type: 'layerCleared', layerIndex });
       }
-      if (afterEncounter.maxed) {
+      if (afterEncounter.maxed && !evaded) {
         // R8: the gatekeeper's toll is charged after the fight, so a
         // breach can still end the run -- counted as a breach, distinct
         // from being caught mid-layer.

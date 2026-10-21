@@ -1,4 +1,9 @@
 import type { PlayerIndex } from './game';
+import type { EnemyDefinition } from './enemies';
+import { ask, type RunRequest } from './run-requests';
+import { discardSkillStrategy, pegSkillStrategy } from './ai';
+import { discardLowestTwo } from './deal';
+import { playLowestLegal } from './pegging';
 import { cribbageGame, playCribbageGame, type CribbageAnswer, type CribbageBeat, type CribbageRequest } from './basic-cribbage';
 
 /**
@@ -44,4 +49,39 @@ export function* evasionGame(seed: number, headStart: number): Generator<Cribbag
 export function playEvasion(seed: number, headStart: number, skills: [number, number]): EvasionResult {
   const result = playCribbageGame({ seed, startingDealer: 0, handLimit: EVASION_HANDS, startingScores: [0, headStart], tieWinner: 1, skills });
   return { escaped: result.winner === 0, headStart, finalScores: result.finalScores, timeline: result.timeline };
+}
+
+/**
+ * The evasion inside a run (TE4-TE7): announced, played -- the
+ * gatekeeper's decisions answered here at its own Cribbage skill, yours
+ * surfacing as 'evasion' requests whose fallback plays at `playerSkill`
+ * (the same baseline a fight's falls back to without one) -- and its
+ * result announced. `layerIndex` is 0-based.
+ */
+export function* traceEvasion(
+  enemy: EnemyDefinition,
+  layerIndex: number,
+  enemyFill: number,
+  seed: number,
+  enemySkill: number,
+  playerSkill?: number,
+): Generator<RunRequest, EvasionResult, unknown> {
+  const headStart = evasionHeadStart(enemyFill);
+  yield* ask({ kind: 'evasionStart', enemy, layer: layerIndex + 1, enemyFill, headStart, fallback: () => null });
+  const theirDiscard = discardSkillStrategy(enemySkill);
+  const theirPlay = pegSkillStrategy(enemySkill);
+  const yourDiscard = playerSkill === undefined ? discardLowestTwo : discardSkillStrategy(playerSkill);
+  const yourPlay = playerSkill === undefined ? playLowestLegal : pegSkillStrategy(playerSkill);
+  const game = evasionGame(seed, headStart);
+  let step = game.next();
+  while (!step.done) {
+    const r = step.value;
+    const auto = (): CribbageAnswer =>
+      r.kind === 'discard' ? (r.side === 0 ? yourDiscard : theirDiscard)(r.context) : (r.side === 0 ? yourPlay : theirPlay)(r.context);
+    const answer = r.side === 0 ? yield* ask({ kind: 'evasion', request: r, fallback: auto }) : auto();
+    step = game.next(answer);
+  }
+  const result = step.value;
+  yield* ask({ kind: 'evasionEnd', enemy, layer: layerIndex + 1, result, fallback: () => null });
+  return result;
 }

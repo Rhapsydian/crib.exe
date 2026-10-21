@@ -8,6 +8,8 @@ import type { SafehouseAction } from './merge';
 import type { MapBurnerActivationContext, RunPlayerState } from './run';
 import type { BurnerOffering, ModOffering, ShopOffering } from './shop';
 import type { SubroutineDefinition } from './subroutine-types';
+import type { CribbageAnswer, CribbageRequest } from './basic-cribbage';
+import type { EvasionResult } from './evasion';
 
 /**
  * The run as a pausable engine (milestone 3 checkpoint 1, P1's run half).
@@ -46,6 +48,12 @@ export type RunRequest =
    * decide; the fallback is a no-op. */
   | Ask<'eventResult', { event: EventDefinition; choice: EventChoice; effect: EventEffect; grant: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition }; heat: number }, null>
   | Ask<'cacheOpened', { contents: 'subroutine' | 'bundle' | 'mod'; data: number; burners: BurnerDefinition[] }, null>
+  /** A trace evasion (session 63, docs/trace-evasion-design.md): its
+   * start and end are notices; in between, the player's own decisions in
+   * its plain Cribbage. The simulated player plays at its skill. */
+  | Ask<'evasionStart', { enemy: EnemyDefinition; layer: number; enemyFill: number; headStart: number }, null>
+  | Ask<'evasion', { request: CribbageRequest }, CribbageAnswer>
+  | Ask<'evasionEnd', { enemy: EnemyDefinition; layer: number; result: EvasionResult }, null>
   /** One of the player's own decisions inside a fight. */
   | Ask<'combat', { request: CombatRequest }, CombatAnswer>
   /** A Safehouse visit: Rest or Merge. */
