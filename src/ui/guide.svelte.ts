@@ -34,7 +34,7 @@ export const GUIDE_TEXT: Record<GuideStep, string> = {
     'Every fight is a game of Cribbage. The points you score fill your initiative (INIT): when it fills, you take a turn and every subroutine in your loadout fires, top to bottom. Fill your Breach before the enemy fills its Containment.',
   turn: 'Your turn: each subroutine fired its Process, top to bottom. Most Credit, which fills your Breach. Tap any subroutine to read what it does.',
   hook: "A Hook just went off: when a subroutine's condition is met (here, scoring fifteens or pairs), it does more than its Process. The number on a subroutine counts toward its Hook.",
-  enemyTurn: "The enemy's turn: its points fill its initiative too, and its subroutines fill its Containment. Score well in the Cribbage to take more turns than it does.",
+  enemyTurn: "The enemy's turn: its points fill its initiative too, and its subroutines fill its Containment. Outscore it at Cribbage to take more turns than it does.",
   won: 'Breached! A win pays Data, adds some Heat, and offers a reward.',
   reward: 'Pick a new subroutine (or skip). It goes to the bottom of your loadout.',
   order:
