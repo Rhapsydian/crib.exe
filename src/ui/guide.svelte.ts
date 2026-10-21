@@ -58,6 +58,10 @@ class Guide {
   /** A fight is on screen: the coach speaks over its table, not in the
    * top banner. */
   inFight = $state(false);
+  /** The Cribbage coach in the guided run's fights (T3): a switch,
+   * starting off; its suggestions start on, as in Play Cribbage. */
+  cribbageCoach = $state(false);
+  cribbageHints = $state(true);
   #queue: GuideStep[] = [];
   #seen = new Set<GuideStep>();
 
@@ -67,10 +71,13 @@ class Guide {
     this.#seen.clear();
     this.#queue = [];
     this.current = null;
+    this.cribbageCoach = false;
+    this.cribbageHints = true;
   }
 
   stop(): void {
     this.active = false;
+    this.cribbageCoach = false;
     this.#queue = [];
     this.current = null;
   }

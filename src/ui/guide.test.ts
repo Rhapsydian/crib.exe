@@ -40,6 +40,17 @@ describe('the tutorial coach', () => {
     expect(GUIDE_TEXT.safehouse).toMatch(/Merge/);
   });
 
+  it('starts each guided run with the Cribbage coach off and its suggestions on (T3)', () => {
+    guide.start();
+    expect(guide.cribbageCoach).toBe(false);
+    expect(guide.cribbageHints).toBe(true);
+    guide.cribbageCoach = true;
+    guide.cribbageHints = false;
+    guide.start();
+    expect(guide.cribbageCoach).toBe(false);
+    expect(guide.cribbageHints).toBe(true);
+  });
+
   it('holds the first-time tips back while suspended', () => {
     tips.reset();
     tips.suspended = true;

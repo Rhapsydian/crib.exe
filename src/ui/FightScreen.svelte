@@ -20,6 +20,9 @@
   import { tips } from './tips.svelte';
   import { guide } from './guide.svelte';
   import GuideBanner from './GuideBanner.svelte';
+  import CoachPanel, { type CoachSection } from './CoachPanel.svelte';
+  import { discardHint, discardReview, pegHint, pegReview, phaseIntro, type PegSpot } from './coach';
+  import { fightPegSpot } from './fight';
 
   // The chosen fight-screen layout (the user's picks from the P3 mockups):
   // COMPACT on phones -- everything on one screen, a three-line log
@@ -178,6 +181,41 @@
     return { title: `HAND ${step.beat.handIndex + 1}`, sub: step.beat.dealer === 0 ? 'you deal · your crib' : 'they deal · their crib', key: replay!.shown };
   });
   const handReady = $derived(!table || table.handIndex === f.view.handIndex);
+
+  // The Cribbage coach (T3): in the guided run, a switch starting off.
+  // On, its panel takes the log ticker's place, as in Play Cribbage:
+  // advice for the decision in front of you, then a review of your
+  // discard and last play. (Last hand's count is on the table already,
+  // in the show.)
+  const cribbageCoach = $derived(guide.active && guide.cribbageCoach);
+  let lastDiscard = $state.raw<{ handIndex: number; hand: Card[]; thrown: [Card, Card]; ownCrib: boolean } | null>(null);
+  let lastPlay = $state.raw<{ handIndex: number; spot: PegSpot; played: Card } | null>(null);
+  function play(card: Card) {
+    const spot = fightPegSpot(snapshot);
+    if (spot) lastPlay = { handIndex: f.view.handIndex, spot, played: card };
+    onplay?.(card);
+  }
+  function discard(cards: [Card, Card]) {
+    lastDiscard = { handIndex: f.view.handIndex, hand: f.hand, thrown: cards, ownCrib: f.playerIsDealer };
+    ondiscard?.(cards);
+  }
+  const coachSections = $derived.by<CoachSection[]>(() => {
+    if (!cribbageCoach || !handReady || replay?.playing) return [];
+    const ownCrib = f.playerIsDealer;
+    const first = f.view.handIndex === 0;
+    const sections: CoachSection[] = [];
+    if (f.phase === 'discard') {
+      sections.push({ title: 'NOW', lines: [...(guide.cribbageHints ? [discardHint(f.hand, ownCrib)] : []), phaseIntro('discard', ownCrib, false)] });
+      if (first) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('discard', ownCrib, true)] });
+    } else if (f.phase === 'play') {
+      const spot = fightPegSpot(snapshot);
+      sections.push({ title: 'NOW', lines: [guide.cribbageHints && spot ? pegHint(spot) : phaseIntro('peg', ownCrib, false)] });
+      if (lastPlay && lastPlay.handIndex === f.view.handIndex) sections.push({ title: 'YOUR LAST PLAY', lines: [pegReview(lastPlay.spot, lastPlay.played).text] });
+      if (lastDiscard && lastDiscard.handIndex === f.view.handIndex) sections.push({ title: 'YOUR DISCARD', lines: [discardReview(lastDiscard.hand, lastDiscard.thrown, lastDiscard.ownCrib).text] });
+      if (first) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('peg', ownCrib, true)] });
+    }
+    return sections;
+  });
   const firingSlot = (side: 0 | 1) => {
     const fire = replay?.firing;
     if (!fire || fire.side !== side) return -1;
@@ -237,7 +275,8 @@
     <div class="band enemy">
       <div class="who">
         <span class="tag">TARGET</span> <span class="enemy-name">{f.enemyName}</span>
-        {#if replay}<button class="speed" onclick={() => replay.cycleSpeed()} title="turn speed">» {replay.speed}</button>{/if}
+        {#if guide.active}<button class="speed" class:on={guide.cribbageCoach} aria-pressed={guide.cribbageCoach} onclick={() => (guide.cribbageCoach = !guide.cribbageCoach)} title="the Cribbage coach: {guide.cribbageCoach ? 'on' : 'off'}">◈ coach</button>{/if}
+        {#if replay}<button class="speed" class:after={guide.active} onclick={() => replay.cycleSpeed()} title="turn speed">» {replay.speed}</button>{/if}
         <button class="loadouts-button" onclick={() => (sheet = 'loadouts')}>◀ loadouts</button>
       </div>
       <Loadout entries={f.them.loadout} dense enemy firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
@@ -271,12 +310,16 @@
       {#if guide.active}<GuideBanner inline />{/if}
     </div>
 
+    {#if cribbageCoach}
+      <div class="coach-slot"><CoachPanel sections={coachSections} onlog={() => (sheet = 'log')} hints={guide.cribbageHints} onhints={() => (guide.cribbageHints = !guide.cribbageHints)} /></div>
+    {:else}
     <button class="ticker" onclick={() => (sheet = 'log')}>
       {#each ticker as line, i (i)}
         <div class:them={line.side === 1} class:quiet={line.kind === 'table'}>{line.side === null ? '' : line.side === 0 ? '$ ' : '> '}<RichText text={line.text} /></div>
       {/each}
       <div class="more">tap for full log</div>
     </button>
+    {/if}
 
     <div class="band you">
       <Loadout entries={f.you.loadout} dense firing={firingSlot(0)} onpick={(i) => (picked = { side: 0, index: i })} />
@@ -308,7 +351,7 @@
          catch, milestone 4). -->
     <div class="hand-slot">
     {#if handReady && f.phase !== 'burner'}
-      <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase === 'discard' ? 'discard' : 'play'} playerIsDealer={f.playerIsDealer} {onplay} {ondiscard} inactive={replay?.playing ?? false} />
+      <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase === 'discard' ? 'discard' : 'play'} playerIsDealer={f.playerIsDealer} onplay={onplay && play} ondiscard={ondiscard && discard} inactive={replay?.playing ?? false} />
     {:else}
       <div class="hand-wait">…</div>
     {/if}
@@ -394,8 +437,19 @@
     font-size: 11px;
     color: var(--text-dim);
   }
-  .speed + .loadouts-button {
+  .speed + .loadouts-button,
+  .speed.after {
     margin-left: 0;
+  }
+  .speed.on {
+    border-color: var(--mod);
+    color: var(--mod);
+  }
+  /* The Cribbage coach, in the ticker's place; on desktop, where the
+     ticker is hidden, it still shows. */
+  .coach-slot {
+    display: flex;
+    min-height: 132px;
   }
   .ticker {
     text-align: left;

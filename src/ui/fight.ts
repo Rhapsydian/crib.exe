@@ -1,6 +1,7 @@
 import type { FireEvent, LoadoutEntry } from '../engine/resolve';
 import type { Thresholds } from './describe';
 import type { FightSnapshot } from './snapshot';
+import type { PegSpot } from './coach';
 
 /** A piece the player tapped: which side, which slot. */
 export interface Picked {
@@ -53,4 +54,22 @@ export function pickedEntry(snapshot: FightSnapshot, picked: Picked | null): { e
 export function pickFromLog(snapshot: FightSnapshot, side: 0 | 1, subroutineId: string): Picked | null {
   const index = snapshot.request.view.combatState.sides[side].loadout.findIndex((e) => e.definition.id === subroutineId);
   return index === -1 ? null : { side, index };
+}
+
+/** A fight's pegging request as the Cribbage coach reads it (coach.ts's
+ * PegSpot; live-cribbage's pegSpot for a fight), or null off a play. */
+export function fightPegSpot(snapshot: FightSnapshot): PegSpot | null {
+  const { request } = snapshot;
+  if (request.kind !== 'play') return null;
+  const played = request.pegging.events.flatMap((e) => (e.type === 'play' ? [e.card] : []));
+  // This hand's cut: the timeline's latest.
+  const cut = request.view.timeline.findLast((b) => b.kind === 'cut');
+  const starter = cut?.kind === 'cut' ? cut.starter : undefined;
+  return {
+    legal: request.context.legalCards,
+    count: request.context.count,
+    sequence: request.context.sequence,
+    known: [...request.pegging.hand, ...played, ...(starter ? [starter] : [])],
+    opponentCards: request.pegging.opponentCardsLeft,
+  };
 }
