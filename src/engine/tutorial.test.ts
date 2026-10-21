@@ -26,6 +26,22 @@ describe('the guided first run', () => {
     expect(TUTORIAL_LAYER.nodes.find((n) => n.id === TUTORIAL_LAYER.gatekeeperNodeId)?.assignedEnemyId).toBe('firewall-prime');
   });
 
+  it('offers no rewards after its gatekeeper, since the run ends there', () => {
+    const gen = runRequests({ ...SYNERGY_AWARE_PROFILE, ...TUTORIAL_OPTIONS, traversalStrategy: opportunisticTraversal, playerSkill: 0.85 });
+    let step = gen.next();
+    let atGatekeeper = false;
+    let rewardsAfter = 0;
+    while (!step.done) {
+      const r = step.value;
+      if (r.kind === 'fightStart') atGatekeeper = r.tier === 'gatekeeper';
+      if (atGatekeeper && r.kind === 'reward') rewardsAfter++;
+      step = gen.next(r.fallback());
+    }
+    expect(step.value.outcome).toBe('victory');
+    expect(atGatekeeper).toBe(true);
+    expect(rewardsAfter).toBe(0);
+  }, 60_000);
+
   it('starts Blackhat, with a Flash Drive, a banked Port Scan and 40 Data', () => {
     const first = runRequests({ ...SYNERGY_AWARE_PROFILE, ...TUTORIAL_OPTIONS, traversalStrategy: opportunisticTraversal, playerSkill: 0.85 }).next();
     if (first.done || first.value.kind !== 'move') throw new Error('expected the map first');

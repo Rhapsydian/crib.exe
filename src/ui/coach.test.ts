@@ -80,7 +80,7 @@ describe('the coach', () => {
     const lesser = pegReview(spot([c(6, 3), c(1)], 11, [c(4, 2), c(7, 2)]), c(6, 3));
     expect(lesser.same).toBe(false);
     expect(lesser.text).toBe(
-      'You played 6 (no score; then any 5 would give them a run of 4 for 4). I would have played A instead: it gives them less to score off -- its main danger is any 3 making fifteen for 2, against any 5 making a run of 4 for 4 off yours.',
+      'You played 6 (no score; then any 5 would give them a run of 4 for 4). I would have played A instead: it gives them less to score off: its main danger is any 3 making fifteen for 2, against any 5 making a run of 4 for 4 off yours.',
     );
   });
 

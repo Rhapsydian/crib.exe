@@ -19,9 +19,10 @@ import type { RunOptions } from './run';
 
 /** Blackhat: its Hooks fire on fifteens and pairs, often and visibly (T4). */
 export const TUTORIAL_CLASS: ClassId = 'exploit-overclock';
-/** Chosen in checkpoint 5 so the first fight gives an early fifteen and
- * pair (T5). */
-export const TUTORIAL_SEED = 1;
+/** Chosen in checkpoint 5 (scripts/tutorial-seed.ts): the first hand's
+ * keep, 7 6 8 8, scores fifteens, a pair and a double run, and the
+ * simulated player wins the tutorial at every skill from 0 to 0.85 (T5). */
+export const TUTORIAL_SEED = 21;
 
 const node = (id: string, type: NodeType, x: number, y: number, extra: Partial<MapNode> = {}): MapNode => ({
   id,

@@ -954,6 +954,14 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       // simulated player takes a subroutine while it has a free loadout
       // slot, else the Mod -- build the loadout early, collect Mods later.
       // (If either list is empty, the rewards below apply one at a time.)
+      // The last layer's gatekeeper ends the run (session 63, the tutorial
+      // playthrough): its rewards would never be used, so none are offered.
+      const runOver = node.type === 'gatekeeperFight' && layerIndex === layerNodeCounts.length - 1 && !outcome.quarantined;
+      if (runOver) {
+        outcome.rewardOptions = [];
+        outcome.modRewardOptions = [];
+        outcome.burnerRewardOptions = [];
+      }
       const oneChoice = Boolean(outcome.eliteChoice) && outcome.rewardOptions.length > 0 && outcome.modRewardOptions.length > 0;
       if (oneChoice) {
         const offeredTo = playerState;
