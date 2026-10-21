@@ -175,6 +175,13 @@ export interface CribbageGameOptions {
   /** Who deals first. Defaults to a cut of the deck (the seed decides). */
   startingDealer?: PlayerIndex;
   target?: number;
+  /** Stop after this many hands, the higher score winning (session 63:
+   * trace evasion). Unset, the game runs to `target` as usual. */
+  handLimit?: number;
+  /** The scores the game starts from (a head start); default [0, 0]. */
+  startingScores?: [number, number];
+  /** Who wins a tie at the hand limit; default side 1. */
+  tieWinner?: PlayerIndex;
 }
 
 export function skunkOf(loserScore: number): Skunk {
@@ -189,7 +196,7 @@ export function* cribbageGame(options: CribbageGameOptions): Generator<CribbageR
   // so how often an AI "rolls dice" never moves the deals.
   const aiRng = createRng(deriveAiNoiseSeed(seed));
   let dealer: PlayerIndex = options.startingDealer ?? (rng.nextInt(2) as PlayerIndex);
-  const scores: [number, number] = [0, 0];
+  const scores: [number, number] = options.startingScores ? [options.startingScores[0], options.startingScores[1]] : [0, 0];
   const timeline: CribbageBeat[] = [];
   const snap = (): [number, number] => [scores[0], scores[1]];
 
@@ -265,6 +272,10 @@ export function* cribbageGame(options: CribbageGameOptions): Generator<CribbageR
       if (won) return finish(player, handIndex + 1);
     }
 
+    if (options.handLimit !== undefined && handIndex + 1 >= options.handLimit) {
+      const winner: PlayerIndex = scores[0] > scores[1] ? 0 : scores[1] > scores[0] ? 1 : (options.tieWinner ?? 1);
+      return finish(winner, handIndex + 1);
+    }
     dealer = nonDealer;
   }
 }
