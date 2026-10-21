@@ -17,6 +17,7 @@
   import ShowPanel from './ShowPanel.svelte';
   import type { BurnerId } from '../engine/burner-types';
   import { BURNER_DEFINITIONS } from '../engine/burners';
+  import { tips } from './tips.svelte';
 
   // The chosen fight-screen layout (the user's picks from the P3 mockups):
   // COMPACT on phones -- everything on one screen, a three-line log
@@ -62,6 +63,17 @@
     ),
   );
   const burnersLeft = $derived(yourBurners.filter((b) => !b.spent).length);
+
+  // First-time tips (T6): your first Instant Hook going off; an enemy
+  // carrying Wipe, Strip or Trace.
+  $effect(() => {
+    const fire = replay?.current?.type === 'fire' ? replay.current.fire : null;
+    if (fire && fire.side === 0 && fire.immediate) tips.offer('instant');
+  });
+  $effect(() => {
+    const enemyOnly = ['trace', 'wipe', 'strip'];
+    if (f.view.combatState.sides[1].loadout.some((e) => enemyOnly.includes(e.definition.alpha.verb) || enemyOnly.includes(e.definition.beta?.effect.verb ?? ''))) tips.offer('enemyEffects');
+  });
 
   // Burners are armed, not prompted for (the user's playtest call,
   // session 61): a toggle under your gauges per kind of combat Burner

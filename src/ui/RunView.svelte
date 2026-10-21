@@ -11,11 +11,19 @@
   import ShopBurnerScreen from './ShopBurnerScreen.svelte';
   import EventScreen from './EventScreen.svelte';
   import NoticeScreen from './NoticeScreen.svelte';
+  import { tips } from './tips.svelte';
 
   // A run in progress (milestone 3 checkpoints 2-3): the map, a fight, a
   // reward, a full bench, or the end, whichever the run is paused on. A
   // banner marks each new layer.
   let { run, onagain }: { run: LiveRun; onagain: () => void } = $props();
+
+  // First-time tips (T6): an Event, a Cache.
+  $effect(() => {
+    const pause = run.pause;
+    if (pause?.kind === 'event') tips.offer('event');
+    if (pause?.kind === 'notice' && pause.request.kind === 'cacheOpened') tips.offer('cache');
+  });
 
   let lastLayer = -1;
   let banner = $state<{ layer: number; key: number } | null>(null);

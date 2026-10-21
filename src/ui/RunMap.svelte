@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tips } from './tips.svelte';
   import type { RunRequest } from '../engine/run-requests';
   import { HEAT_PER_MOVE } from '../engine/heat';
   import { applyOnMoveMods } from '../engine/mods';
@@ -52,6 +53,16 @@
   // With a Skeleton Key, closed nodes can be tapped too (to reopen them).
   const selectable = $derived(has('skeleton-key') ? new Set([...linked, ...graph.nodes.filter((n) => n.state === 'closed').map((n) => n.id)]) : linked);
   let selected = $state<string | null>(null);
+  // First-time tips (T6) the map can see: an elite on the map, a
+  // gatekeeper one move away, Heat past three-quarters, a ranked
+  // subroutine, a handful of Mods.
+  $effect(() => {
+    if (graph.nodes.some((n) => n.type === 'eliteFight' && n.state === 'unresolved')) tips.offer('elite');
+    if ([...linked].some((id) => graph.nodes.find((n) => n.id === id)?.type === 'gatekeeperFight')) tips.offer('quarantine');
+    if (heatPct >= 75) tips.offer('heat');
+    if ([...player.installedLoadout, ...player.bench].some((p) => p.rank)) tips.offer('rank');
+    if (player.ownedModIds.length >= 3) tips.offer('mods');
+  });
   // A new position (a move resolved) clears the selection.
   $effect(() => {
     void here;

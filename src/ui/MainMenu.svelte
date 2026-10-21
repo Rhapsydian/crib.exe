@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { tips } from './tips.svelte';
+  let tipsReset = $state(false);
   import { DIFFICULTIES, type Difficulty } from '../engine/basic-cribbage';
 
   // The front door (milestone 4, V5): Learn to play, Play Cribbage, and
@@ -106,9 +108,24 @@
       {/if}
     </div>
   </section>
+
+  <!-- First-time tips (session 63, T6): shown once each; this brings them
+       back, e.g. for a new tester on the same machine. -->
+  <button class="tips-reset" onclick={() => { tips.reset(); tipsReset = true; }} disabled={tipsReset}>{tipsReset ? 'tips will show again' : 'show tips again'}</button>
 </div>
 
 <style>
+  .tips-reset {
+    align-self: center;
+    margin-top: 8px;
+    padding: 4px 10px;
+    border: none;
+    background: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
   .menu {
     max-width: 520px;
     margin: 0 auto;

@@ -14,6 +14,7 @@
   import RunView from './ui/RunView.svelte';
   import { clearSave, loadSave, writeSave } from './ui/run-save';
   import MainMenu from './ui/MainMenu.svelte';
+  import TipBanner from './ui/TipBanner.svelte';
   import CribbageScreen from './ui/CribbageScreen.svelte';
   import { LiveCribbage, clearCribbageSave, loadCribbageSave, writeCribbageSave } from './ui/live-cribbage.svelte';
   import type { Difficulty } from './engine/basic-cribbage';
@@ -145,6 +146,8 @@
     if (import.meta.env.DEV) (window as unknown as { __cribbage: LiveCribbage | null }).__cribbage = cribbage;
   });
 </script>
+
+<TipBanner />
 
 {#if route === 'run'}
   {#if run}
