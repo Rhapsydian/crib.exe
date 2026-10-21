@@ -13,6 +13,7 @@ export type GuideStep =
   | 'map'
   | 'class'
   | 'fight'
+  | 'cribbageCoach'
   | 'turn'
   | 'hook'
   | 'enemyTurn'
@@ -32,6 +33,8 @@ export const GUIDE_TEXT: Record<GuideStep, string> = {
     "You're playing Blackhat. Your loadout of subroutines is on the left (the loadout button on phones). Your class Mod, Lateral Movement, gives you a little extra initiative for each pair you score.",
   fight:
     'Every fight is a game of Cribbage. The points you score fill your initiative (INIT): when it fills, you take a turn and every subroutine in your loadout fires, top to bottom. Fill your Breach before the enemy fills its Containment.',
+  cribbageCoach:
+    'Want help with the card play? Tap ◈ coach at the top for advice on each discard and play, and a look back at yours. Tap it again to turn it off.',
   turn: 'Your turn: each subroutine fired its Process, top to bottom. Most Credit, which fills your Breach. Tap any subroutine to read what it does.',
   hook: "A Hook just went off: when a subroutine's condition is met (here, scoring fifteens or pairs), it does more than its Process. The number on a subroutine counts toward its Hook.",
   enemyTurn: "The enemy's turn: its points fill its initiative too, and its subroutines fill its Containment. Outscore it at Cribbage to take more turns than it does.",

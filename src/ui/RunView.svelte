@@ -54,6 +54,7 @@
     }
     if (pause?.kind === 'fight' && run.fight) {
       guide.offer('fight');
+      guide.offer('cribbageCoach');
       if (run.fight.tier === 'gatekeeper') guide.offer('gatekeeper');
       else if (pause.kind === 'fight' && run.fights >= 2 && player0Burners(run)) guide.offer('burner');
     }
