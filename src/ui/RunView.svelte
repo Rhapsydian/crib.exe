@@ -112,7 +112,7 @@
     <LiveFightView fight={run.fight} actions={[{ label: 'continue ▸', onclick: () => run.answer(null) }]} />
   {/key}
 {:else if run.pause?.kind === 'over'}
-  <RunEnd result={run.pause.result} className={run.className} {onagain} {onretry} {onmenu} tutorial={run.tutorial} />
+  <RunEnd result={run.pause.result} className={run.className} {onagain} {onretry} {onmenu} seed={run.seed} tutorial={run.tutorial} />
 {/if}
 
 {#if banner}
