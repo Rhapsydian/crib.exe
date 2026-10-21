@@ -40,6 +40,15 @@ describe('enemy-only effects (CP1)', () => {
     expect(wipe.beta?.effect).toMatchObject({ amount: 1 });
   });
 
+  it('an enemy\'s layer scale keeps Charge (Hook counts) whole (session 63: Ping showed 1.68)', () => {
+    const charge = (m: number) =>
+      scaledDefinition(piece('c', { verb: 'credit', amount: 1 }, { source: 'cards', category: 'fifteen', shape: 'graded', cap: 1, effect: { verb: 'charge', amount: 1, target: 'next' } }), m).beta?.effect;
+    expect(charge(1.68)).toMatchObject({ amount: 2 });
+    expect(charge(2.17)).toMatchObject({ amount: 2 });
+    expect(charge(1.05)).toMatchObject({ amount: 1 });
+    expect(charge(0.4)).toMatchObject({ amount: 1 });
+  });
+
   it('the enemy-only effects never appear in the player pool', () => {
     for (const p of ALL_POOL_SUBROUTINES) {
       expect(ENEMY_ONLY_VERBS, p.id).not.toContain(p.alpha.verb);

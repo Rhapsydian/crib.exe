@@ -429,9 +429,14 @@ export function matchesSequence(match: Extract<BetaSource, { source: 'sequence' 
 export function scaledDefinition(piece: SubroutineDefinition, multiplier: number): SubroutineDefinition {
   if (multiplier === 1) return piece;
   // Disrupt has no amount; Trace (Heat) and Wipe (whole counts) read the
-  // same at every layer (CP1).
+  // same at every layer (CP1). Charge is Hook counts too, so it scales
+  // but stays whole (session 63: a scaled Zero-Day Chain gave Ping 1.68).
   const scale = <T extends Effect | BetaEffect>(effect: T): T =>
-    effect.verb === 'disrupt' || effect.verb === 'trace' || effect.verb === 'wipe' ? effect : { ...effect, amount: effect.amount * multiplier };
+    effect.verb === 'disrupt' || effect.verb === 'trace' || effect.verb === 'wipe'
+      ? effect
+      : effect.verb === 'charge'
+        ? { ...effect, amount: Math.max(1, Math.round(effect.amount * multiplier)) }
+        : { ...effect, amount: effect.amount * multiplier };
   // Spread so the growth writes below can never mutate the source piece
   // (scale() returns a Disrupt effect as-is).
   const alpha = { ...scale(piece.alpha) } as Alpha;
