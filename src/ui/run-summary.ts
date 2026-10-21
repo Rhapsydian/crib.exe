@@ -24,6 +24,9 @@ export interface LayerRow {
   enemies: string[];
   gatekeeper: string | null;
   ending: 'breached' | 'quarantined' | 'traced' | 'breachedThenCaught' | 'noRoute';
+  /** A trace evasion after its gatekeeper (session 63): the final scores
+   * (yours, its) and whether you slipped away. */
+  evasion?: { scores: [number, number]; escaped: boolean };
 }
 
 export interface RunSummary {
@@ -41,6 +44,11 @@ const enemyName = (id: string) => enemyById(id)?.name ?? id;
 export function summarizeRun(result: RunResult): RunSummary {
   const rows = new Map<number, LayerRow>();
   for (const e of result.log) {
+    if (e.type === 'evasion') {
+      const row = rows.get(e.layerIndex);
+      if (row) row.evasion = { scores: e.finalScores, escaped: e.escaped };
+      continue;
+    }
     if (e.type !== 'encounter' || e.nodeType === 'relay') continue;
     const row = rows.get(e.layerIndex) ?? { layer: e.layerIndex + 1, stops: [], enemies: [], gatekeeper: null, ending: 'breached' };
     rows.set(e.layerIndex, row);
@@ -63,7 +71,9 @@ export function summarizeRun(result: RunResult): RunSummary {
     victory: `You breached all four layers${last?.gatekeeper ? `; ${last.gatekeeper} was the last to fall` : ''}. The network is yours.`,
     quarantined: `${gk} purged you at layer ${where}.`,
     heatMaxed: `Your Heat maxed out on layer ${where}. They found you.`,
-    breachedThenCaught: `You beat ${gk}, but its toll maxed your Heat. Layer ${where} counts as breached.`,
+    breachedThenCaught: last?.evasion
+      ? `You beat ${gk}, but its toll maxed your Heat, and it traced you (${last.evasion.scores[0]}-${last.evasion.scores[1]} in the evasion). Layer ${where} counts as breached.`
+      : `You beat ${gk}, but its toll maxed your Heat. Layer ${where} counts as breached.`,
     noRouteRemains: `Closed nodes cut off every path to layer ${where}'s gatekeeper.`,
   }[result.outcome];
   return { layers, headline, finalHeat: result.finalHeat, allowance: layerHeatAllowance(where - 1, result.playerState.maxHeatBonus) };

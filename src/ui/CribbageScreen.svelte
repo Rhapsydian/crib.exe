@@ -5,6 +5,8 @@
   import type { Card } from '../engine/cards';
   import { DIFFICULTIES, WIN_SCORE } from '../engine/basic-cribbage';
   import { pegSpot, type LiveCribbage } from './live-cribbage.svelte';
+  import { RunEvasion } from './evasion-session.svelte';
+  import EvasionScore from './EvasionScore.svelte';
   import { Replay } from './replay.svelte';
   import { cribbageBeats, scoreReadings, pegsAfter } from './cribbage-steps';
   import { pointsSummary, scoreLabel, stepLine, tableAt, type Step } from './timeline';
@@ -24,7 +26,10 @@
   // the coach on (V3; a header pill switches it), its panel takes the log
   // ticker's place: advice for the decision in front of you, then a
   // review of your discard, last hand's count, and what the phase is.
-  let { game, onagain, onmenu }: { game: LiveCribbage; onagain: () => void; onmenu: () => void } = $props();
+  // A trace evasion (session 63) plays here too: its own header, a
+  // score that shows the gap, no coach, and its own result.
+  let { game, onagain, onmenu }: { game: LiveCribbage | RunEvasion; onagain: () => void; onmenu?: () => void } = $props();
+  const evasion = $derived(game instanceof RunEvasion ? game : null);
 
   // Learn to play remembers its own speed, starting slow (session 61).
   // (Each game mounts its own screen, so reading the difficulty once is right.)
@@ -102,6 +107,9 @@
   const level = $derived(DIFFICULTIES[game.difficulty]);
   const over = $derived(game.result && !replay.playing ? game.result : null);
   const pts = $derived(over ? pointsSummary(cribbageBeats(over.timeline)) : null);
+  // The evasion's score as it plays: the gatekeeper's never shows below
+  // its head start (no scoring beat carries it until it first scores).
+  const evasionScores = $derived<[number, number]>(evasion ? [pegs[0][0], Math.max(pegs[1][0], evasion.headStart)] : [0, 0]);
 
   function onkey(e: KeyboardEvent) {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -116,12 +124,21 @@
   <main class="main">
     <div class="top">
       <div class="who">
-        <span class="tag">CRIBBAGE</span> <span class="level">{level.name}</span>
-        <button class="pill" class:on={game.coach} aria-pressed={game.coach} onclick={() => (game.coach = !game.coach)} title="the coach: {game.coach ? 'on' : 'off'}">◈ coach</button>
-        <button class="pill" onclick={() => replay.cycleSpeed()} title="speed">» {replay.speed}</button>
-        <button class="pill" onclick={onmenu}>menu</button>
+        {#if evasion}
+          <span class="tag evade">TRACE EVASION</span> <span class="level">{evasion.enemyName}</span>
+          <button class="pill" onclick={() => replay.cycleSpeed()} title="speed">» {replay.speed}</button>
+        {:else}
+          <span class="tag">CRIBBAGE</span> <span class="level">{level.name}</span>
+          <button class="pill" class:on={game.coach} aria-pressed={game.coach} onclick={() => (game.coach = !game.coach)} title="the coach: {game.coach ? 'on' : 'off'}">◈ coach</button>
+          <button class="pill" onclick={() => replay.cycleSpeed()} title="speed">» {replay.speed}</button>
+          <button class="pill" onclick={onmenu}>menu</button>
+        {/if}
       </div>
-      <ScoreBars {pegs} />
+      {#if evasion}
+        <EvasionScore scores={evasionScores} name={evasion.enemyName} hand={Math.min(evasion.hands, table.handIndex + 1)} hands={evasion.hands} headStart={evasion.headStart} />
+      {:else}
+        <ScoreBars {pegs} />
+      {/if}
     </div>
 
     <div class="table-slot">
@@ -178,7 +195,35 @@
   </aside>
 {/if}
 
-{#if over && pts}
+{#if over && pts && evasion}
+  <div class="scrim end-scrim"></div>
+  <div class="result" class:won={over.winner === 0}>
+    <div class="title">{over.winner === 0 ? '>> SLIPPED THE TRACE' : '>> TRACED'}</div>
+    <div class="line">
+      {over.winner === 0
+        ? evasion.layer >= 4
+          ? `You lost ${evasion.enemyName} in the noise, and the network is yours.`
+          : `You lost ${evasion.enemyName} in the noise. On to the next layer.`
+        : over.finalScores[0] === over.finalScores[1]
+          ? `A tie goes to the network: ${evasion.enemyName} found you.`
+          : `${evasion.enemyName} found you.`}
+    </div>
+    <table class="points">
+      <thead><tr><th>points scored</th><th class="you">you</th><th class="them">them</th></tr></thead>
+      <tbody>
+        <tr><td>head start</td><td>0</td><td>{evasion.headStart}</td></tr>
+        <tr><td>pegging</td><td>{pts[0].pegging}</td><td>{pts[1].pegging}</td></tr>
+        <tr><td>hands</td><td>{pts[0].hands}</td><td>{pts[1].hands}</td></tr>
+        <tr><td>crib</td><td>{pts[0].crib}</td><td>{pts[1].crib}</td></tr>
+        {#if pts[0].heels + pts[1].heels > 0}<tr><td>his heels</td><td>{pts[0].heels}</td><td>{pts[1].heels}</td></tr>{/if}
+        <tr class="total"><td>total</td><td class="you">{over.finalScores[0]}</td><td class="them">{over.finalScores[1]}</td></tr>
+      </tbody>
+    </table>
+    <div class="buttons">
+      <button onclick={onagain}>continue ▸</button>
+    </div>
+  </div>
+{:else if over && pts}
   <div class="scrim end-scrim"></div>
   <div class="result" class:won={over.winner === 0}>
     <div class="title">{over.winner === 0 ? '>> YOU WIN' : '>> YOU LOSE'}</div>
@@ -445,6 +490,10 @@
   .end-scrim {
     z-index: 25;
     background: rgb(0 0 0 / 55%);
+  }
+  .tag.evade {
+    color: var(--danger);
+    border-color: var(--danger);
   }
   .result {
     position: fixed;

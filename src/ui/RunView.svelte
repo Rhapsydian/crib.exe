@@ -2,6 +2,8 @@
   import type { LiveRun } from './live-run.svelte';
   import RunMap from './RunMap.svelte';
   import RunEnd from './RunEnd.svelte';
+  import EvasionIntro from './EvasionIntro.svelte';
+  import CribbageScreen from './CribbageScreen.svelte';
   import LiveFightView from './LiveFightView.svelte';
   import RewardScreen from './RewardScreen.svelte';
   import DropScreen from './DropScreen.svelte';
@@ -111,6 +113,12 @@
 {:else if run.pause?.kind === 'fight' && run.fight}
   {#key run.fights}
     <LiveFightView fight={run.fight} actions={[{ label: 'continue ▸', onclick: () => run.answer(null) }]} />
+  {/key}
+{:else if run.pause?.kind === 'evasionStart'}
+  <EvasionIntro request={run.pause.request} onbegin={() => run.answer(null)} />
+{:else if run.pause?.kind === 'evasion' && run.evasion}
+  {#key run.evasion}
+    <CribbageScreen game={run.evasion} onagain={() => run.answer(null)} />
   {/key}
 {:else if run.pause?.kind === 'over'}
   <RunEnd result={run.pause.result} className={run.className} {onagain} {onretry} {onmenu} seed={run.seed} tutorial={run.tutorial} />

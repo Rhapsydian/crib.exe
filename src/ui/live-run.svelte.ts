@@ -1,4 +1,5 @@
-import type { CombatAnswer, CombatResult } from '../engine/combat';
+import type { CombatAnswer, CombatRequest, CombatResult } from '../engine/combat';
+import { RunEvasion } from './evasion-session.svelte';
 import { TUTORIAL_OPTIONS } from '../engine/tutorial';
 import type { EnemyDefinition } from '../engine/enemies';
 import { CLASS_DEFINITIONS, type ClassId } from '../engine/classes';
@@ -33,6 +34,9 @@ import { SAVE_VERSION, decodeCombat, encodeCombat, type RunSave, type SavedAnswe
 export type RunPause =
   | { kind: 'move'; request: Extract<RunRequest, { kind: 'move' }> }
   | { kind: 'fight' }
+  /** A trace evasion (session 63): its intro card, then the game. */
+  | { kind: 'evasionStart'; request: Extract<RunRequest, { kind: 'evasionStart' }> }
+  | { kind: 'evasion'; request: Extract<RunRequest, { kind: 'evasion' | 'evasionEnd' }> }
   | { kind: 'reward'; request: Extract<RunRequest, { kind: 'reward' }>; gained: number }
   | { kind: 'drop'; request: Extract<RunRequest, { kind: 'drop' }> }
   | { kind: 'burnerSwap'; request: Extract<RunRequest, { kind: 'burnerSwap' }> }
@@ -78,6 +82,8 @@ class RunFight implements FightSession {
 export class LiveRun {
   pause = $state.raw<RunPause | null>(null);
   fight = $state.raw<RunFight | null>(null);
+  /** The trace evasion being played, if any (session 63). */
+  evasion = $state.raw<RunEvasion | null>(null);
   /** How many fights this run has started (keys each fight's screen). */
   fights = $state(0);
   /** Decisions answered for the player for now, newest last. */
@@ -157,6 +163,7 @@ export class LiveRun {
     if (!this.pause || this.pause.kind === 'over') return;
     this.answers.push(this.#encode(answer));
     if (this.pause.kind === 'fight' && this.fight?.result) this.fight = null;
+    if (this.pause.kind === 'evasion' && this.pause.request.kind === 'evasionEnd') this.evasion = null;
     this.#advance(this.#run.next(answer));
     this.onsave?.();
   }
@@ -167,6 +174,8 @@ export class LiveRun {
     switch (pause.kind) {
       case 'fight':
         return this.fight?.result || !this.fight?.frame ? { k: 'fightEnd', a: null } : encodeCombat(this.fight.frame.request, answer);
+      case 'evasion':
+        return pause.request.kind === 'evasionEnd' ? { k: 'evasionEnd', a: null } : encodeCombat(pause.request.request as unknown as CombatRequest, answer as CombatAnswer);
       case 'reward':
         return { k: 'reward', a: answer ? (answer as { id: string }).id : null };
       case 'event':
@@ -189,6 +198,17 @@ export class LiveRun {
         return true;
       }
       const answer = decodeCombat(this.fight.frame.request, saved);
+      if (answer === undefined) return false;
+      this.answer(answer);
+      return true;
+    }
+    if (pause.kind === 'evasion') {
+      if (pause.request.kind === 'evasionEnd') {
+        if (saved.k !== 'evasionEnd') return false;
+        this.answer(null);
+        return true;
+      }
+      const answer = decodeCombat(pause.request.request as unknown as CombatRequest, saved);
       if (answer === undefined) return false;
       this.answer(answer);
       return true;
@@ -273,16 +293,17 @@ export class LiveRun {
           continue;
         }
         case 'evasionStart':
+          this.evasion = new RunEvasion(r.enemy.name, r.headStart, r.enemyFill, r.layer, (a) => this.answer(a));
+          this.pause = { kind: 'evasionStart', request: r };
+          return;
         case 'evasion':
-          // Trace evasion checkpoint 2 (session 63): played by the simulated
-          // player for now -- deterministic, so a save replays it -- until
-          // checkpoint 3 gives it its screens.
-          step = this.#run.next(r.fallback());
-          continue;
+          this.evasion!.show(r.request);
+          this.pause = { kind: 'evasion', request: r };
+          return;
         case 'evasionEnd':
-          this.notes = [...this.notes, `trace evasion vs ${r.enemy.name}: ${r.result.finalScores[0]}-${r.result.finalScores[1]}, ${r.result.escaped ? 'slipped away' : 'traced'}`];
-          step = this.#run.next(null);
-          continue;
+          this.evasion!.finish(r.result);
+          this.pause = { kind: 'evasion', request: r };
+          return;
         case 'reorder':
           // Your order stands: the loadout is yours to arrange on the map.
           step = this.#run.next(r.playerState);

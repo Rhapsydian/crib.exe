@@ -73,7 +73,7 @@
               <span class="stop" class:lost={stop.won === false} style="color: {stop.won === false ? 'var(--danger)' : NODE_KIND[stop.type].tone}" title={NODE_KIND[stop.type].label}>{stop.won === false ? '✕' : NODE_KIND[stop.type].glyph}</span>
             {/each}
           </span>
-          <span class="ending" class:bad={row.ending !== 'breached'}>{ENDING_TEXT[row.ending]}</span>
+          <span class="ending" class:bad={row.ending !== 'breached'}>{ENDING_TEXT[row.ending]}{#if row.evasion?.escaped}, evaded {row.evasion.scores[0]}-{row.evasion.scores[1]}{/if}</span>
         </div>
         {#if row.enemies.length}<div class="enemies">{row.enemies.join(' · ')}</div>{/if}
       </div>
