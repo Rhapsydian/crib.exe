@@ -36,12 +36,14 @@ function loadSeen(): Set<TipId> {
 class Tips {
   /** The tip on screen, if any. */
   current = $state<TipId | null>(null);
+  /** Held back during the guided run, whose coach covers the same ground. */
+  suspended = false;
   #queue: TipId[] = [];
   #seen = loadSeen();
 
   /** A mechanic just showed up: queue its tip, unless it's been seen. */
   offer(id: TipId): void {
-    if (this.#seen.has(id) || this.current === id || this.#queue.includes(id)) return;
+    if (this.suspended || this.#seen.has(id) || this.current === id || this.#queue.includes(id)) return;
     if (this.current === null) this.current = id;
     else this.#queue.push(id);
   }

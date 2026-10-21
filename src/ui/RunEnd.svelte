@@ -6,10 +6,16 @@
   // you got, and what you were running.
   // The guided first run (session 63) ends on its own screen: done, or
   // try again, and then the way into a real run.
-  let { result, className, onagain, tutorial = false }: { result: RunResult; className: string; onagain: () => void; tutorial?: boolean } = $props();
+  let {
+    result,
+    className,
+    onagain,
+    onretry,
+    tutorial = false,
+  }: { result: RunResult; className: string; onagain: () => void; onretry?: () => void; tutorial?: boolean } = $props();
   const TUTORIAL_ENDINGS = {
     won: { title: '>> TUTORIAL COMPLETE', line: "You breached your first layer. A real run is four layers deep, and you choose your class. You're ready.", won: true },
-    lost: { title: '>> TUTORIAL OVER', line: "Not this time. Every run is different: try the tutorial again, or jump into a real run.", won: false },
+    lost: { title: '>> TUTORIAL OVER', line: "Not this time. Try the tutorial again, or jump into a real run.", won: false },
   };
 
   const ENDINGS: Record<RunResult['outcome'], { title: string; line: string; won: boolean }> = {
@@ -37,7 +43,8 @@
   {#each result.playerState.installedLoadout as p, i (i)}
     <div class="piece"><SuitIcon archetype={p.archetype} size={14} /> {p.name}</div>
   {/each}
-  <button class="again" onclick={onagain}>{tutorial ? '▶ start a real run' : '▶ new contract'}</button>
+  {#if tutorial && !end.won && onretry}<button class="again" onclick={onretry}>↻ try the tutorial again</button>{/if}
+  <button class="again" class:quiet={tutorial && !end.won && onretry} onclick={onagain}>{tutorial ? '▶ start a real run' : '▶ new contract'}</button>
 </div>
 
 <style>
@@ -98,5 +105,12 @@
     color: var(--accent);
     font-weight: 700;
     font-size: 13px;
+  }
+  .again + .again {
+    margin-top: 8px;
+  }
+  .again.quiet {
+    border-color: var(--line);
+    color: var(--text);
   }
 </style>

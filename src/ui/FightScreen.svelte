@@ -18,6 +18,8 @@
   import type { BurnerId } from '../engine/burner-types';
   import { BURNER_DEFINITIONS } from '../engine/burners';
   import { tips } from './tips.svelte';
+  import { guide } from './guide.svelte';
+  import GuideBanner from './GuideBanner.svelte';
 
   // The chosen fight-screen layout (the user's picks from the P3 mockups):
   // COMPACT on phones -- everything on one screen, a three-line log
@@ -63,6 +65,28 @@
     ),
   );
   const burnersLeft = $derived(yourBurners.filter((b) => !b.spent).length);
+
+  // The tutorial coach (session 63) reacts to the fight as it plays out:
+  // the first turn, Hook, enemy turn and Burner it sees. While a fight is
+  // up, the coach speaks over the table, not in the top banner.
+  $effect(() => {
+    guide.inFight = true;
+    return () => (guide.inFight = false);
+  });
+  // It reads every step as it appears, not just the one on screen, so a
+  // skipped replay still counts.
+  let coached = 0;
+  $effect(() => {
+    if (!replay || !guide.active) return;
+    const { shown, steps } = replay;
+    if (shown < coached) coached = 0;
+    for (; coached < shown; coached++) {
+      const step = steps[coached];
+      if (step.type === 'beat' && step.beat.kind === 'turn') guide.offer(step.beat.side === 0 ? 'turn' : 'enemyTurn');
+      if (step.type === 'beat' && step.beat.kind === 'burner' && step.beat.side === 0) guide.offer('burnerFired');
+      if (step.type === 'fire' && step.fire.side === 0 && (step.fire.elevated || step.fire.beta)) guide.offer('hook');
+    }
+  });
 
   // First-time tips (T6): your first Instant Hook going off; an enemy
   // carrying Wipe, Strip or Trace.
@@ -243,6 +267,8 @@
           <div class="banner"><b>{banner.title}</b><span>{banner.sub}</span></div>
         {/key}
       {/if}
+      <!-- The tutorial coach, over the table (session 63). -->
+      {#if guide.active}<GuideBanner inline />{/if}
     </div>
 
     <button class="ticker" onclick={() => (sheet = 'log')}>
@@ -405,7 +431,7 @@
     position: relative;
     height: 104px;
   }
-  .table-slot > :global(*:not(.banner):not(.slot-callout):not(.gap-toast)) {
+  .table-slot > :global(*:not(.banner):not(.slot-callout):not(.gap-toast):not(.guide)) {
     height: 100%;
     box-sizing: border-box;
   }

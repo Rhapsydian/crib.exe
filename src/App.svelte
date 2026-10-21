@@ -15,6 +15,8 @@
   import { clearSave, loadSave, writeSave } from './ui/run-save';
   import MainMenu from './ui/MainMenu.svelte';
   import TipBanner from './ui/TipBanner.svelte';
+  import GuideBanner from './ui/GuideBanner.svelte';
+  import { guide } from './ui/guide.svelte';
   import TutorialStart from './ui/TutorialStart.svelte';
   import { TUTORIAL_CLASS, TUTORIAL_SEED } from './engine/tutorial';
   import CribbageScreen from './ui/CribbageScreen.svelte';
@@ -150,10 +152,11 @@
 </script>
 
 <TipBanner />
+{#if guide.active && !guide.inFight}<GuideBanner />{/if}
 
 {#if route === 'run'}
   {#if run}
-    <RunView {run} onagain={backToClasses} />
+    <RunView {run} onagain={backToClasses} onretry={() => begin(new LiveRun(TUTORIAL_CLASS, TUTORIAL_SEED, true))} />
   {:else if screen === 'cribbage' && cribbage}
     {#key cribbage}
       <CribbageScreen

@@ -12,11 +12,12 @@
   import EventScreen from './EventScreen.svelte';
   import NoticeScreen from './NoticeScreen.svelte';
   import { tips } from './tips.svelte';
+  import { guide } from './guide.svelte';
 
   // A run in progress (milestone 3 checkpoints 2-3): the map, a fight, a
   // reward, a full bench, or the end, whichever the run is paused on. A
   // banner marks each new layer.
-  let { run, onagain }: { run: LiveRun; onagain: () => void } = $props();
+  let { run, onagain, onretry }: { run: LiveRun; onagain: () => void; onretry?: () => void } = $props();
 
   // First-time tips (T6): an Event, a Cache.
   $effect(() => {
@@ -24,6 +25,47 @@
     if (pause?.kind === 'event') tips.offer('event');
     if (pause?.kind === 'notice' && pause.request.kind === 'cacheOpened') tips.offer('cache');
   });
+
+  // The tutorial coach (session 63): on for the guided run, which also
+  // holds the first-time tips back (the coach covers them), and the
+  // moments it explains away from fights.
+  $effect(() => {
+    if (!run.tutorial) return;
+    guide.start();
+    tips.suspended = true;
+    return () => {
+      guide.stop();
+      tips.suspended = false;
+    };
+  });
+  $effect(() => {
+    if (!run.tutorial) return;
+    const pause = run.pause;
+    if (pause?.kind === 'move') {
+      guide.offer('map');
+      guide.offer('class');
+      const player = pause.request.playerState;
+      // A reward subroutine has joined the loadout: order matters now.
+      if (player.installedLoadout.length > 3) guide.offer('order');
+      const here = pause.request.position.nodeId;
+      const graph = pause.request.graph;
+      const nextToGatekeeper = graph.edges.some((e) => (e.a === here && e.b === graph.gatekeeperNodeId) || (e.b === here && e.a === graph.gatekeeperNodeId));
+      if (nextToGatekeeper) guide.offer('gatekeeperNear');
+    }
+    if (pause?.kind === 'fight' && run.fight) {
+      guide.offer('fight');
+      if (run.fight.tier === 'gatekeeper') guide.offer('gatekeeper');
+      else if (pause.kind === 'fight' && run.fights >= 2 && player0Burners(run)) guide.offer('burner');
+    }
+    if (pause?.kind === 'reward' && pause.request.reward !== 'burner') {
+      guide.offer('won');
+      guide.offer('reward');
+    }
+    if (pause?.kind === 'shop') guide.offer('shop');
+    if (pause?.kind === 'safehouse') guide.offer('safehouse');
+  });
+  /** Whether the player carries a combat Burner into this fight. */
+  const player0Burners = (r: LiveRun) => Boolean(r.fight?.frame?.request.view.combatState.carriedBurnerIds.length);
 
   let lastLayer = -1;
   let banner = $state<{ layer: number; key: number } | null>(null);
@@ -70,7 +112,7 @@
     <LiveFightView fight={run.fight} actions={[{ label: 'continue ▸', onclick: () => run.answer(null) }]} />
   {/key}
 {:else if run.pause?.kind === 'over'}
-  <RunEnd result={run.pause.result} className={run.className} {onagain} tutorial={run.tutorial} />
+  <RunEnd result={run.pause.result} className={run.className} {onagain} {onretry} tutorial={run.tutorial} />
 {/if}
 
 {#if banner}
