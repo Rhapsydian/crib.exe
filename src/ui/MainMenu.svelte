@@ -1,6 +1,14 @@
 <script lang="ts">
   import { tips } from './tips.svelte';
+  import CardView from './CardView.svelte';
+  import type { Card } from '../engine/cards';
   let tipsReset = $state(false);
+  const HEADER_CARDS: Card[] = [
+    { rank: 4, suit: 0 },
+    { rank: 5, suit: 1 },
+    { rank: 6, suit: 2 },
+    { rank: 11, suit: 3 },
+  ];
   import { DIFFICULTIES, type Difficulty } from '../engine/basic-cribbage';
 
   // The front door (milestone 4, V5): Learn to play, Play Cribbage, and
@@ -53,7 +61,17 @@
 {/snippet}
 
 <div class="menu">
-  <h1>crib.exe</h1>
+  <!-- The title as a command being run, with a fifteen and nobs (4 5 6,
+       a Jack) flying off to the right, one card of each suit (session 63,
+       the user's ask). -->
+  <div class="masthead">
+    <h1><span class="prompt">&gt;</span> ./crib.exe<span class="cursor" aria-hidden="true"></span></h1>
+    <div class="fly" aria-hidden="true">
+      {#each HEADER_CARDS as card, i (i)}
+        <span class="flying" style="--i: {i}"><CardView {card} small /></span>
+      {/each}
+    </div>
+  </div>
   <div class="sub">a hacking roguelite where every fight is a game of Cribbage</div>
 
   {#if resumeFailed}<div class="warn">{resumeFailed}</div>{/if}
@@ -144,11 +162,76 @@
     flex-direction: column;
     gap: 10px;
   }
+  .masthead {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
   h1 {
     margin: 0;
     font-size: 26px;
     color: var(--accent);
     letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .prompt {
+    color: var(--text-dim);
+  }
+  .cursor {
+    display: inline-block;
+    width: 0.55em;
+    height: 0.9em;
+    margin-left: 3px;
+    vertical-align: -0.08em;
+    background: var(--accent);
+    animation: blink 1.1s steps(1) infinite;
+  }
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+  /* Each card further along, higher, more tilted and fainter, with a
+     motion streak behind it: a hand thrown off to the right. */
+  .fly {
+    position: relative;
+    flex: 1;
+    height: 56px;
+    min-width: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .flying {
+    position: absolute;
+    /* Spaced to fit the room beside the title (tighter on phones). */
+    left: calc(8px + var(--i) * min(46px, (100% - 56px) / 3));
+    top: calc(10px - var(--i) * 3px);
+    transform: rotate(calc(6deg + var(--i) * 7deg));
+    opacity: calc(1 - var(--i) * 0.16);
+    animation: drift 3.2s ease-in-out infinite;
+    animation-delay: calc(var(--i) * -0.4s);
+  }
+  .flying::before {
+    content: '';
+    position: absolute;
+    right: 100%;
+    top: 40%;
+    width: calc(8px + var(--i) * 2px);
+    height: 2px;
+    margin-right: 2px;
+    background: linear-gradient(to right, transparent, var(--accent));
+    opacity: 0.45;
+  }
+  @keyframes drift {
+    50% {
+      translate: 4px -2px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cursor,
+    .flying {
+      animation: none;
+    }
   }
   .sub {
     color: var(--text-dim);
