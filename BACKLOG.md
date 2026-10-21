@@ -267,6 +267,35 @@ session 61 by a toggle under your gauges (one armed at a time, used at
 the start of your next turn). Rules text for the general Mods: done
 (session 58).
 
+**Next session -- start here: the economy (session 61's measurement).**
+The user's layer-4 Eidolon run beat Root Authority in one hand, entering
+Shops with 200+ Data and holding 22 general Mods. `scripts/build-check.ts`
+re-fought that build: 99% against both layer-4 gatekeepers in ~1.3
+hands; **without its general Mods, 57-58%** (near the 52.5% target).
+Merge ranks barely matter (-1 to -2 points); the Overclock chain
+finishers -6 to -10; Amplifiers/Firmware -2 to -4. The Mods are the
+pile, not any one. The simulated player (synergy profile) reaches the
+same gatekeeper with ~10.4 Mods and **136-206 Data unspent**: Data is
+plentiful for everyone, but the sim buys at most one thing per Shop slate
+and never sells, so the balance numbers model a player who leaves half
+the economy unused. Plan:
+1. Teach the simulated player to spend like a person: buy every
+   affordable, useful offering per Shop visit; sell bench pieces and
+   spare copies.
+2. Re-measure (expect victory well above the 10-20% band).
+3. Tune the economy, not the fights: Data income and/or Mod prices,
+   fewer Mod offers (elites, gatekeepers, Events), possibly a Mod cap
+   like the Burner cap. Re-tuning gatekeepers to absorb 22 Mods would
+   punish anyone who doesn't hoard.
+Also: `gatekeeper-check.ts` simulates runs without SYNERGY_AWARE_PROFILE
+while `run-outcomes.ts` uses it -- align them.
+
+**Loadout swap (UX, the user's note):** tap-to-swap was removed in
+session 61 (a pain), but a full loadout or bench now needs two steps to
+exchange a subroutine. Idea: keep the install and bench buttons active
+even when the destination is full, and prompt for which subroutine to
+swap out.
+
 Open from session 61:
 - **Not yet seen in the browser:** the Shop's Sell section, the
   Safehouse's "merge everything", rank marks and "+N banked" (they only
