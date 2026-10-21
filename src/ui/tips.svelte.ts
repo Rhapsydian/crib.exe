@@ -7,13 +7,14 @@
  * TipBanner shows them one at a time.
  */
 
-export type TipId = 'elite' | 'event' | 'cache' | 'quarantine' | 'heat' | 'rank' | 'mods' | 'instant' | 'enemyEffects';
+export type TipId = 'elite' | 'event' | 'cache' | 'quarantine' | 'toll' | 'heat' | 'rank' | 'mods' | 'instant' | 'enemyEffects';
 
 export const TIP_TEXT: Record<TipId, string> = {
   elite: 'Elites are tougher than regular fights and bend one rule with their own Mod. Beat one and choose a subroutine or a Mod.',
   event: 'Events are a gamble: pick a choice and see what happens. Some cost Heat, some start a fight.',
   cache: 'A Cache is a free reward for the detour: a rarer subroutine, a Mod, or Data, and always a Burner.',
   quarantine: "Each layer ends with a gatekeeper. Beat it to move on; lose and you're quarantined, which ends the run.",
+  toll: "Beating a gatekeeper costs Heat too: a toll charged after the fight, bigger the closer it came to containing you. If the toll takes you past this layer's limit, you're caught even though you won. Its card shows the toll; in the fight, the Heat bar shows what a win would cost.",
   heat: "Your Heat is past three-quarters of this layer's limit. Reach the limit and you're caught; resting at a Safehouse or clearing the gatekeeper lowers it.",
   rank: 'Merged subroutines show their rank (I-III): each rank makes the Hook stronger. Spare copies bank until a Safehouse Merge.',
   mods: 'Your Mods are permanent effects for the run. Tap one to read it; some act in fights, others on the map or in Shops.',

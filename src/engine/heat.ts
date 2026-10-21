@@ -171,3 +171,48 @@ export function addHeat(current: number, amount: number, max: number): HeatUpdat
   const heat = Math.min(max, Math.max(0, current + amount));
   return { heat, maxed: heat >= max };
 }
+
+/**
+ * Where a fight leaves your Heat (session 63, the user's "I just got
+ * completely surprised by a Breached, then caught"): the fight screen's
+ * Heat bar. `now` is the run's Heat plus what the enemy's alarms have
+ * raised so far; `ifWin` is what winning at this moment would leave --
+ * the same sum encounters.ts charges (baseline, alarms, the performance
+ * term off the enemy's Containment fill, less any Heat Sink refund);
+ * `ifLose` what losing would (none for a gatekeeper: losing is
+ * Quarantine). `caught*` is whether that reaches the layer's allowance.
+ */
+export interface FightHeatOutlook {
+  now: number;
+  ifWin: number;
+  ifLose?: number;
+  allowance: number;
+  caughtIfWin: boolean;
+  caughtIfLose: boolean;
+}
+
+export function fightHeatOutlook(o: {
+  heat: number;
+  allowance: number;
+  tier: FightTier;
+  /** 0-based. */
+  layerIndex: number;
+  /** Heat the enemy's alarms have raised this fight. */
+  alarm: number;
+  /** The enemy's Containment fill, 0-1. */
+  enemyFill: number;
+  /** A Heat Sink refund on this win, if any. */
+  refund?: number;
+}): FightHeatOutlook {
+  const now = Math.min(o.allowance, o.heat + o.alarm);
+  const ifWin = Math.max(0, o.heat + fightBaselineHeat(o.tier, o.layerIndex) + o.alarm + fightPerformanceHeat(o.tier, o.layerIndex, o.enemyFill) - (o.refund ?? 0));
+  const ifLose = o.tier === 'gatekeeper' ? undefined : o.heat + heatFromLoss(o.tier, o.layerIndex) + o.alarm;
+  return {
+    now,
+    ifWin: Math.min(o.allowance, ifWin),
+    ifLose: ifLose === undefined ? undefined : Math.min(o.allowance, ifLose),
+    allowance: o.allowance,
+    caughtIfWin: ifWin >= o.allowance,
+    caughtIfLose: ifLose !== undefined && ifLose >= o.allowance,
+  };
+}

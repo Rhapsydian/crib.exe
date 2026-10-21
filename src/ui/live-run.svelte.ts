@@ -3,12 +3,14 @@ import { TUTORIAL_OPTIONS } from '../engine/tutorial';
 import type { EnemyDefinition } from '../engine/enemies';
 import { CLASS_DEFINITIONS, type ClassId } from '../engine/classes';
 import { SYNERGY_AWARE_PROFILE } from '../engine/profiles';
-import { gatekeeperReachable, opportunisticTraversal, runRequests, type RunResult } from '../engine/run';
+import { gatekeeperReachable, opportunisticTraversal, runRequests, type RunPlayerState, type RunResult } from '../engine/run';
+import { currentHeatCeiling } from '../engine/heat';
+import { HEAT_SINK_HEAT_REFUND } from '../engine/mods';
 import type { RunRequest } from '../engine/run-requests';
 import { BURNER_DEFINITIONS } from '../engine/burners';
 import { acquireSubroutine } from '../engine/loadout';
 import { cloneKeepingPrototypes } from './live-fight.svelte';
-import type { FightSession } from './fight-session';
+import type { FightHeatContext, FightSession } from './fight-session';
 import type { FightSnapshot } from './snapshot';
 import type { EventChoice } from '../engine/event-types';
 import { SAVE_VERSION, decodeCombat, encodeCombat, type RunSave, type SavedAnswer } from './run-save';
@@ -51,7 +53,16 @@ class RunFight implements FightSession {
   readonly tier: 'regular' | 'elite' | 'gatekeeper';
   readonly #answer: (a: CombatAnswer) => void;
 
-  constructor(enemy: EnemyDefinition, tier: 'regular' | 'elite' | 'gatekeeper', layer: number, answer: (a: CombatAnswer) => void) {
+  readonly heat: FightHeatContext;
+
+  constructor(enemy: EnemyDefinition, tier: 'regular' | 'elite' | 'gatekeeper', layer: number, player: RunPlayerState, answer: (a: CombatAnswer) => void) {
+    this.heat = {
+      heat: player.heat ?? 0,
+      allowance: player.heatAllowance ?? currentHeatCeiling(player),
+      tier,
+      layerIndex: layer - 1,
+      refund: tier !== 'regular' && player.ownedModIds.includes('heat-sink') ? HEAT_SINK_HEAT_REFUND : 0,
+    };
     this.enemy = enemy;
     this.tier = tier;
     this.enemyName = enemy.name;
@@ -267,7 +278,7 @@ export class LiveRun {
           continue;
         case 'fightStart':
           this.fights++;
-          this.fight = new RunFight(r.enemy, r.tier, r.layer, (a) => this.answer(a));
+          this.fight = new RunFight(r.enemy, r.tier, r.layer, r.playerState, (a) => this.answer(a));
           step = this.#run.next(null);
           continue;
         case 'combat': {

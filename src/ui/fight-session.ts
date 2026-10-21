@@ -1,5 +1,17 @@
 import type { CombatAnswer, CombatResult } from '../engine/combat';
 import type { FightSnapshot } from './snapshot';
+import type { FightTier } from '../engine/heat';
+
+/** The run's Heat as a fight starts, and how that fight charges it. */
+export interface FightHeatContext {
+  heat: number;
+  allowance: number;
+  tier: FightTier;
+  /** 0-based. */
+  layerIndex: number;
+  /** Heat Sink's refund on a win here, if any. */
+  refund: number;
+}
 
 /**
  * What the fight screen needs from whoever runs the fight: the standalone
@@ -14,6 +26,8 @@ export interface FightSession {
   readonly enemyName: string;
   /** A small detail line for the result panel ("seed 1234", "layer 2"). */
   readonly detail: string;
+  /** A run's fight only (session 63): what its Heat bar needs. */
+  readonly heat?: FightHeatContext;
   answer(answer: CombatAnswer): void;
 }
 

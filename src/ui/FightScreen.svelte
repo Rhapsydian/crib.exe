@@ -23,6 +23,10 @@
   import CoachPanel, { type CoachSection } from './CoachPanel.svelte';
   import { discardHint, discardReview, pegHint, pegReview, phaseIntro, type PegSpot } from './coach';
   import { fightPegSpot } from './fight';
+  import HeatBar from './HeatBar.svelte';
+  import { fightHeatOutlook } from '../engine/heat';
+  import { readGauges } from '../engine/resolve';
+  import type { FightHeatContext } from './fight-session';
 
   // The chosen fight-screen layout (the user's picks from the P3 mockups):
   // COMPACT on phones -- everything on one screen, a three-line log
@@ -42,12 +46,14 @@
     ondiscard,
     replay,
     onburner,
+    heat,
   }: {
     snapshot: FightSnapshot;
     onplay?: (card: Card) => void;
     ondiscard?: (cards: [Card, Card]) => void;
     replay?: Replay;
     onburner?: (id: BurnerId | null) => void;
+    heat?: FightHeatContext;
   } = $props();
   const f = $derived(fightParts(snapshot));
   let picked = $state<Picked | null>(null);
@@ -182,6 +188,14 @@
   });
   const handReady = $derived(!table || table.handIndex === f.view.handIndex);
 
+  // The Heat bar (session 63): in a run's fights, your Heat now (alarms
+  // included, as the replay reaches them) and what winning now would leave.
+  const heatOutlook = $derived.by(() => {
+    if (!heat) return null;
+    const [you, them] = replay?.gauges ?? readGauges(f.view.combatState);
+    return fightHeatOutlook({ ...heat, alarm: you.heat, enemyFill: them.winThreshold ? them.win / them.winThreshold : 0 });
+  });
+
   // The Cribbage coach (T3): in the guided run, a switch starting off.
   // On, its panel takes the log ticker's place, as in Play Cribbage:
   // advice for the decision in front of you, then a review of your
@@ -272,6 +286,7 @@
   </aside>
 
   <main class="main">
+    {#if heatOutlook}<HeatBar outlook={heatOutlook} gatekeeper={heat?.tier === 'gatekeeper'} />{/if}
     <div class="band enemy">
       <div class="who">
         <span class="tag">TARGET</span> <span class="enemy-name">{f.enemyName}</span>

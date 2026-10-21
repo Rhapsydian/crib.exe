@@ -9,6 +9,7 @@ import {
   eventHeat,
   layerHeatAllowance,
   postedFightRisk,
+  fightHeatOutlook,
   LAYER_HEAT_ALLOWANCE,
   LOSS_MULTIPLIER,
 } from './heat';
@@ -107,5 +108,26 @@ describe('eventHeat (step 2, checkpoint 6)', () => {
     for (const layer of [0, 1, 2, 3]) expect(eventHeat(0.5, layer)).toBeCloseTo(0.5 * heatFromLoss('elite', layer));
     expect(eventHeat(1, 3)).toBeGreaterThan(eventHeat(1, 0));
     expect(eventHeat(-0.27, 0)).toBeLessThan(0);
+  });
+});
+
+// Session 63: the fight screen's Heat bar.
+describe('fightHeatOutlook', () => {
+  const base = { heat: 40, allowance: 76, layerIndex: 0, alarm: 0, enemyFill: 0 };
+
+  it('charges a win exactly as encounters.ts does: baseline, alarms, the performance term, less a refund', () => {
+    const o = fightHeatOutlook({ ...base, tier: 'elite', alarm: 2, enemyFill: 0.5, refund: 1 });
+    expect(o.now).toBe(42);
+    expect(o.ifWin).toBeCloseTo(40 + fightBaselineHeat('elite', 0) + 2 + fightPerformanceHeat('elite', 0, 0.5) - 1);
+    expect(o.ifLose).toBeCloseTo(40 + heatFromLoss('elite', 0) + 2);
+  });
+
+  it("warns when a gatekeeper's toll would get you caught, and climbs with its Containment", () => {
+    const clean = fightHeatOutlook({ ...base, tier: 'gatekeeper', heat: 66 });
+    const close = fightHeatOutlook({ ...base, tier: 'gatekeeper', heat: 66, enemyFill: 0.95 });
+    expect(clean.caughtIfWin).toBe(false);
+    expect(close.caughtIfWin).toBe(true);
+    expect(close.ifWin).toBe(76);
+    expect(clean.ifLose).toBeUndefined();
   });
 });

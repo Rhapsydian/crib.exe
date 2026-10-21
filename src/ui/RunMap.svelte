@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tips } from './tips.svelte';
   import type { RunRequest } from '../engine/run-requests';
-  import { HEAT_PER_MOVE } from '../engine/heat';
+  import { HEAT_PER_MOVE, postedFightRisk, type FightTier } from '../engine/heat';
   import { applyOnMoveMods } from '../engine/mods';
   import { MOD_DEFINITIONS } from '../engine/mods';
   import { BURNER_DEFINITIONS } from '../engine/burners';
@@ -45,6 +45,34 @@
   const heatPct = $derived(Math.min(100, (request.heat / allowance) * 100));
   const moveCost = $derived(request.freeMove ? 0 : applyOnMoveMods(player.ownedModIds, HEAT_PER_MOVE));
   const has = (id: BurnerId) => player.carriedBurnerIds.includes(id);
+  // A fight's posted Heat (session 63, the user: "be clearer about Heat"),
+  // on its card before you move: what a clean win, the worst win and a
+  // loss each add, and a warning when one would get you caught. For a
+  // gatekeeper the win's range is its toll, charged after the fight.
+  const TIERS: Partial<Record<string, FightTier>> = { regularFight: 'regular', eliteFight: 'elite', gatekeeperFight: 'gatekeeper' };
+  function fightHeat(type: string) {
+    const tier = TIERS[type];
+    if (!tier) return null;
+    const risk = postedFightRisk(tier, layer - 1);
+    const room = allowance - request.heat - moveCost;
+    const warn =
+      tier === 'gatekeeper'
+        ? risk.cleanWin >= room
+          ? 'even a clean win gets you caught'
+          : risk.worstWin >= room
+            ? `a close win gets you caught: room for +${fmt(room)}`
+            : null
+        : risk.worstWin >= room
+          ? 'a close win here gets you caught'
+          : risk.loss !== undefined && risk.loss >= room
+            ? 'losing here gets you caught'
+            : null;
+    const text =
+      tier === 'gatekeeper'
+        ? `Its toll after a win: +${fmt(risk.cleanWin)} to +${fmt(risk.worstWin)} Heat, more the closer it came to containing you.`
+        : `Heat: a win +${fmt(risk.cleanWin)} to +${fmt(risk.worstWin)}, a loss +${fmt(risk.loss ?? 0)}.`;
+    return { text, warn };
+  }
   const linked = $derived(
     new Set(
       graph.edges
@@ -60,7 +88,10 @@
   // subroutine, a handful of Mods.
   $effect(() => {
     if (graph.nodes.some((n) => n.type === 'eliteFight' && n.state === 'unresolved')) tips.offer('elite');
-    if ([...linked].some((id) => graph.nodes.find((n) => n.id === id)?.type === 'gatekeeperFight')) tips.offer('quarantine');
+    if ([...linked].some((id) => graph.nodes.find((n) => n.id === id)?.type === 'gatekeeperFight')) {
+      tips.offer('quarantine');
+      tips.offer('toll');
+    }
     if (heatPct >= 75) tips.offer('heat');
     if ([...player.installedLoadout, ...player.bench].some((p) => p.rank)) tips.offer('rank');
     if (player.ownedModIds.length >= 3) tips.offer('mods');
@@ -133,7 +164,9 @@
         <div class="about">Closed: a fight lost here shut it. Routes through it are cut.</div>
         <button class="move burner-use" onclick={() => onburner('skeleton-key', node.id)}>⏏︎ Reopen with Skeleton Key</button>
       {:else}
-        <div class="about">{node.state === 'inert' && node.type !== 'relay' ? 'Already resolved: passing through only costs the move.' : k.about}</div>
+        {@const fh = node.state === 'unresolved' ? fightHeat(node.type) : null}
+        <div class="about" class:short={fh}>{node.state === 'inert' && node.type !== 'relay' ? 'Already resolved: passing through only costs the move.' : k.about}</div>
+        {#if fh}<div class="fight-heat" class:warn={fh.warn}>{fh.warn ? `⚠ ${fh.warn}. ` : ''}{fh.text}</div>{/if}
         <button class="move" onclick={() => onmove(node.id)}>Move here · {moveCost ? `+${fmt(moveCost)} Heat` : 'free'}</button>
       {/if}
     {:else}
@@ -260,7 +293,7 @@
     /* A fixed height (the user's ask): selecting a node fills it in
        without resizing the map above. Sized for the tallest card (a node,
        its blurb, the move button); a long blurb is clamped. */
-    height: 132px;
+    height: 156px;
     flex: none;
     overflow: hidden;
     box-sizing: border-box;
@@ -281,6 +314,17 @@
   }
   .glyph {
     font-size: 15px;
+  }
+  .about.short {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  .fight-heat {
+    color: var(--warn);
+    line-height: 1.35;
+  }
+  .fight-heat.warn {
+    color: var(--danger);
   }
   .about {
     color: var(--text-dim);

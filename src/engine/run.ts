@@ -108,6 +108,10 @@ export interface RunPlayerState {
    * player state can plan against the live ceiling. Absent outside a run;
    * heat.ts's currentHeatCeiling falls back to layer 1's. */
   heatAllowance?: number;
+  /** The run's Heat as an encounter starts (session 63): recorded beside
+   * heatAllowance so a fight's screen can show Heat and what a win would
+   * cost. Read-only for display; the run's own `heat` is the truth. */
+  heat?: number;
   modRunState: Record<string, number>;
   /** Every Burner currently carried this run (Phase 5 Burners checkpoint
    * B) -- a capped, unordered inventory, no bench/installed split (see
@@ -899,6 +903,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
           enemy: gatekeeperEnemyForNode(node),
         });
       }
+      playerState = { ...playerState, heat };
       const outcome = yield* resolveEncounterRequests(
         node,
         rng,

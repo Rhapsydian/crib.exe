@@ -48,7 +48,8 @@ export const GUIDE_TEXT: Record<GuideStep, string> = {
   shop: 'The Shop: spend Data on subroutines, Mods (permanent effects for the run) and Burners. Tap one to read it, then buy. You can also sell subroutines you no longer use.',
   safehouse:
     "A Safehouse gives you one choice. Rest to lower your Heat, or Merge: spend your banked spare copies to rank subroutines up, each rank making a Hook stronger. You have a spare Port Scan banked.",
-  gatekeeperNear: "The gatekeeper is next. Beat it to breach the layer; lose and you're quarantined, which ends the run.",
+  gatekeeperNear:
+    "The gatekeeper is next. Beat it to breach the layer; lose and you're quarantined, which ends the run. Beating it also costs a Heat toll, bigger the closer it came to containing you: the Heat bar at the top of the fight shows it.",
   gatekeeper:
     "Gatekeepers bend a rule with their own Mod. Firewall Beta's, Rate Limit: you can't gain more than 8 Credit in a single turn. Tap its Mod (◆) to read it.",
 };
