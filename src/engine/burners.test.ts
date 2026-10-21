@@ -326,16 +326,29 @@ describe('Combat-reward acquisition -- BurnerAcquisitionStrategy', () => {
     for (const option of options) expect(BURNER_DEFINITIONS[option.id]).toBeDefined();
   });
 
-  it('a regular fight win offers a Burner reward (unlike Mods, not elite-only)', () => {
+  it('a win offers a Burner some of the time: a regular fight ~20%, an elite ~50% (session 63)', () => {
     const overwhelming = [
       { id: 'overwhelm', name: 'Overwhelm', archetype: 'exploit' as const, alpha: { verb: 'credit' as const, amount: 30 } },
     ];
-    const outcome = resolveEncounter(createNode('n', 'regularFight'), createRng(9), playerWith({ installedLoadout: overwhelming }));
-    expect(outcome.rewardTier).toBe('standard'); // confirms a real win, not a fluke
-    expect(outcome.burnerRewardOptions.length).toBeGreaterThan(0);
-    const picked = alwaysAcquireFirstBurner(outcome.burnerRewardOptions, playerWith({}));
-    expect(picked).toEqual(outcome.burnerRewardOptions[0]);
-  });
+    const rate = (type: 'regularFight' | 'eliteFight') => {
+      let offered = 0;
+      for (let seed = 0; seed < 60; seed++) {
+        const outcome = resolveEncounter(createNode('n', type), createRng(seed), playerWith({ installedLoadout: overwhelming }));
+        expect(outcome.rewardTier).not.toBe('none'); // a real win
+        if (outcome.burnerRewardOptions.length) {
+          offered++;
+          expect(alwaysAcquireFirstBurner(outcome.burnerRewardOptions, playerWith({}))).toEqual(outcome.burnerRewardOptions[0]);
+        }
+      }
+      return offered / 60;
+    };
+    const regular = rate('regularFight');
+    const elite = rate('eliteFight');
+    expect(regular).toBeGreaterThan(0.05);
+    expect(regular).toBeLessThan(0.4);
+    expect(elite).toBeGreaterThan(0.3);
+    expect(elite).toBeLessThan(0.7);
+  }, 60_000);
 });
 
 describe('Burners smoke test -- a full run with Burners carried and used across every context', () => {

@@ -289,6 +289,14 @@ Mods at the layer-4 gatekeeper ~12 (target ~10 by run's end).
 "install"/"to bench" become "swap in"/"swap to bench" and ask which
 subroutine on the other side to exchange (dashed targets, cancel).
 
+**Player-side content pass -- the user's notes (session 63):**
+- **Burners:** the economy ones (Data, Shop discounts) are the only ones
+  worth carrying; tune up the combat and map Burners so they're worth
+  using.
+- **Events** can be a source of rare, high-value Burners.
+- (Session 63 already cut Burner supply: gatekeepers, Caches and Shops
+  always offer one; elites 50%; regular fights 20%.)
+
 Open from session 62:
 - **Mods:** ~12 at the layer-4 gatekeeper (Shop 4.6, elites 4.1,
   gatekeepers 3.0); the user's target is ~10 by the end of a run. Watch

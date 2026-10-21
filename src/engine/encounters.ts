@@ -375,6 +375,10 @@ export interface EncounterOutcome {
  * tune): [subroutine, bundle, mod]. */
 const CACHE_ODDS: Record<number, [number, number, number]> = { 1: [0.6, 0.4, 0], 2: [0.6, 0.4, 0], 3: [0.55, 0.4, 0.05], 4: [0.55, 0.4, 0.05] };
 /** A Cache bundle's Data: an elite win's. */
+/** The chance a win offers a Burner (session 63, the user's calls): a
+ * regular fight 20%, an elite 50%; gatekeeper wins always do. */
+export const BURNER_FIGHT_CHANCE = { regular: 0.2, elite: 0.5 } as const;
+
 const CACHE_BUNDLE_DATA = dataForTier('better');
 
 type FightKind = 'regular' | 'elite' | 'gatekeeper';
@@ -604,7 +608,10 @@ function* resolveFight(
     const modRewardOptions = kind === 'regular' ? [] : drawModRewardOptions(playerState.classId, playerState.ownedModIds, rng);
     // Additive Burner-choice reward on EVERY fight tier including regular
     // (checkpoint F -- unlike modRewardOptions above, no kind gate).
-    const burnerRewardOptions = drawBurnerRewardOptions(rng);
+    // Session 63 (the user's call; was every fight): a gatekeeper win always
+    // offers a Burner, a regular or elite one BURNER_FIGHT_CHANCE of the
+    // time -- players collected far more than they used.
+    const burnerRewardOptions = kind === 'gatekeeper' || rng.next() < BURNER_FIGHT_CHANCE[kind] ? drawBurnerRewardOptions(rng) : [];
     const modified = applyOnWinEncounterResolvedMods(
       playerState.ownedModIds,
       dataForTier(rewardTier),
@@ -1204,7 +1211,8 @@ export function* resolveEncounterRequests(
       if (roll < subroutineOdds) {
         const rewardOptions = drawCacheRewardOptions(playerState.classId, rng);
         yield* ask({ kind: 'cacheOpened', contents: 'subroutine', data: 0, burners: [], fallback: () => null });
-        return { ...base, rewardTier: 'better', dataAwarded: 0, rewardOptions, modRewardOptions: [], burnerRewardOptions: [] };
+        // Every Cache holds a Burner (session 63): a choice alongside this one.
+        return { ...base, rewardTier: 'better', dataAwarded: 0, rewardOptions, modRewardOptions: [], burnerRewardOptions: drawBurnerRewardOptions(rng) };
       }
       if (roll < subroutineOdds + bundleOdds) {
         const burners = drawBurnerRewardOptions(rng).slice(0, 1 + rng.nextInt(2));
@@ -1213,7 +1221,7 @@ export function* resolveEncounterRequests(
       }
       const modRewardOptions = drawModRewardOptions(playerState.classId, playerState.ownedModIds, rng);
       yield* ask({ kind: 'cacheOpened', contents: 'mod', data: 0, burners: [], fallback: () => null });
-      return { ...base, rewardTier: 'none', dataAwarded: 0, rewardOptions: [], modRewardOptions, burnerRewardOptions: [] };
+      return { ...base, rewardTier: 'none', dataAwarded: 0, rewardOptions: [], modRewardOptions, burnerRewardOptions: drawBurnerRewardOptions(rng) };
     }
     case 'relay':
       throw new Error('resolveEncounter should never be called on a Relay node -- it has no encounter');

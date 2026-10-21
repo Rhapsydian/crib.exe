@@ -80,9 +80,10 @@ describe('SYNERGY_AWARE_PROFILE', () => {
     // wired to anything -- the failure mode this whole session exists to
     // prevent.
     const shared = { traversalStrategy: opportunisticTraversal, safehouseStrategy: opportunisticSafehouseStrategy };
-    const differing = ALL_CLASSES.filter((classId) => {
-      const floor = playRun({ seed: 2, classId, ...shared });
-      const synergy = playRun({ ...SYNERGY_AWARE_PROFILE, seed: 2, classId, ...shared });
+    // Three seeds (was one): any single seed can end the same by chance.
+    const differing = ALL_CLASSES.flatMap((classId) => [2, 3, 4].map((seed) => ({ classId, seed }))).filter(({ classId, seed }) => {
+      const floor = playRun({ seed, classId, ...shared });
+      const synergy = playRun({ ...SYNERGY_AWARE_PROFILE, seed, classId, ...shared });
       return (
         floor.outcome !== synergy.outcome ||
         floor.layersCompleted !== synergy.layersCompleted ||
