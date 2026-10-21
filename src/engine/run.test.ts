@@ -625,7 +625,8 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
   });
 
   it('"breached, then caught": a gatekeeper win whose toll maxes Heat ends the run, counted as a breach (R8)', () => {
-    const caught = runs('exploit-overclock', 60).filter((r) => r.outcome === 'breachedThenCaught');
+    // 150 runs (was 60): rarer since session 62's Shop prices.
+    const caught = runs('exploit-overclock', 150).filter((r) => r.outcome === 'breachedThenCaught');
     expect(caught.length).toBeGreaterThan(0);
     for (const result of caught) {
       const encounters = result.log.filter((e) => e.type === 'encounter');
@@ -642,5 +643,5 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
       // The breached layer counts.
       expect(result.layersCompleted).toBe(result.log.filter((e) => e.type === 'layerCleared').length);
     }
-  }, 30_000); // 60 full runs -- same explicit budget as this file's other run-level sweeps
+  }, 75_000); // 150 full runs
 });

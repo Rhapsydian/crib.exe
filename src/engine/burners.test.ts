@@ -27,6 +27,7 @@ import {
   burnerOfferingsForClass,
   buyCheapestAffordableBurner,
   rerollBurnerIfNothingAffordable,
+  REROLL_COST,
   neverActivateShopBurner,
   type ShopBurnerStrategy,
   type BurnerShopStrategy,
@@ -288,8 +289,8 @@ describe('Burner shop slate (buying) -- BurnerShopStrategy / BurnerShopRerollStr
   it('rerollBurnerIfNothingAffordable rerolls only when nothing is affordable and the reroll itself is', () => {
     const offerings = burnerOfferingsForClass('exploit-overclock', createRng(1), 0, 0);
     const cheapest = offerings.reduce((c, o) => (o.cost < c.cost ? o : c));
-    const brokeButCanReroll = playerWith({ data: 10 });
-    expect(rerollBurnerIfNothingAffordable(offerings, brokeButCanReroll)).toBe(cheapest.cost > 10);
+    const brokeButCanReroll = playerWith({ data: REROLL_COST });
+    expect(rerollBurnerIfNothingAffordable(offerings, brokeButCanReroll)).toBe(cheapest.cost > REROLL_COST);
     const rich = playerWith({ data: 1000 });
     expect(rerollBurnerIfNothingAffordable(offerings, rich)).toBe(false);
   });

@@ -306,7 +306,7 @@ describe('the Shop as one visit (checkpoint 4)', () => {
     const { createRng } = await import('./rng');
     const { synergyAwareShopStrategy, synergyAwareModShopStrategy, synergyAwareBurnerShopStrategy } = await import('./shop');
     const base = createInitialPlayerState('exploit-overclock');
-    const player = { ...base, data: 400, bench: [base.installedLoadout[2]], installedLoadout: base.installedLoadout.slice(0, 2), carriedBurnerIds: ['cold-wallet'] as BurnerId[] };
+    const player = { ...base, data: 1000, bench: [base.installedLoadout[2]], installedLoadout: base.installedLoadout.slice(0, 2), carriedBurnerIds: ['cold-wallet'] as BurnerId[] };
     const visit = resolveEncounterRequests(
       createNode('s', 'shop'), createRng(5), player, undefined, synergyAwareShopStrategy, undefined, undefined, undefined, 1, 0, undefined,
       synergyAwareModShopStrategy, undefined, undefined, synergyAwareBurnerShopStrategy, undefined, undefined, undefined, 0, undefined, undefined, undefined, true,

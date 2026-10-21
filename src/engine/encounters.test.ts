@@ -423,13 +423,14 @@ describe('resolveEncounter -- non-fight nodes', () => {
     expect(outcome.shopPurchases[0].cost).toBeLessThanOrEqual(1000);
   });
 
-  it('rerolls once when the first slate has nothing affordable but the reroll itself is', () => {
-    // Exactly REROLL_COST and nothing else -- can afford the reroll but
-    // not even a common (20) either before or after it.
+  it('rerolls a slate only when nothing on it is affordable', () => {
+    // Session 62: with exactly REROLL_COST (25), a common subroutine (20)
+    // is affordable, so that slate isn't rerolled; no Mod is (50+), so
+    // the Mod slate is -- which spends the Data.
     const player: RunPlayerState = { ...OVERWHELMING_PLAYER, data: REROLL_COST };
     const outcome = resolveEncounter(createNode('n', 'shop'), createRng(1), player);
-    expect(outcome.rerollCost).toBe(REROLL_COST);
-    expect(outcome.shopPurchases).toEqual([]);
+    expect(outcome.rerollCost).toBe(0);
+    expect(outcome.modRerollCost).toBe(REROLL_COST);
   });
 
   it("the post-reroll purchase decision correctly declines when only the pre-reroll balance would have afforded something", () => {

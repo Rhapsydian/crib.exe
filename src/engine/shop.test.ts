@@ -106,7 +106,7 @@ describe('shopOfferingsForClass', () => {
 });
 
 describe('rerollIfNothingAffordable', () => {
-  const offerings: ShopOffering[] = [{ piece: { id: 'a', name: 'a', archetype: 'exploit', alpha: { verb: 'credit', amount: 1 } }, cost: 20 }];
+  const offerings: ShopOffering[] = [{ piece: { id: 'a', name: 'a', archetype: 'exploit', alpha: { verb: 'credit', amount: 1 } }, cost: REROLL_COST + 10 }];
 
   it('rerolls when nothing in the slate is affordable but the reroll itself is', () => {
     expect(rerollIfNothingAffordable(offerings, playerState(REROLL_COST))).toBe(true);

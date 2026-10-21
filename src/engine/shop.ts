@@ -113,12 +113,16 @@ export function shopOfferingsForClass(
 // commons/1 uncommon/1 wildcard), its own separate reroll.
 // ---------------------------------------------------------------------
 
-// TBD/playtesting, same relative scaling as SHOP_COST_BY_RARITY.
+// Doubled in session 62 (the user's call, was 25/70/175): with Shops
+// spent freely, players reached layer 4 with ~20 Mods.
 const MOD_SHOP_COST_BY_RARITY: Record<Rarity, number> = {
-  common: 25,
-  uncommon: 70,
-  rare: 175,
+  common: 50,
+  uncommon: 140,
+  rare: 350,
 };
+/** Commons on a Mod slate: 1 (session 62, the user's call; was 3, like
+ * the other slates), so a Mod slate is 1 common, 1 uncommon, 1 wildcard. */
+const MOD_SHOP_COMMON_SLOTS = 1;
 
 export interface ModOffering {
   mod: ModDefinition;
@@ -148,7 +152,7 @@ export function modOfferingsForClass(
   rarityFloor?: Rarity,
 ): ModOffering[] {
   const byRarity = modPoolByRarity(classId, ownedModIds);
-  const commons = sampleDistinct(byRarity.common, SHOP_COMMON_SLOTS + extraCommons, rng);
+  const commons = sampleDistinct(byRarity.common, MOD_SHOP_COMMON_SLOTS + extraCommons, rng);
   const uncommon = sampleDistinct(byRarity.uncommon, 1 + extraUncommons, rng);
 
   // See shopOfferingsForClass's own comment -- same Insider Tip treatment.
@@ -306,7 +310,7 @@ export const buyCheapestAffordable: ShopStrategy = (offerings, playerState) => {
 // Marginal -- well under even a common's cost (20), so it's a cheap
 // hedge against a bad roll, not a real purchase in its own right.
 // TBD/playtesting.
-export const REROLL_COST = 10;
+export const REROLL_COST = 25; // session 62 (the user's call; was 10)
 
 /** Decides whether to spend REROLL_COST to reroll the current slate
  * once before buying -- resolveEncounter enforces the "once" itself (it
