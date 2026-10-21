@@ -167,34 +167,40 @@ describe('LiveRun', () => {
     expect(run.pause.request.layer).toBe(4);
     expect(run.evasion?.headStart).toBe(run.pause.request.headStart);
     run.answer(null);
+    // Read through a function: run.answer() moves the pause on, which
+    // TypeScript's narrowing above can't see.
+    const pause = () => run.pause;
     // Your decisions, answered with the AI's own generator (as a person,
     // never drawing from the game's); a save mid-way resumes in the same spot.
     const where = (r: LiveRun) => JSON.stringify({ pause: r.pause?.kind, request: r.evasion?.frame?.request.kind, view: r.evasion?.frame?.request.view.scores, hand: r.evasion?.frame?.request.context && 'hand' in r.evasion.frame.request.context ? r.evasion.frame.request.context.hand : null });
     let resumed = 0;
-    for (let k = 0; k < 200 && run.pause?.kind === 'evasion' && run.pause.request.kind === 'evasion'; k++) {
+    for (let k = 0; k < 200 && pause()?.kind === 'evasion'; k++) {
+      const p = pause();
+      if (p?.kind !== 'evasion' || p.request.kind !== 'evasion') break;
       if (k === 5) {
         const back = LiveRun.resume(JSON.parse(JSON.stringify(run.save)));
         expect(back).not.toBeNull();
         expect(where(back!)).toBe(where(run));
         resumed++;
       }
-      const r = run.pause.request.request;
+      const r = p.request.request;
       const rng = createRng(1000 + k);
       run.answer(r.kind === 'discard' ? discard({ ...r.context, rng }) : peg({ ...r.context, rng }));
     }
     expect(resumed).toBe(1);
     // Its result, then the run's end: escaped on layer 4 wins it.
-    expect(run.pause?.kind).toBe('evasion');
+    expect(pause()?.kind).toBe('evasion');
     const escaped = run.evasion!.escaped;
     expect(run.evasion!.result).not.toBeNull();
     run.answer(null);
-    for (; i < 20000 && run.pause && run.pause.kind !== 'over'; i++) {
-      const pause = run.pause;
-      if (pause.kind === 'fight') answerFight(i);
-      else run.answer((pause as { request: { fallback: () => unknown } }).request.fallback());
+    for (; i < 20000 && pause() && pause()!.kind !== 'over'; i++) {
+      const p = pause()!;
+      if (p.kind === 'fight') answerFight(i);
+      else run.answer((p as { request: { fallback: () => unknown } }).request.fallback());
     }
-    expect(run.pause?.kind).toBe('over');
-    if (run.pause?.kind === 'over') expect(run.pause.result.outcome).toBe(escaped ? 'victory' : 'breachedThenCaught');
+    const end = pause();
+    expect(end?.kind).toBe('over');
+    if (end?.kind === 'over') expect(end.result.outcome).toBe(escaped ? 'victory' : 'breachedThenCaught');
   }, 120_000);
 
   it('a save that no longer fits is refused', () => {
