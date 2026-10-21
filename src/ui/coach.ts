@@ -33,7 +33,7 @@ export function phaseIntro(phase: CoachPhase, ownCrib: boolean, first: boolean):
   const whose = ownCrib ? 'You deal, so the crib is yours: cards you throw there score for you.' : "They deal, so the crib is theirs: don't throw them points.";
   if (phase === 'discard') {
     return first
-      ? 'Each hand you keep 4 cards and put 2 in the crib. Keep cards that score together -- fifteens (cards adding to 15), pairs, runs. The crib belongs to the dealer and is counted for them at the end of the hand.'
+      ? 'Each hand you keep 4 cards and put 2 in the crib. Keep cards that score together: fifteens (cards adding to 15), pairs, runs. The crib belongs to the dealer and is counted for them at the end of the hand.'
       : `Discard: keep the 4 that score best. ${whose}`;
   }
   if (phase === 'peg') {
@@ -42,7 +42,7 @@ export function phaseIntro(phase: CoachPhase, ownCrib: boolean, first: boolean):
       : 'Pegging: make 15, 31, pairs and runs; keep the count away from easy scores for them.';
   }
   return first
-    ? 'The show: each hand is counted with the cut card -- fifteens, pairs, runs, flushes, and nobs (the Jack of the cut\'s suit). Non-dealer counts first, then dealer, then the crib.'
+    ? 'The show: each hand is counted with the cut card: fifteens, pairs, runs, flushes, and nobs (the Jack of the cut\'s suit). Non-dealer counts first, then dealer, then the crib.'
     : 'The show: hands count with the cut card, non-dealer first.';
 }
 
@@ -299,7 +299,7 @@ export function pegReview(spot: PegSpot, played: Card): { same: boolean; text: s
   // and when it still risks something, that it's the smaller risk.
   let why: string;
   if (theirs.pts > yours.pts) why = `I would have played ${label(coach)}: ${scored(theirs)}${risky(theirs) ? `, even though ${theirs.threat}` : ''}.`;
-  else if (risky(theirs) && risky(yours)) why = `I would have played ${label(coach)} instead: it gives them less to score off -- its main danger is ${theirs.threatWho} making ${theirs.threatWhat}, against ${yours.threatWho} making ${yours.threatWhat} off yours.`;
+  else if (risky(theirs) && risky(yours)) why = `I would have played ${label(coach)} instead: it gives them less to score off: its main danger is ${theirs.threatWho} making ${theirs.threatWhat}, against ${yours.threatWho} making ${yours.threatWhat} off yours.`;
   else if (risky(theirs)) why = `I would have played ${label(coach)} instead: it gives them less to score off overall, though ${theirs.threat}.`;
   else why = `I would have played ${label(coach)} instead: it gives them almost nothing to score off.`;
   return { same, text: `${you} ${why}` };
