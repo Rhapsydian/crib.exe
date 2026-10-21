@@ -73,7 +73,6 @@
 <div class="map-screen">
 <aside class="drawer" class:open={showLoadout}>
   <button class="close" onclick={() => (showLoadout = false)} aria-label="close">✕</button>
-  <div class="panel-title">LOADOUT</div>
   <LoadoutEditor {player} {onarrange} />
   {#if player.ownedModIds.length}
     <div class="caption">MODS</div>
@@ -334,12 +333,6 @@
   .drawer.open {
     transform: none;
   }
-  .panel-title {
-    display: none;
-    font-size: 10px;
-    color: var(--text-dim);
-    letter-spacing: 0.06em;
-  }
   /* Desktop: the loadout stands open on the left, as in combat. */
   @media (min-width: 900px) {
     .drawer {
@@ -356,9 +349,6 @@
     .loadout-button,
     .scrim {
       display: none;
-    }
-    .panel-title {
-      display: block;
     }
     /* A matching empty column on the right, so the map itself sits in
        the middle of the screen (the user's ask). It gives way first
