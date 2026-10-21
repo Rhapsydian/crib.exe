@@ -8,14 +8,19 @@
 
   // The loadout, editable between fights (milestone 3 checkpoint 3, M2).
   // Tap a subroutine to select it and read it; then move it up or down,
-  // bench it, or install it. (Tapping one on the other side used to swap
-  // the two; removed in session 61 -- the user found it a pain.)
+  // bench it, or install it. When the other side is full, "install" or
+  // "to bench" starts a swap instead (session 62): pick the subroutine on
+  // the other side to exchange it with. (A plain tap on the other side
+  // used to swap the two; removed in session 61 -- the user found it a
+  // pain -- so a swap is now always this explicit step.)
   // Every change goes to the engine at once (`onarrange`), which checks it
   // and hands back the new state.
   let { player, onarrange }: { player: RunPlayerState; onarrange: (installed: string[], bench: string[]) => void } = $props();
 
   type Zone = 'loadout' | 'bench';
   let selected = $state<{ zone: Zone; id: string } | null>(null);
+  /** Picking the other side's subroutine to swap the selected one with. */
+  let swapping = $state(false);
 
   const installed = $derived(player.installedLoadout.map((p) => p.id));
   const bench = $derived(player.bench.map((p) => p.id));
@@ -35,8 +40,24 @@
   }
 
   function tap(zone: Zone, id: string) {
-    selected = selected?.id === id ? null : { zone, id };
+    const s = selected;
+    if (swapping && s && zone !== s.zone && canSwapWith(zone, id)) {
+      // The incoming subroutine takes the outgoing one's place.
+      const inId = zone === 'bench' ? id : s.id;
+      const outId = zone === 'bench' ? s.id : id;
+      send(
+        installed.map((x) => (x === outId ? inId : x)),
+        bench.map((x) => (x === inId ? outId : x)),
+      );
+      swapping = false;
+      selected = null;
+      return;
+    }
+    swapping = false;
+    selected = s?.id === id ? null : { zone, id };
   }
+  /** A swap target: on the other side, and (in the loadout) not Mod-granted. */
+  const canSwapWith = (zone: Zone, id: string) => Boolean(selected && zone !== selected.zone && !(zone === 'loadout' && locked(id)));
 
   function shift(delta: number) {
     if (!selected) return;
@@ -49,6 +70,7 @@
   }
   function toBench() {
     if (!selected) return;
+    if (bench.length >= BENCH_CAP) return void (swapping = true);
     send(
       installed.filter((x) => x !== selected!.id),
       [...bench, selected.id],
@@ -56,6 +78,7 @@
   }
   function install() {
     if (!selected) return;
+    if (capped >= INSTALLED_SLOT_CAP) return void (swapping = true);
     send(
       [...installed, selected.id],
       bench.filter((x) => x !== selected!.id),
@@ -66,7 +89,7 @@
 <div class="editor">
   <div class="caption">LOADOUT · {capped}/{INSTALLED_SLOT_CAP} · fires top → bottom</div>
   {#each player.installedLoadout as p, i (p.id)}
-    <button class="piece" class:sel={selected?.id === p.id} onclick={() => tap('loadout', p.id)}>
+    <button class="piece" class:sel={selected?.id === p.id} class:target={swapping && canSwapWith('loadout', p.id)} onclick={() => tap('loadout', p.id)}>
       <span class="n">{i + 1}</span>
       <SuitIcon archetype={p.archetype} size={14} />
       {p.name}{#if p.rank}&nbsp;<span class="rank">{rankMark(p.rank)}</span>{/if}
@@ -76,7 +99,7 @@
   {/each}
   <div class="caption">BENCH · {player.bench.length}/{BENCH_CAP} · not firing</div>
   {#each player.bench as p (p.id)}
-    <button class="piece benched" class:sel={selected?.id === p.id} onclick={() => tap('bench', p.id)}>
+    <button class="piece benched" class:sel={selected?.id === p.id} class:target={swapping && canSwapWith('bench', p.id)} onclick={() => tap('bench', p.id)}>
       <SuitIcon archetype={p.archetype} size={14} />
       {p.name}{#if p.rank}&nbsp;<span class="rank">{rankMark(p.rank)}</span>{/if}
       {#if player.material[p.id]}<span class="banked" title="banked copies, for Merging at a Safehouse">+{player.material[p.id]} banked</span>{/if}
@@ -93,13 +116,16 @@
         {#if selected.zone === 'loadout'}
           <button onclick={() => shift(-1)} disabled={installed.indexOf(selected.id) === 0}>▲ up</button>
           <button onclick={() => shift(1)} disabled={installed.indexOf(selected.id) === installed.length - 1}>▼ down</button>
-          <button onclick={toBench} disabled={locked(selected.id) || bench.length >= BENCH_CAP}>to bench</button>
+          <button onclick={toBench} disabled={locked(selected.id) || swapping}>{bench.length >= BENCH_CAP ? 'swap to bench' : 'to bench'}</button>
         {:else}
-          <button onclick={install} disabled={capped >= INSTALLED_SLOT_CAP}>install</button>
+          <button onclick={install} disabled={swapping}>{capped >= INSTALLED_SLOT_CAP ? 'swap in' : 'install'}</button>
         {/if}
+        {#if swapping}<button onclick={() => (swapping = false)}>cancel</button>{/if}
       </div>
       <div class="hint">
-        {#if selected.zone === 'bench' && capped >= INSTALLED_SLOT_CAP}Your loadout is full: bench a subroutine first.{/if}
+        {#if swapping}
+          <span class="ask">{selected.zone === 'bench' ? 'Your loadout is full: tap the loadout subroutine to swap out.' : 'Your bench is full: tap the bench subroutine to swap in.'}</span>
+        {/if}
         {#if locked(selected.id)}A Mod-granted subroutine can't leave the loadout.{/if}
       </div>
     </div>
@@ -107,6 +133,13 @@
 </div>
 
 <style>
+  .piece.target {
+    border-color: var(--accent);
+    border-style: dashed;
+  }
+  .ask {
+    color: var(--accent);
+  }
   .rank {
     font-size: 10px;
     font-weight: 700;

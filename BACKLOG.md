@@ -301,11 +301,9 @@ the economy unused. Plan:
 Also: `gatekeeper-check.ts` simulates runs without SYNERGY_AWARE_PROFILE
 while `run-outcomes.ts` uses it -- align them.
 
-**Loadout swap (UX, the user's note):** tap-to-swap was removed in
-session 61 (a pain), but a full loadout or bench now needs two steps to
-exchange a subroutine. Idea: keep the install and bench buttons active
-even when the destination is full, and prompt for which subroutine to
-swap out.
+~~**Loadout swap (UX)**~~ -- done in session 62: on a full side,
+"install"/"to bench" become "swap in"/"swap to bench" and ask which
+subroutine on the other side to exchange (dashed targets, cancel).
 
 Open from session 61:
 - **Not yet seen in the browser:** the Shop's Sell section, the
