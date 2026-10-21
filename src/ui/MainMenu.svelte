@@ -15,6 +15,7 @@
     oncribbage,
     onresumecribbage,
     onrun,
+    ontutorial,
     resumeFailed = null,
   }: {
     runSave: { className: string; layer: number } | null;
@@ -24,6 +25,7 @@
     oncribbage: (difficulty: Difficulty, coach: boolean, hints: boolean) => void;
     onresumecribbage: () => void;
     onrun: () => void;
+    ontutorial: () => void;
     resumeFailed?: string | null;
   } = $props();
 
@@ -61,6 +63,13 @@
        Cribbage. -->
   <section>
     <div class="section-title">CRIB.EXE · THE ROGUELITE</div>
+    <!-- The tutorial (session 63, T1-T2): the first-visit nudge points
+         here; it asks whether you know Cribbage before it starts. -->
+    <button class="entry learn" class:nudge={firstVisit} onclick={ontutorial}>
+      {#if firstVisit}<span class="badge">new here? start here</span>{/if}
+      <b>Tutorial</b>
+      <span>A short guided run that explains the game as you play.</span>
+    </button>
     <button class="entry run" onclick={onrun}>
       <b>Start a Run</b>
       <span>{runSave ? `Saved run: ${runSave.className}, layer ${runSave.layer} -- resume it on the next screen.` : 'Break into a network, four layers deep. Every fight is Cribbage.'}</span>
@@ -70,8 +79,7 @@
   <section>
     <div class="section-title">CRIBBAGE</div>
     <div class="entry-group">
-      <button class="entry learn" class:nudge={firstVisit} onclick={onlearn}>
-        {#if firstVisit}<span class="badge">new to Cribbage? start here</span>{/if}
+      <button class="entry learn" onclick={onlearn}>
         <b>Learn to play</b>
         <span>Short lessons on the card game, then games with a coach.</span>
       </button>

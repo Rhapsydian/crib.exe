@@ -4,7 +4,13 @@
 
   // The end of a run (milestone 3 checkpoint 2): how it ended, how deep
   // you got, and what you were running.
-  let { result, className, onagain }: { result: RunResult; className: string; onagain: () => void } = $props();
+  // The guided first run (session 63) ends on its own screen: done, or
+  // try again, and then the way into a real run.
+  let { result, className, onagain, tutorial = false }: { result: RunResult; className: string; onagain: () => void; tutorial?: boolean } = $props();
+  const TUTORIAL_ENDINGS = {
+    won: { title: '>> TUTORIAL COMPLETE', line: "You breached your first layer. A real run is four layers deep, and you choose your class. You're ready.", won: true },
+    lost: { title: '>> TUTORIAL OVER', line: "Not this time. Every run is different: try the tutorial again, or jump into a real run.", won: false },
+  };
 
   const ENDINGS: Record<RunResult['outcome'], { title: string; line: string; won: boolean }> = {
     victory: { title: '>> ROOT ACCESS', line: 'You breached all four layers. The network is yours.', won: true },
@@ -13,7 +19,7 @@
     breachedThenCaught: { title: '>> BREACHED, THEN CAUGHT', line: 'You beat the gatekeeper, but its toll maxed your Heat. The layer counts as breached.', won: false },
     noRouteRemains: { title: '>> NO ROUTE', line: 'Closed nodes cut off every path to the gatekeeper.', won: false },
   };
-  const end = $derived(ENDINGS[result.outcome]);
+  const end = $derived(tutorial ? TUTORIAL_ENDINGS[result.outcome === 'victory' ? 'won' : 'lost'] : ENDINGS[result.outcome]);
   const fightsWon = $derived(
     result.log.filter((e) => e.type === 'encounter' && ['regularFight', 'eliteFight', 'gatekeeperFight'].includes(e.nodeType) && e.outcome.newState === 'inert').length,
   );
@@ -23,7 +29,7 @@
   <div class="title">{end.title}</div>
   <div class="line">{end.line}</div>
   <div class="stats">
-    <div><b>{result.layersCompleted}</b>/4 layers breached</div>
+    <div><b>{result.layersCompleted}</b>/{tutorial ? 1 : 4} layer{tutorial ? '' : 's'} breached</div>
     <div><b>{fightsWon}</b> fights won</div>
     <div><b>{result.playerState.data}</b> Data left</div>
   </div>
@@ -31,7 +37,7 @@
   {#each result.playerState.installedLoadout as p, i (i)}
     <div class="piece"><SuitIcon archetype={p.archetype} size={14} /> {p.name}</div>
   {/each}
-  <button class="again" onclick={onagain}>▶ new contract</button>
+  <button class="again" onclick={onagain}>{tutorial ? '▶ start a real run' : '▶ new contract'}</button>
 </div>
 
 <style>

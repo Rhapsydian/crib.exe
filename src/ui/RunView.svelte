@@ -47,6 +47,7 @@
     onmove={(id) => run.answer(id)}
     onarrange={(installed, bench) => run.answer({ arrange: { installed, bench } })}
     onburner={(burnerId, targetNodeId) => run.answer({ useBurner: { burnerId, targetNodeId } })}
+    tutorial={run.tutorial}
   />
 {:else if run.pause?.kind === 'reward'}
   <RewardScreen request={run.pause.request} gained={run.pause.gained} onpick={(choice) => run.answer(choice)} />
@@ -69,7 +70,7 @@
     <LiveFightView fight={run.fight} actions={[{ label: 'continue ▸', onclick: () => run.answer(null) }]} />
   {/key}
 {:else if run.pause?.kind === 'over'}
-  <RunEnd result={run.pause.result} className={run.className} {onagain} />
+  <RunEnd result={run.pause.result} className={run.className} {onagain} tutorial={run.tutorial} />
 {/if}
 
 {#if banner}

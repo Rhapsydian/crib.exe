@@ -1,4 +1,5 @@
 import type { CombatAnswer, CombatResult } from '../engine/combat';
+import { TUTORIAL_OPTIONS } from '../engine/tutorial';
 import type { EnemyDefinition } from '../engine/enemies';
 import { CLASS_DEFINITIONS, type ClassId } from '../engine/classes';
 import { SYNERGY_AWARE_PROFILE } from '../engine/profiles';
@@ -89,10 +90,15 @@ export class LiveRun {
   /** Called after each answer, to write the save. */
   onsave: (() => void) | null = null;
 
-  constructor(classId: ClassId, seed: number) {
+  /** The guided first run (session 63): its fixed class, seed and layer
+   * (engine/tutorial.ts), the coach, and its own ending. */
+  readonly tutorial: boolean;
+
+  constructor(classId: ClassId, seed: number, tutorial = false) {
     this.classId = classId;
     this.className = CLASS_DEFINITIONS[classId].name;
     this.seed = seed;
+    this.tutorial = tutorial;
     this.#run = runRequests({
       ...SYNERGY_AWARE_PROFILE,
       seed,
@@ -100,6 +106,7 @@ export class LiveRun {
       traversalStrategy: opportunisticTraversal,
       playerSkill: 0.85,
       subroutineAcquirer: acquireSubroutine,
+      ...(tutorial ? TUTORIAL_OPTIONS : {}),
     });
     this.#advance(this.#run.next());
   }
@@ -107,14 +114,21 @@ export class LiveRun {
   /** A run rebuilt from a save: its answers replayed into a fresh run.
    * Null if any answer no longer fits (the game changed under the save). */
   static resume(save: RunSave): LiveRun | null {
-    const run = new LiveRun(save.classId, save.seed);
+    const run = new LiveRun(save.classId, save.seed, save.tutorial ?? false);
     for (const saved of save.answers) if (!run.#replay(saved)) return null;
     return run;
   }
 
   /** The save as it stands. */
   get save(): RunSave {
-    return { version: SAVE_VERSION, classId: this.classId, seed: this.seed, answers: this.answers, summary: { className: this.className, layer: this.#layer, savedAt: Date.now() } };
+    return {
+      version: SAVE_VERSION,
+      classId: this.classId,
+      seed: this.seed,
+      tutorial: this.tutorial || undefined,
+      answers: this.answers,
+      summary: { className: this.tutorial ? `the tutorial (${this.className})` : this.className, layer: this.#layer, savedAt: Date.now() },
+    };
   }
 
   /** A Safehouse choice: Rest, or Merge `targetId`. */

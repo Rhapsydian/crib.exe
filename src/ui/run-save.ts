@@ -30,6 +30,8 @@ export interface RunSave {
   version: number;
   classId: ClassId;
   seed: number;
+  /** The guided first run (session 63). */
+  tutorial?: boolean;
   answers: SavedAnswer[];
   /** For the resume button: class name, layer, when. */
   summary: { className: string; layer: number; savedAt: number };

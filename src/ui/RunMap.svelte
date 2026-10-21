@@ -26,6 +26,7 @@
     onmove,
     onarrange,
     onburner,
+    tutorial = false,
   }: {
     request: Extract<RunRequest, { kind: 'move' }>;
     className: string;
@@ -33,6 +34,7 @@
     onmove: (id: string) => void;
     onarrange: (installed: string[], bench: string[]) => void;
     onburner: (burnerId: BurnerId, targetNodeId?: string) => void;
+    tutorial?: boolean;
   } = $props();
 
   const graph = $derived(request.graph);
@@ -100,7 +102,7 @@
 </aside>
 <div class="run-map">
   <div class="top">
-    <span class="layer">LAYER {layer}/4</span>
+    <span class="layer">{tutorial ? 'TUTORIAL' : `LAYER ${layer}/4`}</span>
     <span class="cls">{className}</span>
     <button class="loadout-button" onclick={() => (showLoadout = true)}>◀ loadout</button>
   </div>

@@ -486,7 +486,17 @@ export interface RunOptions {
   /** Defaults to Breacher, the designed starting/onboarding class
    * (session 8) -- see classes.ts's DEFAULT_CLASS_ID. */
   classId?: ClassId;
-  layerNodeCounts?: [number, number, number, number];
+  /** Nodes per layer; also how many layers the run has (a shorter list is
+   * a shorter run -- the guided run is one layer, session 63). */
+  layerNodeCounts?: readonly number[];
+  /** Hand-made layers (session 63, the guided run): where a layer has one
+   * here, it replaces the generated map. A gatekeeper node that already
+   * names its enemy (`assignedEnemyId`) keeps it. */
+  layerGraphs?: readonly (LayerGraph | undefined)[];
+  /** The player's opening Data and banked Merge copies, by subroutine id
+   * (session 63, the guided run). */
+  startingData?: number;
+  startingMaterial?: Record<string, number>;
   traversalStrategy?: TraversalStrategy;
   /** Test-only escape hatch: replaces the class's real starting loadout.
    * A real class kit's Breach/Containment convergence time is sharply
@@ -677,6 +687,9 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
     seed,
     classId = DEFAULT_CLASS_ID,
     layerNodeCounts = DEFAULT_LAYER_NODE_COUNTS,
+    layerGraphs,
+    startingData,
+    startingMaterial,
     traversalStrategy = beelineToGatekeeper,
     installedLoadoutOverride,
     ownedModIdsOverride,
@@ -739,10 +752,16 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
     if (burner) playerState = acquireBurner(playerState, burner);
   }
 
+  if (startingData !== undefined) playerState = { ...playerState, data: startingData };
+  if (startingMaterial) playerState = { ...playerState, material: { ...playerState.material, ...startingMaterial } };
+
   const finish = (outcome: RunOutcome): RunResult => ({ outcome, layersCompleted, finalHeat: heat, log, playerState });
 
   for (let layerIndex = 0; layerIndex < layerNodeCounts.length; layerIndex++) {
-    let graph = generateLayer({ rng, nodeCount: layerNodeCounts[layerIndex], layer: (layerIndex + 1) as LayerNumber });
+    const authored = layerGraphs?.[layerIndex];
+    let graph = authored
+      ? { ...authored, nodes: authored.nodes.map((n) => ({ ...n })), edges: [...authored.edges] }
+      : generateLayer({ rng, nodeCount: layerNodeCounts[layerIndex], layer: (layerIndex + 1) as LayerNumber });
     // Fixes this layer's gatekeeper identity for the whole run (Phase 5
     // checkpoint C) -- kept as a separate post-processing step rather
     // than a generateLayer option, so map-gen.ts itself stays
@@ -764,7 +783,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       }
       excludedThisLayer = [...(excludedGatekeeperIds ?? []), ...stable.filter((id) => id !== override.enemyId)];
     }
-    graph = assignGatekeeperEnemy(graph, layerIndex + 1, rng, excludedThisLayer);
+    if (!graph.nodes.find((n) => n.id === graph.gatekeeperNodeId)?.assignedEnemyId) graph = assignGatekeeperEnemy(graph, layerIndex + 1, rng, excludedThisLayer);
     log.push({ type: 'layerGenerated', layerIndex, nodeCount: graph.nodes.length });
     let position: RunPosition = { layerIndex, nodeId: graph.entryNodeId };
     let layerCleared = false;

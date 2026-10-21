@@ -15,6 +15,8 @@
   import { clearSave, loadSave, writeSave } from './ui/run-save';
   import MainMenu from './ui/MainMenu.svelte';
   import TipBanner from './ui/TipBanner.svelte';
+  import TutorialStart from './ui/TutorialStart.svelte';
+  import { TUTORIAL_CLASS, TUTORIAL_SEED } from './engine/tutorial';
   import CribbageScreen from './ui/CribbageScreen.svelte';
   import { LiveCribbage, clearCribbageSave, loadCribbageSave, writeCribbageSave } from './ui/live-cribbage.svelte';
   import type { Difficulty } from './engine/basic-cribbage';
@@ -82,7 +84,7 @@
 
   // The front door (milestone 4, V5): the main menu, then a mode. A run
   // keeps its class screen; a Cribbage game saves itself like a run.
-  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson'>('menu');
+  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson' | 'tutorial'>('menu');
   // Learn to play (checkpoint 5): the hub, a lesson, and progress.
   let lessonIndex = $state(0);
   let lessonsDone = $state.raw(loadProgress());
@@ -191,7 +193,18 @@
         markVisited();
         screen = 'classes';
       }}
+      ontutorial={() => {
+        markVisited();
+        screen = 'tutorial';
+      }}
       resumeFailed={menuWarning}
+    />
+  {:else if screen === 'tutorial'}
+    <TutorialStart
+      resumable={Boolean(saved?.tutorial)}
+      onstart={() => (saved?.tutorial ? resume() : begin(new LiveRun(TUTORIAL_CLASS, TUTORIAL_SEED, true)))}
+      onlearn={() => (screen = 'learn')}
+      onmenu={toMenu}
     />
   {:else}
     <ClassSelect
