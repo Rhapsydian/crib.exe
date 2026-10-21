@@ -156,7 +156,7 @@
 
 {#if route === 'run'}
   {#if run}
-    <RunView {run} onagain={backToClasses} onretry={() => begin(new LiveRun(TUTORIAL_CLASS, TUTORIAL_SEED, true))} />
+    <RunView {run} onagain={backToClasses} onretry={() => begin(new LiveRun(TUTORIAL_CLASS, TUTORIAL_SEED, true))} onmenu={toMenu} />
   {:else if screen === 'cribbage' && cribbage}
     {#key cribbage}
       <CribbageScreen

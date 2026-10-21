@@ -11,8 +11,9 @@
     className,
     onagain,
     onretry,
+    onmenu,
     tutorial = false,
-  }: { result: RunResult; className: string; onagain: () => void; onretry?: () => void; tutorial?: boolean } = $props();
+  }: { result: RunResult; className: string; onagain: () => void; onretry?: () => void; onmenu?: () => void; tutorial?: boolean } = $props();
   const TUTORIAL_ENDINGS = {
     won: { title: '>> TUTORIAL COMPLETE', line: "You breached your first layer. A real run is four layers deep, and you choose your class. You're ready.", won: true },
     lost: { title: '>> TUTORIAL OVER', line: "Not this time. Try the tutorial again, or jump into a real run.", won: false },
@@ -36,7 +37,7 @@
   <div class="line">{end.line}</div>
   <div class="stats">
     <div><b>{result.layersCompleted}</b>/{tutorial ? 1 : 4} layer{tutorial ? '' : 's'} breached</div>
-    <div><b>{fightsWon}</b> fights won</div>
+    <div><b>{fightsWon}</b> fight{fightsWon === 1 ? '' : 's'} won</div>
     <div><b>{result.playerState.data}</b> Data left</div>
   </div>
   <div class="caption">{className.toUpperCase()} · FINAL LOADOUT</div>
@@ -45,6 +46,7 @@
   {/each}
   {#if tutorial && !end.won && onretry}<button class="again" onclick={onretry}>↻ try the tutorial again</button>{/if}
   <button class="again" class:quiet={tutorial && !end.won && onretry} onclick={onagain}>{tutorial ? '▶ start a real run' : '▶ new contract'}</button>
+  {#if onmenu}<button class="menu" onclick={onmenu}>◀ menu</button>{/if}
 </div>
 
 <style>
@@ -105,6 +107,15 @@
     color: var(--accent);
     font-weight: 700;
     font-size: 13px;
+  }
+  .menu {
+    align-self: center;
+    margin-top: 6px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    cursor: pointer;
   }
   .again + .again {
     margin-top: 8px;

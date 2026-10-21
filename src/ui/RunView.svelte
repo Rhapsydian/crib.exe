@@ -17,7 +17,7 @@
   // A run in progress (milestone 3 checkpoints 2-3): the map, a fight, a
   // reward, a full bench, or the end, whichever the run is paused on. A
   // banner marks each new layer.
-  let { run, onagain, onretry }: { run: LiveRun; onagain: () => void; onretry?: () => void } = $props();
+  let { run, onagain, onretry, onmenu }: { run: LiveRun; onagain: () => void; onretry?: () => void; onmenu?: () => void } = $props();
 
   // First-time tips (T6): an Event, a Cache.
   $effect(() => {
@@ -112,7 +112,7 @@
     <LiveFightView fight={run.fight} actions={[{ label: 'continue ▸', onclick: () => run.answer(null) }]} />
   {/key}
 {:else if run.pause?.kind === 'over'}
-  <RunEnd result={run.pause.result} className={run.className} {onagain} {onretry} tutorial={run.tutorial} />
+  <RunEnd result={run.pause.result} className={run.className} {onagain} {onretry} {onmenu} tutorial={run.tutorial} />
 {/if}
 
 {#if banner}
