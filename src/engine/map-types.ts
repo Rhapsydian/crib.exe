@@ -28,6 +28,10 @@ export interface MapNode {
    * pick randomly at resolveFight time instead (encounters.ts) -- no
    * persisted assignment needed. */
   assignedEnemyId?: string;
+  /** A hand-made gatekeeper node's own strength multiplier on its
+   * enemy's magnitudeScaler (session 63: the tutorial's gentler Firewall
+   * Prime). Generated layers never set it. */
+  gatekeeperScale?: number;
   /** Where the node is drawn, 0..1 across and down the map's padded area
    * (map-gen.ts's MAP_VIEW): the generator lays a layer out, then links
    * by those positions, so the screen draws what was generated. */

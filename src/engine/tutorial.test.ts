@@ -3,6 +3,7 @@ import { playRun, runRequests, opportunisticTraversal } from './run';
 import { SYNERGY_AWARE_PROFILE } from './profiles';
 import { TUTORIAL_LAYER, TUTORIAL_OPTIONS } from './tutorial';
 import { isReachable } from './map-types';
+import { ENEMY_ROSTER, enemyById } from './enemies';
 
 // Session 63, docs/tutorial-design.md T4-T5: the guided run's frame.
 describe('the guided first run', () => {
@@ -23,7 +24,14 @@ describe('the guided first run', () => {
   it('walks the outline: fight, fight, Shop, Safehouse, gatekeeper, in that order', () => {
     expect(TUTORIAL_LAYER.nodes.map((n) => n.type)).toEqual(['relay', 'regularFight', 'regularFight', 'shop', 'safehouse', 'gatekeeperFight']);
     expect(isReachable(TUTORIAL_LAYER, TUTORIAL_LAYER.entryNodeId, TUTORIAL_LAYER.gatekeeperNodeId)).toBe(true);
-    expect(TUTORIAL_LAYER.nodes.find((n) => n.id === TUTORIAL_LAYER.gatekeeperNodeId)?.assignedEnemyId).toBe('firewall-prime');
+    expect(TUTORIAL_LAYER.nodes.find((n) => n.id === TUTORIAL_LAYER.gatekeeperNodeId)?.assignedEnemyId).toBe('firewall-beta');
+  });
+
+  it('meets Firewall Beta, a gentler Firewall Prime that real runs never draw', () => {
+    expect(enemyById('firewall-beta')?.name).toBe('Firewall Beta');
+    expect(enemyById('firewall-beta')?.mods).toEqual(['rate-limit']);
+    expect(ENEMY_ROSTER.some((e) => e.id === 'firewall-beta')).toBe(false);
+    expect(enemyById('firewall-beta')!.magnitudeScaler!).toBeLessThan(enemyById('firewall-prime')!.magnitudeScaler!);
   });
 
   it('offers no rewards after its gatekeeper, since the run ends there', () => {

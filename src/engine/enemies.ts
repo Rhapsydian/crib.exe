@@ -48,7 +48,9 @@ export type EnemyId =
   | 'adaptive-threat'
   | 'total-compromise'
   | 'null-session'
-  | 'root-authority';
+  | 'root-authority'
+  // The tutorial's own, never in a real run (session 63)
+  | 'firewall-beta';
 
 /** Legacy: the session-27 passive registry's id type. Superseded in step
  * 3 by enemy Mods (E4) -- on gatekeepers, a bespoke gatekeeper Mod
@@ -169,6 +171,25 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [...AUTHORED_REGULARS, ...AUTHORE
   }),
 );
 
+/** Firewall Beta's strength against Firewall Prime's. With Rate Limit's
+ * cap of 8, the tutorial's gatekeeper is passed by 92% / 96% / 99% of
+ * runs at skill 0.3 / 0.6 / 0.85 (Firewall Prime as it was: 36% / 54% /
+ * 70%; scripts/tutorial-gatekeeper.ts, 300 deals). */
+export const TUTORIAL_GATEKEEPER_SCALE = 0.8;
+
+/** The tutorial's gatekeeper (session 63): Firewall Prime turned down,
+ * with Rate Limit for No Way In. Kept out of ENEMY_ROSTER so a real run
+ * never draws it; `enemyById` finds either. */
+export const TUTORIAL_GATEKEEPER: EnemyDefinition = (() => {
+  const prime = ENEMY_ROSTER.find((e) => e.id === 'firewall-prime')!;
+  return { ...prime, id: 'firewall-beta', name: 'Firewall Beta', mods: ['rate-limit'], magnitudeScaler: (prime.magnitudeScaler ?? 1) * TUTORIAL_GATEKEEPER_SCALE };
+})();
+
+/** Any enemy by id: the roster, or the tutorial's gatekeeper. */
+export function enemyById(id: string): EnemyDefinition | undefined {
+  return id === TUTORIAL_GATEKEEPER.id ? TUTORIAL_GATEKEEPER : ENEMY_ROSTER.find((e) => e.id === id);
+}
+
 /** The combat options every enemy fight passes for side 1: its
  * gatekeeper Mods (E4). Class Mods are the player's alone (session 60).
  * One helper so encounters.ts and the diagnostics can't drift apart. */
@@ -248,9 +269,9 @@ export function assignGatekeeperEnemy(graph: LayerGraph, layerIndex: number, rng
  * gatekeeperFight node must have gone through assignGatekeeperEnemy at
  * generation time) or the id doesn't match anything in the roster. */
 export function gatekeeperEnemyForNode(node: MapNode): EnemyDefinition {
-  const found = ENEMY_ROSTER.find((e) => e.id === node.assignedEnemyId);
+  const found = node.assignedEnemyId === undefined ? undefined : enemyById(node.assignedEnemyId);
   if (!found) throw new Error(`enemies.ts: gatekeeper node "${node.id}" has no valid assignedEnemyId ("${node.assignedEnemyId}")`);
-  return found;
+  return node.gatekeeperScale === undefined ? found : { ...found, magnitudeScaler: (found.magnitudeScaler ?? 1) * node.gatekeeperScale };
 }
 
 // Skill-dial formula (DESIGN.md: "tier is the primary axis, layer is a

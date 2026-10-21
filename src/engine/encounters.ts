@@ -19,7 +19,7 @@ import {
   gaugeThresholdFor,
   winThresholdFor,
   scaledEnemyLoadout,
-  ENEMY_ROSTER,
+  enemyById,
   type EnemyDefinition,
   enemyCombatOptions,
   type EnemyId,
@@ -395,7 +395,7 @@ type FightKind = 'regular' | 'elite' | 'gatekeeper';
  * matchup can't depend on the random tier/layer pick landing on one. */
 function enemyForFight(kind: FightKind, node: MapNode, layerIndex: number, fightNumber: number, rng: Rng, enemyIdOverride?: EnemyId): EnemyDefinition {
   if (enemyIdOverride) {
-    const found = ENEMY_ROSTER.find((e) => e.id === enemyIdOverride);
+    const found = enemyById(enemyIdOverride);
     if (!found) throw new Error(`encounters.ts: no enemy with id "${enemyIdOverride}"`);
     return found;
   }

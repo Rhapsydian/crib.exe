@@ -34,8 +34,9 @@ const node = (id: string, type: NodeType, x: number, y: number, extra: Partial<M
 });
 
 /** Bottom to top, one route, zig-zagging so the map reads as a climb. The
- * gatekeeper is Firewall Prime, whose Mod (no more than 6 Credit a turn)
- * is a clear rule-bend for the coach to point out. */
+ * gatekeeper is Firewall Beta (enemies.ts), a gentler Firewall Prime whose
+ * Mod (no more than 8 Credit a turn) is a clear rule-bend for the coach to
+ * point out. */
 export const TUTORIAL_LAYER: LayerGraph = {
   nodes: [
     node('t-start', 'relay', 0.5, 0.94),
@@ -43,7 +44,7 @@ export const TUTORIAL_LAYER: LayerGraph = {
     node('t-fight-2', 'regularFight', 0.66, 0.62),
     node('t-shop', 'shop', 0.36, 0.46),
     node('t-safehouse', 'safehouse', 0.64, 0.3),
-    node('t-gatekeeper', 'gatekeeperFight', 0.5, 0.1, { assignedEnemyId: 'firewall-prime' }),
+    node('t-gatekeeper', 'gatekeeperFight', 0.5, 0.1, { assignedEnemyId: 'firewall-beta' }),
   ],
   edges: [
     { a: 't-start', b: 't-fight-1' },

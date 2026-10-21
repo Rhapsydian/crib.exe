@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Alpha, Archetype, Beta, SubroutineDefinition } from './subroutine-types';
 import { applyOccurrence, clearHandKnowledge, createCombatState, creditWinGauge, fireTurn, resolveEffect, type CombatState } from './resolve';
-import { NO_WAY_IN_CAP, SPOTLIGHT_HEAT, ZERO_SUM_SHARE, ZERO_SUM_THRESHOLD, ADAPTATION_EVERY, ADAPTATION_STEP, ESCALATION_MAX, POWER_SIPHON_GROWTH, ROLLBACK_TO, type GatekeeperModId } from './gatekeeper-mods';
+import { NO_WAY_IN_CAP, RATE_LIMIT_CAP, SPOTLIGHT_HEAT, ZERO_SUM_SHARE, ZERO_SUM_THRESHOLD, ADAPTATION_EVERY, ADAPTATION_STEP, ESCALATION_MAX, POWER_SIPHON_GROWTH, ROLLBACK_TO, type GatekeeperModId } from './gatekeeper-mods';
 
 // Step 3, E4: the eight gatekeeper Mods. Side 1 carries the Mod (a
 // gatekeeper); side 0 is the player it acts on, unless noted.
@@ -25,6 +25,14 @@ describe('gatekeeper Mods (step 3, E4)', () => {
     // A new turn of the player's resets the cap.
     s = fireTurn(s, 0, { isDealer: false }).combatState;
     expect(progress(s, 0)).toBe(NO_WAY_IN_CAP + 1);
+  });
+
+  it("Rate Limit (the tutorial's) is No Way In with a looser cap", () => {
+    let s = withMods([credit('a')], [credit('g')], ['rate-limit']);
+    s = creditWinGauge(s, 0, 5);
+    s = creditWinGauge(s, 0, 5);
+    expect(progress(s, 0)).toBe(RATE_LIMIT_CAP);
+    expect(RATE_LIMIT_CAP).toBeGreaterThan(NO_WAY_IN_CAP);
   });
 
   it('Zero-Sum feeds the owner a share of what the player gains past the threshold', () => {

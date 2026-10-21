@@ -1,6 +1,6 @@
 import type { RunResult } from '../engine/run';
 import type { NodeType } from '../engine/map-types';
-import { ENEMY_ROSTER } from '../engine/enemies';
+import { enemyById } from '../engine/enemies';
 import { layerHeatAllowance } from '../engine/heat';
 
 /**
@@ -36,7 +36,7 @@ export interface RunSummary {
 }
 
 const FIGHTS: NodeType[] = ['regularFight', 'eliteFight', 'gatekeeperFight'];
-const enemyName = (id: string) => ENEMY_ROSTER.find((e) => e.id === id)?.name ?? id;
+const enemyName = (id: string) => enemyById(id)?.name ?? id;
 
 export function summarizeRun(result: RunResult): RunSummary {
   const rows = new Map<number, LayerRow>();

@@ -7,6 +7,7 @@ import {
   ADAPTATION_EVERY,
   ADAPTATION_STEP,
   NO_WAY_IN_CAP,
+  RATE_LIMIT_CAP,
   SPOTLIGHT_HEAT,
   ZERO_SUM_SHARE,
   ZERO_SUM_THRESHOLD,
@@ -304,9 +305,11 @@ export function creditWinGauge(combatState: CombatState, side: PlayerIndex, amou
   }
   const gained = scratch[GAINED_THIS_TURN] ?? 0;
   // No Way In: a per-turn cap on what `side` can gain.
-  if (hasSideMod(state, opponent, 'no-way-in')) {
-    const capped = Math.min(amount, Math.max(0, NO_WAY_IN_CAP - gained));
-    if (capped < amount) noteMod(state, opponent, gk('no-way-in'));
+  // Rate Limit is the same rule with a looser cap (the tutorial's).
+  for (const [id, cap] of [['no-way-in', NO_WAY_IN_CAP], ['rate-limit', RATE_LIMIT_CAP]] as const) {
+    if (!hasSideMod(state, opponent, id)) continue;
+    const capped = Math.min(amount, Math.max(0, cap - gained));
+    if (capped < amount) noteMod(state, opponent, gk(id));
     amount = capped;
   }
   if (amount <= 0) return state;
