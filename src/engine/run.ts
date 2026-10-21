@@ -931,7 +931,37 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       // genuine signed delta -- a future negative-cost Event choice
       // should still apply correctly, not get silently dropped.
       if (outcome.dataAwarded !== 0) playerState = { ...playerState, data: playerState.data + outcome.dataAwarded };
-      if (outcome.rewardOptions.length > 0) {
+      // An elite win (session 62): one choice, a subroutine or a Mod. The
+      // simulated player takes a subroutine while it has a free loadout
+      // slot, else the Mod -- build the loadout early, collect Mods later.
+      // (If either list is empty, the rewards below apply one at a time.)
+      const oneChoice = Boolean(outcome.eliteChoice) && outcome.rewardOptions.length > 0 && outcome.modRewardOptions.length > 0;
+      if (oneChoice) {
+        const offeredTo = playerState;
+        const subroutines = outcome.rewardOptions;
+        const mods = outcome.modRewardOptions;
+        const pickedEither = yield* ask({
+          kind: 'reward',
+          reward: 'eliteChoice',
+          options: [...subroutines, ...mods],
+          subroutines,
+          mods,
+          playerState: offeredTo,
+          fallback: () => {
+            const used = offeredTo.installedLoadout.filter((p) => !offeredTo.grantedByMod[p.id]).length;
+            return used < installedSlotCap ? acquisitionStrategy(subroutines, offeredTo) : modAcquisitionStrategy(mods, offeredTo);
+          },
+        });
+        const took = pickedEither === null ? null : mods.includes(pickedEither as ModDefinition) ? 'mod' : 'subroutine';
+        if (took === 'mod') playerState = acquireMod(playerState, pickedEither as ModDefinition);
+        if (took === 'subroutine') {
+          const picked = pickedEither as SubroutineDefinition;
+          playerState = subroutineAcquirer(playerState, picked, installedSlotCap);
+          playerState = applyOnSubroutineAcquiredMods(playerState, picked);
+          playerState = yield* settleBench(playerState, benchCap);
+        }
+      }
+      if (!oneChoice && outcome.rewardOptions.length > 0) {
         const offeredTo = playerState;
         const picked = yield* ask({ kind: 'reward', reward: 'subroutine', options: outcome.rewardOptions, playerState: offeredTo, fallback: () => acquisitionStrategy(outcome.rewardOptions, offeredTo) });
         if (picked) {
@@ -944,7 +974,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       }
       // Mod-choice reward (checkpoint G) -- additive, elite/gatekeeper
       // wins only, never competing with the subroutine reward above.
-      if (outcome.modRewardOptions.length > 0) {
+      if (!oneChoice && outcome.modRewardOptions.length > 0) {
         const offeredTo = playerState;
         const pickedMod = yield* ask({ kind: 'reward', reward: 'mod', options: outcome.modRewardOptions, playerState: offeredTo, fallback: () => modAcquisitionStrategy(outcome.modRewardOptions, offeredTo) });
         if (pickedMod) playerState = acquireMod(playerState, pickedMod);

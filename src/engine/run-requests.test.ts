@@ -14,6 +14,32 @@ describe('runRequests', () => {
     for (const seed of [3, 17]) expect(JSON.stringify(driveWithFallbacks(runRequests(options(seed))))).toBe(JSON.stringify(playRun(options(seed))));
   });
 
+  it('an elite win is one choice, a subroutine (uncommon or better) or a Mod, never both (session 62)', async () => {
+    const { rarityOf } = await import('./rewards');
+    let seen = 0;
+    for (let seed = 0; seed < 12 && seen < 3; seed++) {
+      const run = runRequests(options(seed));
+      let step = run.next();
+      let lastWasElite = false;
+      while (!step.done) {
+        const r = step.value;
+        if (r.kind === 'reward' && r.reward === 'eliteChoice') {
+          seen++;
+          expect(r.options).toEqual([...r.subroutines, ...r.mods]);
+          for (const p of r.subroutines) expect(rarityOf(p.id)).not.toBe('common');
+          lastWasElite = true;
+        } else if (r.kind === 'reward' && (r.reward === 'subroutine' || r.reward === 'mod')) {
+          // No separate subroutine/Mod reward right after an elite's choice.
+          expect(lastWasElite).toBe(false);
+        } else if (r.kind !== 'reward') {
+          lastWasElite = false;
+        }
+        step = run.next(r.fallback());
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+  }, 60_000);
+
   it('pauses at every kind of decision, and only for the player inside fights', () => {
     const kinds = new Set<string>();
     let enemyRequests = 0;
@@ -271,7 +297,7 @@ describe('the Shop as one visit (checkpoint 4)', () => {
     next({ kind: 'sell', item: 'burner', id: 'cold-wallet' });
     next({ kind: 'sell', item: 'burner', id: 'emp-charge' }); // not carried: ignored
     const proceeds = subroutineSellPrice(benched.id) + burnerSellPrice(BURNER_DEFINITIONS['cold-wallet']);
-    expect(burnerSellPrice(BURNER_DEFINITIONS['cold-wallet'])).toBe(50);
+    expect(burnerSellPrice(BURNER_DEFINITIONS['cold-wallet'])).toBe(30);
     expect(shop().data).toBe(proceeds);
     expect(shop().sold).toEqual({ subroutine: [benched.id], copy: [], burner: ['cold-wallet'] });
     next({ kind: 'leave' });

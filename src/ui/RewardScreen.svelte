@@ -20,23 +20,27 @@
     onpick,
   }: { request: Extract<RunRequest, { kind: 'reward' }>; gained?: number; onpick: (choice: unknown) => void } = $props();
 
-  type Option = { key: string; name: string; tag: string; lines: string[]; note?: string; icon?: SubroutineDefinition['archetype']; value: unknown };
+  type Option = { key: string; kind: 'subroutine' | 'mod' | 'burner'; name: string; tag: string; lines: string[]; note?: string; icon?: SubroutineDefinition['archetype']; value: unknown };
   const player = $derived(request.playerState);
+  const subOption = (p: SubroutineDefinition): Option => ({
+    key: p.id,
+    kind: 'subroutine',
+    name: p.name,
+    tag: rarityOf(p.id),
+    lines: pieceLines(p),
+    note: acquireNote(p, player, INSTALLED_SLOT_CAP, BENCH_CAP),
+    icon: p.archetype,
+    value: p,
+  });
+  const modOption = (m: ModDefinition): Option => ({ key: m.id, kind: 'mod', name: m.name, tag: `${m.rarity} Mod`, lines: [modText(m.id)], value: m });
   const options = $derived.by((): Option[] => {
-    if (request.reward === 'subroutine')
-      return (request.options as SubroutineDefinition[]).map((p) => ({
-        key: p.id,
-        name: p.name,
-        tag: rarityOf(p.id),
-        lines: pieceLines(p),
-        note: acquireNote(p, player, INSTALLED_SLOT_CAP, BENCH_CAP),
-        icon: p.archetype,
-        value: p,
-      }));
-    if (request.reward === 'mod')
-      return (request.options as ModDefinition[]).map((m) => ({ key: m.id, name: m.name, tag: `${m.rarity} Mod`, lines: [modText(m.id)], value: m }));
+    // An elite win (session 62): one choice among subroutines and Mods.
+    if (request.reward === 'eliteChoice') return [...request.subroutines.map(subOption), ...request.mods.map(modOption)];
+    if (request.reward === 'subroutine') return (request.options as SubroutineDefinition[]).map(subOption);
+    if (request.reward === 'mod') return (request.options as ModDefinition[]).map(modOption);
     return (request.options as BurnerDefinition[]).map((b) => ({
       key: b.id,
+      kind: 'burner' as const,
       name: b.name,
       tag: `${b.rarity} Burner · ${burnerWhere(b)}`,
       lines: [burnerText(b)],
@@ -44,11 +48,12 @@
       value: b,
     }));
   });
-  const TITLE = { subroutine: 'CHOOSE A SUBROUTINE', mod: 'CHOOSE A MOD', burner: 'CHOOSE A BURNER' } as const;
+  const TITLE = { subroutine: 'CHOOSE A SUBROUTINE', mod: 'CHOOSE A MOD', burner: 'CHOOSE A BURNER', eliteChoice: 'CHOOSE ONE' } as const;
   const BLURB = {
-    subroutine: 'A new piece for your loadout.',
+    subroutine: 'A new subroutine for your loadout.',
     mod: 'A permanent effect for the rest of the run.',
     burner: 'A one-use item.',
+    eliteChoice: 'A subroutine for your loadout, or a Mod for the rest of the run: one, not both.',
   } as const;
   let selected = $state<string | null>(null);
   $effect(() => {
@@ -65,10 +70,13 @@
   </div>
   <div class="blurb">{BLURB[request.reward]}</div>
   <div class="options">
-    {#each options as o (o.key)}
-      <button class="option" class:sel={selected === o.key} class:mod={request.reward === 'mod'} class:burner={request.reward === 'burner'} onclick={() => (selected === o.key ? onpick(o.value) : (selected = o.key))}>
+    {#each options as o, i (o.key)}
+      {#if request.reward === 'eliteChoice' && (i === 0 || options[i - 1].kind !== o.kind)}
+        <div class="section">{o.kind === 'mod' ? 'OR A MOD' : 'A SUBROUTINE'}</div>
+      {/if}
+      <button class="option" class:sel={selected === o.key} class:mod={o.kind === 'mod'} class:burner={o.kind === 'burner'} onclick={() => (selected === o.key ? onpick(o.value) : (selected = o.key))}>
         <div class="name">
-          {#if o.icon}<SuitIcon archetype={o.icon} size={16} />{:else if request.reward === 'mod'}<span class="glyph mod-c">◆</span>{:else}<span class="glyph burner-c">⏏︎</span>{/if}
+          {#if o.icon}<SuitIcon archetype={o.icon} size={16} />{:else if o.kind === 'mod'}<span class="glyph mod-c">◆</span>{:else}<span class="glyph burner-c">⏏︎</span>{/if}
           <b>{o.name}</b>
           <span class="tag">{o.tag}</span>
         </div>
@@ -84,6 +92,12 @@
 </div>
 
 <style>
+  .section {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+    margin-top: 6px;
+  }
   .reward {
     max-width: 560px;
     margin: 0 auto;

@@ -9,9 +9,11 @@ import type { RewardTier } from './rewards';
  * Phase 4 plan called for.
  */
 
+// Cut ~25% in session 62 (was 20 / 35): with Shops spent freely, the
+// simulated player still reached layer 4 holding ~160 Data unspent.
 const DATA_BY_TIER: Record<'standard' | 'better', number> = {
-  standard: 20, // TBD/playtesting
-  better: 35, // TBD/playtesting -- more Data for a harder, better-rewarded fight
+  standard: 15,
+  better: 26, // more Data for a harder, better-rewarded fight
 };
 
 export function dataForTier(tier: RewardTier): number {

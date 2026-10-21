@@ -32,7 +32,7 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     name: 'Cold Wallet',
     rarity: 'uncommon',
     contexts: [],
-    sellValue: 50,
+    sellValue: 30,
   },
   'flash-drive': {
     id: 'flash-drive',

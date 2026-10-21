@@ -305,6 +305,9 @@ export interface EncounterOutcome {
    * carried Burner ids, applied by playRun before the purchases (whose
    * Data the sales may have paid for). */
   shopSales?: { subroutine: string[]; copy: string[]; burner: BurnerId[] };
+  /** The subroutine and Mod rewards are one choice, not two (elite wins,
+   * session 62). */
+  eliteChoice?: boolean;
   /** REROLL_COST if a Shop visit spent Data to reroll its slate once,
    * else 0 -- checkpoint F follow-up. Same split as the other
    * playerState-affecting fields: this just records the cost incurred;
@@ -605,7 +608,9 @@ function* resolveFight(
     const modified = applyOnWinEncounterResolvedMods(
       playerState.ownedModIds,
       dataForTier(rewardTier),
-      drawRewardOptions(playerState.classId, rewardTier, rng),
+      // An elite's subroutines are uncommon or better (session 62): it
+      // now offers a subroutine OR a Mod, so its subroutines must compete.
+      kind === 'elite' ? drawCacheRewardOptions(playerState.classId, rng) : drawRewardOptions(playerState.classId, rewardTier, rng),
       kind,
       rng,
       (r) => drawUpgradedRewardOptions(playerState.classId, r),
@@ -630,6 +635,9 @@ function* resolveFight(
       shopPurchases: [],
       rerollCost: 0,
       modRewardOptions,
+      // Session 62 (the user's call): an elite win offers a subroutine OR
+      // a Mod, one choice, not both.
+      eliteChoice: kind === 'elite' ? true : undefined,
       modShopPurchases: [],
       modRerollCost: 0,
       burnersUsedThisCombat: result.burnersUsedThisCombat,
