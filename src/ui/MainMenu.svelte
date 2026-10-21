@@ -72,7 +72,7 @@
       {/each}
     </div>
   </div>
-  <div class="sub">a hacking roguelite where every fight is a game of Cribbage</div>
+  <div class="sub">A hacking roguelite where every fight is a game of Cribbage</div>
 
   {#if resumeFailed}<div class="warn">{resumeFailed}</div>{/if}
 
