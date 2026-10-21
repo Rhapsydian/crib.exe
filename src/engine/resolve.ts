@@ -259,7 +259,7 @@ export function clearHandKnowledge(combatState: CombatState): CombatState {
       knownCrib: undefined,
       forcedDiscardPair: undefined,
       handPoints: 0,
-      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0 },
+      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0 },
     };
   }) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
@@ -482,8 +482,12 @@ export const BRIDGE_EXPLOIT_DAEMON_SUPPRESS = 1;
 /** Daemon + Overclock (K3): each fifteen you score grows each Daemon
  * piece by this share of one fire's growth (still up to its cap). */
 export const BRIDGE_DAEMON_OVERCLOCK_GROWTH = 0.5;
+/** ...and, on the first fifteen each hand, gives each Overclock piece's
+ * Hook this many extra counts. */
+export const BRIDGE_DAEMON_OVERCLOCK_COUNTS = 1;
+const DAEMON_OVERCLOCK_THIS_HAND = 'bridge-daemon-overclock:hand';
 /** Exploit + Honeypot: each pair you score banks Ward. */
-export const BRIDGE_EXPLOIT_HONEYPOT_WARD = 1;
+export const BRIDGE_EXPLOIT_HONEYPOT_WARD = 1.5;
 /** Daemon + Honeypot (K4): each pair you score Suppresses this much and
  * banks this much Ward. */
 export const BRIDGE_DAEMON_HONEYPOT_SUPPRESS = 1;
@@ -526,7 +530,17 @@ function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOc
   }
   if (bridge === 'daemon-overclock' && fifteen) {
     noteMod(combatState, side, bridgeMod(bridge));
-    return growDaemons(combatState, side, BRIDGE_DAEMON_OVERCLOCK_GROWTH, 'daemon');
+    // Both halves (session 62, the user's call): Daemons grow on every
+    // fifteen, and on the first fifteen each hand every Overclock
+    // subroutine's Hook gets one extra count -- so the Mod pays whether
+    // Eidolon builds Daemons or an Overclock chain. (On every fifteen, the
+    // counts took Eidolon from 12% to 33%: a limit, not a fraction.)
+    let state = growDaemons(combatState, side, BRIDGE_DAEMON_OVERCLOCK_GROWTH, 'daemon');
+    if (state.sides[side].passiveState[DAEMON_OVERCLOCK_THIS_HAND]) return state;
+    state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [DAEMON_OVERCLOCK_THIS_HAND]: 1 } });
+    return mapLoadout(state, side, (entry) =>
+      entry.definition.archetype === 'overclock' ? addCharges(entry.state, entry.definition, BRIDGE_DAEMON_OVERCLOCK_COUNTS) : entry.state,
+    );
   }
   if (bridge === 'daemon-honeypot' && pair) {
     noteMod(combatState, side, bridgeMod(bridge));

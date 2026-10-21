@@ -5,6 +5,7 @@ import {
   BRIDGE_DAEMON_HONEYPOT_WARD,
   BRIDGE_DAEMON_OVERCLOCK_GROWTH,
   BRIDGE_EXPLOIT_DAEMON_SUPPRESS,
+  BRIDGE_EXPLOIT_HONEYPOT_WARD,
   BRIDGE_EXPLOIT_OVERCLOCK_HASTE,
   BRIDGE_OVERCLOCK_HONEYPOT_HASTE,
   BRIDGE_OVERCLOCK_HONEYPOT_WARD,
@@ -334,6 +335,17 @@ describe('class bridge passives (step 3, C1)', () => {
     expect(applyOccurrence(s, pair).sides[1].winGauge.progress).toBe(5);
   });
 
+  it("Daemon + Overclock: the first fifteen each hand also gives each Overclock piece's Hook an extra count (session 62)", () => {
+    const oc = piece('oc', { verb: 'credit', amount: 1 }, { source: 'cards', category: 'pair', shape: 'graded', cap: 3, effect: { verb: 'enhance', amount: 1 } }, {}, 'overclock');
+    const ex = piece('ex', { verb: 'credit', amount: 1 }, { source: 'cards', category: 'pair', shape: 'graded', cap: 3, effect: { verb: 'enhance', amount: 1 } }, {}, 'exploit');
+    const after = applyOccurrence(state([oc, ex], 'daemon-overclock'), fifteen);
+    expect(after.sides[0].loadout[0].state.charges).toBe(1);
+    expect(after.sides[0].loadout[1].state.charges).toBe(0);
+    // Once a hand: a second fifteen adds no count, until the next deal.
+    expect(applyOccurrence(after, fifteen).sides[0].loadout[0].state.charges).toBe(1);
+    expect(applyOccurrence(clearHandKnowledge(after), fifteen).sides[0].loadout[0].state.charges).toBe(2);
+  });
+
   it('Daemon + Overclock: a fifteen you score grows each Daemon piece, up to its cap', () => {
     const daemon = piece('dm', { verb: 'credit', amount: 1, growth: 0.5, growthCap: 0.6 }, undefined, {}, 'daemon');
     const s = state([daemon, credit('oc', 'overclock')], 'daemon-overclock');
@@ -346,7 +358,7 @@ describe('class bridge passives (step 3, C1)', () => {
 
   it('Exploit + Honeypot: a pair you score banks Ward', () => {
     const after = applyOccurrence(state([credit('a')], 'exploit-honeypot'), pair);
-    expect(after.sides[0].wardShield).toBe(1);
+    expect(after.sides[0].wardShield).toBe(BRIDGE_EXPLOIT_HONEYPOT_WARD);
   });
 
   it('Daemon + Honeypot: a pair you score Suppresses and banks Ward', () => {

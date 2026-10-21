@@ -175,6 +175,17 @@ their write-ups are archived in `docs/roadmap-history.md`).
 
 ## Banked design ideas (not scheduled)
 
+- **Daily Runs** (the user, session 62). The date is hashed into a seed:
+  everyone gets the same run that day, with a randomly chosen class and
+  one or more **daily-only Mods** that bend the rules in unusual ways
+  (e.g. something happens whenever a card of a given rank or suit is
+  played). Stretch goal: players upload a successful run's log (the same
+  replay-of-answers the save system stores) to a **daily leaderboard**,
+  which verifies it by replaying it. Notes: the replay is deterministic
+  from seed + answers, so verification is re-running it server-side;
+  saves currently break across game updates, so a daily run would need
+  the game version pinned in the log (a run verifies against the build
+  it was played on).
 - **Higher tiers of Root's `forceDiscardCard`** (session 24) — force the
   selection of *both* discarded cards rather than one, leaving the
   target's best companion intact. Content authoring, not a new engine
