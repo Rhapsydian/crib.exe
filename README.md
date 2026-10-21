@@ -3,17 +3,7 @@
 A browser-based, hacking-themed roguelite with a Slay the Spire-style run
 structure, where combat is resolved by playing real Cribbage.
 
-You play a run through a four-layer network, fighting named enemies at
-map nodes. Each fight is a genuine game of Cribbage — but the points you
-score also fill an **initiative gauge**, and every time yours crosses its
-threshold you take a turn: every **subroutine** in your loadout fires its
-**alpha** effect, top to bottom, and each one whose criteria are met also
-applies its **beta** — a bigger hit, an extra effect, or (for some) a
-fire the instant its criteria land, outside the turn. Subroutines push
-your **Breach** gauge toward the win, push the enemy's **Containment**
-gauge back, shield, speed up your turns, or manipulate the cards. Play
-the cards well and you act more often; build and order the loadout well
-and each action does more.
+crib.exe is a hacking-themed roguelite where every fight is a game of Cribbage. You play a hacker breaking through a network four layers deep. Each layer is a branching map of fights, elites, Shops, Safehouses, Caches and Events, guarded by a gatekeeper, and every move adds Heat: max it out and you're traced. In combat, the points you score in Cribbage (pegging, hands and crib) fill your initiative, and each time it fills you take a turn. Your loadout of subroutines then fires top to bottom. Each subroutine runs its Process, a steady effect such as Credit to build your Breach toward a win, Suppress to slow the enemy, or Ward to shield you. Its Hook adds a stronger bonus when a condition is met, like scoring fifteens, pairs or runs. The enemy's own subroutines build Containment against you. Between fights you shape a build from new subroutines, permanent Mods and one-use Burners, and at Safehouses you either rest to lower Heat or merge spare copies to rank subroutines up. There are six classes, each with its own Mod, and you win by breaching all four layers.
 
 Four archetypes, each bound to one of the four suits: **Exploit** (spike /
 control), **Daemon** (ramp / healing), **Overclock** (tempo /
@@ -130,6 +120,17 @@ by class (~16% average)**, and the gatekeepers, elites and three class
 Mods (Breacher, Eidolon, Operator) were tuned to it. The loadout editor
 can swap a subroutine in or out when a side is full.
 
+Session 63 made the game ready for outside testers. Burners are scarcer
+(gatekeepers, Caches and Shops always offer one; elites 50%, fights
+20%). A **tutorial**: a guided first run on a hand-made single layer
+(Blackhat, a fixed seed), with a coach that explains each new thing the
+first time it happens (including the Safehouse's Rest or Merge), an
+optional Cribbage coach in its fights, and a "new to Cribbage" detour to
+the lessons. **First-time tips** in real runs (shown once each, with a
+reset on the menu). A fuller **end-of-run screen**: who ended the run
+and where, one row per layer, the whole kit, and the seed. Tap-to-skip
+was removed, and the last layer's gatekeeper no longer offers rewards.
+
 What exists, all headless and test-covered:
 
 | area | state |
@@ -140,7 +141,7 @@ What exists, all headless and test-covered:
 | Meta-progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge (everything at once, at a Safehouse), a Shop that buys and sells |
 | Content | **authored** — 36 player subroutines, 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod); 37 Mods, 9 Burners (Cold Wallet sell-only), 8 Events (Static Shield and Recon Ping set aside) |
 | Balance | **re-tuned in session 62** — 15–20% target, ~16% average (classes 14.7–20.7%); gatekeeper curve 73.5/67/61/55 on target |
-| UI | **a whole run playable** (milestone 3) and **vanilla Cribbage with a coach and lessons** (milestone 4), both saved after every choice |
+| UI | **a whole run playable** (milestone 3) and **vanilla Cribbage with a coach and lessons** (milestone 4), both saved after every choice; a guided tutorial run and first-time tips (session 63) |
 | Art | not started |
 
 The playable-game plan's milestones: a pausable engine, one playable
@@ -151,7 +152,7 @@ style guide (in progress).
 
 ```bash
 npm install
-npm test        # Vitest suite (754 tests)
+npm test        # Vitest suite (792 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server: the main menu (the roguelite, Cribbage); #test is the single-fight harness
 ```

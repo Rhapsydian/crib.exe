@@ -271,8 +271,8 @@ GitHub-hosted site and itch.io.
    subroutines, Mods, Burners (the user: the pool is shallow on both
    sides; enemies went first).
 
-Backlog from this plan: an optional tutorial run (a bespoke, single-layer
-guided layout); drag and drop as an alternative card input; hosting.
+Backlog from this plan: ~~an optional tutorial run~~ (done in session 63,
+`docs/tutorial-design.md`); drag and drop as an alternative card input; hosting.
 ~~Watch (session 57): the Burner prompt may get naggy~~ -- replaced in
 session 61 by a toggle under your gauges (one armed at a time, used at
 the start of your next turn). Rules text for the general Mods: done
@@ -296,6 +296,22 @@ subroutine on the other side to exchange (dashed targets, cancel).
 - **Events** can be a source of rare, high-value Burners.
 - (Session 63 already cut Burner supply: gatekeepers, Caches and Shops
   always offer one; elites 50%; regular fights 20%.)
+
+Open from session 63:
+- **Balance after the Burner cut** (9d3fafb): Blackhat 22.7%, Operator
+  18.7%, Eidolon 22.0%, Breacher 19.7%, Warden 15.7%, Wraith 14.3%, avg
+  18.8% against the ~16% aim. The user deferred retuning until after the
+  content pass.
+- **Tutorial:** the "Burner fired" coach step wasn't seen in the final
+  seed-21 playthrough (fight 2 ended before arming); seen in an earlier
+  run. Testers' feedback will say whether the coach texts land.
+- **Lesson texts** (`src/ui/lessons.ts`) still use double dashes; the
+  coach texts were switched to colons.
+- **Seeded runs:** the seed now shows on the end screen; a way to play a
+  chosen seed could follow (the user: fine for the future; cf. Daily
+  Runs).
+- **Breached, then caught** at layer 4 shows "4/4 layers breached" under
+  a losing title (the rules' count); revisit if testers find it odd.
 
 Open from session 62:
 - **Mods:** ~12 at the layer-4 gatekeeper (Shop 4.6, elites 4.1,
