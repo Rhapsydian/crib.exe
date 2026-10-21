@@ -157,7 +157,7 @@
          height, so nothing above it shifts (the user's catch). -->
     <div class="hand-slot">
       {#if handReady && r}
-        <Hand {hand} {legal} count={r.kind === 'play' ? r.context.count : 0} sequence={r.kind === 'play' ? r.context.sequence : []} phase={r.kind} playerIsDealer={r.view.dealer === 0} onplay={(c) => game.answer(c)} ondiscard={(c) => game.answer(c)} />
+        <Hand {hand} {legal} count={r.kind === 'play' ? r.context.count : 0} sequence={r.kind === 'play' ? r.context.sequence : []} phase={r.kind} playerIsDealer={r.view.dealer === 0} onplay={(c) => game.answer(c)} ondiscard={(c) => game.answer(c)} inactive={replay.playing} />
       {:else}
         <div class="hand-wait">…</div>
       {/if}
@@ -167,9 +167,6 @@
 
 <svelte:window onkeydown={onkey} />
 
-{#if replay.playing}
-  <button class="skip" onclick={() => replay.skip()} aria-label="skip ahead"><span>tap to skip ▸▸</span></button>
-{/if}
 
 {#if showLog}
   <div class="scrim" onclick={() => (showLog = false)} role="presentation"></div>
@@ -400,30 +397,19 @@
     flex-direction: column;
     justify-content: flex-end;
   }
+  /* With a mouse, the hand shows the 1-6 key hints under its cards (Hand's
+     own media query), 9px taller (session 63). */
+  @media (hover: hover) and (pointer: fine) {
+    .hand-slot {
+      height: 133px;
+    }
+  }
   .hand-wait {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text-dim);
-  }
-  .skip {
-    position: fixed;
-    inset: 0;
-    z-index: 14;
-    background: transparent;
-    border: none;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding-bottom: calc(150px + env(safe-area-inset-bottom));
-  }
-  .skip span {
-    font-size: 11px;
-    color: var(--text-dim);
-    background: rgb(0 0 0 / 60%);
-    padding: 3px 10px;
-    border-radius: 999px;
   }
   .scrim {
     position: fixed;

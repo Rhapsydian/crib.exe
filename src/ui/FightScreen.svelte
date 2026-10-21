@@ -28,7 +28,8 @@
   // `onplay` / `ondiscard` answer the live engine; without them (the
   // fixed mockup moment) the hand only says what it would send.
   // `replay` steps through each turn's fires (P4): while it plays, the
-  // log, gauges and lit piece follow it, and a tap anywhere skips.
+  // log, gauges and lit piece follow it. (A tap anywhere used to skip it;
+  // removed in session 63, the user's call -- Space / Enter / Esc still do.)
   let {
     snapshot,
     onplay,
@@ -284,9 +285,6 @@
 
 <svelte:window onkeydown={onkey} />
 
-{#if replay?.playing}
-  <button class="skip" onclick={() => replay.skip()} aria-label="skip to the end of the turn"><span>tap to skip ▸▸</span></button>
-{/if}
 {#if sheet !== 'none'}<div class="scrim" onclick={() => (sheet = 'none')} role="presentation"></div>{/if}
 {#if detail}<DetailSheet entry={detail.entry} lastFire={detail.lastFire} thresholds={detail.thresholds} enemy={picked?.side === 1} onclose={() => (picked = null)} />{/if}
 {#if pickedKit}<DetailSheet kit={pickedKit} onclose={() => (pickedKit = null)} />{/if}
@@ -360,24 +358,6 @@
   }
   .speed + .loadouts-button {
     margin-left: 0;
-  }
-  .skip {
-    position: fixed;
-    inset: 0;
-    z-index: 14;
-    background: transparent;
-    border: none;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding-bottom: calc(150px + env(safe-area-inset-bottom));
-  }
-  .skip span {
-    font-size: 11px;
-    color: var(--text-dim);
-    background: rgb(0 0 0 / 60%);
-    padding: 3px 10px;
-    border-radius: 999px;
   }
   .ticker {
     text-align: left;
@@ -579,6 +559,14 @@
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+  }
+  /* With a mouse, the hand shows the 1-6 key hints under its cards (Hand's
+     own media query), 9px taller: reserve that too, or the screen shifts
+     whenever the hand empties (session 63, the user's catch). */
+  @media (hover: hover) and (pointer: fine) {
+    .hand-slot {
+      min-height: 133px;
+    }
   }
   .hand-wait {
     flex: 1;

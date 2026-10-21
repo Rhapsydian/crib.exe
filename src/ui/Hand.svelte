@@ -12,7 +12,8 @@
   // Without the callbacks (the mockups) it only shows what it would send.
   // Desktop keys (P5): 1-6 tap the card in that position, Enter sends the
   // discard or plays the lifted card. `inactive` (a turn still playing
-  // out) ignores them.
+  // out) ignores them, and taps too (session 63: with tap-to-skip gone,
+  // a card tapped mid-replay would jump ahead of what's on screen).
   let {
     hand,
     legal,
@@ -79,8 +80,9 @@
   });
 
   function tap(card: Card) {
-    // Waiting on the engine after a play or discard: nothing to tap.
-    if (sent.length > 0 || !isLegal(card)) return;
+    // Waiting on the engine after a play or discard, or a turn still
+    // playing out: nothing to tap.
+    if (inactive || sent.length > 0 || !isLegal(card)) return;
     if (phase === 'discard') {
       if (isLifted(card)) lifted = lifted.filter((l) => !cardsEqual(l, card));
       else if (lifted.length < 2) lifted = [...lifted, card];
@@ -91,7 +93,7 @@
   }
   function play() {
     const card = lifted[0];
-    if (!card) return;
+    if (!card || inactive) return;
     lifted = [];
     if (onplay) {
       sent = [card];
@@ -100,7 +102,7 @@
     else mockNote = `would play ${card.rank}/${card.suit} → engine`;
   }
   function discard() {
-    if (lifted.length !== 2) return;
+    if (lifted.length !== 2 || inactive) return;
     const cards: [Card, Card] = [lifted[0], lifted[1]];
     lifted = [];
     if (ondiscard) {
