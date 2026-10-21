@@ -259,7 +259,7 @@ export function clearHandKnowledge(combatState: CombatState): CombatState {
       knownCrib: undefined,
       forcedDiscardPair: undefined,
       handPoints: 0,
-      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0 },
+      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0 },
     };
   }) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
@@ -477,8 +477,12 @@ function modAdjustedLoadout(loadout: SubroutineDefinition[], ownedModIds: ModId[
 /** Exploit + Overclock (K2): each pair you score adds this fraction of a
  * turn to your initiative gauge. */
 export const BRIDGE_EXPLOIT_OVERCLOCK_HASTE = 1 / 12;
-/** Exploit + Daemon: each fifteen you score also Suppresses. */
+/** Exploit + Daemon: each fifteen you score also Suppresses... */
 export const BRIDGE_EXPLOIT_DAEMON_SUPPRESS = 1;
+/** ...and the first fifteen each hand Suppresses this much more (session
+ * 62: Operator sat under the band). */
+export const BRIDGE_EXPLOIT_DAEMON_FIRST = 1;
+const EXPLOIT_DAEMON_THIS_HAND = 'bridge-exploit-daemon:hand';
 /** Daemon + Overclock (K3): each fifteen you score grows each Daemon
  * piece by this share of one fire's growth (still up to its cap). */
 export const BRIDGE_DAEMON_OVERCLOCK_GROWTH = 0.5;
@@ -518,7 +522,9 @@ function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOc
   const pair = occurrence.category === 'pair';
   if (bridge === 'exploit-daemon' && fifteen) {
     noteMod(combatState, side, bridgeMod(bridge));
-    return reduceWinGauge(combatState, opponentOf(side), BRIDGE_EXPLOIT_DAEMON_SUPPRESS);
+    const first = !combatState.sides[side].passiveState[EXPLOIT_DAEMON_THIS_HAND];
+    const marked = first ? withSide(combatState, side, { passiveState: { ...combatState.sides[side].passiveState, [EXPLOIT_DAEMON_THIS_HAND]: 1 } }) : combatState;
+    return reduceWinGauge(marked, opponentOf(side), BRIDGE_EXPLOIT_DAEMON_SUPPRESS + (first ? BRIDGE_EXPLOIT_DAEMON_FIRST : 0));
   }
   if (bridge === 'exploit-honeypot' && pair) {
     noteMod(combatState, side, bridgeMod(bridge));

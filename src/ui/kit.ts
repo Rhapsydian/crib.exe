@@ -29,6 +29,7 @@ import {
   BRIDGE_DAEMON_HONEYPOT_WARD,
   BRIDGE_DAEMON_OVERCLOCK_COUNTS,
   BRIDGE_DAEMON_OVERCLOCK_GROWTH,
+  BRIDGE_EXPLOIT_DAEMON_FIRST,
   BRIDGE_EXPLOIT_DAEMON_SUPPRESS,
   BRIDGE_EXPLOIT_HONEYPOT_WARD,
   BRIDGE_EXPLOIT_OVERCLOCK_HASTE,
@@ -69,7 +70,7 @@ const growthShare = (share: number) => (share === 0.5 ? 'half of' : share === 0.
  * (session 60's redesign: each triggers on a fifteen or a pair). */
 const BRIDGE_TEXT: Record<ClassId, string> = {
   'exploit-overclock': `Each pair you score: ${hasteText(BRIDGE_EXPLOIT_OVERCLOCK_HASTE)}.`,
-  'exploit-daemon': `Each fifteen you score: Suppress ${BRIDGE_EXPLOIT_DAEMON_SUPPRESS}.`,
+  'exploit-daemon': `Each fifteen you score: Suppress ${BRIDGE_EXPLOIT_DAEMON_SUPPRESS}. The first fifteen each hand Suppresses ${BRIDGE_EXPLOIT_DAEMON_FIRST} more.`,
   'daemon-overclock': `Each fifteen you score grows each of your Daemon subroutines by ${growthShare(BRIDGE_DAEMON_OVERCLOCK_GROWTH)} one fire's growth (still up to its cap). The first fifteen each hand also gives your Overclock subroutines' Hooks ${BRIDGE_DAEMON_OVERCLOCK_COUNTS === 1 ? 'one extra count' : `${BRIDGE_DAEMON_OVERCLOCK_COUNTS} extra counts`}.`,
   'exploit-honeypot': `Each pair you score: Ward ${BRIDGE_EXPLOIT_HONEYPOT_WARD}.`,
   'daemon-honeypot': `Each pair you score: Suppress ${BRIDGE_DAEMON_HONEYPOT_SUPPRESS} and Ward ${BRIDGE_DAEMON_HONEYPOT_WARD}.`,

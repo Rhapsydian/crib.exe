@@ -4,6 +4,7 @@ import {
   BRIDGE_DAEMON_HONEYPOT_SUPPRESS,
   BRIDGE_DAEMON_HONEYPOT_WARD,
   BRIDGE_DAEMON_OVERCLOCK_GROWTH,
+  BRIDGE_EXPLOIT_DAEMON_FIRST,
   BRIDGE_EXPLOIT_DAEMON_SUPPRESS,
   BRIDGE_EXPLOIT_HONEYPOT_WARD,
   BRIDGE_EXPLOIT_OVERCLOCK_HASTE,
@@ -331,7 +332,10 @@ describe('class bridge passives (step 3, C1)', () => {
 
   it('Exploit + Daemon: a fifteen you score also Suppresses the opponent', () => {
     const s = withEnemyProgress(state([credit('a')], 'exploit-daemon'));
-    expect(applyOccurrence(s, fifteen).sides[1].winGauge.progress).toBe(5 - BRIDGE_EXPLOIT_DAEMON_SUPPRESS);
+    const once = applyOccurrence(s, fifteen);
+    // The first fifteen each hand Suppresses extra; later ones don't.
+    expect(once.sides[1].winGauge.progress).toBe(5 - BRIDGE_EXPLOIT_DAEMON_SUPPRESS - BRIDGE_EXPLOIT_DAEMON_FIRST);
+    expect(applyOccurrence(once, fifteen).sides[1].winGauge.progress).toBe(5 - 2 * BRIDGE_EXPLOIT_DAEMON_SUPPRESS - BRIDGE_EXPLOIT_DAEMON_FIRST);
     expect(applyOccurrence(s, pair).sides[1].winGauge.progress).toBe(5);
   });
 
