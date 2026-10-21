@@ -125,11 +125,12 @@ Session 63 made the game ready for outside testers. Burners are scarcer
 20%). A **tutorial**: a guided first run on a hand-made single layer
 (Blackhat, a fixed seed), with a coach that explains each new thing the
 first time it happens (including the Safehouse's Rest or Merge), an
-optional Cribbage coach in its fights, and a "new to Cribbage" detour to
-the lessons. **First-time tips** in real runs (shown once each, with a
+optional Cribbage coach in its fights, a gentler tutorial-only gatekeeper
+(Firewall Beta), and a "new to Cribbage" detour to the lessons. **First-time tips** in real runs (shown once each, with a
 reset on the menu). A fuller **end-of-run screen**: who ended the run
 and where, one row per layer, the whole kit, and the seed. Tap-to-skip
-was removed, and the last layer's gatekeeper no longer offers rewards.
+was removed, the last layer's gatekeeper no longer offers rewards, and
+the main menu's title reads as a command with a hand flying off it.
 
 What exists, all headless and test-covered:
 
@@ -152,7 +153,7 @@ style guide (in progress).
 
 ```bash
 npm install
-npm test        # Vitest suite (792 tests)
+npm test        # Vitest suite (794 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server: the main menu (the roguelite, Cribbage); #test is the single-fight harness
 ```
