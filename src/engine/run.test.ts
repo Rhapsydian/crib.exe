@@ -646,12 +646,15 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
     }
   }, 75_000); // 150 full runs
 
-  it("the fight screen's Heat outlook charges a win exactly as the run does (session 63)", () => {
+  it("the fight screen's Heat outlook charges a win or a loss exactly as the run does (session 63)", () => {
     let checked = 0;
-    for (const result of runs('exploit-daemon', 20)) {
+    let losses = 0;
+    for (const result of runs('exploit-daemon', 80)) {
       for (const e of result.log) {
-        if (e.type !== 'encounter' || !e.outcome.fight || e.outcome.newState !== 'inert') continue;
+        if (e.type !== 'encounter' || !e.outcome.fight) continue;
         const tier = e.outcome.fight.tier;
+        const won = e.outcome.newState === 'inert';
+        if (!won && tier === 'gatekeeper') continue;
         const o = fightHeatOutlook({
           heat: 100,
           allowance: 999,
@@ -661,12 +664,14 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
           enemyFill: e.outcome.fight.finalFillFraction[1],
           refund: -e.outcome.heatSources.refund,
         });
-        expect(o.winGain).toBeCloseTo(e.outcome.heatDelta, 6);
+        expect(won ? o.winGain : o.loseGain!).toBeCloseTo(e.outcome.heatDelta, 6);
+        if (!won) losses++;
         checked++;
       }
     }
     expect(checked).toBeGreaterThan(50);
-  }, 60_000);
+    expect(losses).toBeGreaterThan(0);
+  }, 150_000);
 
   it('trace evasion (session 63): a maxed toll after a gatekeeper win plays an evasion; escape goes on, a loss is caught', () => {
     let escaped = 0;

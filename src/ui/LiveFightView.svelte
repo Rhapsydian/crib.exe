@@ -41,13 +41,17 @@
     return () => clearTimeout(t);
   });
   const ending = $derived(done && !cardUp && fight.result ? fight.result.winner : null);
-  // A run's win: the Heat it cost, as the engine charges it (the user's
-  // ask, session 63) -- baseline, alarms and the performance term.
+  // A run's fight: the Heat its result cost, as the engine charges it (the
+  // user's ask, session 63) -- a win's baseline, alarms and performance
+  // term; a loss's price and alarms. A lost gatekeeper is Quarantine, not
+  // Heat, so it shows none.
   const heatGained = $derived.by(() => {
     const r = fight.result;
-    if (!r || r.winner !== 0 || !fight.heat) return null;
+    if (!r || !fight.heat) return null;
     const o = fightHeatOutlook({ ...fight.heat, alarm: r.heatGenerated, enemyFill: r.finalFillFraction[1] });
-    return { gain: o.winGain, after: o.ifWin, allowance: o.allowance, maxed: o.caughtIfWin };
+    if (r.winner === 0) return { gain: o.winGain, after: o.ifWin, allowance: o.allowance, maxed: o.caughtIfWin };
+    if (o.loseGain === undefined || o.ifLose === undefined) return null;
+    return { gain: o.loseGain, after: o.ifLose, allowance: o.allowance, maxed: o.caughtIfLose };
   });
   const fmtHeat = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 </script>
