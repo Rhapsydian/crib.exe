@@ -89,10 +89,7 @@
   // subroutine, a handful of Mods.
   $effect(() => {
     if (graph.nodes.some((n) => n.type === 'eliteFight' && n.state === 'unresolved')) tips.offer('elite');
-    if ([...linked].some((id) => graph.nodes.find((n) => n.id === id)?.type === 'gatekeeperFight')) {
-      tips.offer('quarantine');
-      tips.offer('toll');
-    }
+    if ([...linked].some((id) => graph.nodes.find((n) => n.id === id)?.type === 'gatekeeperFight')) tips.offer('quarantine');
     if (heatPct >= 75) tips.offer('heat');
     if ([...player.installedLoadout, ...player.bench].some((p) => p.rank)) tips.offer('rank');
     if (player.ownedModIds.length >= 3) tips.offer('mods');

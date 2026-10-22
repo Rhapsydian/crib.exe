@@ -7,14 +7,16 @@
  * TipBanner shows them one at a time.
  */
 
-export type TipId = 'elite' | 'event' | 'cache' | 'quarantine' | 'toll' | 'heat' | 'rank' | 'mods' | 'instant' | 'enemyEffects';
+export type TipId = 'elite' | 'event' | 'cache' | 'quarantine' | 'heat' | 'rank' | 'mods' | 'instant' | 'enemyEffects';
 
 export const TIP_TEXT: Record<TipId, string> = {
   elite: 'Elites are tougher than regular fights and bend one rule with their own Mod. Beat one and choose a subroutine or a Mod.',
   event: 'Events are a gamble: pick a choice and see what happens. Some cost Heat, some start a fight.',
   cache: 'A Cache is a free reward for the detour: a rarer subroutine, a Mod, or Data, and always a Burner.',
-  quarantine: "Each layer ends with a gatekeeper. Beat it to move on; lose and you're quarantined, which ends the run.",
-  toll: "Beating a gatekeeper costs Heat: a toll charged after the fight. The closer it came to containing you, the bigger the toll. If the toll pushes you past this layer's limit, the gatekeeper tries to trace you, and you must outscore it over 3 hands of Cribbage to escape. Its map card shows the toll, and during the fight the Heat bar shows what winning would cost.",
+  // One card for the gatekeeper and its toll (session 63, the user's call:
+  // they were two cards back to back).
+  quarantine:
+    "Each layer ends with a gatekeeper. Lose to it and you're quarantined, which ends the run. Beat it and you pay a Heat toll, bigger the closer it came to containing you. If the toll maxes out your Heat, you must outscore it over 3 hands of Cribbage to escape.",
   heat: "Your Heat is past three-quarters of this layer's limit. Reach the limit and you're caught; resting at a Safehouse or clearing the gatekeeper lowers it.",
   rank: 'Merged subroutines show their rank (I-III): each rank makes the Hook stronger. Spare copies bank until a Safehouse Merge.',
   mods: 'Your Mods are permanent effects for the run. Tap one to read it; some act in fights, others on the map or in Shops.',
