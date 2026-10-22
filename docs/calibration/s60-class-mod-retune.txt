@@ -1,4 +1,4 @@
-# Session 60: class Mod redesign (docs/class-mod-redesign.md K1-K8) and gatekeeper retune.
+# Session 60: class Mod redesign (docs/archive/class-mod-redesign.md K1-K8) and gatekeeper retune.
 # Enemies no longer carry class Mods (K6), so the gatekeepers were re-tuned first, then the
 # class Mod amounts. gatekeeper-check.ts, all layers synthetic, 300/class; run-outcomes.ts 300/class.
 

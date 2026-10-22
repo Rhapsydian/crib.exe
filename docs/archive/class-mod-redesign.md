@@ -1,6 +1,6 @@
 # Class Mod redesign (session 60)
 
-> **Status: complete (session 60); historical.** The class Mods as built are in `DESIGN.md`; its "Open" item, the enemy review, was done the same session (`docs/enemy-review.md`). Operator's, Warden's, Breacher's and Eidolon's Mods were retuned in sessions 61-62.
+> **Status: complete (session 60); historical.** The class Mods as built are in `DESIGN.md`; its "Open" item, the enemy review, was done the same session (`docs/archive/enemy-review.md`). Operator's, Warden's, Breacher's and Eidolon's Mods were retuned in sessions 61-62.
 
 The user's goal: the six class Mods (the bridges) feel uneven. The ones
 that trigger on every fifteen feel good. Rework all six so each triggers

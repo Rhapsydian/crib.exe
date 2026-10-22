@@ -1,7 +1,7 @@
 import type { SubroutineDefinition } from '../subroutine-types';
 
 /**
- * Enemy-only subroutines (session 60, docs/enemy-review.md CP1-CP3):
+ * Enemy-only subroutines (session 60, docs/archive/enemy-review.md CP1-CP3):
  * named as the network defending itself (you play the intruder);
  * twelve, three per archetype, built around the three enemy-only effects
  * -- Trace (Heat), Wipe (your Hook counts) and Strip (your Ward) -- four

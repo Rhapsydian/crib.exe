@@ -12,7 +12,7 @@
   // The inspect panel (P6): a bottom sheet on phones (a centred card on
   // wide screens). Name, archetype and rarity; Process and Hook in plain
   // words (P7); live state; what it did last; and a one-line glossary of
-  // the terms its text uses (docs/text-audit.md R11).
+  // the terms its text uses (docs/archive/text-audit.md R11).
   // `kit` instead of `entry` shows a Mod or Burner: its name, what kind
   // it is, and its rules in words.
   let {

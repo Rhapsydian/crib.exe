@@ -11,7 +11,7 @@ function creditPiece(amount: number, id: string): SubroutineDefinition {
 }
 
 /**
- * Overclock's authored pool (step 3, checkpoint 3; `docs/authoring-design.md`).
+ * Overclock's authored pool (step 3, checkpoint 3; `docs/archive/authoring-design.md`).
  * Tempo / Empowerment: taking more turns, and boosting other pieces.
  * Signature beta: immediate. The step-2 retention risk, so payoffs are
  * kept smooth, Turbo Mode's tempo is threshold-mode (it scales the

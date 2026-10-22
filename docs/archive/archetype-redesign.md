@@ -3,7 +3,7 @@
 > **Status: complete (session 51); historical.** A decision record. The settled design is in `DESIGN.md`. Later changes not reflected here: Trace as a player Heat cost was removed in session 58 (now only an enemy-only effect), and content was authored and rebalanced in sessions 54-62.
 
 Session 51 (`/decision-session`, 2026-10-11). Builds on
-`docs/run-economy-design.md` D11–D15 (every subroutine fires every turn;
+`docs/archive/run-economy-design.md` D11–D15 (every subroutine fires every turn;
 triggers modulate rather than gate). **Folded into `DESIGN.md` →
 Archetypes & Subroutines in step 1, checkpoint 1**; this file remains
 the decision trail.

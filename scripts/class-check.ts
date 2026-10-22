@@ -1,5 +1,5 @@
 /**
- * Class check (step 3, classes; `docs/authoring-design.md` C1, C2).
+ * Class check (step 3, classes; `docs/archive/authoring-design.md` C1, C2).
  *
  * Prices each class's bridge passive, in Credit per turn, against C2's
  * budget (+1.0, band 0.75-1.25). It is priced in a starting kit and a

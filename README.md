@@ -22,16 +22,16 @@ way; next is more content, then meta-progression and Daily Runs
 
 How it got here, in arcs (each session's detail is in `docs/session-logs/`;
 README's old session-by-session narrative is archived in
-`docs/roadmap-history.md`):
+`docs/archive/roadmap-history.md`):
 
 - **Sessions 1–50:** the Cribbage engine, the combat wrapper, the map
   and run, classes / Mods / Merge / Burners, and a long run of balance
-  work (`docs/roadmap-history.md`).
+  work (`docs/archive/roadmap-history.md`).
 - **Sessions 51–56:** the archetypes and subroutine model redesigned
-  from scratch (`docs/archetype-redesign.md`), recalibrated
-  (`docs/recalibration-design.md`), all content authored
-  (`docs/authoring-design.md`) and class-balanced
-  (`docs/balance-design.md`).
+  from scratch (`docs/archive/archetype-redesign.md`), recalibrated
+  (`docs/archive/recalibration-design.md`), all content authored
+  (`docs/archive/authoring-design.md`) and class-balanced
+  (`docs/archive/balance-design.md`).
 - **Sessions 57–59:** made playable (`docs/playable-design.md`): a
   pausable engine, one fight, a whole run, then plain Cribbage with a
   coach and lessons.
@@ -184,25 +184,25 @@ Current:
 | `docs/session-logs/` | Per-session record of decisions and results |
 | `docs/calibration/` | Raw measurement output cited by the design records and the code |
 
-Historical decision records (each marked with its status; the settled
+Historical decision records, in `docs/archive/` (each marked with its status; the settled
 results are in `DESIGN.md`):
 
 | file | holds |
 |---|---|
-| `docs/run-economy-design.md` | Session 50: the per-layer Heat economy and per-turn model (D1–D15) |
-| `docs/archetype-redesign.md` | Session 51: the archetype and subroutine redesign (A1–A12) |
-| `docs/recalibration-design.md` | Sessions 52–53: pricing (R1–R8), verb and Hook prices, skill retention |
-| `docs/authoring-design.md` | Sessions 54–55: authoring the pool, classes and roster (S1–S11, C1–C6, E1–E7) |
-| `docs/balance-design.md` | Session 56: the class balance pass (B1–B7) |
-| `docs/class-mod-redesign.md`, `docs/enemy-review.md`, `docs/text-audit.md` | Session 60: class Mods, the enemy roster, the rules-text wording rules |
-| `docs/session-39-gatekeeper-balance-audit.md` | Session 39: an audit of a roster since rebuilt |
-| `docs/design-history.md` | `DESIGN.md` sections superseded in session 51, verbatim |
-| `docs/roadmap-history.md` | Completed roadmap work, and sections moved out of `BACKLOG.md` and `README.md` |
+| `docs/archive/run-economy-design.md` | Session 50: the per-layer Heat economy and per-turn model (D1–D15) |
+| `docs/archive/archetype-redesign.md` | Session 51: the archetype and subroutine redesign (A1–A12) |
+| `docs/archive/recalibration-design.md` | Sessions 52–53: pricing (R1–R8), verb and Hook prices, skill retention |
+| `docs/archive/authoring-design.md` | Sessions 54–55: authoring the pool, classes and roster (S1–S11, C1–C6, E1–E7) |
+| `docs/archive/balance-design.md` | Session 56: the class balance pass (B1–B7) |
+| `docs/archive/class-mod-redesign.md`, `docs/archive/enemy-review.md`, `docs/archive/text-audit.md` | Session 60: class Mods, the enemy roster, the rules-text wording rules |
+| `docs/archive/session-39-gatekeeper-balance-audit.md` | Session 39: an audit of a roster since rebuilt |
+| `docs/archive/design-history.md` | `DESIGN.md` sections superseded in session 51, verbatim |
+| `docs/archive/roadmap-history.md` | Completed roadmap work, and sections moved out of `BACKLOG.md` and `README.md` |
 
 Sessions 22–28 have no individual log; that stretch is covered by the
 combined `docs/session-logs/00-prior-sessions-1-28.md`. Session 50 has
 none either — it was never closed out; its record is
-`docs/run-economy-design.md` and its commits.
+`docs/archive/run-economy-design.md` and its commits.
 
 ---
 

@@ -4,7 +4,7 @@
 
 Why (the user): the content pool is shallow. Enemies are mostly player
 loadouts scaled up, elites lost their only Mod when class Mods became
-the player's alone (docs/class-mod-redesign.md K6), and the roster is
+the player's alone (docs/archive/class-mod-redesign.md K6), and the roster is
 thin (six regulars, none new after layer 2).
 
 Order (the user's call): elite Mods and the gatekeeper Mod text first;
@@ -12,7 +12,7 @@ enemy-only subroutines and roster breadth after, as a content pass.
 
 ## Gatekeeper Mod text
 
-Rewritten to docs/text-audit.md's rules ("Hook", "subroutine", what
+Rewritten to docs/archive/text-audit.md's rules ("Hook", "subroutine", what
 actually happens). Null Session now says the whole first gain is lost,
 however large -- what the engine does.
 

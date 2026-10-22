@@ -3,8 +3,8 @@
  *
  * Since session 52 (step 2, checkpoint 1) Heat is a **per-layer budget**,
  * not a run-long accumulator: session 50's run-economy decisions D1-D7
- * (`docs/run-economy-design.md`) plus step 2's R5-R8
- * (`docs/recalibration-design.md`).
+ * (`docs/archive/run-economy-design.md`) plus step 2's R5-R8
+ * (`docs/archive/recalibration-design.md`).
  *
  * - Each layer has its own **allowance**, tightening with depth (D5).
  *   Reaching it gets you caught.

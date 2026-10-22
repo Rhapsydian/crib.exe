@@ -6,7 +6,7 @@ import { OVERCLOCK_POOL } from './overclock';
 import { HONEYPOT_POOL } from './honeypot';
 
 /**
- * The authored classes' starting loadouts (step 3; `docs/authoring-design.md`
+ * The authored classes' starting loadouts (step 3; `docs/archive/authoring-design.md`
  * C3). Commons only, in loadout order. Each follows A9 (offense with a
  * credit path, utility from the other archetype, a piece that shows off
  * the bridge). Exploit classes start with the noisy Fuzzer (Exploit's Heat

@@ -1,12 +1,12 @@
 # crib.exe — Design history
 
 Sections of `DESIGN.md` superseded by the session 51 archetype and
-subroutine redesign (`docs/archetype-redesign.md`), moved here
+subroutine redesign (`docs/archive/archetype-redesign.md`), moved here
 **verbatim** so their reasoning survives. Nothing below describes the
 current design. Line references and "see above/below" pointers inside
 these sections refer to `DESIGN.md` as it stood at the end of session 50.
 
-Same convention as `docs/roadmap-history.md` (session 48) for `BACKLOG.md`.
+Same convention as `docs/archive/roadmap-history.md` (session 48) for `BACKLOG.md`.
 
 ---
 
@@ -349,7 +349,7 @@ real new tooling to get a native win condition at all — see the new
   of a specific pair in the same run, so a pool piece keyed to one exact
   id can go permanently or run-to-run dead (the exact bug found in Drive-
   By Exploit, Chain Infection, and 5 other existing pieces this session —
-  see docs/roadmap-history.md's session 41 write-up for the full list and conversions).
+  see docs/archive/roadmap-history.md's session 41 write-up for the full list and conversions).
   Id-based chaining is kept as a type option, reserved for contexts that
   *do* guarantee co-presence — a class's own fixed starting loadout, or a
   future mechanism (e.g. an Event) that grants a matched pair at once —
@@ -626,7 +626,7 @@ all. Not acted on this session — flagged here since it bears directly on
 how any future gatekeeper balance pass, or a future escalation-timeline
 retune, should be read.
 
-**The fix, shipped this session** (session log in `docs/roadmap-history.md`'s top
+**The fix, shipped this session** (session log in `docs/archive/roadmap-history.md`'s top
 "NEXT SESSION" section, same "shape now, content later" split every other
 system in this project has used): three new Encryption payload kinds and
 three new Root
@@ -678,10 +678,10 @@ fast real fights actually resolve) is flagged, not investigated further.
 The first phase of the user's own multi-session program (audit and
 roughly double the player-facing subroutine pool, then the enemy pool,
 then Mods, then a full class audit, then the gatekeeper roster, finishing
-with a heavy ablation-driven balance pass — see `docs/roadmap-history.md`'s top "NEXT
+with a heavy ablation-driven balance pass — see `docs/archive/roadmap-history.md`'s top "NEXT
 SESSION" section for the complete roadmap). Session 41 scoped and
 planned only; session 42 implemented all 8 checkpoints (A-H) — see
-`docs/roadmap-history.md`'s "Player Pool Expansion — Implementation" section for the
+`docs/archive/roadmap-history.md`'s "Player Pool Expansion — Implementation" section for the
 full 57-piece content plan and its execution notes. Pool 81 -> 138, all
 subroutines 99 -> 156, magnitude tuning deliberately left to a later
 balance-pass session.

@@ -6,7 +6,7 @@ import { HONEYPOT_POOL } from './content/honeypot';
 import { AUTHORED_STARTING_LOADOUTS } from './content/starting-loadouts';
 
 /**
- * The player's subroutine pool (step 3, `docs/authoring-design.md`): the
+ * The player's subroutine pool (step 3, `docs/archive/authoring-design.md`): the
  * 36 authored pieces, 9 per archetype (4 common, 3 uncommon, 2 rare;
  * S5), priced against DESIGN.md -> Pricing. Definitions live in
  * content/<archetype>.ts. Replaced the session-51 skeleton pool, retired

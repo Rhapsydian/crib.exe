@@ -1,5 +1,5 @@
 /**
- * Player power by layer (step 3, enemies; `docs/authoring-design.md` E3
+ * Player power by layer (step 3, enemies; `docs/archive/authoring-design.md` E3
  * stage 1, E5 step 1).
  *
  * The enemy power budget is a fraction of how strong a real player is at

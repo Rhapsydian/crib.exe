@@ -1,5 +1,5 @@
 /**
- * Enemy parity (session 60, docs/enemy-review.md CP4): an enemy's win rate
+ * Enemy parity (session 60, docs/archive/enemy-review.md CP4): an enemy's win rate
  * against the six classes, each with a 6-subroutine loadout (its starting
  * three plus the first three commons from its own archetypes), at a given
  * layer's scale -- next to the same tier's existing enemies at that layer.

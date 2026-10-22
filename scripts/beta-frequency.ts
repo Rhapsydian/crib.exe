@@ -1,5 +1,5 @@
 /**
- * Beta frequency table (step 2, checkpoint 4; `docs/recalibration-design.md`
+ * Beta frequency table (step 2, checkpoint 4; `docs/archive/recalibration-design.md`
  * R3, part 1).
  *
  * How often each beta SOURCE charges or holds, per turn of its owner --

@@ -8,7 +8,7 @@ import type { DiscardStrategy } from './deal';
 import type { PlayStrategy } from './pegging';
 
 /**
- * The pricing instrument (step 2, `docs/recalibration-design.md` R1/R2).
+ * The pricing instrument (step 2, `docs/archive/recalibration-design.md` R1/R2).
  *
  * Prices are **Credit-equivalents measured in mirror duels**: one side
  * fights with `host + addition`, the other with `host + Credit Δ`, and Δ

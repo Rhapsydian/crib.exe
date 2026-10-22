@@ -11,7 +11,7 @@ function creditPiece(amount: number, id: string): SubroutineDefinition {
 }
 
 /**
- * Honeypot's authored pool (step 3, checkpoint 4; `docs/authoring-design.md`).
+ * Honeypot's authored pool (step 3, checkpoint 4; `docs/archive/authoring-design.md`).
  * Conversion / Defense: Ward absorbs the opponent's incoming Credit, and
  * banked defense -- or the opponent's own progress -- becomes yours.
  * Signature beta: a different effect on State/Progress (Ward absorbed,

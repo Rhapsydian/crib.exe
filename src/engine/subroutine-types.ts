@@ -3,7 +3,7 @@ import type { Suit } from './cards';
 /**
  * Pure type system for subroutines -- session 51's archetype and
  * subroutine redesign (DESIGN.md "Archetypes & Subroutines";
- * docs/archetype-redesign.md A1-A11). No runtime logic lives here --
+ * docs/archive/archetype-redesign.md A1-A11). No runtime logic lives here --
  * beta criteria are evaluated in triggers.ts, effects resolve in
  * resolve.ts.
  *
@@ -17,7 +17,7 @@ import type { Suit } from './cards';
  *
  * Everything this replaces -- the 22 payload kinds, the 8 trigger
  * families, tags, Togglable, `reactive`/`firesAt`, the Neutral archetype
- * -- is described in docs/design-history.md.
+ * -- is described in docs/archive/design-history.md.
  */
 
 /**
@@ -198,7 +198,7 @@ export interface ChargeEffect extends EffectBase {
 }
 
 /**
- * The three enemy-only effects (session 60, docs/enemy-review.md CP1),
+ * The three enemy-only effects (session 60, docs/archive/enemy-review.md CP1),
  * each aimed at something the player builds before the fight. Authored
  * only on enemy subroutines (content/enemy-subroutines.ts); a test keeps
  * them out of the player pool.

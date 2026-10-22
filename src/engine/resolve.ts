@@ -55,7 +55,7 @@ import { bestCardToForce } from './ai';
 
 /**
  * Combat resolution for the alpha/beta model (session 51; DESIGN.md
- * "Archetypes & Subroutines", docs/archetype-redesign.md A1-A11).
+ * "Archetypes & Subroutines", docs/archive/archetype-redesign.md A1-A11).
  *
  * When a side gets a turn, every installed piece fires its **alpha** --
  * top to bottom, like a script -- and each whose criteria are met also
@@ -73,7 +73,7 @@ import { bestCardToForce } from './ai';
  * two cadences, three debuffs, scheduled sabotage, four separate firing
  * paths (turn, reactive, hand-lifecycle, rare-occurrence/hand-outcome),
  * the six old class passives and the 34 enemy passives -- is described in
- * docs/design-history.md. The enemy-passive registry is not rebuilt here:
+ * docs/archive/design-history.md. The enemy-passive registry is not rebuilt here:
  * the skeleton roster carries no passives, and the real roster's hooks
  * are written when it is (EnemyPassiveId is empty until then).
  */

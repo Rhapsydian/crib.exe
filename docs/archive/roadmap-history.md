@@ -350,7 +350,7 @@ was itself what surfaced the deeper gap, and now there are new levers
 should probably be done with, not around.
 
 **Real balance candidates from session 39's gatekeeper-ablation audit**
-(`docs/session-39-gatekeeper-balance-audit.md`) -- still the reference
+(`docs/archive/session-39-gatekeeper-balance-audit.md`) -- still the reference
 list for what's left, updated inline as items get resolved:
 - **Layer 4** ✅ done: Null Session (was +5.20 avg delta, too hard) and
   Kernel Panic (was -5.63, too easy, the single largest ablation effect
@@ -4444,7 +4444,7 @@ Session 51 deleted the content these sections measured (the 159-piece
 pool, the 32-enemy roster, the six old classes) and removed the mechanics
 two of them describe (debuff magnitude, Occurrence `scaling`). Their
 numbers describe content that no longer exists; their lessons are carried
-in `DESIGN.md` and `docs/run-economy-design.md`. Moved here verbatim at
+in `DESIGN.md` and `docs/archive/run-economy-design.md`. Moved here verbatim at
 session 51's close-out, per this file's own convention.
 
 ## Balance — the active arc
@@ -4665,7 +4665,7 @@ Same class as session 39's dead pieces and session 46's unreachable
 Neutral pool: designed, documented, half-wired, silently inert.
 
 **Do not fix in place.** Session 50's D11
-(`docs/run-economy-design.md`) supersedes Scaling entirely — triggers
+(`docs/archive/run-economy-design.md`) supersedes Scaling entirely — triggers
 become elevation rather than gates, so the three pieces are
 re-authoring targets in the rebuild rather than repair targets. Logged
 here because the defect is real and independent of that direction, and
@@ -4697,7 +4697,7 @@ rewritten around the user's session-63 priorities.
 
 **Where the project is.** Step 1 of the archetype redesign (the engine
 refactor, session 51) is done; **step 2, recalibration, is three
-checkpoints in** (session 52, `docs/recalibration-design.md`, R1–R8).
+checkpoints in** (session 52, `docs/archive/recalibration-design.md`, R1–R8).
 Heat is now a per-layer budget with posted fight prices and a new run
 ending, *breached, then caught*; and every verb has a price in
 Credit-per-turn from seat-swapped mirror duels. Content is still the
@@ -4711,21 +4711,21 @@ immediately below.
 
 ## Archetype & subroutine redesign — the active arc (session 51)
 
-Decided in session 51 (`docs/archetype-redesign.md`, A1–A12; settled
+Decided in session 51 (`docs/archive/archetype-redesign.md`, A1–A12; settled
 design in `DESIGN.md` → Archetypes & Subroutines). Replaces the
 roadmap's old next phase ("full class audit") and the old balance arc
 (gatekeeper roster pass, class audit — archived in
-`docs/roadmap-history.md`): the roster and the classes are both rebuilt
+`docs/archive/roadmap-history.md`): the roster and the classes are both rebuilt
 rather than tuned. Work happens on the `archetype-redesign` branch.
 
 1. **Engine refactor** ✅ (checkpoints 1–5, session 51) — `DESIGN.md`
    restructure; alpha/beta types and skeleton content; combat resolution;
    Mods / Merge / Burners / bridge passives; diagnostics ported. Build
    green: `npm run check` clean, 615 tests. Every implementation call is
-   logged in `docs/archetype-redesign.md`.
+   logged in `docs/archive/archetype-redesign.md`.
 2. **Recalibrate** ✅ (sessions 52–53) — decided as R1–R8; the rules
    step 3 authors against are in `DESIGN.md` → Pricing, the full record in
-   `docs/recalibration-design.md`, raw output in `docs/calibration/`.
+   `docs/archive/recalibration-design.md`, raw output in `docs/calibration/`.
    Checkpoints: per-layer Heat economy; pricing instrument; verb prices;
    beta frequency table; beta pricing formula (validated, Charge priced);
    Trace price, Event Heat anchored to the loss price, Exploit noise
@@ -4745,7 +4745,7 @@ rather than tuned. Work happens on the `archetype-redesign` branch.
    - Skeleton regular/elite fights remain near-free; win-rate targets and
      fight length (the game-wide skill dial) come after step 3.
 3. **Author** — decided live as S1–S11 and C1–C6 (session 54,
-   `docs/authoring-design.md`).
+   `docs/archive/authoring-design.md`).
    1. ✅ archetype subroutines: 36 pieces, 9 per archetype
       (`src/engine/content/`), each priced into its rarity band and
       checked by `scripts/archetype-check.ts`;
@@ -4760,7 +4760,7 @@ rather than tuned. Work happens on the `archetype-redesign` branch.
       within 2.3 points. The skeleton is retired.
 
    **Step 3 is complete.**
-4. ✅ **Class balance pass** (session 56, `docs/balance-design.md`
+4. ✅ **Class balance pass** (session 56, `docs/archive/balance-design.md`
    B1–B7). Every class is at 13.3–18.7% victory (was 11–31%). Exploit
    Heat endings are 20–26% (a 4.4× ratio). Done with a noise premium on
    Fuzzer and Jackpot (+1 Credit), Fuzzer's Trace at +¾, and the
@@ -4787,7 +4787,7 @@ rather than tuned. Work happens on the `archetype-redesign` branch.
 
 Resolved by the refactor rather than repaired in place: the dead debuff
 `magnitude` and the dead Occurrence `scaling` (both mechanics are gone;
-their write-ups are archived in `docs/roadmap-history.md`).
+their write-ups are archived in `docs/archive/roadmap-history.md`).
 
 ---
 
@@ -4859,9 +4859,9 @@ GitHub-hosted site and itch.io.
 5. 🔄 **Polish and playtesting**, including a style / chrome guide. Session
    60 chose content polish before the style guide (the user: the guide
    would mostly codify the existing look): UI fixes, a text audit
-   (`docs/text-audit.md`), the class Mod redesign
-   (`docs/class-mod-redesign.md`), and the enemy review and content pass
-   (`docs/enemy-review.md`). **Next: the player-side content pass** --
+   (`docs/archive/text-audit.md`), the class Mod redesign
+   (`docs/archive/class-mod-redesign.md`), and the enemy review and content pass
+   (`docs/archive/enemy-review.md`). **Next: the player-side content pass** --
    subroutines, Mods, Burners (the user: the pool is shallow on both
    sides; enemies went first).
 
@@ -4871,12 +4871,12 @@ GitHub-hosted site and itch.io.
 
 Session 51 redesigned the archetypes and the subroutine model from
 scratch (`DESIGN.md` → Archetypes & Subroutines; the decision trail is
-`docs/archetype-redesign.md`). The engine runs the new model end to end,
+`docs/archive/archetype-redesign.md`). The engine runs the new model end to end,
 but the old 159-piece pool and 32-enemy roster were deleted, not
 migrated: a deliberately untuned **skeleton** pool and roster stand in
 until calibration says what an alpha and a beta are worth.
 
-Session 52 started step 2, recalibration (`docs/recalibration-design.md`,
+Session 52 started step 2, recalibration (`docs/archive/recalibration-design.md`,
 R1–R8): Heat is now a **per-layer budget** that resets at each gatekeeper,
 with posted fight prices and a new run ending, *breached, then caught*;
 and every verb now has a **price in Credit-equivalents**, measured by
@@ -4887,7 +4887,7 @@ Heat scales with the posted fight prices, and a **skill-retention check**
 guards that Cribbage skill keeps deciding fights. The rules step 3
 authors against are in `DESIGN.md` → Pricing.
 
-Session 54 started step 3, authoring (`docs/authoring-design.md`): the
+Session 54 started step 3, authoring (`docs/archive/authoring-design.md`): the
 **36-piece subroutine pool** is authored and priced, and the six classes
 are named (Blackhat, Operator, Eidolon, Breacher, Warden, Wraith), with
 bespoke bridge passives and commons-only starting loadouts. Real runs
@@ -4898,7 +4898,7 @@ including eight gatekeepers with bespoke Mods, tuned to the per-layer
 pass-rate curve. Every piece of content in a run is now authored; the
 skeleton is gone.
 
-Session 56's **class balance pass** (`docs/balance-design.md`) put every
+Session 56's **class balance pass** (`docs/archive/balance-design.md`) put every
 class at 13–19% full-run victory, inside the 10–20% target (was 11–31%).
 It did so with a Credit premium on the noisy Exploit pieces, a lower
 gatekeeper pass-rate curve, and small bridge trims.
@@ -4935,11 +4935,11 @@ scoring.
 
 Session 60 started **polish**, with content: UI fixes (the log follows,
 the loadout stands on the map's left on desktop, the map no longer
-resizes); a **text audit** of every rules text (`docs/text-audit.md`:
+resizes); a **text audit** of every rules text (`docs/archive/text-audit.md`:
 "subroutine", what gets bigger, initiative spelled out, a glossary in the
 detail panel); the six **class Mods redesigned** to trigger on a fifteen
-or a pair, three each (`docs/class-mod-redesign.md`); and an **enemy
-review** (`docs/enemy-review.md`): class Mods became the player's alone,
+or a pair, three each (`docs/archive/class-mod-redesign.md`); and an **enemy
+review** (`docs/archive/enemy-review.md`): class Mods became the player's alone,
 each elite got a rule-bending Mod, three enemy-only effects (Trace: Heat;
 Wipe: your Hook counts; Strip: your Ward) and twelve enemy subroutines
 built on them, and the roster grew to 27 -- new regulars for every

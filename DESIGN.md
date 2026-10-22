@@ -11,7 +11,7 @@ scratch (see Archetypes & Subroutines); that redesign is decided but not
 yet implemented. This doc is the source of truth for settled design.
 Working decision records live in `docs/` (`archetype-redesign.md`,
 `run-economy-design.md`); sections superseded by session 51 are archived
-verbatim in `docs/design-history.md`. See `BACKLOG.md` for open work and
+verbatim in `docs/archive/design-history.md`. See `BACKLOG.md` for open work and
 `docs/session-logs/` for the session-by-session history.
 
 ## Concept
@@ -29,7 +29,7 @@ Two deliberately separate resources, not one shared health stat:
 
 - **Heat — session 52 update: a per-layer budget.** The description
   below is the original run-long model; what is built now (session 50's
-  D1–D7 plus step 2's R5–R8, `docs/recalibration-design.md`) is:
+  D1–D7 plus step 2's R5–R8, `docs/archive/recalibration-design.md`) is:
   - each layer has its own **allowance**, tightening with depth (D5);
     reaching it gets you caught;
   - clearing a gatekeeper **resets Heat to 0** (D4) — after the
@@ -194,12 +194,12 @@ one real use was switching off a Heat-costing piece.)
 ## Archetypes & Subroutines (session 51 redesign)
 
 Redesigned from scratch in session 51 (`/decision-session`, full record
-with reasoning in `docs/archetype-redesign.md`, decisions A1–A11),
-building on session 50's per-turn model (`docs/run-economy-design.md`
+with reasoning in `docs/archive/archetype-redesign.md`, decisions A1–A11),
+building on session 50's per-turn model (`docs/archive/run-economy-design.md`
 D11–D15). Everything this replaces — the Exploit/Malware/Encryption/Root
 archetypes, the 22-kind payload catalog, the 8-family trigger catalog,
 tags, the Neutral archetype, the old classes and loadouts — is archived
-verbatim in `docs/design-history.md`.
+verbatim in `docs/archive/design-history.md`.
 
 **Status: designed, not implemented.** The engine still runs the old
 model. Implementation order (A10): engine refactor → recalibrate the
@@ -398,7 +398,7 @@ every piece acts every turn.
 
 Every piece is priced in **Credit per turn**, the currency (R1). The
 full record, with every measurement behind these rules, is
-`docs/recalibration-design.md`; raw output is in `docs/calibration/`.
+`docs/archive/recalibration-design.md`; raw output is in `docs/calibration/`.
 The instruments are:
 
 - `src/engine/pricing.ts` with `scripts/price-check.ts`: seat-swapped
@@ -547,7 +547,7 @@ of maxing out before ever reaching the fight. Beelining past a layer's
 regular/elite fights conserves that Heat, banking it as headroom to
 explore more freely in a later layer instead — at the cost of facing
 that layer's gatekeeper with a thinner kit. Session 35's sweep (see
-`docs/roadmap-history.md`) found both pure extremes are worse than this framing
+`docs/archive/roadmap-history.md`) found both pure extremes are worse than this framing
 implies neither should be — full beeline concentrates risk into
 gatekeeper losses, full explore just trades that for Heat-exhaustion and
 no-route losses instead.
@@ -630,7 +630,7 @@ won, on layer 4).
 have ≥2 forward children") but a **graph-resilience** one — map
 generation must keep the layer's gatekeeper reachable from the player's
 current position as nodes close, verified by a generate-then-check
-approach rather than a hand-proved topology guarantee (see `docs/roadmap-history.md`
+approach rather than a hand-proved topology guarantee (see `docs/archive/roadmap-history.md`
 Phase 3, Checkpoint B). This also folds in what was previously a separate
 banked idea about a backtracking "pressure valve": since every move
 (forward, sideways, or back into already-resolved territory) costs a
@@ -677,7 +677,7 @@ closure sources into an unintended soft-lock.
 
 **Scope note**: classes, subroutine acquisition, Mods, Burners and
 Events are all designed and implemented (Phases 4–5; detail in
-`docs/roadmap-history.md`). Ascension-style difficulty remains genuinely
+`docs/archive/roadmap-history.md`). Ascension-style difficulty remains genuinely
 undesigned and needs its own `/decision-session`; its first concrete
 modifier is banked as run-economy D6 (higher ascension resets less Heat
 between layers). Cross-run unlocks wait on a save/profile layer (see
@@ -740,7 +740,7 @@ loadout slot, no install/bench split, no ordering, no cap — see
 Ownership below). Named **Mods**, fitting the hacking/hardware setting
 directly. This session settled the system's *shape* only — the
 hook-point catalog, concrete named content, and exact numbers are
-explicitly future work (see `docs/roadmap-history.md` Phase 5), the same
+explicitly future work (see `docs/archive/roadmap-history.md` Phase 5), the same
 "infrastructure before content" split Phase 2 used for subroutines
 themselves.
 
@@ -804,7 +804,7 @@ Mirrors StS's own elite-guarantees-a-relic-plus-the-normal-card-reward
 shape. This makes reward *shape itself* a difficulty/tier signal:
 regular = 1 reward type, elite/gatekeeper = 2, Shop = both purchasable,
 Event = a probable third channel once Event nodes are designed (a
-pre-existing banked item, `docs/roadmap-history.md` Phase 0/3, now also gating this
+pre-existing banked item, `docs/archive/roadmap-history.md` Phase 0/3, now also gating this
 acquisition channel specifically for Mods).
 
 **Shop**: two independent slates in one Shop visit — the existing
@@ -828,7 +828,7 @@ Mod) is excluded from a class's reward *and* Shop pool when that
 archetype isn't one of that class's 2 specializations — otherwise a
 class could be guaranteed a Mod it can never meaningfully fire, the same
 "don't ship a structurally dead piece" concern that drove the since-removed
-Neutral Archetype (session 28, `docs/design-history.md`). Implemented as the same static
+Neutral Archetype (session 28, `docs/archive/design-history.md`). Implemented as the same static
 `ClassDefinition.archetypes` check subroutine reward-pool scoping
 already uses, just inverted into an exclusion rather than a "primarily
 draws from" weighting — no new state-inspection machinery needed. (A
@@ -965,9 +965,9 @@ to plug into" now exist on paper.
 8 rare — plus 6 class-exclusive starting passives. Every hook point and
 both engine buckets have at least two real examples. The two content
 passes that produced them (session 32's 17-Mod validation sample and
-session 44's doubling) are archived in `docs/design-history.md`.
+session 44's doubling) are archived in `docs/archive/design-history.md`.
 
-**Under the session 51 redesign** (`docs/archetype-redesign.md`), most
+**Under the session 51 redesign** (`docs/archive/archetype-redesign.md`), most
 Mods survive unchanged — the economy, map, Shop, reward and Heat Mods do
 not touch subroutine shape. Three groups are reworked in the content
 step:
@@ -1036,7 +1036,7 @@ carries a trigger family:
 The map-context "reopen a closed node" effect directly resolves the
 banked idea from session 9 ("a future ability/class passive that lets
 the player bypass a closed/lost node") — as a found/purchased item
-rather than a passive ability. See `docs/roadmap-history.md` Phase 0 for the closed-
+rather than a passive ability. See `docs/archive/roadmap-history.md` Phase 0 for the closed-
 out banked item.
 
 **Inventory: capped, no bench/installed split.** A hard slot limit,
@@ -1082,7 +1082,7 @@ are single verb effects — a one-shot Credit, Suppress, Tempo, etc.) Authored a
 sample against the type system (2 combat, 3 map, 3 shop — one per new
 effect kind, confirming both `MapBurnerEffect` and `ShopBurnerEffect`
 need no changes). Full implementation-facing checkpoint spec (including
-the type system's exact shape) in `docs/roadmap-history.md`'s new "Burners + Events
+the type system's exact shape) in `docs/archive/roadmap-history.md`'s new "Burners + Events
 Implementation" write-up under Phase 5.
 
 ### Events (session 36, `/decision-session`)
@@ -1162,7 +1162,7 @@ not straight to `inert` (no automatic free pass) — matches the
 "recoverable, not automatic" framing this idea was banked under at
 session 9, and keeps a single-use item's power level in line with the
 rest of the pool. Full implementation-facing checkpoint spec in
-`docs/roadmap-history.md`'s new "Burners + Events Implementation" write-up under
+`docs/archive/roadmap-history.md`'s new "Burners + Events Implementation" write-up under
 Phase 5.
 
 ### Gameplay Simulation Heuristics (session 45, `/decision-session`)
@@ -1316,14 +1316,14 @@ installed piece.
 **Explicitly not done this session**: no code, no new files — shape and
 design only, same discipline as every prior scoping session. Full
 implementation-facing checkpoint spec (real function/file names, cited
-against the current codebase) is in `docs/roadmap-history.md`'s new "Gameplay
+against the current codebase) is in `docs/archive/roadmap-history.md`'s new "Gameplay
 Simulation Heuristics — Implementation" write-up under Phase 5, for a
 future `/dev-session`.
 
 ## Enemy Design
 
 **Session 27** replaced the placeholder enemy model with a real design,
-closing the two banked items from session 26 (`docs/roadmap-history.md`) (enemy loadout
+closing the two banked items from session 26 (`docs/archive/roadmap-history.md`) (enemy loadout
 variation, and the fight-kind-vs-layer skill-scaling question). Through
 Phase 4, every fight drew from exactly one flat, always-firing
 `directBurst` subroutine per tier (`ENEMY_LOADOUT_REGULAR`/`_ELITE`/
@@ -1368,7 +1368,7 @@ harder** per-layer pass rate:
 |---|---|---|---|---|
 | target pass rate | 0.705 | 0.645 | 0.585 | 0.525 |
 
-**Revised in session 56's balance pass** (`docs/balance-design.md`
+**Revised in session 56's balance pass** (`docs/archive/balance-design.md`
 B4–B7), from session 49's 0.78 / 0.72 / 0.66 / 0.60. That curve was
 calibrated when every class shared one way to lose. Exploit classes
 now also lose to Heat, and the curve that puts every class inside
@@ -1501,11 +1501,11 @@ work; they can stay on their current path.
 
 The session 27 roster — 32 named enemies (12 regular, 8 elite, 12
 gatekeepers), grown by session 43's enemy-only pieces — is archived in
-`docs/design-history.md`. Its kits are built from the old subroutine
+`docs/archive/design-history.md`. Its kits are built from the old subroutine
 pool and are **deleted, not migrated**, in the session 51 refactor.
 
 **Session 55 authored the replacement** (`src/engine/content/enemies.ts`;
-decisions E1–E7 in `docs/authoring-design.md`): 18 enemies, an initial
+decisions E1–E7 in `docs/archive/authoring-design.md`): 18 enemies, an initial
 set to grow. That is 6 regulars, 4 elites, and 8 gatekeepers, two per
 layer.
 
@@ -1566,7 +1566,7 @@ many interacting systems; it's exactly what the enemy AI needs regardless
 run against the engine with no UI in the loop); and it keeps the door
 open for things like AI-vs-AI simulation for balance testing later,
 without that needing to be designed for specially. This generalizes what
-Phase 1 already implied on its own (`docs/roadmap-history.md`: "should be testable as
+Phase 1 already implied on its own (`docs/archive/roadmap-history.md`: "should be testable as
 a standalone engine... before any combat-specific wrapping") into a rule
 for every phase, not just the first one.
 
@@ -1627,7 +1627,7 @@ remaining design work is each suit's visual identity, the same
 relationship a real suit symbol (♠) has to its name (Spade).
 
 Session 51 redesigned the archetypes and therefore the suits (A1, A7;
-the session 13 table is archived in `docs/design-history.md`):
+the session 13 table is archived in `docs/archive/design-history.md`):
 
 | Suit / Archetype | Icon | Color |
 |---|---|---|

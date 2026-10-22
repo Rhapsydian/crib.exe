@@ -1,6 +1,6 @@
 # Step 2, checkpoint 3 -- raw verb prices (session 52)
 # scripts/price-check.ts, skill 0.85 unless noted, 200 seeds x 2 seats per point, two-pass refined.
-# Batch commands are in docs/recalibration-design.md (checkpoint 3).
+# Batch commands are in docs/archive/recalibration-design.md (checkpoint 3).
 
 ## batch A
 MIRROR-DUEL PRICES -- Credit-equivalents, piece vs piece, equal skill. NOT a full-run metric.

@@ -1,5 +1,5 @@
 /**
- * Beta-pricing validation (step 2, checkpoint 5; `docs/recalibration-design.md`
+ * Beta-pricing validation (step 2, checkpoint 5; `docs/archive/recalibration-design.md`
  * R3, parts 2-4).
  *
  * For a sample of real beta configurations -- every shape, common and rare

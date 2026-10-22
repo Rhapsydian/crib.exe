@@ -11,7 +11,7 @@ import { suitInfo } from './suits';
  * condition is met) -- P7 of docs/playable-design.md. Display only: the
  * engine keeps alpha/beta.
  *
- * Written to the rules in docs/text-audit.md (session 60): "subroutine",
+ * Written to the rules in docs/archive/text-audit.md (session 60): "subroutine",
  * never "piece"; say what gets bigger; counts are "since it last fired";
  * the on-screen gauge names (Breach, Containment); initiative in turns
  * with the number spelled out. Every text is in the player's voice;

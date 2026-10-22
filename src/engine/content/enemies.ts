@@ -18,7 +18,7 @@ import {
 import { authoredPiece } from './starting-loadouts';
 
 /**
- * The authored enemy roster (step 3, enemies; `docs/authoring-design.md`
+ * The authored enemy roster (step 3, enemies; `docs/archive/authoring-design.md`
  * E1-E7). Every enemy is the target network's own defenses -- its
  * security team and countermeasures hacking back -- never a rival group
  * (session 27's tonal rule).
@@ -78,7 +78,7 @@ export const AUTHORED_REGULARS: AuthoredEnemy[] = [
   { id: 'legacy-firewall', name: 'Legacy Firewall', tier: 'regular', archetypes: ['honeypot'], minLayer: 2, loadout: [p('basic-auth'), p('tarpit'), p('rate-limiting')], scale: 1.2 },
   // E7's regular tracer: barely fights back, slows you, makes you loud.
   { id: 'tripwire', name: 'Tripwire', tier: 'regular', archetypes: ['overclock', 'exploit'], minLayer: 2, loadout: [tracing(p('ping'), 0.25), p('doorknob-rattle')], scale: 1.6 },
-  // --- Session 60's content pass (docs/enemy-review.md CP2-CP4): enemy-only
+  // --- Session 60's content pass (docs/archive/enemy-review.md CP2-CP4): enemy-only
   // subroutines, and new faces for the deep layers. Named as defenders.
   // A gentle first Wipe: its pairs chip your Hook counts.
   { id: 'session-monitor', name: 'Session Monitor', tier: 'regular', archetypes: ['exploit'], minLayer: 1, loadout: [SESSION_RESET, p('buffer-overflow')], scale: 1.4 },
@@ -96,7 +96,7 @@ export const AUTHORED_REGULARS: AuthoredEnemy[] = [
   { id: 'firewall-cluster', name: 'Firewall Cluster', tier: 'regular', archetypes: ['exploit', 'overclock'], minLayer: 4, loadout: [PRIVILEGE_DROP, THROTTLE, p('port-scan')], scale: 1.52 },
 ];
 
-/** Elites (E2: 4; each one small rule-bending Mod -- docs/enemy-review.md
+/** Elites (E2: 4; each one small rule-bending Mod -- docs/archive/enemy-review.md
  * EM1-EM4; class Mods are the player's alone since session 60). Better pieces
  * than regulars -- a rare or uncommons (E1). The first four pair a class's
  * archetypes, covering each twice; session 60 added two for the deep

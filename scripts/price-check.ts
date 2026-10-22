@@ -1,5 +1,5 @@
 /**
- * Mirror-duel pricing (step 2, `docs/recalibration-design.md` R1/R2).
+ * Mirror-duel pricing (step 2, `docs/archive/recalibration-design.md` R1/R2).
  *
  * Prices a verb in Credit-equivalents: both sides get a Credit-B host, one
  * adds the verb under test, the other adds Credit Δ, and the price is the

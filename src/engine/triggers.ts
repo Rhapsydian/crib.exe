@@ -27,7 +27,7 @@ import {
  * The old trigger families (`accumulator`, `occurrence` and its three
  * variations, `selfState`, `enemyState`, `chained`, `always`,
  * `rareOccurrence`, `handOutcome`) and the readiness latch that gated
- * firing on them are gone; see docs/design-history.md.
+ * firing on them are gone; see docs/archive/design-history.md.
  */
 
 /** Per-subroutine-instance runtime state, one per loadout entry, carried

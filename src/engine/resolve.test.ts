@@ -23,7 +23,7 @@ import {
 // Session 51: rewritten for the seven verbs and the alpha/beta turn. The
 // old 2,000-line payload-kind suite (DoT/HoT ticks, debuffs, sabotage,
 // the six old class passives, the 34 enemy passives) retired with those
-// mechanics; see docs/design-history.md.
+// mechanics; see docs/archive/design-history.md.
 
 function piece(id: string, alpha: Alpha, beta?: Beta, extra: Partial<SubroutineDefinition> = {}, archetype: Archetype = 'exploit'): SubroutineDefinition {
   return { id, name: id, archetype, alpha, beta, ...extra };

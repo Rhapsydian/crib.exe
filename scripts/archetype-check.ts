@@ -1,5 +1,5 @@
 /**
- * Archetype check (step 3; `docs/authoring-design.md` S6, S7).
+ * Archetype check (step 3; `docs/archive/authoring-design.md` S6, S7).
  *
  * Runs one authored archetype's checkpoint checks:
  *

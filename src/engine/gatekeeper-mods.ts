@@ -1,8 +1,8 @@
 /**
- * Enemy Mods (step 3, enemies; `docs/authoring-design.md` E4): the light
+ * Enemy Mods (step 3, enemies; `docs/archive/authoring-design.md` E4): the light
  * registry DESIGN.md's Enemy Design asks for. Each gatekeeper carries ONE
  * bespoke Mod, which may bend a rule (S8); since session 60 each elite
- * carries a smaller one (docs/enemy-review.md EM1-EM4), and no enemy
+ * carries a smaller one (docs/archive/enemy-review.md EM1-EM4), and no enemy
  * carries a class Mod. (The id type keeps its old name.) The logic lives at resolve.ts's hook sites, each
  * a lookup by id (`hasSideMod`) rather than a per-enemy branch, so more
  * can be added without new wiring.
@@ -30,7 +30,7 @@ export type GatekeeperModId =
 export interface GatekeeperModDefinition {
   id: GatekeeperModId;
   name: string;
-  /** What it does, in the player's voice (docs/text-audit.md). */
+  /** What it does, in the player's voice (docs/archive/text-audit.md). */
   text: string;
   /** Which tier carries it -- the tag on screen ("elite Mod"). */
   tier: 'elite' | 'gatekeeper';

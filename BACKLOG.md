@@ -1,10 +1,10 @@
 # crib.exe — Backlog
 
-What is still to do. Completed work lives in `docs/roadmap-history.md`
+What is still to do. Completed work lives in `docs/archive/roadmap-history.md`
 and `docs/session-logs/`.
 
 **Convention for this file** (session 48): it stays forward-looking.
-When an item is finished, it moves to `docs/roadmap-history.md` or is
+When an item is finished, it moves to `docs/archive/roadmap-history.md` or is
 summarised in a session log; it does not accumulate here. **Do not stack
 session updates in this file**: "Current state" is rewritten each
 session, and the open-items list is pruned, not appended to.
@@ -171,5 +171,5 @@ Code and tools:
 | 4 — Meta-progression systems (classes, Mods, Merge, Burners) | ✅ complete (session 22); between-run progression still undesigned |
 | 5 — Content, balance & polish | 🔄 archetype redesign and authored content done (sessions 51–56); playable in the browser (sessions 57–63, milestones 1–4); polish, the content pass and retuning under way |
 
-Detail for every completed phase is in `docs/roadmap-history.md`; the
+Detail for every completed phase is in `docs/archive/roadmap-history.md`; the
 playable-game milestones are in `docs/playable-design.md`.

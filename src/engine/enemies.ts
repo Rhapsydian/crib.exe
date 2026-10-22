@@ -17,7 +17,7 @@ export type EnemyTier = 'regular' | 'elite' | 'gatekeeper';
 
 /** One id per enemy in the roster: step 3's authored 18 (E2), defined
  * in content/enemies.ts. The session-51 skeleton roster and the
- * session-27 roster before it are archived (docs/design-history.md). */
+ * session-27 roster before it are archived (docs/archive/design-history.md). */
 export type EnemyId =
   // Regular
   | 'pentest-script'

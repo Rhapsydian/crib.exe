@@ -1,5 +1,5 @@
 /**
- * Roster check (step 3, enemies; `docs/authoring-design.md` E3, E5).
+ * Roster check (step 3, enemies; `docs/archive/authoring-design.md` E3, E5).
  * (Not scripts/enemy-check.ts, session 50's per-enemy difficulty
  * diagnostic against accumulated state.)
  *

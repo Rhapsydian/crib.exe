@@ -3,7 +3,7 @@ import type { ArchetypePool } from '../subroutines';
 import { EXPLOIT_POOL } from './exploit';
 
 /**
- * Daemon's authored pool (step 3, checkpoint 2; `docs/authoring-design.md`).
+ * Daemon's authored pool (step 3, checkpoint 2; `docs/archive/authoring-design.md`).
  * Ramp / Healing: alphas that grow with every fire, and Suppress to push
  * the opponent's win gauge back. Signature beta: a stepped different
  * effect on Progress (points scored, or the piece's own fires).

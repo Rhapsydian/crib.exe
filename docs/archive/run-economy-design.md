@@ -73,7 +73,7 @@ resolution — that is event design, not a node tax.
 
 ### D4 — Heat fully resets on clearing a gatekeeper ✅
 
-> **Amended by R8 (session 52, `docs/recalibration-design.md`):** the
+> **Amended by R8 (session 52, `docs/archive/recalibration-design.md`):** the
 > gatekeeper's toll is charged *after* the fight, not first, so its
 > performance term can read the result; beating the gatekeeper but being
 > caught by its toll is a new run ending, "breached, then caught".

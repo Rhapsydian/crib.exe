@@ -3,7 +3,7 @@ import { BETA_FREQUENCY } from './beta-frequency-data';
 import { createRng } from './rng';
 
 /**
- * R3's pricing formula (step 2, checkpoint 5; `docs/recalibration-design.md`).
+ * R3's pricing formula (step 2, checkpoint 5; `docs/archive/recalibration-design.md`).
  * The authoring tool step 3 prices content with.
  *
  *     piece price = alpha price + beta price
