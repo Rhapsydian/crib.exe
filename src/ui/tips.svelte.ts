@@ -16,7 +16,7 @@ export const TIP_TEXT: Record<TipId, string> = {
   // One card for the gatekeeper and its toll (session 63, the user's call:
   // they were two cards back to back).
   quarantine:
-    "Each layer ends with a gatekeeper. Lose to it and you're quarantined, which ends the run. Beat it and you pay a Heat toll, bigger the closer it came to containing you. If the toll maxes out your Heat, you must outscore it over 3 hands of Cribbage to escape.",
+    "Each layer ends with a gatekeeper. Win to breach the layer; lose and you're quarantined, ending the run. Winning still costs a Heat toll, and if that maxes out your Heat, you must outscore it over 3 hands of Cribbage to evade a run-ending trace.",
   heat: "Your Heat is past three-quarters of this layer's limit. Reach the limit and you're caught; resting at a Safehouse or clearing the gatekeeper lowers it.",
   rank: 'Merged subroutines show their rank (I-III): each rank makes the Hook stronger. Spare copies bank until a Safehouse Merge.',
   mods: 'Your Mods are permanent effects for the run. Tap one to read it; some act in fights, others on the map or in Shops.',
