@@ -159,7 +159,7 @@ style guide (in progress).
 
 ```bash
 npm install
-npm test        # Vitest suite (794 tests)
+npm test        # Vitest suite (805 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server: the main menu (the roguelite, Cribbage); #test is the single-fight harness
 ```
