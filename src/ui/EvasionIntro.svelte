@@ -13,14 +13,13 @@
 <div class="intro">
   <div class="kicker">LAYER {request.layer} · GATEKEEPER BREACHED · HEAT MAXED</div>
   <div class="title">&gt;&gt; TRACE EVASION</div>
-  <div class="line">You beat {request.enemy.name}, but its toll maxed your Heat, and it's tracing you.</div>
+  <div class="line">You beat {request.enemy.name}, but its Heat toll maxed out your Heat. Now it's tracing you.</div>
   <div class="line">
-    Outscore it over {EVASION_HANDS} hands of plain Cribbage to slip away{request.layer >= 4 ? ' and take the network' : ' and move on to the next layer'}.
-    Lose, or tie, and you're caught.
+    To escape, outscore it over {EVASION_HANDS} hands of plain Cribbage. Win and you {request.layer >= 4 ? 'take the network' : `move on to layer ${request.layer + 1}`}. Lose or tie and you're caught.
   </div>
   <div class="facts">
-    <div><b>{request.headStart}</b> its head start: its Containment hit {pct}%, a point per 10%</div>
-    <div><b>2</b> cribs for you: you deal the 1st and 3rd hands</div>
+    <div><span class="label">Its head start:</span> {request.headStart} {request.headStart === 1 ? 'point' : 'points'}, 1 for every 10% of Containment it reached ({pct}%).</div>
+    <div><span class="label">Your edge:</span> you deal the 1st and 3rd hands, so two of the three cribs are yours.</div>
   </div>
   <button class="begin" onclick={onbegin}>▶ start the evasion</button>
 </div>
@@ -61,11 +60,8 @@
     font-size: 12px;
     color: var(--text-dim);
   }
-  .facts b {
-    display: inline-block;
-    min-width: 22px;
+  .facts .label {
     color: var(--text);
-    font-size: 15px;
   }
   .begin {
     margin-top: 12px;
