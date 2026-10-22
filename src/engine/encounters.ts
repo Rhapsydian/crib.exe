@@ -1018,6 +1018,12 @@ export function* resolveEncounterRequests(
       const activatedShopBurner =
         chosenShopBurnerId && availableShopBurnerIds.includes(chosenShopBurnerId) ? BURNER_DEFINITIONS[chosenShopBurnerId] : undefined;
       const shopBurnerUsed = activatedShopBurner ? activatedShopBurner.id : null;
+      // The visit sees you without the Burner just used (session 63, the
+      // user's catch: it was still offered for sale). run.ts removes it
+      // for good after the encounter, from outcome.shopBurnerUsed.
+      const shopper: RunPlayerState = shopBurnerUsed
+        ? { ...playerState, carriedBurnerIds: playerState.carriedBurnerIds.filter((_, i) => i !== playerState.carriedBurnerIds.indexOf(shopBurnerUsed)) }
+        : playerState;
       const burnerModifiers = shopModifiersForActivatedBurner(activatedShopBurner);
 
       // Vendor Discount/Bulk Buyer (Phase 5 Mods checkpoint E) apply to
@@ -1062,8 +1068,8 @@ export function* resolveEncounterRequests(
           sold: { subroutine: [...visit.sold.subroutine], copy: [...visit.sold.copy], burner: [...visit.sold.burner] },
         };
         const phaseAtAsk = simPhase;
-        const action = yield* ask({ kind: 'shop', shop: snapshot, playerState, fallback: () => shopFallback(snapshot, playerState, phaseAtAsk, strategies).action });
-        const sim = shopFallback(snapshot, playerState, phaseAtAsk, strategies);
+        const action = yield* ask({ kind: 'shop', shop: snapshot, playerState: shopper, fallback: () => shopFallback(snapshot, shopper, phaseAtAsk, strategies).action });
+        const sim = shopFallback(snapshot, shopper, phaseAtAsk, strategies);
         simPhase = sameShopAction(action, sim.action) ? sim.phase + 1 : simPhase;
         if (action.kind === 'leave') break;
         if (action.kind === 'reroll') {
@@ -1087,7 +1093,7 @@ export function* resolveEncounterRequests(
               ? playerState.bench.filter((p) => p.id === action.id).length
               : action.item === 'copy'
                 ? (playerState.material[action.id] ?? 0)
-                : playerState.carriedBurnerIds.filter((id) => id === action.id).length;
+                : shopper.carriedBurnerIds.filter((id) => id === action.id).length;
           if (ownedCount <= sold.filter((id) => id === action.id).length) continue;
           sold.push(action.id);
           visit.data +=

@@ -275,6 +275,27 @@ describe('the Shop as one visit (checkpoint 4)', () => {
     expect(step.value.burnerRerollCost).toBeGreaterThan(0);
   });
 
+  it("a Shop Burner used on the way in can't then be sold (session 63, the user's catch)", async () => {
+    const { resolveEncounterRequests } = await import('./encounters');
+    const { createNode } = await import('./map-types');
+    const { createRng } = await import('./rng');
+    const player = { ...createInitialPlayerState('exploit-overclock'), data: 0, carriedBurnerIds: ['stolen-coupon', 'stolen-coupon'] as BurnerId[] };
+    const visit = resolveEncounterRequests(createNode('s', 'shop'), createRng(5), player);
+    let step = visit.next();
+    if (step.done || step.value.kind !== 'shopBurner') throw new Error('expected the Shop Burner ask');
+    step = visit.next('stolen-coupon');
+    if (step.done || step.value.kind !== 'shop') throw new Error('expected a shop request');
+    // The Shop sees one coupon left, not two.
+    expect(step.value.playerState.carriedBurnerIds).toEqual(['stolen-coupon']);
+    step = visit.next({ kind: 'sell', item: 'burner', id: 'stolen-coupon' });
+    step = visit.next({ kind: 'sell', item: 'burner', id: 'stolen-coupon' }); // the used one: ignored
+    if (step.done || step.value.kind !== 'shop') throw new Error('expected a shop request');
+    expect(step.value.shop.sold.burner).toEqual(['stolen-coupon']);
+    step = visit.next({ kind: 'leave' });
+    if (!step.done) throw new Error('expected the visit to end');
+    expect(step.value.shopBurnerUsed).toBe('stolen-coupon');
+  });
+
   it('sells benched subroutines and carried Burners for Data, each copy once (session 61)', async () => {
     const { resolveEncounterRequests } = await import('./encounters');
     const { createNode } = await import('./map-types');
