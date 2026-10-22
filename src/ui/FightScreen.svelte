@@ -287,15 +287,15 @@
 
   <main class="main">
     <div class="band enemy">
-      <!-- Heat at the top of the enemy's band, so the screen's spacing
-           never parts them (the user's call). -->
-      {#if heatOutlook}<HeatBar outlook={heatOutlook} gatekeeper={heat?.tier === 'gatekeeper'} />{/if}
       <div class="who">
         <span class="tag">TARGET</span> <span class="enemy-name">{f.enemyName}</span>
         {#if guide.active}<button class="speed" class:on={guide.cribbageCoach} aria-pressed={guide.cribbageCoach} onclick={() => (guide.cribbageCoach = !guide.cribbageCoach)} title="the Cribbage coach: {guide.cribbageCoach ? 'on' : 'off'}">◈ coach</button>{/if}
         {#if replay}<button class="speed" class:after={guide.active} onclick={() => replay.cycleSpeed()} title="turn speed">» {replay.speed}</button>{/if}
         <button class="loadouts-button" onclick={() => (sheet = 'loadouts')}>◀ loadouts</button>
       </div>
+      <!-- Heat between the TARGET row and the enemy's subroutines (the
+           user's call). -->
+      {#if heatOutlook}<HeatBar outlook={heatOutlook} gatekeeper={heat?.tier === 'gatekeeper'} />{/if}
       <Loadout entries={f.them.loadout} dense enemy firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
       <Gauges side={f.them} reading={replay?.gauges?.[1]} isPlayer={false} compact mods={theirMods.length} modNames={theirMods.map((m) => m.name)} flashMods={flashSide(1)} onkit={() => (sheet = 'loadouts')} />
     </div>
