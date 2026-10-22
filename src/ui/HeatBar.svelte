@@ -10,27 +10,28 @@
   let { outlook, gatekeeper = false }: { outlook: FightHeatOutlook; gatekeeper?: boolean } = $props();
   const fmt = (n: number) => String(Math.round(n));
   const pct = (n: number) => `${Math.min(100, (n / outlook.allowance) * 100)}%`;
-  let flash = $state(false);
-  // The Heat last seen, to flash when an alarm raises it (starts unset,
-  // so the first reading never flashes).
+  // Each time an alarm raises your Heat, the bar plays its alert once:
+  // highlight, a beat, two blinks, off (the user's pattern). A CSS
+  // animation restarted by a count, not a timer -- the bar redraws on
+  // every replay step, which kept cancelling the old timer, so the
+  // highlight never went away.
+  let alerts = $state(0);
+  // The Heat last seen (unset at first, so the first reading never alerts).
   let last: number | null = null;
   $effect(() => {
-    if (last !== null && outlook.now > last + 0.01) {
-      flash = true;
-      const t = setTimeout(() => (flash = false), 700);
-      last = outlook.now;
-      return () => clearTimeout(t);
-    }
+    if (last !== null && outlook.now > last + 0.01) alerts++;
     last = outlook.now;
   });
 </script>
 
-<div class="heat" class:danger={outlook.caughtIfWin} class:flash title="Heat now, and what winning now would add">
+<div class="heat" class:danger={outlook.caughtIfWin} title="Heat now, and what winning now would add">
   <span class="label">HEAT</span>
-  <div class="bar">
-    <span class="win" style="width: {pct(outlook.ifWin)}"></span>
-    <span class="now" style="width: {pct(outlook.now)}"></span>
-  </div>
+  {#key alerts}
+    <div class="bar" class:alert={alerts > 0}>
+      <span class="win" style="width: {pct(outlook.ifWin)}"></span>
+      <span class="now" style="width: {pct(outlook.now)}"></span>
+    </div>
+  {/key}
   <span class="num"><b>{fmt(outlook.now)}</b>/{fmt(outlook.allowance)}</span>
   <span class="if">
     {#if outlook.caughtIfWin}⚠ {gatekeeper ? 'its toll now means a trace evasion' : 'a win now gets you caught'}{:else}win now → {fmt(outlook.ifWin)}{/if}
@@ -86,7 +87,34 @@
   .danger .win {
     background: var(--danger);
   }
-  .flash .bar {
-    box-shadow: 0 0 0 2px var(--warn);
+  .bar.alert {
+    animation: heat-alert 1.5s linear both;
+  }
+  /* Highlight, a beat, blink, blink, off. */
+  @keyframes heat-alert {
+    0%,
+    34% {
+      box-shadow: 0 0 0 2px var(--warn);
+    }
+    35%,
+    52% {
+      box-shadow: none;
+    }
+    53%,
+    64% {
+      box-shadow: 0 0 0 2px var(--warn);
+    }
+    65%,
+    76% {
+      box-shadow: none;
+    }
+    77%,
+    88% {
+      box-shadow: 0 0 0 2px var(--warn);
+    }
+    89%,
+    100% {
+      box-shadow: none;
+    }
   }
 </style>
