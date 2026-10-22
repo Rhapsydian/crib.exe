@@ -185,6 +185,8 @@ export function addHeat(current: number, amount: number, max: number): HeatUpdat
 export interface FightHeatOutlook {
   now: number;
   ifWin: number;
+  /** The Heat a win now adds (before the allowance caps it). */
+  winGain: number;
   ifLose?: number;
   allowance: number;
   caughtIfWin: boolean;
@@ -210,6 +212,7 @@ export function fightHeatOutlook(o: {
   return {
     now,
     ifWin: Math.min(o.allowance, ifWin),
+    winGain: ifWin - o.heat,
     ifLose: ifLose === undefined ? undefined : Math.min(o.allowance, ifLose),
     allowance: o.allowance,
     caughtIfWin: ifWin >= o.allowance,

@@ -5,6 +5,7 @@
   import { readGauges } from '../engine/resolve';
   import { untrack } from 'svelte';
   import { mergeSteps, pointsSummary, stepGauges } from './timeline';
+  import { fightHeatOutlook } from '../engine/heat';
 
   // A live fight on the chosen screen, and its result panel at the end.
   // Every engine pause is handed to the replay, which steps through the
@@ -40,6 +41,15 @@
     return () => clearTimeout(t);
   });
   const ending = $derived(done && !cardUp && fight.result ? fight.result.winner : null);
+  // A run's win: the Heat it cost, as the engine charges it (the user's
+  // ask, session 63) -- baseline, alarms and the performance term.
+  const heatGained = $derived.by(() => {
+    const r = fight.result;
+    if (!r || r.winner !== 0 || !fight.heat) return null;
+    const o = fightHeatOutlook({ ...fight.heat, alarm: r.heatGenerated, enemyFill: r.finalFillFraction[1] });
+    return { gain: o.winGain, after: o.ifWin, allowance: o.allowance, maxed: o.caughtIfWin };
+  });
+  const fmtHeat = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 </script>
 
 {#if fight.frame}
@@ -56,6 +66,11 @@
     <div class="line dim">
       breach {pct(r.finalFillFraction[0])} · containment {pct(r.finalFillFraction[1])} · {r.hands.length} hands · {fight.detail}
     </div>
+    {#if heatGained}
+      <div class="line heat" class:maxed={heatGained.maxed}>
+        Heat {heatGained.gain < 0 ? '−' : '+'}{fmtHeat(Math.abs(heatGained.gain))} → {fmtHeat(heatGained.after)}/{fmtHeat(heatGained.allowance)}{heatGained.maxed ? ' · maxed' : ''}
+      </div>
+    {/if}
     <table class="points">
       <thead><tr><th>points scored</th><th class="you">you</th><th class="them">them</th></tr></thead>
       <tbody>
@@ -107,6 +122,12 @@
   }
   .line {
     font-size: 13px;
+  }
+  .heat {
+    color: var(--warn);
+  }
+  .heat.maxed {
+    color: var(--danger);
   }
   .dim {
     color: var(--text-dim);
