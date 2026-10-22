@@ -298,10 +298,13 @@ subroutine on the other side to exchange (dashed targets, cancel).
   always offer one; elites 50%; regular fights 20%.)
 
 Open from session 63:
-- **Balance after the Burner cut** (9d3fafb): Blackhat 22.7%, Operator
-  18.7%, Eidolon 22.0%, Breacher 19.7%, Warden 15.7%, Wraith 14.3%, avg
-  18.8% against the ~16% aim. The user deferred retuning until after the
-  content pass.
+- **Balance after the trace evasion** (69d2f8c): Blackhat 23.3%,
+  Operator 19.7%, Eidolon 22.7%, Breacher 21.0%, Warden 16.3%, Wraith
+  16.0%, avg 19.8% against the ~16% aim (18.8% after the Burner cut;
+  evasions add ~0.8). The user deferred retuning until after the content
+  pass.
+- **Trace evasion:** the escape result ("SLIPPED THE TRACE") wasn't seen
+  in the browser (the scripted player lost); the run test covers both.
 - **Tutorial:** the "Burner fired" coach step wasn't seen in the final
   seed-21 playthrough (fight 2 ended before arming); seen in an earlier
   run. Testers' feedback will say whether the coach texts land.
@@ -311,7 +314,8 @@ Open from session 63:
   chosen seed could follow (the user: fine for the future; cf. Daily
   Runs).
 - **Breached, then caught** at layer 4 shows "4/4 layers breached" under
-  a losing title (the rules' count); revisit if testers find it odd.
+  a losing title (the rules' count); revisit if testers find it odd. Now
+  only after a lost trace evasion.
 
 Open from session 62:
 - **Mods:** ~12 at the layer-4 gatekeeper (Shop 4.6, elites 4.1,

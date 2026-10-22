@@ -33,7 +33,7 @@
     victory: { title: '>> ROOT ACCESS', line: 'You breached all four layers. The network is yours.', won: true },
     quarantined: { title: '>> QUARANTINED', line: 'A gatekeeper purged you from the network.', won: false },
     heatMaxed: { title: '>> TRACED', line: 'Your Heat maxed out. They found you.', won: false },
-    breachedThenCaught: { title: '>> BREACHED, THEN CAUGHT', line: 'You beat the gatekeeper, but its toll maxed your Heat. The layer counts as breached.', won: false },
+    breachedThenCaught: { title: '>> BREACHED, THEN CAUGHT', line: 'You beat the gatekeeper, but its toll maxed your Heat and it traced you. The layer counts as breached.', won: false },
     noRouteRemains: { title: '>> NO ROUTE', line: 'Closed nodes cut off every path to the gatekeeper.', won: false },
   };
   const end = $derived(tutorial ? TUTORIAL_ENDINGS[result.outcome === 'victory' ? 'won' : 'lost'] : ENDINGS[result.outcome]);

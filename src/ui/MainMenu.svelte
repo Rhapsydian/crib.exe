@@ -90,7 +90,7 @@
     </button>
     <button class="entry run" onclick={onrun}>
       <b>Start a Run</b>
-      <span>{runSave ? `Saved run: ${runSave.className}, layer ${runSave.layer} -- resume it on the next screen.` : 'Break into a network, four layers deep. Every fight is Cribbage.'}</span>
+      <span>{runSave ? `Saved run: ${runSave.className}, layer ${runSave.layer}. Resume it on the next screen.` : 'Break into a network, four layers deep. Every fight is Cribbage.'}</span>
     </button>
   </section>
 

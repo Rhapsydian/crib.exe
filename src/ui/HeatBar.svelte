@@ -5,8 +5,8 @@
   // A slim bar at the top of a run's fight: the solid part is your Heat now
   // (it grows as an enemy's alarms go off, with a flash), the faint part
   // what winning at this moment would add. It turns red once a win now
-  // would get you caught -- a gatekeeper's toll climbs as its Containment
-  // fills, so this is where "breached, then caught" shows coming.
+  // would get you caught -- or, a gatekeeper's toll climbing as its
+  // Containment fills, would mean a trace evasion (session 63).
   let { outlook, gatekeeper = false }: { outlook: FightHeatOutlook; gatekeeper?: boolean } = $props();
   const fmt = (n: number) => String(Math.round(n));
   const pct = (n: number) => `${Math.min(100, (n / outlook.allowance) * 100)}%`;
@@ -33,7 +33,7 @@
   </div>
   <span class="num"><b>{fmt(outlook.now)}</b>/{fmt(outlook.allowance)}</span>
   <span class="if">
-    {#if outlook.caughtIfWin}⚠ {gatekeeper ? 'its toll' : 'a win'} now gets you caught{:else}win now → {fmt(outlook.ifWin)}{/if}
+    {#if outlook.caughtIfWin}⚠ {gatekeeper ? 'its toll now means a trace evasion' : 'a win now gets you caught'}{:else}win now → {fmt(outlook.ifWin)}{/if}
   </span>
 </div>
 

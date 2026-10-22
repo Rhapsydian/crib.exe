@@ -131,6 +131,12 @@ reset on the menu). A fuller **end-of-run screen**: who ended the run
 and where, one row per layer, the whole kit, and the seed. Tap-to-skip
 was removed, the last layer's gatekeeper no longer offers rewards, and
 the main menu's title reads as a command with a hand flying off it.
+Heat is now shown up front: each fight's posted Heat on its map card, and
+a **Heat bar** in every run fight (alarms as they land, what a win would
+cost). And *breached, then caught* became a last chance: a **trace
+evasion** (`docs/trace-evasion-design.md`), three hands of plain Cribbage
+against the gatekeeper, which starts a point ahead per 10% of its
+Containment; outscore it to slip away.
 
 What exists, all headless and test-covered:
 

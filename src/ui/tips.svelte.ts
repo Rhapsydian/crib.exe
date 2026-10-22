@@ -14,7 +14,7 @@ export const TIP_TEXT: Record<TipId, string> = {
   event: 'Events are a gamble: pick a choice and see what happens. Some cost Heat, some start a fight.',
   cache: 'A Cache is a free reward for the detour: a rarer subroutine, a Mod, or Data, and always a Burner.',
   quarantine: "Each layer ends with a gatekeeper. Beat it to move on; lose and you're quarantined, which ends the run.",
-  toll: "Beating a gatekeeper costs Heat too: a toll charged after the fight, bigger the closer it came to containing you. If the toll takes you past this layer's limit, you're caught even though you won. Its card shows the toll; in the fight, the Heat bar shows what a win would cost.",
+  toll: "Beating a gatekeeper costs Heat too: a toll charged after the fight, bigger the closer it came to containing you. If the toll takes you past this layer's limit, it tries to trace you: a 3-hand game of plain Cribbage, with a head start for how close it came, that you must win to slip away. Its card shows the toll; in the fight, the Heat bar shows what a win would cost.",
   heat: "Your Heat is past three-quarters of this layer's limit. Reach the limit and you're caught; resting at a Safehouse or clearing the gatekeeper lowers it.",
   rank: 'Merged subroutines show their rank (I-III): each rank makes the Hook stronger. Spare copies bank until a Safehouse Merge.',
   mods: 'Your Mods are permanent effects for the run. Tap one to read it; some act in fights, others on the map or in Shops.',

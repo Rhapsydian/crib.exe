@@ -5,7 +5,7 @@ import type { NodeType } from '../engine/map-types';
 export const NODE_KIND: Record<NodeType, { glyph: string; label: string; tone: string; about: string }> = {
   regularFight: { glyph: '⚔︎', label: 'Fight', tone: 'var(--danger)', about: 'Win for a subroutine pick and Data, sometimes a Burner. Lose and the node closes for good, and costs Heat.' },
   eliteFight: { glyph: '☠︎', label: 'Elite', tone: 'var(--warn)', about: 'A tougher fight with better rewards: a stronger subroutine or a Mod (your choice), more Data, often a Burner.' },
-  gatekeeperFight: { glyph: '⛨︎', label: 'Gatekeeper', tone: 'var(--danger)', about: 'The way into the next layer. Win to breach it; lose and the run ends. Its Heat toll is charged after the fight.' },
+  gatekeeperFight: { glyph: '⛨︎', label: 'Gatekeeper', tone: 'var(--danger)', about: 'The way into the next layer. Win to breach it; lose and the run ends. Its Heat toll is charged after the fight; if that maxes your Heat, you must evade its trace.' },
   safehouse: { glyph: '⌂︎', label: 'Safehouse', tone: 'var(--ward)', about: 'Rest to shed Heat, or Merge a duplicate into an upgrade. One or the other, once.' },
   shop: { glyph: '$', label: 'Shop', tone: 'var(--accent)', about: 'Spend Data on a subroutine, a Mod or a Burner.' },
   event: { glyph: '?', label: 'Event', tone: 'var(--mod)', about: 'A situation with choices: some safe, some a gamble.' },

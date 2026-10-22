@@ -47,7 +47,8 @@
   const has = (id: BurnerId) => player.carriedBurnerIds.includes(id);
   // A fight's posted Heat (session 63, the user: "be clearer about Heat"),
   // on its card before you move: what a clean win, the worst win and a
-  // loss each add, and a warning when one would get you caught. For a
+  // loss each add, and a warning when one would get you caught (for a
+  // gatekeeper: means a trace evasion, session 63). For a
   // gatekeeper the win's range is its toll, charged after the fight.
   const TIERS: Partial<Record<string, FightTier>> = { regularFight: 'regular', eliteFight: 'elite', gatekeeperFight: 'gatekeeper' };
   function fightHeat(type: string) {
@@ -58,9 +59,9 @@
     const warn =
       tier === 'gatekeeper'
         ? risk.cleanWin >= room
-          ? 'even a clean win gets you caught'
+          ? 'even a clean win means a trace evasion'
           : risk.worstWin >= room
-            ? `a close win gets you caught: room for +${fmt(room)}`
+            ? `a close win means a trace evasion: room for +${fmt(room)}`
             : null
         : risk.worstWin >= room
           ? 'a close win here gets you caught'

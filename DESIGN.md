@@ -33,7 +33,9 @@ Two deliberately separate resources, not one shared health stat:
   - each layer has its own **allowance**, tightening with depth (D5);
     reaching it gets you caught;
   - clearing a gatekeeper **resets Heat to 0** (D4) — after the
-    gatekeeper's toll, charged *after* that fight, has been survived (R8);
+    gatekeeper's toll, charged *after* that fight, has been survived (R8),
+    or a **trace evasion** won if it wasn't (session 63,
+    `docs/trace-evasion-design.md`);
   - every fight's Heat is a **posted baseline** (tier × layer, knowable
     before committing) plus a **performance term** read off the enemy's
     *final* Containment fill on a win (R6) — a scrappy win is louder than
@@ -617,7 +619,11 @@ gatekeeper's Heat toll is charged after the fight, so a player who pushed
 the layer hard can beat the gatekeeper and still be caught by its toll.
 The run ends, but the layer counts as breached — the meta-progression
 design is meant to credit it ("rep for how deep you got"), below a full
-continue.
+continue. **Since session 63 it comes only after a lost trace evasion**
+(`docs/trace-evasion-design.md`): a beaten gatekeeper whose toll maxes
+Heat plays three hands of plain Cribbage against you, ahead a point per
+10% of its Containment; finish strictly ahead and the run goes on (or is
+won, on layer 4).
 
 **Resolved (session 19)**: with free-roam movement (see above), outcome
 (3) is no longer a branching-tree redundancy question ("does every node

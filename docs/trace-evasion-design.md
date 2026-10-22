@@ -1,7 +1,7 @@
 # Trace evasion (session 63)
 
-**Status: designed, not built.** The user's idea, decided live in session
-63. `scripts/evasion-check.ts` holds the measurements below.
+**Status: built in session 63** (checkpoints 1-4). The user's idea, decided
+live in session 63. `scripts/evasion-check.ts` holds the measurements below.
 
 ## The problem
 
@@ -65,7 +65,10 @@ In the simulated player's runs (150 per class), *breached, then caught*
 ends 3% of runs, mostly on layers 3-4, with head starts of 3-9 (typically
 ~6). With those leads, 3 hands escape 22% / 33% / 50% of them at skill
 0.3 / 0.6 / 0.85. Expected effect on full-run victory: about +1 point
-(~19% to ~20%), to be confirmed once the simulated player plays evasions.
+(~19% to ~20%). Measured after checkpoint 2 (300 runs per class): evasions
+in 3.9% of runs, 37% escaped (mean head start 6.4; deeper gatekeepers play
+a little better than the layer-2 skill above); victory 16.0-23.3% by class,
+average 19.8% (was 19.0%).
 
 ## On screen
 
