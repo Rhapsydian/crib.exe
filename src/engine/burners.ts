@@ -177,9 +177,9 @@ function weightedSampleBurnersWithoutReplacement(items: { burner: BurnerDefiniti
 
 /** Draws a won fight's additive Burner-choice reward -- unlike Mods'
  * drawModRewardOptions (elite/gatekeeper only), Burners are offered on
- * **every** fight tier including regular (DESIGN.md's Burners section:
- * regular fights currently grant only a thin subroutine choice, and a
- * lower-commitment single-use item suits that well). Never empties out
+ * every fight tier, on a chance by tier since session 63 (encounters.ts's
+ * BURNER_FIGHT_CHANCE: regular 20%, elite 50%; a gatekeeper always).
+ * Never empties out
  * the way a class-scoped Mod pool eventually can -- no ownership
  * exclusion, so this always has something to offer. */
 export function drawBurnerRewardOptions(rng: Rng): BurnerDefinition[] {

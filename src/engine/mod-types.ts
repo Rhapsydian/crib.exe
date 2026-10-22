@@ -14,9 +14,10 @@ import type { Rarity } from './rewards';
  * doubling the general pool to 34.
  */
 export type ModId =
-  // Class-exclusive starting passives -- session 51's six placeholder
-  // bridge passives (A8), one per class/archetype pair. Real names and
-  // effects wait for real subroutines; see classes.ts.
+  // Class-exclusive starting passives -- the six class Mods (code:
+  // bridges, A8), one per class/archetype pair. Authored: names in
+  // mods.ts, classes in classes.ts, rules in resolve.ts's applyBridgeOn*
+  // hooks; each triggers on its owner's fifteens or pairs (session 60).
   | 'bridge-exploit-overclock'
   | 'bridge-exploit-daemon'
   | 'bridge-daemon-overclock'

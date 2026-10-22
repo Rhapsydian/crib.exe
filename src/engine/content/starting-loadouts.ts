@@ -13,8 +13,7 @@ import { HONEYPOT_POOL } from './honeypot';
  * identity); Honeypot classes carry plain-Credit partner pieces (S11).
  * Priced by `scripts/class-check.ts`.
  *
- * Not yet wired: `CLASS_STARTING_LOADOUTS` (subroutines.ts) still holds the
- * skeleton's until the authored pool replaces it.
+ * Wired: `CLASS_STARTING_LOADOUTS` (subroutines.ts) uses these.
  */
 
 const ALL = [EXPLOIT_POOL, DAEMON_POOL, OVERCLOCK_POOL, HONEYPOT_POOL].flatMap((p) => [...p.commons, ...p.uncommons, ...p.rares]);

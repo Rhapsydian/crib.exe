@@ -181,8 +181,8 @@ function acquireMod(playerState: RunPlayerState, mod: ModDefinition): RunPlayerS
  * future Event grant alike) -- Phase 5 Burners checkpoint B, mirroring
  * acquireMod's real shape/location above (not burners.ts -- see
  * burner-types.ts's own header). Declines (no-op) once BURNER_CAP is
- * reached -- no swap/bench fallback this pass (DESIGN.md's "Inventory":
- * a hard cap, no owned-but-not-carried state). Unlike acquireMod,
+ * reached; acquireBurnerAsking below asks which Burner to swap out
+ * instead (a hard cap, no owned-but-not-carried state). Unlike acquireMod,
  * duplicates aren't deduplicated -- a Burner is a consumable item, not a
  * unique permanent passive, so carrying two of the same one is legal. */
 function acquireBurner(playerState: RunPlayerState, burner: BurnerDefinition): RunPlayerState {
@@ -1088,10 +1088,10 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       // insert). The rule is a pure idempotent function of the loadout,
       // so one call after the last change is equivalent to four calls
       // interleaved with them, and it can't miss a path a future
-      // acquisition route might add. Between-fights only, per DESIGN.md's
-      // "mid-combat's only lever is Togglable" rule -- this sits after
-      // this node's encounter has fully resolved and before the next
-      // node's, which is exactly that window.
+      // acquisition route might add. Between fights only (a loadout never
+      // changes mid-fight) -- this sits after this node's encounter has
+      // fully resolved and before the next node's, which is exactly that
+      // window.
       const beforeReorder = playerState;
       playerState = yield* ask({ kind: 'reorder', playerState: beforeReorder, fallback: () => reorderStrategy(beforeReorder) });
       log.push({ type: 'encounter', layerIndex, nodeId: node.id, nodeType: node.type, outcome, heatAfter: heat });

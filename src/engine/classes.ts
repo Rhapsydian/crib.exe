@@ -10,8 +10,8 @@ import type { ModId } from './mod-types';
  * Step 3 (docs/archive/authoring-design.md C1-C4) named them -- Blackhat,
  * Operator, Eidolon, Breacher, Warden, Wraith -- and gave each a bespoke
  * bridge (rules in resolve.ts's applyBridgeOn* hooks, Mods in mods.ts).
- * Ids stay pair-based; `name` is display data. Starting loadouts still
- * come from the skeleton until the authored pool is wired in.
+ * Ids stay pair-based; `name` is display data. Starting loadouts are the
+ * authored ones (content/starting-loadouts.ts).
  *
  * All 6 ship immediately selectable with no unlock gating -- session
  * 21's persistence-stub decision still holds: there is no save/profile
