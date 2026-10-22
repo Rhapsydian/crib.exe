@@ -49,7 +49,7 @@ export const GUIDE_TEXT: Record<GuideStep, string> = {
   safehouse:
     "A Safehouse gives you one choice. Rest to lower your Heat, or Merge: spend your banked spare copies to rank subroutines up, each rank making a Hook stronger. You have a spare Port Scan banked.",
   gatekeeperNear:
-    "The gatekeeper is next. Beat it to breach the layer; lose and you're quarantined, which ends the run. Beating it also costs a Heat toll, bigger the closer it came to containing you (the Heat bar at the top of the fight shows it). If the toll maxes your Heat, you must outscore it in 3 hands of Cribbage to slip away.",
+    "The gatekeeper is next. Beat it to breach the layer; lose and you're quarantined, which ends the run. Winning also costs Heat: a toll that grows the closer it came to containing you, shown on the Heat bar during the fight. If the toll maxes out your Heat, you must outscore it over 3 hands of Cribbage to escape.",
   gatekeeper:
     "Gatekeepers bend a rule with their own Mod. Firewall Beta's, Rate Limit: you can't gain more than 8 Credit in a single turn. Tap its Mod (◆) to read it.",
 };
