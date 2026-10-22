@@ -47,6 +47,8 @@
     replay,
     onburner,
     heat,
+    ending = null,
+    over = false,
   }: {
     snapshot: FightSnapshot;
     onplay?: (card: Card) => void;
@@ -54,6 +56,12 @@
     replay?: Replay;
     onburner?: (id: BurnerId | null) => void;
     heat?: FightHeatContext;
+    /** The fight just ended: the side whose win gauge filled, which blinks
+     * before the result card (session 63). The gauges show the final state. */
+    ending?: 0 | 1 | null;
+    /** The fight is over and played out: the gauges hold its final state
+     * (the frame's are from the last decision, before the final turn). */
+    over?: boolean;
   } = $props();
   const f = $derived(fightParts(snapshot));
   let picked = $state<Picked | null>(null);
@@ -297,7 +305,7 @@
            user's call). -->
       {#if heatOutlook}<HeatBar outlook={heatOutlook} gatekeeper={heat?.tier === 'gatekeeper'} />{/if}
       <Loadout entries={f.them.loadout} dense enemy firing={firingSlot(1)} onpick={(i) => (picked = { side: 1, index: i })} />
-      <Gauges side={f.them} reading={replay?.gauges?.[1]} isPlayer={false} compact mods={theirMods.length} modNames={theirMods.map((m) => m.name)} flashMods={flashSide(1)} onkit={() => (sheet = 'loadouts')} />
+      <Gauges side={f.them} reading={replay?.gauges?.[1] ?? (over ? replay?.live?.[1] : undefined)} ending={ending === 1} isPlayer={false} compact mods={theirMods.length} modNames={theirMods.map((m) => m.name)} flashMods={flashSide(1)} onkit={() => (sheet = 'loadouts')} />
     </div>
 
     <div class="table-slot">
@@ -342,7 +350,8 @@
       <Loadout entries={f.you.loadout} dense firing={firingSlot(0)} onpick={(i) => (picked = { side: 0, index: i })} />
       <Gauges
         side={f.you}
-        reading={replay?.gauges?.[0]}
+        reading={replay?.gauges?.[0] ?? (over ? replay?.live?.[0] : undefined)}
+        ending={ending === 0}
         isPlayer
         compact
         mods={yourMods.length}

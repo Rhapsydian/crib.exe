@@ -20,6 +20,7 @@
     onkit,
     modNames = [],
     burnerNames = [],
+    ending = false,
   }: {
     side: CombatSideState;
     reading?: GaugeReading | null;
@@ -31,6 +32,8 @@
     onkit?: () => void;
     modNames?: string[];
     burnerNames?: string[];
+    /** This gauge just filled and ended the fight: it blinks (session 63). */
+    ending?: boolean;
   } = $props();
 
   // Hover tips (desktop): what each meter is.
@@ -65,7 +68,7 @@
 <div class="gauges" class:compact>
   <div class="row" use:tip={tips.win}>
     <span class="label">{isPlayer ? 'BREACH' : 'CONTAIN'}</span>
-    <div class="bar win" class:enemy={!isPlayer}><span style="width: {win * 100}%"></span></div>
+    <div class="bar win" class:enemy={!isPlayer} class:ending><span style="width: {win * 100}%"></span></div>
     <span class="num">{fmt(g.win)}/{fmt(g.winThreshold)}</span>
   </div>
   <div class="row" use:tip={tips.init}>
@@ -123,6 +126,66 @@
     border-radius: 3px;
     overflow: hidden;
     min-width: 40px;
+  }
+  /* The gauge that ended the fight: three short blinks before the result
+     card (the user's pattern). */
+  .bar.win.ending {
+    animation: gauge-end 0.9s linear both;
+  }
+  @keyframes gauge-end {
+    0%,
+    16% {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+    17%,
+    33% {
+      box-shadow: none;
+    }
+    34%,
+    50% {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+    51%,
+    67% {
+      box-shadow: none;
+    }
+    68%,
+    84% {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+    85%,
+    100% {
+      box-shadow: none;
+    }
+  }
+  .bar.win.enemy.ending {
+    animation-name: gauge-end-enemy;
+  }
+  @keyframes gauge-end-enemy {
+    0%,
+    16% {
+      box-shadow: 0 0 0 2px var(--danger);
+    }
+    17%,
+    33% {
+      box-shadow: none;
+    }
+    34%,
+    50% {
+      box-shadow: 0 0 0 2px var(--danger);
+    }
+    51%,
+    67% {
+      box-shadow: none;
+    }
+    68%,
+    84% {
+      box-shadow: 0 0 0 2px var(--danger);
+    }
+    85%,
+    100% {
+      box-shadow: none;
+    }
   }
   .bar span {
     display: block;

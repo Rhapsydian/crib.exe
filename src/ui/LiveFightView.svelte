@@ -25,13 +25,28 @@
   });
   $effect(() => () => replay.reset());
   const pct = (n: number) => `${Math.round(n * 100)}%`;
+  // The end of a fight (session 63, the user's pattern): once its last turn
+  // has played out, the gauge that filled blinks three times, then the
+  // result card comes up.
+  const ENDING_MS = 900;
+  const done = $derived(!!fight.result && !replay.playing);
+  let cardUp = $state(false);
+  $effect(() => {
+    if (!done) {
+      cardUp = false;
+      return;
+    }
+    const t = setTimeout(() => (cardUp = true), ENDING_MS);
+    return () => clearTimeout(t);
+  });
+  const ending = $derived(done && !cardUp && fight.result ? fight.result.winner : null);
 </script>
 
 {#if fight.frame}
-  <FightScreen snapshot={fight.frame} {replay} heat={fight.heat} onplay={(c) => fight.answer(c)} ondiscard={(c) => fight.answer(c)} onburner={(id) => fight.answer(id)} />
+  <FightScreen snapshot={fight.frame} {replay} heat={fight.heat} {ending} over={done} onplay={(c) => fight.answer(c)} ondiscard={(c) => fight.answer(c)} onburner={(id) => fight.answer(id)} />
 {/if}
 
-{#if fight.result && !replay.playing}
+{#if fight.result && cardUp}
   {@const r = fight.result}
   {@const pts = pointsSummary(r.timeline)}
   <div class="scrim"></div>

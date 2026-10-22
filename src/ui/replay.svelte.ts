@@ -32,6 +32,9 @@ export class Replay {
   before = $state.raw<[GaugeReading, GaugeReading] | null>(null);
   /** The last step's own beat, after it appears. */
   holding = $state(false);
+  /** The live gauges as of the latest pause -- at a fight's end, its final
+   * state, for the end-of-fight blink (session 63). */
+  live = $state.raw<[GaugeReading, GaugeReading] | null>(null);
 
   /** True while steps are still being played. */
   playing = $derived(this.shown < this.steps.length || this.holding);
@@ -76,6 +79,7 @@ export class Replay {
     }
     this.steps = steps;
     this.#previous = live;
+    this.live = live;
     this.#schedule();
   }
 
@@ -103,6 +107,7 @@ export class Replay {
     this.steps = [];
     this.before = null;
     this.#previous = null;
+    this.live = null;
   }
 
   #schedule(): void {
