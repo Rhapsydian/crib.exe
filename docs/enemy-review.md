@@ -1,5 +1,7 @@
 # Enemy review (session 60)
 
+> **Status: complete (session 60); historical.** Its open item, the player-side content pass, is the next priority in `BACKLOG.md`.
+
 Why (the user): the content pool is shallow. Enemies are mostly player
 loadouts scaled up, elites lost their only Mod when class Mods became
 the player's alone (docs/class-mod-redesign.md K6), and the roster is

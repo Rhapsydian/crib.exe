@@ -1,5 +1,7 @@
 # Tutorial design (session 63)
 
+> **Status: built in session 63** (checkpoints 1-5), plus a gentler tutorial-only gatekeeper, Firewall Beta. The checkpoint plan below is the record of how it was built.
+
 The user wants testers to be able to pick the game up: the Cribbage side
 already teaches itself (five Learn-to-play lessons and a coached game,
 session 59), but the roguelite layer -- Breach and Containment, points

@@ -1,5 +1,7 @@
 # Class balance pass — working decision record
 
+> **Status: complete (session 56); historical.** The class balance pass, measured under Trace-era Heat (Trace was removed in session 58). The balance target has since moved to 15-20% by class (~16% aim, session 62); current numbers are in `BACKLOG.md`.
+
 Follows step 3 (`docs/authoring-design.md`), which authored the pool,
 the classes and the enemy roster and tuned the gatekeepers to the
 per-layer pass-rate curve for all classes pooled. Started session 56

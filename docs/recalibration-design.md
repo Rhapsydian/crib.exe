@@ -1,5 +1,7 @@
 # Recalibration (step 2) — working decision record
 
+> **Status: complete (sessions 52-53); historical.** A decision record. The settled rules are in `DESIGN.md` → Pricing. Trace, priced here as a player Heat cost, was removed in session 58 (fights post Heat directly; Trace is now only an enemy-only effect).
+
 Step 2 of the archetype redesign (`docs/archetype-redesign.md` A10):
 price an alpha and a beta so step 3 can author real content. Continues
 the pillar-suite work of `docs/run-economy-design.md` (D8–D14), whose

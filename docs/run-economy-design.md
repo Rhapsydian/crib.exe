@@ -1,7 +1,10 @@
 # Run economy redesign — working design record
 
-**Status: designed, not implemented.** Session 50. Nothing in this
-document has been built; no content or constant has changed. It exists so
+**Status (corrected in session 63): historical.** Session 50's design. Its
+per-layer Heat economy and per-turn model were built in sessions 51-53
+(see `DESIGN.md`); the rest was superseded by the archetype redesign.
+The original status line read: "designed, not implemented ... no content
+or constant has changed." It exists so
 a long design conversation is not held only in scrollback. When a piece
 ships, its settled form moves to `DESIGN.md` and this file loses that
 section.

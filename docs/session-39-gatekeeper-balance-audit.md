@@ -1,5 +1,7 @@
 # Gatekeeper balance audit — skill-level sensitivity and per-gatekeeper ablation
 
+> **Status: historical (session 39).** A one-off audit of a roster since deleted (session 51) and rebuilt; its numbers and next steps no longer apply.
+
 Session 39. Two empirical questions, both answered with the same
 methodology: real `playRun()`s (`opportunisticTraversal`, default
 acquisition/Shop/Merge strategies), read through `scripts/layer-funnel.ts`

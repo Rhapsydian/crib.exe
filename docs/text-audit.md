@@ -1,5 +1,7 @@
 # Text audit — subroutines, Mods, Burners (session 60)
 
+> **Status: complete (session 60); historical.** The wording rules were implemented; the class Mods it skipped were rewritten in their redesign the same session.
+
 Every rules text as players see it today was dumped with
 `npx tsx scripts/text-dump.ts`. The class Mods are skipped (they're
 being reworked). Almost every problem comes from a handful of templates in

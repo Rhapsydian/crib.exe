@@ -1,5 +1,7 @@
 # Authoring (step 3) — working decision record
 
+> **Status: complete (sessions 54-55); historical.** A decision record. Its "Open" items (bridge passives, enemy construction) were done in sessions 55-60; the content has since been reworked (class Mods, the enemy roster, the economy). Trace was removed as a player Heat cost in session 58.
+
 Step 3 of the archetype redesign (`docs/archetype-redesign.md` A10):
 author the real subroutine pool, then the classes, then the enemy roster,
 against `DESIGN.md` → Pricing. Started session 54 (`/decision-session`,

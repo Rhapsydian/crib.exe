@@ -4683,3 +4683,305 @@ because `increasedScalingCap` is live misinformation in the meantime.
   replace the flat per-tick credit with reciprocal HoT/DoT magnitude
   amplification, which would need its own sweep since it is a real
   power-level change rather than a re-flavouring.
+
+---
+
+## Moved from BACKLOG.md in session 63 (verbatim)
+
+The session-52 "current state", the archetype-redesign arc (finished in
+sessions 51-56), session 49's instrument notes and the playable-game
+milestone list (milestones 1-4 done), as they stood when BACKLOG.md was
+rewritten around the user's session-63 priorities.
+
+## Current state (end of session 52)
+
+**Where the project is.** Step 1 of the archetype redesign (the engine
+refactor, session 51) is done; **step 2, recalibration, is three
+checkpoints in** (session 52, `docs/recalibration-design.md`, R1–R8).
+Heat is now a per-layer budget with posted fight prices and a new run
+ending, *breached, then caught*; and every verb has a price in
+Credit-per-turn from seat-swapped mirror duels. Content is still the
+untuned skeleton. 646 tests, `npm run check` clean, on the
+`archetype-redesign` branch. **There is still no UI.**
+
+**Next:** step 2's checkpoint 4, the beta frequency table. See the arc
+immediately below.
+
+---
+
+## Archetype & subroutine redesign — the active arc (session 51)
+
+Decided in session 51 (`docs/archetype-redesign.md`, A1–A12; settled
+design in `DESIGN.md` → Archetypes & Subroutines). Replaces the
+roadmap's old next phase ("full class audit") and the old balance arc
+(gatekeeper roster pass, class audit — archived in
+`docs/roadmap-history.md`): the roster and the classes are both rebuilt
+rather than tuned. Work happens on the `archetype-redesign` branch.
+
+1. **Engine refactor** ✅ (checkpoints 1–5, session 51) — `DESIGN.md`
+   restructure; alpha/beta types and skeleton content; combat resolution;
+   Mods / Merge / Burners / bridge passives; diagnostics ported. Build
+   green: `npm run check` clean, 615 tests. Every implementation call is
+   logged in `docs/archetype-redesign.md`.
+2. **Recalibrate** ✅ (sessions 52–53) — decided as R1–R8; the rules
+   step 3 authors against are in `DESIGN.md` → Pricing, the full record in
+   `docs/recalibration-design.md`, raw output in `docs/calibration/`.
+   Checkpoints: per-layer Heat economy; pricing instrument; verb prices;
+   beta frequency table; beta pricing formula (validated, Charge priced);
+   Trace price, Event Heat anchored to the loss price, Exploit noise
+   check; skill retention (6b, with the Overclock A/Bs and the new
+   `handPointsAtLeast` source); write-up, pillar suite retired.
+
+   Watch items carried into step 3:
+   - **Exploit Heat** at 3–5× the other classes' Heat-ending rate (user's
+     target) — today carried by one skeleton piece.
+   - **Skill retention** runs lowest in late-run builds and Overclock
+     (late 0.55); floor 0.5. Check late loadouts, not just starting ones.
+   - **Honeypot conversions**: credit taken from the opponent is the
+     strongest verb per point (~1.85×); conversion bypassing Ward is the
+     user's flagged watch item.
+   - `handPointsAtLeast` frequency rows need generating into
+     `beta-frequency-data.ts` before the formula can price it.
+   - Skeleton regular/elite fights remain near-free; win-rate targets and
+     fight length (the game-wide skill dial) come after step 3.
+3. **Author** — decided live as S1–S11 and C1–C6 (session 54,
+   `docs/authoring-design.md`).
+   1. ✅ archetype subroutines: 36 pieces, 9 per archetype
+      (`src/engine/content/`), each priced into its rarity band and
+      checked by `scripts/archetype-check.ts`;
+   2. ✅ classes: Blackhat, Operator, Eidolon, Breacher, Warden, Wraith,
+      with bespoke bridge passives (~+1.0 Credit/turn,
+      `scripts/class-check.ts`), commons-only starting loadouts and an
+      unlock order; the authored pool is wired into acquisition;
+   3. ✅ enemy roster (session 55, E1–E7): 18 enemies, with bridges and
+      eight bespoke gatekeeper Mods (`gatekeeper-mods.ts`). Regulars and
+      elites are priced to a power budget from the player's measured
+      power; gatekeepers are tuned to the 78/72/66/60 pass-rate curve,
+      within 2.3 points. The skeleton is retired.
+
+   **Step 3 is complete.**
+4. ✅ **Class balance pass** (session 56, `docs/balance-design.md`
+   B1–B7). Every class is at 13.3–18.7% victory (was 11–31%). Exploit
+   Heat endings are 20–26% (a 4.4× ratio). Done with a noise premium on
+   Fuzzer and Jackpot (+1 Credit), Fuzzer's Trace at +¾, and the
+   gatekeeper curve lowered to 70.5 / 64.5 / 58.5 / 52.5, plus small
+   Eidolon and Wraith bridge trims.
+
+   Watch items carried forward:
+   - **Operator's skill gap +8.7** (aim +10), within the run-level
+     estimate's noise: recheck with more runs.
+   - **Blackhat's late retention 0.56**, the closest to the 0.5 floor.
+   - **Bridges and tracers are weak balance levers** (session 56).
+   - **Player power plateaus after layer 2**, once the 6 slots fill: a
+     progression question (slot unlocks, stronger Merge, rares).
+   - The legacy `EnemyPassiveId` slot in playCombat's positional
+     signature is always empty; remove it with that parameter.
+   - A gatekeeper met inside the opening window (first 3 fights) plays at
+     skill 0: `enemySkill`'s opener pin applies to every tier.
+   - **Late Overclock fights are short** (~3 hands), and retention
+     tracks fight length.
+   - Four Honeypot pieces sit just outside their bands (Honeytoken,
+     Sinkhole, Deep Packet Inspection, Zero Trust alone).
+   - Win-rate tuning (the 10–20% target) waits for the authored roster:
+     quarantine is 47–78% of endings against skeleton gatekeepers.
+
+Resolved by the refactor rather than repaired in place: the dead debuff
+`magnitude` and the dead Occurrence `scaling` (both mechanics are gone;
+their write-ups are archived in `docs/roadmap-history.md`).
+
+---
+
+## Instrument notes (session 49)
+
+- **Aggregating classes over shared seeds does not multiply the sample.**
+  `createRng(seed)` builds the map before any class-dependent divergence,
+  so at one seed all six classes get the same layout and the same
+  gatekeeper (measured: 400/400 seeds). A six-class aggregate carries
+  ~3.5x the variance of an independent sample, so its true SE is ~1.9x
+  the naive `sqrt(p(1-p)/n)`. Per-class numbers are unaffected - prefer
+  them. Now recorded in `README.md`'s conventions.
+- **`encounters.ts:358` credits the Heat refund to "Failover"**, but the
+  code checks the `heat-sink` Mod. Stale comment, one-line fix.
+- **`layer-funnel.ts` does not take `--syntheticGatekeepers`** yet;
+  `sweep.ts` and `gatekeeper-check.ts` do.
+- **`profiles.test.ts`'s loadout-preservation guard** ran 60 full runs
+  against vitest's 5s default and failed whenever the machine was loaded.
+  Given an explicit 30s budget in session 49; the assertion is unchanged.
+
+## Making the game playable (session 57, `docs/playable-design.md`)
+
+Planned as P1–P7. Desktop and mobile from the start (portrait-first on
+phones); local browser for testing; eventually a custom domain on the
+GitHub-hosted site and itch.io.
+
+1. ✅ **Pausable engine** (session 57): `combatGenerator` yields decision
+   requests with a view of the fight; combat resolves live during
+   pegging (P8); balance unchanged; simulation speed held.
+2. ✅ **Layout mockups** (2–3 phone variants: tabs / drawers / compact), then
+   **one playable fight** (session 57): tap-to-lift cards, turns stepped through piece
+   by piece, tap anything to inspect it, a running log. Player-facing
+   names "Process" (alpha) and "Hook" (beta). *In progress:* layout
+   chosen (compact on phones, drawers on desktop); checkpoint 1 (a real
+   fight you can play, test-harness setup) and checkpoint 2 (turns
+   stepped through piece by piece) and 3a (pegging animated: card plays,
+   score callouts, table lines in the log) and 3b (the show panel, hand
+   banners, the Burner prompt) done; Mods and Burners on screen with a
+   trigger flash; checkpoint 4 (desktop keys, hover tips, a phone pass
+   in the preview) done, pending the user's own phone playthrough.
+3. ✅ **A playable run** (session 58, five checkpoints): the run as a
+   pausable engine, a new map generator (scatter on a hex backdrop,
+   10/12/12/14 nodes, a dealt type mix, a remote Cache), the bench capped
+   at 3, class choice / map / fights / end screens, rewards and loadout
+   management, Safehouse / Shop (bought freely) / Event / Cache screens,
+   map Burners, save and resume, a 320px phone pass. Trace removed along
+   the way (fights post Heat; Fuzzer and Jackpot feed the enemy's gauge;
+   alarms add Heat). Detail: `docs/playable-design.md` → Milestone 3.
+4. ✅ **Vanilla Cribbage, with a learn-to-play mode** (session 59, five
+   checkpoints; decisions V1-V7 in `docs/playable-design.md` → Milestone 4):
+   the game engine to 121, pegboard mockups (minimal bars chosen), the
+   menu / game / end / saves, the coach, five lessons. Planned as: (the user, session 58;
+   next, before polish -- testers who know the card game the combat is
+   built on are easier to bring on board). Plain 2-player Cribbage to 121
+   at several difficulties, plus a "Learn to play" difficulty that guides
+   a new player through the game. This is the "basic Cribbage" mode the
+   user asked for in sessions 26 and 39: code that plays a standalone game
+   (`game.ts`'s hands, any race-to-121 loop) is permanent engine code,
+   never scratch. Builds on: `game.ts` (per-side strategies), the AI's
+   0-1 skill dial (difficulties), its discard scoring and hand breakdowns
+   (a coach's explanations), and the fight screen's hand / table / show
+   components. Needs: a pausable race-to-121 game loop in `game.ts` (today
+   it only lives inside `scripts/cribbage-skill-matrix.ts`), a pegboard, a
+   menu entry, an end screen. **Plan it in a decision session** first;
+   open questions: scripted lessons vs a coach riding along in real games
+   (or lessons, then coached games); how many difficulties and their
+   names; whether the hardest makes you count your own hand (muggins);
+   where it sits in the menu.
+5. 🔄 **Polish and playtesting**, including a style / chrome guide. Session
+   60 chose content polish before the style guide (the user: the guide
+   would mostly codify the existing look): UI fixes, a text audit
+   (`docs/text-audit.md`), the class Mod redesign
+   (`docs/class-mod-redesign.md`), and the enemy review and content pass
+   (`docs/enemy-review.md`). **Next: the player-side content pass** --
+   subroutines, Mods, Burners (the user: the pool is shallow on both
+   sides; enemies went first).
+
+---
+
+## README.md's session-by-session status, sessions 51-63 (moved verbatim in session 63)
+
+Session 51 redesigned the archetypes and the subroutine model from
+scratch (`DESIGN.md` → Archetypes & Subroutines; the decision trail is
+`docs/archetype-redesign.md`). The engine runs the new model end to end,
+but the old 159-piece pool and 32-enemy roster were deleted, not
+migrated: a deliberately untuned **skeleton** pool and roster stand in
+until calibration says what an alpha and a beta are worth.
+
+Session 52 started step 2, recalibration (`docs/recalibration-design.md`,
+R1–R8): Heat is now a **per-layer budget** that resets at each gatekeeper,
+with posted fight prices and a new run ending, *breached, then caught*;
+and every verb now has a **price in Credit-equivalents**, measured by
+mirror duels.
+
+Session 53 finished step 2: betas, Charge and Trace are priced, Event
+Heat scales with the posted fight prices, and a **skill-retention check**
+guards that Cribbage skill keeps deciding fights. The rules step 3
+authors against are in `DESIGN.md` → Pricing.
+
+Session 54 started step 3, authoring (`docs/authoring-design.md`): the
+**36-piece subroutine pool** is authored and priced, and the six classes
+are named (Blackhat, Operator, Eidolon, Breacher, Warden, Wraith), with
+bespoke bridge passives and commons-only starting loadouts. Real runs
+now draw from the authored pool.
+
+Session 55 finished step 3 with the **authored enemy roster**: 18 enemies,
+including eight gatekeepers with bespoke Mods, tuned to the per-layer
+pass-rate curve. Every piece of content in a run is now authored; the
+skeleton is gone.
+
+Session 56's **class balance pass** (`docs/balance-design.md`) put every
+class at 13–19% full-run victory, inside the 10–20% target (was 11–31%).
+It did so with a Credit premium on the noisy Exploit pieces, a lower
+gatekeeper pass-rate curve, and small bridge trims.
+
+Session 57 started **making the game playable** (`docs/playable-design.md`,
+P1–P8). The engine now pauses at each player decision (generators) and
+resolves combat live during pegging. On top of it, **one real fight is
+playable**: pick a class and an enemy, then discard, peg, and watch every
+card, score, turn, Mod and Burner play out step by step, with the show
+counted hand by hand and a running session log. Phones get a compact
+screen with side drawers; desktop gets side panels, keyboard controls and
+hover tips.
+
+Session 58 made **a whole run playable** (milestone 3). The run engine
+pauses at every decision; a new map generator lays each layer out on a
+hex backdrop (10/12/12/14 nodes, a dealt mix of node types, a remote
+Cache); and every node has its screen -- rewards, a full bench, Burner
+swaps, the Safehouse, a Shop you can buy freely from, Events, Caches, map
+Burners -- with the loadout editable from the map and the run saved after
+every choice. Along the way **Trace was removed**: fights post Heat
+directly, the noisy Exploit pieces hand the enemy Containment instead,
+and alarm enemies add Heat. Static Shield and Recon Ping were set aside,
+and the gatekeepers were re-tuned twice.
+
+Session 59 added **vanilla Cribbage** (milestone 4), so testers can learn
+the card game the combat rests on: a main menu split into the roguelite
+and Cribbage; plain Cribbage to 121 at four difficulty levels (tuned to an
+even ladder); a **coach** that suggests discards and plays and reviews
+yours (each pegging play judged by its points less the opponent's
+expected reply; keeps shown as sure points plus the cut's average); a
+real **crib table** for the AI and the coach (with a retune); and five
+short **Learn to play** lessons whose answers come from the engine's own
+scoring.
+
+Session 60 started **polish**, with content: UI fixes (the log follows,
+the loadout stands on the map's left on desktop, the map no longer
+resizes); a **text audit** of every rules text (`docs/text-audit.md`:
+"subroutine", what gets bigger, initiative spelled out, a glossary in the
+detail panel); the six **class Mods redesigned** to trigger on a fifteen
+or a pair, three each (`docs/class-mod-redesign.md`); and an **enemy
+review** (`docs/enemy-review.md`): class Mods became the player's alone,
+each elite got a rule-bending Mod, three enemy-only effects (Trace: Heat;
+Wipe: your Hook counts; Strip: your Ward) and twelve enemy subroutines
+built on them, and the roster grew to 27 -- new regulars for every
+layer, two deep elites -- named as the network defending itself.
+
+Session 61 worked through the user's playtest notes: Burners are armed
+with a toggle under your gauges (used at the start of your next turn,
+the prompt gone); the map is centred on desktop and its lines flow out
+from your node; Caches offer only uncommon and rare subroutines; a
+played card leaves the hand at once; Learn to play starts slow. Shops
+now **buy** benched subroutines, banked copies and Burners (half price,
++25% a Merge rank), with **Cold Wallet**, a sell-only Burner. A
+Safehouse Merge now **spends every banked copy** at once, ranks show on
+every subroutine (I-III) with "+N banked" in the loadout editor, and a
+ranked growing subroutine grows further. The gatekeepers were re-tuned
+after it, and Operator's and Warden's class Mods buffed.
+
+Session 62 reworked **the economy**. The simulated player now shops like
+a person (sells what it can't use, buys freely), which showed the real
+picture: players gathered ~20 Mods and were winning ~40-50% of runs.
+Shops now offer a smaller, pricier Mod slate (3 items, double prices)
+and costlier rerolls; an elite win is **one choice, a subroutine
+(uncommon or better) or a Mod**; fights pay ~25% less Data. The balance
+tools now model the same player, the target moved to **15-20% victory
+by class (~16% average)**, and the gatekeepers, elites and three class
+Mods (Breacher, Eidolon, Operator) were tuned to it. The loadout editor
+can swap a subroutine in or out when a side is full.
+
+Session 63 made the game ready for outside testers. Burners are scarcer
+(gatekeepers, Caches and Shops always offer one; elites 50%, fights
+20%). A **tutorial**: a guided first run on a hand-made single layer
+(Blackhat, a fixed seed), with a coach that explains each new thing the
+first time it happens (including the Safehouse's Rest or Merge), an
+optional Cribbage coach in its fights, a gentler tutorial-only gatekeeper
+(Firewall Beta), and a "new to Cribbage" detour to the lessons. **First-time tips** in real runs (shown once each, with a
+reset on the menu). A fuller **end-of-run screen**: who ended the run
+and where, one row per layer, the whole kit, and the seed. Tap-to-skip
+was removed, the last layer's gatekeeper no longer offers rewards, and
+the main menu's title reads as a command with a hand flying off it.
+Heat is now shown up front: each fight's posted Heat on its map card, and
+a **Heat bar** in every run fight (alarms as they land, what a win would
+cost). And *breached, then caught* became a last chance: a **trace
+evasion** (`docs/trace-evasion-design.md`), three hands of plain Cribbage
+against the gatekeeper, which starts a point ahead per 10% of its
+Containment; outscore it to slip away.

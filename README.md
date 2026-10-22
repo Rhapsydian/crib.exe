@@ -1,9 +1,6 @@
 # crib.exe
 
-A browser-based, hacking-themed roguelite with a Slay the Spire-style run
-structure, where combat is resolved by playing real Cribbage.
-
-crib.exe is a hacking-themed roguelite where every fight is a game of Cribbage. You play a hacker breaking through a network four layers deep. Each layer is a branching map of fights, elites, Shops, Safehouses, Caches and Events, guarded by a gatekeeper, and every move adds Heat: max it out and you're traced. In combat, the points you score in Cribbage (pegging, hands and crib) fill your initiative, and each time it fills you take a turn. Your loadout of subroutines then fires top to bottom. Each subroutine runs its Process, a steady effect such as Credit to build your Breach toward a win, Suppress to slow the enemy, or Ward to shield you. Its Hook adds a stronger bonus when a condition is met, like scoring fifteens, pairs or runs. The enemy's own subroutines build Containment against you. Between fights you shape a build from new subroutines, permanent Mods and one-use Burners, and at Safehouses you either rest to lower Heat or merge spare copies to rank subroutines up. There are six classes, each with its own Mod, and you win by breaching all four layers.
+crib.exe is a browser-based, hacking-themed roguelite where every fight is a game of Cribbage. You play a hacker breaking through a network four layers deep. Each layer is a branching map of fights, elites, Shops, Safehouses, Caches and Events, guarded by a gatekeeper, and every move adds Heat: max it out and you're traced. In combat, the points you score in Cribbage (pegging, hands and crib) fill your initiative, and each time it fills you take a turn. Your loadout of subroutines then fires top to bottom. Each subroutine runs its Process, a steady effect such as Credit to build your Breach toward a win, Suppress to slow the enemy, or Ward to shield you. Its Hook adds a stronger bonus when a condition is met, like scoring fifteens, pairs or runs. The enemy's own subroutines build Containment against you. Between fights you shape a build from new subroutines, permanent Mods and one-use Burners, and at Safehouses you either rest to lower Heat or merge spare copies to rank subroutines up. There are six classes, each with its own Mod, and you win by breaching all four layers.
 
 Four archetypes, each bound to one of the four suits: **Exploit** (spike /
 control), **Daemon** (ramp / healing), **Overclock** (tempo /
@@ -15,145 +12,51 @@ empowerment) and **Honeypot** (conversion / defense).
 playable in the browser** (`npm run dev`), on desktop and phones: a whole
 roguelite run (class choice, the map, fights, rewards, Safehouses, Shops,
 Events and Caches, with saves), and vanilla Cribbage at four difficulty
-levels, with a coach and five Learn-to-play lessons. Polish and
-playtesting are under way (session 60: text, class Mods, enemies).
+levels, with a coach and five Learn-to-play lessons. New players get a
+guided tutorial run and first-time tips. Polish and playtesting are under
+way; next is more content, then meta-progression and Daily Runs
+(`BACKLOG.md` → Priorities).
 
 **Play the demo:** <https://rhapsydian.github.io/crib.exe/> — the
 `playable` branch, rebuilt on every push (`.github/workflows/deploy-demo.yml`).
 
-Session 51 redesigned the archetypes and the subroutine model from
-scratch (`DESIGN.md` → Archetypes & Subroutines; the decision trail is
-`docs/archetype-redesign.md`). The engine runs the new model end to end,
-but the old 159-piece pool and 32-enemy roster were deleted, not
-migrated: a deliberately untuned **skeleton** pool and roster stand in
-until calibration says what an alpha and a beta are worth.
+How it got here, in arcs (each session's detail is in `docs/session-logs/`;
+README's old session-by-session narrative is archived in
+`docs/roadmap-history.md`):
 
-Session 52 started step 2, recalibration (`docs/recalibration-design.md`,
-R1–R8): Heat is now a **per-layer budget** that resets at each gatekeeper,
-with posted fight prices and a new run ending, *breached, then caught*;
-and every verb now has a **price in Credit-equivalents**, measured by
-mirror duels.
-
-Session 53 finished step 2: betas, Charge and Trace are priced, Event
-Heat scales with the posted fight prices, and a **skill-retention check**
-guards that Cribbage skill keeps deciding fights. The rules step 3
-authors against are in `DESIGN.md` → Pricing.
-
-Session 54 started step 3, authoring (`docs/authoring-design.md`): the
-**36-piece subroutine pool** is authored and priced, and the six classes
-are named (Blackhat, Operator, Eidolon, Breacher, Warden, Wraith), with
-bespoke bridge passives and commons-only starting loadouts. Real runs
-now draw from the authored pool.
-
-Session 55 finished step 3 with the **authored enemy roster**: 18 enemies,
-including eight gatekeepers with bespoke Mods, tuned to the per-layer
-pass-rate curve. Every piece of content in a run is now authored; the
-skeleton is gone.
-
-Session 56's **class balance pass** (`docs/balance-design.md`) put every
-class at 13–19% full-run victory, inside the 10–20% target (was 11–31%).
-It did so with a Credit premium on the noisy Exploit pieces, a lower
-gatekeeper pass-rate curve, and small bridge trims.
-
-Session 57 started **making the game playable** (`docs/playable-design.md`,
-P1–P8). The engine now pauses at each player decision (generators) and
-resolves combat live during pegging. On top of it, **one real fight is
-playable**: pick a class and an enemy, then discard, peg, and watch every
-card, score, turn, Mod and Burner play out step by step, with the show
-counted hand by hand and a running session log. Phones get a compact
-screen with side drawers; desktop gets side panels, keyboard controls and
-hover tips.
-
-Session 58 made **a whole run playable** (milestone 3). The run engine
-pauses at every decision; a new map generator lays each layer out on a
-hex backdrop (10/12/12/14 nodes, a dealt mix of node types, a remote
-Cache); and every node has its screen -- rewards, a full bench, Burner
-swaps, the Safehouse, a Shop you can buy freely from, Events, Caches, map
-Burners -- with the loadout editable from the map and the run saved after
-every choice. Along the way **Trace was removed**: fights post Heat
-directly, the noisy Exploit pieces hand the enemy Containment instead,
-and alarm enemies add Heat. Static Shield and Recon Ping were set aside,
-and the gatekeepers were re-tuned twice.
-
-Session 59 added **vanilla Cribbage** (milestone 4), so testers can learn
-the card game the combat rests on: a main menu split into the roguelite
-and Cribbage; plain Cribbage to 121 at four difficulty levels (tuned to an
-even ladder); a **coach** that suggests discards and plays and reviews
-yours (each pegging play judged by its points less the opponent's
-expected reply; keeps shown as sure points plus the cut's average); a
-real **crib table** for the AI and the coach (with a retune); and five
-short **Learn to play** lessons whose answers come from the engine's own
-scoring.
-
-Session 60 started **polish**, with content: UI fixes (the log follows,
-the loadout stands on the map's left on desktop, the map no longer
-resizes); a **text audit** of every rules text (`docs/text-audit.md`:
-"subroutine", what gets bigger, initiative spelled out, a glossary in the
-detail panel); the six **class Mods redesigned** to trigger on a fifteen
-or a pair, three each (`docs/class-mod-redesign.md`); and an **enemy
-review** (`docs/enemy-review.md`): class Mods became the player's alone,
-each elite got a rule-bending Mod, three enemy-only effects (Trace: Heat;
-Wipe: your Hook counts; Strip: your Ward) and twelve enemy subroutines
-built on them, and the roster grew to 27 -- new regulars for every
-layer, two deep elites -- named as the network defending itself.
-
-Session 61 worked through the user's playtest notes: Burners are armed
-with a toggle under your gauges (used at the start of your next turn,
-the prompt gone); the map is centred on desktop and its lines flow out
-from your node; Caches offer only uncommon and rare subroutines; a
-played card leaves the hand at once; Learn to play starts slow. Shops
-now **buy** benched subroutines, banked copies and Burners (half price,
-+25% a Merge rank), with **Cold Wallet**, a sell-only Burner. A
-Safehouse Merge now **spends every banked copy** at once, ranks show on
-every subroutine (I-III) with "+N banked" in the loadout editor, and a
-ranked growing subroutine grows further. The gatekeepers were re-tuned
-after it, and Operator's and Warden's class Mods buffed.
-
-Session 62 reworked **the economy**. The simulated player now shops like
-a person (sells what it can't use, buys freely), which showed the real
-picture: players gathered ~20 Mods and were winning ~40-50% of runs.
-Shops now offer a smaller, pricier Mod slate (3 items, double prices)
-and costlier rerolls; an elite win is **one choice, a subroutine
-(uncommon or better) or a Mod**; fights pay ~25% less Data. The balance
-tools now model the same player, the target moved to **15-20% victory
-by class (~16% average)**, and the gatekeepers, elites and three class
-Mods (Breacher, Eidolon, Operator) were tuned to it. The loadout editor
-can swap a subroutine in or out when a side is full.
-
-Session 63 made the game ready for outside testers. Burners are scarcer
-(gatekeepers, Caches and Shops always offer one; elites 50%, fights
-20%). A **tutorial**: a guided first run on a hand-made single layer
-(Blackhat, a fixed seed), with a coach that explains each new thing the
-first time it happens (including the Safehouse's Rest or Merge), an
-optional Cribbage coach in its fights, a gentler tutorial-only gatekeeper
-(Firewall Beta), and a "new to Cribbage" detour to the lessons. **First-time tips** in real runs (shown once each, with a
-reset on the menu). A fuller **end-of-run screen**: who ended the run
-and where, one row per layer, the whole kit, and the seed. Tap-to-skip
-was removed, the last layer's gatekeeper no longer offers rewards, and
-the main menu's title reads as a command with a hand flying off it.
-Heat is now shown up front: each fight's posted Heat on its map card, and
-a **Heat bar** in every run fight (alarms as they land, what a win would
-cost). And *breached, then caught* became a last chance: a **trace
-evasion** (`docs/trace-evasion-design.md`), three hands of plain Cribbage
-against the gatekeeper, which starts a point ahead per 10% of its
-Containment; outscore it to slip away.
+- **Sessions 1–50:** the Cribbage engine, the combat wrapper, the map
+  and run, classes / Mods / Merge / Burners, and a long run of balance
+  work (`docs/roadmap-history.md`).
+- **Sessions 51–56:** the archetypes and subroutine model redesigned
+  from scratch (`docs/archetype-redesign.md`), recalibrated
+  (`docs/recalibration-design.md`), all content authored
+  (`docs/authoring-design.md`) and class-balanced
+  (`docs/balance-design.md`).
+- **Sessions 57–59:** made playable (`docs/playable-design.md`): a
+  pausable engine, one fight, a whole run, then plain Cribbage with a
+  coach and lessons.
+- **Sessions 60–63:** polish and playtesting: a text audit, the class
+  Mods and enemy roster reworked, selling and Merge-everything, the
+  economy, a guided tutorial and tips, Heat shown up front, and the trace
+  evasion (`docs/tutorial-design.md`, `docs/trace-evasion-design.md`).
 
 What exists, all headless and test-covered:
 
 | area | state |
 |---|---|
 | Cribbage rules engine | complete, rules-correct, 2-player |
-| Combat wrapper | complete — alpha/beta subroutines, seven verbs plus three enemy-only (Trace, Wipe, Strip), initiative, Breach/Containment |
+| Combat wrapper | complete — subroutines with a Process and a Hook (alpha / beta in code), seven verbs plus three enemy-only (Trace, Wipe, Strip), initiative, Breach/Containment |
 | Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
-| Meta-progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge (everything at once, at a Safehouse), a Shop that buys and sells |
-| Content | **authored** — 36 player subroutines, 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod); 37 Mods, 9 Burners (Cold Wallet sell-only), 8 Events (Static Shield and Recon Ping set aside) |
-| Balance | **re-tuned in session 62** — 15–20% target, ~16% average (classes 14.7–20.7%); gatekeeper curve 73.5/67/61/55 on target |
-| UI | **a whole run playable** (milestone 3) and **vanilla Cribbage with a coach and lessons** (milestone 4), both saved after every choice; a guided tutorial run and first-time tips (session 63) |
-| Art | not started |
+| Run progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge (everything at once, at a Safehouse), a Shop that buys and sells, Burners, the trace evasion |
+| Meta-progression (between runs) | **undesigned** — a priority after the content pass |
+| Content | **authored** — 36 player subroutines, 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod) plus the tutorial's Firewall Beta; 37 Mods, 9 Burners (Cold Wallet sell-only), 8 Events (Static Shield and Recon Ping set aside). The next priority is more of all of it |
+| Balance | 15–20% target by class, ~16% aim; now 16.0–23.3%, average 19.8% (session 63, after the Burner cut and the trace evasion); retune after the content pass |
+| UI | a whole run and plain Cribbage with a coach and lessons, on desktop and phones, saved after every choice; a guided tutorial, first-time tips, the Heat bar |
+| Art | the current terminal look is the intended style; no sprite pass planned (at most, refined map icons) |
 
-The playable-game plan's milestones: a pausable engine, one playable
-fight and a playable run (all done), then polish and playtesting with a
-style guide (in progress).
+The playable-game plan (`docs/playable-design.md`): milestones 1–4 (a
+pausable engine, one playable fight, a playable run, plain Cribbage) are
+done; milestone 5, polish and playtesting, is under way.
 
 ## Running it
 
@@ -185,7 +88,7 @@ run, including that run's final loadout, so "how many winning runs
 included X" is a query rather than a bespoke script.
 
 ```bash
-npm run sweep -- enemy --enemy=skeleton-gate-4 --vs=exploit-daemon
+npm run sweep -- enemy --enemy=firewall-prime --vs=exploit-daemon
 ```
 
 A direct `playCombat` between one named enemy and one class's starting
@@ -209,6 +112,10 @@ kit, reporting threshold vs. attrition wins on each side.
 | `npx tsx scripts/run-outcomes.ts` | Full-run outcomes by class (victory, Heat endings, Quarantine) and where each run's Heat came from |
 | `npx tsx scripts/skill-check.ts` | Skill retention: whether Cribbage skill still decides fights with loadouts installed (floor 0.5, DESIGN.md Pricing) |
 | `npx tsx scripts/enemy-check.ts` / `heat-sources.ts` | Per-enemy difficulty against accumulated state; where run Heat comes from |
+| `npx tsx scripts/build-check.ts` | A real build (by layer) against that layer's gatekeepers |
+| `npx tsx scripts/engine-bench.ts` | Simulation speed (fights per second): run before and after any engine change |
+| `npx tsx scripts/evasion-check.ts` | Trace evasion escape odds by head start and skill, and the head starts real runs produce |
+| `npx tsx scripts/tutorial-seed.ts` / `tutorial-gatekeeper.ts` | The tutorial's seed (its first hand, winnable at every skill) and its gatekeeper's pass rate |
 
 ### Holding the gatekeepers still
 
@@ -228,8 +135,7 @@ layer's population is *strictly* "whoever beat the previous layer" — any
 per-layer or per-class number is otherwise measured on a cohort
 pre-selected by the very trait being measured. `1,1,1,1` removes that
 filter; a fixed curve holds the roster still while something else is
-read; `pin:` measures one gatekeeper against a controlled background
-(meaningless on the skeleton roster, which has one gatekeeper per layer).
+read; `pin:` measures one gatekeeper against a controlled background.
 
 ### Four conventions worth knowing before reading any number
 
@@ -257,26 +163,41 @@ read; `pin:` measures one gatekeeper against a controlled background
 Engine and UI stay fully separate, and this is a standing project-wide
 rule rather than a preference (see `DESIGN.md`, Architecture). Everything
 in `src/engine/` is plain TypeScript with zero Svelte or browser
-dependency, and must remain simulable and testable headlessly. The UI,
-when it exists, will be a thin interface onto the engine and never a
-load-bearing piece of it.
+dependency, and must remain simulable and testable headlessly. The UI
+(`src/ui/`, Svelte 5) is a thin interface onto the engine and never a
+load-bearing piece of it: the engine pauses at each player decision
+(generators), and a simulated player answers the same requests.
 
 That constraint is why the balance tooling above can exist at all.
 
 ## Where things are documented
 
+Current:
+
 | file | holds |
 |---|---|
-| `DESIGN.md` | The settled design — mechanics, archetypes, classes, enemies, resources, and the reasoning behind them |
-| `docs/archetype-redesign.md` | Session 51's decision trail for the archetype and subroutine redesign (A1–A12, plus every implementation call) |
-| `docs/run-economy-design.md` | Session 50's decisions: the per-layer Heat economy (built session 52), the pillar suite, and the per-turn model (D11–D15) |
-| `docs/recalibration-design.md` | Step 2's decision trail (R1–R8) and its checkpoint findings: the Heat build, the pricing instrument, verb and beta prices, Trace, skill retention |
-| `docs/authoring-design.md` | Step 3's decision trail (S1–S11, C1–C6) and each authoring checkpoint's results: the four archetypes, the bridges, the starting loadouts, the wired-in run results |
-| `docs/balance-design.md` | The class balance pass (B1–B7): why the class gap was Heat rather than strength, the noise premium, the revised gatekeeper curve, the final per-class numbers |
-| `docs/design-history.md` | `DESIGN.md` sections superseded by session 51, archived verbatim |
-| `BACKLOG.md` | What is still to do, and the current balance picture |
-| `docs/roadmap-history.md` | Completed roadmap work and the per-checkpoint record of how it was built |
+| `BACKLOG.md` | What is still to do: the current state, the priorities, open items |
+| `DESIGN.md` | The settled design: mechanics, archetypes, classes, enemies, resources, and the reasoning behind them |
+| `docs/playable-design.md` | The plan for making the game playable (milestones 1–4 done, 5 under way) |
+| `docs/tutorial-design.md` | The guided tutorial run and first-time tips (session 63) |
+| `docs/trace-evasion-design.md` | The trace evasion: rules TE1–TE8, measurements, screens (session 63) |
 | `docs/session-logs/` | Per-session record of decisions and results |
+| `docs/calibration/` | Raw measurement output cited by the design records and the code |
+
+Historical decision records (each marked with its status; the settled
+results are in `DESIGN.md`):
+
+| file | holds |
+|---|---|
+| `docs/run-economy-design.md` | Session 50: the per-layer Heat economy and per-turn model (D1–D15) |
+| `docs/archetype-redesign.md` | Session 51: the archetype and subroutine redesign (A1–A12) |
+| `docs/recalibration-design.md` | Sessions 52–53: pricing (R1–R8), verb and Hook prices, skill retention |
+| `docs/authoring-design.md` | Sessions 54–55: authoring the pool, classes and roster (S1–S11, C1–C6, E1–E7) |
+| `docs/balance-design.md` | Session 56: the class balance pass (B1–B7) |
+| `docs/class-mod-redesign.md`, `docs/enemy-review.md`, `docs/text-audit.md` | Session 60: class Mods, the enemy roster, the rules-text wording rules |
+| `docs/session-39-gatekeeper-balance-audit.md` | Session 39: an audit of a roster since rebuilt |
+| `docs/design-history.md` | `DESIGN.md` sections superseded in session 51, verbatim |
+| `docs/roadmap-history.md` | Completed roadmap work, and sections moved out of `BACKLOG.md` and `README.md` |
 
 Sessions 22–28 have no individual log; that stretch is covered by the
 combined `docs/session-logs/00-prior-sessions-1-28.md`. Session 50 has

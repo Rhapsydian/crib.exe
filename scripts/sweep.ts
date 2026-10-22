@@ -23,7 +23,7 @@
  *
  * Usage:
  *   npx tsx scripts/sweep.ts run [--classes=exploit-overclock,daemon-honeypot] [--seeds=200] [--traversal=beeline|explore|opportunistic] [--acquisition=floor|synergy] [--playerSkill=0.85] [--out=file.jsonl]
- *   npx tsx scripts/sweep.ts enemy --enemy=skeleton-gate-4 [--vs=exploit-daemon] [--seeds=200] [--out=file.jsonl]
+ *   npx tsx scripts/sweep.ts enemy --enemy=firewall-prime [--vs=exploit-daemon] [--seeds=200] [--out=file.jsonl]
  *
  * `run` sweeps playRun() outcome distribution per class (RunOutcome +
  * layersCompleted). `--traversal` selects which of run.ts's
