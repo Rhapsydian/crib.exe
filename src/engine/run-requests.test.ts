@@ -275,6 +275,23 @@ describe('the Shop as one visit (checkpoint 4)', () => {
     expect(step.value.burnerRerollCost).toBeGreaterThan(0);
   });
 
+  it("a rerolled Mod slate never offers a Mod bought earlier that visit (session 63, the user's catch)", async () => {
+    const { resolveEncounterRequests } = await import('./encounters');
+    const { createNode } = await import('./map-types');
+    const { createRng } = await import('./rng');
+    const player = { ...createInitialPlayerState('exploit-overclock'), data: 5000 };
+    for (let seed = 1; seed <= 40; seed++) {
+      const visit = resolveEncounterRequests(createNode('s', 'shop'), createRng(seed), player);
+      let step = visit.next();
+      if (step.done || step.value.kind !== 'shop') throw new Error('expected a shop request');
+      const bought = step.value.shop.slates.mod.map((o) => o.mod.id);
+      for (let i = 0; i < bought.length; i++) step = visit.next({ kind: 'buy', slate: 'mod', index: i });
+      step = visit.next({ kind: 'reroll', slate: 'mod' });
+      if (step.done || step.value.kind !== 'shop') throw new Error('expected a shop request');
+      for (const o of step.value.shop.slates.mod) expect(bought).not.toContain(o.mod.id);
+    }
+  });
+
   it("a Shop Burner used on the way in can't then be sold (session 63, the user's catch)", async () => {
     const { resolveEncounterRequests } = await import('./encounters');
     const { createNode } = await import('./map-types');

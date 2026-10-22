@@ -1041,11 +1041,15 @@ export function* resolveEncounterRequests(
       // once, leave. The simulated player's answers (shopFallback) replay
       // its old sequence exactly: the three reroll decisions against the
       // first slates, then at most one buy per slate, then leave.
+      const purchases = { subroutine: [] as ShopOffering[], mod: [] as ModOffering[], burner: [] as BurnerOffering[] };
+      // A rerolled Mod slate leaves out Mods bought earlier this visit, as
+      // it does owned ones (session 63, the user's catch: a reroll offered
+      // the Mod just bought).
       const drawSlate = (slate: ShopSlate) =>
         slate === 'subroutine'
           ? shopOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
           : slate === 'mod'
-            ? modOfferingsForClass(playerState.classId, playerState.ownedModIds, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
+            ? modOfferingsForClass(playerState.classId, [...playerState.ownedModIds, ...purchases.mod.map((o) => o.mod.id)], rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
             : burnerOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor);
       const visit: ShopVisit = {
         slates: { subroutine: drawSlate('subroutine') as ShopOffering[], mod: drawSlate('mod') as ModOffering[], burner: drawSlate('burner') as BurnerOffering[] },
@@ -1055,7 +1059,6 @@ export function* resolveEncounterRequests(
         rerollCost: rerollCostThisVisit,
         sold: { subroutine: [], copy: [], burner: [] },
       };
-      const purchases = { subroutine: [] as ShopOffering[], mod: [] as ModOffering[], burner: [] as BurnerOffering[] };
       const rerollCosts: Record<ShopSlate, number> = { subroutine: 0, mod: 0, burner: 0 };
       const strategies = { shopRerollStrategy, modShopRerollStrategy, burnerShopRerollStrategy, shopStrategy, modShopStrategy, burnerShopStrategy, spendFreely: shopSpendFreely };
       let simPhase = 0;
