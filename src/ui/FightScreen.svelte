@@ -286,8 +286,10 @@
   </aside>
 
   <main class="main">
-    {#if heatOutlook}<HeatBar outlook={heatOutlook} gatekeeper={heat?.tier === 'gatekeeper'} />{/if}
     <div class="band enemy">
+      <!-- Heat at the top of the enemy's band, so the screen's spacing
+           never parts them (the user's call). -->
+      {#if heatOutlook}<HeatBar outlook={heatOutlook} gatekeeper={heat?.tier === 'gatekeeper'} />{/if}
       <div class="who">
         <span class="tag">TARGET</span> <span class="enemy-name">{f.enemyName}</span>
         {#if guide.active}<button class="speed" class:on={guide.cribbageCoach} aria-pressed={guide.cribbageCoach} onclick={() => (guide.cribbageCoach = !guide.cribbageCoach)} title="the Cribbage coach: {guide.cribbageCoach ? 'on' : 'off'}">◈ coach</button>{/if}
