@@ -15,19 +15,23 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 63)
+## Current state (end of session 64)
 
 The game is playable in the browser on desktop and phones
 (<https://rhapsydian.github.io/crib.exe/>, branch `playable`): a full
 four-layer run with six classes, a guided tutorial, first-time tips, plain
-Cribbage with a coach and lessons, and saves. Milestones 1-4 of
-`docs/playable-design.md` are done; milestone 5 (polish and playtesting)
-is under way. 808 tests, `npm run check` clean.
+Cribbage with a coach and lessons, and saves. Milestone 5 (polish and
+playtesting) is under way. 826 tests, `npm run check` clean.
 
-Content: 36 player subroutines (20 enemy-only besides), 27 enemies (13
-regular, 6 elite, 8 gatekeepers) plus the tutorial's Firewall Beta, 37
-Mods, 9 Burners, 8 Events. Balance: 16.0-23.3% victory by class, average
-19.8% against the user's 15-20% band (~16% aim).
+**The content pass is on `content-pass`** (branched from `playable` in
+session 64; the user merges it into `playable` after playing it locally):
+24 Burners (lumps, rule-benders, temporary subroutines, map Heat tools,
+four Event-only contraband) and 18 Events with story, some held to deeper
+layers (`docs/burners-events-design.md`). Content otherwise: 36 player
+subroutines, 27 enemies plus the tutorial's Firewall Beta, 37 Mods.
+Balance on `content-pass`: 21.0-31.0% victory by class, average 26.5%; the
+user (session 64): testers new to Cribbage find the game too hard, so
+rising win rates are welcome.
 
 ---
 
@@ -36,8 +40,10 @@ Mods, 9 Burners, 8 Events. Balance: 16.0-23.3% victory by class, average
 In this order:
 
 1. **More content**, all of it: subroutines, Mods, Burners, Events, and
-   enemies of all three tiers. Player side first, then enemies, then
-   retune toward ~16% (see Open items). The user's notes for it:
+   enemies of all three tiers. Player side first, then enemies.
+   **Burners and the first ten new Events are done** (session 64). Next:
+   **Mods** (double-edged Mods, upgrades for the class Mods, their Events),
+   then subroutines, then enemies; Event mini-games after. The user's notes:
    - **Burners:** the economy ones (Data, Shop discounts) are the only
      ones worth carrying; tune up the combat and map Burners.
    - **Events** can be a source of rare, high-value Burners.
@@ -46,7 +52,8 @@ In this order:
    - Enemy-only effects (Trace, Wipe, Strip) stay off the player pool; a
      player-side Suspend ("your bottom subroutine skips a turn") was
      floated in session 60.
-2. **Meta-progression.** Undesigned: plan it in a `/decision-session`.
+2. **Meta-progression.** Ideas so far: more Burner slots (session 64).
+   Undesigned: plan it in a `/decision-session`.
    `DESIGN.md` requires it to credit how deep a run got, including
    *breached, then caught*, below a full continue. Related, also
    undesigned: **ascension-style difficulty**, and the session-56
@@ -71,15 +78,25 @@ most, refine some of the map icons.
 ## Open items
 
 Balance and content:
+- **Elites barely threaten a 6-subroutine loadout** (97.7% player wins at
+  layer 2, session 64's Burner check) and regular/elite losses are rare
+  (the user: rarely contained outside gatekeepers). Look at regular and
+  elite difficulty in the enemy pass; **Skeleton Key**'s fate follows (a
+  closed node only comes from such a loss).
+- **Blackhat vs Firewall Prime: 36%** at layer 1 (its bursts hit No Way
+  In's cap), against 59.7% overall for the class.
 - **The Concierge vs Warden** (a tester's run, session 64): contained at
   78% Breach after being out-pegged 11-24 and out-cribbed 3-20. The
   Concierge (scale 1.42, Reception Protocol each hand) ends fights in about
   5 hands at ~10 Containment a turn: the worst case for a slow-ramping
   class. Warden beats it 77% (vs 100% against Firewall Prime). Consider a
   trim for onboarding (its scale, or Reception Protocol once per fight).
-- **Win rates** sit above the aim (avg 19.8%; Blackhat 23.3%, Eidolon
-  22.7%); retune after the content pass. Trace evasions add ~0.8 points
-  (3.9% of runs reach one, 37% escape).
+- **Win rates** on `content-pass`: average 26.5% (Breacher 31.0% to
+  Wraith 21.0%); the reworked Burners added ~6 points. The user (session
+  64): testers new to Cribbage find it too hard, so higher is welcome;
+  report shifts, don't chase the old 15-20% band. Warden gains from Burners
+  as much as the rest once they're saved for elites and gatekeepers; it's
+  strongest of all at layer 1 (89%) and falls off deeper.
 - **Mods:** ~12 at the layer-4 gatekeeper (Shop 4.6, elites 4.1,
   gatekeepers 3.0) against the user's ~10 by a run's end. Trims left: Mod
   rewards from gatekeepers, Event Mods.
@@ -137,6 +154,11 @@ Platform:
 - **Drag and drop** as an alternative card input.
 
 Code and tools:
+- **The simulated player holds Tunnel** (it wants every Shop and
+  Safehouse on its route), so Tunnel's value isn't in the numbers.
+- **burner-check.ts's Heat-saved figures** include Burners picked up during
+  the run (a rough ranking only), and its Containment measure tops out near
+  2x Flash Drive (contraband sits there).
 - **Dead exports:** `adjustSideWinThreshold` (`resolve.ts`, no callers)
   and several `loadout.ts` / `mods.ts` / `shop.ts` helpers; separating
   dead code from legitimate API is judgment work.
