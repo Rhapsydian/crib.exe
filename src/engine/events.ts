@@ -126,7 +126,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
     id: 'salvage-run',
     name: 'Salvage Run',
     text:
-      'A server rack slated for decommissioning still has power, and its old security daemon is still standing guard over the drives. Whatever's on them, someone thought it was worth protecting.',
+      "A server rack slated for decommissioning still has power, and its old security daemon is still standing guard over the drives. Whatever's on them, someone thought it was worth protecting.",
     choices: [
       {
         id: 'pass',
