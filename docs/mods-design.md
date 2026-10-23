@@ -1,6 +1,6 @@
 # Mods (session 65)
 
-**Status: designing.** The second piece of the player-side content pass
+**Status: designed; building (checkpoint plan below).** The second piece of the player-side content pass
 (`BACKLOG.md` → Priorities; `docs/burners-events-design.md` BE9): more
 Mods, double-edged Mods, upgrades for the six class Mods, and the Events
 that offer them. Decided live, one question at a time.
