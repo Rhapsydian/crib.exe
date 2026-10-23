@@ -251,3 +251,8 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
     floor: the fixture carries only Bootstrap Loader).
   - Fixture limits: Threshold Exploit measures 0 (no stepped Hooks in the
     commons); build-dependent Mods read low.
+  - Full runs after checkpoint 2 (`run-outcomes.ts`, 300 seeds a class):
+    Blackhat 35.7, Operator 36.7, Eidolon 32.3, Breacher 42.0, Warden
+    37.0, Wraith 33.0; average 36.1% (was 26.8 after checkpoint 1). The
+    supply is unchanged; the pool's new uncommons and rares are worth
+    more than the commons they displace in the draw.
