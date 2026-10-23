@@ -60,6 +60,9 @@ export interface EventChoice {
   id: string;
   label: string;
   riskTier: EventRiskTier;
+  /** Data you must have to take it (session 64): a choice that pays in
+   * Data isn't available when you can't pay. */
+  requiresData?: number;
   outcomes: WeightedOutcome[];
 }
 
@@ -69,5 +72,8 @@ export interface EventDefinition {
   /** The scene that sets up the choice (session 64, BE10: never a bare
    * choice). */
   text: string;
+  /** The first layer it can appear on (session 64): deeper Events carry
+   * bigger stakes. Default 1. */
+  minLayer?: number;
   choices: EventChoice[];
 }

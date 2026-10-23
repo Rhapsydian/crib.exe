@@ -1,6 +1,6 @@
 # Burners and Events (session 64)
 
-**Status: designed; checkpoints 1-5 planned for session 64.** The first
+**Status: built in session 64 (checkpoints 1-5).** The first
 half of the player-side content pass (`BACKLOG.md` → Priorities). Decided
 live, one question at a time.
 

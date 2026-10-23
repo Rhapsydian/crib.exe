@@ -220,4 +220,296 @@ export const EVENT_ROSTER: EventDefinition[] = [
       },
     ],
   },
+  // --- Session 64's first batch (docs/burners-events-design.md BE8-BE10):
+  // pitfalls, bargains, gambles; contraband mostly behind a gamble; some
+  // only on deeper layers. Heat in multiples of the layer's elite-loss
+  // charge (about 15 at layer 1): small 0.27, medium 0.53, large 0.93.
+  {
+    id: 'honeypot-lure',
+    name: 'Honeypot Lure',
+    text: "An unguarded file share, full of exactly what you came for. It's too easy, and you know it.",
+    choices: [
+      {
+        id: 'walk-away',
+        label: 'Walk away',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: {}, text: 'You leave the bait where it is. Somewhere, a trap stays unsprung.' }],
+      },
+      {
+        id: 'sample',
+        label: 'Take a careful sample',
+        riskTier: 'visibleOdds',
+        outcomes: [
+          { probability: 0.7, effect: { dataDelta: 15 }, text: 'A few files, quietly. Nothing notices.' },
+          { probability: 0.3, effect: { heatLosses: 0.53 }, text: 'The files are marked. Somewhere, a counter ticks up.' },
+        ],
+      },
+      {
+        id: 'grab-it-all',
+        label: 'Grab it all',
+        riskTier: 'gamble',
+        outcomes: [
+          { probability: 0.3, effect: { dataDelta: 40 }, text: "It wasn't a trap after all. Just someone's very bad day." },
+          { probability: 0.7, effect: { bonusFight: { tier: 'elite' } }, text: 'The share was a lure. Something wakes up.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'darknet-broker',
+    name: 'The Darknet Broker',
+    minLayer: 2,
+    text: "A broker on a darknet relay deals in things that don't officially exist. Payment up front, no refunds, no questions.",
+    choices: [
+      {
+        id: 'pay-data',
+        label: 'Pay in Data',
+        riskTier: 'transparent',
+        requiresData: 45,
+        outcomes: [{ probability: 1, effect: { dataDelta: -45, burnerGrant: { contraband: true } }, text: 'The broker counts the payment twice, then slides something across the table.' }],
+      },
+      {
+        id: 'pay-favours',
+        label: 'Pay in favours',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { heatLosses: 0.93, burnerGrant: { contraband: true } }, text: 'The favour is a loud one. You get the goods; the network gets your scent.' }],
+      },
+      {
+        id: 'leave',
+        label: 'Leave',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: {}, text: 'The relay closes behind you. The broker was never here.' }],
+      },
+    ],
+  },
+  {
+    id: 'sysadmin-on-call',
+    name: 'Sysadmin on Call',
+    text: "A night-shift sysadmin has noticed something odd in the logs: you. They haven't reported it yet. They're also underpaid.",
+    choices: [
+      {
+        id: 'bribe',
+        label: 'Bribe them',
+        riskTier: 'transparent',
+        requiresData: 20,
+        outcomes: [{ probability: 1, effect: { dataDelta: -20, heatLosses: -0.53 }, text: 'The logs they were reading quietly stop existing.' }],
+      },
+      {
+        id: 'threaten',
+        label: 'Threaten them',
+        riskTier: 'visibleOdds',
+        outcomes: [
+          { probability: 0.5, effect: { heatLosses: -0.53 }, text: 'They decide they saw nothing, and scrub the logs to prove it.' },
+          { probability: 0.5, effect: { heatLosses: 0.93 }, text: 'They escalate. Now everyone on shift is looking.' },
+        ],
+      },
+      {
+        id: 'let-it-play-out',
+        label: 'Let it play out',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { heatLosses: 0.27 }, text: 'They file a ticket. It sits in a queue, but it sits there with your name on it.' }],
+      },
+    ],
+  },
+  {
+    id: 'forked-repository',
+    name: 'Forked Repository',
+    text: 'A developer left a private repository public for one night. Half of it is brilliant. Half of it is broken.',
+    choices: [
+      {
+        id: 'stable',
+        label: 'Clone the stable branch',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { subroutineGrant: { randomFromRarity: 'common' } }, text: 'Tested, documented, and a little dull. It works.' }],
+      },
+      {
+        id: 'experimental',
+        label: 'Clone the experimental branch',
+        riskTier: 'gamble',
+        outcomes: [
+          { probability: 0.5, effect: { subroutineGrant: { randomFromRarity: 'rare' } }, text: 'Half-finished and brilliant. You can make it work.' },
+          { probability: 0.5, effect: { heatLosses: 0.53 }, text: 'It phones home.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'ghost-in-the-mailroom',
+    name: 'Ghost in the Mailroom',
+    text: "An automated mail relay forwards anything signed by an executive. For a few minutes, you have an executive's signature.",
+    choices: [
+      {
+        id: 'bonus',
+        label: 'Send yourself a bonus',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { dataDelta: 18 }, text: 'Payroll approves it without a second look.' }],
+      },
+      {
+        id: 'cover-story',
+        label: 'Send a cover story',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { heatLosses: -0.27 }, text: 'A memo explains the odd traffic away. Security files it and moves on.' }],
+      },
+      {
+        id: 'everything',
+        label: 'Send everything to everyone',
+        riskTier: 'gamble',
+        outcomes: [
+          { probability: 0.4, effect: { burnerGrant: { contraband: true } }, text: 'In the chaos, a reply lands in your inbox that was never meant for you.' },
+          { probability: 0.6, effect: { heatLosses: 0.93 }, text: 'Every inbox lights up at once, and so does every alarm.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'bounty-board',
+    name: 'The Bounty Board',
+    text: 'Security pays freelancers to stress-test its own defences. Nobody said the tester had to be friendly.',
+    choices: [
+      {
+        id: 'standard',
+        label: 'Take the standard contract',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { bonusFight: { tier: 'regular' }, dataDelta: 10 }, text: 'The contract pays half up front. The target is waiting.' }],
+      },
+      {
+        id: 'hard',
+        label: 'Take the hard contract',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { bonusFight: { tier: 'elite' }, burnerGrant: { randomFromRarity: 'rare' } }, text: 'The hard contract comes with tools. You will need them.' }],
+      },
+      {
+        id: 'leave',
+        label: 'Leave the board',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: {}, text: "You leave the contracts for someone who needs the work more." }],
+      },
+    ],
+  },
+  {
+    id: 'rogue-process',
+    name: 'Rogue Process',
+    minLayer: 2,
+    text: 'A process with no parent and no owner has been running in the cluster for weeks, forking copies of itself and rewriting its own code to dodge every cleanup job. Your traffic just tripped one of its hooks.',
+    choices: [
+      {
+        id: 'kill',
+        label: 'Kill it',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { dataDelta: 12 }, text: 'It had been hoarding cached data. Now you are.' }],
+      },
+      {
+        id: 'probe',
+        label: 'Probe it',
+        riskTier: 'visibleOdds',
+        outcomes: [
+          { probability: 0.5, effect: { modGrant: { randomFromRarity: 'uncommon' } }, text: 'Its self-rewriting trick is worth keeping. You take a copy.' },
+          { probability: 0.5, effect: { bonusFight: { tier: 'elite' } }, text: 'It treats your probe as an attack, and answers like one.' },
+        ],
+      },
+      {
+        id: 'merge',
+        label: 'Let it merge into your tools',
+        riskTier: 'gamble',
+        outcomes: [
+          { probability: 0.6, effect: { modGrant: { randomFromRarity: 'rare' } }, text: 'It settles into your toolkit and starts improving it.' },
+          { probability: 0.4, effect: { heatLosses: 0.93 }, text: 'It brings its whole history with it, and every scanner that was ever chasing it.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'audit-season',
+    name: 'Audit Season',
+    minLayer: 2,
+    text: "The annual audit has started. Every process on the network is being counted, including the ones that shouldn't exist.",
+    choices: [
+      {
+        id: 'go-dark',
+        label: 'Go dark for a while',
+        riskTier: 'transparent',
+        requiresData: 15,
+        outcomes: [{ probability: 1, effect: { dataDelta: -15, heatLosses: 0.27 }, text: 'You pay to lie low. It mostly works.' }],
+      },
+      {
+        id: 'hide',
+        label: 'Hide in the noise',
+        riskTier: 'visibleOdds',
+        outcomes: [
+          { probability: 0.6, effect: {}, text: 'Your traffic blends in with a thousand other anomalies.' },
+          { probability: 0.4, effect: { heatLosses: 0.93 }, text: 'The auditors are thorough. They count you twice.' },
+        ],
+      },
+      {
+        id: 'forge',
+        label: 'Forge the audit log',
+        riskTier: 'gamble',
+        outcomes: [
+          { probability: 0.5, effect: { heatLosses: -0.53, dataDelta: 15 }, text: 'The audit finds a clean network, and pays you for the privilege.' },
+          { probability: 0.5, effect: { bonusFight: { tier: 'elite' } }, text: 'The forgery is flagged. The audit sends its enforcer.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'cold-storage',
+    name: 'Cold Storage',
+    minLayer: 3,
+    text: 'A cold-storage vault holds keys the network forgot it had. Opening it will be loud. Leaving it means someone else will.',
+    choices: [
+      {
+        id: 'seal',
+        label: 'Seal it again',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { heatLosses: -0.53 }, text: 'You reseal the vault and erase the access logs on your way out.' }],
+      },
+      {
+        id: 'one-key',
+        label: 'Take one key',
+        riskTier: 'visibleOdds',
+        outcomes: [
+          { probability: 0.7, effect: { burnerGrant: { randomFromRarity: 'rare' } }, text: 'One key, carefully. It opens something worth opening.' },
+          { probability: 0.3, effect: { heatLosses: 0.53 }, text: 'The vault notices the missing key.' },
+        ],
+      },
+      {
+        id: 'empty',
+        label: 'Empty the vault',
+        riskTier: 'gamble',
+        outcomes: [
+          { probability: 0.5, effect: { burnerGrant: { contraband: true }, subroutineGrant: { randomFromRarity: 'rare' } }, text: 'Everything, and nothing stops you. Some of these keys should not exist.' },
+          { probability: 0.5, effect: { heatLosses: 0.93, bonusFight: { tier: 'elite' } }, text: 'The vault was alarmed, and the alarm was armed.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'root-shell',
+    name: 'Root Shell',
+    minLayer: 3,
+    text: 'A misconfigured service hands you a root shell for exactly as long as nobody notices. Root can do anything. Root is also watched.',
+    choices: [
+      {
+        id: 'log-out',
+        label: 'Log out',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: {}, text: 'You close the shell before anyone sees it open.' }],
+      },
+      {
+        id: 'take-what-you-need',
+        label: 'Take what you need',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { heatLosses: 0.53, subroutineGrant: { randomFromRarity: 'rare' } }, text: 'Root hands it over. The watchers log the request.' }],
+      },
+      {
+        id: 'take-everything',
+        label: 'Take everything',
+        riskTier: 'gamble',
+        outcomes: [
+          { probability: 0.5, effect: { modGrant: { randomFromRarity: 'rare' }, burnerGrant: { contraband: true } }, text: 'For one glorious minute, the network is yours.' },
+          { probability: 0.5, effect: { heatLosses: 1.2 }, text: 'Root is watched, and the watchers were waiting.' },
+        ],
+      },
+    ],
+  },
 ];

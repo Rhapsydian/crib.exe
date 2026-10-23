@@ -1152,8 +1152,15 @@ export function* resolveEncounterRequests(
       // (gatekeeperEnemyForNode's persisted-identity treatment doesn't
       // apply here: an Event, like a regular/elite fight, is one-and-
       // done, never needing a stable identity across revisits).
-      const eventDef = EVENT_ROSTER[rng.nextInt(EVENT_ROSTER.length)];
-      const choice = yield* ask({ kind: 'event', event: eventDef, playerState, heat: currentHeat, layer: layerIndex, fallback: () => eventChoiceStrategy(eventDef, playerState, currentHeat) });
+      // Session 64: an Event can be held back to deeper layers.
+      const eligibleEvents = EVENT_ROSTER.filter((e) => (e.minLayer ?? 1) <= layerIndex);
+      const eventDef = eligibleEvents[rng.nextInt(eligibleEvents.length)];
+      // A choice that pays in Data is only available when you can pay; the
+      // simulated player picks among the affordable ones.
+      const affordable = (c: EventChoice) => (c.requiresData ?? 0) <= playerState.data;
+      const offered: EventDefinition = { ...eventDef, choices: eventDef.choices.filter(affordable) };
+      const asked = yield* ask({ kind: 'event', event: eventDef, playerState, heat: currentHeat, layer: layerIndex, fallback: () => eventChoiceStrategy(offered, playerState, currentHeat) });
+      const choice = affordable(asked) ? asked : eventChoiceStrategy(offered, playerState, currentHeat);
       const { effect, text: outcomeText } = rollWeightedOutcome(choice.outcomes, rng);
 
       const eventGrant: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition } = {};

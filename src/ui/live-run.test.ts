@@ -146,25 +146,30 @@ describe('LiveRun', () => {
   it('a trace evasion: its intro, your Cribbage, its result -- and a save mid-evasion resumes there (session 63)', () => {
     const discard = discardSkillStrategy(0.85);
     const peg = pegSkillStrategy(0.85);
-    // Found by search: this run's layer-4 gatekeeper toll maxes Heat.
-    const run = new LiveRun('exploit-overclock', 39);
-    const answerFight = (i: number) => {
+    // The first run (by seed) that reaches an evasion -- searched, not
+    // pinned, since any content change moves which runs do.
+    let run!: LiveRun;
+    let i = 0;
+    const answerFight = (k: number) => {
       if (run.fight?.result) return run.answer(null);
       const r = run.fight!.frame!.request;
-      const rng = createRng(i);
+      const rng = createRng(k);
       run.answer(r.kind === 'discard' ? discard({ ...r.context, rng }) : r.kind === 'play' ? peg({ ...r.context, rng }) : null);
     };
-    let i = 0;
-    for (; i < 20000 && run.pause && run.pause.kind !== 'evasionStart' && run.pause.kind !== 'over'; i++) {
-      const pause = run.pause;
-      if (pause.kind === 'notice') run.answer(null);
-      else if (pause.kind === 'safehouse') run.chooseSafehouse('rest');
-      else if (pause.kind === 'fight') answerFight(i);
-      else run.answer((pause as { request: { fallback: () => unknown } }).request.fallback());
+    for (let seed = 1; seed <= 80; seed++) {
+      run = new LiveRun('exploit-overclock', seed);
+      for (i = 0; i < 20000 && run.pause && run.pause.kind !== 'evasionStart' && run.pause.kind !== 'over'; i++) {
+        const pause = run.pause;
+        if (pause.kind === 'notice') run.answer(null);
+        else if (pause.kind === 'safehouse') run.chooseSafehouse('rest');
+        else if (pause.kind === 'fight') answerFight(i);
+        else run.answer((pause as { request: { fallback: () => unknown } }).request.fallback());
+      }
+      if (run.pause?.kind === 'evasionStart') break;
     }
     expect(run.pause?.kind).toBe('evasionStart');
     if (run.pause?.kind !== 'evasionStart') return;
-    expect(run.pause.request.layer).toBe(4);
+    const layer = run.pause.request.layer;
     expect(run.evasion?.headStart).toBe(run.pause.request.headStart);
     run.answer(null);
     // Read through a function: run.answer() moves the pause on, which
@@ -200,7 +205,10 @@ describe('LiveRun', () => {
     }
     const end = pause();
     expect(end?.kind).toBe('over');
-    if (end?.kind === 'over') expect(end.result.outcome).toBe(escaped ? 'victory' : 'breachedThenCaught');
+    // A loss ends it breached, then caught; an escape on layer 4 wins it
+    // (deeper escapes carry on, and the run ends however it ends).
+    if (end?.kind === 'over' && !escaped) expect(end.result.outcome).toBe('breachedThenCaught');
+    if (end?.kind === 'over' && escaped && layer === 4) expect(end.result.outcome).toBe('victory');
   }, 120_000);
 
   it('a save that no longer fits is refused', () => {

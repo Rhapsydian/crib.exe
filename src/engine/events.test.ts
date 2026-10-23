@@ -27,8 +27,8 @@ function playerWith(overrides: Partial<RunPlayerState>): RunPlayerState {
 }
 
 describe('EVENT_ROSTER content shape', () => {
-  it('has exactly the 8 validated Events, each with 2-4 distinctly-ided choices', () => {
-    expect(EVENT_ROSTER).toHaveLength(8);
+  it("has the 18 Events (8, plus session 64's ten), each with 2-4 distinctly-ided choices", () => {
+    expect(EVENT_ROSTER).toHaveLength(18);
     const seenIds = new Set<string>();
     for (const event of EVENT_ROSTER) {
       expect(seenIds.has(event.id)).toBe(false);
@@ -114,13 +114,13 @@ describe('EventChoiceStrategy', () => {
     expect(implicit).toEqual(explicit);
   });
 
-  it('all 8 authored Events actually get resolved via the real random-pick mechanism, swept across seeds', () => {
+  it("every Event a layer allows gets resolved via the real random-pick mechanism (session 64: some are held back to deeper layers)", () => {
     const seenEventIds = new Set<string>();
     const recordingStrategy: EventChoiceStrategy = (event) => {
       seenEventIds.add(event.id);
       return event.choices[0];
     };
-    for (let seed = 1; seed <= 60; seed++) {
+    for (let seed = 1; seed <= 300; seed++) {
       resolveEncounter(
         createNode('n', 'event'),
         createRng(seed),
@@ -141,7 +141,9 @@ describe('EventChoiceStrategy', () => {
         recordingStrategy,
       );
     }
-    expect(seenEventIds.size).toBe(EVENT_ROSTER.length);
+    const layerOne = EVENT_ROSTER.filter((e) => (e.minLayer ?? 1) <= 1);
+    expect(seenEventIds.size).toBe(layerOne.length);
+    expect([...seenEventIds].every((id) => layerOne.some((e) => e.id === id))).toBe(true);
   });
 });
 
@@ -539,4 +541,33 @@ describe('Event story and contraband', () => {
     expect(granted).toBeGreaterThan(0);
   });
 
+});
+
+describe('Event choices that cost Data (session 64)', () => {
+  it("can't be taken without the Data: the run takes an affordable choice instead", async () => {
+    const { resolveEncounterRequests } = await import('./encounters');
+    const { createNode } = await import('./map-types');
+    const { createRng } = await import('./rng');
+    const { createInitialPlayerState } = await import('./run');
+    let checked = 0;
+    for (let seed = 0; seed < 300 && checked < 3; seed++) {
+      const broke = { ...createInitialPlayerState('exploit-overclock'), data: 0 };
+      const visit = resolveEncounterRequests(createNode('e', 'event'), createRng(seed), broke, undefined, undefined, undefined, undefined, undefined, 2);
+      let step = visit.next();
+      while (!step.done) {
+        const r = step.value;
+        if (r.kind === 'event') {
+          const costly = r.event.choices.find((c) => (c.requiresData ?? 0) > 0);
+          step = visit.next(costly ?? r.fallback());
+          continue;
+        }
+        if (r.kind === 'eventResult' && (r.event.choices.some((c) => (c.requiresData ?? 0) > 0))) {
+          expect(r.choice.requiresData ?? 0).toBe(0);
+          checked++;
+        }
+        step = visit.next(r.fallback());
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
 });
