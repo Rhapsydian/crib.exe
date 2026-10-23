@@ -56,6 +56,9 @@ import {
  */
 
 export interface CombatOptions {
+  /** The fight's tier, when it's part of a run (session 64): the simulated
+   * player saves its combat Burners for elites and gatekeepers. */
+  fightTier?: 'regular' | 'elite' | 'gatekeeper';
   seed: number;
   /** Per-side initiative-gauge threshold (session 40: was one shared
    * scalar applied to both sides; gauges.ts's InitiativeGauge always
@@ -126,6 +129,8 @@ export interface BurnerActivationContext {
    * discard or card, "nextTurn" at the start of your turn. Only Burners
    * of that timing are available. */
   timing: BurnerTiming;
+  /** The fight's tier, when known (CombatOptions.fightTier). */
+  fightTier?: 'regular' | 'elite' | 'gatekeeper';
 }
 
 /** Picks which (if any) available Burner to activate this turn, or null
@@ -614,7 +619,7 @@ export function* combatGenerator(
     const chosenBurnerId = (yield {
       kind: 'burner',
       side,
-      context: { combatState, side, isDealer: side === handDealer, availableBurnerIds, timing },
+      context: { combatState, side, isDealer: side === handDealer, availableBurnerIds, timing, fightTier: options.fightTier },
       view: view(handIndex, handDealer),
     }) as BurnerId | null;
     const burnerDef = chosenBurnerId && availableBurnerIds.includes(chosenBurnerId) ? BURNER_DEFINITIONS[chosenBurnerId] : undefined;
@@ -925,6 +930,12 @@ export function* combatGenerator(
  * same inventory but have no combatEffect to resolve. */
 export const synergyAwareCombatBurnerActivation: BurnerActivationStrategy = (ctx) => {
   if (ctx.side !== 0) return null;
+  // Saved for elites and gatekeepers (session 64), unless a regular fight
+  // is going badly: the enemy's Containment past 60%.
+  if (ctx.fightTier === 'regular') {
+    const enemy = ctx.combatState.sides[1].winGauge;
+    if (enemy.progress < enemy.threshold * 0.6) return null;
+  }
   // Session 64: "Next turn" Burners go on the first turn offered; "Now"
   // ones by what they do -- a hand-long bonus at the hand's start (no
   // points yet), Kill Switch once the enemy is half way, the rest at once.
