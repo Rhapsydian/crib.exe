@@ -128,7 +128,7 @@ export const MOD_TEXT: Record<GeneralModId, string> = {
   'init-script': `The next Mod you gain also gives you ${INIT_SCRIPT_DATA_BONUS} Data.`,
 
   // --- Uncommon ---
-  'firmware-patch': `Your Hooks do ${FIRMWARE_PATCH_BONUS} more whenever they Credit, Suppress or Ward — or make a Process that does bigger.`,
+  'firmware-patch': `Your Hooks do ${FIRMWARE_PATCH_BONUS} more: each Hook that Credits, Suppresses or Wards does ${FIRMWARE_PATCH_BONUS} more, and each Hook that makes its Process bigger makes it ${FIRMWARE_PATCH_BONUS} bigger still.`,
   'daemon-amplifier': amplifierText('daemon-amplifier'),
   'salvage-protocol': 'The first Daemon subroutine you gain this run is Merged once for free.',
   'cache-prefetch': `Your Hooks that count events (scoring, points, fires) start each fight with ${CACHE_PREFETCH_CHARGES === 1 ? 'one extra count' : `${CACHE_PREFETCH_CHARGES} extra counts`} already banked.`,
