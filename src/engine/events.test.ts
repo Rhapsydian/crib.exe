@@ -402,6 +402,7 @@ describe('synergyAwareEventChoice', () => {
   const allTiers: EventDefinition = {
     id: 'test-event',
     name: 'Test Event',
+    text: 'A test.',
     choices: [
       { id: 'gamble', label: 'gamble', riskTier: 'gamble', outcomes: [{ probability: 1, effect: {} }] },
       { id: 'odds', label: 'odds', riskTier: 'visibleOdds', outcomes: [{ probability: 1, effect: {} }] },
@@ -497,4 +498,45 @@ describe('eventChoiceStrategy heat threading (checkpoint I)', () => {
     );
     expect(seen).toEqual([42]);
   });
+});
+
+// Session 64 (docs/burners-events-design.md BE5, BE10).
+describe('Event story and contraband', () => {
+  it('every Event has a scene, and every outcome a line of what happened', async () => {
+    const { EVENT_ROSTER } = await import('./events');
+    for (const event of EVENT_ROSTER) {
+      expect(event.text.length).toBeGreaterThan(40);
+      for (const choice of event.choices) {
+        expect(choice.label).not.toMatch(/--/);
+        for (const outcome of choice.outcomes) expect(outcome.text?.length ?? 0).toBeGreaterThan(10);
+      }
+    }
+  });
+
+  it('a contraband grant only ever gives contraband', async () => {
+    const { resolveEncounterRequests } = await import('./encounters');
+    const { createNode } = await import('./map-types');
+    const { createRng } = await import('./rng');
+    const { createInitialPlayerState } = await import('./run');
+    let granted = 0;
+    for (let seed = 0; seed < 600 && granted < 5; seed++) {
+      const visit = resolveEncounterRequests(createNode('e', 'event'), createRng(seed), createInitialPlayerState('exploit-overclock'));
+      let step = visit.next();
+      while (!step.done) {
+        const r = step.value;
+        if (r.kind === 'event') {
+          const risky = r.event.choices.find((c) => c.outcomes.some((o) => o.effect.burnerGrant && 'contraband' in o.effect.burnerGrant));
+          step = visit.next(risky ?? r.fallback());
+          continue;
+        }
+        if (r.kind === 'eventResult' && r.effect.burnerGrant && 'contraband' in r.effect.burnerGrant) {
+          expect(r.grant.burner?.contraband).toBe(true);
+          granted++;
+        }
+        step = visit.next(r.fallback());
+      }
+    }
+    expect(granted).toBeGreaterThan(0);
+  });
+
 });

@@ -38,7 +38,9 @@ export interface EventEffect {
   dataDelta?: number;
   subroutineGrant?: Grant<SubroutineDefinition>;
   modGrant?: Grant<ModDefinition>;
-  burnerGrant?: Grant<BurnerDefinition>;
+  /** A Burner: a named one, one of a rarity from the general pool, or a
+   * random contraband one (session 64, BE5: offered only by Events). */
+  burnerGrant?: Grant<BurnerDefinition> | { contraband: true };
   /** A classic gamble-tier beat: triggers a real fight for a bigger
    * payout (checkpoint I resolves it via resolveFight's own machinery). */
   bonusFight?: { tier: 'regular' | 'elite' };
@@ -50,6 +52,8 @@ export interface EventEffect {
 export interface WeightedOutcome {
   probability: number;
   effect: EventEffect;
+  /** What happened, in a line of story (session 64, BE10). */
+  text?: string;
 }
 
 export interface EventChoice {
@@ -62,5 +66,8 @@ export interface EventChoice {
 export interface EventDefinition {
   id: string;
   name: string;
+  /** The scene that sets up the choice (session 64, BE10: never a bare
+   * choice). */
+  text: string;
   choices: EventChoice[];
 }

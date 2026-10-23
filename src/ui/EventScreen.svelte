@@ -3,7 +3,8 @@
   import type { EventChoice } from '../engine/event-types';
   import { choiceOutcomes } from './visit-text';
 
-  // An Event (milestone 3 checkpoint 4): a situation and its choices.
+  // An Event (milestone 3 checkpoint 4): a situation and its choices,
+  // the scene told first (session 64).
   // A sure choice shows what it does, a risky one its odds, a gamble
   // nothing. Tap to select, then commit.
   let { request, onchoose }: { request: Extract<RunRequest, { kind: 'event' }>; onchoose: (choice: EventChoice) => void } = $props();
@@ -14,8 +15,10 @@
 </script>
 
 <div class="event">
-  <div class="kicker">EVENT</div>
+  <div class="kicker">EVENT · LAYER {request.layer}</div>
   <div class="title">{request.event.name}</div>
+  <!-- The scene first (session 64, BE10): never a bare choice. -->
+  <p class="scene">{request.event.text}</p>
   {#each request.event.choices as c (c.id)}
     <button class="choice" class:sel={selected === c.id} onclick={() => (selected === c.id ? onchoose(c) : (selected = c.id))}>
       <div class="label"><b>{c.label}</b> <span class="risk {c.riskTier}">{RISK[c.riskTier]}</span></div>
@@ -46,6 +49,12 @@
     font-weight: 700;
     font-size: 16px;
     margin-bottom: 4px;
+  }
+  .scene {
+    margin: 0 0 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
   }
   .choice {
     text-align: left;

@@ -26,7 +26,7 @@ export function effectPhrases(effect: EventEffect, layer: number): string[] {
   }
   if (effect.subroutineGrant) out.push(grantText(effect.subroutineGrant, 'subroutine'));
   if (effect.modGrant) out.push(grantText(effect.modGrant, 'Mod'));
-  if (effect.burnerGrant) out.push(grantText(effect.burnerGrant, 'Burner'));
+  if (effect.burnerGrant) out.push('contraband' in effect.burnerGrant ? 'a contraband Burner' : grantText(effect.burnerGrant, 'Burner'));
   if (effect.bonusFight) out.push(`a fight (${effect.bonusFight.tier})`);
   return out.length ? out : ['nothing'];
 }

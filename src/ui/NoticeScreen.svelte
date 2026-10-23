@@ -28,13 +28,14 @@
     const named = [g.subroutine && `Subroutine: ${g.subroutine.name}`, g.mod && `Mod: ${g.mod.name}`, g.burner && `Burner: ${g.burner.name}`].filter(Boolean) as string[];
     const shown = [...amounts, ...named];
     if (e.bonusFight) shown.push(`A fight breaks out (${e.bonusFight.tier}).`);
-    return { kicker: `EVENT · ${request.event.name}`, title: request.choice.label, lines: shown.length ? shown : ['Nothing came of it.'] };
+    return { kicker: `EVENT · ${request.event.name}`, title: request.choice.label, story: request.text, lines: shown.length ? shown : ['Nothing came of it.'] };
   });
 </script>
 
 <div class="notice">
   <div class="kicker">{view.kicker}</div>
   <div class="title">{view.title}</div>
+  {#if 'story' in view && view.story}<p class="story">{view.story}</p>{/if}
   {#each view.lines as line, i (i)}<div class="line">· {line}</div>{/each}
   <button class="continue" onclick={oncontinue}>continue ▸</button>
 </div>
@@ -62,6 +63,11 @@
   }
   .line {
     font-size: 13px;
+  }
+  .story {
+    margin: 0 0 6px;
+    font-size: 13px;
+    line-height: 1.5;
   }
   .continue {
     margin-top: 16px;

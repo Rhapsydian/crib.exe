@@ -853,8 +853,12 @@ function resolveModGrant(grant: Grant<ModDefinition>, classId: ClassId, ownedMod
 /** Mirrors resolveSubroutineGrant/resolveModGrant for Burners -- no
  * class scoping needed (archetype-agnostic pool, same as checkpoint F's
  * burnerOfferingsForClass). */
-function resolveBurnerGrant(grant: Grant<BurnerDefinition>, rng: Rng): BurnerDefinition | undefined {
+function resolveBurnerGrant(grant: Grant<BurnerDefinition> | { contraband: true }, rng: Rng): BurnerDefinition | undefined {
   if ('specific' in grant) return grant.specific;
+  if ('contraband' in grant) {
+    const contraband = Object.values(BURNER_DEFINITIONS).filter((b) => b.contraband);
+    return contraband[rng.nextInt(contraband.length)];
+  }
   const filtered = generalBurnerPool().filter((burner) => burner.rarity === grant.randomFromRarity);
   if (filtered.length === 0) return undefined;
   return filtered[rng.nextInt(filtered.length)];
@@ -1150,13 +1154,13 @@ export function* resolveEncounterRequests(
       // done, never needing a stable identity across revisits).
       const eventDef = EVENT_ROSTER[rng.nextInt(EVENT_ROSTER.length)];
       const choice = yield* ask({ kind: 'event', event: eventDef, playerState, heat: currentHeat, layer: layerIndex, fallback: () => eventChoiceStrategy(eventDef, playerState, currentHeat) });
-      const { effect } = rollWeightedOutcome(choice.outcomes, rng);
+      const { effect, text: outcomeText } = rollWeightedOutcome(choice.outcomes, rng);
 
       const eventGrant: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition } = {};
       if (effect.subroutineGrant) eventGrant.subroutine = resolveSubroutineGrant(effect.subroutineGrant, playerState.classId, rng);
       if (effect.modGrant) eventGrant.mod = resolveModGrant(effect.modGrant, playerState.classId, playerState.ownedModIds, rng);
       if (effect.burnerGrant) eventGrant.burner = resolveBurnerGrant(effect.burnerGrant, rng);
-      yield* ask({ kind: 'eventResult', event: eventDef, choice, effect, grant: eventGrant, heat: eventHeat(effect.heatLosses ?? 0, layerIndex - 1), fallback: () => null });
+      yield* ask({ kind: 'eventResult', event: eventDef, choice, effect, text: outcomeText, grant: eventGrant, heat: eventHeat(effect.heatLosses ?? 0, layerIndex - 1), fallback: () => null });
 
       // Bonus fight (checkpoint I) -- a classic gamble-tier beat, reusing
       // resolveFight's existing machinery directly (same module, no
