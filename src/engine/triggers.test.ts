@@ -15,7 +15,10 @@ import {
   occurrenceFromHisHeels,
   occurrencesFromHandEvents,
   occurrencesFromPeggingEvent,
+  occurrenceCount,
+  occurrencePoints,
   recordFire,
+  repriceOccurrence,
   spendCharges,
   suitPlayedFromPeggingEvent,
   withinFiringGates,
@@ -72,6 +75,14 @@ describe('chargeFromOccurrence -- cards', () => {
     const royal = withBeta({ source: 'cards', category: 'pair', minMagnitude: 6, shape: 'stepped', at: 1, effect: ENHANCE });
     expect(chargeFromOccurrence(createInitialState(), royal, occ('pair', 0, 2), 0).charges).toBe(0);
     expect(chargeFromOccurrence(createInitialState(), royal, occ('pair', 0, 6), 0).charges).toBe(1);
+  });
+
+  it('a pair royal banks three charges and a double pair royal six (M8); a minMagnitude Hook still banks the royal once', () => {
+    const many = withBeta({ source: 'cards', category: 'pair', shape: 'graded', cap: 9, effect: ENHANCE });
+    expect(chargeFromOccurrence(createInitialState(), many, occ('pair', 0, 6), 0).charges).toBe(3);
+    expect(chargeFromOccurrence(createInitialState(), many, occ('pair', 0, 12), 0).charges).toBe(6);
+    const royal = withBeta({ source: 'cards', category: 'pair', minMagnitude: 6, shape: 'stepped', at: 1, effect: ENHANCE });
+    expect(chargeFromOccurrence(createInitialState(), royal, occ('pair', 0, 12), 0).charges).toBe(1);
   });
 
   it('His Heels scores points but no beta can watch it', () => {
@@ -321,5 +332,32 @@ describe('handPointsAtLeast (checkpoint 6b)', () => {
     const c = { kind: 'handPointsAtLeast', amount: 8 } as const;
     expect(evaluateStateCondition(c, context({ ownHandPoints: 7 }))).toBe(false);
     expect(evaluateStateCondition(c, context({ ownHandPoints: 8 }))).toBe(true);
+  });
+});
+
+describe('pair counts and scoring rules (docs/mods-design.md M7, M8)', () => {
+  const occ = (category: ScoringOccurrence['category'], magnitude = 2): ScoringOccurrence => ({ category, player: 0, magnitude });
+
+  it('counts the pairs inside a pair royal and a double pair royal', () => {
+    expect([2, 6, 12].map((m) => occurrenceCount(occ('pair', m)))).toEqual([1, 3, 6]);
+    expect(occurrenceCount(occ('fifteen'))).toBe(1);
+    expect(occurrenceCount(occ('run', 4))).toBe(1);
+  });
+
+  it('reprices fifteens and each pair inside a royal, leaving the table magnitude alone', () => {
+    const pairFold = { pair: 5, fifteen: 1 };
+    const fifteenFold = { fifteen: 3, pair: 1 };
+    expect([2, 6, 12].map((m) => occurrencePoints(repriceOccurrence(occ('pair', m), pairFold)))).toEqual([5, 15, 30]);
+    expect([2, 6, 12].map((m) => occurrencePoints(repriceOccurrence(occ('pair', m), fifteenFold)))).toEqual([1, 3, 6]);
+    expect(occurrencePoints(repriceOccurrence(occ('fifteen'), fifteenFold))).toBe(3);
+    expect(occurrencePoints(repriceOccurrence(occ('run', 3), pairFold))).toBe(3);
+    expect(repriceOccurrence(occ('pair', 6), pairFold).magnitude).toBe(6);
+    expect(occurrencePoints(repriceOccurrence(occ('pair', 6), undefined))).toBe(6);
+  });
+
+  it('a repriced occurrence feeds point-fed Hooks its repriced points', () => {
+    const points = withBeta({ source: 'progress', metric: 'points', per: 5, shape: 'graded', cap: 9, effect: ENHANCE });
+    const repriced = repriceOccurrence(occ('pair', 6), { pair: 5 });
+    expect(chargeFromOccurrence(createInitialState(), points, repriced, 0).charges).toBe(3);
   });
 });

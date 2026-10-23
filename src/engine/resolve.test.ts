@@ -330,6 +330,12 @@ describe('class bridge passives (step 3, C1)', () => {
     expect(applyOccurrence(s, fifteen).sides[0].gauge.progress).toBe(0);
   });
 
+  it('a pair royal counts as three pairs for the class Mod, a double pair royal as six (M8)', () => {
+    const s = state([credit('a')], 'exploit-overclock');
+    expect(applyOccurrence(s, { ...pair, magnitude: 6 }).sides[0].gauge.progress).toBeCloseTo(3 * 12 * BRIDGE_EXPLOIT_OVERCLOCK_HASTE);
+    expect(applyOccurrence(s, { ...pair, magnitude: 12 }).sides[0].gauge.progress).toBeCloseTo(6 * 12 * BRIDGE_EXPLOIT_OVERCLOCK_HASTE);
+  });
+
   it('Exploit + Daemon: a fifteen you score also Suppresses the opponent', () => {
     const s = withEnemyProgress(state([credit('a')], 'exploit-daemon'));
     const once = applyOccurrence(s, fifteen);

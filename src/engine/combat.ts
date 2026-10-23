@@ -16,6 +16,8 @@ import {
   occurrencesFromPeggingEvent,
   occurrencesFromHandEvents,
   occurrenceFromHisHeels,
+  occurrencePoints,
+  repriceOccurrence,
   suitPlayedFromPeggingEvent,
   type ScoringOccurrence,
 } from './triggers';
@@ -631,17 +633,19 @@ export function* combatGenerator(
   }
 
   function* resolveOccurrence(
-    occurrence: ScoringOccurrence,
+    tableOccurrence: ScoringOccurrence,
     handDealer: PlayerIndex,
     handIndex: number,
     cards?: Card[],
   ): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
+    // The scorer's own scoring rule (the Folds) reprices it first.
+    const occurrence = repriceOccurrence(tableOccurrence, combatState.sides[tableOccurrence.player].scoringRule);
     // Charges first, so a beta charged by this very occurrence applies
     // on the turn it buys.
     let winner = step(immediates(applyOccurrence(combatState, occurrence, handDealer), handDealer, log));
     if (winner !== null) return winner;
 
-    const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrence.magnitude);
+    const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrencePoints(occurrence));
     combatState = replaceSideGauge(combatState, occurrence.player, gauge);
     beat({ kind: 'points', phase, occurrence, gauges: readGauges(combatState), ...(cards ? { cards } : {}) });
 
@@ -878,9 +882,12 @@ export function* combatGenerator(
       ['hand', dealer, kept[dealer], dealerEvents, hand.dealerHandScore],
       ['crib', dealer, crib, cribEvents, hand.cribScore],
     ];
-    for (const [owner, player, cards, events, total] of show) {
-      beat({ kind: 'show', owner, player, cards, starter, total });
+    for (const [owner, player, cards, events, tableTotal] of show) {
       const occurrences = occurrencesFromHandEvents(events, player);
+      // The total as this side scores it (the Folds reprice it).
+      const rule = combatState.sides[player].scoringRule;
+      const total = rule ? occurrences.reduce((sum, o) => sum + occurrencePoints(repriceOccurrence(o, rule)), 0) : tableTotal;
+      beat({ kind: 'show', owner, player, cards, starter, total });
       for (let k = 0; k < occurrences.length; k++) {
         winner = yield* resolveOccurrence(occurrences[k], dealer, i, events[k].cards);
         if (winner !== null) return finish(winner);

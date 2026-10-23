@@ -73,7 +73,43 @@ export type ScoringCategory = OccurrenceCategory | 'hisHeels';
 export interface ScoringOccurrence {
   category: ScoringCategory;
   player: PlayerIndex;
+  /** The Cribbage points as the table scores them (a pair royal is 6).
+   * Names the score and gates `minMagnitude`. */
   magnitude: number;
+  /** The points this side actually scores, when a scoring rule (the
+   * Folds, docs/mods-design.md M7) reprices them; `magnitude` otherwise. */
+  points?: number;
+}
+
+/** The points an occurrence scores for its side (gauge, hand points,
+ * point-fed Hooks): the repriced `points`, or the table's `magnitude`. */
+export const occurrencePoints = (occurrence: ScoringOccurrence): number => occurrence.points ?? occurrence.magnitude;
+
+/** How many pairs a pair occurrence holds: n cards of a rank score
+ * n(n-1) and make n(n-1)/2 pairs, so a pair royal is 3 and a double pair
+ * royal 6 (docs/mods-design.md M8). */
+export const pairsIn = (occurrence: ScoringOccurrence): number => (occurrence.category === 'pair' ? occurrence.magnitude / 2 : 0);
+
+/** How many times an occurrence counts for whatever watches its category
+ * (Hooks, class Mods, Burner bonuses): a pair royal counts as three
+ * pairs, everything else once. */
+export const occurrenceCount = (occurrence: ScoringOccurrence): number => (occurrence.category === 'pair' ? pairsIn(occurrence) : 1);
+
+/** A side's scoring rule (the Folds): points per fifteen and per pair,
+ * replacing Cribbage's 2. Pegging and the show alike; never the trace
+ * evasion, which stays plain Cribbage (M12). */
+export interface ScoringRule {
+  fifteen?: number;
+  pair?: number;
+}
+
+/** Reprices an occurrence under `rule`; the pairs inside a royal are each
+ * repriced (a royal under pairs-worth-5 scores 15). */
+export function repriceOccurrence(occurrence: ScoringOccurrence, rule: ScoringRule | undefined): ScoringOccurrence {
+  if (!rule) return occurrence;
+  if (occurrence.category === 'fifteen' && rule.fifteen !== undefined) return { ...occurrence, points: rule.fifteen };
+  if (occurrence.category === 'pair' && rule.pair !== undefined) return { ...occurrence, points: pairsIn(occurrence) * rule.pair };
+  return occurrence;
 }
 
 /** Adapts pegging events into occurrences. Only 'play' (via its
@@ -105,7 +141,8 @@ const HAND_EVENT_CATEGORY: Record<HandScoreEvent['category'], OccurrenceCategory
 
 /** Adapts the show/count phase's discrete event list one-to-one -- two
  * distinct 15-combinations are two 'fifteen' occurrences, while a pair
- * royal stays the single magnitude-variant event scoring.ts makes it. */
+ * royal stays the single magnitude-variant event scoring.ts makes it
+ * (occurrenceCount is what counts it as three pairs). */
 export function occurrencesFromHandEvents(events: HandScoreEvent[], player: PlayerIndex): ScoringOccurrence[] {
   return events.map((event) => ({ category: HAND_EVENT_CATEGORY[event.category], player, magnitude: event.points }));
 }
@@ -169,9 +206,10 @@ function bankProgress(
  * Feeds one scoring occurrence into one piece's beta, from the point of
  * view of `side` (the piece's owner):
  *
- * - a `cards` beta watching this category banks a charge if the scorer
- *   matches its `watch` (default: its own side) and the magnitude clears
- *   `minMagnitude`;
+ * - a `cards` beta watching this category banks a charge per occurrence
+ *   (a pair royal's three pairs are three) if the scorer matches its
+ *   `watch` (default: its own side); one with `minMagnitude` watches the
+ *   royal itself, so banks one if the magnitude clears it;
  * - a `progress`/`points` beta banks its own side's points;
  * - every piece's points cooldown ticks down on its own side's scoring,
  *   whatever its beta -- the cooldown is a firing gate, not a criterion.
@@ -185,18 +223,19 @@ export function chargeFromOccurrence(
   const own = occurrence.player === side;
   let next = state;
   if (own && next.cooldownRemaining > 0) {
-    next = { ...next, cooldownRemaining: Math.max(0, next.cooldownRemaining - occurrence.magnitude) };
+    next = { ...next, cooldownRemaining: Math.max(0, next.cooldownRemaining - occurrencePoints(occurrence)) };
   }
 
   const beta = definition.beta;
   if (!beta) return next;
-  if (beta.source === 'progress') return own ? bankProgress(next, definition, 'points', occurrence.magnitude) : next;
+  if (beta.source === 'progress') return own ? bankProgress(next, definition, 'points', occurrencePoints(occurrence)) : next;
   if (beta.source !== 'cards' || beta.category === 'suit' || beta.category !== occurrence.category) return next;
 
   const watch = beta.watch ?? 'own';
   const watched = watch === 'either' || (watch === 'own') === own;
-  if (!watched || occurrence.magnitude < (beta.minMagnitude ?? 0)) return next;
-  return addCharges(next, definition, 1);
+  if (!watched) return next;
+  if (beta.minMagnitude !== undefined) return occurrence.magnitude < beta.minMagnitude ? next : addCharges(next, definition, 1);
+  return addCharges(next, definition, occurrenceCount(occurrence));
 }
 
 /** Feeds one pegging play into a `cards`/`suit` beta: a charge per card

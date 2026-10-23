@@ -44,8 +44,11 @@ import {
   recordFire,
   spendCharges,
   withinFiringGates,
+  occurrenceCount,
+  occurrencePoints,
   type FiredThisTurn,
   type ScoringOccurrence,
+  type ScoringRule,
   type SubroutineRuntimeState,
   type SuitPlayed,
   type TriggerContext,
@@ -125,6 +128,9 @@ export interface CombatSideState {
   /** Points scored so far this hand (pegging and show), reset at each
    * deal -- for `handPointsAtLeast` state betas. */
   handPoints: number;
+  /** This side's fifteens and pairs repriced (the Folds,
+   * docs/mods-design.md M7); Cribbage's own 2 when absent. */
+  scoringRule?: ScoringRule;
   /** Temporary threshold changes on this side's initiative gauge. */
   timedTempo: TimedTempo[];
   /** Disrupt effects this side has armed for the next hand. */
@@ -672,12 +678,16 @@ function mapLoadout(
  * cards betas, points-progress betas, and points cooldowns. Each piece
  * decides for itself whether the scorer is a side it watches. */
 export function applyOccurrence(combatState: CombatState, occurrence: ScoringOccurrence, dealer?: PlayerIndex): CombatState {
-  let state = withSide(combatState, occurrence.player, { handPoints: combatState.sides[occurrence.player].handPoints + occurrence.magnitude });
-  state = applyBridgeOnOccurrence(state, occurrence, dealer);
+  let state = withSide(combatState, occurrence.player, { handPoints: combatState.sides[occurrence.player].handPoints + occurrencePoints(occurrence) });
+  // A pair royal counts as three pairs, a double pair royal as six, for
+  // the class Mod and the Burner bonuses as for Hooks (M8).
+  const count = occurrenceCount(occurrence);
+  for (let k = 0; k < count; k++) state = applyBridgeOnOccurrence(state, occurrence, dealer);
   // Hand-long Burner bonuses (Packet Storm, Noise Floor): the scorer's own
   // fifteens / pairs also do their effect.
   for (const bonus of state.sides[occurrence.player].handBonuses ?? []) {
-    if (bonus.category === occurrence.category) state = resolveEffect(bonus.effect, state, occurrence.player);
+    if (bonus.category !== occurrence.category) continue;
+    for (let k = 0; k < count; k++) state = resolveEffect(bonus.effect, state, occurrence.player);
   }
   for (const side of [0, 1] as PlayerIndex[]) {
     state = mapLoadout(state, side, (entry) => chargeFromOccurrence(entry.state, entry.definition, occurrence, side));

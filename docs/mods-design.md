@@ -208,6 +208,22 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
    └────────────────────────────────────────────┘
    ```
 
-**Open before checkpoint 1:** do the Folds apply in the trace evasion
-(plain Cribbage)? Recommendation: no, the evasion stays plain Cribbage
-and its points are only a race to a lead.
+- **M12. Raw Cribbage stays raw (the user).** No Folds in the trace
+  evasion; the evasion, and any Cribbage-skill check added later, is plain
+  Cribbage skill, untouched by Mods.
+
+## Built
+
+- **Checkpoint 1, scoring foundations.** `triggers.ts`: `pairsIn`,
+  `occurrenceCount` (a royal is 3 pairs, a double royal 6; Hooks, class
+  Mods and Burner bonuses; a `minMagnitude` Hook still counts the royal
+  once), `ScoringRule` and `repriceOccurrence` (an occurrence keeps its
+  table `magnitude` and gains repriced `points`, read through
+  `occurrencePoints` by the gauge, hand points, point-fed Hooks and the
+  timeline). `CombatSideState.scoringRule` reprices in `combat.ts`'s
+  `resolveOccurrence` and the show total; nothing sets it until the Folds
+  (checkpoint 3). M8 measured (`run-outcomes.ts`, 300 seeds a class),
+  session 64 → now: Blackhat 29.7 → 31.7, Operator 29.3 → 28.7, Eidolon
+  25.0 → 25.3, Breacher 31.0 → 31.3, Warden 22.7 → 24.3, Wraith 21.0 →
+  19.3; average 26.5 → 26.8%. The pair classes gain 0-2 points, about the
+  run-to-run noise at this sample.

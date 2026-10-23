@@ -2,7 +2,7 @@ import type { Card } from '../engine/cards';
 import type { CombatBeat } from '../engine/combat';
 import type { PlayerIndex } from '../engine/game';
 import type { FireEvent, GaugeReading } from '../engine/resolve';
-import type { ScoringOccurrence } from '../engine/triggers';
+import { occurrencePoints, type ScoringOccurrence } from '../engine/triggers';
 import { rankLabel } from './suits';
 import { suitToken } from './RichText.svelte';
 import { describeFire } from './describe';
@@ -172,7 +172,7 @@ export function tableAt(steps: readonly Step[], upto: number): TableState {
     } else if (b.kind === 'show') {
       table.show = { owner: b.owner, player: b.player, cards: b.cards, starter: b.starter, scored: 0, total: b.total, announced: [], lit: null };
     } else if (b.kind === 'points' && b.phase === 'show' && table.show) {
-      const scored = table.show.scored + b.occurrence.magnitude;
+      const scored = table.show.scored + occurrencePoints(b.occurrence);
       table.show = {
         ...table.show,
         scored,
@@ -202,9 +202,9 @@ export function scoreLabel(o: ScoringOccurrence, phase: 'cut' | 'peg' | 'show' =
   const m = o.magnitude;
   switch (o.category) {
     case 'fifteen':
-      return `fifteen for ${m}`;
+      return `fifteen for ${occurrencePoints(o)}`;
     case 'pair':
-      return `${m >= 12 ? 'double pair royal' : m >= 6 ? 'pair royal' : 'pair'} for ${m}`;
+      return `${m >= 12 ? 'double pair royal' : m >= 6 ? 'pair royal' : 'pair'} for ${occurrencePoints(o)}`;
     case 'run':
       return phase === 'show' ? `${showRunName(m)} for ${m}` : `run of ${m} for ${m}`;
     case 'flush':
@@ -304,7 +304,7 @@ export function pointsSummary(timeline: readonly CombatBeat[]): [PointsSummary, 
     if (b.kind === 'show') showing = b.owner;
     if (b.kind !== 'points') continue;
     const s = sums[b.occurrence.player];
-    const m = b.occurrence.magnitude;
+    const m = occurrencePoints(b.occurrence);
     if (b.phase === 'cut') s.heels += m;
     else if (b.phase === 'peg') s.pegging += m;
     else if (showing === 'crib') s.crib += m;
