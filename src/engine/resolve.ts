@@ -143,7 +143,7 @@ export interface CombatSideState {
   /** Hand-long Burner bonuses (session 64): for the rest of this hand,
    * each of this side's fifteens / pairs also does `effect`. Cleared at
    * every deal. */
-  handBonuses?: { category: 'fifteen' | 'pair'; effect: Effect }[];
+  handBonuses?: { category: 'fifteen' | 'pair'; effect: Effect; handsLeft: number }[];
 }
 
 export interface CombatState {
@@ -266,7 +266,8 @@ export function clearHandKnowledge(combatState: CombatState): CombatState {
       knownOpponentHand: undefined,
       knownCrib: undefined,
       forcedDiscardPair: undefined,
-      handBonuses: undefined,
+      // A hand-long Burner bonus counts down a hand (Noise Floor lasts two).
+      handBonuses: sideState.handBonuses?.map((b) => ({ ...b, handsLeft: b.handsLeft - 1 })).filter((b) => b.handsLeft > 0),
       handPoints: 0,
       passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0 },
     };
@@ -1015,9 +1016,11 @@ export function fireTurn(
     state = again.combatState;
     events.push(...again.events);
   }
-  // The turn's Burner flags (fire twice, Hooks twice) last one turn.
-  if (state.sides[side].passiveState[BURNER_FIRE_TWICE] || state.sides[side].passiveState[BURNER_HOOKS_TWICE]) {
-    state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [BURNER_FIRE_TWICE]: 0, [BURNER_HOOKS_TWICE]: 0 } });
+  // The turn's Burner flags count down a turn: fire twice may last two,
+  // Hooks twice one.
+  const ps = state.sides[side].passiveState;
+  if (ps[BURNER_FIRE_TWICE] || ps[BURNER_HOOKS_TWICE]) {
+    state = withSide(state, side, { passiveState: { ...ps, [BURNER_FIRE_TWICE]: Math.max(0, (ps[BURNER_FIRE_TWICE] ?? 0) - 1), [BURNER_HOOKS_TWICE]: 0 } });
   }
   // Root Access: on the owner's first turn each hand, the loadout fires twice.
   if (hasSideMod(state, side, 'root-access') && !state.sides[side].passiveState[ROOT_ACCESS_SPENT]) {
@@ -1068,9 +1071,10 @@ function fireLoadoutOnce(
     const context = buildTriggerContext(state, side, selfContext.isDealer, firedThisTurn, i);
     const charges = beta ? betaCharges(definition, entry.state, context) : 0;
     let scale = beta ? betaScale(beta, charges) : 0;
+    // Zero-Day (session 64): this turn, every Hook goes off and applies
+    // twice (an instant Hook keeps its own timing).
+    if (beta && beta.shape !== 'immediate' && state.sides[side].passiveState[BURNER_HOOKS_TWICE]) scale = Math.max(scale, 1) * 2;
     const elevated = scale > 0;
-    // Zero-Day (session 64): this turn, each Hook that goes off applies twice.
-    if (elevated && state.sides[side].passiveState[BURNER_HOOKS_TWICE]) scale *= 2;
     // Reception Protocol: the owner's first Exploit beta each hand applies twice.
     if (elevated && definition.archetype === 'exploit' && hasSideMod(state, side, 'reception-protocol') && !state.sides[side].passiveState[RECEPTION_SPENT]) {
       noteMod(state, side, gk('reception-protocol'));
@@ -1199,19 +1203,19 @@ export function forceOpponentDiscard(combatState: CombatState, caster: PlayerInd
 /** Applies one combat Burner's effect for `side` (the player). */
 export function applyCombatBurner(combatState: CombatState, side: PlayerIndex, burnerId: BurnerId, effect: CombatBurnerEffect): CombatState {
   const sideState = combatState.sides[side];
-  const flag = (key: string, onSide: PlayerIndex = side): CombatState =>
-    withSide(combatState, onSide, { passiveState: { ...combatState.sides[onSide].passiveState, [key]: 1 } });
+  const flag = (key: string, onSide: PlayerIndex = side, count = 1): CombatState =>
+    withSide(combatState, onSide, { passiveState: { ...combatState.sides[onSide].passiveState, [key]: count } });
   switch (effect.kind) {
     case 'effect':
       return resolveEffect(effect.effect, combatState, side);
     case 'handBonus':
-      return withSide(combatState, side, { handBonuses: [...(sideState.handBonuses ?? []), { category: effect.category, effect: effect.effect }] });
+      return withSide(combatState, side, { handBonuses: [...(sideState.handBonuses ?? []), { category: effect.category, effect: effect.effect, handsLeft: effect.hands ?? 1 }] });
     case 'fireTwice':
-      return flag(BURNER_FIRE_TWICE);
+      return flag(BURNER_FIRE_TWICE, side, effect.turns);
     case 'hooksTwice':
       return flag(BURNER_HOOKS_TWICE);
     case 'skipEnemyTurn':
-      return flag(BURNER_SKIP_TURN, opponentOf(side));
+      return flag(BURNER_SKIP_TURN, opponentOf(side), effect.turns);
     case 'drainEnemy': {
       const enemy = opponentOf(side);
       const gauge = combatState.sides[enemy].winGauge;
@@ -1252,6 +1256,7 @@ export function tickTempSubroutines(combatState: CombatState, side: PlayerIndex)
 /** Whether `side`'s next turn is to be skipped (Denial of Service); if so,
  * the skip is spent. */
 export function takeSkippedTurn(combatState: CombatState, side: PlayerIndex): { combatState: CombatState; skipped: boolean } {
-  if (!combatState.sides[side].passiveState[BURNER_SKIP_TURN]) return { combatState, skipped: false };
-  return { combatState: withSide(combatState, side, { passiveState: { ...combatState.sides[side].passiveState, [BURNER_SKIP_TURN]: 0 } }), skipped: true };
+  const left = combatState.sides[side].passiveState[BURNER_SKIP_TURN] ?? 0;
+  if (!left) return { combatState, skipped: false };
+  return { combatState: withSide(combatState, side, { passiveState: { ...combatState.sides[side].passiveState, [BURNER_SKIP_TURN]: left - 1 } }), skipped: true };
 }

@@ -60,13 +60,13 @@ export type CombatBurnerEffect =
   | { kind: 'effect'; effect: Effect }
   /** For the rest of this hand, each of your fifteens / pairs also does
    * `effect`. */
-  | { kind: 'handBonus'; category: 'fifteen' | 'pair'; effect: Effect }
-  /** This turn, your loadout fires twice. */
-  | { kind: 'fireTwice' }
-  /** This turn, each of your Hooks that goes off applies twice. */
+  | { kind: 'handBonus'; category: 'fifteen' | 'pair'; effect: Effect; hands?: number }
+  /** For your next `turns` turns, your loadout fires twice. */
+  | { kind: 'fireTwice'; turns: number }
+  /** Next turn, every Hook in your loadout goes off and applies twice. */
   | { kind: 'hooksTwice' }
-  /** The enemy's next turn is skipped. */
-  | { kind: 'skipEnemyTurn' }
+  /** The enemy's next `turns` turns are skipped. */
+  | { kind: 'skipEnemyTurn'; turns: number }
   /** The enemy's Containment drops by this fraction of its progress. */
   | { kind: 'drainEnemy'; fraction: number }
   /** A temporary subroutine at the top or bottom of your loadout, firing
@@ -78,8 +78,9 @@ export type CombatBurnerEffect =
 export type MapBurnerEffect =
   | { kind: 'freeMoves'; count: number }
   | { kind: 'lowerHeat'; amount: number }
-  | { kind: 'nextFightHeat'; multiplier: number }
-  | { kind: 'nextGatekeeperToll'; multiplier: number }
+  | { kind: 'nextFightHeat'; multiplier: number; fights: number }
+  /** `clearHeat`: your Heat also drops to 0, now (Golden Ticket). */
+  | { kind: 'nextGatekeeperToll'; multiplier: number; clearHeat?: boolean }
   | { kind: 'tunnel' }
   | { kind: 'reopenClosedNode' };
 

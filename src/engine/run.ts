@@ -153,8 +153,10 @@ export interface RunPlayerState {
 /** Map Burners in effect (RunPlayerState.mapEffects). */
 export interface MapEffects {
   freeMoves: number;
-  /** Multiplies the next fight's Heat, win or lose (Proxy Chain). */
+  /** Multiplies the next fights' Heat, win or lose (Proxy Chain), for
+   * `nextFightHeatFights` more fights. */
   nextFightHeat?: number;
+  nextFightHeatFights?: number;
   /** Multiplies the next gatekeeper's Heat toll on a win (Spoofed
    * Credentials 0.5, Golden Ticket 0). */
   nextGatekeeperToll?: number;
@@ -850,8 +852,11 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
           const current: MapEffects = playerState.mapEffects ?? { freeMoves: 0 };
           let next: MapEffects = current;
           if (effect.kind === 'freeMoves') next = { ...current, freeMoves: current.freeMoves + effect.count };
-          else if (effect.kind === 'nextFightHeat') next = { ...current, nextFightHeat: Math.min(current.nextFightHeat ?? 1, effect.multiplier) };
-          else if (effect.kind === 'nextGatekeeperToll') next = { ...current, nextGatekeeperToll: Math.min(current.nextGatekeeperToll ?? 1, effect.multiplier) };
+          else if (effect.kind === 'nextFightHeat') next = { ...current, nextFightHeat: Math.min(current.nextFightHeat ?? 1, effect.multiplier), nextFightHeatFights: (current.nextFightHeatFights ?? 0) + effect.fights };
+          else if (effect.kind === 'nextGatekeeperToll') {
+            next = { ...current, nextGatekeeperToll: Math.min(current.nextGatekeeperToll ?? 1, effect.multiplier) };
+            if (effect.clearHeat) heat = 0;
+          }
           else if (effect.kind === 'tunnel') next = { ...current, tunnel: true };
           else if (effect.kind === 'lowerHeat') heat = Math.max(0, heat - effect.amount);
           playerState = { ...removeOneCarriedBurner(playerState, picked.burnerId), mapEffects: next };
@@ -971,7 +976,9 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
           outcome.heatDelta += cut;
           outcome.heatSources = { ...outcome.heatSources, burner: outcome.heatSources.burner + cut };
         }
-        playerState = { ...playerState, mapEffects: { ...fx, nextFightHeat: undefined, ...(gatekeeperWin ? { nextGatekeeperToll: undefined } : {}) } };
+        const fightsLeft = (fx.nextFightHeatFights ?? 0) - 1;
+        const fightCut = fightsLeft > 0 ? { nextFightHeatFights: fightsLeft } : { nextFightHeat: undefined, nextFightHeatFights: undefined };
+        playerState = { ...playerState, mapEffects: { ...fx, ...fightCut, ...(gatekeeperWin ? { nextGatekeeperToll: undefined } : {}) } };
       }
       const afterEncounter = addHeat(heat, outcome.heatDelta, ceiling());
       heat = afterEncounter.heat;

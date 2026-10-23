@@ -28,7 +28,7 @@ const BOOTSTRAP_LOADER: SubroutineDefinition = {
   id: 'burner-bootstrap-loader',
   name: 'Bootstrap Loader',
   archetype: 'overclock',
-  alpha: { verb: 'empower', amount: 2, scope: 'next' },
+  alpha: { verb: 'empower', amount: 1, scope: 'rest' },
 };
 const LOGIC_BOMB: SubroutineDefinition = {
   id: 'burner-logic-bomb',
@@ -41,14 +41,14 @@ const HONEYNET_SHIM: SubroutineDefinition = {
   id: 'burner-honeynet-shim',
   name: 'Honeynet Shim',
   archetype: 'honeypot',
-  alpha: { verb: 'ward', amount: 3 },
+  alpha: { verb: 'ward', amount: 2 },
 };
 const BOTNET: SubroutineDefinition = {
   id: 'burner-botnet',
   name: 'Botnet',
   archetype: 'exploit',
-  alpha: { verb: 'credit', amount: 3 },
-  beta: { source: 'cards', category: 'fifteen', shape: 'graded', cap: 1, effect: { verb: 'credit', amount: 3 } },
+  alpha: { verb: 'credit', amount: 4 },
+  beta: { source: 'cards', category: 'fifteen', shape: 'graded', cap: 1, effect: { verb: 'credit', amount: 4 } },
 };
 /** Every temporary subroutine a Burner can install (for the UI). */
 export const BURNER_SUBROUTINES: readonly SubroutineDefinition[] = [BOOTSTRAP_LOADER, LOGIC_BOMB, HONEYNET_SHIM, BOTNET];
@@ -76,8 +76,8 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     name: 'Patch Tuesday',
     rarity: 'common',
     contexts: ['combat'],
-    text: 'Next turn: Ward 10.',
-    combat: { timing: 'nextTurn', effect: { kind: 'effect', effect: { verb: 'ward', amount: 10 } } },
+    text: 'Next turn: Ward 8.',
+    combat: { timing: 'nextTurn', effect: { kind: 'effect', effect: { verb: 'ward', amount: 8 } } },
   },
 
   // --- Combat: rule-benders ---
@@ -86,31 +86,31 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     name: 'Packet Storm',
     rarity: 'common',
     contexts: ['combat'],
-    text: 'Now: each fifteen you score this hand also Credits 2.',
-    combat: { timing: 'now', effect: { kind: 'handBonus', category: 'fifteen', effect: { verb: 'credit', amount: 2 } } },
+    text: 'Now: each fifteen you score this hand also Credits 3.',
+    combat: { timing: 'now', effect: { kind: 'handBonus', category: 'fifteen', effect: { verb: 'credit', amount: 3 } } },
   },
   'noise-floor': {
     id: 'noise-floor',
     name: 'Noise Floor',
     rarity: 'uncommon',
     contexts: ['combat'],
-    text: 'Now: each pair you score this hand also Suppresses 2.',
-    combat: { timing: 'now', effect: { kind: 'handBonus', category: 'pair', effect: { verb: 'suppress', amount: 2 } } },
+    text: 'Now: each pair you score this hand and the next also Suppresses 6.',
+    combat: { timing: 'now', effect: { kind: 'handBonus', category: 'pair', effect: { verb: 'suppress', amount: 6 }, hands: 2 } },
   },
   'overclock-script': {
     id: 'overclock-script',
     name: 'Overclock Script',
     rarity: 'uncommon',
     contexts: ['combat'],
-    text: 'Next turn: your loadout fires twice.',
-    combat: { timing: 'nextTurn', effect: { kind: 'fireTwice' } },
+    text: 'Next turn and the one after: your loadout fires twice.',
+    combat: { timing: 'nextTurn', effect: { kind: 'fireTwice', turns: 2 } },
   },
   'zero-day': {
     id: 'zero-day',
     name: 'Zero-Day',
     rarity: 'rare',
     contexts: ['combat'],
-    text: 'Next turn: each of your Hooks that goes off applies twice.',
+    text: 'Next turn: every Hook in your loadout goes off, and applies twice.',
     combat: { timing: 'nextTurn', effect: { kind: 'hooksTwice' } },
   },
 
@@ -120,7 +120,7 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     name: 'Bootstrap Loader',
     rarity: 'uncommon',
     contexts: ['combat'],
-    text: 'Next turn: installs Bootstrap Loader at the top of your loadout for 3 turns. Process: Empower the next subroutine 2.',
+    text: 'Next turn: installs Bootstrap Loader at the top of your loadout for 3 turns. Process: Empower the rest of your loadout 1.',
     combat: { timing: 'nextTurn', effect: { kind: 'tempSubroutine', subroutine: BOOTSTRAP_LOADER, position: 'top', fires: 3 } },
   },
   'logic-bomb': {
@@ -136,7 +136,7 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     name: 'Honeynet Shim',
     rarity: 'common',
     contexts: ['combat'],
-    text: 'Next turn: installs Honeynet Shim at the bottom of your loadout for 3 turns. Process: Ward 3.',
+    text: 'Next turn: installs Honeynet Shim at the bottom of your loadout for 3 turns. Process: Ward 2.',
     combat: { timing: 'nextTurn', effect: { kind: 'tempSubroutine', subroutine: HONEYNET_SHIM, position: 'bottom', fires: 3 } },
   },
 
@@ -146,8 +146,8 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     name: 'Ghost Protocol',
     rarity: 'uncommon',
     contexts: ['map'],
-    text: 'Your next 3 moves cost no Heat.',
-    mapEffect: { kind: 'freeMoves', count: 3 },
+    text: 'Your next 6 moves cost no Heat.',
+    mapEffect: { kind: 'freeMoves', count: 6 },
   },
   'skeleton-key': {
     id: 'skeleton-key',
@@ -170,16 +170,16 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     name: 'Proxy Chain',
     rarity: 'uncommon',
     contexts: ['map'],
-    text: "The next fight's Heat is halved, win or lose.",
-    mapEffect: { kind: 'nextFightHeat', multiplier: 0.5 },
+    text: "The next 3 fights' Heat is halved, win or lose.",
+    mapEffect: { kind: 'nextFightHeat', multiplier: 0.5, fights: 3 },
   },
   'spoofed-credentials': {
     id: 'spoofed-credentials',
     name: 'Spoofed Credentials',
     rarity: 'rare',
     contexts: ['map'],
-    text: "The next gatekeeper's Heat toll is halved.",
-    mapEffect: { kind: 'nextGatekeeperToll', multiplier: 0.5 },
+    text: 'The next gatekeeper has no Heat toll.',
+    mapEffect: { kind: 'nextGatekeeperToll', multiplier: 0 },
   },
   tunnel: {
     id: 'tunnel',
@@ -235,8 +235,8 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     rarity: 'rare',
     contexts: ['combat'],
     contraband: true,
-    text: "Now: the enemy's next turn is skipped.",
-    combat: { timing: 'now', effect: { kind: 'skipEnemyTurn' } },
+    text: "Now: the enemy's next 2 turns are skipped.",
+    combat: { timing: 'now', effect: { kind: 'skipEnemyTurn', turns: 2 } },
   },
   botnet: {
     id: 'botnet',
@@ -244,8 +244,8 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     rarity: 'rare',
     contexts: ['combat'],
     contraband: true,
-    text: 'Next turn: installs Botnet at the bottom of your loadout for 5 turns. Process: Credit 3. Hook (fifteens): Credit 3 more.',
-    combat: { timing: 'nextTurn', effect: { kind: 'tempSubroutine', subroutine: BOTNET, position: 'bottom', fires: 5 } },
+    text: 'Next turn: installs Botnet at the bottom of your loadout for 6 turns. Process: Credit 4. Hook (fifteens): Credit 4 more.',
+    combat: { timing: 'nextTurn', effect: { kind: 'tempSubroutine', subroutine: BOTNET, position: 'bottom', fires: 6 } },
   },
   'golden-ticket': {
     id: 'golden-ticket',
@@ -253,8 +253,8 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     rarity: 'rare',
     contexts: ['map'],
     contraband: true,
-    text: 'The next gatekeeper has no Heat toll.',
-    mapEffect: { kind: 'nextGatekeeperToll', multiplier: 0 },
+    text: 'Now: your Heat drops to 0, and the next gatekeeper has no Heat toll.',
+    mapEffect: { kind: 'nextGatekeeperToll', multiplier: 0, clearHeat: true },
   },
   'kill-switch': {
     id: 'kill-switch',
@@ -262,8 +262,8 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     rarity: 'rare',
     contexts: ['combat'],
     contraband: true,
-    text: "Now: the enemy's Containment drops by half.",
-    combat: { timing: 'now', effect: { kind: 'drainEnemy', fraction: 0.5 } },
+    text: "Now: the enemy's Containment drops to 0.",
+    combat: { timing: 'now', effect: { kind: 'drainEnemy', fraction: 1 } },
   },
 };
 

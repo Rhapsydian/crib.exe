@@ -451,7 +451,7 @@ describe('synergyAwareCombatBurnerActivation', () => {
   });
 
   it('skips map- and shop-context Burners carried in the same inventory', () => {
-    expect(synergyAwareCombatBurnerActivation(ctx(0, ['ghost-protocol', 'stolen-coupon', 'emp-charge']))).toBe('emp-charge');
+    expect(synergyAwareCombatBurnerActivation(ctx(0, ['ghost-protocol', 'stolen-coupon', 'flash-drive']))).toBe('flash-drive');
   });
 
   it('declines when only non-combat Burners are carried', () => {

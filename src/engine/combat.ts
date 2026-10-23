@@ -931,13 +931,21 @@ export const synergyAwareCombatBurnerActivation: BurnerActivationStrategy = (ctx
   const usable = ctx.availableBurnerIds.find((id) => {
     const effect = BURNER_DEFINITIONS[id].combat?.effect;
     if (!effect) return false;
-    if (effect.kind === 'handBonus') {
+    if (effect.kind === 'handBonus' && effect.effect.verb !== 'suppress') {
       const side = ctx.combatState.sides[0];
       return side.handPoints === 0 && !(side.handBonuses ?? []).length;
     }
     if (effect.kind === 'drainEnemy') {
       const enemy = ctx.combatState.sides[1].winGauge;
       return enemy.progress >= enemy.threshold / 2;
+    }
+    // Suppress Burners wait until there's Containment to take back.
+    const suppresses = (effect.kind === 'effect' && effect.effect.verb === 'suppress') || (effect.kind === 'handBonus' && effect.effect.verb === 'suppress');
+    if (suppresses) {
+      const enemy = ctx.combatState.sides[1].winGauge;
+      if (enemy.progress < enemy.threshold * 0.3) return false;
+      if (effect.kind === 'handBonus') return ctx.combatState.sides[0].handPoints === 0 && !(ctx.combatState.sides[0].handBonuses ?? []).length;
+      return true;
     }
     return true;
   });

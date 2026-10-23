@@ -23,27 +23,43 @@ describe('combat Burners (session 64)', () => {
     expect(progress(burn(fight(), 'flash-drive'), 0)).toBe(10);
   });
 
-  it('Packet Storm: each fifteen you score this hand also Credits 2, until the next deal', () => {
+  it('Packet Storm: each fifteen you score this hand also Credits 3, until the next deal', () => {
     let s = burn(fight(), 'packet-storm');
     s = applyOccurrence(s, occurrence('fifteen'));
     s = applyOccurrence(s, occurrence('fifteen'));
     s = applyOccurrence(s, occurrence('pair'));
     s = applyOccurrence(s, occurrence('fifteen', 1)); // the enemy's: no bonus
-    expect(progress(s, 0)).toBe(4);
+    expect(progress(s, 0)).toBe(6);
     s = clearHandKnowledge(s);
     s = applyOccurrence(s, occurrence('fifteen'));
-    expect(progress(s, 0)).toBe(4);
+    expect(progress(s, 0)).toBe(6);
   });
 
-  it('Overclock Script: next turn, the loadout fires twice, then the flag is spent', () => {
+  it('Noise Floor: each pair this hand and the next also Suppresses 6, then it ends', () => {
+    let s = fight();
+    s = { ...s, sides: [s.sides[0], { ...s.sides[1], winGauge: { ...s.sides[1].winGauge, progress: 40 } }] };
+    s = burn(s, 'noise-floor');
+    s = applyOccurrence(s, occurrence('pair'));
+    expect(progress(s, 1)).toBe(34);
+    s = clearHandKnowledge(s);
+    s = applyOccurrence(s, occurrence('pair'));
+    expect(progress(s, 1)).toBe(28);
+    s = clearHandKnowledge(s);
+    s = applyOccurrence(s, occurrence('pair'));
+    expect(progress(s, 1)).toBe(28);
+  });
+
+  it('Overclock Script: next turn and the one after, the loadout fires twice, then it ends', () => {
     let s = burn(fight([credit('a', 3)]), 'overclock-script');
     s = fireTurn(s, 0, { isDealer: false }).combatState;
     expect(progress(s, 0)).toBe(6);
     s = fireTurn(s, 0, { isDealer: false }).combatState;
-    expect(progress(s, 0)).toBe(9);
+    expect(progress(s, 0)).toBe(12);
+    s = fireTurn(s, 0, { isDealer: false }).combatState;
+    expect(progress(s, 0)).toBe(15);
   });
 
-  it("Zero-Day: next turn, each Hook that goes off applies twice", () => {
+  it('Zero-Day: next turn, every Hook goes off and applies twice', () => {
     // A Hook that always goes off: +2 Credit on every fire (a live state source).
     const hooked = piece('h', { verb: 'credit', amount: 1 }, { source: 'state', condition: { kind: 'nonDealer' }, shape: 'whileTrue', effect: { verb: 'credit', amount: 2 } });
     const plain = fireTurn(fight([hooked]), 0, { isDealer: false }).combatState;
@@ -51,18 +67,26 @@ describe('combat Burners (session 64)', () => {
     expect(progress(doubled, 0) - progress(plain, 0)).toBe(progress(plain, 0) - 1);
   });
 
-  it("Denial of Service: the enemy's next turn is skipped, once", () => {
+  it("Denial of Service: the enemy's next 2 turns are skipped", () => {
     const s = burn(fight(), 'denial-of-service');
     const first = takeSkippedTurn(s, 1);
-    expect(first.skipped).toBe(true);
-    expect(takeSkippedTurn(first.combatState, 1).skipped).toBe(false);
+    const second = takeSkippedTurn(first.combatState, 1);
+    expect([first.skipped, second.skipped]).toEqual([true, true]);
+    expect(takeSkippedTurn(second.combatState, 1).skipped).toBe(false);
     expect(takeSkippedTurn(s, 0).skipped).toBe(false);
   });
 
-  it("Kill Switch: the enemy's Containment drops by half", () => {
+  it('Zero-Day makes a Hook that would not have gone off go off', () => {
+    // A Hook on dealing: off for a non-dealer turn, forced on by Zero-Day.
+    const hooked = piece('d', { verb: 'credit', amount: 1 }, { source: 'state', condition: { kind: 'dealer' }, shape: 'whileTrue', effect: { verb: 'credit', amount: 2 } });
+    expect(progress(fireTurn(fight([hooked]), 0, { isDealer: false }).combatState, 0)).toBe(1);
+    expect(progress(fireTurn(burn(fight([hooked]), 'zero-day'), 0, { isDealer: false }).combatState, 0)).toBe(5);
+  });
+
+  it("Kill Switch: the enemy's Containment drops to 0", () => {
     let s = fight();
     s = { ...s, sides: [s.sides[0], { ...s.sides[1], winGauge: { ...s.sides[1].winGauge, progress: 40 } }] };
-    expect(progress(burn(s, 'kill-switch'), 1)).toBe(20);
+    expect(progress(burn(s, 'kill-switch'), 1)).toBe(0);
   });
 
   it('temporary subroutines: an extra slot at the top or bottom, one at a time, gone after its turns', () => {
