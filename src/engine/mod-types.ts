@@ -74,7 +74,14 @@ export type ModId =
   | 'thirty-one'
   | 'deep-cache'
   | 'root-cause'
-  | 'persistent-payload';
+  | 'persistent-payload'
+  // Double-edged, Event-only (session 65, docs/mods-design.md M2, M7, M9)
+  | 'fifteen-fold'
+  | 'pair-fold'
+  | 'overclocked-kernel'
+  | 'ghost-credentials'
+  | 'black-market-ties'
+  | 'glass-cannon';
 
 /**
  * Two engine mechanisms, split by effect shape (session 30) -- not a
@@ -120,4 +127,7 @@ export interface ModDefinition {
    * granted automatically at run start by class selection, never
    * appearing in the general reward/Shop pool (session 30). */
   classExclusive?: boolean;
+  /** A double-edged Mod (session 65, M2): helps and hurts, and only an
+   * Event grants it, never a reward or the Shop. */
+  doubleEdged?: boolean;
 }

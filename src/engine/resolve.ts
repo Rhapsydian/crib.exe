@@ -39,6 +39,10 @@ import {
   DEEP_CACHE_CAP_MULTIPLIER,
   ROOT_CAUSE_COUNTS,
   PERSISTENT_PAYLOAD_MULTIPLIER,
+  FIFTEEN_FOLD_RULE,
+  PAIR_FOLD_RULE,
+  GLASS_CANNON_CREDIT,
+  GLASS_CANNON_ENEMY_START,
 } from './mods';
 import type { BurnerId, CombatBurnerEffect } from './burner-types';
 import {
@@ -326,9 +330,13 @@ const BURNER_SKIP_TURN = 'burner:skipTurn';
 const ROOT_ACCESS_SPENT = 'gk:root-spent';
 const HANDS_SEEN = 'gk:hands';
 
-export function creditWinGauge(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
-  if (amount <= 0) return combatState;
+export function creditWinGauge(combatState: CombatState, side: PlayerIndex, creditAmount: number): CombatState {
+  if (creditAmount <= 0) return combatState;
   let state = combatState;
+  // Glass Cannon (session 65): each Credit the player scores is higher.
+  const glass = side === 0 && hasMod(state, 'glass-cannon');
+  if (glass) noteMod(state, 0, ownMod('glass-cannon'));
+  let amount = glass ? creditAmount + GLASS_CANNON_CREDIT : creditAmount;
   const opponent = opponentOf(side);
   const scratch = state.sides[side].passiveState;
   // Null Session: the first Credit `side` would gain each turn is discarded.
@@ -636,6 +644,14 @@ export function applyModOnCombatStartPassives(combatState: CombatState): CombatS
   if (hasMod(state, 'warm-boot')) state = withSide(state, 0, { wardShield: state.sides[0].wardShield + MOD_SMALL });
   if (hasMod(state, 'cold-boot')) state = creditWinGauge(state, 0, MOD_SMALL);
   if (hasMod(state, 'cache-prefetch')) state = mapLoadout(state, 0, (entry) => addCharges(entry.state, entry.definition, CACHE_PREFETCH_CHARGES));
+  // The Folds (session 65): the player's fifteens and pairs repriced.
+  if (hasMod(state, 'fifteen-fold')) state = withSide(state, 0, { scoringRule: { ...FIFTEEN_FOLD_RULE } });
+  if (hasMod(state, 'pair-fold')) state = withSide(state, 0, { scoringRule: { ...PAIR_FOLD_RULE } });
+  // Glass Cannon: the enemy starts the fight with some Containment.
+  if (hasMod(state, 'glass-cannon')) {
+    const gauge = state.sides[1].winGauge;
+    state = withSide(state, 1, { winGauge: { ...gauge, progress: gauge.progress + GLASS_CANNON_ENEMY_START } });
+  }
   if (hasMod(state, 'deep-cache')) {
     noteMod(state, 0, ownMod('deep-cache'));
     state = mapLoadout(state, 0, (entry) => addCharges(entry.state, entry.definition, DEEP_CACHE_START_CHARGES));
@@ -728,6 +744,8 @@ export function applyOccurrence(combatState: CombatState, occurrence: ScoringOcc
 // Rule-benders (session 65, docs/mods-design.md M6): the player's own.
 /** Thirty-One: the turn it gives sets off every Hook. */
 const THIRTY_ONE_HOOKS = 'thirty-one:hooks';
+/** Overclocked Kernel: its doubled first turn is spent. */
+const KERNEL_SPENT = 'overclocked-kernel:spent';
 
 /** The rule-bender Mods that read a scoring occurrence (side 0's). */
 function applyRuleBendersOnOccurrence(combatState: CombatState, occurrence: ScoringOccurrence, dealer: PlayerIndex | undefined): CombatState {
@@ -1137,6 +1155,15 @@ export function fireTurn(
   if (hasSideMod(state, side, 'root-access') && !state.sides[side].passiveState[ROOT_ACCESS_SPENT]) {
     noteMod(state, side, gk('root-access'));
     state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [ROOT_ACCESS_SPENT]: 1 } });
+    const again = fireLoadoutOnce(state, side, selfContext);
+    state = again.combatState;
+    events.push(...again.events);
+  }
+  // Overclocked Kernel (session 65): the player's first turn each fight
+  // fires the loadout twice.
+  if (side === 0 && hasMod(state, 'overclocked-kernel') && !state.sides[0].passiveState[KERNEL_SPENT]) {
+    noteMod(state, 0, ownMod('overclocked-kernel'));
+    state = setPassiveStat(state, 0, KERNEL_SPENT, 1);
     const again = fireLoadoutOnce(state, side, selfContext);
     state = again.combatState;
     events.push(...again.events);

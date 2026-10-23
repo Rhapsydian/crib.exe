@@ -6,7 +6,7 @@ import { rarityOf, rewardPoolForClass, type Rarity } from './rewards';
 import type { ModDefinition, ModId } from './mod-types';
 import { bestModByLadder, modPoolForClass } from './mods';
 import type { BurnerDefinition, BurnerId } from './burner-types';
-import { bestBurnerByLadder, generalBurnerPool } from './burners';
+import { BURNER_DEFINITIONS, bestBurnerByLadder, generalBurnerPool } from './burners';
 import { bestByLadder } from './loadout';
 
 /**
@@ -231,6 +231,7 @@ export function burnerOfferingsForClass(
   extraUncommons = 0,
   discountFraction = 0,
   rarityFloor?: Rarity,
+  contrabandSlots = 0,
 ): BurnerOffering[] {
   // classId is unused -- see this section's header comment.
   const byRarity = burnerPoolByRarity();
@@ -243,7 +244,9 @@ export function burnerOfferingsForClass(
     wildcardTier === 'uncommon' ? byRarity.uncommon.filter((burner) => !uncommon.some((picked) => picked.id === burner.id)) : byRarity.rare;
   const wildcard = sampleDistinct(wildcardPool, 1, rng);
 
-  return [...commons, ...uncommon, ...wildcard].map((burner) => ({ burner, cost: burnerShopCostOf(burner.rarity, discountFraction) }));
+  // Black Market Ties (session 65): contraband, otherwise Event-only.
+  const contraband = contrabandSlots > 0 ? sampleDistinct(Object.values(BURNER_DEFINITIONS).filter((b) => b.contraband), contrabandSlots, rng) : [];
+  return [...commons, ...uncommon, ...wildcard, ...contraband].map((burner) => ({ burner, cost: burnerShopCostOf(burner.rarity, discountFraction) }));
 }
 
 /** Decides which (if any) Burner offering a script buys -- mirrors

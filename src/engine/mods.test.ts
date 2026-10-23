@@ -76,16 +76,17 @@ function withCharges(state: CombatState, charges: number): CombatState {
 }
 
 describe('Mod pool size (session 44 Mod Pool Expansion, session 51 tick-Mod removal -- structural count guard)', () => {
-  it('the general pool is 14/17/12 with the twelve session 65 rule-benders; 6 class-exclusive Mods', () => {
+  it('the general pool is 14/17/12 with the twelve session 65 rule-benders; 6 class-exclusive and 6 double-edged Mods', () => {
     const all = Object.values(MOD_DEFINITIONS);
     const classExclusive = all.filter((m) => m.classExclusive);
-    const general = all.filter((m) => !m.classExclusive);
+    const general = all.filter((m) => !m.classExclusive && !m.doubleEdged);
     expect(classExclusive).toHaveLength(6);
+    expect(all.filter((m) => m.doubleEdged)).toHaveLength(6);
     expect(general.filter((m) => m.rarity === 'common')).toHaveLength(14);
     expect(general.filter((m) => m.rarity === 'uncommon')).toHaveLength(17);
     expect(general.filter((m) => m.rarity === 'rare')).toHaveLength(12);
     expect(general).toHaveLength(43);
-    expect(all).toHaveLength(49);
+    expect(all).toHaveLength(55);
   });
 });
 

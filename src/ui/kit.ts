@@ -32,6 +32,14 @@ import {
   DEEP_CACHE_CAP_MULTIPLIER,
   ROOT_CAUSE_COUNTS,
   PERSISTENT_PAYLOAD_MULTIPLIER,
+  FIFTEEN_FOLD_RULE,
+  PAIR_FOLD_RULE,
+  OVERCLOCKED_KERNEL_BAR,
+  GHOST_CREDENTIALS_FIGHT_HEAT,
+  BLACK_MARKET_DISCOUNT,
+  BLACK_MARKET_VISIT_HEAT,
+  GLASS_CANNON_CREDIT,
+  GLASS_CANNON_ENEMY_START,
 } from '../engine/mods';
 import type { SubroutineDefinition } from '../engine/subroutine-types';
 import {
@@ -171,6 +179,14 @@ export const MOD_TEXT: Record<GeneralModId, string> = {
   'deep-cache': `Your Hooks bank counts up to ${DEEP_CACHE_CAP_MULTIPLIER === 2 ? 'twice' : `${DEEP_CACHE_CAP_MULTIPLIER} times`} their usual limit, and start each fight with ${DEEP_CACHE_START_CHARGES === 1 ? 'one count' : `${DEEP_CACHE_START_CHARGES} counts`} banked.`,
   'root-cause': `Each of your Hooks that goes off gives the subroutine below it ${ROOT_CAUSE_COUNTS === 1 ? '1 count' : `${ROOT_CAUSE_COUNTS} counts`} toward its own Hook.`,
   'persistent-payload': `Your Burners' timed effects (temporary subroutines, effects that last turns or hands) last ${PERSISTENT_PAYLOAD_MULTIPLIER === 2 ? 'twice' : `${PERSISTENT_PAYLOAD_MULTIPLIER} times`} as long.`,
+
+  // --- Double-edged, Event-only (session 65, docs/mods-design.md M7, M9) ---
+  'fifteen-fold': `Your fifteens are worth ${FIFTEEN_FOLD_RULE.fifteen} points instead of 2, but your pairs are worth only ${FIFTEEN_FOLD_RULE.pair}.`,
+  'pair-fold': `Your pairs are worth ${PAIR_FOLD_RULE.pair} points instead of 2, but your fifteens are worth only ${PAIR_FOLD_RULE.fifteen}.`,
+  'overclocked-kernel': `Your first turn each fight fires your loadout twice, but your initiative bar is ${OVERCLOCKED_KERNEL_BAR} longer.`,
+  'ghost-credentials': `Moving on the map adds no Heat, but each fight adds ${pct(GHOST_CREDENTIALS_FIGHT_HEAT - 1)} more Heat.`,
+  'black-market-ties': `Shop prices are ${pct(BLACK_MARKET_DISCOUNT)} lower and each Shop sells a contraband Burner, but each Shop visit adds ${BLACK_MARKET_VISIT_HEAT} Heat.`,
+  'glass-cannon': `Each Credit you score is ${GLASS_CANNON_CREDIT} higher, but each enemy starts the fight at ${GLASS_CANNON_ENEMY_START} Containment.`,
 };
 
 const MOD_TEXT_PENDING = 'Rules text to come (milestone 3).';

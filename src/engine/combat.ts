@@ -12,6 +12,7 @@ import type { EnemyPassiveId } from './enemies';
 import type { ModId } from './mod-types';
 import type { BurnerId, BurnerTiming } from './burner-types';
 import { BURNER_DEFINITIONS } from './burners';
+import { OVERCLOCKED_KERNEL_BAR } from './mods';
 import {
   occurrencesFromPeggingEvent,
   occurrencesFromHandEvents,
@@ -559,7 +560,9 @@ export function* combatGenerator(
   let consecutiveTurns = 0;
   let lastTurnSide: PlayerIndex | null = null;
   let scores: [number, number] = [0, 0];
-  const created = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds, opponentBridge, gatekeeperMods);
+  // Overclocked Kernel (session 65): the player's initiative bar is longer.
+  const thresholds: [number, number] = ownedModIds.includes('overclocked-kernel') ? [gaugeThreshold[0] + OVERCLOCKED_KERNEL_BAR, gaugeThreshold[1]] : gaugeThreshold;
+  const created = createCombatState(loadouts[0], loadouts[1], thresholds, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds, opponentBridge, gatekeeperMods);
   let combatState = applyModOnCombatStartPassives({ ...created, modTriggers: [], standby: benched });
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];

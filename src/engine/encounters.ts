@@ -50,7 +50,7 @@ import {
   burnerSellPrice,
 } from './shop';
 import type { ModDefinition, ModId } from './mod-types';
-import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersForOwnedMods, modPoolForClass } from './mods';
+import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersForOwnedMods, modPoolForClass, BLACK_MARKET_VISIT_HEAT } from './mods';
 import type { BurnerId, BurnerDefinition } from './burner-types';
 import { BURNER_CAP, BURNER_DEFINITIONS, shopModifiersForActivatedBurner, drawBurnerRewardOptions, generalBurnerPool } from './burners';
 import type { ClassId } from './classes';
@@ -212,6 +212,9 @@ export interface HeatSources {
   /** Negative. A map Burner's cut (session 64): Proxy Chain on the next
    * fight, Spoofed Credentials / Golden Ticket on the next gatekeeper's toll. */
   burner: number;
+  /** A double-edged Mod's Heat (session 65): Ghost Credentials' extra on
+   * each fight, Black Market Ties' on each Shop visit. */
+  mod: number;
   /** Heat an Event applied directly. An Event's bonus fight is NOT
    * counted here -- its Heat is folded into the real categories above,
    * so "Heat from Containment losses" stays true wherever the fight
@@ -228,6 +231,7 @@ export const NO_HEAT_SOURCES: HeatSources = {
   refund: 0,
   rest: 0,
   burner: 0,
+  mod: 0,
   event: 0,
 };
 
@@ -241,12 +245,13 @@ export function addHeatSources(a: HeatSources, b: HeatSources): HeatSources {
     refund: a.refund + b.refund,
     rest: a.rest + b.rest,
     burner: a.burner + b.burner,
+    mod: a.mod + b.mod,
     event: a.event + b.event,
   };
 }
 
 export function totalHeatSources(s: HeatSources): number {
-  return s.containmentLoss + s.attritionLoss + s.baseline + s.alarm + s.performance + s.refund + s.rest + s.burner + s.event;
+  return s.containmentLoss + s.attritionLoss + s.baseline + s.alarm + s.performance + s.refund + s.rest + s.burner + s.mod + s.event;
 }
 
 export interface EncounterOutcome {
@@ -1044,6 +1049,9 @@ export function* resolveEncounterRequests(
       // multiply -- see burners.ts's shopModifiersForActivatedBurner).
       const { discountFraction: modDiscountFraction, extraCommons, extraUncommons } = shopModifiersForOwnedMods(playerState.ownedModIds);
       const discountFraction = Math.max(modDiscountFraction, burnerModifiers.discountFraction);
+      // Black Market Ties (session 65): a contraband Burner on every Burner
+      // slate, and each visit adds Heat.
+      const blackMarket = playerState.ownedModIds.includes('black-market-ties');
       const rarityFloor = burnerModifiers.rarityFloor;
       const rerollCostThisVisit = burnerModifiers.freeReroll ? 0 : REROLL_COST;
       // Milestone 3 checkpoint 4 (the user's call: buy freely): all three
@@ -1061,7 +1069,7 @@ export function* resolveEncounterRequests(
           ? shopOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
           : slate === 'mod'
             ? modOfferingsForClass(playerState.classId, [...playerState.ownedModIds, ...purchases.mod.map((o) => o.mod.id)], rng, extraCommons, extraUncommons, discountFraction, rarityFloor)
-            : burnerOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor);
+            : burnerOfferingsForClass(playerState.classId, rng, extraCommons, extraUncommons, discountFraction, rarityFloor, blackMarket ? 1 : 0);
       const visit: ShopVisit = {
         slates: { subroutine: drawSlate('subroutine') as ShopOffering[], mod: drawSlate('mod') as ModOffering[], burner: drawSlate('burner') as BurnerOffering[] },
         bought: { subroutine: [], mod: [], burner: [] },
@@ -1127,8 +1135,8 @@ export function* resolveEncounterRequests(
 
       return {
         newState: 'inert',
-        heatDelta: 0,
-        heatSources: NO_HEAT_SOURCES,
+        heatDelta: blackMarket ? BLACK_MARKET_VISIT_HEAT : 0,
+        heatSources: blackMarket ? { ...NO_HEAT_SOURCES, mod: BLACK_MARKET_VISIT_HEAT } : NO_HEAT_SOURCES,
         quarantined: false,
         rewardTier: 'none',
         dataAwarded: 0,

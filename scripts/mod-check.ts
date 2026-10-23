@@ -15,10 +15,19 @@
  * Loader carried in both arms; a granted-subroutine Mod adds its
  * subroutine to the loadout.
  *
- * PROVENANCE: duels, not a full-run metric.
+ * --double adds the four fight-side double-edged Mods (checkpoint 3: the
+ * Folds, Overclocked Kernel, Glass Cannon), against the rare average.
+ *
+ * --part=run: full runs (the synergy profile, skill 0.85) starting with one
+ * Mod (--only, required), against none: victory, and Heat gained per run.
+ * For the run-side double-edged Mods, measured beside a few rares.
+ *
+ * PROVENANCE: duels, not a full-run metric (--part=run is full runs, one
+ * Mod from the start, not the real supply).
  *
  * Usage:
- *   npx tsx scripts/mod-check.ts [--layer=2] [--seeds=20] [--only=nobs-exploit,deep-cache]
+ *   npx tsx scripts/mod-check.ts [--layer=2] [--seeds=20] [--only=nobs-exploit,deep-cache] [--double]
+ *   npx tsx scripts/mod-check.ts --part=run --only=ghost-credentials,hot-standby [--seeds=100]
  */
 import { playCombat, synergyAwareCombatBurnerActivation, neverActivateBurner } from '../src/engine/combat';
 import { CLASS_STARTING_LOADOUTS, ALL_POOL_SUBROUTINES } from '../src/engine/subroutines';
@@ -31,6 +40,9 @@ import { discardSkillStrategy, pegSkillStrategy } from '../src/engine/ai';
 import { MOD_DEFINITIONS, generalModPool } from '../src/engine/mods';
 import type { ModId } from '../src/engine/mod-types';
 import type { BurnerId } from '../src/engine/burner-types';
+import { playRun, opportunisticTraversal } from '../src/engine/run';
+import { opportunisticSafehouseStrategy } from '../src/engine/merge';
+import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')));
 const layer = Number(args.layer ?? 2);
@@ -116,7 +128,39 @@ const payloadBase = () => {
   return { win: (100 * wins) / n, fill: (100 * fill) / n };
 };
 
-const combatMods = generalModPool().map((m) => m.id).filter((id) => !RUN_ONLY.has(id) && (!only || only.has(id)));
+const DOUBLE_EDGED_COMBAT: ModId[] = ['fifteen-fold', 'pair-fold', 'overclocked-kernel', 'glass-cannon'];
+for (const id of DOUBLE_EDGED_COMBAT) NEW.add(id);
+
+if (args.part === 'run') {
+  if (!only) throw new Error('--part=run needs --only');
+  const runSeeds = Number(args.seeds ?? 100);
+  const runs = (mod: ModId | null) => {
+    let wins = 0, heat = 0, n = 0;
+    for (const classId of ALL_CLASS_IDS) {
+      if (mod && !allowed(mod, classId)) continue;
+      for (let seed = 0; seed < runSeeds; seed++) {
+        const r = playRun({ ...SYNERGY_AWARE_PROFILE, seed, classId, traversalStrategy: opportunisticTraversal, safehouseStrategy: opportunisticSafehouseStrategy, playerSkill: 0.85, ownedModIdsOverride: mod ? [mod] : [] });
+        if (r.outcome === 'victory') wins++;
+        for (const e of r.log) {
+          if (e.type === 'move') heat += e.heatCost;
+          if (e.type === 'encounter' && e.outcome.heatDelta > 0) heat += e.outcome.heatDelta;
+        }
+        n++;
+      }
+    }
+    return { win: (100 * wins) / n, heat: heat / n };
+  };
+  console.log(`MOD CHECK (runs) -- one Mod from the start, ${runSeeds} seeds x 6 classes`);
+  const base = runs(null);
+  console.log(`none                    victory ${base.win.toFixed(1)}%  Heat gained/run ${base.heat.toFixed(1)}`);
+  for (const id of only as Set<ModId>) {
+    const m = runs(id);
+    console.log(`${MOD_DEFINITIONS[id].name.padEnd(22)}  victory ${m.win.toFixed(1)}% (${m.win - base.win >= 0 ? '+' : ''}${(m.win - base.win).toFixed(1)})  Heat gained/run ${m.heat.toFixed(1)} (${m.heat - base.heat >= 0 ? '+' : ''}${(m.heat - base.heat).toFixed(1)})`);
+  }
+  process.exit(0);
+}
+
+const combatMods = [...generalModPool().map((m) => m.id), ...('double' in args ? DOUBLE_EDGED_COMBAT : [])].filter((id) => !RUN_ONLY.has(id) && (!only || only.has(id)));
 console.log(`MOD CHECK -- layer ${layer} elites (${elites.map((e) => e.name).join(', ')}), six class loadouts, ${seeds} seeds each`);
 const all = baseFor(ALL_CLASS_IDS);
 console.log(`none                  win ${all.win.toFixed(1)}%  enemy fill ${all.fill.toFixed(1)}%`);

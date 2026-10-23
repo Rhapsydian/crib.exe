@@ -57,6 +57,7 @@ import type { PlayStrategy } from './pegging';
 import type { ModDefinition, ModId } from './mod-types';
 import {
   MOD_DEFINITIONS,
+  GHOST_CREDENTIALS_FIGHT_HEAT,
   applyOnMoveMods,
   applyQuietHoursMod,
   applyOnSubroutineAcquiredMods,
@@ -979,6 +980,13 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         const fightsLeft = (fx.nextFightHeatFights ?? 0) - 1;
         const fightCut = fightsLeft > 0 ? { nextFightHeatFights: fightsLeft } : { nextFightHeat: undefined, nextFightHeatFights: undefined };
         playerState = { ...playerState, mapEffects: { ...fx, ...fightCut, ...(gatekeeperWin ? { nextGatekeeperToll: undefined } : {}) } };
+      }
+      // Ghost Credentials (session 65): each fight adds more Heat, booked
+      // as `mod` Heat.
+      if (isFightNode && playerState.ownedModIds.includes('ghost-credentials') && outcome.heatDelta > 0) {
+        const extra = outcome.heatDelta * (GHOST_CREDENTIALS_FIGHT_HEAT - 1);
+        outcome.heatDelta += extra;
+        outcome.heatSources = { ...outcome.heatSources, mod: outcome.heatSources.mod + extra };
       }
       const afterEncounter = addHeat(heat, outcome.heatDelta, ceiling());
       heat = afterEncounter.heat;

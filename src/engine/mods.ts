@@ -109,6 +109,28 @@ export const DEEP_CACHE_START_CHARGES = 1;
 export const DEEP_CACHE_CAP_MULTIPLIER = 2;
 /** Root Cause: counts a Hook going off gives the subroutine below it. */
 export const ROOT_CAUSE_COUNTS = 1;
+// ---------------------------------------------------------------------
+// Double-edged Mods (session 65, docs/mods-design.md M2, M7, M9): the
+// upside clearly better than a rare, the downside about half of it.
+// Event-only. TBD/measured.
+// ---------------------------------------------------------------------
+
+/** Fifteen Fold: your fifteens score 3, your pairs 1 (each pair inside a
+ * royal). Pair Fold: your pairs score 5, your fifteens 1. */
+export const FIFTEEN_FOLD_RULE = { fifteen: 3, pair: 1 } as const;
+export const PAIR_FOLD_RULE = { fifteen: 1, pair: 5 } as const;
+/** Overclocked Kernel: how much longer your initiative bar is. */
+export const OVERCLOCKED_KERNEL_BAR = 2;
+/** Ghost Credentials: each fight's Heat, as a multiple. */
+export const GHOST_CREDENTIALS_FIGHT_HEAT = 1.25;
+/** Black Market Ties: Shop discount, and the Heat each Shop visit adds. */
+export const BLACK_MARKET_DISCOUNT = 0.3;
+export const BLACK_MARKET_VISIT_HEAT = 8;
+/** Glass Cannon: added to each Credit you score; the enemy's starting
+ * Containment. */
+export const GLASS_CANNON_CREDIT = 2;
+export const GLASS_CANNON_ENEMY_START = 10;
+
 /** Persistent Payload: your Burners' timed effects (temporary
  * subroutines, effects lasting turns or hands) last this many times as
  * long. */
@@ -287,6 +309,14 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
   'deep-cache': { id: 'deep-cache', name: 'Deep Cache', rarity: 'rare', effectKind: 'hook' },
   'root-cause': { id: 'root-cause', name: 'Root Cause', rarity: 'rare', effectKind: 'hook' },
   'persistent-payload': { id: 'persistent-payload', name: 'Persistent Payload', rarity: 'rare', effectKind: 'hook' },
+
+  // --- Double-edged, Event-only (session 65, M7, M9) ---
+  'fifteen-fold': { id: 'fifteen-fold', name: 'Fifteen Fold', rarity: 'rare', effectKind: 'hook', doubleEdged: true },
+  'pair-fold': { id: 'pair-fold', name: 'Pair Fold', rarity: 'rare', effectKind: 'hook', doubleEdged: true },
+  'overclocked-kernel': { id: 'overclocked-kernel', name: 'Overclocked Kernel', rarity: 'rare', effectKind: 'hook', doubleEdged: true },
+  'ghost-credentials': { id: 'ghost-credentials', name: 'Ghost Credentials', rarity: 'rare', effectKind: 'hook', doubleEdged: true },
+  'black-market-ties': { id: 'black-market-ties', name: 'Black Market Ties', rarity: 'rare', effectKind: 'hook', doubleEdged: true },
+  'glass-cannon': { id: 'glass-cannon', name: 'Glass Cannon', rarity: 'rare', effectKind: 'hook', doubleEdged: true },
 };
 
 /** Mods set aside: still defined and still working if owned, but never
@@ -300,7 +330,7 @@ export const MODS_SET_ASIDE: ReadonlySet<ModId> = new Set<ModId>(['static-shield
  * 30), and those set aside (MODS_SET_ASIDE). Checkpoint G's reward/Shop
  * draw filters this further by rarity and the archetype-exclusion rule. */
 export function generalModPool(): ModDefinition[] {
-  return Object.values(MOD_DEFINITIONS).filter((mod) => !mod.classExclusive && !MODS_SET_ASIDE.has(mod.id));
+  return Object.values(MOD_DEFINITIONS).filter((mod) => !mod.classExclusive && !mod.doubleEdged && !MODS_SET_ASIDE.has(mod.id));
 }
 
 /** The real SubroutineDefinitions owned reactive-subroutine Mods
@@ -396,6 +426,8 @@ export function drawModRewardOptions(classId: ClassId, ownedModIds: ModId[], rng
  * between traversal.ts's move() and heat.ts's addHeat(), floored at 0
  * (a move can never refund Heat, only discount it). */
 export function applyOnMoveMods(ownedModIds: ModId[], heatCost: number): number {
+  // Ghost Credentials (session 65): moving adds no Heat.
+  if (ownedModIds.includes('ghost-credentials')) return 0;
   if (!ownedModIds.includes('light-footing')) return heatCost;
   return Math.max(0, heatCost - LIGHT_FOOTING_HEAT_DISCOUNT);
 }
@@ -457,7 +489,8 @@ export function applyOnWinEncounterResolvedMods(
  * discount/extra-slot parameters. */
 export function shopModifiersForOwnedMods(ownedModIds: ModId[]): { discountFraction: number; extraCommons: number; extraUncommons: number } {
   return {
-    discountFraction: ownedModIds.includes('vendor-discount') ? VENDOR_DISCOUNT_FRACTION : 0,
+    // Black Market Ties (session 65) and Vendor Discount: the bigger applies.
+    discountFraction: Math.max(ownedModIds.includes('vendor-discount') ? VENDOR_DISCOUNT_FRACTION : 0, ownedModIds.includes('black-market-ties') ? BLACK_MARKET_DISCOUNT : 0),
     extraCommons: ownedModIds.includes('bulk-buyer') ? 1 : 0,
     // Scrap Merchant (session 44): Bulk Buyer's sibling, one tier up --
     // gives the onShopSlateGenerated hook tier granularity it didn't have
