@@ -269,7 +269,7 @@ export function clearHandKnowledge(combatState: CombatState): CombatState {
       // A hand-long Burner bonus counts down a hand (Noise Floor lasts two).
       handBonuses: sideState.handBonuses?.map((b) => ({ ...b, handsLeft: b.handsLeft - 1 })).filter((b) => b.handsLeft > 0),
       handPoints: 0,
-      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0 },
+      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0, [BURNER_HOOKS_TWICE]: Math.max(0, (sideState.passiveState[BURNER_HOOKS_TWICE] ?? 0) - 1) },
     };
   }) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
@@ -1016,11 +1016,11 @@ export function fireTurn(
     state = again.combatState;
     events.push(...again.events);
   }
-  // The turn's Burner flags count down a turn: fire twice may last two,
-  // Hooks twice one.
+  // Fire twice counts down a turn (it may last two). Hooks twice lasts
+  // the hand: clearHandKnowledge ends it.
   const ps = state.sides[side].passiveState;
-  if (ps[BURNER_FIRE_TWICE] || ps[BURNER_HOOKS_TWICE]) {
-    state = withSide(state, side, { passiveState: { ...ps, [BURNER_FIRE_TWICE]: Math.max(0, (ps[BURNER_FIRE_TWICE] ?? 0) - 1), [BURNER_HOOKS_TWICE]: 0 } });
+  if (ps[BURNER_FIRE_TWICE]) {
+    state = withSide(state, side, { passiveState: { ...ps, [BURNER_FIRE_TWICE]: ps[BURNER_FIRE_TWICE] - 1 } });
   }
   // Root Access: on the owner's first turn each hand, the loadout fires twice.
   if (hasSideMod(state, side, 'root-access') && !state.sides[side].passiveState[ROOT_ACCESS_SPENT]) {
@@ -1071,8 +1071,8 @@ function fireLoadoutOnce(
     const context = buildTriggerContext(state, side, selfContext.isDealer, firedThisTurn, i);
     const charges = beta ? betaCharges(definition, entry.state, context) : 0;
     let scale = beta ? betaScale(beta, charges) : 0;
-    // Zero-Day (session 64): this turn, every Hook goes off and applies
-    // twice (an instant Hook keeps its own timing).
+    // Zero-Day (session 64): for the rest of the hand, every Hook goes off
+    // and applies twice (an instant Hook keeps its own timing).
     if (beta && beta.shape !== 'immediate' && state.sides[side].passiveState[BURNER_HOOKS_TWICE]) scale = Math.max(scale, 1) * 2;
     const elevated = scale > 0;
     // Reception Protocol: the owner's first Exploit beta each hand applies twice.
@@ -1213,7 +1213,7 @@ export function applyCombatBurner(combatState: CombatState, side: PlayerIndex, b
     case 'fireTwice':
       return flag(BURNER_FIRE_TWICE, side, effect.turns);
     case 'hooksTwice':
-      return flag(BURNER_HOOKS_TWICE);
+      return flag(BURNER_HOOKS_TWICE, side, effect.hands);
     case 'skipEnemyTurn':
       return flag(BURNER_SKIP_TURN, opponentOf(side), effect.turns);
     case 'drainEnemy': {

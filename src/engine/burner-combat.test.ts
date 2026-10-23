@@ -59,7 +59,7 @@ describe('combat Burners (session 64)', () => {
     expect(progress(s, 0)).toBe(15);
   });
 
-  it('Zero-Day: next turn, every Hook goes off and applies twice', () => {
+  it('Zero-Day: every Hook goes off and applies twice', () => {
     // A Hook that always goes off: +2 Credit on every fire (a live state source).
     const hooked = piece('h', { verb: 'credit', amount: 1 }, { source: 'state', condition: { kind: 'nonDealer' }, shape: 'whileTrue', effect: { verb: 'credit', amount: 2 } });
     const plain = fireTurn(fight([hooked]), 0, { isDealer: false }).combatState;
@@ -76,11 +76,23 @@ describe('combat Burners (session 64)', () => {
     expect(takeSkippedTurn(s, 0).skipped).toBe(false);
   });
 
-  it('Zero-Day makes a Hook that would not have gone off go off', () => {
+  it('Zero-Day makes a Hook that would not have gone off go off, for 4 hands', () => {
     // A Hook on dealing: off for a non-dealer turn, forced on by Zero-Day.
     const hooked = piece('d', { verb: 'credit', amount: 1 }, { source: 'state', condition: { kind: 'dealer' }, shape: 'whileTrue', effect: { verb: 'credit', amount: 2 } });
     expect(progress(fireTurn(fight([hooked]), 0, { isDealer: false }).combatState, 0)).toBe(1);
-    expect(progress(fireTurn(burn(fight([hooked]), 'zero-day'), 0, { isDealer: false }).combatState, 0)).toBe(5);
+    let s = burn(fight([hooked]), 'zero-day');
+    s = fireTurn(s, 0, { isDealer: false }).combatState;
+    s = fireTurn(s, 0, { isDealer: false }).combatState;
+    expect(progress(s, 0)).toBe(10);
+    // Three more hands (4 in all), then it ends.
+    for (let hand = 0; hand < 3; hand++) {
+      s = clearHandKnowledge(s);
+      s = fireTurn(s, 0, { isDealer: false }).combatState;
+    }
+    expect(progress(s, 0)).toBe(25);
+    s = clearHandKnowledge(s);
+    s = fireTurn(s, 0, { isDealer: false }).combatState;
+    expect(progress(s, 0)).toBe(26);
   });
 
   it("Kill Switch: the enemy's Containment drops to 0", () => {

@@ -63,8 +63,9 @@ export type CombatBurnerEffect =
   | { kind: 'handBonus'; category: 'fifteen' | 'pair'; effect: Effect; hands?: number }
   /** For your next `turns` turns, your loadout fires twice. */
   | { kind: 'fireTwice'; turns: number }
-  /** Next turn, every Hook in your loadout goes off and applies twice. */
-  | { kind: 'hooksTwice' }
+  /** For `hands` hands (this one included), every Hook in your loadout
+   * goes off and applies twice. */
+  | { kind: 'hooksTwice'; hands: number }
   /** The enemy's next `turns` turns are skipped. */
   | { kind: 'skipEnemyTurn'; turns: number }
   /** The enemy's Containment drops by this fraction of its progress. */

@@ -110,8 +110,8 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     name: 'Zero-Day',
     rarity: 'rare',
     contexts: ['combat'],
-    text: 'Next turn: every Hook in your loadout goes off, and applies twice.',
-    combat: { timing: 'nextTurn', effect: { kind: 'hooksTwice' } },
+    text: 'Now: for the next 4 hands, every Hook in your loadout goes off, and applies twice.',
+    combat: { timing: 'now', effect: { kind: 'hooksTwice', hands: 4 } },
   },
 
   // --- Combat: temporary subroutines (BE3) ---
