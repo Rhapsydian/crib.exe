@@ -1,6 +1,7 @@
 import type { PlayerIndex } from './pegging';
 import type { Card } from './cards';
 import type { Archetype, BetaEffect, Effect, SubroutineDefinition, TempoEffect } from './subroutine-types';
+import { ARCHETYPE_SUITS } from './subroutine-types';
 import type { ClassId } from './classes';
 import { CLASS_DEFINITIONS } from './classes';
 import {
@@ -28,6 +29,14 @@ import {
   MOD_SMALL,
   MOD_MEDIUM,
   THRESHOLD_EXPLOIT_REDUCTION,
+  NOBS_EXPLOIT_CREDIT,
+  LAST_WORD_INITIATIVE,
+  LUCKY_CUT_CREDIT,
+  WARD_CONVERTER_SHARE,
+  HOT_STANDBY_SHARE,
+  DEEP_CACHE_CAP_MULTIPLIER,
+  ROOT_CAUSE_COUNTS,
+  PERSISTENT_PAYLOAD_MULTIPLIER,
 } from './mods';
 import type { BurnerId, CombatBurnerEffect } from './burner-types';
 import {
@@ -171,6 +180,9 @@ export interface CombatState {
   /** Combat-context Burners side 0 carried in -- a start-of-combat
    * snapshot; used ones are surfaced via CombatResult, not removed here. */
   carriedBurnerIds: BurnerId[];
+  /** Side 0's benched subroutines, for Hot Standby (session 65): their
+   * Processes fire after the loadout at half strength. */
+  standby?: SubroutineDefinition[];
   /** A side record, not state (milestone 2, the user's ask): every Mod
    * that actually does something appends here, so the UI can flash it.
    * One mutable list shared by every copy of the state in a fight (the
@@ -275,7 +287,7 @@ export function clearHandKnowledge(combatState: CombatState): CombatState {
       // A hand-long Burner bonus counts down a hand (Noise Floor lasts two).
       handBonuses: sideState.handBonuses?.map((b) => ({ ...b, handsLeft: b.handsLeft - 1 })).filter((b) => b.handsLeft > 0),
       handPoints: 0,
-      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0, [BURNER_HOOKS_TWICE]: Math.max(0, (sideState.passiveState[BURNER_HOOKS_TWICE] ?? 0) - 1) },
+      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0, [MIRROR_HAND_THIS_HAND]: 0, [BURNER_HOOKS_TWICE]: Math.max(0, (sideState.passiveState[BURNER_HOOKS_TWICE] ?? 0) - 1) },
     };
   }) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
@@ -465,7 +477,8 @@ function modAdjustedLoadout(loadout: SubroutineDefinition[], ownedModIds: ModId[
   const amplified = new Set(ownedModIds.map((id) => AMPLIFIERS[id]).filter((a): a is Archetype => a !== undefined));
   const firmware = ownedModIds.includes('firmware-patch');
   const thresholdExploit = ownedModIds.includes('threshold-exploit');
-  if (amplified.size === 0 && !firmware && !thresholdExploit) return loadout;
+  const deepCache = ownedModIds.includes('deep-cache');
+  if (amplified.size === 0 && !firmware && !thresholdExploit && !deepCache) return loadout;
 
   return loadout.map((piece) => {
     let next = piece;
@@ -481,6 +494,10 @@ function modAdjustedLoadout(loadout: SubroutineDefinition[], ownedModIds: ModId[
     }
     if (next.beta?.shape === 'stepped' && thresholdExploit) {
       next = { ...next, beta: { ...next.beta, at: Math.max(1, next.beta.at - THRESHOLD_EXPLOIT_REDUCTION) } };
+    }
+    // Deep Cache (session 65): a counting Hook banks up to twice its limit.
+    if (next.beta?.shape === 'graded' && deepCache) {
+      next = { ...next, beta: { ...next.beta, cap: next.beta.cap * DEEP_CACHE_CAP_MULTIPLIER } };
     }
     return next;
   });
@@ -699,7 +716,73 @@ export function applyOccurrence(combatState: CombatState, occurrence: ScoringOcc
       state = mapLoadout(state, side, (entry) => chargeFromOccurrence(entry.state, entry.definition, mirrored, side));
     }
   }
+  return applyRuleBendersOnOccurrence(state, occurrence, dealer);
+}
+
+// Rule-benders (session 65, docs/mods-design.md M6): the player's own.
+const MIRROR_HAND_THIS_HAND = 'mirror-hand:hand';
+
+/** The rule-bender Mods that read a scoring occurrence (side 0's). */
+function applyRuleBendersOnOccurrence(combatState: CombatState, occurrence: ScoringOccurrence, dealer: PlayerIndex | undefined): CombatState {
+  let state = combatState;
+  const own = occurrence.player === 0;
+  // Nobs Exploit: His Nobs also Credits.
+  if (own && occurrence.category === 'hisNobs' && hasMod(state, 'nobs-exploit')) {
+    noteMod(state, 0, ownMod('nobs-exploit'));
+    state = creditWinGauge(state, 0, NOBS_EXPLOIT_CREDIT);
+  }
+  // Last Word: each go point (the last card, or 31) adds initiative.
+  if (own && (occurrence.category === 'go' || occurrence.category === 'thirtyOne') && hasMod(state, 'last-word')) {
+    noteMod(state, 0, ownMod('last-word'));
+    state = haste(state, 0, LAST_WORD_INITIATIVE / state.sides[0].startingThreshold);
+  }
+  // Run Splicer: each run also counts as a pair, for the Hooks and the
+  // class Mod (not points).
+  if (own && occurrence.category === 'run' && hasMod(state, 'run-splicer')) {
+    noteMod(state, 0, ownMod('run-splicer'));
+    const pair: ScoringOccurrence = { category: 'pair', player: 0, magnitude: 2 };
+    state = applyBridgeOnOccurrence(state, pair, dealer);
+    state = mapLoadout(state, 0, (entry) => chargeFromOccurrence(entry.state, entry.definition, pair, 0));
+  }
+  // Mirror Hand: the enemy's first pair each hand also counts toward the
+  // player's pair Hooks.
+  if (!own && occurrence.category === 'pair' && hasMod(state, 'mirror-hand') && !passiveStat(state, 0, MIRROR_HAND_THIS_HAND)) {
+    noteMod(state, 0, ownMod('mirror-hand'));
+    state = setPassiveStat(state, 0, MIRROR_HAND_THIS_HAND, 1);
+    const mirrored: ScoringOccurrence = { ...occurrence, player: 0 };
+    state = mapLoadout(state, 0, (entry) => chargeFromOccurrence(entry.state, entry.definition, mirrored, 0));
+  }
   return state;
+}
+
+/** The cut (session 65): Lucky Cut Credits when the cut card is one of
+ * the player's class's suits. */
+export function applyCutMods(combatState: CombatState, starter: Card): CombatState {
+  if (!hasMod(combatState, 'lucky-cut') || !combatState.classId) return combatState;
+  const suits = CLASS_DEFINITIONS[combatState.classId].archetypes.map((a) => ARCHETYPE_SUITS[a]);
+  if (!suits.includes(starter.suit)) return combatState;
+  noteMod(combatState, 0, ownMod('lucky-cut'));
+  return creditWinGauge(combatState, 0, LUCKY_CUT_CREDIT);
+}
+
+/** The end of a hand (session 65): Ward Converter turns a share of the
+ * player's remaining Ward into Credit. */
+export function applyHandEndMods(combatState: CombatState): CombatState {
+  const ward = combatState.sides[0].wardShield;
+  if (!hasMod(combatState, 'ward-converter') || ward <= 0) return combatState;
+  noteMod(combatState, 0, ownMod('ward-converter'));
+  const converted = ward * WARD_CONVERTER_SHARE;
+  return creditWinGauge(withSide(combatState, 0, { wardShield: ward - converted }), 0, converted);
+}
+
+/** Whether the player owns Mod `id` (combat.ts's Thirty-One). */
+export function playerHasMod(combatState: CombatState, id: ModId): boolean {
+  return hasMod(combatState, id);
+}
+
+/** Notes a player Mod acting, for combat.ts. */
+export function notePlayerMod(combatState: CombatState, id: ModId): void {
+  noteMod(combatState, 0, ownMod(id));
 }
 
 /** Feeds one pegging play into every piece on both sides -- the suit
@@ -1040,7 +1123,51 @@ export function fireTurn(
     state = again.combatState;
     events.push(...again.events);
   }
+  if (side === 0) {
+    state = hotStandby(state);
+    const echo = echoChamber(state);
+    state = echo.combatState;
+    events.push(...echo.events);
+  }
   return { combatState: tickTimedTempo(state, side), events };
+}
+
+/** Root Cause (session 65): a player Hook going off gives the subroutine
+ * below it a count toward its own Hook. */
+function rootCause(combatState: CombatState, side: PlayerIndex, index: number): CombatState {
+  if (side !== 0 || !hasMod(combatState, 'root-cause') || index + 1 >= combatState.sides[0].loadout.length) return combatState;
+  noteMod(combatState, 0, ownMod('root-cause'));
+  return mapLoadout(combatState, 0, (e, i) => (i === index + 1 ? addCharges(e.state, e.definition, ROOT_CAUSE_COUNTS) : e.state));
+}
+
+/** Hot Standby (session 65): after the loadout fires, each benched
+ * subroutine's Process fires at half strength; their Hooks don't. */
+function hotStandby(combatState: CombatState): CombatState {
+  const benched = combatState.standby ?? [];
+  if (!hasMod(combatState, 'hot-standby') || benched.length === 0) return combatState;
+  noteMod(combatState, 0, ownMod('hot-standby'));
+  let state = combatState;
+  for (const piece of benched) {
+    const alpha = piece.alpha as Effect;
+    if (alpha.verb === 'disrupt') continue;
+    state = resolveEffect(withAmount(alpha, alpha.amount * HOT_STANDBY_SHARE), state, 0);
+  }
+  return state;
+}
+
+/** Echo Chamber (session 65): at the end of each of the player's turns,
+ * the top subroutine fires again (its Process; its Hook already went off
+ * or didn't). */
+function echoChamber(combatState: CombatState): { combatState: CombatState; events: FireEvent[] } {
+  const entry = combatState.sides[0].loadout[0];
+  if (!hasMod(combatState, 'echo-chamber') || !entry || !withinFiringGates(entry.definition, entry.state)) return { combatState, events: [] };
+  const modMark = combatState.modTriggers?.length ?? 0;
+  noteMod(combatState, 0, ownMod('echo-chamber'));
+  const alpha = withAmount(entry.definition.alpha as Effect, alphaAmount(entry, undefined));
+  let state = resolveFire(combatState, 0, 0, alpha, undefined, 0, undefined).combatState;
+  state = applyHeatPressure(state, 0, entry.definition);
+  state = mapLoadout(state, 0, (e, index) => (index === 0 ? recordFire(e.state, entry.definition) : e.state));
+  return { combatState: state, events: [{ subroutineId: entry.definition.id, side: 0, alpha, elevated: false, charges: 0, immediate: false, gauges: readGauges(state), ...takeMods(state, modMark) }] };
 }
 
 /** One top-to-bottom pass of `side`'s loadout (fireTurn's body). */
@@ -1111,6 +1238,7 @@ function fireLoadoutOnce(
     state = applyHeatPressure(resolved.combatState, side, definition);
     state = mapLoadout(state, side, (e, index) => (index === i ? recordFire(e.state, definition) : e.state));
 
+    if (elevated) state = rootCause(state, side, i);
     events.push({ subroutineId: definition.id, side, alpha, beta: resolved.beta, elevated, charges, immediate: false, gauges: readGauges(state), ...takeMods(state, modMark) });
     firedThisTurn.push({ definition, elevated });
   }
@@ -1168,6 +1296,7 @@ export function fireImmediateBetas(combatState: CombatState, dealer: PlayerIndex
       // An extra alpha fire is a real fire (growth, `fires` progress); a
       // standalone beta effect only counts against the fire cap.
       state = mapLoadout(state, side, (e, index) => (index === i ? (alpha ? recordFire(e.state, definition) : { ...e.state, fireCount: e.state.fireCount + 1 }) : e.state));
+      state = rootCause(state, side, i);
       const firedCharges = beta.source === 'cards' || beta.source === 'progress' ? entry.state.charges : 1;
       events.push({ subroutineId: definition.id, side, alpha: alpha ?? (definition.alpha as Effect), beta: resolvedBeta, elevated: true, charges: firedCharges, immediate: true, gauges: readGauges(state), ...takeMods(state, modMark) });
     }
@@ -1246,7 +1375,11 @@ function installTempSubroutine(
   effect: Extract<CombatBurnerEffect, { kind: 'tempSubroutine' }>,
 ): CombatState {
   const without = combatState.sides[side].loadout.filter((e) => !e.temp);
-  const entry: LoadoutEntry = { definition: effect.subroutine, state: createInitialState(), temp: { firesLeft: effect.fires, burnerId } };
+  // Persistent Payload (session 65): the player's last twice as long.
+  const persistent = side === 0 && hasMod(combatState, 'persistent-payload');
+  if (persistent) noteMod(combatState, 0, ownMod('persistent-payload'));
+  const fires = persistent ? effect.fires * PERSISTENT_PAYLOAD_MULTIPLIER : effect.fires;
+  const entry: LoadoutEntry = { definition: effect.subroutine, state: createInitialState(), temp: { firesLeft: fires, burnerId } };
   const cleared = withSide(combatState, side, { loadout: without });
   const at = effect.position === 'top' ? 0 : bottomInstalledIndex(cleared, side) + 1;
   return withSide(cleared, side, { loadout: [...without.slice(0, at), entry, ...without.slice(at)] });

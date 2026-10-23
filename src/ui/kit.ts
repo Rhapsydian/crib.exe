@@ -22,6 +22,14 @@ import {
   QUIET_HOURS_MOVE_INTERVAL,
   THRESHOLD_EXPLOIT_REDUCTION,
   VENDOR_DISCOUNT_FRACTION,
+  NOBS_EXPLOIT_CREDIT,
+  LAST_WORD_INITIATIVE,
+  LUCKY_CUT_CREDIT,
+  WARD_CONVERTER_SHARE,
+  HOT_STANDBY_SHARE,
+  DEEP_CACHE_CAP_MULTIPLIER,
+  ROOT_CAUSE_COUNTS,
+  PERSISTENT_PAYLOAD_MULTIPLIER,
 } from '../engine/mods';
 import type { SubroutineDefinition } from '../engine/subroutine-types';
 import {
@@ -147,6 +155,20 @@ export const MOD_TEXT: Record<GeneralModId, string> = {
   'heat-sink': `Winning an elite or gatekeeper fight sheds ${HEAT_SINK_HEAT_REFUND} Heat.`,
   'backdoor-access': grantedText('backdoor-access'),
   'session-hijack-relay': `${reactiveText('session-hijack-relay')}${onlyFor('session-hijack-relay')}`,
+
+  // --- Rule-benders (session 65, docs/mods-design.md M6) ---
+  'nobs-exploit': `His Nobs (holding the Jack of the cut card's suit) also Credits ${NOBS_EXPLOIT_CREDIT}.`,
+  'run-splicer': 'Each run you score also counts as a pair, for your Hooks and your class Mod.',
+  'last-word': `Each go point you score (the last card, or 31) gives you ${LAST_WORD_INITIATIVE} additional initiative.`,
+  'lucky-cut': `When the cut card is one of your class's suits, Credit ${LUCKY_CUT_CREDIT}.`,
+  'ward-converter': `At the end of each hand, ${WARD_CONVERTER_SHARE === 1 / 3 ? 'a third' : pct(WARD_CONVERTER_SHARE)} of your remaining Ward becomes Credit.`,
+  'mirror-hand': 'The first pair the enemy scores each hand also counts toward your pair Hooks.',
+  'hot-standby': `After your loadout fires each turn, your benched subroutines fire their Processes too, at ${HOT_STANDBY_SHARE === 0.5 ? 'half' : pct(HOT_STANDBY_SHARE)} strength. Their Hooks don't go off.`,
+  'echo-chamber': 'At the end of each of your turns, your top subroutine fires again.',
+  'thirty-one': 'Pegging to exactly 31 gives you a turn at once.',
+  'deep-cache': `Your Hooks bank counts up to ${DEEP_CACHE_CAP_MULTIPLIER === 2 ? 'twice' : `${DEEP_CACHE_CAP_MULTIPLIER} times`} their usual limit.`,
+  'root-cause': `Each of your Hooks that goes off gives the subroutine below it ${ROOT_CAUSE_COUNTS === 1 ? '1 count' : `${ROOT_CAUSE_COUNTS} counts`} toward its own Hook.`,
+  'persistent-payload': `Temporary subroutines from your Burners last ${PERSISTENT_PAYLOAD_MULTIPLIER === 2 ? 'twice' : `${PERSISTENT_PAYLOAD_MULTIPLIER} times`} as long.`,
 };
 
 const MOD_TEXT_PENDING = 'Rules text to come (milestone 3).';

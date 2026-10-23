@@ -83,6 +83,31 @@ export const THRESHOLD_EXPLOIT_REDUCTION = 1;
 export const CACHE_PREFETCH_CHARGES = 1;
 export const HEAT_SINK_HEAT_REFUND = 10;
 
+// ---------------------------------------------------------------------
+// Rule-benders (session 65, docs/mods-design.md M6): Mods that change how
+// the Cribbage or the loadout works. Rules in resolve.ts and combat.ts.
+// TBD/measured (scripts/mod-check.ts).
+// ---------------------------------------------------------------------
+
+/** Nobs Exploit: His Nobs also Credits this much. */
+export const NOBS_EXPLOIT_CREDIT = 4;
+/** Last Word: each go point you score adds this much initiative. */
+export const LAST_WORD_INITIATIVE = 2;
+/** Lucky Cut: a cut card of one of your class's suits Credits this much. */
+export const LUCKY_CUT_CREDIT = 3;
+/** Ward Converter: the share of your remaining Ward that becomes Credit
+ * at the end of each hand. */
+export const WARD_CONVERTER_SHARE = 1 / 3;
+/** Hot Standby: your benched subroutines' Processes fire at this share. */
+export const HOT_STANDBY_SHARE = 0.5;
+/** Deep Cache: your Hooks bank counts up to this many times their limit. */
+export const DEEP_CACHE_CAP_MULTIPLIER = 2;
+/** Root Cause: counts a Hook going off gives the subroutine below it. */
+export const ROOT_CAUSE_COUNTS = 1;
+/** Persistent Payload: your Burners' temporary subroutines last this many
+ * times as long. */
+export const PERSISTENT_PAYLOAD_MULTIPLIER = 2;
+
 /** Boot Sector's granted reactive-subroutine content -- a common-rarity
  * sibling proving the reactive-subroutine bucket works below rare (session
  * 32 only ever exercised it at rare, via Rootkit Persistence). */
@@ -241,6 +266,20 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
     archetype: 'honeypot',
     reactiveSubroutine: SESSION_HIJACK_RELAY_SUBROUTINE,
   },
+
+  // --- Rule-benders (session 65, M6) ---
+  'nobs-exploit': { id: 'nobs-exploit', name: 'Nobs Exploit', rarity: 'uncommon', effectKind: 'hook' },
+  'run-splicer': { id: 'run-splicer', name: 'Run Splicer', rarity: 'uncommon', effectKind: 'hook' },
+  'last-word': { id: 'last-word', name: 'Last Word', rarity: 'uncommon', effectKind: 'hook' },
+  'lucky-cut': { id: 'lucky-cut', name: 'Lucky Cut', rarity: 'uncommon', effectKind: 'hook' },
+  'ward-converter': { id: 'ward-converter', name: 'Ward Converter', rarity: 'uncommon', effectKind: 'hook' },
+  'mirror-hand': { id: 'mirror-hand', name: 'Mirror Hand', rarity: 'uncommon', effectKind: 'hook' },
+  'hot-standby': { id: 'hot-standby', name: 'Hot Standby', rarity: 'rare', effectKind: 'hook' },
+  'echo-chamber': { id: 'echo-chamber', name: 'Echo Chamber', rarity: 'rare', effectKind: 'hook' },
+  'thirty-one': { id: 'thirty-one', name: 'Thirty-One', rarity: 'rare', effectKind: 'hook' },
+  'deep-cache': { id: 'deep-cache', name: 'Deep Cache', rarity: 'rare', effectKind: 'hook' },
+  'root-cause': { id: 'root-cause', name: 'Root Cause', rarity: 'rare', effectKind: 'hook' },
+  'persistent-payload': { id: 'persistent-payload', name: 'Persistent Payload', rarity: 'rare', effectKind: 'hook' },
 };
 
 /** Mods set aside: still defined and still working if owned, but never

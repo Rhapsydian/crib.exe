@@ -28,6 +28,10 @@ import {
   applyOccurrence,
   applySuitPlayed,
   clearHandKnowledge,
+  applyCutMods,
+  applyHandEndMods,
+  notePlayerMod,
+  playerHasMod,
   createCombatState,
   fireImmediateBetas,
   fireTurn,
@@ -58,6 +62,9 @@ import {
  */
 
 export interface CombatOptions {
+  /** The player's benched subroutines (session 65): Hot Standby fires
+   * their Processes at half strength. */
+  benched?: SubroutineDefinition[];
   /** The fight's tier, when it's part of a run (session 64): the simulated
    * player saves its combat Burners for elites and gatekeepers. */
   fightTier?: 'regular' | 'elite' | 'gatekeeper';
@@ -534,6 +541,7 @@ export function* combatGenerator(
     enemyPassiveIds = [],
     ownedModIds = [],
     carriedBurnerIds = [],
+    benched = [],
   } = options;
 
   const rng = createRng(seed);
@@ -551,7 +559,7 @@ export function* combatGenerator(
   let lastTurnSide: PlayerIndex | null = null;
   let scores: [number, number] = [0, 0];
   const created = createCombatState(loadouts[0], loadouts[1], gaugeThreshold, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds, opponentBridge, gatekeeperMods);
-  let combatState = applyModOnCombatStartPassives({ ...created, modTriggers: [] });
+  let combatState = applyModOnCombatStartPassives({ ...created, modTriggers: [], standby: benched });
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
   const timeline: CombatBeat[] = [];
@@ -645,7 +653,15 @@ export function* combatGenerator(
     let winner = step(immediates(applyOccurrence(combatState, occurrence, handDealer), handDealer, log));
     if (winner !== null) return winner;
 
-    const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, occurrencePoints(occurrence));
+    let points = occurrencePoints(occurrence);
+    // Thirty-One (session 65): pegging to exactly 31 gives the player a
+    // turn at once.
+    if (occurrence.player === 0 && occurrence.category === 'thirtyOne' && playerHasMod(combatState, 'thirty-one')) {
+      notePlayerMod(combatState, 'thirty-one');
+      const g = combatState.sides[0].gauge;
+      points = Math.max(points, g.threshold - g.progress);
+    }
+    const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, points);
     combatState = replaceSideGauge(combatState, occurrence.player, gauge);
     beat({ kind: 'points', phase, occurrence, gauges: readGauges(combatState), ...(cards ? { cards } : {}) });
 
@@ -826,6 +842,9 @@ export function* combatGenerator(
     // The cut: His Heels resolves now.
     phase = 'cut';
     beat({ kind: 'cut', starter, dealer });
+    // Lucky Cut (session 65).
+    winner = step(immediates(applyCutMods(combatState, starter), dealer, log));
+    if (winner !== null) return finish(winner);
     const heels = occurrenceFromHisHeels(heelsPoints, dealer);
     if (heels) {
       winner = yield* resolveOccurrence(heels, dealer, i);
@@ -893,6 +912,10 @@ export function* combatGenerator(
         if (winner !== null) return finish(winner);
       }
     }
+
+    // Ward Converter (session 65): the end of the hand.
+    winner = step(immediates(applyHandEndMods(combatState), dealer, log));
+    if (winner !== null) return finish(winner);
 
     dealer = (1 - dealer) as PlayerIndex;
 

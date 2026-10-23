@@ -60,7 +60,21 @@ export type ModId =
   // Rare (Mod Pool Expansion, session 44, +4)
   | 'heat-sink'
   | 'backdoor-access'
-  | 'session-hijack-relay';
+  | 'session-hijack-relay'
+  // Rule-benders, uncommon (session 65, docs/mods-design.md M6)
+  | 'nobs-exploit'
+  | 'run-splicer'
+  | 'last-word'
+  | 'lucky-cut'
+  | 'ward-converter'
+  | 'mirror-hand'
+  // Rule-benders, rare (session 65, M6)
+  | 'hot-standby'
+  | 'echo-chamber'
+  | 'thirty-one'
+  | 'deep-cache'
+  | 'root-cause'
+  | 'persistent-payload';
 
 /**
  * Two engine mechanisms, split by effect shape (session 30) -- not a

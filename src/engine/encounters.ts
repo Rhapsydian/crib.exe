@@ -599,6 +599,7 @@ function* resolveFight(
         classId: playerState.classId,
         ...enemyCombatOptions(enemy),
         ownedModIds: playerState.ownedModIds,
+        benched: playerState.bench,
         fightTier: kind,
         // Filtered to combat-context Burners only -- a carried map/shop-only
         // Burner has nothing to activate here (checkpoint C).
