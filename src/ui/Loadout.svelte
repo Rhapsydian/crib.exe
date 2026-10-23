@@ -40,8 +40,9 @@
     <li>
       <button class="piece" class:primed={primed(entry)} class:firing={i === firing} style="--suit: var(--suit-{entry.definition.archetype})" onclick={() => onpick(i)} aria-label={entry.definition.name} use:tip={tipText(entry)}>
         <SuitIcon archetype={entry.definition.archetype} size={dense ? 13 : 15} />
-        <span class="name">{dense ? initials(entry.definition.name) : entry.definition.name}</span>
-        {#if entry.definition.rank}<span class="rank" title="Merge rank">{rankMark(entry.definition.rank)}</span>{/if}
+        <span class="name">{entry.temp ? '⏏︎ ' : ''}{dense ? initials(entry.definition.name) : entry.definition.name}</span>
+        {#if entry.temp}<span class="rank burner-tag" title="A Burner's temporary subroutine: turns it has left">{dense ? entry.temp.firesLeft : `Burner · ${entry.temp.firesLeft} left`}</span>
+        {:else if entry.definition.rank}<span class="rank" title="Merge rank">{rankMark(entry.definition.rank)}</span>{/if}
         {#if entry.state.charges > 0}<span class="charges">{entry.state.charges}</span>{/if}
       </button>
     </li>
@@ -116,5 +117,8 @@
     background: var(--suit);
     color: var(--bg);
     font-weight: 700;
+  }
+  .burner-tag {
+    color: var(--warn);
   }
 </style>

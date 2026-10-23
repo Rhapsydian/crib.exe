@@ -136,6 +136,17 @@
     return [...new Set(left)].map((id) => ({ id, count: left.filter((b) => b === id).length }));
   });
   let armed = $state<BurnerId | null>(null);
+  // Each Burner says when it acts (session 64, BE2): "Now" ones go off with
+  // your next discard or card (undo until then), "Next turn" ones at the
+  // start of your next turn.
+  const timingLabel = (id: BurnerId) => (BURNER_DEFINITIONS[id].combat?.timing === 'now' ? 'Now' : 'Next turn');
+  const armNote = $derived.by(() => {
+    if (!armed) return 'Arm a Burner: "Now" ones go off with your next discard or card, "Next turn" ones at the start of your next turn.';
+    const def = BURNER_DEFINITIONS[armed];
+    return def.combat?.timing === 'now'
+      ? `${def.name} goes off with your next discard or card. Undo it until then.`
+      : `${def.name} goes off at the start of your next turn.`;
+  });
   // The engine's Burner pause: answer it at once with whatever is armed.
   let answered: FightSnapshot | null = null;
   $effect(() => {
@@ -364,11 +375,16 @@
       {#if onburner && armable.length}
         <div class="arm-row">
           {#each armable as b (b.id)}
-            <button class="arm" class:on={armed === b.id} aria-pressed={armed === b.id} onclick={() => (armed = armed === b.id ? null : b.id)}
-              >⏏︎ {burnerLabel(b.id)}{b.count > 1 ? ` ×${b.count}` : ''}</button
+            <button
+              class="arm"
+              class:on={armed === b.id}
+              aria-pressed={armed === b.id}
+              title={BURNER_DEFINITIONS[b.id].text}
+              onclick={() => (armed = armed === b.id ? null : b.id)}
+              >⏏︎ {BURNER_DEFINITIONS[b.id].name}{b.count > 1 ? ` ×${b.count}` : ''} · {timingLabel(b.id)}{armed === b.id ? ' ✓' : ''}</button
             >
           {/each}
-          <span class="arm-note">{armed ? 'used at the start of your next turn' : 'arm a Burner for your next turn'}</span>
+          <span class="arm-note">{armNote}</span>
         </div>
       {/if}
     </div>

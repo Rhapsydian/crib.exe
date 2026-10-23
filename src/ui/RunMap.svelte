@@ -45,6 +45,18 @@
   const heatPct = $derived(Math.min(100, (request.heat / allowance) * 100));
   const moveCost = $derived(request.freeMove ? 0 : applyOnMoveMods(player.ownedModIds, HEAT_PER_MOVE));
   const has = (id: BurnerId) => player.carriedBurnerIds.includes(id);
+  // Map Burners (session 64, BE4): every carried one can be used from the
+  // card (Skeleton Key from a closed node's card), and what's in effect
+  // is listed.
+  const fx = $derived(player.mapEffects);
+  const usableMapBurners = $derived([...new Set(player.carriedBurnerIds)].filter((id) => BURNER_DEFINITIONS[id].mapEffect && id !== 'skeleton-key'));
+  const inEffect = $derived.by(() => {
+    const out: string[] = [];
+    if (fx?.nextFightHeat !== undefined) out.push(`the next ${fx.nextFightHeatFights ?? 1} fights' Heat halved`);
+    if (fx?.nextGatekeeperToll !== undefined) out.push(fx.nextGatekeeperToll === 0 ? 'the next gatekeeper has no Heat toll' : "the next gatekeeper's Heat toll halved");
+    if (fx?.tunnel) out.push('Tunnel: the next Shop or Safehouse is passed through');
+    return out;
+  });
   // A fight's posted Heat (session 63, the user: "be clearer about Heat"),
   // on its card before you move: what a clean win, the worst win and a
   // loss each add, and a warning when one would get you caught (for a
@@ -169,11 +181,16 @@
       {/if}
     {:else}
       <div class="hint">
-        Tap a linked node to see what it is. {request.freeMove ? 'Your next move is free (Ghost Protocol).' : `Each move costs ${fmt(moveCost)} Heat.`} The gatekeeper ⛨︎ leads to the next layer.
+        Tap a linked node to see what it is. {fx?.freeMoves ? `Your next ${fx.freeMoves === 1 ? 'move is' : `${fx.freeMoves} moves are`} free.` : `Each move costs ${fmt(moveCost)} Heat.`} The gatekeeper ⛨︎ leads to the next layer.
         {#if has('skeleton-key') && graph.nodes.some((n) => n.state === 'closed')}Tap a closed node to reopen it with your Skeleton Key.{/if}
       </div>
-      {#if has('ghost-protocol') && !request.freeMove}
-        <button class="move burner-use" onclick={() => onburner('ghost-protocol')}>⏏︎ Use Ghost Protocol · next move free</button>
+      {#if inEffect.length}<div class="in-effect">In effect: {inEffect.join(' · ')}</div>{/if}
+      {#if usableMapBurners.length}
+        <div class="map-burners">
+          {#each usableMapBurners as id (id)}
+            <button class="burner-use small" title={BURNER_DEFINITIONS[id].text} onclick={() => onburner(id)}>⏏︎ {BURNER_DEFINITIONS[id].name}</button>
+          {/each}
+        </div>
       {/if}
     {/if}
   </div>
@@ -348,6 +365,23 @@
     color: var(--accent);
     font-weight: 700;
     font-size: 12px;
+  }
+  .in-effect {
+    color: var(--warn);
+    font-size: 11px;
+  }
+  .map-burners {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .burner-use.small {
+    padding: 4px 8px;
+    border: 1px solid var(--warn);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--warn);
+    font-size: 11px;
   }
   .move.burner-use {
     border-color: var(--warn);
