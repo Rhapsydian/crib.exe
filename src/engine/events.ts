@@ -126,19 +126,19 @@ export const EVENT_ROSTER: EventDefinition[] = [
     id: 'salvage-run',
     name: 'Salvage Run',
     text:
-      'A half-dismantled server rack sits behind a guard process that\'s still running. Whatever it\'s protecting, someone thought it was worth keeping.',
+      'A server rack slated for decommissioning still has power, and its old security daemon is still standing guard over the drives. Whatever's on them, someone thought it was worth protecting.',
     choices: [
       {
         id: 'pass',
         label: 'Pass and keep moving',
         riskTier: 'transparent',
-        outcomes: [{ probability: 1, effect: {}, text: 'You leave the rack to its guard.' }],
+        outcomes: [{ probability: 1, effect: {}, text: 'You leave the rack to its daemon.' }],
       },
       {
         id: 'salvage',
         label: 'Force a fight for the salvage',
         riskTier: 'gamble',
-        outcomes: [{ probability: 1, effect: { bonusFight: { tier: 'regular' } }, text: 'The guard process wakes up.' }],
+        outcomes: [{ probability: 1, effect: { bonusFight: { tier: 'regular' } }, text: 'The security daemon wakes up.' }],
       },
     ],
   },

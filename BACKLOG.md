@@ -71,6 +71,12 @@ most, refine some of the map icons.
 ## Open items
 
 Balance and content:
+- **The Concierge vs Warden** (a tester's run, session 64): contained at
+  78% Breach after being out-pegged 11-24 and out-cribbed 3-20. The
+  Concierge (scale 1.42, Reception Protocol each hand) ends fights in about
+  5 hands at ~10 Containment a turn: the worst case for a slow-ramping
+  class. Warden beats it 77% (vs 100% against Firewall Prime). Consider a
+  trim for onboarding (its scale, or Reception Protocol once per fight).
 - **Win rates** sit above the aim (avg 19.8%; Blackhat 23.3%, Eidolon
   22.7%); retune after the content pass. Trace evasions add ~0.8 points
   (3.9% of runs reach one, 37% escape).
