@@ -56,7 +56,7 @@ describe('rule-benders on the cut and the hand', () => {
     expect(progress(applyCutMods(s, { rank: 5, suit: 1 }))).toBe(0);
   });
 
-  it('Ward Converter: Credit half of your remaining Ward at the end of a hand; the Ward stays', () => {
+  it('Ward Converter: Credit your remaining Ward at the end of a hand; the Ward stays', () => {
     const s = fight(['ward-converter']);
     const after = applyHandEndMods({ ...s, sides: [{ ...s.sides[0], wardShield: 6 }, s.sides[1]] });
     expect(progress(after)).toBeCloseTo(6 * WARD_CONVERTER_SHARE);

@@ -227,3 +227,27 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
   25.0 → 25.3, Breacher 31.0 → 31.3, Warden 22.7 → 24.3, Wraith 21.0 →
   19.3; average 26.5 → 26.8%. The pair classes gain 0-2 points, about the
   run-to-run noise at this sample.
+- **Checkpoint 2, the rule-benders.** All twelve built (`mods.ts`,
+  `resolve.ts`, `combat.ts`; combat gets the bench for Hot Standby) with a
+  test each (`rule-benders.test.ts`). `scripts/mod-check.ts`: each combat
+  Mod with and without it, six class loadouts of six commons against the
+  layer-2 elites, as a multiple of the existing Mods' average fill cut at
+  its rarity (uncommon 7.81 points, rare 8.32). Tuned in two rounds (the
+  user approved each); final rules and multiples:
+  - Uncommon: **Nobs Exploit** "Each Jack in your hand or crib at the show
+    Credits 4." (was His Nobs Credits 4: 0.11) 0.61; **Run Splicer** a run
+    counts as two pairs, 0.66; **Last Word** as designed, 0.89; **Lucky
+    Cut** Credit 4, 0.88; **Ward Converter** "At the end of each hand,
+    Credit your remaining Ward." (the Ward stays; Honeypot classes only;
+    spending a third of it measured -0.08) 0.69; **Mirror Hand** every
+    enemy pair, 0.33 (kept: a pair-Hook build's Mod, which the commons
+    fixture barely has; adding fifteens would copy Reverse Engineering).
+  - Rare: **Hot Standby** at full strength, 1.12; **Echo Chamber** as
+    designed, 0.85; **Thirty-One** "Pegging to 31 gives you a turn at
+    once, and your Hooks all go off on it.", 0.67; **Deep Cache** plus
+    one count banked at the start of each fight, 0.80; **Root Cause** as
+    designed, 0.88; **Persistent Payload** every timed Burner effect
+    (temporary subroutines, effects lasting turns or hands), 0.52 (a
+    floor: the fixture carries only Bootstrap Loader).
+  - Fixture limits: Threshold Exploit measures 0 (no stepped Hooks in the
+    commons); build-dependent Mods read low.

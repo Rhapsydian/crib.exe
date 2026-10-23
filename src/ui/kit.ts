@@ -163,7 +163,7 @@ export const MOD_TEXT: Record<GeneralModId, string> = {
   'run-splicer': `Each run you score also counts as ${RUN_SPLICER_PAIRS === 2 ? 'two pairs' : `${RUN_SPLICER_PAIRS} pairs`}, for your Hooks and your class Mod.`,
   'last-word': `Each go point you score (the last card, or 31) gives you ${LAST_WORD_INITIATIVE} additional initiative.`,
   'lucky-cut': `When the cut card is one of your class's suits, Credit ${LUCKY_CUT_CREDIT}.`,
-  'ward-converter': `At the end of each hand, Credit ${WARD_CONVERTER_SHARE === 0.5 ? 'half' : pct(WARD_CONVERTER_SHARE)} of your remaining Ward.${onlyFor('ward-converter')}`,
+  'ward-converter': `At the end of each hand, Credit ${WARD_CONVERTER_SHARE === 1 ? 'your remaining Ward' : `${WARD_CONVERTER_SHARE === 0.5 ? 'half' : pct(WARD_CONVERTER_SHARE)} of your remaining Ward`}.${onlyFor('ward-converter')}`,
   'mirror-hand': 'Each pair the enemy scores also counts toward your pair Hooks.',
   'hot-standby': `After your loadout fires each turn, your benched subroutines fire their Processes too${HOT_STANDBY_SHARE === 1 ? '' : `, at ${HOT_STANDBY_SHARE === 0.5 ? 'half' : pct(HOT_STANDBY_SHARE)} strength`}. Their Hooks don't go off.`,
   'echo-chamber': 'At the end of each of your turns, your top subroutine fires again.',

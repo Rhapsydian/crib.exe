@@ -100,7 +100,7 @@ export const LAST_WORD_INITIATIVE = 2;
 export const LUCKY_CUT_CREDIT = 4;
 /** Ward Converter: the share of your remaining Ward that Credits at the
  * end of each hand (the Ward stays: spending it cost more than it gave). */
-export const WARD_CONVERTER_SHARE = 0.5;
+export const WARD_CONVERTER_SHARE = 1;
 /** Hot Standby: your benched subroutines' Processes fire at this share. */
 export const HOT_STANDBY_SHARE = 1;
 /** Deep Cache: counts every banking Hook starts each fight with. */
