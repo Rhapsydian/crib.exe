@@ -62,7 +62,7 @@ done; milestone 5, polish and playtesting, is under way.
 
 ```bash
 npm install
-npm test        # Vitest suite (805 tests)
+npm test        # Vitest suite (808 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server: the main menu (the roguelite, Cribbage); #test is the single-fight harness
 ```

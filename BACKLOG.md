@@ -22,7 +22,7 @@ The game is playable in the browser on desktop and phones
 four-layer run with six classes, a guided tutorial, first-time tips, plain
 Cribbage with a coach and lessons, and saves. Milestones 1-4 of
 `docs/playable-design.md` are done; milestone 5 (polish and playtesting)
-is under way. 805 tests, `npm run check` clean.
+is under way. 808 tests, `npm run check` clean.
 
 Content: 36 player subroutines (20 enemy-only besides), 27 enemies (13
 regular, 6 elite, 8 gatekeepers) plus the tutorial's Firewall Beta, 37
