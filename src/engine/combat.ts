@@ -30,7 +30,8 @@ import {
   clearHandKnowledge,
   applyCutMods,
   applyHandEndMods,
-  notePlayerMod,
+  applyShowMods,
+  armThirtyOne,
   playerHasMod,
   createCombatState,
   fireImmediateBetas,
@@ -657,7 +658,7 @@ export function* combatGenerator(
     // Thirty-One (session 65): pegging to exactly 31 gives the player a
     // turn at once.
     if (occurrence.player === 0 && occurrence.category === 'thirtyOne' && playerHasMod(combatState, 'thirty-one')) {
-      notePlayerMod(combatState, 'thirty-one');
+      combatState = armThirtyOne(combatState);
       const g = combatState.sides[0].gauge;
       points = Math.max(points, g.threshold - g.progress);
     }
@@ -907,6 +908,9 @@ export function* combatGenerator(
       const rule = combatState.sides[player].scoringRule;
       const total = rule ? occurrences.reduce((sum, o) => sum + occurrencePoints(repriceOccurrence(o, rule)), 0) : tableTotal;
       beat({ kind: 'show', owner, player, cards, starter, total });
+      // Nobs Exploit (session 65): the Jacks in the player's hand or crib.
+      winner = step(immediates(applyShowMods(combatState, player, cards), dealer, log));
+      if (winner !== null) return finish(winner);
       for (let k = 0; k < occurrences.length; k++) {
         winner = yield* resolveOccurrence(occurrences[k], dealer, i, events[k].cards);
         if (winner !== null) return finish(winner);

@@ -37,6 +37,8 @@ const layer = Number(args.layer ?? 2);
 const seeds = Number(args.seeds ?? 20);
 const only = args.only ? new Set(String(args.only).split(',')) : null;
 const WIN = 50;
+/** The existing Mods' average fill cut by rarity (full run, session 65), for --only runs. */
+const YARDSTICK: Record<string, number> = { common: 2.05, uncommon: 7.81, rare: 8.32 };
 
 /** Mods that never act in a fight (map, Shop, rewards, Data, Heat). */
 const RUN_ONLY = new Set<ModId>([
@@ -128,7 +130,7 @@ for (const id of combatMods) {
 }
 for (const rarity of ['common', 'uncommon', 'rare']) {
   const old = rows.filter((r) => r.rarity === rarity && !NEW.has(r.id));
-  const yardstick = old.length ? old.reduce((s, r) => s + r.cut, 0) / old.length : NaN;
+  const yardstick = old.length ? old.reduce((s, r) => s + r.cut, 0) / old.length : YARDSTICK[rarity];
   console.log(`\n--- ${rarity} (existing average fill cut ${yardstick.toFixed(2)} points) ---`);
   for (const r of rows.filter((x) => x.rarity === rarity)) {
     console.log(`${(NEW.has(r.id) ? '* ' : '  ') + MOD_DEFINITIONS[r.id].name.padEnd(22)} win ${r.win >= 0 ? '+' : ''}${r.win.toFixed(1)}  fill cut ${r.cut.toFixed(2)}  x${(r.cut / yardstick).toFixed(2)}`);

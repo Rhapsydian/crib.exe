@@ -30,6 +30,8 @@ import {
   MOD_MEDIUM,
   THRESHOLD_EXPLOIT_REDUCTION,
   NOBS_EXPLOIT_CREDIT,
+  RUN_SPLICER_PAIRS,
+  DEEP_CACHE_START_CHARGES,
   LAST_WORD_INITIATIVE,
   LUCKY_CUT_CREDIT,
   WARD_CONVERTER_SHARE,
@@ -287,7 +289,7 @@ export function clearHandKnowledge(combatState: CombatState): CombatState {
       // A hand-long Burner bonus counts down a hand (Noise Floor lasts two).
       handBonuses: sideState.handBonuses?.map((b) => ({ ...b, handsLeft: b.handsLeft - 1 })).filter((b) => b.handsLeft > 0),
       handPoints: 0,
-      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0, [MIRROR_HAND_THIS_HAND]: 0, [BURNER_HOOKS_TWICE]: Math.max(0, (sideState.passiveState[BURNER_HOOKS_TWICE] ?? 0) - 1) },
+      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0, [BURNER_HOOKS_TWICE]: Math.max(0, (sideState.passiveState[BURNER_HOOKS_TWICE] ?? 0) - 1) },
     };
   }) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
@@ -634,6 +636,10 @@ export function applyModOnCombatStartPassives(combatState: CombatState): CombatS
   if (hasMod(state, 'warm-boot')) state = withSide(state, 0, { wardShield: state.sides[0].wardShield + MOD_SMALL });
   if (hasMod(state, 'cold-boot')) state = creditWinGauge(state, 0, MOD_SMALL);
   if (hasMod(state, 'cache-prefetch')) state = mapLoadout(state, 0, (entry) => addCharges(entry.state, entry.definition, CACHE_PREFETCH_CHARGES));
+  if (hasMod(state, 'deep-cache')) {
+    noteMod(state, 0, ownMod('deep-cache'));
+    state = mapLoadout(state, 0, (entry) => addCharges(entry.state, entry.definition, DEEP_CACHE_START_CHARGES));
+  }
   return state;
 }
 
@@ -720,35 +726,32 @@ export function applyOccurrence(combatState: CombatState, occurrence: ScoringOcc
 }
 
 // Rule-benders (session 65, docs/mods-design.md M6): the player's own.
-const MIRROR_HAND_THIS_HAND = 'mirror-hand:hand';
+/** Thirty-One: the turn it gives sets off every Hook. */
+const THIRTY_ONE_HOOKS = 'thirty-one:hooks';
 
 /** The rule-bender Mods that read a scoring occurrence (side 0's). */
 function applyRuleBendersOnOccurrence(combatState: CombatState, occurrence: ScoringOccurrence, dealer: PlayerIndex | undefined): CombatState {
   let state = combatState;
   const own = occurrence.player === 0;
-  // Nobs Exploit: His Nobs also Credits.
-  if (own && occurrence.category === 'hisNobs' && hasMod(state, 'nobs-exploit')) {
-    noteMod(state, 0, ownMod('nobs-exploit'));
-    state = creditWinGauge(state, 0, NOBS_EXPLOIT_CREDIT);
-  }
   // Last Word: each go point (the last card, or 31) adds initiative.
   if (own && (occurrence.category === 'go' || occurrence.category === 'thirtyOne') && hasMod(state, 'last-word')) {
     noteMod(state, 0, ownMod('last-word'));
     state = haste(state, 0, LAST_WORD_INITIATIVE / state.sides[0].startingThreshold);
   }
-  // Run Splicer: each run also counts as a pair, for the Hooks and the
+  // Run Splicer: each run also counts as two pairs, for the Hooks and the
   // class Mod (not points).
   if (own && occurrence.category === 'run' && hasMod(state, 'run-splicer')) {
     noteMod(state, 0, ownMod('run-splicer'));
     const pair: ScoringOccurrence = { category: 'pair', player: 0, magnitude: 2 };
-    state = applyBridgeOnOccurrence(state, pair, dealer);
-    state = mapLoadout(state, 0, (entry) => chargeFromOccurrence(entry.state, entry.definition, pair, 0));
+    for (let k = 0; k < RUN_SPLICER_PAIRS; k++) {
+      state = applyBridgeOnOccurrence(state, pair, dealer);
+      state = mapLoadout(state, 0, (entry) => chargeFromOccurrence(entry.state, entry.definition, pair, 0));
+    }
   }
-  // Mirror Hand: the enemy's first pair each hand also counts toward the
+  // Mirror Hand: each pair the enemy scores also counts toward the
   // player's pair Hooks.
-  if (!own && occurrence.category === 'pair' && hasMod(state, 'mirror-hand') && !passiveStat(state, 0, MIRROR_HAND_THIS_HAND)) {
+  if (!own && occurrence.category === 'pair' && hasMod(state, 'mirror-hand')) {
     noteMod(state, 0, ownMod('mirror-hand'));
-    state = setPassiveStat(state, 0, MIRROR_HAND_THIS_HAND, 1);
     const mirrored: ScoringOccurrence = { ...occurrence, player: 0 };
     state = mapLoadout(state, 0, (entry) => chargeFromOccurrence(entry.state, entry.definition, mirrored, 0));
   }
@@ -765,14 +768,29 @@ export function applyCutMods(combatState: CombatState, starter: Card): CombatSta
   return creditWinGauge(combatState, 0, LUCKY_CUT_CREDIT);
 }
 
-/** The end of a hand (session 65): Ward Converter turns a share of the
- * player's remaining Ward into Credit. */
+/** The end of a hand (session 65): Ward Converter Credits a share of the
+ * player's remaining Ward (the Ward stays). */
 export function applyHandEndMods(combatState: CombatState): CombatState {
   const ward = combatState.sides[0].wardShield;
   if (!hasMod(combatState, 'ward-converter') || ward <= 0) return combatState;
   noteMod(combatState, 0, ownMod('ward-converter'));
-  const converted = ward * WARD_CONVERTER_SHARE;
-  return creditWinGauge(withSide(combatState, 0, { wardShield: ward - converted }), 0, converted);
+  return creditWinGauge(combatState, 0, ward * WARD_CONVERTER_SHARE);
+}
+
+/** The show (session 65): Nobs Exploit Credits for each Jack in the
+ * player's hand or crib (`cards`, without the cut card). */
+export function applyShowMods(combatState: CombatState, player: PlayerIndex, cards: Card[]): CombatState {
+  if (player !== 0 || !hasMod(combatState, 'nobs-exploit')) return combatState;
+  const jacks = cards.filter((c) => c.rank === 11).length;
+  if (jacks === 0) return combatState;
+  noteMod(combatState, 0, ownMod('nobs-exploit'));
+  return creditWinGauge(combatState, 0, jacks * NOBS_EXPLOIT_CREDIT);
+}
+
+/** Thirty-One (session 65): the next player turn sets off every Hook. */
+export function armThirtyOne(combatState: CombatState): CombatState {
+  noteMod(combatState, 0, ownMod('thirty-one'));
+  return setPassiveStat(combatState, 0, THIRTY_ONE_HOOKS, 1);
 }
 
 /** Whether the player owns Mod `id` (combat.ts's Thirty-One). */
@@ -1124,6 +1142,7 @@ export function fireTurn(
     events.push(...again.events);
   }
   if (side === 0) {
+    if (state.sides[0].passiveState[THIRTY_ONE_HOOKS]) state = setPassiveStat(state, 0, THIRTY_ONE_HOOKS, 0);
     state = hotStandby(state);
     const echo = echoChamber(state);
     state = echo.combatState;
@@ -1211,6 +1230,8 @@ function fireLoadoutOnce(
     // Zero-Day (session 64): for the rest of the hand, every Hook goes off
     // and applies twice (an instant Hook keeps its own timing).
     if (beta && beta.shape !== 'immediate' && state.sides[side].passiveState[BURNER_HOOKS_TWICE]) scale = Math.max(scale, 1) * 2;
+    // Thirty-One (session 65): on the turn it gave, every Hook goes off.
+    if (beta && beta.shape !== 'immediate' && state.sides[side].passiveState[THIRTY_ONE_HOOKS]) scale = Math.max(scale, 1);
     const elevated = scale > 0;
     // Reception Protocol: the owner's first Exploit beta each hand applies twice.
     if (elevated && definition.archetype === 'exploit' && hasSideMod(state, side, 'reception-protocol') && !state.sides[side].passiveState[RECEPTION_SPENT]) {
@@ -1344,17 +1365,23 @@ export function applyCombatBurner(combatState: CombatState, side: PlayerIndex, b
   const sideState = combatState.sides[side];
   const flag = (key: string, onSide: PlayerIndex = side, count = 1): CombatState =>
     withSide(combatState, onSide, { passiveState: { ...combatState.sides[onSide].passiveState, [key]: count } });
+  // Persistent Payload (session 65): the player's timed Burner effects last
+  // twice as long.
+  const timed = effect.kind === 'handBonus' || effect.kind === 'fireTwice' || effect.kind === 'hooksTwice' || effect.kind === 'skipEnemyTurn';
+  const persistent = side === 0 && timed && hasMod(combatState, 'persistent-payload');
+  if (persistent) noteMod(combatState, 0, ownMod('persistent-payload'));
+  const last = (n: number) => (persistent ? n * PERSISTENT_PAYLOAD_MULTIPLIER : n);
   switch (effect.kind) {
     case 'effect':
       return resolveEffect(effect.effect, combatState, side);
     case 'handBonus':
-      return withSide(combatState, side, { handBonuses: [...(sideState.handBonuses ?? []), { category: effect.category, effect: effect.effect, handsLeft: effect.hands ?? 1 }] });
+      return withSide(combatState, side, { handBonuses: [...(sideState.handBonuses ?? []), { category: effect.category, effect: effect.effect, handsLeft: last(effect.hands ?? 1) }] });
     case 'fireTwice':
-      return flag(BURNER_FIRE_TWICE, side, effect.turns);
+      return flag(BURNER_FIRE_TWICE, side, last(effect.turns));
     case 'hooksTwice':
-      return flag(BURNER_HOOKS_TWICE, side, effect.hands);
+      return flag(BURNER_HOOKS_TWICE, side, last(effect.hands));
     case 'skipEnemyTurn':
-      return flag(BURNER_SKIP_TURN, opponentOf(side), effect.turns);
+      return flag(BURNER_SKIP_TURN, opponentOf(side), last(effect.turns));
     case 'drainEnemy': {
       const enemy = opponentOf(side);
       const gauge = combatState.sides[enemy].winGauge;

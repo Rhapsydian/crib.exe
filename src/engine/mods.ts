@@ -89,23 +89,29 @@ export const HEAT_SINK_HEAT_REFUND = 10;
 // TBD/measured (scripts/mod-check.ts).
 // ---------------------------------------------------------------------
 
-/** Nobs Exploit: His Nobs also Credits this much. */
+/** Nobs Exploit: each Jack in the player's hand or crib at the show
+ * Credits this much (was His Nobs Credits 4: too rare to matter). */
 export const NOBS_EXPLOIT_CREDIT = 4;
+/** Run Splicer: how many pairs each run counts as. */
+export const RUN_SPLICER_PAIRS = 2;
 /** Last Word: each go point you score adds this much initiative. */
 export const LAST_WORD_INITIATIVE = 2;
 /** Lucky Cut: a cut card of one of your class's suits Credits this much. */
-export const LUCKY_CUT_CREDIT = 3;
-/** Ward Converter: the share of your remaining Ward that becomes Credit
- * at the end of each hand. */
-export const WARD_CONVERTER_SHARE = 1 / 3;
+export const LUCKY_CUT_CREDIT = 4;
+/** Ward Converter: the share of your remaining Ward that Credits at the
+ * end of each hand (the Ward stays: spending it cost more than it gave). */
+export const WARD_CONVERTER_SHARE = 0.5;
 /** Hot Standby: your benched subroutines' Processes fire at this share. */
-export const HOT_STANDBY_SHARE = 0.5;
+export const HOT_STANDBY_SHARE = 1;
+/** Deep Cache: counts every banking Hook starts each fight with. */
+export const DEEP_CACHE_START_CHARGES = 1;
 /** Deep Cache: your Hooks bank counts up to this many times their limit. */
 export const DEEP_CACHE_CAP_MULTIPLIER = 2;
 /** Root Cause: counts a Hook going off gives the subroutine below it. */
 export const ROOT_CAUSE_COUNTS = 1;
-/** Persistent Payload: your Burners' temporary subroutines last this many
- * times as long. */
+/** Persistent Payload: your Burners' timed effects (temporary
+ * subroutines, effects lasting turns or hands) last this many times as
+ * long. */
 export const PERSISTENT_PAYLOAD_MULTIPLIER = 2;
 
 /** Boot Sector's granted reactive-subroutine content -- a common-rarity
@@ -272,7 +278,8 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
   'run-splicer': { id: 'run-splicer', name: 'Run Splicer', rarity: 'uncommon', effectKind: 'hook' },
   'last-word': { id: 'last-word', name: 'Last Word', rarity: 'uncommon', effectKind: 'hook' },
   'lucky-cut': { id: 'lucky-cut', name: 'Lucky Cut', rarity: 'uncommon', effectKind: 'hook' },
-  'ward-converter': { id: 'ward-converter', name: 'Ward Converter', rarity: 'uncommon', effectKind: 'hook' },
+  // Gated on Honeypot, the archetype that builds Ward.
+  'ward-converter': { id: 'ward-converter', name: 'Ward Converter', rarity: 'uncommon', effectKind: 'hook', archetype: 'honeypot' },
   'mirror-hand': { id: 'mirror-hand', name: 'Mirror Hand', rarity: 'uncommon', effectKind: 'hook' },
   'hot-standby': { id: 'hot-standby', name: 'Hot Standby', rarity: 'rare', effectKind: 'hook' },
   'echo-chamber': { id: 'echo-chamber', name: 'Echo Chamber', rarity: 'rare', effectKind: 'hook' },

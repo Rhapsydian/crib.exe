@@ -23,6 +23,8 @@ import {
   THRESHOLD_EXPLOIT_REDUCTION,
   VENDOR_DISCOUNT_FRACTION,
   NOBS_EXPLOIT_CREDIT,
+  RUN_SPLICER_PAIRS,
+  DEEP_CACHE_START_CHARGES,
   LAST_WORD_INITIATIVE,
   LUCKY_CUT_CREDIT,
   WARD_CONVERTER_SHARE,
@@ -157,18 +159,18 @@ export const MOD_TEXT: Record<GeneralModId, string> = {
   'session-hijack-relay': `${reactiveText('session-hijack-relay')}${onlyFor('session-hijack-relay')}`,
 
   // --- Rule-benders (session 65, docs/mods-design.md M6) ---
-  'nobs-exploit': `His Nobs (holding the Jack of the cut card's suit) also Credits ${NOBS_EXPLOIT_CREDIT}.`,
-  'run-splicer': 'Each run you score also counts as a pair, for your Hooks and your class Mod.',
+  'nobs-exploit': `Each Jack in your hand or crib at the show Credits ${NOBS_EXPLOIT_CREDIT}.`,
+  'run-splicer': `Each run you score also counts as ${RUN_SPLICER_PAIRS === 2 ? 'two pairs' : `${RUN_SPLICER_PAIRS} pairs`}, for your Hooks and your class Mod.`,
   'last-word': `Each go point you score (the last card, or 31) gives you ${LAST_WORD_INITIATIVE} additional initiative.`,
   'lucky-cut': `When the cut card is one of your class's suits, Credit ${LUCKY_CUT_CREDIT}.`,
-  'ward-converter': `At the end of each hand, ${WARD_CONVERTER_SHARE === 1 / 3 ? 'a third' : pct(WARD_CONVERTER_SHARE)} of your remaining Ward becomes Credit.`,
-  'mirror-hand': 'The first pair the enemy scores each hand also counts toward your pair Hooks.',
-  'hot-standby': `After your loadout fires each turn, your benched subroutines fire their Processes too, at ${HOT_STANDBY_SHARE === 0.5 ? 'half' : pct(HOT_STANDBY_SHARE)} strength. Their Hooks don't go off.`,
+  'ward-converter': `At the end of each hand, Credit ${WARD_CONVERTER_SHARE === 0.5 ? 'half' : pct(WARD_CONVERTER_SHARE)} of your remaining Ward.${onlyFor('ward-converter')}`,
+  'mirror-hand': 'Each pair the enemy scores also counts toward your pair Hooks.',
+  'hot-standby': `After your loadout fires each turn, your benched subroutines fire their Processes too${HOT_STANDBY_SHARE === 1 ? '' : `, at ${HOT_STANDBY_SHARE === 0.5 ? 'half' : pct(HOT_STANDBY_SHARE)} strength`}. Their Hooks don't go off.`,
   'echo-chamber': 'At the end of each of your turns, your top subroutine fires again.',
-  'thirty-one': 'Pegging to exactly 31 gives you a turn at once.',
-  'deep-cache': `Your Hooks bank counts up to ${DEEP_CACHE_CAP_MULTIPLIER === 2 ? 'twice' : `${DEEP_CACHE_CAP_MULTIPLIER} times`} their usual limit.`,
+  'thirty-one': 'Pegging to 31 gives you a turn at once, and your Hooks all go off on it.',
+  'deep-cache': `Your Hooks bank counts up to ${DEEP_CACHE_CAP_MULTIPLIER === 2 ? 'twice' : `${DEEP_CACHE_CAP_MULTIPLIER} times`} their usual limit, and start each fight with ${DEEP_CACHE_START_CHARGES === 1 ? 'one count' : `${DEEP_CACHE_START_CHARGES} counts`} banked.`,
   'root-cause': `Each of your Hooks that goes off gives the subroutine below it ${ROOT_CAUSE_COUNTS === 1 ? '1 count' : `${ROOT_CAUSE_COUNTS} counts`} toward its own Hook.`,
-  'persistent-payload': `Temporary subroutines from your Burners last ${PERSISTENT_PAYLOAD_MULTIPLIER === 2 ? 'twice' : `${PERSISTENT_PAYLOAD_MULTIPLIER} times`} as long.`,
+  'persistent-payload': `Your Burners' timed effects (temporary subroutines, effects that last turns or hands) last ${PERSISTENT_PAYLOAD_MULTIPLIER === 2 ? 'twice' : `${PERSISTENT_PAYLOAD_MULTIPLIER} times`} as long.`,
 };
 
 const MOD_TEXT_PENDING = 'Rules text to come (milestone 3).';
