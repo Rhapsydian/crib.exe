@@ -2,7 +2,7 @@ import type { BurnerDefinition } from '../engine/burner-types';
 import { rarityOf } from '../engine/rewards';
 import type { RunPlayerState } from '../engine/run';
 import type { SubroutineDefinition } from '../engine/subroutine-types';
-import { describeEffect, describeHook, describeProcess } from './describe';
+import { describeHook, describeProcess } from './describe';
 
 /**
  * Words for things you can acquire (milestone 3 checkpoint 3): a Burner's
@@ -10,22 +10,11 @@ import { describeEffect, describeHook, describeProcess } from './describe';
  * loadout.
  */
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-/** A Burner's rules, whichever context it belongs to. */
+/** A Burner's rules, whichever context it belongs to: its authored text
+ * (session 64). */
 export function burnerText(def: BurnerDefinition): string {
-  if (def.combatEffect) return `${cap(describeEffect(def.combatEffect))}, once, at the start of one of your turns in a fight.`;
-  if (def.sellValue !== undefined && def.contexts.length === 0) return `No use of its own: it sells for ${def.sellValue} Data at a Shop.`;
-  const map = def.mapEffect;
-  if (map?.kind === 'freeMove') return 'Your next map move costs no Heat.';
-  if (map?.kind === 'reopenClosedNode') return 'Reopens a closed node on the map.';
-  if (map?.kind === 'revealUpcoming') return 'Reveals what the nodes ahead hold.';
-  const shop = def.shopEffect;
-  // Shop Burners work on the whole visit they're used on (encounters.ts).
-  if (shop?.kind === 'discount') return `${Math.round(shop.fraction * 100)}% off everything in one Shop visit (doesn't stack with Vendor Discount).`;
-  if (shop?.kind === 'freeReroll') return "One Shop visit's rerolls are free.";
-  if (shop?.kind === 'rarityFloor') return `In one Shop visit, each slate's wildcard offering is ${shop.rarity}.`;
-  return 'No effect yet.';
+  return def.text;
 }
 
 /** Where a Burner is used, in a word. */

@@ -53,8 +53,8 @@ describe('SYNERGY_AWARE_PROFILE', () => {
   it('leaves the enemy side of combat Burner activation at never-fire', () => {
     // Side 1 has no Burner economy at all; only side 0 should ever act.
     const [playerSide, enemySide] = SYNERGY_AWARE_PROFILE.burnerActivationStrategies!;
-    expect(playerSide({ combatState: {} as never, side: 0, isDealer: true, availableBurnerIds: ['flash-drive'] })).toBe('flash-drive');
-    expect(enemySide({ combatState: {} as never, side: 1, isDealer: true, availableBurnerIds: ['flash-drive'] })).toBeNull();
+    expect(playerSide({ combatState: {} as never, side: 0, isDealer: true, availableBurnerIds: ['flash-drive'], timing: 'nextTurn' })).toBe('flash-drive');
+    expect(enemySide({ combatState: {} as never, side: 1, isDealer: true, availableBurnerIds: ['flash-drive'] , timing: 'nextTurn' })).toBeNull();
   });
 
   it('allows gambles only below half of max Heat', () => {

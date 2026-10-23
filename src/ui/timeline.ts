@@ -5,7 +5,7 @@ import type { FireEvent, GaugeReading } from '../engine/resolve';
 import type { ScoringOccurrence } from '../engine/triggers';
 import { rankLabel } from './suits';
 import { suitToken } from './RichText.svelte';
-import { describeEffect, describeFire } from './describe';
+import { describeFire } from './describe';
 import { BURNER_DEFINITIONS } from '../engine/burners';
 import type { ModTrigger } from '../engine/resolve';
 import { modName, triggerLabel } from './kit';
@@ -255,7 +255,7 @@ export function showTitle(owner: 'hand' | 'crib', player: PlayerIndex): string {
 /** A Burner's name and what it does. */
 export function burnerLabel(id: keyof typeof BURNER_DEFINITIONS): string {
   const def = BURNER_DEFINITIONS[id];
-  return def.combatEffect ? `${def.name}: ${describeEffect(def.combatEffect)}` : def.name;
+  return def.combat ? `${def.name}: ${def.text}` : def.name;
 }
 
 /** A beat's log line (fires are described by describeFire). */

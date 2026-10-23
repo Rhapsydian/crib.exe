@@ -649,7 +649,9 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
   it("the fight screen's Heat outlook charges a win or a loss exactly as the run does (session 63)", () => {
     let checked = 0;
     let losses = 0;
-    for (const result of runs('exploit-daemon', 80)) {
+    // Weaker play too, so regular and elite losses turn up.
+    const weak = Array.from({ length: 40 }, (_, seed) => playRun({ seed, classId: 'exploit-daemon', playerSkill: 0.3, traversalStrategy: opportunisticTraversal }));
+    for (const result of [...runs('exploit-daemon', 40), ...weak]) {
       for (const e of result.log) {
         if (e.type !== 'encounter' || !e.outcome.fight) continue;
         const tier = e.outcome.fight.tier;
@@ -664,7 +666,8 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
           enemyFill: e.outcome.fight.finalFillFraction[1],
           refund: -e.outcome.heatSources.refund,
         });
-        expect(won ? o.winGain : o.loseGain!).toBeCloseTo(e.outcome.heatDelta, 6);
+        // Before any map Burner's cut (booked as `burner` Heat, session 64).
+        expect(won ? o.winGain : o.loseGain!).toBeCloseTo(e.outcome.heatDelta - e.outcome.heatSources.burner, 6);
         if (!won) losses++;
         checked++;
       }

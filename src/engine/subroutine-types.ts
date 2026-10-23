@@ -315,7 +315,7 @@ export type BetaSource =
   | {
       source: 'sequence';
       reach: 'adjacent' | 'anyPrior';
-      match: { id: string } | { archetype: Archetype } | { verb: Verb };
+      match: { id: string } | { archetype: Archetype } | { verb: Verb } | { any: true };
     };
 
 /**
@@ -417,6 +417,7 @@ export function isValidBeta(beta: Beta): boolean {
  * evaluation (triggers.ts) and the reorder heuristic (loadout.ts), so the
  * two can never disagree about what a chain wants. */
 export function matchesSequence(match: Extract<BetaSource, { source: 'sequence' }>['match'], piece: SubroutineDefinition): boolean {
+  if ('any' in match) return true;
   if ('id' in match) return piece.id === match.id;
   if ('archetype' in match) return piece.archetype === match.archetype;
   return piece.alpha.verb === match.verb;

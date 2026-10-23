@@ -29,7 +29,7 @@ import {
   MOD_MEDIUM,
   THRESHOLD_EXPLOIT_REDUCTION,
 } from './mods';
-import type { BurnerId } from './burner-types';
+import type { BurnerId, CombatBurnerEffect } from './burner-types';
 import {
   addCharges,
   removeCharges,
@@ -81,6 +81,9 @@ import { bestCardToForce } from './ai';
 export interface LoadoutEntry {
   definition: SubroutineDefinition;
   state: SubroutineRuntimeState;
+  /** A temporary subroutine a Burner installed (session 64, BE3): the
+   * turns it has left to fire, and the Burner it came from. */
+  temp?: { firesLeft: number; burnerId: BurnerId };
 }
 
 /** A temporary initiative-threshold change (Tempo `threshold` with a
@@ -137,6 +140,10 @@ export interface CombatSideState {
   /** Generic per-side scratch bookkeeping for passives and Mods -- one-shot
    * flags and counters keyed by convention as `${id}:${field}`. */
   passiveState: Record<string, number>;
+  /** Hand-long Burner bonuses (session 64): for the rest of this hand,
+   * each of this side's fifteens / pairs also does `effect`. Cleared at
+   * every deal. */
+  handBonuses?: { category: 'fifteen' | 'pair'; effect: Effect }[];
 }
 
 export interface CombatState {
@@ -259,6 +266,7 @@ export function clearHandKnowledge(combatState: CombatState): CombatState {
       knownOpponentHand: undefined,
       knownCrib: undefined,
       forcedDiscardPair: undefined,
+      handBonuses: undefined,
       handPoints: 0,
       passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0 },
     };
@@ -290,6 +298,10 @@ export function hasSideMod(combatState: CombatState, side: PlayerIndex, id: Gate
 const GAINED_THIS_TURN = 'gk:gained';
 const NULL_SESSION_SPENT = 'gk:null-spent';
 const RECEPTION_SPENT = 'gk:reception-spent';
+// Burners' turn flags (session 64): set by the Burner, spent by the turn.
+const BURNER_FIRE_TWICE = 'burner:fireTwice';
+const BURNER_HOOKS_TWICE = 'burner:hooksTwice';
+const BURNER_SKIP_TURN = 'burner:skipTurn';
 const ROOT_ACCESS_SPENT = 'gk:root-spent';
 const HANDS_SEEN = 'gk:hands';
 
@@ -661,6 +673,11 @@ function mapLoadout(
 export function applyOccurrence(combatState: CombatState, occurrence: ScoringOccurrence, dealer?: PlayerIndex): CombatState {
   let state = withSide(combatState, occurrence.player, { handPoints: combatState.sides[occurrence.player].handPoints + occurrence.magnitude });
   state = applyBridgeOnOccurrence(state, occurrence, dealer);
+  // Hand-long Burner bonuses (Packet Storm, Noise Floor): the scorer's own
+  // fifteens / pairs also do their effect.
+  for (const bonus of state.sides[occurrence.player].handBonuses ?? []) {
+    if (bonus.category === occurrence.category) state = resolveEffect(bonus.effect, state, occurrence.player);
+  }
   for (const side of [0, 1] as PlayerIndex[]) {
     state = mapLoadout(state, side, (entry) => chargeFromOccurrence(entry.state, entry.definition, occurrence, side));
     // Reverse Engineering (EM1): the opponent's fifteens and pairs also
@@ -992,6 +1009,16 @@ export function fireTurn(
   const pass = fireLoadoutOnce(state, side, selfContext);
   state = pass.combatState;
   events.push(...pass.events);
+  // Overclock Script (session 64): this turn, the loadout fires twice.
+  if (state.sides[side].passiveState[BURNER_FIRE_TWICE]) {
+    const again = fireLoadoutOnce(state, side, selfContext);
+    state = again.combatState;
+    events.push(...again.events);
+  }
+  // The turn's Burner flags (fire twice, Hooks twice) last one turn.
+  if (state.sides[side].passiveState[BURNER_FIRE_TWICE] || state.sides[side].passiveState[BURNER_HOOKS_TWICE]) {
+    state = withSide(state, side, { passiveState: { ...state.sides[side].passiveState, [BURNER_FIRE_TWICE]: 0, [BURNER_HOOKS_TWICE]: 0 } });
+  }
   // Root Access: on the owner's first turn each hand, the loadout fires twice.
   if (hasSideMod(state, side, 'root-access') && !state.sides[side].passiveState[ROOT_ACCESS_SPENT]) {
     noteMod(state, side, gk('root-access'));
@@ -1042,6 +1069,8 @@ function fireLoadoutOnce(
     const charges = beta ? betaCharges(definition, entry.state, context) : 0;
     let scale = beta ? betaScale(beta, charges) : 0;
     const elevated = scale > 0;
+    // Zero-Day (session 64): this turn, each Hook that goes off applies twice.
+    if (elevated && state.sides[side].passiveState[BURNER_HOOKS_TWICE]) scale *= 2;
     // Reception Protocol: the owner's first Exploit beta each hand applies twice.
     if (elevated && definition.archetype === 'exploit' && hasSideMod(state, side, 'reception-protocol') && !state.sides[side].passiveState[RECEPTION_SPENT]) {
       noteMod(state, side, gk('reception-protocol'));
@@ -1161,4 +1190,68 @@ export function revealCrib(combatState: CombatState, side: PlayerIndex, cards: C
  * signed from the target's own crib perspective. */
 export function forceOpponentDiscard(combatState: CombatState, caster: PlayerIndex, targetDealtHand: Card[], targetIsOwnCrib: boolean): CombatState {
   return withSide(combatState, opponentOf(caster), { forcedDiscardPair: bestCardToForce(targetDealtHand, targetIsOwnCrib) });
+}
+
+// ---------------------------------------------------------------------
+// Burners in a fight (session 64, docs/burners-events-design.md BE1-BE3)
+// ---------------------------------------------------------------------
+
+/** Applies one combat Burner's effect for `side` (the player). */
+export function applyCombatBurner(combatState: CombatState, side: PlayerIndex, burnerId: BurnerId, effect: CombatBurnerEffect): CombatState {
+  const sideState = combatState.sides[side];
+  const flag = (key: string, onSide: PlayerIndex = side): CombatState =>
+    withSide(combatState, onSide, { passiveState: { ...combatState.sides[onSide].passiveState, [key]: 1 } });
+  switch (effect.kind) {
+    case 'effect':
+      return resolveEffect(effect.effect, combatState, side);
+    case 'handBonus':
+      return withSide(combatState, side, { handBonuses: [...(sideState.handBonuses ?? []), { category: effect.category, effect: effect.effect }] });
+    case 'fireTwice':
+      return flag(BURNER_FIRE_TWICE);
+    case 'hooksTwice':
+      return flag(BURNER_HOOKS_TWICE);
+    case 'skipEnemyTurn':
+      return flag(BURNER_SKIP_TURN, opponentOf(side));
+    case 'drainEnemy': {
+      const enemy = opponentOf(side);
+      const gauge = combatState.sides[enemy].winGauge;
+      return withSide(combatState, enemy, { winGauge: { ...gauge, progress: gauge.progress * (1 - effect.fraction) } });
+    }
+    case 'tempSubroutine':
+      return installTempSubroutine(combatState, side, burnerId, effect);
+  }
+}
+
+/** A temporary subroutine goes in at the top or the bottom of `side`'s
+ * installed loadout (above any reactive Mod pieces), replacing any other
+ * temporary one: one at a time (BE3). */
+function installTempSubroutine(
+  combatState: CombatState,
+  side: PlayerIndex,
+  burnerId: BurnerId,
+  effect: Extract<CombatBurnerEffect, { kind: 'tempSubroutine' }>,
+): CombatState {
+  const without = combatState.sides[side].loadout.filter((e) => !e.temp);
+  const entry: LoadoutEntry = { definition: effect.subroutine, state: createInitialState(), temp: { firesLeft: effect.fires, burnerId } };
+  const cleared = withSide(combatState, side, { loadout: without });
+  const at = effect.position === 'top' ? 0 : bottomInstalledIndex(cleared, side) + 1;
+  return withSide(cleared, side, { loadout: [...without.slice(0, at), entry, ...without.slice(at)] });
+}
+
+/** After one of `side`'s turns: each temporary subroutine has one turn
+ * fewer left, and leaves when it has none. */
+export function tickTempSubroutines(combatState: CombatState, side: PlayerIndex): CombatState {
+  const loadout = combatState.sides[side].loadout;
+  if (!loadout.some((e) => e.temp)) return combatState;
+  const next = loadout
+    .map((e) => (e.temp ? { ...e, temp: { ...e.temp, firesLeft: e.temp.firesLeft - 1 } } : e))
+    .filter((e) => !e.temp || e.temp.firesLeft > 0);
+  return withSide(combatState, side, { loadout: next });
+}
+
+/** Whether `side`'s next turn is to be skipped (Denial of Service); if so,
+ * the skip is spent. */
+export function takeSkippedTurn(combatState: CombatState, side: PlayerIndex): { combatState: CombatState; skipped: boolean } {
+  if (!combatState.sides[side].passiveState[BURNER_SKIP_TURN]) return { combatState, skipped: false };
+  return { combatState: withSide(combatState, side, { passiveState: { ...combatState.sides[side].passiveState, [BURNER_SKIP_TURN]: 0 } }), skipped: true };
 }

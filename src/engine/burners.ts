@@ -1,4 +1,5 @@
 import type { BurnerDefinition, BurnerId } from './burner-types';
+import type { SubroutineDefinition } from './subroutine-types';
 import type { Rarity } from './rewards';
 import type { Rng } from './rng';
 import type { RunPlayerState } from './run';
@@ -22,62 +23,180 @@ export const BURNER_CAP = 3; // TBD/playtesting -- mirrors StS's own 2-3 potion 
 /** Stolen Coupon's discount fraction. */
 export const STOLEN_COUPON_DISCOUNT_FRACTION = 0.25;
 
+// Temporary subroutines (BE3): installed by their Burner for a few turns.
+const BOOTSTRAP_LOADER: SubroutineDefinition = {
+  id: 'burner-bootstrap-loader',
+  name: 'Bootstrap Loader',
+  archetype: 'overclock',
+  alpha: { verb: 'empower', amount: 2, scope: 'next' },
+};
+const LOGIC_BOMB: SubroutineDefinition = {
+  id: 'burner-logic-bomb',
+  name: 'Logic Bomb',
+  archetype: 'exploit',
+  alpha: { verb: 'credit', amount: 2 },
+  beta: { source: 'sequence', reach: 'anyPrior', match: { any: true }, shape: 'graded', cap: 8, effect: { verb: 'credit', amount: 1 } },
+};
+const HONEYNET_SHIM: SubroutineDefinition = {
+  id: 'burner-honeynet-shim',
+  name: 'Honeynet Shim',
+  archetype: 'honeypot',
+  alpha: { verb: 'ward', amount: 3 },
+};
+const BOTNET: SubroutineDefinition = {
+  id: 'burner-botnet',
+  name: 'Botnet',
+  archetype: 'exploit',
+  alpha: { verb: 'credit', amount: 3 },
+  beta: { source: 'cards', category: 'fifteen', shape: 'graded', cap: 1, effect: { verb: 'credit', amount: 3 } },
+};
+/** Every temporary subroutine a Burner can install (for the UI). */
+export const BURNER_SUBROUTINES: readonly SubroutineDefinition[] = [BOOTSTRAP_LOADER, LOGIC_BOMB, HONEYNET_SHIM, BOTNET];
+
 export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
-  // --- Combat (2) ---
-  // --- Sell-only (1, session 61; the user's playtest idea) ---
-  // An offline crypto wallet, liberated: no use, but it sells for a lot at
-  // the next Shop. Never in a Shop's own slate (buy-and-resell).
-  'cold-wallet': {
-    id: 'cold-wallet',
-    name: 'Cold Wallet',
-    rarity: 'uncommon',
-    contexts: [],
-    sellValue: 30,
-  },
+  // --- Combat: lumps (BE1), about a fifth of a fight ---
   'flash-drive': {
     id: 'flash-drive',
     name: 'Flash Drive',
     rarity: 'common',
     contexts: ['combat'],
-    combatEffect: { verb: 'credit', amount: 5 },
+    text: 'Next turn: Credit 10.',
+    combat: { timing: 'nextTurn', effect: { kind: 'effect', effect: { verb: 'credit', amount: 10 } } },
   },
   'emp-charge': {
     id: 'emp-charge',
     name: 'EMP Charge',
     rarity: 'uncommon',
     contexts: ['combat'],
-    combatEffect: { verb: 'suppress', amount: 8 },
+    text: 'Next turn: Suppress 12.',
+    combat: { timing: 'nextTurn', effect: { kind: 'effect', effect: { verb: 'suppress', amount: 12 } } },
+  },
+  'patch-tuesday': {
+    id: 'patch-tuesday',
+    name: 'Patch Tuesday',
+    rarity: 'common',
+    contexts: ['combat'],
+    text: 'Next turn: Ward 10.',
+    combat: { timing: 'nextTurn', effect: { kind: 'effect', effect: { verb: 'ward', amount: 10 } } },
   },
 
-  // --- Map (3) ---
-  'recon-ping': {
-    id: 'recon-ping',
-    name: 'Recon Ping',
+  // --- Combat: rule-benders ---
+  'packet-storm': {
+    id: 'packet-storm',
+    name: 'Packet Storm',
     rarity: 'common',
-    contexts: ['map'],
-    mapEffect: { kind: 'revealUpcoming' },
+    contexts: ['combat'],
+    text: 'Now: each fifteen you score this hand also Credits 2.',
+    combat: { timing: 'now', effect: { kind: 'handBonus', category: 'fifteen', effect: { verb: 'credit', amount: 2 } } },
   },
+  'noise-floor': {
+    id: 'noise-floor',
+    name: 'Noise Floor',
+    rarity: 'uncommon',
+    contexts: ['combat'],
+    text: 'Now: each pair you score this hand also Suppresses 2.',
+    combat: { timing: 'now', effect: { kind: 'handBonus', category: 'pair', effect: { verb: 'suppress', amount: 2 } } },
+  },
+  'overclock-script': {
+    id: 'overclock-script',
+    name: 'Overclock Script',
+    rarity: 'uncommon',
+    contexts: ['combat'],
+    text: 'Next turn: your loadout fires twice.',
+    combat: { timing: 'nextTurn', effect: { kind: 'fireTwice' } },
+  },
+  'zero-day': {
+    id: 'zero-day',
+    name: 'Zero-Day',
+    rarity: 'rare',
+    contexts: ['combat'],
+    text: 'Next turn: each of your Hooks that goes off applies twice.',
+    combat: { timing: 'nextTurn', effect: { kind: 'hooksTwice' } },
+  },
+
+  // --- Combat: temporary subroutines (BE3) ---
+  'bootstrap-loader': {
+    id: 'bootstrap-loader',
+    name: 'Bootstrap Loader',
+    rarity: 'uncommon',
+    contexts: ['combat'],
+    text: 'Next turn: installs Bootstrap Loader at the top of your loadout for 3 turns. Process: Empower the next subroutine 2.',
+    combat: { timing: 'nextTurn', effect: { kind: 'tempSubroutine', subroutine: BOOTSTRAP_LOADER, position: 'top', fires: 3 } },
+  },
+  'logic-bomb': {
+    id: 'logic-bomb',
+    name: 'Logic Bomb',
+    rarity: 'uncommon',
+    contexts: ['combat'],
+    text: 'Next turn: installs Logic Bomb at the bottom of your loadout for 3 turns. Process: Credit 2. Hook: Credit 1 per subroutine that fired its Hook this turn.',
+    combat: { timing: 'nextTurn', effect: { kind: 'tempSubroutine', subroutine: LOGIC_BOMB, position: 'bottom', fires: 3 } },
+  },
+  'honeynet-shim': {
+    id: 'honeynet-shim',
+    name: 'Honeynet Shim',
+    rarity: 'common',
+    contexts: ['combat'],
+    text: 'Next turn: installs Honeynet Shim at the bottom of your loadout for 3 turns. Process: Ward 3.',
+    combat: { timing: 'nextTurn', effect: { kind: 'tempSubroutine', subroutine: HONEYNET_SHIM, position: 'bottom', fires: 3 } },
+  },
+
+  // --- Map: Heat tools (BE4) ---
   'ghost-protocol': {
     id: 'ghost-protocol',
     name: 'Ghost Protocol',
     rarity: 'uncommon',
     contexts: ['map'],
-    mapEffect: { kind: 'freeMove' },
+    text: 'Your next 3 moves cost no Heat.',
+    mapEffect: { kind: 'freeMoves', count: 3 },
   },
   'skeleton-key': {
     id: 'skeleton-key',
     name: 'Skeleton Key',
     rarity: 'rare',
     contexts: ['map'],
+    text: 'Reopens a closed node on the map.',
     mapEffect: { kind: 'reopenClosedNode' },
   },
+  'log-wiper': {
+    id: 'log-wiper',
+    name: 'Log Wiper',
+    rarity: 'common',
+    contexts: ['map'],
+    text: 'Now: lower your Heat by 10.',
+    mapEffect: { kind: 'lowerHeat', amount: 10 },
+  },
+  'proxy-chain': {
+    id: 'proxy-chain',
+    name: 'Proxy Chain',
+    rarity: 'uncommon',
+    contexts: ['map'],
+    text: "The next fight's Heat is halved, win or lose.",
+    mapEffect: { kind: 'nextFightHeat', multiplier: 0.5 },
+  },
+  'spoofed-credentials': {
+    id: 'spoofed-credentials',
+    name: 'Spoofed Credentials',
+    rarity: 'rare',
+    contexts: ['map'],
+    text: "The next gatekeeper's Heat toll is halved.",
+    mapEffect: { kind: 'nextGatekeeperToll', multiplier: 0.5 },
+  },
+  tunnel: {
+    id: 'tunnel',
+    name: 'Tunnel',
+    rarity: 'uncommon',
+    contexts: ['map'],
+    text: 'The next Shop or Safehouse you move onto, you pass through without visiting it. It stays for later.',
+    mapEffect: { kind: 'tunnel' },
+  },
 
-  // --- Shop (3) ---
+  // --- Shop ---
   'stolen-coupon': {
     id: 'stolen-coupon',
     name: 'Stolen Coupon',
     rarity: 'common',
     contexts: ['shop'],
+    text: "25% off everything in one Shop visit (doesn't stack with Vendor Discount).",
     shopEffect: { kind: 'discount', fraction: STOLEN_COUPON_DISCOUNT_FRACTION },
   },
   'loyalty-token': {
@@ -85,6 +204,7 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     name: 'Loyalty Token',
     rarity: 'uncommon',
     contexts: ['shop'],
+    text: "One Shop visit's rerolls are free.",
     shopEffect: { kind: 'freeReroll' },
   },
   'insider-tip': {
@@ -92,20 +212,71 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     name: 'Insider Tip',
     rarity: 'rare',
     contexts: ['shop'],
+    text: "In one Shop visit, each slate's wildcard offering is rare.",
     shopEffect: { kind: 'rarityFloor', rarity: 'rare' },
+  },
+
+  // --- Sell-only (session 61; the user's playtest idea) ---
+  // An offline crypto wallet, liberated: no use, but it sells for a lot at
+  // the next Shop. Never in a Shop's own slate (buy-and-resell).
+  'cold-wallet': {
+    id: 'cold-wallet',
+    name: 'Cold Wallet',
+    rarity: 'uncommon',
+    contexts: [],
+    text: 'No use of its own: it sells for 30 Data at a Shop.',
+    sellValue: 30,
+  },
+
+  // --- Contraband: offered only by Events (BE5) ---
+  'denial-of-service': {
+    id: 'denial-of-service',
+    name: 'Denial of Service',
+    rarity: 'rare',
+    contexts: ['combat'],
+    contraband: true,
+    text: "Now: the enemy's next turn is skipped.",
+    combat: { timing: 'now', effect: { kind: 'skipEnemyTurn' } },
+  },
+  botnet: {
+    id: 'botnet',
+    name: 'Botnet',
+    rarity: 'rare',
+    contexts: ['combat'],
+    contraband: true,
+    text: 'Next turn: installs Botnet at the bottom of your loadout for 5 turns. Process: Credit 3. Hook (fifteens): Credit 3 more.',
+    combat: { timing: 'nextTurn', effect: { kind: 'tempSubroutine', subroutine: BOTNET, position: 'bottom', fires: 5 } },
+  },
+  'golden-ticket': {
+    id: 'golden-ticket',
+    name: 'Golden Ticket',
+    rarity: 'rare',
+    contexts: ['map'],
+    contraband: true,
+    text: 'The next gatekeeper has no Heat toll.',
+    mapEffect: { kind: 'nextGatekeeperToll', multiplier: 0 },
+  },
+  'kill-switch': {
+    id: 'kill-switch',
+    name: 'Kill Switch',
+    rarity: 'rare',
+    contexts: ['combat'],
+    contraband: true,
+    text: "Now: the enemy's Containment drops by half.",
+    combat: { timing: 'now', effect: { kind: 'drainEnemy', fraction: 0.5 } },
   },
 };
 
-/** Burners set aside: defined, but never offered. Recon Ping (session
- * 58, the user's call): its reveal has nothing to reveal without fog of
- * war on the map; it comes back if fog of war does. */
-export const BURNERS_SET_ASIDE: ReadonlySet<BurnerId> = new Set<BurnerId>(['recon-ping']);
+/** Burners set aside: defined, but never offered. Empty since session 64
+ * (Recon Ping was retired outright: no fog of war to reveal). */
+export const BURNERS_SET_ASIDE: ReadonlySet<BurnerId> = new Set<BurnerId>();
 
 /** The general Burner pool -- archetype-agnostic by default (DESIGN.md:
  * "not tied to the 4 archetypes"), unlike Mods' targeted-archetype
- * exclusion. No class-scoping needed at all. Excludes BURNERS_SET_ASIDE. */
+ * exclusion. No class-scoping needed at all. Excludes BURNERS_SET_ASIDE
+ * and contraband (Event-only, BE5). */
 export function generalBurnerPool(): BurnerDefinition[] {
-  return Object.values(BURNER_DEFINITIONS).filter((burner) => !BURNERS_SET_ASIDE.has(burner.id));
+  return Object.values(BURNER_DEFINITIONS).filter((burner) => !BURNERS_SET_ASIDE.has(burner.id) && !burner.contraband);
 }
 
 /** Shop-context Burner activation's effect on this visit's slate

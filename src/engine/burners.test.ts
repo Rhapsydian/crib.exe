@@ -127,20 +127,6 @@ describe('Map-context activation -- MapBurnerStrategy', () => {
     expect(zeroCostMoves.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("Recon Ping is a genuine no-op (no fog-of-war to reveal) but is still consumed on activation", () => {
-    const alwaysReconPing: MapBurnerStrategy = (ctx) => (ctx.availableBurnerIds.includes('recon-ping') ? { burnerId: 'recon-ping' } : null);
-    const result = playRun({
-      seed: 7,
-      layerNodeCounts: [6, 2, 2, 2],
-      carriedBurnerIdsOverride: ['recon-ping'],
-      mapBurnerStrategy: alwaysReconPing,
-      burnerAcquisitionStrategy: () => null,
-    });
-    const activations = result.log.filter((e) => e.type === 'mapBurnerActivated');
-    expect(activations).toEqual([expect.objectContaining({ burnerId: 'recon-ping' })]);
-    expect(result.playerState.carriedBurnerIds).not.toContain('recon-ping');
-  });
-
   it('Skeleton Key reopens a closed node back to unresolved -- reopenNode against a hand-built graph', () => {
     const a = createNode('a', 'regularFight');
     const closed = { ...createNode('b', 'regularFight'), state: 'closed' as const };
@@ -417,7 +403,7 @@ describe('synergyAwareBurnerAcquisition / synergyAwareBurnerShopStrategy', () =>
   });
 
   it('falls to the earliest option when rarities tie, matching alwaysAcquireFirstBurner', () => {
-    const alsoCommon = BURNER_DEFINITIONS['recon-ping']; // common
+    const alsoCommon = BURNER_DEFINITIONS['log-wiper']; // common
     expect(synergyAwareBurnerAcquisition([common, alsoCommon], stateWithData(0))?.id).toBe('flash-drive');
   });
 
@@ -457,7 +443,7 @@ describe('synergyAwareBurnerAcquisition / synergyAwareBurnerShopStrategy', () =>
 
 describe('synergyAwareCombatBurnerActivation', () => {
   function ctx(side: 0 | 1, availableBurnerIds: BurnerId[]): Parameters<BurnerActivationStrategy>[0] {
-    return { combatState: {} as never, side, isDealer: true, availableBurnerIds };
+    return { combatState: {} as never, side, isDealer: true, availableBurnerIds, timing: 'nextTurn' };
   }
 
   it('activates the first available combat-context Burner on the player side', () => {
@@ -465,11 +451,11 @@ describe('synergyAwareCombatBurnerActivation', () => {
   });
 
   it('skips map- and shop-context Burners carried in the same inventory', () => {
-    expect(synergyAwareCombatBurnerActivation(ctx(0, ['recon-ping', 'stolen-coupon', 'emp-charge']))).toBe('emp-charge');
+    expect(synergyAwareCombatBurnerActivation(ctx(0, ['ghost-protocol', 'stolen-coupon', 'emp-charge']))).toBe('emp-charge');
   });
 
   it('declines when only non-combat Burners are carried', () => {
-    expect(synergyAwareCombatBurnerActivation(ctx(0, ['recon-ping', 'insider-tip']))).toBeNull();
+    expect(synergyAwareCombatBurnerActivation(ctx(0, ['ghost-protocol', 'insider-tip']))).toBeNull();
   });
 
   it('always declines for the enemy side, which has no Burner economy', () => {
@@ -563,12 +549,12 @@ describe('synergyAwareMapBurnerStrategy', () => {
   });
 
   it('prefers Skeleton Key over the others when the route is severed', () => {
-    const picked = synergyAwareMapBurnerStrategy(mapCtx(graphWithBClosed(true), ['recon-ping', 'ghost-protocol', 'skeleton-key']));
+    const picked = synergyAwareMapBurnerStrategy(mapCtx(graphWithBClosed(true), ['log-wiper', 'ghost-protocol', 'skeleton-key']));
     expect(picked?.burnerId).toBe('skeleton-key');
   });
 
   it('spends Ghost Protocol when a move would cost Heat', () => {
-    const picked = synergyAwareMapBurnerStrategy(mapCtx(graphWithBClosed(false), ['recon-ping', 'ghost-protocol']));
+    const picked = synergyAwareMapBurnerStrategy(mapCtx(graphWithBClosed(false), ['tunnel', 'ghost-protocol']));
     expect(picked).toEqual({ burnerId: 'ghost-protocol' });
   });
 
@@ -585,24 +571,17 @@ describe('synergyAwareMapBurnerStrategy', () => {
     expect(applyOnMoveMods(lightFooted.ownedModIds, HEAT_PER_MOVE)).toBeGreaterThan(0);
   });
 
-  it('spends Recon Ping last, as inventory hygiene rather than information', () => {
-    // revealUpcoming is a documented no-op in this engine; the payoff is
-    // freeing a BURNER_CAP slot so a useful Burner can be acquired.
-    expect(synergyAwareMapBurnerStrategy(mapCtx(graphWithBClosed(false), ['recon-ping']))).toEqual({ burnerId: 'recon-ping' });
-  });
-
   it('declines when only non-map Burners are carried', () => {
     expect(synergyAwareMapBurnerStrategy(mapCtx(graphWithBClosed(false), ['flash-drive', 'stolen-coupon']))).toBeNull();
   });
 });
 
-// Session 58, the user's call: Recon Ping set aside until fog of war.
-describe('Burner pool scoping (session 58)', () => {
-  it('never offers a set-aside Burner', async () => {
-    const { BURNERS_SET_ASIDE, generalBurnerPool, drawBurnerRewardOptions } = await import('./burners');
-    expect(BURNERS_SET_ASIDE.has('recon-ping')).toBe(true);
-    expect(generalBurnerPool().some((b) => BURNERS_SET_ASIDE.has(b.id))).toBe(false);
+// Session 64: Recon Ping retired; contraband is Event-only (BE5).
+describe('Burner pool scoping (session 64)', () => {
+  it('never offers contraband in Shops or fight rewards', async () => {
+    const { generalBurnerPool, drawBurnerRewardOptions } = await import('./burners');
+    expect(generalBurnerPool().some((b) => b.contraband)).toBe(false);
     const rng = createRng(1);
-    for (let i = 0; i < 200; i++) expect(drawBurnerRewardOptions(rng).some((b) => b.id === 'recon-ping')).toBe(false);
+    for (let i = 0; i < 200; i++) expect(drawBurnerRewardOptions(rng).some((b) => b.contraband)).toBe(false);
   });
 });

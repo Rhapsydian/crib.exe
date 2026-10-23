@@ -52,7 +52,7 @@
   const newSeed = () => Math.floor(Math.random() * 1_000_000);
   function start(classId: ClassId, enemy: EnemyDefinition, burners: boolean) {
     last = { classId, enemyId: enemy.id, burners };
-    fight = new LiveFight({ classId, enemy, seed: newSeed(), carriedBurnerIds: burners ? ['flash-drive', 'emp-charge'] : [] });
+    fight = new LiveFight({ classId, enemy, seed: newSeed(), carriedBurnerIds: burners ? ['packet-storm', 'bootstrap-loader', 'flash-drive'] : [] });
   }
 
   let run = $state.raw<LiveRun | null>(null);

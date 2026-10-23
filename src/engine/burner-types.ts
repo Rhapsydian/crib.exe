@@ -1,4 +1,4 @@
-import type { Effect } from './subroutine-types';
+import type { Effect, SubroutineDefinition } from './subroutine-types';
 import type { Rarity } from './rewards';
 
 /**
@@ -8,33 +8,80 @@ import type { Rarity } from './rewards';
  * "Burners" section, "Inventory") -- unlike Mods (mod-types.ts), which
  * this file otherwise mirrors closely.
  *
- * One id per Burner -- the 8 validated Burners from session 37's
- * content-validation pass (BACKLOG.md's "Burners + Events
- * Implementation" write-up), authored for real in burners.ts.
+ * One id per Burner, authored in burners.ts. Session 64 reworked the pool
+ * (docs/burners-events-design.md BE1-BE7): lumps, rule-benders,
+ * temporary subroutines, Heat tools on the map, and Event-only contraband.
  */
 export type BurnerId =
-  // Combat (2)
+  // Combat: lumps (session 64, BE1)
   | 'flash-drive'
   | 'emp-charge'
-  // Map (3)
-  | 'recon-ping'
+  | 'patch-tuesday'
+  // Combat: rule-benders
+  | 'packet-storm'
+  | 'noise-floor'
+  | 'overclock-script'
+  | 'zero-day'
+  // Combat: temporary subroutines (BE3)
+  | 'bootstrap-loader'
+  | 'logic-bomb'
+  | 'honeynet-shim'
+  // Map: Heat tools (BE4)
   | 'ghost-protocol'
   | 'skeleton-key'
-  // Shop (3)
+  | 'log-wiper'
+  | 'proxy-chain'
+  | 'spoofed-credentials'
+  | 'tunnel'
+  // Shop
   | 'stolen-coupon'
   | 'loyalty-token'
   | 'insider-tip'
-  // Sell-only (1, session 61): no use; worth Data at a Shop
-  | 'cold-wallet';
+  // Sell-only (session 61): no use; worth Data at a Shop
+  | 'cold-wallet'
+  // Contraband: offered only by Events (BE5)
+  | 'denial-of-service'
+  | 'botnet'
+  | 'golden-ticket'
+  | 'kill-switch';
 
 /** A Burner can be usable in more than one context -- each context maps
  * to one optional effect field on BurnerDefinition below. */
 export type BurnerContext = 'combat' | 'map' | 'shop';
 
-/** Map-context effects (session 37): a free move (skips that move's flat
- * Heat cost), revealing upcoming node types, or reopening a previously
- * closed node (session 9's long-banked idea, finally resolved). */
-export type MapBurnerEffect = { kind: 'freeMove' } | { kind: 'revealUpcoming' } | { kind: 'reopenClosedNode' };
+/** When an armed combat Burner acts (session 64, BE2): "Now" as soon as
+ * it is committed -- with your next decision in the fight, a discard or a
+ * card -- or "Next turn", at the start of your next turn. */
+export type BurnerTiming = 'now' | 'nextTurn';
+
+/** What a combat Burner does (BE1, BE3). */
+export type CombatBurnerEffect =
+  /** A lump: one verb effect, resolved like any subroutine's. */
+  | { kind: 'effect'; effect: Effect }
+  /** For the rest of this hand, each of your fifteens / pairs also does
+   * `effect`. */
+  | { kind: 'handBonus'; category: 'fifteen' | 'pair'; effect: Effect }
+  /** This turn, your loadout fires twice. */
+  | { kind: 'fireTwice' }
+  /** This turn, each of your Hooks that goes off applies twice. */
+  | { kind: 'hooksTwice' }
+  /** The enemy's next turn is skipped. */
+  | { kind: 'skipEnemyTurn' }
+  /** The enemy's Containment drops by this fraction of its progress. */
+  | { kind: 'drainEnemy'; fraction: number }
+  /** A temporary subroutine at the top or bottom of your loadout, firing
+   * `fires` turns (an extra slot; one at a time; gone by the fight's end). */
+  | { kind: 'tempSubroutine'; subroutine: SubroutineDefinition; position: 'top' | 'bottom'; fires: number };
+
+/** Map-context effects (BE4): free moves, Heat now, the next fight's
+ * Heat, the next gatekeeper's Heat toll, a pass-through, a reopened node. */
+export type MapBurnerEffect =
+  | { kind: 'freeMoves'; count: number }
+  | { kind: 'lowerHeat'; amount: number }
+  | { kind: 'nextFightHeat'; multiplier: number }
+  | { kind: 'nextGatekeeperToll'; multiplier: number }
+  | { kind: 'tunnel' }
+  | { kind: 'reopenClosedNode' };
 
 /** Shop-context "coupon" effects (session 37): a fractional discount, a
  * free reroll, or a guaranteed rarity floor on the next purchase. */
@@ -48,10 +95,10 @@ export interface BurnerDefinition {
   name: string;
   rarity: Rarity;
   contexts: BurnerContext[];
-  /** Only present when contexts includes 'combat' -- a single verb effect
-   * (session 51; was a PayloadEffect), resolved through resolve.ts's
-   * exported resolveEffect exactly like any subroutine's effect. */
-  combatEffect?: Effect;
+  /** The player-facing text, authored (session 64; the user's wording). */
+  text: string;
+  /** Only present when contexts includes 'combat'. */
+  combat?: { timing: BurnerTiming; effect: CombatBurnerEffect };
   /** Only present when contexts includes 'map'. */
   mapEffect?: MapBurnerEffect;
   /** Only present when contexts includes 'shop'. */
@@ -59,4 +106,6 @@ export interface BurnerDefinition {
   /** What it sells for at a Shop, when not the usual half its buying
    * price -- Cold Wallet's whole point (session 61). */
   sellValue?: number;
+  /** Offered only by Events, never in Shops or fight rewards (BE5). */
+  contraband?: boolean;
 }

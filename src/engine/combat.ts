@@ -10,7 +10,7 @@ import type { GatekeeperModId } from './gatekeeper-mods';
 import type { ClassId } from './classes';
 import type { EnemyPassiveId } from './enemies';
 import type { ModId } from './mod-types';
-import type { BurnerId } from './burner-types';
+import type { BurnerId, BurnerTiming } from './burner-types';
 import { BURNER_DEFINITIONS } from './burners';
 import {
   occurrencesFromPeggingEvent,
@@ -30,7 +30,9 @@ import {
   fireImmediateBetas,
   fireTurn,
   forceOpponentDiscard,
-  resolveEffect,
+  applyCombatBurner,
+  tickTempSubroutines,
+  takeSkippedTurn,
   revealCrib,
   revealOpponentHand,
   takePendingDisrupt,
@@ -120,6 +122,10 @@ export interface BurnerActivationContext {
   side: PlayerIndex;
   isDealer: boolean;
   availableBurnerIds: BurnerId[];
+  /** Which offer this is (session 64, BE2): "now" right after your
+   * discard or card, "nextTurn" at the start of your turn. Only Burners
+   * of that timing are available. */
+  timing: BurnerTiming;
 }
 
 /** Picks which (if any) available Burner to activate this turn, or null
@@ -599,6 +605,26 @@ export function* combatGenerator(
   }
   let phase: 'cut' | 'peg' | 'show' = 'cut';
 
+  /** Offers `side` its available Burners of one timing (session 64,
+   * BE2) and applies the one chosen. Only the player carries Burners. */
+  function* offerBurner(side: PlayerIndex, timing: BurnerTiming, handIndex: number, handDealer: PlayerIndex): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
+    if (side !== 0) return null;
+    const availableBurnerIds = remainingBurnerIds(combatState.carriedBurnerIds, burnersUsedThisCombat).filter((id) => BURNER_DEFINITIONS[id].combat?.timing === timing);
+    if (availableBurnerIds.length === 0) return null;
+    const chosenBurnerId = (yield {
+      kind: 'burner',
+      side,
+      context: { combatState, side, isDealer: side === handDealer, availableBurnerIds, timing },
+      view: view(handIndex, handDealer),
+    }) as BurnerId | null;
+    const burnerDef = chosenBurnerId && availableBurnerIds.includes(chosenBurnerId) ? BURNER_DEFINITIONS[chosenBurnerId] : undefined;
+    if (!chosenBurnerId || !burnerDef?.combat) return null;
+    burnersUsedThisCombat.push(chosenBurnerId);
+    const afterBurner = applyCombatBurner(combatState, side, chosenBurnerId, burnerDef.combat.effect);
+    beat({ kind: 'burner', side, burnerId: chosenBurnerId, gauges: readGauges(afterBurner) });
+    return step({ combatState: afterBurner, winner: resolution(afterBurner) });
+  }
+
   function* resolveOccurrence(
     occurrence: ScoringOccurrence,
     handDealer: PlayerIndex,
@@ -632,28 +658,16 @@ export function* combatGenerator(
 
     for (let turn = 0; turn < turnsTriggered; turn++) {
       beat({ kind: 'turn', side: occurrence.player });
-      // Burner activation (checkpoint C): an "opening move" resolved
-      // before this turn's automatic subroutine fires. Side 1 (the
-      // enemy) has no Burner economy -- its strategy defaults to
-      // neverActivateBurner, so this is a genuine no-op for it, not a
-      // special case.
-      const availableBurnerIds = remainingBurnerIds(combatState.carriedBurnerIds, burnersUsedThisCombat);
-      if (availableBurnerIds.length > 0) {
-        const chosenBurnerId = (yield {
-          kind: 'burner',
-          side: occurrence.player,
-          context: { combatState, side: occurrence.player, isDealer: occurrence.player === handDealer, availableBurnerIds },
-          view: view(handIndex, handDealer),
-        }) as BurnerId | null;
-        const burnerDef = chosenBurnerId && availableBurnerIds.includes(chosenBurnerId) ? BURNER_DEFINITIONS[chosenBurnerId] : undefined;
-        if (chosenBurnerId && burnerDef?.combatEffect) {
-          burnersUsedThisCombat.push(chosenBurnerId);
-          const afterBurner = resolveEffect(burnerDef.combatEffect, combatState, occurrence.player);
-          beat({ kind: 'burner', side: occurrence.player, burnerId: chosenBurnerId, gauges: readGauges(afterBurner) });
-          winner = step({ combatState: afterBurner, winner: resolution(afterBurner) });
-          if (winner !== null) return winner;
-        }
+      // Denial of Service (session 64): a skipped turn fires nothing.
+      const skip = takeSkippedTurn(combatState, occurrence.player);
+      if (skip.skipped) {
+        combatState = skip.combatState;
+        continue;
       }
+      // "Next turn" Burners (checkpoint C; session 64 BE2): an opening
+      // move resolved before this turn's automatic subroutine fires.
+      winner = yield* offerBurner(occurrence.player, 'nextTurn', handIndex, handDealer);
+      if (winner !== null) return winner;
 
       const fired = fireTurn(combatState, occurrence.player, { isDealer: occurrence.player === handDealer });
       // Triggers left over from the turn (its start: a bridge, Root
@@ -662,6 +676,8 @@ export function* combatGenerator(
       log.push(...fired.events);
       winner = step({ combatState: fired.combatState, winner: resolution(fired.combatState) });
       if (winner !== null) return winner;
+      // Temporary subroutines (BE3) count down a turn, and leave at zero.
+      combatState = tickTempSubroutines(combatState, occurrence.player);
 
       // A turn can bank charges or flip a condition for either side.
       winner = step(immediates(combatState, handDealer, log));
@@ -739,6 +755,9 @@ export function* combatGenerator(
       const context: DiscardContext = { hand: dealtHands[side], isOwnCrib: dealer === side, knownOpponentHand: combatState.sides[side].knownOpponentHand, knownCribCards, rng: aiRng };
       const forced = combatState.sides[side].forcedDiscardPair;
       const chosen = forced ?? ((yield { kind: 'discard', side, context, view: view(i, dealer) }) as [Card, Card]);
+      // "Now" Burners commit with your decision (BE2): offered right after
+      // it, applied before it resolves.
+      if (!forced) yield* offerBurner(side, 'now', i, dealer);
       const strategy: DiscardStrategy = () => chosen;
       return discardToCrib(context, strategy);
     }
@@ -825,6 +844,9 @@ export function* combatGenerator(
         view: view(i, dealer),
         pegging: { hand: pegging.hands[player].slice(), opponentCardsLeft: pegging.hands[(1 - player) as PlayerIndex].length, events: pegging.events },
       }) as Card;
+      // "Now" Burners commit with your card (BE2), before it resolves.
+      winner = yield* offerBurner(player, 'now', i, dealer);
+      if (winner !== null) return finish(winner);
       const played = playPeggingCard(pegging, card);
       winner = yield* resolvePeggingEvent(played, dealer, i);
       if (winner !== null) return finish(winner);
@@ -903,6 +925,21 @@ export function* combatGenerator(
  * same inventory but have no combatEffect to resolve. */
 export const synergyAwareCombatBurnerActivation: BurnerActivationStrategy = (ctx) => {
   if (ctx.side !== 0) return null;
-  const combatBurner = ctx.availableBurnerIds.find((id) => BURNER_DEFINITIONS[id].contexts.includes('combat'));
-  return combatBurner ?? null;
+  // Session 64: "Next turn" Burners go on the first turn offered; "Now"
+  // ones by what they do -- a hand-long bonus at the hand's start (no
+  // points yet), Kill Switch once the enemy is half way, the rest at once.
+  const usable = ctx.availableBurnerIds.find((id) => {
+    const effect = BURNER_DEFINITIONS[id].combat?.effect;
+    if (!effect) return false;
+    if (effect.kind === 'handBonus') {
+      const side = ctx.combatState.sides[0];
+      return side.handPoints === 0 && !(side.handBonuses ?? []).length;
+    }
+    if (effect.kind === 'drainEnemy') {
+      const enemy = ctx.combatState.sides[1].winGauge;
+      return enemy.progress >= enemy.threshold / 2;
+    }
+    return true;
+  });
+  return usable ?? null;
 };

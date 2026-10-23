@@ -209,6 +209,9 @@ export interface HeatSources {
   refund: number;
   /** Negative. Rest at a Safehouse. */
   rest: number;
+  /** Negative. A map Burner's cut (session 64): Proxy Chain on the next
+   * fight, Spoofed Credentials / Golden Ticket on the next gatekeeper's toll. */
+  burner: number;
   /** Heat an Event applied directly. An Event's bonus fight is NOT
    * counted here -- its Heat is folded into the real categories above,
    * so "Heat from Containment losses" stays true wherever the fight
@@ -224,6 +227,7 @@ export const NO_HEAT_SOURCES: HeatSources = {
   performance: 0,
   refund: 0,
   rest: 0,
+  burner: 0,
   event: 0,
 };
 
@@ -236,12 +240,13 @@ export function addHeatSources(a: HeatSources, b: HeatSources): HeatSources {
     performance: a.performance + b.performance,
     refund: a.refund + b.refund,
     rest: a.rest + b.rest,
+    burner: a.burner + b.burner,
     event: a.event + b.event,
   };
 }
 
 export function totalHeatSources(s: HeatSources): number {
-  return s.containmentLoss + s.attritionLoss + s.baseline + s.alarm + s.performance + s.refund + s.rest + s.event;
+  return s.containmentLoss + s.attritionLoss + s.baseline + s.alarm + s.performance + s.refund + s.rest + s.burner + s.event;
 }
 
 export interface EncounterOutcome {

@@ -120,6 +120,10 @@ export interface RunPlayerState {
    * (unlike ownedModIds' uniqueness), since a Burner is a consumable
    * item, not a permanent passive. */
   carriedBurnerIds: BurnerId[];
+  /** Map Burners in effect (session 64, BE4): free moves left, a cut to
+   * the next fight's Heat and to the next gatekeeper's Heat toll, and a
+   * Tunnel waiting for the next Shop or Safehouse. Absent when none. */
+  mapEffects?: MapEffects;
   /**
    * Meta-progression sockets for the three combat thresholds (session
    * 48). All optional and all unset today -- there is no
@@ -144,6 +148,18 @@ export interface RunPlayerState {
   initiativeThreshold?: number;
   breachThreshold?: number;
   containmentThresholdScaler?: number;
+}
+
+/** Map Burners in effect (RunPlayerState.mapEffects). */
+export interface MapEffects {
+  freeMoves: number;
+  /** Multiplies the next fight's Heat, win or lose (Proxy Chain). */
+  nextFightHeat?: number;
+  /** Multiplies the next gatekeeper's Heat toll on a win (Spoofed
+   * Credentials 0.5, Golden Ticket 0). */
+  nextGatekeeperToll?: number;
+  /** The next Shop or Safehouse moved onto is passed through (Tunnel). */
+  tunnel?: boolean;
 }
 
 export function createInitialPlayerState(classId: ClassId): RunPlayerState {
@@ -814,7 +830,6 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       // DESIGN.md's own framing for this ("recoverable, not automatic,"
       // resolving the session-9 banked node-bypass idea) only holds if
       // reopening can happen before the run gives up, not after.
-      let freeMoveActivated = false;
       // Applies a map Burner (from the pre-move ask, or a person's map
       // pause -- milestone 3 checkpoint 4). Ignored unless it's carried
       // and its target, if any, is a closed node.
@@ -828,17 +843,18 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
           graph = reopenNode(graph, targetNodeId);
           playerState = removeOneCarriedBurner(playerState, picked.burnerId);
           log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId, targetNodeId });
-        } else if (burnerDef.mapEffect.kind === 'freeMove' && !freeMoveActivated) {
-          freeMoveActivated = true;
-          playerState = removeOneCarriedBurner(playerState, picked.burnerId);
-          log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId });
-        } else if (burnerDef.mapEffect.kind === 'revealUpcoming') {
-          // Genuine no-op: every node's real type is already visible to
-          // traversalStrategy via `graph` itself -- this engine has no
-          // fog-of-war/hidden-map concept for a script to reveal into
-          // (Recon Ping is set aside until it does). Still consumes the
-          // Burner.
-          playerState = removeOneCarriedBurner(playerState, picked.burnerId);
+        } else if (burnerDef.mapEffect.kind !== 'reopenClosedNode') {
+          // Session 64 (BE4): Heat tools and Tunnel, kept on the player
+          // state until they're used up.
+          const effect = burnerDef.mapEffect;
+          const current: MapEffects = playerState.mapEffects ?? { freeMoves: 0 };
+          let next: MapEffects = current;
+          if (effect.kind === 'freeMoves') next = { ...current, freeMoves: current.freeMoves + effect.count };
+          else if (effect.kind === 'nextFightHeat') next = { ...current, nextFightHeat: Math.min(current.nextFightHeat ?? 1, effect.multiplier) };
+          else if (effect.kind === 'nextGatekeeperToll') next = { ...current, nextGatekeeperToll: Math.min(current.nextGatekeeperToll ?? 1, effect.multiplier) };
+          else if (effect.kind === 'tunnel') next = { ...current, tunnel: true };
+          else if (effect.kind === 'lowerHeat') heat = Math.max(0, heat - effect.amount);
+          playerState = { ...removeOneCarriedBurner(playerState, picked.burnerId), mapEffects: next };
           log.push({ type: 'mapBurnerActivated', layerIndex, burnerId: picked.burnerId });
         }
       };
@@ -866,7 +882,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
           position: movePosition,
           heat: moveHeat,
           playerState: movePlayer,
-          freeMove: freeMoveActivated,
+          freeMove: (playerState.mapEffects?.freeMoves ?? 0) > 0,
           fallback: (): MoveAnswer => traversalStrategy(moveGraph, movePosition, moveHeat, movePlayer),
         });
         if (typeof answer === 'string') {
@@ -884,7 +900,9 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       // cost before it's applied -- a free move skips the charge outright,
       // same floored-at-0 treatment applyOnMoveMods already gives Light
       // Footing (a move can never refund Heat, only discount/waive it).
-      const moveHeatCost = freeMoveActivated ? 0 : applyOnMoveMods(playerState.ownedModIds, moveResult.heatCost);
+      const freeMove = (playerState.mapEffects?.freeMoves ?? 0) > 0;
+      if (freeMove) playerState = { ...playerState, mapEffects: { ...playerState.mapEffects!, freeMoves: playerState.mapEffects!.freeMoves - 1 } };
+      const moveHeatCost = freeMove ? 0 : applyOnMoveMods(playerState.ownedModIds, moveResult.heatCost);
       playerState = applyQuietHoursMod(playerState); // session 44: Data trickle every QUIET_HOURS_MOVE_INTERVAL moves
       const afterMove = addHeat(heat, moveHeatCost, ceiling());
       heat = afterMove.heat;
@@ -897,6 +915,12 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       const node = graph.nodes.find((n) => n.id === position.nodeId);
       if (!node) throw new Error(`playRun: node "${position.nodeId}" is missing from its own layer graph`);
       if (node.state !== 'unresolved') continue; // already resolved -- just passing through
+      // Tunnel (session 64): pass through the next Shop or Safehouse
+      // without visiting it; it stays for later.
+      if (playerState.mapEffects?.tunnel && (node.type === 'shop' || node.type === 'safehouse')) {
+        playerState = { ...playerState, mapEffects: { ...playerState.mapEffects, tunnel: false } };
+        continue;
+      }
 
       const isFightNode = node.type === 'regularFight' || node.type === 'eliteFight' || node.type === 'gatekeeperFight';
       if (node.type === 'gatekeeperFight' && onBeforeGatekeeperFight) {
@@ -935,6 +959,20 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
+      // Map Burners' cuts (session 64, BE4): Proxy Chain cuts the next
+      // fight's Heat, win or lose; Spoofed Credentials / Golden Ticket cut
+      // the next gatekeeper's Heat toll on a win. Booked as `burner` Heat.
+      if (isFightNode && playerState.mapEffects) {
+        const fx = playerState.mapEffects;
+        const gatekeeperWin = node.type === 'gatekeeperFight' && outcome.newState === 'inert';
+        const multiplier = (fx.nextFightHeat ?? 1) * (gatekeeperWin ? (fx.nextGatekeeperToll ?? 1) : 1);
+        if (multiplier !== 1 && outcome.heatDelta > 0) {
+          const cut = outcome.heatDelta * (multiplier - 1);
+          outcome.heatDelta += cut;
+          outcome.heatSources = { ...outcome.heatSources, burner: outcome.heatSources.burner + cut };
+        }
+        playerState = { ...playerState, mapEffects: { ...fx, nextFightHeat: undefined, ...(gatekeeperWin ? { nextGatekeeperToll: undefined } : {}) } };
+      }
       const afterEncounter = addHeat(heat, outcome.heatDelta, ceiling());
       heat = afterEncounter.heat;
       // Removes any Burner(s) actually activated in this encounter's
@@ -1220,26 +1258,25 @@ export const synergyAwareMapBurnerStrategy: MapBurnerStrategy = (ctx) => {
     if (rescuer) return { burnerId: 'skeleton-key', targetNodeId: rescuer };
   }
 
-  // Ghost Protocol: the spec's condition is "whenever the pending move
-  // would cost Heat," which is checkable here even though the move
-  // itself hasn't been chosen yet -- the cost is flat per move
-  // (HEAT_PER_MOVE) and the only thing that changes it is a standing Mod
-  // (Light Footing), both readable from ctx. So this correctly declines
-  // to burn a Burner for a move that was already free.
-  if (carries('ghost-protocol') && applyOnMoveMods(ctx.playerState.ownedModIds, HEAT_PER_MOVE) > 0) {
+  const fx = ctx.playerState.mapEffects;
+  // Ghost Protocol: when moves cost Heat and none are already free.
+  if (carries('ghost-protocol') && applyOnMoveMods(ctx.playerState.ownedModIds, HEAT_PER_MOVE) > 0 && !(fx?.freeMoves ?? 0)) {
     return { burnerId: 'ghost-protocol' };
   }
-
-  // Recon Ping: activated unconditionally, but not for the reason
-  // session 45's design assumed. Its revealUpcoming effect is a
-  // documented no-op in this engine -- there's no fog-of-war for a
-  // script to reveal into, every node's type is already visible to
-  // traversalStrategy via `graph` (see run.ts's own call site comment).
-  // The real payoff is inventory hygiene: BURNER_CAP is 3 and
-  // acquireBurner declines outright once full, so a dead Recon Ping
-  // squatting in the inventory blocks acquiring a Burner that does
-  // something. Spending it frees the slot.
-  if (carries('recon-ping')) return { burnerId: 'recon-ping' };
+  // Session 64 (BE4). Log Wiper once Heat passes half the allowance.
+  const allowance = ctx.playerState.heatAllowance ?? 1;
+  if (carries('log-wiper') && ctx.heat >= allowance / 2) return { burnerId: 'log-wiper' };
+  // The gatekeeper's toll cuts, once it's one move away.
+  const linked = ctx.graph.edges.flatMap((e) => (e.a === ctx.position.nodeId ? [e.b] : e.b === ctx.position.nodeId ? [e.a] : []));
+  const gatekeeperNext = linked.includes(ctx.graph.gatekeeperNodeId);
+  if (gatekeeperNext && fx?.nextGatekeeperToll === undefined) {
+    if (carries('golden-ticket')) return { burnerId: 'golden-ticket' };
+    if (carries('spoofed-credentials')) return { burnerId: 'spoofed-credentials' };
+  }
+  // Proxy Chain on whatever fight comes next.
+  if (carries('proxy-chain') && fx?.nextFightHeat === undefined) return { burnerId: 'proxy-chain' };
+  // Tunnel: the simulated player routes by node type and wants every Shop
+  // and Safehouse it walks into, so it holds Tunnel rather than skip one.
 
   return null;
 };

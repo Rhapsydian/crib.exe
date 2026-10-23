@@ -131,7 +131,7 @@
         spent.splice(i, 1);
         return false;
       }
-      return BURNER_DEFINITIONS[id].combatEffect !== undefined;
+      return BURNER_DEFINITIONS[id].combat !== undefined;
     });
     return [...new Set(left)].map((id) => ({ id, count: left.filter((b) => b === id).length }));
   });

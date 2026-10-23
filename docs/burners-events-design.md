@@ -41,7 +41,7 @@ the start of a turn (Flash Drive: Credit 5, a tenth of a fight).
 - **BE5. Events and Burners.** Three or four **contraband** Burners are
   offered only by Events, usually behind the riskier choice; Events can
   also grant Burners from the general pool (the user).
-- **BE6. Pool and carry.** About 23 Burners; the carry limit stays 3.
+- **BE6. Pool and carry.** 24 Burners; the carry limit stays 3.
   More Burner slots is a meta-progression idea (`BACKLOG.md`).
 - **BE7. The slate** (numbers are starting points, tuned by measurement):
 

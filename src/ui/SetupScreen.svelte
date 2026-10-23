@@ -47,7 +47,7 @@
     </div>
   {/each}
 
-  <label class="toggle"><input type="checkbox" bind:checked={burners} /> carry Burners (one Flash Drive, one EMP Charge)</label>
+  <label class="toggle"><input type="checkbox" bind:checked={burners} /> carry Burners (Packet Storm, Bootstrap Loader, Flash Drive)</label>
 
   <button class="start" onclick={() => onstart(classId, enemy, burners)}>▶ jack in: {CLASS_DEFINITIONS[classId].name} vs {enemy.name}</button>
 </div>

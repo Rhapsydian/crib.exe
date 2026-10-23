@@ -147,7 +147,7 @@ describe('LiveRun', () => {
     const discard = discardSkillStrategy(0.85);
     const peg = pegSkillStrategy(0.85);
     // Found by search: this run's layer-4 gatekeeper toll maxes Heat.
-    const run = new LiveRun('daemon-overclock', 18);
+    const run = new LiveRun('exploit-overclock', 39);
     const answerFight = (i: number) => {
       if (run.fight?.result) return run.answer(null);
       const r = run.fight!.frame!.request;
