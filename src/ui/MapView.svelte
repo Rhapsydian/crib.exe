@@ -2,6 +2,7 @@
   import { backdropCells, MAP_VIEW } from '../engine/map-gen';
   import type { LayerGraph } from '../engine/map-types';
   import { NODE_KIND } from './map-kinds';
+  import { enemyById } from '../engine/enemies';
 
   // One layer of the map (milestone 3), drawn where the generator laid it
   // out (map-gen.ts stores each node's position): the faint hex backdrop,
@@ -70,6 +71,12 @@
       {#if n.state === 'closed'}<path d="M{-r * 0.7},{-r * 0.7} L{r * 0.7},{r * 0.7} M{r * 0.7},{-r * 0.7} L{-r * 0.7},{r * 0.7}" class="strike" />{/if}
       {#if n.id === here}<circle r={r + 1.8} class="here" />{/if}
       {#if selected === n.id}<circle r={r + 2.6} class="pick" />{/if}
+      <!-- The layer's gatekeeper, named (session 68, E12): above its node,
+           or below when the node sits near the top edge. -->
+      {#if big && n.assignedEnemyId}
+        {@const name = enemyById(n.assignedEnemyId)?.name}
+        {#if name}<text class="gk-name" y={p.y < r + 10 ? r + 5.5 : -(r + 3.5)}>{name}</text>{/if}
+      {/if}
     </g>
   {/each}
 </svg>
@@ -87,6 +94,14 @@
     stroke: var(--line);
     stroke-width: 0.25;
     opacity: 0.55;
+  }
+  .gk-name {
+    font-size: 4.4px;
+    fill: var(--danger);
+    text-anchor: middle;
+    dominant-baseline: central;
+    letter-spacing: 0.04em;
+    pointer-events: none;
   }
   .link {
     stroke: var(--line);
