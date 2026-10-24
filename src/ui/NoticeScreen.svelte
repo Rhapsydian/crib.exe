@@ -25,7 +25,7 @@
     // Data and Heat as phrased for the choice; grants by what was rolled.
     const amounts = effectPhrases(e, layer).filter((p) => /(Data|Heat)$/.test(p));
     const g = request.grant;
-    const named = [g.subroutine && `Subroutine: ${g.subroutine.name}`, g.mod && `Mod: ${g.mod.name}`, g.burner && `Burner: ${g.burner.name}`].filter(Boolean) as string[];
+    const named = [g.subroutine && `Subroutine: ${g.subroutine.name}`, g.mod && `Mod: ${g.mod.name}`, g.burner && `Burner: ${g.burner.name}`, g.classModUpgrade && 'Your class Mod is upgraded to II.'].filter(Boolean) as string[];
     const shown = [...amounts, ...named];
     if (e.bonusFight) shown.push(`A fight breaks out (${e.bonusFight.tier}).`);
     return { kicker: `EVENT · ${request.event.name}`, title: request.choice.label, story: request.text, lines: shown.length ? shown : ['Nothing came of it.'] };

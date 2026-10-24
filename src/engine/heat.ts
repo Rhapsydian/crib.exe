@@ -207,10 +207,13 @@ export function fightHeatOutlook(o: {
   enemyFill: number;
   /** A Heat Sink refund on this win, if any. */
   refund?: number;
+  /** Ghost Credentials' multiple on the fight's Heat (session 65), if any. */
+  multiplier?: number;
 }): FightHeatOutlook {
   const now = Math.min(o.allowance, o.heat + o.alarm);
-  const ifWin = Math.max(0, o.heat + fightBaselineHeat(o.tier, o.layerIndex) + o.alarm + fightPerformanceHeat(o.tier, o.layerIndex, o.enemyFill) - (o.refund ?? 0));
-  const ifLose = o.tier === 'gatekeeper' ? undefined : o.heat + heatFromLoss(o.tier, o.layerIndex) + o.alarm;
+  const scaled = (gain: number) => (gain > 0 ? gain * (o.multiplier ?? 1) : gain);
+  const ifWin = Math.max(0, o.heat + scaled(fightBaselineHeat(o.tier, o.layerIndex) + o.alarm + fightPerformanceHeat(o.tier, o.layerIndex, o.enemyFill) - (o.refund ?? 0)));
+  const ifLose = o.tier === 'gatekeeper' ? undefined : o.heat + scaled(heatFromLoss(o.tier, o.layerIndex) + o.alarm);
   return {
     now,
     ifWin: Math.min(o.allowance, ifWin),

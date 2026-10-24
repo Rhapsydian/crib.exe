@@ -11,6 +11,8 @@ export interface FightHeatContext {
   layerIndex: number;
   /** Heat Sink's refund on a win here, if any. */
   refund: number;
+  /** Ghost Credentials' multiple on the fight's Heat (session 65). */
+  multiplier?: number;
 }
 
 /**

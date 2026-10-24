@@ -1,4 +1,5 @@
-import type { EventDefinition } from './event-types';
+import type { EventChoice, EventDefinition } from './event-types';
+import type { ModId } from './mod-types';
 import { authoredPiece } from './content/starting-loadouts';
 import { MOD_DEFINITIONS } from './mods';
 
@@ -17,6 +18,13 @@ import { MOD_DEFINITIONS } from './mods';
  * TBD/playtesting placeholders, same discipline as every other numeric
  * constant in this project.
  */
+
+/** Clean Room's Data price for the class Mod upgrade, and Dead Man's
+ * Login's for Ghost Credentials (session 65, measured: the simulated
+ * player holds a median 41 Data at layer-1 Events, 93-96 at layers 2-3;
+ * Clean Room's sure upgrade costs about what you hold by then). */
+export const CLEAN_ROOM_DATA = 90;
+export const DEAD_MANS_LOGIN_DATA = 40;
 
 export const EVENT_ROSTER: EventDefinition[] = [
   {
@@ -512,4 +520,184 @@ export const EVENT_ROSTER: EventDefinition[] = [
       },
     ],
   },
+  // --- Session 65's Mod Events (docs/mods-design.md M11): the class Mod
+  // upgrades and the double-edged Mods, each with its story. A choice
+  // whose Mod you already hold is greyed (choiceUnavailable).
+  {
+    id: 'firmware-update',
+    name: 'Firmware Update',
+    text: "A vendor's update server is pushing signed firmware to every machine on the segment. Slip your class Mod into the queue and it might come back upgraded.",
+    choices: [
+      {
+        id: 'push-it-through',
+        label: 'Push it through',
+        riskTier: 'gamble',
+        outcomes: [
+          { probability: 0.6, effect: { classModUpgrade: true }, text: 'The patch installs cleanly. Your class Mod comes back sharper than it left.' },
+          { probability: 0.4, effect: { heatLosses: 0.53 }, text: 'The signature check fails. Your class Mod comes back unchanged, and the server reports the attempt.' },
+        ],
+      },
+      {
+        id: 'leave-it',
+        label: 'Leave it',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: {}, text: 'The update rolls on without you.' }],
+      },
+    ],
+  },
+  {
+    id: 'clean-room',
+    name: 'Clean Room',
+    minLayer: 3,
+    text: 'An air-gapped lab, one engineer, no logs. Custom firmware for anyone who can pay, and no questions for anyone who does.',
+    choices: [
+      {
+        id: 'pay-data',
+        label: 'Pay in Data',
+        riskTier: 'transparent',
+        requiresData: CLEAN_ROOM_DATA,
+        outcomes: [{ probability: 1, effect: { dataDelta: -CLEAN_ROOM_DATA, classModUpgrade: true }, text: 'The engineer works in silence and hands it back finished.' }],
+      },
+      {
+        id: 'pay-favours',
+        label: 'Pay in favours',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { heatLosses: 0.93, classModUpgrade: true }, text: 'The engineer wants a favour, and the favour is a loud one.' }],
+      },
+      {
+        id: 'leave',
+        label: 'Leave',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: {}, text: 'The door seals behind you.' }],
+      },
+    ],
+  },
+  {
+    id: 'mining-rig',
+    name: 'The Mining Rig',
+    text: "A cryptominer's rig in a forgotten server closet, cooled by a desk fan and hope. Its tuning scripts push hardware well past what it was rated for.",
+    choices: [
+      {
+        id: 'timing-scripts',
+        label: 'Borrow its timing scripts',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { modGrant: { specific: MOD_DEFINITIONS['overclocked-kernel'] } }, text: 'Your first moves come fast now. Everything after comes slower.' }],
+      },
+      {
+        id: 'strip-safeties',
+        label: 'Strip out its safeties',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { modGrant: { specific: MOD_DEFINITIONS['glass-cannon'] } }, text: 'No limits and no margin, for either side.' }],
+      },
+      {
+        id: 'leave-it-running',
+        label: 'Leave it running',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: {}, text: 'The fan rattles on.' }],
+      },
+    ],
+  },
+  {
+    id: 'counting-engine',
+    name: 'The Counting Engine',
+    text: "A casino's back-office algorithm that counts cards for the house. Someone left its weights exposed, and it has opinions about which hands matter.",
+    choices: [
+      {
+        id: 'learn-fifteens',
+        label: 'Learn its fifteens',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { modGrant: { specific: MOD_DEFINITIONS['fifteen-fold'] } }, text: 'It values fifteens above everything. Now so do you.' }],
+      },
+      {
+        id: 'learn-pairs',
+        label: 'Learn its pairs',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { modGrant: { specific: MOD_DEFINITIONS['pair-fold'] } }, text: 'It hunts pairs and ignores the rest. Now so do you.' }],
+      },
+      {
+        id: 'close-the-session',
+        label: 'Close the session',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: {}, text: 'The house keeps its secrets.' }],
+      },
+    ],
+  },
+  {
+    id: 'dead-mans-login',
+    name: "Dead Man's Login",
+    text: 'An employee left months ago, but their credentials never did. Someone is selling them, still valid and still trusted by every door on the map.',
+    choices: [
+      {
+        id: 'buy-them',
+        label: 'Buy them',
+        riskTier: 'transparent',
+        requiresData: DEAD_MANS_LOGIN_DATA,
+        outcomes: [{ probability: 1, effect: { dataDelta: -DEAD_MANS_LOGIN_DATA, modGrant: { specific: MOD_DEFINITIONS['ghost-credentials'] } }, text: 'You walk the network unseen, but every fight you pick draws more attention.' }],
+      },
+      {
+        id: 'lift-them',
+        label: 'Lift them from the seller',
+        riskTier: 'gamble',
+        outcomes: [
+          { probability: 0.5, effect: { modGrant: { specific: MOD_DEFINITIONS['ghost-credentials'] } }, text: 'You take the login and leave the seller none the wiser.' },
+          { probability: 0.5, effect: { bonusFight: { tier: 'elite' } }, text: 'The seller was bait, and the buyer list goes to security.' },
+        ],
+      },
+      {
+        id: 'pass',
+        label: 'Pass',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: {}, text: 'Some doors are better left closed.' }],
+      },
+    ],
+  },
+  {
+    id: 'the-fence',
+    name: 'The Fence',
+    minLayer: 2,
+    text: 'A fence who moves stolen code offers a standing arrangement: better prices and rarer stock, as long as you keep coming back. Every visit leaves a trail.',
+    choices: [
+      {
+        id: 'shake-on-it',
+        label: 'Shake on it',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: { modGrant: { specific: MOD_DEFINITIONS['black-market-ties'] } }, text: 'Every Shop will know your face now, and so will everyone watching them.' }],
+      },
+      {
+        id: 'decline',
+        label: 'Decline',
+        riskTier: 'transparent',
+        outcomes: [{ probability: 1, effect: {}, text: "The fence shrugs. There's always another buyer." }],
+      },
+    ],
+  },
 ];
+
+/** The Folds reprice the same scoring, so they never combine. */
+const EXCLUSIVE_MODS: Partial<Record<ModId, ModId>> = { 'fifteen-fold': 'pair-fold', 'pair-fold': 'fifteen-fold' };
+
+/** What an Event choice needs that the player lacks (session 64-65), or
+ * null when it can be taken: the Data it costs, a Mod already held (or
+ * one that won't combine with a held Mod), a class Mod already upgraded.
+ * Greyed on the Event screen; the simulated player skips it. */
+export function choiceUnavailable(choice: EventChoice, player: { data: number; ownedModIds: ModId[]; classModUpgraded?: boolean }): string | null {
+  if ((choice.requiresData ?? 0) > player.data) return `Needs ${choice.requiresData} Data (you have ${player.data}).`;
+  for (const { effect } of choice.outcomes) {
+    if (effect.classModUpgrade && player.classModUpgraded) return 'Your class Mod is already upgraded.';
+    const grant = effect.modGrant;
+    if (!grant || !('specific' in grant)) continue;
+    const id = grant.specific.id;
+    if (player.ownedModIds.includes(id)) return `You already have ${grant.specific.name}.`;
+    const other = EXCLUSIVE_MODS[id];
+    if (other && player.ownedModIds.includes(other)) return `${grant.specific.name} doesn't combine with your ${MOD_DEFINITIONS[other].name}.`;
+  }
+  return null;
+}
+
+/** Whether an Event still has something to offer the player: one that
+ * grants named Mods or the class upgrade isn't drawn once every such
+ * choice is unavailable (session 65). */
+export function eventStillOffers(event: EventDefinition, player: Parameters<typeof choiceUnavailable>[1]): boolean {
+  const granting = event.choices.filter((c) => c.outcomes.some((o) => o.effect.classModUpgrade || (o.effect.modGrant && 'specific' in o.effect.modGrant)));
+  return granting.length === 0 || granting.some((c) => choiceUnavailable(c, { ...player, data: Infinity }) === null);
+}

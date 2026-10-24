@@ -3,7 +3,8 @@ import { createRng } from './rng';
 import { createNode } from './map-types';
 import { resolveEncounter, alwaysFirstEventChoice, synergyAwareEventChoice, type EventChoiceStrategy } from './encounters';
 import { createInitialPlayerState, playRun, type RunPlayerState } from './run';
-import { EVENT_ROSTER } from './events';
+import { EVENT_ROSTER, choiceUnavailable, eventStillOffers } from './events';
+import type { ModId } from './mod-types';
 import type { EventChoice, EventDefinition } from './event-types';
 import { layerHeatAllowance } from './heat';
 import { BACKUP_GENERATOR_HEAT_BONUS } from './mods';
@@ -27,8 +28,8 @@ function playerWith(overrides: Partial<RunPlayerState>): RunPlayerState {
 }
 
 describe('EVENT_ROSTER content shape', () => {
-  it("has the 18 Events (8, plus session 64's ten), each with 2-4 distinctly-ided choices", () => {
-    expect(EVENT_ROSTER).toHaveLength(18);
+  it("has the 24 Events (8, session 64's ten, session 65's six), each with 2-4 distinctly-ided choices", () => {
+    expect(EVENT_ROSTER).toHaveLength(24);
     const seenIds = new Set<string>();
     for (const event of EVENT_ROSTER) {
       expect(seenIds.has(event.id)).toBe(false);
@@ -569,5 +570,28 @@ describe('Event choices that cost Data (session 64)', () => {
       }
     }
     expect(checked).toBeGreaterThan(0);
+  });
+});
+
+describe("session 65's Mod Events (docs/mods-design.md M11)", () => {
+  const event = (id: string) => EVENT_ROSTER.find((e) => e.id === id)!;
+  const choice = (eventId: string, choiceId: string) => event(eventId).choices.find((c) => c.id === choiceId)!;
+  const player = (patch: Partial<{ data: number; ownedModIds: ModId[]; classModUpgraded: boolean }> = {}) => ({ data: 100, ownedModIds: [] as ModId[], ...patch });
+
+  it('greys a choice whose Mod is held, a Fold beside the other Fold, and an upgrade already made', () => {
+    expect(choiceUnavailable(choice('mining-rig', 'strip-safeties'), player())).toBeNull();
+    expect(choiceUnavailable(choice('mining-rig', 'strip-safeties'), player({ ownedModIds: ['glass-cannon'] }))).toMatch(/already have Glass Cannon/);
+    expect(choiceUnavailable(choice('counting-engine', 'learn-pairs'), player({ ownedModIds: ['fifteen-fold'] }))).toMatch(/doesn't combine/);
+    expect(choiceUnavailable(choice('firmware-update', 'push-it-through'), player({ classModUpgraded: true }))).toMatch(/already upgraded/);
+    expect(choiceUnavailable(choice('clean-room', 'pay-data'), player({ data: 10 }))).toMatch(/Needs/);
+  });
+
+  it("isn't drawn once it has nothing left to offer", () => {
+    expect(eventStillOffers(event('firmware-update'), player({ classModUpgraded: true }))).toBe(false);
+    expect(eventStillOffers(event('firmware-update'), player())).toBe(true);
+    expect(eventStillOffers(event('mining-rig'), player({ ownedModIds: ['glass-cannon'] }))).toBe(true);
+    expect(eventStillOffers(event('counting-engine'), player({ ownedModIds: ['pair-fold'] }))).toBe(false);
+    // An Event without named grants is always drawable.
+    expect(eventStillOffers(event('honeypot-lure'), player())).toBe(true);
   });
 });

@@ -1,4 +1,5 @@
 import { fightHeatOutlook } from './heat';
+import { GHOST_CREDENTIALS_FIGHT_HEAT } from './mods';
 import { describe, it, expect } from 'vitest';
 import { createNode, type LayerGraph } from './map-types';
 import { legalMoves } from './traversal';
@@ -665,6 +666,7 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
           alarm: e.outcome.heatSources.alarm,
           enemyFill: e.outcome.fight.finalFillFraction[1],
           refund: -e.outcome.heatSources.refund,
+          multiplier: e.outcome.heatSources.mod > 0 ? GHOST_CREDENTIALS_FIGHT_HEAT : 1,
         });
         // Before any map Burner's cut (booked as `burner` Heat, session 64).
         expect(won ? o.winGain : o.loseGain!).toBeCloseTo(e.outcome.heatDelta - e.outcome.heatSources.burner, 6);

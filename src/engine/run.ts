@@ -973,6 +973,13 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
+      // Ghost Credentials (session 65): each fight adds more Heat, booked
+      // as `mod` Heat (before any map Burner's cut, which then cuts it too).
+      if (isFightNode && playerState.ownedModIds.includes('ghost-credentials') && outcome.heatDelta > 0) {
+        const extra = outcome.heatDelta * (GHOST_CREDENTIALS_FIGHT_HEAT - 1);
+        outcome.heatDelta += extra;
+        outcome.heatSources = { ...outcome.heatSources, mod: outcome.heatSources.mod + extra };
+      }
       // Map Burners' cuts (session 64, BE4): Proxy Chain cuts the next
       // fight's Heat, win or lose; Spoofed Credentials / Golden Ticket cut
       // the next gatekeeper's Heat toll on a win. Booked as `burner` Heat.
@@ -988,13 +995,6 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         const fightsLeft = (fx.nextFightHeatFights ?? 0) - 1;
         const fightCut = fightsLeft > 0 ? { nextFightHeatFights: fightsLeft } : { nextFightHeat: undefined, nextFightHeatFights: undefined };
         playerState = { ...playerState, mapEffects: { ...fx, ...fightCut, ...(gatekeeperWin ? { nextGatekeeperToll: undefined } : {}) } };
-      }
-      // Ghost Credentials (session 65): each fight adds more Heat, booked
-      // as `mod` Heat.
-      if (isFightNode && playerState.ownedModIds.includes('ghost-credentials') && outcome.heatDelta > 0) {
-        const extra = outcome.heatDelta * (GHOST_CREDENTIALS_FIGHT_HEAT - 1);
-        outcome.heatDelta += extra;
-        outcome.heatSources = { ...outcome.heatSources, mod: outcome.heatSources.mod + extra };
       }
       const afterEncounter = addHeat(heat, outcome.heatDelta, ceiling());
       heat = afterEncounter.heat;
@@ -1140,6 +1140,8 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         playerState = yield* settleBench(playerState, benchCap);
       }
       if (outcome.eventGrant?.mod) playerState = acquireMod(playerState, outcome.eventGrant.mod);
+      // The class Mod's "II" upgrade (session 65): permanent.
+      if (outcome.eventGrant?.classModUpgrade) playerState = { ...playerState, classModUpgraded: true };
       if (outcome.eventGrant?.burner) playerState = yield* acquireBurnerAsking(playerState, outcome.eventGrant.burner);
       for (const burner of outcome.cacheBurners ?? []) playerState = yield* acquireBurnerAsking(playerState, burner);
       // Loadout reorder (session 46, checkpoint F) -- applied once here,

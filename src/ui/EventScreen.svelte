@@ -2,6 +2,7 @@
   import type { RunRequest } from '../engine/run-requests';
   import type { EventChoice } from '../engine/event-types';
   import { choiceOutcomes } from './visit-text';
+  import { choiceUnavailable } from '../engine/events';
 
   // An Event (milestone 3 checkpoint 4): a situation and its choices,
   // the scene told first (session 64).
@@ -11,8 +12,9 @@
 
   const RISK = { transparent: 'sure', visibleOdds: 'risky', gamble: 'gamble' } as const;
   let selected = $state<string | null>(null);
-  // A choice that pays in Data needs the Data (session 64).
-  const canPay = (c: EventChoice) => (c.requiresData ?? 0) <= request.playerState.data;
+  // A choice that pays in Data needs the Data (session 64); one granting
+  // a Mod you hold, or upgrading an upgraded class Mod, isn't open (65).
+  const unavailable = (c: EventChoice) => choiceUnavailable(c, request.playerState);
   const chosen = $derived(request.event.choices.find((c) => c.id === selected));
 </script>
 
@@ -22,10 +24,10 @@
   <!-- The scene first (session 64, BE10): never a bare choice. -->
   <p class="scene">{request.event.text}</p>
   {#each request.event.choices as c (c.id)}
-    <button class="choice" class:sel={selected === c.id} disabled={!canPay(c)} onclick={() => (selected === c.id ? onchoose(c) : (selected = c.id))}>
+    <button class="choice" class:sel={selected === c.id} disabled={unavailable(c) !== null} onclick={() => (selected === c.id ? onchoose(c) : (selected = c.id))}>
       <div class="label"><b>{c.label}</b> <span class="risk {c.riskTier}">{RISK[c.riskTier]}</span></div>
       {#each choiceOutcomes(c, request.layer) as line, i (i)}<div class="line">{line}</div>{/each}
-      {#if !canPay(c)}<div class="line short">Needs {c.requiresData} Data (you have {request.playerState.data}).</div>{/if}
+      {#if unavailable(c)}<div class="line short">{unavailable(c)}</div>{/if}
     </button>
   {/each}
   <button class="confirm" disabled={!chosen} onclick={() => chosen && onchoose(chosen)}>{chosen ? chosen.label : 'tap a choice'}</button>

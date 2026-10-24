@@ -54,8 +54,8 @@ import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersFor
 import type { BurnerId, BurnerDefinition } from './burner-types';
 import { BURNER_CAP, BURNER_DEFINITIONS, shopModifiersForActivatedBurner, drawBurnerRewardOptions, generalBurnerPool } from './burners';
 import type { ClassId } from './classes';
-import type { EventDefinition, EventChoice, EventRiskTier, Grant } from './event-types';
-import { EVENT_ROSTER } from './events';
+import type { EventDefinition, EventChoice, EventGrant, EventRiskTier, Grant } from './event-types';
+import { EVENT_ROSTER, choiceUnavailable, eventStillOffers } from './events';
 
 /**
  * Node encounter resolution (session 19/20 checkpoint E, player loadout
@@ -376,7 +376,7 @@ export interface EncounterOutcome {
    * step in run.ts -- the grant (if any) is just applied outright. Only
    * ever set on an 'event' node; every other node omits the field
    * entirely rather than setting it to an empty object. */
-  eventGrant?: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition };
+  eventGrant?: EventGrant;
   /** Burners a Cache's bundle hands over outright (M8); only ever set on
    * a 'cache' node. */
   cacheBurners?: BurnerDefinition[];
@@ -1163,17 +1163,19 @@ export function* resolveEncounterRequests(
       // apply here: an Event, like a regular/elite fight, is one-and-
       // done, never needing a stable identity across revisits).
       // Session 64: an Event can be held back to deeper layers.
-      const eligibleEvents = EVENT_ROSTER.filter((e) => (e.minLayer ?? 1) <= layerIndex);
+      const eligibleEvents = EVENT_ROSTER.filter((e) => (e.minLayer ?? 1) <= layerIndex && eventStillOffers(e, playerState));
       const eventDef = eligibleEvents[rng.nextInt(eligibleEvents.length)];
-      // A choice that pays in Data is only available when you can pay; the
-      // simulated player picks among the affordable ones.
-      const affordable = (c: EventChoice) => (c.requiresData ?? 0) <= playerState.data;
+      // A choice that pays in Data is only available when you can pay, one
+      // granting a Mod you hold isn't (session 65); the simulated player
+      // picks among the available ones.
+      const affordable = (c: EventChoice) => choiceUnavailable(c, playerState) === null;
       const offered: EventDefinition = { ...eventDef, choices: eventDef.choices.filter(affordable) };
       const asked = yield* ask({ kind: 'event', event: eventDef, playerState, heat: currentHeat, layer: layerIndex, fallback: () => eventChoiceStrategy(offered, playerState, currentHeat) });
       const choice = affordable(asked) ? asked : eventChoiceStrategy(offered, playerState, currentHeat);
       const { effect, text: outcomeText } = rollWeightedOutcome(choice.outcomes, rng);
 
-      const eventGrant: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition } = {};
+      const eventGrant: EventGrant = {};
+      if (effect.classModUpgrade) eventGrant.classModUpgrade = true;
       if (effect.subroutineGrant) eventGrant.subroutine = resolveSubroutineGrant(effect.subroutineGrant, playerState.classId, rng);
       if (effect.modGrant) eventGrant.mod = resolveModGrant(effect.modGrant, playerState.classId, playerState.ownedModIds, rng);
       if (effect.burnerGrant) eventGrant.burner = resolveBurnerGrant(effect.burnerGrant, rng);

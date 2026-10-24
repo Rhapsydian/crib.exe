@@ -6,7 +6,7 @@ import { CLASS_DEFINITIONS, type ClassId } from '../engine/classes';
 import { SYNERGY_AWARE_PROFILE } from '../engine/profiles';
 import { gatekeeperReachable, opportunisticTraversal, runRequests, type RunPlayerState, type RunResult } from '../engine/run';
 import { currentHeatCeiling } from '../engine/heat';
-import { HEAT_SINK_HEAT_REFUND } from '../engine/mods';
+import { GHOST_CREDENTIALS_FIGHT_HEAT, HEAT_SINK_HEAT_REFUND } from '../engine/mods';
 import type { RunRequest } from '../engine/run-requests';
 import { BURNER_DEFINITIONS } from '../engine/burners';
 import { acquireSubroutine } from '../engine/loadout';
@@ -66,6 +66,7 @@ class RunFight implements FightSession {
       tier,
       layerIndex: layer - 1,
       refund: tier !== 'regular' && player.ownedModIds.includes('heat-sink') ? HEAT_SINK_HEAT_REFUND : 0,
+      multiplier: player.ownedModIds.includes('ghost-credentials') ? GHOST_CREDENTIALS_FIGHT_HEAT : 1,
     };
     this.enemy = enemy;
     this.tier = tier;

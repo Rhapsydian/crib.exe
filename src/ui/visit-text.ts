@@ -28,6 +28,7 @@ export function effectPhrases(effect: EventEffect, layer: number): string[] {
   if (effect.modGrant) out.push(grantText(effect.modGrant, 'Mod'));
   if (effect.burnerGrant) out.push('contraband' in effect.burnerGrant ? 'a contraband Burner' : grantText(effect.burnerGrant, 'Burner'));
   if (effect.bonusFight) out.push(`a fight (${effect.bonusFight.tier})`);
+  if (effect.classModUpgrade) out.push('your class Mod upgraded to II');
   return out.length ? out : ['nothing'];
 }
 

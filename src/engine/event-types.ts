@@ -44,6 +44,18 @@ export interface EventEffect {
   /** A classic gamble-tier beat: triggers a real fight for a bigger
    * payout (checkpoint I resolves it via resolveFight's own machinery). */
   bonusFight?: { tier: 'regular' | 'elite' };
+  /** Upgrades the class Mod to its "II" version (session 65,
+   * docs/mods-design.md M10-M11). */
+  classModUpgrade?: true;
+}
+
+/** What an Event outcome actually granted, once rolled. */
+export interface EventGrant {
+  subroutine?: SubroutineDefinition;
+  mod?: ModDefinition;
+  burner?: BurnerDefinition;
+  /** The class Mod was upgraded (session 65). */
+  classModUpgrade?: true;
 }
 
 /** One roll-weighted branch of a choice's resolution. A `transparent`

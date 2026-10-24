@@ -1,7 +1,7 @@
 import type { BurnerDefinition, BurnerId } from './burner-types';
 import type { CombatAnswer, CombatRequest, CombatResult } from './combat';
 import type { EnemyDefinition } from './enemies';
-import type { EventChoice, EventDefinition, EventEffect } from './event-types';
+import type { EventChoice, EventDefinition, EventEffect, EventGrant } from './event-types';
 import type { LayerGraph, RunPosition } from './map-types';
 import type { ModDefinition } from './mod-types';
 import type { SafehouseAction } from './merge';
@@ -46,7 +46,7 @@ export type RunRequest =
   /** Notices (milestone 3 checkpoint 4): what an Event's choice came to
    * (before any bonus fight it starts), and what a Cache held. Nothing to
    * decide; the fallback is a no-op. */
-  | Ask<'eventResult', { event: EventDefinition; choice: EventChoice; effect: EventEffect; text?: string; grant: { subroutine?: SubroutineDefinition; mod?: ModDefinition; burner?: BurnerDefinition }; heat: number }, null>
+  | Ask<'eventResult', { event: EventDefinition; choice: EventChoice; effect: EventEffect; text?: string; grant: EventGrant; heat: number }, null>
   | Ask<'cacheOpened', { contents: 'subroutine' | 'bundle' | 'mod'; data: number; burners: BurnerDefinition[] }, null>
   /** A trace evasion (session 63, docs/trace-evasion-design.md): its
    * start and end are notices; in between, the player's own decisions in
