@@ -211,6 +211,9 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
 - **M13. Content first, supply later (the user, after checkpoint 2's
   jump to 36.1%).** Finish the Mods content; tune Mod supply (draw
   weights, how many) afterwards.
+- **M14. The Folds exclude each other, and an Event comes up once a run
+  (the user, checkpoint 5).** Holding either Fold greys out the other;
+  the run remembers the Events met and never draws one again.
 - **M12. Raw Cribbage stays raw (the user).** No Folds in the trace
   evasion; the evasion, and any Cribbage-skill check added later, is plain
   Cribbage skill, untouched by Mods.
