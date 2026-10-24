@@ -149,13 +149,17 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     text: 'Your next 6 moves cost no Heat.',
     mapEffect: { kind: 'freeMoves', count: 6 },
   },
+  // Reworked (session 68, docs/enemies-design.md E18): was a map Burner
+  // reopening a closed node, too rarely needed once no-route endings fell
+  // to ~2% of runs. Now contraband, used by itself when it saves you.
   'skeleton-key': {
     id: 'skeleton-key',
     name: 'Skeleton Key',
     rarity: 'rare',
-    contexts: ['map'],
-    text: 'Reopens a closed node on the map.',
-    mapEffect: { kind: 'reopenClosedNode' },
+    contraband: true,
+    passive: true,
+    contexts: [],
+    text: "If you lose a gatekeeper fight, you aren't quarantined: the fight starts over, once. Used up when it saves you.",
   },
   'log-wiper': {
     id: 'log-wiper',
@@ -269,11 +273,7 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
 
 /** Burners set aside: defined, but never offered. Empty since session 64
  * (Recon Ping was retired outright: no fog of war to reveal). */
-// Skeleton Key (session 67, the user's call): with the ejection fix, a run
-// is left with no route forward in about 0.3% of runs, too rare to carry a
-// Burner for. Set aside; its rework (perhaps a contraband second try at a
-// gatekeeper) is flagged for the gatekeeper pass.
-export const BURNERS_SET_ASIDE: ReadonlySet<BurnerId> = new Set<BurnerId>(['skeleton-key']);
+export const BURNERS_SET_ASIDE: ReadonlySet<BurnerId> = new Set<BurnerId>();
 
 /** The general Burner pool -- archetype-agnostic by default (DESIGN.md:
  * "not tied to the 4 archetypes"), unlike Mods' targeted-archetype

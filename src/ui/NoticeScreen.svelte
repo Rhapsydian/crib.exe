@@ -9,9 +9,13 @@
     request,
     layer,
     oncontinue,
-  }: { request: Extract<RunRequest, { kind: 'eventResult' | 'cacheOpened' }>; layer: number; oncontinue: () => void } = $props();
+  }: { request: Extract<RunRequest, { kind: 'eventResult' | 'cacheOpened' | 'burnerSaved' }>; layer: number; oncontinue: () => void } = $props();
 
   const view = $derived.by(() => {
+    // Skeleton Key (session 68): a lost gatekeeper fight starts over, once.
+    if (request.kind === 'burnerSaved') {
+      return { kicker: 'BURNER · SKELETON KEY', title: "You aren't quarantined.", lines: [`The Skeleton Key turns. Your fight against ${request.enemy.name} starts over.`, 'The Key is used up.'] };
+    }
     if (request.kind === 'cacheOpened') {
       const lines =
         request.contents === 'subroutine'

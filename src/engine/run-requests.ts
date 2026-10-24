@@ -47,6 +47,7 @@ export type RunRequest =
    * (before any bonus fight it starts), and what a Cache held. Nothing to
    * decide; the fallback is a no-op. */
   | Ask<'eventResult', { event: EventDefinition; choice: EventChoice; effect: EventEffect; text?: string; grant: EventGrant; heat: number }, null>
+  | Ask<'burnerSaved', { burnerId: BurnerId; enemy: EnemyDefinition }, null>
   | Ask<'cacheOpened', { contents: 'subroutine' | 'bundle' | 'mod'; data: number; burners: BurnerDefinition[] }, null>
   /** A trace evasion (session 63, docs/trace-evasion-design.md): its
    * start and end are notices; in between, the player's own decisions in

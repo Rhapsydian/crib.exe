@@ -268,7 +268,7 @@ export function burnersOf(carried: readonly BurnerId[], spentSoFar: readonly Bur
       side: 0,
       name: def.name,
       tag: `Burner · ${def.contraband ? 'contraband' : def.rarity}`,
-      text: def.combat ? def.text : 'No effect in a fight.',
+      text: def.combat || def.passive ? def.text : 'No effect in a fight.',
       spent: used !== -1,
     };
   });

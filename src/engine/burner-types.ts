@@ -110,4 +110,7 @@ export interface BurnerDefinition {
   sellValue?: number;
   /** Offered only by Events, never in Shops or fight rewards (BE5). */
   contraband?: boolean;
+  /** Works by itself, never activated (session 68: Skeleton Key); kept, not
+   * sold as a no-use Burner. */
+  passive?: true;
 }

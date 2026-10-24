@@ -19,7 +19,7 @@ export function burnerText(def: BurnerDefinition): string {
 
 /** Where a Burner is used, in a word. */
 export function burnerWhere(def: BurnerDefinition): string {
-  return def.contexts.length ? def.contexts.join(' / ') : 'sell';
+  return def.contexts.length ? def.contexts.join(' / ') : def.passive ? 'gatekeeper' : 'sell';
 }
 
 /** A subroutine's Process and Hook, as lines. */

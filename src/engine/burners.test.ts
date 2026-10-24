@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import type { BurnerId } from './burner-types';
+import type { SubroutineDefinition } from './subroutine-types';
 import type { ModId } from './mod-types';
 import { applyOnMoveMods } from './mods';
 import { HEAT_PER_MOVE } from './heat';
@@ -18,7 +19,6 @@ import {
   reopenNode,
   synergyAwareMapBurnerStrategy,
   neverActivateMapBurner,
-  exploreThenGatekeeper,
   type RunPlayerState,
   type MapBurnerStrategy,
 } from './run';
@@ -141,38 +141,29 @@ describe('Map-context activation -- MapBurnerStrategy', () => {
     expect(reopenNode(graph, 'does-not-exist')).toBe(graph);
   });
 
-  it('Skeleton Key reopens a real closed node end-to-end via playRun, and can rescue a run beelineToGatekeeper alone would end in noRouteRemains', () => {
-    // An empty loadout guarantees a loss (attrition) on every fight it
-    // visits -- exploreThenGatekeeper (not the default beelineToGatekeeper)
-    // is needed so it actually visits and loses several regular fights
-    // before reaching the gatekeeper, producing closed nodes to reopen.
-    // burnerAcquisitionStrategy disabled for the same reason as the
-    // Ghost Protocol test above -- isolates the one carried copy.
-    const alwaysSkeletonKey: MapBurnerStrategy = (ctx) =>
-      ctx.closedNodeIds.length > 0 && ctx.availableBurnerIds.includes('skeleton-key') ? { burnerId: 'skeleton-key', targetNodeId: ctx.closedNodeIds[0] } : null;
-    const result = playRun({
-      seed: 5,
-      layerNodeCounts: [8, 2, 2, 2],
-      installedLoadoutOverride: [],
-      carriedBurnerIdsOverride: ['skeleton-key'],
-      mapBurnerStrategy: alwaysSkeletonKey,
-      burnerAcquisitionStrategy: () => null,
-      traversalStrategy: exploreThenGatekeeper,
-    });
-    const activations = result.log.filter((e) => e.type === 'mapBurnerActivated' && e.burnerId === 'skeleton-key');
-    expect(activations.length).toBeGreaterThanOrEqual(1);
-
-    // Without Skeleton Key at all, the same scenario ends in
-    // noRouteRemains (an empty loadout closing nodes eventually strands
-    // the run) -- confirms the reopen genuinely changed the run's fate,
-    // not just that the log entry fired.
-    const withoutKey = playRun({
-      seed: 5,
-      layerNodeCounts: [8, 2, 2, 2],
-      installedLoadoutOverride: [],
-      traversalStrategy: exploreThenGatekeeper,
-    });
-    expect(withoutKey.outcome).toBe('noRouteRemains');
+  it("Skeleton Key (session 68): a lost gatekeeper fight starts over once, and the Key is used up", async () => {
+    const { runRequests } = await import('./run');
+    const weak: SubroutineDefinition[] = [{ id: 'weak', name: 'weak', archetype: 'exploit', alpha: { verb: 'credit', amount: 0.1 } }];
+    const play = (burners: BurnerId[]) => {
+      const run = runRequests({ seed: 1, classId: 'exploit-overclock', layerNodeCounts: [2, 2, 2, 2], installedLoadoutOverride: weak, carriedBurnerIdsOverride: burners });
+      let step = run.next();
+      let gatekeeperFights = 0, saved = 0;
+      while (!step.done) {
+        const req = step.value;
+        if (req.kind === 'fightStart' && req.tier === 'gatekeeper') gatekeeperFights++;
+        if (req.kind === 'burnerSaved') saved++;
+        step = run.next(req.fallback());
+      }
+      return { gatekeeperFights, saved, result: step.value };
+    };
+    const without = play([]);
+    expect(without.result.outcome).toBe('quarantined');
+    expect(without.gatekeeperFights).toBe(1);
+    const withKey = play(['skeleton-key']);
+    expect(withKey.saved).toBe(1);
+    expect(withKey.gatekeeperFights).toBe(2);
+    expect(withKey.result.outcome).toBe('quarantined');
+    expect(withKey.result.playerState.carriedBurnerIds).not.toContain('skeleton-key');
   });
 
   it('neverActivateMapBurner is the default -- no activation without an explicit strategy', () => {

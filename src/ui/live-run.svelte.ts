@@ -45,7 +45,7 @@ export type RunPause =
   | { kind: 'shopBurner'; request: Extract<RunRequest, { kind: 'shopBurner' }> }
   | { kind: 'shop'; request: Extract<RunRequest, { kind: 'shop' }> }
   | { kind: 'event'; request: Extract<RunRequest, { kind: 'event' }> }
-  | { kind: 'notice'; request: Extract<RunRequest, { kind: 'eventResult' | 'cacheOpened' }>; layer: number }
+  | { kind: 'notice'; request: Extract<RunRequest, { kind: 'eventResult' | 'cacheOpened' | 'burnerSaved' }>; layer: number }
   | { kind: 'over'; result: RunResult };
 
 /** A fight inside the run, as the fight screen sees it. */
@@ -281,6 +281,7 @@ export class LiveRun {
           return;
         case 'eventResult':
         case 'cacheOpened':
+        case 'burnerSaved':
           this.pause = { kind: 'notice', request: r, layer: this.#layer };
           return;
         case 'mapBurner': {

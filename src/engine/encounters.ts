@@ -153,6 +153,9 @@ function ownedSubroutineIds(playerState: RunPlayerState): string[] {
   return [...playerState.installedLoadout, ...playerState.bench].map((p) => p.id);
 }
 
+/** Skeleton Key's retry plays a different deal from the lost fight. */
+const SKELETON_KEY_SEED_STEP = 7919;
+
 export function combatThresholdsFor(
   playerState: RunPlayerState,
   enemy: EnemyDefinition,
@@ -607,10 +610,8 @@ function* resolveFight(
   const layer0 = layerIndex - 1;
   const baseline = fightBaselineHeat(kind, layer0);
   yield* ask({ kind: 'fightStart', enemy, tier: kind, layer: layerIndex, playerState, fallback: () => null });
-  const result: CombatResult = synthetic
-    ? syntheticCombatResult(synthetic, seed)
-    : yield* fightRequests([playerState.installedLoadout, scaledLoadout], {
-        seed,
+  const fight = (fightSeed: number) => fightRequests([playerState.installedLoadout, scaledLoadout], {
+        seed: fightSeed,
         ...combatThresholdsFor(playerState, enemy, layerIndex, fightNumber),
         classId: playerState.classId,
         ...enemyCombatOptions(enemy),
@@ -626,8 +627,20 @@ function* resolveFight(
         playStrategies: strategies.playStrategies,
         burnerActivationStrategies,
       });
-
+  let result: CombatResult = synthetic ? syntheticCombatResult(synthetic, seed) : yield* fight(seed);
   yield* ask({ kind: 'fightEnd', enemy, tier: kind, result, fallback: () => null });
+
+  // Skeleton Key (session 68, E18): a lost gatekeeper fight starts over,
+  // once, and the Key is used up. The lost attempt costs no Heat (a
+  // gatekeeper loss never did); the toll is still due on a win.
+  if (kind === 'gatekeeper' && result.winner !== 0 && !synthetic && playerState.carriedBurnerIds.includes('skeleton-key')) {
+    const spent = [...result.burnersUsedThisCombat, 'skeleton-key' as BurnerId];
+    yield* ask({ kind: 'burnerSaved', burnerId: 'skeleton-key', enemy, fallback: () => null });
+    yield* ask({ kind: 'fightStart', enemy, tier: kind, layer: layerIndex, playerState, fallback: () => null });
+    const retry = yield* fight(seed + SKELETON_KEY_SEED_STEP);
+    result = { ...retry, burnersUsedThisCombat: [...spent, ...retry.burnersUsedThisCombat] };
+    yield* ask({ kind: 'fightEnd', enemy, tier: kind, result, fallback: () => null });
+  }
   if (result.winner === 0) {
     const rewardTier: RewardTier = kind === 'regular' ? 'standard' : 'better';
     // Additive Mod-choice reward on elite/gatekeeper wins only (session
@@ -1356,7 +1369,7 @@ function spendFreelyAction(visit: ShopVisit, playerState: RunPlayerState, s: Sho
     const unusable = !stillOwned.has(id) || (playerState.rank[id] ?? 0) >= MERGE_RANK_CAP;
     if (unusable && n > visit.sold.copy.filter((c) => c === id).length) return { action: { kind: 'sell', item: 'copy', id }, phase: SPEND };
   }
-  const wallets = left(playerState.carriedBurnerIds, visit.sold.burner).filter((id) => BURNER_DEFINITIONS[id].contexts.length === 0);
+  const wallets = left(playerState.carriedBurnerIds, visit.sold.burner).filter((id) => BURNER_DEFINITIONS[id].contexts.length === 0 && !BURNER_DEFINITIONS[id].passive);
   if (wallets.length) return { action: { kind: 'sell', item: 'burner', id: wallets[0] }, phase: SPEND };
   // Buy: whatever each slate's strategy wants among what's still for sale
   // -- Mods first (what a person spends on: the user's 22-Mod run), then
