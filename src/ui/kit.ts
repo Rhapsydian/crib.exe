@@ -35,6 +35,7 @@ import {
   FIFTEEN_FOLD_RULE,
   PAIR_FOLD_RULE,
   OVERCLOCKED_KERNEL_BAR,
+  OVERCLOCKED_KERNEL_TURNS,
   GHOST_CREDENTIALS_FIGHT_HEAT,
   BLACK_MARKET_DISCOUNT,
   BLACK_MARKET_VISIT_HEAT,
@@ -183,10 +184,10 @@ export const MOD_TEXT: Record<GeneralModId, string> = {
   // --- Double-edged, Event-only (session 65, docs/mods-design.md M7, M9) ---
   'fifteen-fold': `Your fifteens are worth ${FIFTEEN_FOLD_RULE.fifteen} points instead of 2, but your pairs are worth only ${FIFTEEN_FOLD_RULE.pair}.`,
   'pair-fold': `Your pairs are worth ${PAIR_FOLD_RULE.pair} points instead of 2, but your fifteens are worth only ${PAIR_FOLD_RULE.fifteen}.`,
-  'overclocked-kernel': `Your first turn each fight fires your loadout twice, but your initiative bar is ${OVERCLOCKED_KERNEL_BAR} longer.`,
+  'overclocked-kernel': `Your first ${OVERCLOCKED_KERNEL_TURNS === 2 ? 'two turns' : `${OVERCLOCKED_KERNEL_TURNS} turns`} each fight fire your loadout twice, but your initiative bar is ${OVERCLOCKED_KERNEL_BAR} longer.`,
   'ghost-credentials': `Moving on the map adds no Heat, but each fight adds ${pct(GHOST_CREDENTIALS_FIGHT_HEAT - 1)} more Heat.`,
   'black-market-ties': `Shop prices are ${pct(BLACK_MARKET_DISCOUNT)} lower and each Shop sells a contraband Burner, but each Shop visit adds ${BLACK_MARKET_VISIT_HEAT} Heat.`,
-  'glass-cannon': `Each Credit you score is ${GLASS_CANNON_CREDIT} higher, but each enemy starts the fight at ${GLASS_CANNON_ENEMY_START} Containment.`,
+  'glass-cannon': `Each Credit you score is ${GLASS_CANNON_CREDIT} higher, but each enemy starts the fight with ${pct(GLASS_CANNON_ENEMY_START)} of its Containment filled.`,
 };
 
 const MOD_TEXT_PENDING = 'Rules text to come (milestone 3).';

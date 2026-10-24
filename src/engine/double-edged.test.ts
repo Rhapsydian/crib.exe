@@ -34,17 +34,19 @@ describe('double-edged Mods', () => {
     expect(fight([]).sides[0].scoringRule).toBeUndefined();
   });
 
-  it('Overclocked Kernel: the first turn each fight fires the loadout twice', () => {
-    const first = fireTurn(fight(['overclocked-kernel']), 0, { isDealer: false }).combatState;
+  it('Overclocked Kernel: the first two turns each fight fire the loadout twice', () => {
+    const turn = (s: CombatState) => fireTurn(s, 0, { isDealer: false }).combatState;
+    const first = turn(fight(['overclocked-kernel']));
     expect(first.sides[0].winGauge.progress).toBe(2);
-    expect(fireTurn(first, 0, { isDealer: false }).combatState.sides[0].winGauge.progress).toBe(3);
+    expect(turn(first).sides[0].winGauge.progress).toBe(4);
+    expect(turn(turn(first)).sides[0].winGauge.progress).toBe(5);
   });
 
   it('Glass Cannon: each Credit is higher; the enemy starts with Containment', () => {
     const s = fight(['glass-cannon']);
-    expect(s.sides[1].winGauge.progress).toBe(GLASS_CANNON_ENEMY_START);
+    expect(s.sides[1].winGauge.progress).toBe(100 * GLASS_CANNON_ENEMY_START);
     expect(creditWinGauge(s, 0, 1).sides[0].winGauge.progress).toBe(1 + GLASS_CANNON_CREDIT);
-    expect(creditWinGauge(s, 1, 1).sides[1].winGauge.progress).toBe(GLASS_CANNON_ENEMY_START + 1);
+    expect(creditWinGauge(s, 1, 1).sides[1].winGauge.progress).toBe(100 * GLASS_CANNON_ENEMY_START + 1);
   });
 
   it('Ghost Credentials: moving adds no Heat', () => {

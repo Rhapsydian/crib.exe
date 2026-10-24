@@ -43,6 +43,7 @@ import {
   PAIR_FOLD_RULE,
   GLASS_CANNON_CREDIT,
   GLASS_CANNON_ENEMY_START,
+  OVERCLOCKED_KERNEL_TURNS,
 } from './mods';
 import type { BurnerId, CombatBurnerEffect } from './burner-types';
 import {
@@ -650,7 +651,7 @@ export function applyModOnCombatStartPassives(combatState: CombatState): CombatS
   // Glass Cannon: the enemy starts the fight with some Containment.
   if (hasMod(state, 'glass-cannon')) {
     const gauge = state.sides[1].winGauge;
-    state = withSide(state, 1, { winGauge: { ...gauge, progress: gauge.progress + GLASS_CANNON_ENEMY_START } });
+    state = withSide(state, 1, { winGauge: { ...gauge, progress: gauge.progress + gauge.threshold * GLASS_CANNON_ENEMY_START } });
   }
   if (hasMod(state, 'deep-cache')) {
     noteMod(state, 0, ownMod('deep-cache'));
@@ -744,8 +745,8 @@ export function applyOccurrence(combatState: CombatState, occurrence: ScoringOcc
 // Rule-benders (session 65, docs/mods-design.md M6): the player's own.
 /** Thirty-One: the turn it gives sets off every Hook. */
 const THIRTY_ONE_HOOKS = 'thirty-one:hooks';
-/** Overclocked Kernel: its doubled first turn is spent. */
-const KERNEL_SPENT = 'overclocked-kernel:spent';
+/** Overclocked Kernel: doubled turns taken this fight. */
+const KERNEL_TURNS = 'overclocked-kernel:turns';
 
 /** The rule-bender Mods that read a scoring occurrence (side 0's). */
 function applyRuleBendersOnOccurrence(combatState: CombatState, occurrence: ScoringOccurrence, dealer: PlayerIndex | undefined): CombatState {
@@ -1159,11 +1160,12 @@ export function fireTurn(
     state = again.combatState;
     events.push(...again.events);
   }
-  // Overclocked Kernel (session 65): the player's first turn each fight
-  // fires the loadout twice.
-  if (side === 0 && hasMod(state, 'overclocked-kernel') && !state.sides[0].passiveState[KERNEL_SPENT]) {
+  // Overclocked Kernel (session 65): the player's first turns each fight
+  // fire the loadout twice.
+  const kernelTurns = passiveStat(state, 0, KERNEL_TURNS);
+  if (side === 0 && hasMod(state, 'overclocked-kernel') && kernelTurns < OVERCLOCKED_KERNEL_TURNS) {
     noteMod(state, 0, ownMod('overclocked-kernel'));
-    state = setPassiveStat(state, 0, KERNEL_SPENT, 1);
+    state = setPassiveStat(state, 0, KERNEL_TURNS, kernelTurns + 1);
     const again = fireLoadoutOnce(state, side, selfContext);
     state = again.combatState;
     events.push(...again.events);

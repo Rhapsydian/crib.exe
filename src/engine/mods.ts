@@ -119,17 +119,22 @@ export const ROOT_CAUSE_COUNTS = 1;
  * royal). Pair Fold: your pairs score 5, your fifteens 1. */
 export const FIFTEEN_FOLD_RULE = { fifteen: 3, pair: 1 } as const;
 export const PAIR_FOLD_RULE = { fifteen: 1, pair: 5 } as const;
-/** Overclocked Kernel: how much longer your initiative bar is. */
+/** Overclocked Kernel: how much longer your initiative bar is, and how
+ * many of your first turns each fight fire the loadout twice (was 1:
+ * measured +1.3 victory, the bar ate the opening). */
 export const OVERCLOCKED_KERNEL_BAR = 2;
+export const OVERCLOCKED_KERNEL_TURNS = 2;
 /** Ghost Credentials: each fight's Heat, as a multiple. */
 export const GHOST_CREDENTIALS_FIGHT_HEAT = 1.25;
 /** Black Market Ties: Shop discount, and the Heat each Shop visit adds. */
 export const BLACK_MARKET_DISCOUNT = 0.3;
 export const BLACK_MARKET_VISIT_HEAT = 8;
-/** Glass Cannon: added to each Credit you score; the enemy's starting
- * Containment. */
+/** Glass Cannon: added to each Credit you score; the share of the
+ * enemy's Containment filled at the start (was a flat 10, about a fifth
+ * of a typical limit: +19.7 victory, two rares; a quarter measured +12.5,
+ * the user's pick over +1 and 15%). */
 export const GLASS_CANNON_CREDIT = 2;
-export const GLASS_CANNON_ENEMY_START = 10;
+export const GLASS_CANNON_ENEMY_START = 0.25;
 
 /** Persistent Payload: your Burners' timed effects (temporary
  * subroutines, effects lasting turns or hands) last this many times as

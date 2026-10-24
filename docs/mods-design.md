@@ -259,3 +259,22 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
     37.0, Wraith 33.0; average 36.1% (was 26.8 after checkpoint 1). The
     supply is unchanged; the pool's new uncommons and rares are worth
     more than the commons they displace in the draw.
+- **Checkpoint 3, the double-edged Mods.** All six built, flagged
+  `doubleEdged` (never in the reward or Shop pool); a new `mod` Heat source
+  for Ghost Credentials and Black Market Ties (`double-edged.test.ts`).
+  Measured as full runs starting with the Mod (`mod-check.ts --part=run`,
+  100 seeds a class; none 39.0%; the rares Hot Standby, Root Cause and
+  Echo Chamber +10.2 to +11.8 victory):
+  - **Fifteen Fold** +9.5, **Pair Fold** +9.7 (net about a rare: kept).
+  - **Overclocked Kernel**: one doubled turn measured +1.3 (the longer
+    bar ate it), so "Your first two turns each fight fire your loadout
+    twice, but your initiative bar is 2 longer.": +12.7.
+  - **Glass Cannon**: +2 Credit and a flat 10 measured +19.7 (10 is about
+    a fifth of a typical Containment limit); now "Each Credit you score
+    is 2 higher, but each enemy starts the fight with 25% of its
+    Containment filled.": +12.5 (the user's pick; +1 and 15% measured
+    +11.2; the head start is the sensitive knob: +1 and a fifth +2.2).
+  - **Ghost Credentials** -25.6 Heat a run, **Black Market Ties** +19.1
+    Heat a run (with 30% off and contraband stock); both about 0 victory,
+    since Heat ends only 1-3% of the simulated player's runs. Kept, to
+    revisit when the enemy pass makes Heat bite.
