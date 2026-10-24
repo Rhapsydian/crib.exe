@@ -271,3 +271,12 @@ player strength), plus `run-outcomes.ts`.
   initiative a fifteen), which also pushed Heat losses to 19% through
   system strain. Phase Shift II unchanged; fine tuning in the win-rate
   pass. Next: retune elites and gatekeepers (E15).
+- **The retune after Wraith (E15).** Without Wraith pulling the average
+  down, elites read 84-89% and gatekeepers 89/87/77/72%. Retuned:
+  `ELITE_LAYER_TUNING` strength 1.68 / 1.7 / 1.85 / 2.3,
+  `GATEKEEPER_LAYER_STRENGTH` 0.89 / 0.98 / 1.0 / 1.0. Full runs (150
+  seeds a class): **players win 82.4 / 82.3 / 83.5 / 83.2% of elite
+  fights and 85.9 / 81.6 / 76.3 / 73.5% of gatekeeper fights by layer**,
+  6-7 hands. Run endings (100 seeds): **victory 25.5%**, quarantined
+  55.0%, Heat 17.2%, no route 2.3%. By class (200 seeds): Breacher 30.0,
+  Wraith 25.0, Eidolon 24.0, Blackhat 23.0, Warden 22.0, Operator 20.0%.

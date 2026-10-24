@@ -341,7 +341,7 @@ const OPENER_MAGNITUDE_SCALER = 1; // the opener window pins this to no scaling 
  * hands (a fixed gauge let deeper elite fights end in 3). TBD/playtesting.
  */
 export const ELITE_LAYER_TUNING = {
-  strength: [1.55, 1.6, 1.75, 2.3],
+  strength: [1.68, 1.7, 1.85, 2.3],
   gauges: [1, 1, 1.4, 2.2],
 } as const;
 
@@ -362,7 +362,7 @@ export const GATEKEEPER_LAYER_GAUGES = [1.15, 1.1, 2.2, 2.6] as const;
 /** Gatekeepers' strength by layer, on top of each one's own scale
  * (session 68, E13): harder by layer, players winning about 85 / 80 / 75
  * / 72%. TBD/playtesting. */
-export const GATEKEEPER_LAYER_STRENGTH = [0.85, 0.92, 0.98, 1.03] as const;
+export const GATEKEEPER_LAYER_STRENGTH = [0.89, 0.98, 1.0, 1.0] as const;
 
 /** Both win gauges' multiple for a fight (sessions 67-68): an elite's or a
  * gatekeeper's layer sets it; regulars play at the usual size. */
