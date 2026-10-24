@@ -42,3 +42,8 @@ end).
   up again: layer 1's allowance to ~52 (it still leaves 71% explorable),
   and flattening fight Heat's growth at layers 3-4 (mostly cuts tolls that
   catch a player after a gatekeeper; Heat ends 12.3% against ~10%).
+- **T3. Mod supply stays as is (the user):** 12.4 Mods by a winning run's
+  end (Shop 4.8, elites 4.1, gatekeepers and Caches 3.1, Events 0.5; 7.0
+  across all runs; `scripts/mod-supply.ts`), with run victory a touch
+  under 24-30% (classes 19.7-28.7%, average 23.4%, 300 seeds a class).
+  Classes next.
