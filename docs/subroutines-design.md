@@ -53,7 +53,7 @@ Hooks wait for several events (stepped).
   - **Packet Sniffer** (uncommon, new Process): Process: Take 1 of their
     Containment and add it to your Breach. Hook: While their Containment is
     over half, it takes 2 more. Rank III 100%.
-  - **Kill Switch** (rare, build-definer): Process: Credit 2. Hook: Once
+  - **Circuit Breaker** (drafted as Kill Switch) (rare, build-definer): Process: Credit 2. Hook: Once
     you've scored 3 fifteens since its Hook last went off, their bottom
     subroutine skips its next turn (Suspend). Rank III 100%.
 - **S8. Each run counts** (the M8 treatment for runs, the user's ask): a
@@ -71,7 +71,7 @@ Hooks wait for several events (stepped).
   - **Thread Pool** (uncommon, stepped pair Hook): Process: Suppress 1,
     growing 0.25 each time it fires (up to 2). Hook: Once you've scored 2
     pairs since its Hook last went off, it Suppresses 4 more. Rank III 100%.
-  - **Throttle** (uncommon, new Process): Process: Their initiative bar is
+  - **Backpressure** (drafted as Throttle) (uncommon, new Process): Process: Their initiative bar is
     1 longer for their next 2 turns. Hook: Every 3rd time it fires, also
     Suppress 2. Rank III 150%.
   - **Deadlock** (rare, build-definer): Process: Credit 1, growing 0.5 each
@@ -91,15 +91,15 @@ Hooks wait for several events (stepped).
     initiative) from their initiative gauge. Hook: Instant: every time
     you've scored 2 runs, add ½ a turn (6 initiative) to your initiative
     gauge right away. Rank III 150%.
-- **S11. The Honeypot slate** (Tripwire stays on the opponent's runs, the
-  user's call):
-  - **Tripwire** (common, Run Hook): Process: Ward 2. Hook: For each run
+- **S11. The Honeypot slate** (Motion Sensor, drafted as Tripwire, stays on
+  the opponent's runs, the user's call):
+  - **Motion Sensor** (drafted as Tripwire) (common, Run Hook): Process: Ward 2. Hook: For each run
     the opponent has scored since it last fired, also Credit 2 that ignores
     their Ward (at most 4). Rank III 100%.
   - **Mantrap** (uncommon, stepped pair Hook): Process: Ward 1. Hook: Once
     you've scored 3 pairs since its Hook last went off, also take 3 from
     their Containment and add it to your Breach. Rank III 150%.
-  - **Canary Token** (uncommon, new Process): Process: Spend up to 2 of
+  - **Bait File** (drafted as Canary Token) (uncommon, new Process): Process: Spend up to 2 of
     your Ward to Credit that much. Hook: For each pair the opponent has
     scored since it last fired, also Ward 2 (at most 4). Rank III 100%.
   - **Reflector** (rare, build-definer): Process: Ward 2. Hook: For every 3
@@ -172,3 +172,7 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
     2-3%. The user's aim: a balance between haste and not drawing too much
     attention, discouraging leaning too hard into haste. The size of the
     first step is a dial for the Heat tuning pass.
+- **Checkpoint 2, names.** Four drafted names clashed with existing ones
+  and were renamed (for the user's review): Kill Switch (a contraband
+  Burner) → Circuit Breaker; Throttle and Canary Token (enemy subroutines)
+  → Backpressure and Bait File; Tripwire (a regular enemy) → Motion Sensor.

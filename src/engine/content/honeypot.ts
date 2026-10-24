@@ -125,10 +125,49 @@ const AIR_GAPPED_VAULT: SubroutineDefinition = {
   beta: { source: 'state', condition: { kind: 'wardAbove', amount: 8 }, shape: 'whileTrue', effect: { verb: 'enhance', amount: 3 } },
 };
 
+// --- Session 66 (docs/subroutines-design.md S6-S11): a Run Hook, a
+// stepped pair Hook, a new Process and a rare build-definer. TBD/measured.
+
+/** Run Hook: the opponent's runs, punished (the user's call). */
+const MOTION_SENSOR: SubroutineDefinition = {
+  id: 'motion-sensor',
+  name: 'Motion Sensor',
+  archetype: 'honeypot',
+  alpha: { verb: 'ward', amount: 2 },
+  beta: { source: 'cards', category: 'run', watch: 'opponent', shape: 'graded', cap: 2, effect: { verb: 'credit', amount: 2, piercing: true } },
+};
+
+/** Stepped pair Hook: a pair build turned into stealing. */
+const MANTRAP: SubroutineDefinition = {
+  id: 'mantrap',
+  name: 'Mantrap',
+  archetype: 'honeypot',
+  alpha: { verb: 'ward', amount: 1 },
+  beta: { source: 'cards', category: 'pair', shape: 'stepped', at: 3, effect: { verb: 'credit', amount: 3, from: 'opponent' } },
+};
+
+/** New Process: spending Ward, fed by the opponent's pairs. */
+const BAIT_FILE: SubroutineDefinition = {
+  id: 'bait-file',
+  name: 'Bait File',
+  archetype: 'honeypot',
+  alpha: { verb: 'credit', amount: 2, from: 'ward' },
+  beta: { source: 'cards', category: 'pair', watch: 'opponent', shape: 'graded', cap: 2, effect: { verb: 'ward', amount: 2 } },
+};
+
+/** Rare: the harder they hit your Ward, the harder it hits back. */
+const REFLECTOR: SubroutineDefinition = {
+  id: 'reflector',
+  name: 'Reflector',
+  archetype: 'honeypot',
+  alpha: { verb: 'ward', amount: 2 },
+  beta: { source: 'progress', metric: 'absorbed', per: 3, shape: 'graded', cap: 3, effect: { verb: 'credit', amount: 2, piercing: true } },
+};
+
 export const HONEYPOT_POOL: ArchetypePool = {
-  commons: [TARPIT, HONEYTOKEN, BASIC_AUTH, RATE_LIMITING],
-  uncommons: [SINKHOLE, FAIL2BAN, DEEP_PACKET_INSPECTION],
-  rares: [ZERO_TRUST, AIR_GAPPED_VAULT],
+  commons: [TARPIT, HONEYTOKEN, BASIC_AUTH, RATE_LIMITING, MOTION_SENSOR],
+  uncommons: [SINKHOLE, FAIL2BAN, DEEP_PACKET_INSPECTION, MANTRAP, BAIT_FILE],
+  rares: [ZERO_TRUST, AIR_GAPPED_VAULT, REFLECTOR],
 };
 
 /** Honeytoken needs Ward of its own side to absorb anything. */

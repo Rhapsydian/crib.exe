@@ -101,10 +101,49 @@ const FORK_BOMB: SubroutineDefinition = {
   beta: { source: 'progress', metric: 'fires', per: 4, shape: 'stepped', at: 1, effect: { verb: 'credit', amount: 3 } },
 };
 
+// --- Session 66 (docs/subroutines-design.md S6-S11): a Run Hook, a
+// stepped pair Hook, a new Process and a rare build-definer. TBD/measured.
+
+/** Run Hook: runs answered with Suppress while it grows. */
+const ROLLING_UPDATE: SubroutineDefinition = {
+  id: 'rolling-update',
+  name: 'Rolling Update',
+  archetype: 'daemon',
+  alpha: { verb: 'credit', amount: 1, growth: 0.25, growthCap: 1 },
+  beta: { source: 'cards', category: 'run', shape: 'graded', cap: 3, effect: { verb: 'suppress', amount: 1 } },
+};
+
+/** Stepped pair Hook: 2 pairs, Suppress being worth less than a burst. */
+const THREAD_POOL: SubroutineDefinition = {
+  id: 'thread-pool',
+  name: 'Thread Pool',
+  archetype: 'daemon',
+  alpha: { verb: 'suppress', amount: 1, growth: 0.25, growthCap: 1 },
+  beta: { source: 'cards', category: 'pair', shape: 'stepped', at: 2, effect: { verb: 'enhance', amount: 4 } },
+};
+
+/** New Process: a slow that keeps re-applying (Tempo threshold, 2 turns). */
+const BACKPRESSURE: SubroutineDefinition = {
+  id: 'backpressure',
+  name: 'Backpressure',
+  archetype: 'daemon',
+  alpha: { verb: 'tempo', target: 'opponent', mode: 'threshold', amount: 1 / 12, duration: 2 },
+  beta: { source: 'progress', metric: 'fires', per: 3, shape: 'stepped', at: 1, effect: { verb: 'suppress', amount: 2 } },
+};
+
+/** Rare: Suspend on its fires (S5), a big growing Credit. */
+const DEADLOCK: SubroutineDefinition = {
+  id: 'deadlock',
+  name: 'Deadlock',
+  archetype: 'daemon',
+  alpha: { verb: 'credit', amount: 1, growth: 0.5, growthCap: 3 },
+  beta: { source: 'progress', metric: 'fires', per: 4, shape: 'stepped', at: 1, effect: { verb: 'suspend', amount: 1 } },
+};
+
 export const DAEMON_POOL: ArchetypePool = {
-  commons: [CRON_JOB, WATCHDOG_TIMER, STEADY_DRIP, PATCH],
-  uncommons: [MEMORY_LEAK, HEARTBEAT_MONITOR, FAILOVER],
-  rares: [LOAD_BALANCER, FORK_BOMB],
+  commons: [CRON_JOB, WATCHDOG_TIMER, STEADY_DRIP, PATCH, ROLLING_UPDATE],
+  uncommons: [MEMORY_LEAK, HEARTBEAT_MONITOR, FAILOVER, THREAD_POOL, BACKPRESSURE],
+  rares: [LOAD_BALANCER, FORK_BOMB, DEADLOCK],
 };
 
 /** A self-haste stand-in for Overclock's tempo until Overclock is

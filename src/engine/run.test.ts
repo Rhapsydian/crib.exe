@@ -270,7 +270,9 @@ describe('playRun', { timeout: 30_000 }, () => {
   const TINY_LAYERS: [number, number, number, number] = [2, 2, 2, 2];
 
   it('reaches victory on at least one seed with minimal layers (gatekeeper-only fights)', () => {
-    const outcomes = Array.from({ length: 5 }, (_, seed) =>
+    // Searched, not pinned (session 66): content changes move every
+    // seed's draws, so a few fixed seeds stop proving anything.
+    const outcomes = Array.from({ length: 30 }, (_, seed) =>
       playRun({
         seed,
         layerNodeCounts: TINY_LAYERS,
@@ -651,7 +653,11 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
     let checked = 0;
     let losses = 0;
     // Weaker play too, so regular and elite losses turn up.
-    const weak = Array.from({ length: 40 }, (_, seed) => playRun({ seed, classId: 'exploit-daemon', playerSkill: 0.3, traversalStrategy: opportunisticTraversal }));
+    // A feeble loadout, so regular and elite losses turn up (session 66:
+    // weak play alone stopped producing one -- elites are too easy, BACKLOG).
+    const weak = Array.from({ length: 40 }, (_, seed) =>
+      playRun({ seed, classId: 'exploit-daemon', playerSkill: 0.3, traversalStrategy: opportunisticTraversal, installedLoadoutOverride: NEGLIGIBLE_LOADOUT }),
+    );
     for (const result of [...runs('exploit-daemon', 40), ...weak]) {
       for (const e of result.log) {
         if (e.type !== 'encounter' || !e.outcome.fight) continue;

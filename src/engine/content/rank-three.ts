@@ -43,6 +43,23 @@ export const RANK_THREE_PROCESS_SHARE: Record<string, number> = {
   'deep-packet-inspection': 1.5, // Deep Packet Inspection (uncommon): ward 1
   'zero-trust': 1.5, // Zero Trust (rare): ward 1
   'air-gapped-vault': 1.25, // Air-Gapped Vault (rare): credit 2
+  // Session 66's sixteen (S7, S9-S11).
+  'sequence-attack': 1.5,
+  'replay-attack': 1.5,
+  'packet-sniffer': 1,
+  'circuit-breaker': 1,
+  'rolling-update': 1.5,
+  'thread-pool': 1,
+  'backpressure': 1.5,
+  'deadlock': 0.75,
+  'pipeline-flush': 1.5,
+  'superscalar': 1.5,
+  'branch-predictor': 1,
+  'clock-skew': 1.5,
+  'motion-sensor': 1,
+  'mantrap': 1.5,
+  'bait-file': 1,
+  'reflector': 0.75,
 };
 
 /** A subroutine with no authored share (none should be missing). */

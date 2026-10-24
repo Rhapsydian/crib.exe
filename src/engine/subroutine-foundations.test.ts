@@ -100,3 +100,21 @@ describe('S12: system strain', () => {
     expect(calm.timeline.some((b) => b.kind === 'strain')).toBe(false);
   });
 });
+
+describe("session 66's sixteen (S1, S6)", () => {
+  it('52 pool subroutines, 13 per archetype (5 common, 5 uncommon, 3 rare)', async () => {
+    const { ARCHETYPE_POOLS } = await import('./subroutines');
+    expect(ALL_POOL_SUBROUTINES).toHaveLength(52);
+    for (const pool of Object.values(ARCHETYPE_POOLS)) expect([pool.commons.length, pool.uncommons.length, pool.rares.length]).toEqual([5, 5, 3]);
+  });
+
+  it('no subroutine shares a name with another subroutine, a Burner, a Mod or an enemy', async () => {
+    const { BURNER_DEFINITIONS } = await import('./burners');
+    const { MOD_DEFINITIONS } = await import('./mods');
+    const { ENEMY_ROSTER } = await import('./enemies');
+    const others = new Set([...ENEMY_SUBROUTINES, ...Object.values(BURNER_DEFINITIONS), ...Object.values(MOD_DEFINITIONS), ...ENEMY_ROSTER].map((x) => x.name));
+    const names = ALL_POOL_SUBROUTINES.map((p) => p.name);
+    expect(new Set(names).size).toBe(names.length);
+    for (const n of names) expect(others.has(n), n).toBe(false);
+  });
+});

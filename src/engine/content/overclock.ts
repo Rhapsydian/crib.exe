@@ -124,10 +124,49 @@ const TURBO_MODE: SubroutineDefinition = {
   pointsCooldown: HASTE_POINTS_COOLDOWN,
 };
 
+// --- Session 66 (docs/subroutines-design.md S6-S11): a Run Hook, a
+// stepped pair Hook, a new Process and a rare build-definer. TBD/measured.
+
+/** Run Hook: each run is speed, mid-hand. */
+const PIPELINE_FLUSH: SubroutineDefinition = {
+  id: 'pipeline-flush',
+  name: 'Pipeline Flush',
+  archetype: 'overclock',
+  alpha: { verb: 'credit', amount: 1 },
+  beta: { source: 'cards', category: 'run', shape: 'immediate', at: 1, effect: { verb: 'tempo', target: 'own', mode: 'gauge', amount: 1 / 4 } },
+};
+
+/** Stepped pair Hook: Empowers everything below it. */
+const SUPERSCALAR: SubroutineDefinition = {
+  id: 'superscalar',
+  name: 'Superscalar',
+  archetype: 'overclock',
+  alpha: { verb: 'credit', amount: 1 },
+  beta: { source: 'cards', category: 'pair', shape: 'stepped', at: 3, effect: { verb: 'empower', amount: 1, scope: 'rest' } },
+};
+
+/** New Process: pure Charge, powering the subroutine below. */
+const BRANCH_PREDICTOR: SubroutineDefinition = {
+  id: 'branch-predictor',
+  name: 'Branch Predictor',
+  archetype: 'overclock',
+  alpha: { verb: 'charge', amount: 1, target: 'next' },
+  beta: { source: 'cards', category: 'fifteen', shape: 'graded', cap: 1, effect: { verb: 'enhance', amount: 1 } },
+};
+
+/** Rare: slows them every turn, speeds you as runs pile in. */
+const CLOCK_SKEW: SubroutineDefinition = {
+  id: 'clock-skew',
+  name: 'Clock Skew',
+  archetype: 'overclock',
+  alpha: { verb: 'tempo', target: 'opponent', mode: 'gauge', amount: 1 / 8 },
+  beta: { source: 'cards', category: 'run', shape: 'immediate', at: 2, effect: { verb: 'tempo', target: 'own', mode: 'gauge', amount: 1 / 2 } },
+};
+
 export const OVERCLOCK_POOL: ArchetypePool = {
-  commons: [PING, CACHE_HIT, BURST_CLOCK, ELEVATED_SESSION],
-  uncommons: [PRIORITY_OVERRIDE, PORT_FORWARD, GRAND_SLAM],
-  rares: [CHAIN_REACTION, TURBO_MODE],
+  commons: [PING, CACHE_HIT, BURST_CLOCK, ELEVATED_SESSION, PIPELINE_FLUSH],
+  uncommons: [PRIORITY_OVERRIDE, PORT_FORWARD, GRAND_SLAM, SUPERSCALAR, BRANCH_PREDICTOR],
+  rares: [CHAIN_REACTION, TURBO_MODE, CLOCK_SKEW],
 };
 
 /** A pricing position: the piece is inserted at index `at` of `host`. */

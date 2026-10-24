@@ -145,6 +145,8 @@ function moreText(alpha: Alpha, amount: number): string {
       return `Wards ${a} more`;
     case 'empower':
       return `Empowers ${a} more`;
+    case 'charge':
+      return `gives ${amount === 1 ? '1 more count' : `${a} more counts`}`;
     default:
       return `does ${a} more`;
   }
