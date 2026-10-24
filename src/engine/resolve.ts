@@ -1024,9 +1024,10 @@ export function resolveEffect(
     }
     case 'suspend': {
       // Suspend (S5): the target's bottom subroutine skips its next turn(s).
+      // Suspends don't stack: a second before that turn changes nothing.
       const victim = opponentOf(caster);
       const turns = Math.max(1, Math.round(effect.amount));
-      return withSide(state, victim, { passiveState: { ...state.sides[victim].passiveState, [SUSPENDED_TURNS]: (state.sides[victim].passiveState[SUSPENDED_TURNS] ?? 0) + turns } });
+      return withSide(state, victim, { passiveState: { ...state.sides[victim].passiveState, [SUSPENDED_TURNS]: Math.max(state.sides[victim].passiveState[SUSPENDED_TURNS] ?? 0, turns) } });
     }
   }
 }

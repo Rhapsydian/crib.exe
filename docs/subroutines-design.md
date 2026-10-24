@@ -1,6 +1,6 @@
 # Subroutines (session 66)
 
-**Status: designing.** The third piece of the player-side content pass
+**Status: built (session 66, checkpoints 1-4).** The third piece of the player-side content pass
 (`BACKLOG.md` → Priorities): more subroutines, more variety in what they
 do, and a look at Merge. Decided live, one question at a time.
 
@@ -213,3 +213,12 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
   x3 after weighing the variety cost (doubling was the first call).
   Full runs at x3 (300 a class): Blackhat 33.0, Operator 43.0, Eidolon
   35.3, Breacher 50.7, Warden 47.7, Wraith 32.7; average 40.4% (38.8).
+- **Checkpoint 4, screens.** The new Processes and Hooks read from
+  `describe.ts` (Suspend standalone, Charge "gives 1 more count"); the
+  Merge preview shows rank III's Process bonus (Buffer Overflow rank II →
+  III: Credit 1 → 2.5); the strain log line and tip. **Found while
+  checking: Merging a Suspend Hook** loosened Circuit Breaker toward
+  "every fifteen" (a near-permanent lock), so a Suspend Hook never
+  changes on a Merge (the Process grows instead), and Suspends don't
+  stack (one pending skip at most). Checked in the browser at phone width
+  (a reward of three new subroutines, the Safehouse Merge preview).

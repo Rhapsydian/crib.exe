@@ -58,12 +58,20 @@ describe('S5: Suspend', () => {
     for (const p of [...ALL_POOL_SUBROUTINES, ...ENEMY_SUBROUTINES]) expect(HOOK_ONLY_VERBS, p.id).not.toContain(p.alpha.verb);
   });
 
-  it('reads as what happens to the enemy, and a Merge loosens it instead of adding turns', () => {
+  it('reads as what happens to the enemy; a Merge grows the Process and leaves the Hook alone', () => {
     const kill = piece('k', { verb: 'credit', amount: 2 }, { source: 'cards', category: 'fifteen', shape: 'stepped', at: 3, effect: { verb: 'suspend', amount: 1 } });
     expect(describeHook(kill)).toContain('their bottom subroutine skips its next turn');
     const merged = upgradedDefinition(kill);
-    expect(merged.beta?.effect).toEqual({ verb: 'suspend', amount: 1 });
-    expect(merged.beta?.shape === 'stepped' && merged.beta.at).toBe(2);
+    expect(merged.beta).toEqual(kill.beta);
+    expect(merged.alpha).toEqual({ verb: 'credit', amount: 3 });
+  });
+
+  it("doesn't stack: two before the enemy's turn still skip one", () => {
+    const enemy = [piece('top', { verb: 'credit', amount: 1 }), piece('bottom', { verb: 'credit', amount: 5 })];
+    let s: CombatState = createCombatState([piece('a', { verb: 'credit', amount: 1 })], enemy, [12, 12], undefined, [100, 100]);
+    s = resolveEffect({ verb: 'suspend', amount: 1 }, resolveEffect({ verb: 'suspend', amount: 1 }, s, 0), 0);
+    s = fireTurn(fireTurn(s, 1, { isDealer: false }).combatState, 1, { isDealer: false }).combatState;
+    expect(s.sides[1].winGauge.progress).toBe(1 + 6);
   });
 });
 

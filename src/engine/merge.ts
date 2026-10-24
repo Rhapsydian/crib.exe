@@ -106,9 +106,11 @@ function upgradedDefinitionOnce(definition: SubroutineDefinition): SubroutineDef
     growth === undefined ? definition.alpha : { ...definition.alpha, growthCap: (growthCap ?? 0) + (isTempo(definition.alpha) ? MERGE_TEMPO_BONUS : MERGE_MAGNITUDE_BONUS) };
   const ranked = { ...definition, alpha, rank: (definition.rank ?? 0) + 1 };
   const { beta } = definition;
-  // A Suspend loosens its shape instead (S5): another turn skipped per rank
-  // would be far too much.
-  if (beta && beta.effect.verb !== 'disrupt' && beta.effect.verb !== 'suspend') {
+  // A Suspend Hook stays as it is (S5): another turn skipped, or a looser
+  // trigger, per rank would soon lock the enemy's bottom subroutine out
+  // (Circuit Breaker at "every fifteen"); the Process grows instead.
+  if (beta?.effect.verb === 'suspend') return { ...ranked, alpha: bumpedEffect(alpha) };
+  if (beta && beta.effect.verb !== 'disrupt') {
     const tempoUnits = beta.effect.verb === 'enhance' ? isTempo(definition.alpha) : isTempo(beta.effect);
     return { ...ranked, beta: { ...beta, effect: bumpedEffect(beta.effect, tempoUnits) } };
   }
