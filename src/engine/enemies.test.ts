@@ -135,8 +135,15 @@ describe('assignGatekeeperEnemy / gatekeeperEnemyForNode', () => {
 });
 
 describe('enemySkill', () => {
-  it('is pinned to the floor during the opener window regardless of tier/layer', () => {
-    expect(enemySkill('gatekeeper', 4, 0)).toBe(0);
+  it('is pinned low (0.15, session 67) during the opener window regardless of tier/layer', () => {
+    expect(enemySkill('gatekeeper', 4, 0)).toBe(0.15);
+    expect(enemySkill('regular', 1, 0)).toBe(0.15);
+  });
+
+  it('starts regulars at 0.25 and elites at 0.6 on layer 1 (session 67, E3)', () => {
+    expect(enemySkill('regular', 1, 10)).toBeCloseTo(0.25);
+    expect(enemySkill('elite', 1, 10)).toBeCloseTo(0.6);
+    expect(enemySkill('gatekeeper', 1, 10)).toBeCloseTo(0.75);
   });
 
   it('is tier-primary: a higher tier is never weaker than a lower one at the same layer, past the opener window', () => {

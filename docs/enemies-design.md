@@ -76,3 +76,24 @@ player strength), plus `run-outcomes.ts`.
    75-90%. Full-run class rates reported.
 4. **Screens:** the new Mods in the fight kit and the enemy's details;
    browser check at desktop and phone width.
+- **E5. Fight length (the user):** elite and gatekeeper fights should
+  average at least 5 hands; faster is too fast, whichever side wins.
+  Breach and Containment gauge sizes may be adjusted per fight to tune
+  rate and length together. `enemy-rates.ts` reports mean hands a fight.
+
+## Built
+
+- **Checkpoint 1, Cribbage skill and a baseline.** Skill per E3
+  (`enemies.ts`); `scripts/enemy-rates.ts`. Player win rates and mean
+  hands a fight (100 seeds a class):
+
+  | | Layer 1 | Layer 2 | Layer 3 | Layer 4 |
+  |---|---|---|---|---|
+  | Elites, old skill | 99.7% | 100% | 99.4% | 100% |
+  | Elites, new skill | 99.5%, 7.0 hands | 99.3%, 5.5 | 99.4%, 4.2 | 100%, 3.0 |
+  | Gatekeepers, new skill | 79.8%, 8.5 hands | 86.9%, 5.0 | 81.5%, 3.5 | 83.5%, 2.7 |
+
+  The skill bump barely moves the rates. **Fights shorten by layer**:
+  the player's power outgrows a fixed Breach gauge, so layer 3-4 elites
+  and gatekeepers end in 2.4-4.2 hands, under E5's 5. Firewall Prime runs
+  12.1 hands (No Way In's cap). Regulars: players win ~100% everywhere.

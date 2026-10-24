@@ -277,9 +277,12 @@ export function gatekeeperEnemyForNode(node: MapNode): EnemyDefinition {
 // Skill-dial formula (DESIGN.md: "tier is the primary axis, layer is a
 // secondary modifier" -- resolves the session 26 banked fight-kind-vs-
 // layer question). All TBD/playtesting.
-const TIER_SKILL_BASE: Record<EnemyTier, number> = { regular: 0.15, elite: 0.5, gatekeeper: 0.75 };
+// Session 67 (docs/enemies-design.md E3, the user): regulars 0.15 -> 0.25
+// (really poor plays felt frustrating), elites 0.5 -> 0.6; the opener 0 ->
+// 0.15 (it made plays that looked random).
+const TIER_SKILL_BASE: Record<EnemyTier, number> = { regular: 0.25, elite: 0.6, gatekeeper: 0.75 };
 const LAYER_SKILL_STEP = 0.03; // modest climb across layers 1-4 within a tier
-const OPENER_SKILL = 0; // the opener window pins skill to the floor regardless of tier/layer
+const OPENER_SKILL = 0.15; // the opener window pins skill low regardless of tier/layer
 
 /** The enemy Cribbage-play skill level (0-1, ai.ts's discardSkillStrategy/
  * pegSkillStrategy dial) for a fight at `tier`/`layerIndex`. */
