@@ -15,13 +15,13 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 69)
+## Current state (end of session 70)
 
 The game is playable in the browser on desktop and phones
 (<https://rhapsydian.github.io/crib.exe/>, branch `playable`): a full
 four-layer run with six classes, a guided tutorial, first-time tips, plain
 Cribbage with a coach and lessons, and saves. Milestone 5 (polish and
-playtesting) is under way. 883 tests, `npm run check` clean.
+playtesting) is under way. 891 tests, `npm run check` clean.
 
 **The content pass and its tuning pass are done, on `content-pass`**
 (pushed; the user merges it into `playable` after playing it locally; save
@@ -29,6 +29,9 @@ version 2): Burners and Events, Mods, subroutines, the enemy pool, then
 Heat, Mod supply and class tuning (`docs/tuning-design.md`). Run victory
 ~26% (target 24-30%), classes 23.7-28.3%, Heat ending ~12% of runs, about
 65-71% of each layer explorable, ~12 Mods by a winning run's end.
+Session 70 added the playtest fixes, Proof of Concept and Lure Template,
+and the review coach (a Cribbage rating per fight and run, and a drawer of
+mistakes; `src/ui/skill-review.ts`).
 
 ---
 
@@ -75,6 +78,15 @@ most, refine some of the map icons.
 ---
 
 ## Open items
+
+- **Review coach** (session 70): falloff 1.0 calibrated so the simulated
+  player (0.85) reads Sharp (87); regular enemies' skill reads Learning,
+  elites' Steady, the full-strength AI Expert (95). Watch in playtesting
+  whether the bands feel fair; the run-end rating wasn't checked in the
+  browser. Trace evasion hands aren't rated.
+- **Stolen Coupon "didn't prompt"** (a playtest note, session 70): not
+  reproduced (likely bought in the same Shop, or the Shop already
+  visited); a Shop note now says when it's offered.
 
 Balance and content:
 - **Restore Point** (was Skeleton Key, session 68): a contraband second

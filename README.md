@@ -63,6 +63,11 @@ README's old session-by-session narrative is archived in
   by layer so each layer is about equally explorable, and the class Mods
   tuned so every class sits within 3 points of a ~26% average
   (`docs/tuning-design.md`).
+- **Session 70:** playtest fixes (no rewards when a fight's Heat catches
+  you, Shop over-buy warnings, the log after a fight), two new Mods (Proof
+  of Concept, Lure Template), and the review coach: a Cribbage rating on
+  each fight's result card and the run's end card, with a drawer of the
+  fight's costliest mistakes.
 
 What exists, all headless and test-covered:
 
@@ -86,7 +91,7 @@ done; milestone 5, polish and playtesting, is under way.
 
 ```bash
 npm install
-npm test        # Vitest suite (883 tests)
+npm test        # Vitest suite (891 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server: the main menu (the roguelite, Cribbage); #test is the single-fight harness
 ```
