@@ -294,3 +294,16 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
     each fight with 3 fires' growth already in them, and can grow 3 fires
     further than usual.": +8.0.
   - **Phase Shift II**: 1 initiative, not 2: +8.7.
+- **Checkpoint 5, the Mod Events.** The six Events (18 → 24), two new
+  Event effects (a named Mod grant through `modGrant: { specific }`, and
+  `classModUpgrade`), and `choiceUnavailable` / `eventStillOffers`
+  (events.ts): a choice greys out when its Mod is held, when a Fold meets
+  the other Fold (they reprice the same scoring), when the class Mod is
+  already II, or when the Data is short; an Event with nothing left to
+  offer isn't drawn. The fight screen's Heat outlook includes Ghost
+  Credentials (applied before a map Burner's cut). Data prices from the
+  simulated player's Data at Events (median 41 at layer 1, 93-96 at
+  layers 2-3): Clean Room 90, Dead Man's Login 40. About 4% of simulated
+  runs upgrade their class Mod. Full runs (300 seeds a class): Blackhat
+  36.3, Operator 37.7, Eidolon 34.0, Breacher 42.0, Warden 41.3, Wraith
+  36.7; average 38.0% (36.1 after checkpoint 2).
