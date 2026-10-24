@@ -28,6 +28,7 @@
  * Usage:
  *   npx tsx scripts/mod-check.ts [--layer=2] [--seeds=20] [--only=nobs-exploit,deep-cache] [--double]
  *   npx tsx scripts/mod-check.ts --part=run --only=ghost-credentials,hot-standby [--seeds=100]
+ *   npx tsx scripts/mod-check.ts --part=class [--seeds=150]
  */
 import { playCombat, synergyAwareCombatBurnerActivation, neverActivateBurner } from '../src/engine/combat';
 import { CLASS_STARTING_LOADOUTS, ALL_POOL_SUBROUTINES } from '../src/engine/subroutines';
@@ -130,6 +131,27 @@ const payloadBase = () => {
 
 const DOUBLE_EDGED_COMBAT: ModId[] = ['fifteen-fold', 'pair-fold', 'overclocked-kernel', 'glass-cannon'];
 for (const id of DOUBLE_EDGED_COMBAT) NEW.add(id);
+
+if (args.part === 'class') {
+  // The class Mod upgrades (checkpoint 4, M10): each class's full runs with
+  // its class Mod upgraded from the start, against without.
+  const runSeeds = Number(args.seeds ?? 150);
+  console.log(`MOD CHECK (class upgrades) -- full runs, ${runSeeds} seeds a class`);
+  for (const classId of ALL_CLASS_IDS) {
+    const victory = (upgraded: boolean) => {
+      let wins = 0;
+      for (let seed = 0; seed < runSeeds; seed++) {
+        const r = playRun({ ...SYNERGY_AWARE_PROFILE, seed, classId, traversalStrategy: opportunisticTraversal, safehouseStrategy: opportunisticSafehouseStrategy, playerSkill: 0.85, classModUpgradedOverride: upgraded });
+        if (r.outcome === 'victory') wins++;
+      }
+      return (100 * wins) / runSeeds;
+    };
+    const base = victory(false);
+    const up = victory(true);
+    console.log(`${CLASS_DEFINITIONS[classId].name.padEnd(10)} victory ${base.toFixed(1)}% -> ${up.toFixed(1)}% (${up - base >= 0 ? '+' : ''}${(up - base).toFixed(1)})`);
+  }
+  process.exit(0);
+}
 
 if (args.part === 'run') {
   if (!only) throw new Error('--part=run needs --only');

@@ -115,6 +115,10 @@ export interface RunPlayerState {
    * cost. Read-only for display; the run's own `heat` is the truth. */
   heat?: number;
   modRunState: Record<string, number>;
+  /** The class Mod is upgraded to its "II" version (session 65,
+   * docs/mods-design.md M10): its rule plus a second clause. Set by an
+   * Event; permanent. */
+  classModUpgraded?: boolean;
   /** Every Burner currently carried this run (Phase 5 Burners checkpoint
    * B) -- a capped, unordered inventory, no bench/installed split (see
    * burner-types.ts's own header). Duplicates are allowed to stack
@@ -538,6 +542,8 @@ export interface RunOptions {
    * owned (beyond the class's own guaranteed starting one), rather than
    * depending on natural elite/gatekeeper reward luck across a seed. */
   ownedModIdsOverride?: ModId[];
+  /** Test-only: start the run with the class Mod already upgraded (M10). */
+  classModUpgradedOverride?: boolean;
   /** Test-only escape hatch, same treatment as ownedModIdsOverride --
    * lets a test start a run with specific Burners already carried,
    * rather than depending on real acquisition (checkpoint F, not built
@@ -720,6 +726,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
     traversalStrategy = beelineToGatekeeper,
     installedLoadoutOverride,
     ownedModIdsOverride,
+    classModUpgradedOverride,
     carriedBurnerIdsOverride,
     mapBurnerStrategy = neverActivateMapBurner,
     acquisitionStrategy = alwaysAcquireFirst,
@@ -772,6 +779,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
     const mod = MOD_DEFINITIONS[modId];
     if (mod) playerState = acquireMod(playerState, mod);
   }
+  if (classModUpgradedOverride) playerState = { ...playerState, classModUpgraded: true };
   // Same treatment for Burners (checkpoint D's test-only escape hatch,
   // routed through acquireBurner so BURNER_CAP is still respected).
   for (const burnerId of carriedBurnerIdsOverride ?? []) {

@@ -53,6 +53,10 @@ import {
   BRIDGE_EXPLOIT_HONEYPOT_WARD,
   BRIDGE_EXPLOIT_OVERCLOCK_HASTE,
   BRIDGE_OVERCLOCK_HONEYPOT_HASTE,
+  BRIDGE_II_WARDEN_WARD,
+  BRIDGE_II_EIDOLON_FIRES,
+  BRIDGE_II_BREACHER_SHARE,
+  BRIDGE_II_WRAITH_INITIATIVE,
   BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND,
   BRIDGE_OVERCLOCK_HONEYPOT_WARD,
   type CombatState,
@@ -257,6 +261,18 @@ export function triggerLabel(t: ModTrigger): string {
 }
 
 /** A class's own bridge Mod, by name and rules (for class choice). */
-export function classModFor(classId: ClassId): { name: string; text: string } {
-  return { name: MOD_DEFINITIONS[`${BRIDGE_PREFIX}${classId}` as ModId].name, text: BRIDGE_TEXT[classId] };
+export function classModFor(classId: ClassId, upgraded = false): { name: string; text: string } {
+  const name = MOD_DEFINITIONS[`${BRIDGE_PREFIX}${classId}` as ModId].name;
+  return upgraded ? { name: `${name} II`, text: `${BRIDGE_TEXT[classId]} ${BRIDGE_II_TEXT[classId]}` } : { name, text: BRIDGE_TEXT[classId] };
 }
+
+/** The "II" upgrades' added clauses (session 65, docs/mods-design.md M10),
+ * after the class Mod's own text. */
+export const BRIDGE_II_TEXT: Record<ClassId, string> = {
+  'exploit-overclock': 'A pair royal or better gives you a turn at once.',
+  'exploit-daemon': 'Your go points (the last card, or 31) count as fifteens for this Mod.',
+  'daemon-overclock': `Your Daemon subroutines start each fight with ${BRIDGE_II_EIDOLON_FIRES === 1 ? "one fire's" : `${BRIDGE_II_EIDOLON_FIRES} fires'`} growth already in them.`,
+  'exploit-honeypot': `When your Ward blocks an enemy hit, Credit ${BRIDGE_II_BREACHER_SHARE === 1 / 3 ? 'a third' : pct(BRIDGE_II_BREACHER_SHARE)} of what it blocked.`,
+  'daemon-honeypot': `Each pair the enemy scores also gives you Ward ${BRIDGE_II_WARDEN_WARD}.`,
+  'overclock-honeypot': `When your Ward fully blocks an enemy hit, add ${BRIDGE_II_WRAITH_INITIATIVE} initiative.`,
+};

@@ -604,6 +604,7 @@ function* resolveFight(
         classId: playerState.classId,
         ...enemyCombatOptions(enemy),
         ownedModIds: playerState.ownedModIds,
+        classModUpgraded: playerState.classModUpgraded,
         benched: playerState.bench,
         fightTier: kind,
         // Filtered to combat-context Burners only -- a carried map/shop-only

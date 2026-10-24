@@ -32,6 +32,7 @@ import {
   applyCutMods,
   applyHandEndMods,
   applyShowMods,
+  bridgeUpgradedFor,
   armThirtyOne,
   playerHasMod,
   createCombatState,
@@ -64,6 +65,8 @@ import {
  */
 
 export interface CombatOptions {
+  /** The player's class Mod is its "II" version (session 65, M10). */
+  classModUpgraded?: boolean;
   /** The player's benched subroutines (session 65): Hot Standby fires
    * their Processes at half strength. */
   benched?: SubroutineDefinition[];
@@ -544,6 +547,7 @@ export function* combatGenerator(
     ownedModIds = [],
     carriedBurnerIds = [],
     benched = [],
+    classModUpgraded = false,
   } = options;
 
   const rng = createRng(seed);
@@ -563,7 +567,7 @@ export function* combatGenerator(
   // Overclocked Kernel (session 65): the player's initiative bar is longer.
   const thresholds: [number, number] = ownedModIds.includes('overclocked-kernel') ? [gaugeThreshold[0] + OVERCLOCKED_KERNEL_BAR, gaugeThreshold[1]] : gaugeThreshold;
   const created = createCombatState(loadouts[0], loadouts[1], thresholds, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds, opponentBridge, gatekeeperMods);
-  let combatState = applyModOnCombatStartPassives({ ...created, modTriggers: [], standby: benched });
+  let combatState = applyModOnCombatStartPassives({ ...created, modTriggers: [], standby: benched, bridgeUpgraded: [classModUpgraded, false] });
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
   const timeline: CombatBeat[] = [];
@@ -658,6 +662,12 @@ export function* combatGenerator(
     if (winner !== null) return winner;
 
     let points = occurrencePoints(occurrence);
+    // Lateral Movement II (session 65, M10): a pair royal or better gives
+    // its scorer a turn at once.
+    if (occurrence.category === 'pair' && occurrence.magnitude >= 6 && bridgeUpgradedFor(combatState, occurrence.player, 'exploit-overclock')) {
+      const g = combatState.sides[occurrence.player].gauge;
+      points = Math.max(points, g.threshold - g.progress);
+    }
     // Thirty-One (session 65): pegging to exactly 31 gives the player a
     // turn at once.
     if (occurrence.player === 0 && occurrence.category === 'thirtyOne' && playerHasMod(combatState, 'thirty-one')) {

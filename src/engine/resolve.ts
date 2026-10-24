@@ -187,6 +187,9 @@ export interface CombatState {
   /** Combat-context Burners side 0 carried in -- a start-of-combat
    * snapshot; used ones are surfaced via CombatResult, not removed here. */
   carriedBurnerIds: BurnerId[];
+  /** Each side's class Mod is its "II" version (session 65,
+   * docs/mods-design.md M10). Side 1's exists only for pricing duels. */
+  bridgeUpgraded?: [boolean, boolean];
   /** Side 0's benched subroutines, for Hot Standby (session 65): their
    * Processes fire after the loadout at half strength. */
   standby?: SubroutineDefinition[];
@@ -551,6 +554,16 @@ export const BRIDGE_DAEMON_HONEYPOT_WARD = 1.5;
  * gauge (1/12: one point at the usual threshold of 12). Limited per hand
  * rather than shrunk to tiny amounts, the user's call: small fractions
  * read badly. */
+// The "II" clauses (session 65, docs/mods-design.md M10). TBD/measured.
+/** Hardened Perimeter II: Ward for each pair the opponent scores. */
+export const BRIDGE_II_WARDEN_WARD = 1;
+/** Invocation II: fires' worth of growth the Daemons start each fight with. */
+export const BRIDGE_II_EIDOLON_FIRES = 1;
+/** Foothold II: the share of blocked Credit that Credits back. */
+export const BRIDGE_II_BREACHER_SHARE = 1 / 3;
+/** Phase Shift II: initiative when Ward fully blocks a hit. */
+export const BRIDGE_II_WRAITH_INITIATIVE = 2;
+
 export const BRIDGE_OVERCLOCK_HONEYPOT_WARD = 0.5;
 export const BRIDGE_OVERCLOCK_HONEYPOT_HASTE = 1 / 12;
 export const BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND = 1;
@@ -570,7 +583,9 @@ function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOc
   if (!bridge) return combatState;
   const fifteen = occurrence.category === 'fifteen';
   const pair = occurrence.category === 'pair';
-  if (bridge === 'exploit-daemon' && fifteen) {
+  // Backdoor Maintenance II (M10): go points count as fifteens for it.
+  const goPoint = occurrence.category === 'go' || occurrence.category === 'thirtyOne';
+  if (bridge === 'exploit-daemon' && (fifteen || (goPoint && isBridgeUpgraded(combatState, side)))) {
     noteMod(combatState, side, bridgeMod(bridge));
     const first = !combatState.sides[side].passiveState[EXPLOIT_DAEMON_THIS_HAND];
     const marked = first ? withSide(combatState, side, { passiveState: { ...combatState.sides[side].passiveState, [EXPLOIT_DAEMON_THIS_HAND]: 1 } }) : combatState;
@@ -645,6 +660,10 @@ export function applyModOnCombatStartPassives(combatState: CombatState): CombatS
   if (hasMod(state, 'warm-boot')) state = withSide(state, 0, { wardShield: state.sides[0].wardShield + MOD_SMALL });
   if (hasMod(state, 'cold-boot')) state = creditWinGauge(state, 0, MOD_SMALL);
   if (hasMod(state, 'cache-prefetch')) state = mapLoadout(state, 0, (entry) => addCharges(entry.state, entry.definition, CACHE_PREFETCH_CHARGES));
+  // Invocation II (M10): the Daemon subroutines start with a fire's growth.
+  for (const side of [0, 1] as PlayerIndex[]) {
+    if (bridgeUpgradedFor(state, side, 'daemon-overclock')) state = growDaemons(state, side, BRIDGE_II_EIDOLON_FIRES, 'daemon');
+  }
   // The Folds (session 65): the player's fifteens and pairs repriced.
   if (hasMod(state, 'fifteen-fold')) state = withSide(state, 0, { scoringRule: { ...FIFTEEN_FOLD_RULE } });
   if (hasMod(state, 'pair-fold')) state = withSide(state, 0, { scoringRule: { ...PAIR_FOLD_RULE } });
@@ -739,7 +758,24 @@ export function applyOccurrence(combatState: CombatState, occurrence: ScoringOcc
       state = mapLoadout(state, side, (entry) => chargeFromOccurrence(entry.state, entry.definition, mirrored, side));
     }
   }
+  // Hardened Perimeter II (M10): each pair the opponent scores gives Ward.
+  const defender = opponentOf(occurrence.player);
+  if (occurrence.category === 'pair' && bridgeUpgradedFor(state, defender, 'daemon-honeypot')) {
+    noteMod(state, defender, bridgeMod('daemon-honeypot'));
+    state = bankWard(state, defender, BRIDGE_II_WARDEN_WARD * count);
+  }
   return applyRuleBendersOnOccurrence(state, occurrence, dealer);
+}
+
+/** Whether `side`'s class Mod is its "II" version (M10). */
+function isBridgeUpgraded(combatState: CombatState, side: PlayerIndex): boolean {
+  return combatState.bridgeUpgraded?.[side] ?? false;
+}
+
+/** Whether `side` has class `classId`'s Mod upgraded (combat.ts's
+ * Lateral Movement II). */
+export function bridgeUpgradedFor(combatState: CombatState, side: PlayerIndex, classId: ClassId): boolean {
+  return combatState.bridges[side] === classId && isBridgeUpgraded(combatState, side);
 }
 
 // Rule-benders (session 65, docs/mods-design.md M6): the player's own.
@@ -906,6 +942,16 @@ export function resolveEffect(
       if (absorbed > 0 && hasSideMod(next, target, 'power-siphon')) {
         noteMod(next, target, gk('power-siphon'));
         next = growDaemons(next, target, POWER_SIPHON_GROWTH);
+      }
+      // Foothold II (M10): Ward that blocks a hit Credits a third of it.
+      if (absorbed > 0 && bridgeUpgradedFor(next, target, 'exploit-honeypot')) {
+        noteMod(next, target, bridgeMod('exploit-honeypot'));
+        next = creditWinGauge(next, target, absorbed * BRIDGE_II_BREACHER_SHARE);
+      }
+      // Phase Shift II (M10): Ward that fully blocks a hit adds initiative.
+      if (absorbed > 0 && absorbed >= incoming.amount && bridgeUpgradedFor(next, target, 'overclock-honeypot')) {
+        noteMod(next, target, bridgeMod('overclock-honeypot'));
+        next = haste(next, target, BRIDGE_II_WRAITH_INITIATIVE / next.sides[target].startingThreshold);
       }
       return creditWinGauge(next, caster, incoming.amount - absorbed);
     }
