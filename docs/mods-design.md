@@ -278,3 +278,15 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
     Heat a run (with 30% off and contraband stock); both about 0 victory,
     since Heat ends only 1-3% of the simulated player's runs. Kept, to
     revisit when the enemy pass makes Heat bite.
+- **Checkpoint 4, the class Mod upgrades.** All six built: the run state's
+  `classModUpgraded` reaches combat as `bridgeUpgraded`; the II text is the
+  class Mod's plus its clause (`classModFor(classId, true)`;
+  `class-upgrades.test.ts`). Measured as full runs with the upgrade from
+  the start (`mod-check.ts --part=class`, 150 seeds a class, about ±4
+  points of noise): first pass Blackhat +0.7, Operator +10.0, Eidolon
+  +0.7, Breacher +7.3, Warden +11.3, Wraith +20.0. Tuned:
+  - **Lateral Movement II**: a pair royal is too rare, so "Your second
+    pair each hand gives you a turn at once (a pair royal counts as three
+    pairs).": +7.3.
+  - **Invocation II**: three fires' growth, not one: +4.7.
+  - **Phase Shift II**: 1 initiative, not 2: +8.7.

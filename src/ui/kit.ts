@@ -54,6 +54,7 @@ import {
   BRIDGE_EXPLOIT_OVERCLOCK_HASTE,
   BRIDGE_OVERCLOCK_HONEYPOT_HASTE,
   BRIDGE_II_WARDEN_WARD,
+  BRIDGE_II_BLACKHAT_PAIRS,
   BRIDGE_II_EIDOLON_FIRES,
   BRIDGE_II_BREACHER_SHARE,
   BRIDGE_II_WRAITH_INITIATIVE,
@@ -269,9 +270,9 @@ export function classModFor(classId: ClassId, upgraded = false): { name: string;
 /** The "II" upgrades' added clauses (session 65, docs/mods-design.md M10),
  * after the class Mod's own text. */
 export const BRIDGE_II_TEXT: Record<ClassId, string> = {
-  'exploit-overclock': 'A pair royal or better gives you a turn at once.',
+  'exploit-overclock': `Your ${BRIDGE_II_BLACKHAT_PAIRS === 2 ? 'second' : `${BRIDGE_II_BLACKHAT_PAIRS}th`} pair each hand gives you a turn at once (a pair royal counts as three pairs).`,
   'exploit-daemon': 'Your go points (the last card, or 31) count as fifteens for this Mod.',
-  'daemon-overclock': `Your Daemon subroutines start each fight with ${BRIDGE_II_EIDOLON_FIRES === 1 ? "one fire's" : `${BRIDGE_II_EIDOLON_FIRES} fires'`} growth already in them.`,
+  'daemon-overclock': `Your Daemon subroutines start each fight with ${Number(BRIDGE_II_EIDOLON_FIRES) === 1 ? "one fire's" : `${BRIDGE_II_EIDOLON_FIRES} fires'`} growth already in them.`,
   'exploit-honeypot': `When your Ward blocks an enemy hit, Credit ${BRIDGE_II_BREACHER_SHARE === 1 / 3 ? 'a third' : pct(BRIDGE_II_BREACHER_SHARE)} of what it blocked.`,
   'daemon-honeypot': `Each pair the enemy scores also gives you Ward ${BRIDGE_II_WARDEN_WARD}.`,
   'overclock-honeypot': `When your Ward fully blocks an enemy hit, add ${BRIDGE_II_WRAITH_INITIATIVE} initiative.`,

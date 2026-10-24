@@ -137,7 +137,8 @@ if (args.part === 'class') {
   // its class Mod upgraded from the start, against without.
   const runSeeds = Number(args.seeds ?? 150);
   console.log(`MOD CHECK (class upgrades) -- full runs, ${runSeeds} seeds a class`);
-  for (const classId of ALL_CLASS_IDS) {
+  const classes = args.classes ? (String(args.classes).split(',') as ClassId[]) : ALL_CLASS_IDS;
+  for (const classId of classes) {
     const victory = (upgraded: boolean) => {
       let wins = 0;
       for (let seed = 0; seed < runSeeds; seed++) {

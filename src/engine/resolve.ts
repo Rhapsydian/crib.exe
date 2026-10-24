@@ -297,7 +297,7 @@ export function clearHandKnowledge(combatState: CombatState): CombatState {
       // A hand-long Burner bonus counts down a hand (Noise Floor lasts two).
       handBonuses: sideState.handBonuses?.map((b) => ({ ...b, handsLeft: b.handsLeft - 1 })).filter((b) => b.handsLeft > 0),
       handPoints: 0,
-      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0, [BURNER_HOOKS_TWICE]: Math.max(0, (sideState.passiveState[BURNER_HOOKS_TWICE] ?? 0) - 1) },
+      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0, [LATERAL_PAIRS_THIS_HAND]: 0, [BURNER_HOOKS_TWICE]: Math.max(0, (sideState.passiveState[BURNER_HOOKS_TWICE] ?? 0) - 1) },
     };
   }) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
@@ -555,14 +555,17 @@ export const BRIDGE_DAEMON_HONEYPOT_WARD = 1.5;
  * rather than shrunk to tiny amounts, the user's call: small fractions
  * read badly. */
 // The "II" clauses (session 65, docs/mods-design.md M10). TBD/measured.
+/** Lateral Movement II: the pair each hand that gives a turn at once (was
+ * a pair royal: measured +0.7 victory). */
+export const BRIDGE_II_BLACKHAT_PAIRS = 2;
 /** Hardened Perimeter II: Ward for each pair the opponent scores. */
 export const BRIDGE_II_WARDEN_WARD = 1;
 /** Invocation II: fires' worth of growth the Daemons start each fight with. */
-export const BRIDGE_II_EIDOLON_FIRES = 1;
+export const BRIDGE_II_EIDOLON_FIRES = 3;
 /** Foothold II: the share of blocked Credit that Credits back. */
 export const BRIDGE_II_BREACHER_SHARE = 1 / 3;
 /** Phase Shift II: initiative when Ward fully blocks a hit. */
-export const BRIDGE_II_WRAITH_INITIATIVE = 2;
+export const BRIDGE_II_WRAITH_INITIATIVE = 1;
 
 export const BRIDGE_OVERCLOCK_HONEYPOT_WARD = 0.5;
 export const BRIDGE_OVERCLOCK_HONEYPOT_HASTE = 1 / 12;
@@ -765,6 +768,19 @@ export function applyOccurrence(combatState: CombatState, occurrence: ScoringOcc
     state = bankWard(state, defender, BRIDGE_II_WARDEN_WARD * count);
   }
   return applyRuleBendersOnOccurrence(state, occurrence, dealer);
+}
+
+/** Lateral Movement II: pairs `side` has scored this hand. */
+const LATERAL_PAIRS_THIS_HAND = 'bridge-ii:lateral-pairs';
+
+/** Lateral Movement II (M10): counts `pairs` more this hand; `turn` when
+ * the count reaches BRIDGE_II_BLACKHAT_PAIRS (once a hand). */
+export function countLateralPairs(combatState: CombatState, side: PlayerIndex, pairs: number): { combatState: CombatState; turn: boolean } {
+  const before = passiveStat(combatState, side, LATERAL_PAIRS_THIS_HAND);
+  const after = before + pairs;
+  const turn = before < BRIDGE_II_BLACKHAT_PAIRS && after >= BRIDGE_II_BLACKHAT_PAIRS;
+  if (turn) noteMod(combatState, side, bridgeMod('exploit-overclock'));
+  return { combatState: setPassiveStat(combatState, side, LATERAL_PAIRS_THIS_HAND, after), turn };
 }
 
 /** Whether `side`'s class Mod is its "II" version (M10). */

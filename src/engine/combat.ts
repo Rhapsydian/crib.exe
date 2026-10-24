@@ -18,6 +18,7 @@ import {
   occurrencesFromHandEvents,
   occurrenceFromHisHeels,
   occurrencePoints,
+  pairsIn,
   repriceOccurrence,
   suitPlayedFromPeggingEvent,
   type ScoringOccurrence,
@@ -33,6 +34,7 @@ import {
   applyHandEndMods,
   applyShowMods,
   bridgeUpgradedFor,
+  countLateralPairs,
   armThirtyOne,
   playerHasMod,
   createCombatState,
@@ -662,11 +664,15 @@ export function* combatGenerator(
     if (winner !== null) return winner;
 
     let points = occurrencePoints(occurrence);
-    // Lateral Movement II (session 65, M10): a pair royal or better gives
-    // its scorer a turn at once.
-    if (occurrence.category === 'pair' && occurrence.magnitude >= 6 && bridgeUpgradedFor(combatState, occurrence.player, 'exploit-overclock')) {
-      const g = combatState.sides[occurrence.player].gauge;
-      points = Math.max(points, g.threshold - g.progress);
+    // Lateral Movement II (session 65, M10): the scorer's second pair each
+    // hand gives a turn at once (a pair royal is three pairs).
+    if (occurrence.category === 'pair' && bridgeUpgradedFor(combatState, occurrence.player, 'exploit-overclock')) {
+      const counted = countLateralPairs(combatState, occurrence.player, pairsIn(occurrence));
+      combatState = counted.combatState;
+      if (counted.turn) {
+        const g = combatState.sides[occurrence.player].gauge;
+        points = Math.max(points, g.threshold - g.progress);
+      }
     }
     // Thirty-One (session 65): pegging to exactly 31 gives the player a
     // turn at once.
