@@ -314,6 +314,9 @@ export const MOD_DEFINITIONS: Record<ModId, ModDefinition> = {
   'deep-cache': { id: 'deep-cache', name: 'Deep Cache', rarity: 'rare', effectKind: 'hook' },
   'root-cause': { id: 'root-cause', name: 'Root Cause', rarity: 'rare', effectKind: 'hook' },
   'persistent-payload': { id: 'persistent-payload', name: 'Persistent Payload', rarity: 'rare', effectKind: 'hook' },
+  // Salvage Protocol and Fast Learner's siblings (session 69), gated the same way.
+  'proof-of-concept': { id: 'proof-of-concept', name: 'Proof of Concept', rarity: 'uncommon', effectKind: 'hook', archetype: 'exploit' },
+  'lure-template': { id: 'lure-template', name: 'Lure Template', rarity: 'uncommon', effectKind: 'hook', archetype: 'honeypot' },
 
   // --- Double-edged, Event-only (session 65, M7, M9) ---
   'fifteen-fold': { id: 'fifteen-fold', name: 'Fifteen Fold', rarity: 'rare', effectKind: 'hook', doubleEdged: true },
@@ -520,6 +523,8 @@ export function applyOnSubroutineAcquiredMods(playerState: RunPlayerState, acqui
   // to Daemon and Overclock.
   state = applyFirstArchetypeUpgradeMod(state, acquired, 'salvage-protocol', 'daemon');
   state = applyFirstArchetypeUpgradeMod(state, acquired, 'fast-learner', 'overclock');
+  state = applyFirstArchetypeUpgradeMod(state, acquired, 'proof-of-concept', 'exploit');
+  state = applyFirstArchetypeUpgradeMod(state, acquired, 'lure-template', 'honeypot');
   return state;
 }
 

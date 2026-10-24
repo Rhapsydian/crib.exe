@@ -75,6 +75,9 @@ export type ModId =
   | 'deep-cache'
   | 'root-cause'
   | 'persistent-payload'
+  // The free first Merge for the other two archetypes (session 69)
+  | 'proof-of-concept'
+  | 'lure-template'
   // Double-edged, Event-only (session 65, docs/mods-design.md M2, M7, M9)
   | 'fifteen-fold'
   | 'pair-fold'

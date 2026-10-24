@@ -162,6 +162,8 @@ export const MOD_TEXT: Record<GeneralModId, string> = {
   'honeypot-amplifier': amplifierText('honeypot-amplifier'),
   'overclock-amplifier': amplifierText('overclock-amplifier'),
   'fast-learner': 'The next Overclock subroutine you gain after taking this Mod is Merged once for free (one already at rank III is skipped).',
+  'proof-of-concept': 'The next Exploit subroutine you gain after taking this Mod is Merged once for free (one already at rank III is skipped).',
+  'lure-template': 'The next Honeypot subroutine you gain after taking this Mod is Merged once for free (one already at rank III is skipped).',
   'threshold-exploit': `Hooks that wait for several events ("once you've scored 3 pairs") need ${THRESHOLD_EXPLOIT_REDUCTION === 1 ? 'one' : THRESHOLD_EXPLOIT_REDUCTION} fewer (never fewer than 1).`,
   'scrap-merchant': 'The Shop offers 1 extra uncommon subroutine and 1 extra uncommon Mod.',
 
