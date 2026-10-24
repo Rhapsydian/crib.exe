@@ -562,6 +562,9 @@ export const BRIDGE_II_BLACKHAT_PAIRS = 2;
 export const BRIDGE_II_WARDEN_WARD = 1;
 /** Invocation II: fires' worth of growth the Daemons start each fight with. */
 export const BRIDGE_II_EIDOLON_FIRES = 3;
+/** Invocation II: fires' worth the Daemons' growth caps rise by (the
+ * user's addition: the head start alone ran into the caps, +4.7). */
+export const BRIDGE_II_EIDOLON_CAP_FIRES = 3;
 /** Foothold II: the share of blocked Credit that Credits back. */
 export const BRIDGE_II_BREACHER_SHARE = 1 / 3;
 /** Phase Shift II: initiative when Ward fully blocks a hit. */
@@ -663,9 +666,16 @@ export function applyModOnCombatStartPassives(combatState: CombatState): CombatS
   if (hasMod(state, 'warm-boot')) state = withSide(state, 0, { wardShield: state.sides[0].wardShield + MOD_SMALL });
   if (hasMod(state, 'cold-boot')) state = creditWinGauge(state, 0, MOD_SMALL);
   if (hasMod(state, 'cache-prefetch')) state = mapLoadout(state, 0, (entry) => addCharges(entry.state, entry.definition, CACHE_PREFETCH_CHARGES));
-  // Invocation II (M10): the Daemon subroutines start with a fire's growth.
+  // Invocation II (M10): the Daemon subroutines' growth caps rise, and
+  // they start with some fires' growth.
   for (const side of [0, 1] as PlayerIndex[]) {
-    if (bridgeUpgradedFor(state, side, 'daemon-overclock')) state = growDaemons(state, side, BRIDGE_II_EIDOLON_FIRES, 'daemon');
+    if (!bridgeUpgradedFor(state, side, 'daemon-overclock')) continue;
+    const loadout = state.sides[side].loadout.map((entry) => {
+      const { growth, growthCap } = entry.definition.alpha;
+      if (entry.definition.archetype !== 'daemon' || growth === undefined || growthCap === undefined) return entry;
+      return { ...entry, definition: { ...entry.definition, alpha: { ...entry.definition.alpha, growthCap: growthCap + growth * BRIDGE_II_EIDOLON_CAP_FIRES } } };
+    });
+    state = growDaemons(withSide(state, side, { loadout }), side, BRIDGE_II_EIDOLON_FIRES, 'daemon');
   }
   // The Folds (session 65): the player's fifteens and pairs repriced.
   if (hasMod(state, 'fifteen-fold')) state = withSide(state, 0, { scoringRule: { ...FIFTEEN_FOLD_RULE } });

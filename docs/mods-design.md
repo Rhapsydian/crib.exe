@@ -287,6 +287,10 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
   +0.7, Breacher +7.3, Warden +11.3, Wraith +20.0. Tuned:
   - **Lateral Movement II**: a pair royal is too rare, so "Your second
     pair each hand gives you a turn at once (a pair royal counts as three
-    pairs).": +7.3.
-  - **Invocation II**: three fires' growth, not one: +4.7.
+    pairs).": +7.3 (the user approved; a side scores two or more pairs in
+    about 43% of hands, pegging and show together).
+  - **Invocation II**: three fires' growth, not one: +4.7 (the caps
+    stopped it); with the user's addition, "Your Daemon subroutines start
+    each fight with 3 fires' growth already in them, and can grow 3 fires
+    further than usual.": +8.0.
   - **Phase Shift II**: 1 initiative, not 2: +8.7.

@@ -9,6 +9,7 @@ import {
   resolveEffect,
   BRIDGE_II_BREACHER_SHARE,
   BRIDGE_II_EIDOLON_FIRES,
+  BRIDGE_II_EIDOLON_CAP_FIRES,
   BRIDGE_II_WARDEN_WARD,
   BRIDGE_II_WRAITH_INITIATIVE,
   BRIDGE_EXPLOIT_DAEMON_FIRST,
@@ -43,7 +44,8 @@ describe('class Mod upgrades (II)', () => {
 
   it("Invocation II: the Daemon subroutines start with some fires' growth", () => {
     const daemon = credit('d', 1, 'daemon', { growth: 1, growthCap: 4 });
-    expect(applyModOnCombatStartPassives(fight('daemon-overclock', true, [daemon])).sides[0].loadout[0].state.growthTotal).toBe(Math.min(4, BRIDGE_II_EIDOLON_FIRES));
+    expect(applyModOnCombatStartPassives(fight('daemon-overclock', true, [daemon])).sides[0].loadout[0].state.growthTotal).toBe(BRIDGE_II_EIDOLON_FIRES);
+    expect(applyModOnCombatStartPassives(fight('daemon-overclock', true, [daemon])).sides[0].loadout[0].definition.alpha.growthCap).toBe(4 + BRIDGE_II_EIDOLON_CAP_FIRES);
     expect(applyModOnCombatStartPassives(fight('daemon-overclock', false, [daemon])).sides[0].loadout[0].state.growthTotal).toBe(0);
   });
 
