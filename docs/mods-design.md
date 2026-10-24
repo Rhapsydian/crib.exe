@@ -1,6 +1,6 @@
 # Mods (session 65)
 
-**Status: designed; building (checkpoint plan below).** The second piece of the player-side content pass
+**Status: built (session 65, checkpoints 1-6).** The second piece of the player-side content pass
 (`BACKLOG.md` → Priorities; `docs/burners-events-design.md` BE9): more
 Mods, double-edged Mods, upgrades for the six class Mods, and the Events
 that offer them. Decided live, one question at a time.
@@ -310,3 +310,12 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
   runs upgrade their class Mod. Full runs (300 seeds a class): Blackhat
   36.3, Operator 37.7, Eidolon 34.0, Breacher 42.0, Warden 41.3, Wraith
   36.7; average 38.0% (36.1 after checkpoint 2).
+- **Checkpoint 6, the screens.** The kit and the map's Mod list name an
+  upgraded class Mod "… II" with its added clause (`playerModView`,
+  `modName(mod, upgraded)`); a double-edged Mod's tag reads "Double-edged
+  Mod" where a rarity sits (`modTag`); contraband Burners read
+  "contraband" in the Shop and the kit. An Event's sure choice shows the
+  Mod it grants, with its tag and rules, or what the II upgrade adds
+  (a gamble keeps its secret). Checked in the browser at desktop and phone
+  width (Event screen, Shop with Black Market Ties' contraband slot, kit
+  text).

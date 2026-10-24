@@ -48,7 +48,7 @@
     {
       slate: 'burner',
       title: 'BURNERS',
-      items: shop.slates.burner.map((o, index) => ({ slate: 'burner', index, name: o.burner.name, tag: `${o.burner.rarity} · ${burnerWhere(o.burner)}`, lines: [burnerText(o.burner)], glyph: '⏏︎', cost: o.cost })),
+      items: shop.slates.burner.map((o, index) => ({ slate: 'burner', index, name: o.burner.name, tag: `${o.burner.contraband ? 'contraband' : o.burner.rarity} · ${burnerWhere(o.burner)}`, lines: [burnerText(o.burner)], glyph: '⏏︎', cost: o.cost })),
     },
   ]);
   // What's left to sell: the bench and carried Burners, less what this
@@ -78,7 +78,7 @@
     }),
     ...without(player.carriedBurnerIds, shop.sold.burner).map((id, i) => {
       const def = BURNER_DEFINITIONS[id];
-      return { key: `sell:b:${i}:${id}`, item: 'burner' as const, id, name: def.name, tag: `${def.rarity} Burner`, lines: [burnerText(def)], price: burnerSellPrice(def) };
+      return { key: `sell:b:${i}:${id}`, item: 'burner' as const, id, name: def.name, tag: `${def.contraband ? 'contraband' : def.rarity} Burner`, lines: [burnerText(def)], price: burnerSellPrice(def) };
     }),
   ]);
   const sell = (s: Sellable) =>

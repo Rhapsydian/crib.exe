@@ -3,6 +3,7 @@
   import type { EventChoice } from '../engine/event-types';
   import { choiceOutcomes } from './visit-text';
   import { choiceUnavailable } from '../engine/events';
+  import { BRIDGE_II_TEXT, classModFor, modTag, modText } from './kit';
 
   // An Event (milestone 3 checkpoint 4): a situation and its choices,
   // the scene told first (session 64).
@@ -16,6 +17,19 @@
   // a Mod you hold, or upgrading an upgraded class Mod, isn't open (65).
   const unavailable = (c: EventChoice) => choiceUnavailable(c, request.playerState);
   const chosen = $derived(request.event.choices.find((c) => c.id === selected));
+  // What a sure choice's Mod does (session 65): its name, tag and rules,
+  // or what the II upgrade adds. A gamble keeps its secret.
+  function grants(c: EventChoice): { name: string; tag: string; text: string }[] {
+    if (c.riskTier === 'gamble') return [];
+    return c.outcomes.flatMap(({ effect }) => {
+      const out: { name: string; tag: string; text: string }[] = [];
+      const g = effect.modGrant;
+      if (g && 'specific' in g) out.push({ name: g.specific.name, tag: modTag(g.specific.id), text: modText(g.specific.id) });
+      const cls = request.playerState.classId;
+      if (effect.classModUpgrade) out.push({ name: classModFor(cls, true).name, tag: 'adds:', text: BRIDGE_II_TEXT[cls] });
+      return out;
+    });
+  }
 </script>
 
 <div class="event">
@@ -26,7 +40,8 @@
   {#each request.event.choices as c (c.id)}
     <button class="choice" class:sel={selected === c.id} disabled={unavailable(c) !== null} onclick={() => (selected === c.id ? onchoose(c) : (selected = c.id))}>
       <div class="label"><b>{c.label}</b> <span class="risk {c.riskTier}">{RISK[c.riskTier]}</span></div>
-      {#each choiceOutcomes(c, request.layer) as line, i (i)}<div class="line">{line}</div>{/each}
+      {#each choiceOutcomes(c, request.layer).filter((line) => !grants(c).some((m) => m.name === line)) as line, i (i)}<div class="line">{line}</div>{/each}
+      {#each grants(c) as m, i (i)}<div class="line grant"><b>◆ {m.name}</b> <span class="grant-tag">{m.tag}</span> {m.text}</div>{/each}
       {#if unavailable(c)}<div class="line short">{unavailable(c)}</div>{/if}
     </button>
   {/each}
@@ -109,6 +124,15 @@
   .line {
     color: var(--text-dim);
     line-height: 1.4;
+  }
+  .grant b {
+    color: var(--mod);
+    font-weight: 600;
+  }
+  .grant-tag {
+    font-size: 10px;
+    opacity: 0.8;
+    margin-right: 2px;
   }
   .confirm {
     padding: 10px;

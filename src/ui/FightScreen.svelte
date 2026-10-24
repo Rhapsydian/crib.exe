@@ -196,7 +196,7 @@
     if (step?.type !== 'beat') return null;
     const b = step.beat;
     if (b.kind === 'burner') return { text: `⏏︎ ${burnerLabel(b.burnerId)}`, side: b.side, key: replay!.shown, tone: 'burner' };
-    if (b.kind === 'mod') return { text: `◆ ${b.side === 0 ? 'your' : 'their'} ${modName(b.mod)}`, side: b.side, key: replay!.shown, tone: 'mod' };
+    if (b.kind === 'mod') return { text: `◆ ${b.side === 0 ? 'your' : 'their'} ${modName(b.mod, f.view.combatState.bridgeUpgraded?.[b.side])}`, side: b.side, key: replay!.shown, tone: 'mod' };
     return null;
   });
   // A new hand: a banner over the table while its beat is up.

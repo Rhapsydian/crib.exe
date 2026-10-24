@@ -3,12 +3,11 @@
   import type { RunRequest } from '../engine/run-requests';
   import { HEAT_PER_MOVE, postedFightRisk, type FightTier } from '../engine/heat';
   import { applyOnMoveMods } from '../engine/mods';
-  import { MOD_DEFINITIONS } from '../engine/mods';
   import { BURNER_DEFINITIONS } from '../engine/burners';
   import type { BurnerId } from '../engine/burner-types';
   import MapView from './MapView.svelte';
   import LoadoutEditor from './LoadoutEditor.svelte';
-  import { modText } from './kit';
+  import { playerModView } from './kit';
   import { burnerText } from './reward-text';
   import { NODE_KIND } from './map-kinds';
 
@@ -131,7 +130,8 @@
   {#if player.ownedModIds.length}
     <div class="caption">MODS</div>
     {#each player.ownedModIds as id (id)}
-      <div class="kit"><div><span class="mod-glyph">◆</span> {MOD_DEFINITIONS[id].name}</div><div class="kit-text">{modText(id)}</div></div>
+      {@const mod = playerModView(id, player.classModUpgraded)}
+      <div class="kit"><div><span class="mod-glyph">◆</span> {mod.name} <span class="kit-tag">{mod.tag}</span></div><div class="kit-text">{mod.text}</div></div>
     {/each}
   {/if}
   {#if player.carriedBurnerIds.length}
@@ -476,6 +476,11 @@
   }
   .mod-glyph {
     color: var(--mod);
+  }
+  .kit-tag {
+    font-size: 9.5px;
+    color: var(--text-dim);
+    margin-left: 4px;
   }
   .burner-glyph {
     color: var(--warn);

@@ -205,16 +205,33 @@ export function modKey(side: PlayerIndex, mod: ModRef): string {
   return `${side}:${mod.kind}:${mod.id}`;
 }
 
-export function modName(mod: ModRef): string {
-  return mod.kind === 'gatekeeper' ? GATEKEEPER_MODS[mod.id].name : MOD_DEFINITIONS[mod.id].name;
+/** A Mod's name; a class Mod `upgraded` to its II version says so. */
+export function modName(mod: ModRef, upgraded = false): string {
+  if (mod.kind === 'gatekeeper') return GATEKEEPER_MODS[mod.id].name;
+  return `${MOD_DEFINITIONS[mod.id].name}${upgraded && bridgeClass(mod.id) ? ' II' : ''}`;
 }
 
-function modItem(side: PlayerIndex, mod: ModRef): KitItem {
-  const base = { key: modKey(side, mod), kind: 'mod' as const, side, name: modName(mod) };
+/** A Mod's tag where its kind sits: "Blackhat class Mod", "Double-edged
+ * Mod" (session 65), or its rarity. */
+export function modTag(id: ModId): string {
+  const cls = bridgeClass(id);
+  if (cls) return `${CLASS_DEFINITIONS[cls].name} class Mod`;
+  return MOD_DEFINITIONS[id].doubleEdged ? 'Double-edged Mod' : `${MOD_DEFINITIONS[id].rarity} Mod`;
+}
+
+/** A player Mod as the kit and the map show it: name, tag and rules,
+ * with the class Mod's II upgrade when it has one (session 65). */
+export function playerModView(id: ModId, classModUpgraded = false): { name: string; tag: string; text: string } {
+  const cls = bridgeClass(id);
+  const { name, text } = cls ? classModFor(cls, classModUpgraded) : { name: MOD_DEFINITIONS[id].name, text: modText(id) };
+  return { name, tag: modTag(id), text };
+}
+
+function modItem(side: PlayerIndex, mod: ModRef, upgraded = false): KitItem {
+  const base = { key: modKey(side, mod), kind: 'mod' as const, side, name: modName(mod, upgraded) };
   if (mod.kind === 'gatekeeper') return { ...base, tag: `${GATEKEEPER_MODS[mod.id].tier} Mod`, text: GATEKEEPER_MODS[mod.id].text };
-  const cls = bridgeClass(mod.id);
-  if (cls) return { ...base, tag: `${CLASS_DEFINITIONS[cls].name} class Mod`, text: side === 0 ? BRIDGE_TEXT[cls] : forEnemy(BRIDGE_TEXT[cls]) };
-  return { ...base, tag: `${MOD_DEFINITIONS[mod.id].rarity} Mod`, text: modText(mod.id) };
+  const view = playerModView(mod.id, upgraded);
+  return { ...base, tag: view.tag, text: side === 0 || !bridgeClass(mod.id) ? view.text : forEnemy(view.text) };
 }
 
 /** Any player Mod's rules in the player's voice: a class bridge's or a
@@ -235,7 +252,7 @@ export function modsOf(combatState: CombatState, side: PlayerIndex): KitItem[] {
   const bridge = combatState.bridges[side];
   if (bridge) add({ kind: 'mod', id: `${BRIDGE_PREFIX}${bridge}` as ModId });
   for (const id of combatState.sideMods[side]) add({ kind: 'gatekeeper', id });
-  return refs.map((r) => modItem(side, r));
+  return refs.map((r) => modItem(side, r, combatState.bridgeUpgraded?.[side] ?? false));
 }
 
 /** The player's Burners, each marked spent once used. */
@@ -250,7 +267,7 @@ export function burnersOf(carried: readonly BurnerId[], spentSoFar: readonly Bur
       kind: 'burner',
       side: 0,
       name: def.name,
-      tag: `Burner · ${def.rarity}`,
+      tag: `Burner · ${def.contraband ? 'contraband' : def.rarity}`,
       text: def.combat ? def.text : 'No effect in a fight.',
       spent: used !== -1,
     };
