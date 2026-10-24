@@ -86,8 +86,9 @@ Balance and content:
   and diluted Exploit/Overclock pools); for the win-rate pass.
 - **System strain** (S12): its first step (~1.5 Heat at layer 1, doubling)
   is a dial for the Heat pass; the user is keeping an eye on it.
-- **Heat ends ~13-17% of runs** since elites bite (0.4 elites lost a run,
-  each costing Heat); for the Heat pass.
+- **Heat** (session 69): allowances now grow by layer (56/63/72/80), about
+  65-71% of each layer explorable, Heat ending ~12% of runs. Two dials if
+  it comes up again: layer 1 to ~52, and flatter fight Heat at layers 3-4.
 - **Operator lowest at 20%** (Breacher 30%) after the enemy pass; for the
   win-rate pass. Phase Shift (Wraith) has room for fine tuning there too.
 - **Heat rarely ends a simulated run** (1-3% heat-maxed or caught), so

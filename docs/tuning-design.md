@@ -38,3 +38,7 @@ end).
   65 / 66 / 65%, peak Heat 65 / 68 / 75 / 79%, Heat ending 12.3% (maxed
   7.7, caught after a toll 4.6), victory 26.9%. DESIGN.md's "tightening
   with depth" reversed.
+- **Heat, done for now (the user).** Two dials noted, should Heat come
+  up again: layer 1's allowance to ~52 (it still leaves 71% explorable),
+  and flattening fight Heat's growth at layers 3-4 (mostly cuts tolls that
+  catch a player after a gatekeeper; Heat ends 12.3% against ~10%).
