@@ -215,3 +215,9 @@ player strength), plus `run-outcomes.ts`.
   By class: Breacher 27.5, Blackhat 22.5, Eidolon 22.0, Warden 18.0,
   Operator 17.0, Wraith 8.0%. Open: E1's gatekeeper rate against E6's
   victory.
+- **E13. Gatekeepers get harder by layer (the user's pick of four):**
+  players win about **85 / 80 / 75 / 72%** by layer (replacing E1's flat
+  70-75%): four gatekeepers at a flat 72.5% leave only ~28% of runs
+  through all four (0.725^4) before Heat, so E6's 24-30% victory needs a
+  ramp; ~37% through all four, ~26-28% victory after Heat. Gentle for
+  newcomers at layer 1, a wall at layer 4.
