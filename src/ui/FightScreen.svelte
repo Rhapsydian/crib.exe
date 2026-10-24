@@ -1,5 +1,6 @@
 <script lang="ts">
   import { stickToBottom } from './stick-to-bottom';
+  import { untrack } from 'svelte';
   import RichText from './RichText.svelte';
   import type { FightSnapshot } from './snapshot';
   import type { Card } from '../engine/cards';
@@ -49,6 +50,7 @@
     heat,
     ending = null,
     over = false,
+    showLog = false,
   }: {
     snapshot: FightSnapshot;
     onplay?: (card: Card) => void;
@@ -62,10 +64,20 @@
     /** The fight is over and played out: the gauges hold its final state
      * (the frame's are from the last decision, before the final turn). */
     over?: boolean;
+    /** The result card's "view log" (session 70): opens the log, the
+     * slide-in drawer on phones; false closes it again. */
+    showLog?: boolean;
   } = $props();
   const f = $derived(fightParts(snapshot));
   let picked = $state<Picked | null>(null);
   let sheet = $state<'none' | 'log' | 'loadouts'>('none');
+  $effect(() => {
+    const open = showLog;
+    untrack(() => {
+      if (open) sheet = 'log';
+      else if (sheet === 'log') sheet = 'none';
+    });
+  });
   const detail = $derived(pickedEntry(snapshot, picked));
   // Live, the table, the log and the gauges follow the replay's position
   // in the fight's steps; for the mockups, the paused frame as it is.

@@ -72,7 +72,7 @@
 </script>
 
 {#if fight.frame}
-  <FightScreen snapshot={fight.frame} {replay} heat={fight.heat} {ending} over={done} onplay={(c) => fight.answer(c)} ondiscard={(c) => fight.answer(c)} onburner={(id) => fight.answer(id)} />
+  <FightScreen snapshot={fight.frame} {replay} heat={fight.heat} {ending} over={done} showLog={reviewing} onplay={(c) => fight.answer(c)} ondiscard={(c) => fight.answer(c)} onburner={(id) => fight.answer(id)} />
 {/if}
 
 {#if fight.result && cardUp && reviewing}
