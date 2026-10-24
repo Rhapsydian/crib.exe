@@ -94,10 +94,15 @@ export function rateSkill(decisions: readonly SkillDecision[], withMistakes = tr
   }
   if (!weight) return null;
   const rating = Math.round((100 * sum) / weight);
+  // The costliest, with one slot kept for the worst pegging play if there
+  // is one (the user, session 70): discards usually cost more, and the
+  // drawer should teach both halves.
+  costly.sort((a, b) => b.lost - a.lost);
+  const shown = costly.slice(0, MISTAKES_SHOWN);
+  const worstPlay = costly.find((c) => c.d.kind === 'play');
+  if (worstPlay && !shown.includes(worstPlay) && shown.length === MISTAKES_SHOWN) shown[MISTAKES_SHOWN - 1] = worstPlay;
   const mistakes = withMistakes
-    ? costly
-        .sort((a, b) => b.lost - a.lost)
-        .slice(0, MISTAKES_SHOWN)
+    ? shown
         .map(({ d, lost }) => ({
           kind: d.kind,
           hand: d.handIndex + 1,

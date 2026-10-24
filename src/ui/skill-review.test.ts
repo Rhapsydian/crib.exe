@@ -35,6 +35,13 @@ describe('the review coach', () => {
     expect(rateSkill([])).toBeNull();
   });
 
+  it('keeps a slot for the worst pegging play, even when discards cost more', () => {
+    const spot = { legal: [c(5), c(4, 1)], count: 0, sequence: [], known: [c(5), c(4, 1), c(9, 2), c(9, 3)], opponentCards: 4 };
+    const bigDiscards = [0, 1, 3].map((h) => ({ ...discard([c(5), c(5, 1)]), handIndex: h }));
+    const r = rateSkill([...bigDiscards, { kind: 'play', handIndex: 4, spot, played: c(5) }])!;
+    expect(r.mistakes.map((m) => m.kind)).toEqual(['discard', 'discard', 'play']);
+  });
+
   it('marks a pegging play that hands over a fifteen', () => {
     // Leading a 5 invites any ten-card for 15; a 4 can't be made 15.
     const spot = { legal: [c(5), c(4, 1)], count: 0, sequence: [], known: [c(5), c(4, 1), c(9, 2), c(9, 3)], opponentCards: 4 };
