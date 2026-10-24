@@ -17,6 +17,11 @@ import {
   POWER_SIPHON_GROWTH,
   ESCALATION_STEP,
   ESCALATION_MAX,
+  INTERFERENCE_LOSS,
+  HARD_LIMIT_WARD,
+  LOCKOUT_EVERY,
+  PURGE_COUNTS,
+  COLLECTION_KEEP,
   type GatekeeperModId,
 } from './gatekeeper-mods';
 import type { EnemyPassiveId } from './enemies';
@@ -276,6 +281,24 @@ export function createCombatState(
 /** Clears both sides' hand-scoped intel and forced discards -- called once
  * per hand, before that hand's deal, so nothing stale carries over. */
 export function clearHandKnowledge(combatState: CombatState): CombatState {
+  return purgeHooks(clearHandKnowledgeOnly(combatState));
+}
+
+/** Purge (session 67, E4): at the start of each hand, each of the
+ * opponent's Hooks loses counts. */
+function purgeHooks(combatState: CombatState): CombatState {
+  let state = combatState;
+  for (const side of [0, 1] as PlayerIndex[]) {
+    if (!hasSideMod(state, side, 'purge')) continue;
+    const victim = opponentOf(side);
+    if (!state.sides[victim].loadout.some((e) => e.state.charges > 0)) continue;
+    noteMod(state, side, gk('purge'));
+    state = mapLoadout(state, victim, (e) => removeCharges(e.state, PURGE_COUNTS));
+  }
+  return state;
+}
+
+function clearHandKnowledgeOnly(combatState: CombatState): CombatState {
   const sides = combatState.sides.map((sideState, side): CombatSideState => {
     const hands = (sideState.passiveState[HANDS_SEEN] ?? 0) + 1;
     // Adaptation: every few hands, the owner's growth caps rise.
@@ -575,8 +598,16 @@ export const BRIDGE_OVERCLOCK_HONEYPOT_HASTE = 1 / 12;
 export const BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND = 1;
 const OVERCLOCK_HONEYPOT_THIS_HAND = 'bridge-overclock-honeypot:hand';
 
-const bankWard = (combatState: CombatState, side: PlayerIndex, amount: number) =>
-  withSide(combatState, side, { wardShield: combatState.sides[side].wardShield + amount });
+const bankWard = (combatState: CombatState, side: PlayerIndex, amount: number) => addWard(combatState, side, amount);
+
+/** Adds Ward to `side`, held under the opponent's Hard Limit (session 67,
+ * E4) when it has one. */
+function addWard(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
+  const next = combatState.sides[side].wardShield + amount;
+  if (!hasSideMod(combatState, opponentOf(side), 'hard-limit') || next <= HARD_LIMIT_WARD) return withSide(combatState, side, { wardShield: next });
+  noteMod(combatState, opponentOf(side), gk('hard-limit'));
+  return withSide(combatState, side, { wardShield: Math.max(combatState.sides[side].wardShield, HARD_LIMIT_WARD) });
+}
 const haste = (combatState: CombatState, side: PlayerIndex, fraction: number) =>
   resolveTempo({ verb: 'tempo', target: 'own', mode: 'gauge', amount: fraction }, combatState, side);
 
@@ -663,7 +694,7 @@ export function applyModOnCombatStartPassives(combatState: CombatState): CombatS
   if (hasMod(state, 'warm-boot')) noteMod(state, 0, ownMod('warm-boot'));
   if (hasMod(state, 'cold-boot')) noteMod(state, 0, ownMod('cold-boot'));
   if (hasMod(state, 'cache-prefetch')) noteMod(state, 0, ownMod('cache-prefetch'));
-  if (hasMod(state, 'warm-boot')) state = withSide(state, 0, { wardShield: state.sides[0].wardShield + MOD_SMALL });
+  if (hasMod(state, 'warm-boot')) state = addWard(state, 0, MOD_SMALL);
   if (hasMod(state, 'cold-boot')) state = creditWinGauge(state, 0, MOD_SMALL);
   if (hasMod(state, 'cache-prefetch')) state = mapLoadout(state, 0, (entry) => addCharges(entry.state, entry.definition, CACHE_PREFETCH_CHARGES));
   // Invocation II (M10): the Daemon subroutines' growth caps rise, and
@@ -857,10 +888,20 @@ export function applyCutMods(combatState: CombatState, starter: Card): CombatSta
 /** The end of a hand (session 65): Ward Converter Credits a share of the
  * player's remaining Ward (the Ward stays). */
 export function applyHandEndMods(combatState: CombatState): CombatState {
-  const ward = combatState.sides[0].wardShield;
-  if (!hasMod(combatState, 'ward-converter') || ward <= 0) return combatState;
-  noteMod(combatState, 0, ownMod('ward-converter'));
-  return creditWinGauge(combatState, 0, ward * WARD_CONVERTER_SHARE);
+  let state = combatState;
+  // Collection (session 67, E4): the opponent's growing subroutines lose
+  // half their growth.
+  for (const side of [0, 1] as PlayerIndex[]) {
+    if (!hasSideMod(state, side, 'collection')) continue;
+    const victim = opponentOf(side);
+    if (!state.sides[victim].loadout.some((e) => e.state.growthTotal > 0)) continue;
+    noteMod(state, side, gk('collection'));
+    state = mapLoadout(state, victim, (e) => (e.state.growthTotal > 0 ? { ...e.state, growthTotal: e.state.growthTotal * COLLECTION_KEEP } : e.state));
+  }
+  const ward = state.sides[0].wardShield;
+  if (!hasMod(state, 'ward-converter') || ward <= 0) return state;
+  noteMod(state, 0, ownMod('ward-converter'));
+  return creditWinGauge(state, 0, ward * WARD_CONVERTER_SHARE);
 }
 
 /** The show (session 65): Nobs Exploit Credits for each Jack in the
@@ -989,7 +1030,7 @@ export function resolveEffect(
     case 'suppress':
       return reduceWinGauge(state, target, effect.amount);
     case 'ward':
-      return withSide(state, caster, { wardShield: state.sides[caster].wardShield + effect.amount });
+      return addWard(state, caster, effect.amount);
     case 'empower':
       if (turn) {
         if (effect.scope === 'next') turn.empowerNext += effect.amount;
@@ -1034,6 +1075,10 @@ export function resolveEffect(
 
 /** Suspend (S5): turns `side`'s bottom subroutine still skips. */
 const SUSPENDED_TURNS = 'suspend:turns';
+/** Lockout (E4): `side`'s top subroutine skips its next turn; the
+ * Lockout owner's turns taken. */
+const LOCKED_TOP = 'gk:locked-top';
+const LOCKOUT_TURNS = 'gk:lockout-turns';
 
 function resolveTempo(effect: TempoEffect, combatState: CombatState, caster: PlayerIndex): CombatState {
   const affected = effect.target === 'own' ? caster : opponentOf(caster);
@@ -1257,9 +1302,17 @@ export function fireTurn(
     state = again.combatState;
     events.push(...again.events);
   }
-  // A Suspend lasts the turn (every pass of it), then counts down.
+  // A Suspend lasts the turn (every pass of it), then counts down; so does
+  // a Lockout on the top subroutine.
   const suspendedTurns = state.sides[side].passiveState[SUSPENDED_TURNS] ?? 0;
   if (suspendedTurns > 0) state = setPassiveStat(state, side, SUSPENDED_TURNS, suspendedTurns - 1);
+  if ((state.sides[side].passiveState[LOCKED_TOP] ?? 0) > 0) state = setPassiveStat(state, side, LOCKED_TOP, 0);
+  // Lockout (E4): every second turn its owner takes locks the opponent's top.
+  if (hasSideMod(state, side, 'lockout')) {
+    const taken = passiveStat(state, side, LOCKOUT_TURNS) + 1;
+    state = setPassiveStat(state, side, LOCKOUT_TURNS, taken);
+    if (taken % LOCKOUT_EVERY === 0) state = setPassiveStat(state, opponentOf(side), LOCKED_TOP, 1);
+  }
   if (side === 0) {
     if (state.sides[0].passiveState[THIRTY_ONE_HOOKS]) state = setPassiveStat(state, 0, THIRTY_ONE_HOOKS, 0);
     state = hotStandby(state);
@@ -1334,11 +1387,17 @@ function fireLoadoutOnce(
   // Suspend (S5) skips the same subroutine, for this turn.
   const suspended = (state.sides[side].passiveState[SUSPENDED_TURNS] ?? 0) > 0;
   const quotaSkip = quota || suspended ? bottomInstalledIndex(state, side) : -1;
+  // Lockout (E4): this turn the top subroutine skips.
+  const lockedTop = (state.sides[side].passiveState[LOCKED_TOP] ?? 0) > 0 ? 0 : -1;
 
   for (let i = 0; i < loadoutLength; i++) {
     const entry = state.sides[side].loadout[i];
     if (i === quotaSkip) {
       if (quota) noteMod(state, opponentOf(side), gk('resource-quota'));
+      continue;
+    }
+    if (i === lockedTop) {
+      noteMod(state, opponentOf(side), gk('lockout'));
       continue;
     }
     if (!withinFiringGates(entry.definition, entry.state)) continue;
@@ -1440,6 +1499,11 @@ export function fireImmediateBetas(combatState: CombatState, dealer: PlayerIndex
       // standalone beta effect only counts against the fire cap.
       state = mapLoadout(state, side, (e, index) => (index === i ? (alpha ? recordFire(e.state, definition) : { ...e.state, fireCount: e.state.fireCount + 1 }) : e.state));
       state = rootCause(state, side, i);
+      // Interference (E4): an Instant Hook going off costs its owner Breach.
+      if (hasSideMod(state, opponentOf(side), 'interference')) {
+        noteMod(state, opponentOf(side), gk('interference'));
+        state = reduceWinGauge(state, side, INTERFERENCE_LOSS);
+      }
       const firedCharges = beta.source === 'cards' || beta.source === 'progress' ? entry.state.charges : 1;
       events.push({ subroutineId: definition.id, side, alpha: alpha ?? (definition.alpha as Effect), beta: resolvedBeta, elevated: true, charges: firedCharges, immediate: true, gauges: readGauges(state), ...takeMods(state, modMark) });
     }

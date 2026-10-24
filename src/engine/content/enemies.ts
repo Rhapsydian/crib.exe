@@ -123,6 +123,14 @@ export const AUTHORED_ELITES: AuthoredEnemy[] = [
   { id: 'threat-hunter', name: 'Threat Hunter', tier: 'elite', archetypes: ['exploit', 'honeypot'], minLayer: 3, mods: ['evidence-chain'], loadout: [AUDIT_LOG, HONEYNET, p('fail2ban')], scale: 1.84 },
   // Rations your CPU: your bottom subroutine never fires (Resource Quota).
   // Context Switch sits beside Priority Override so its Hook can apply.
+  // Session 67 (docs/enemies-design.md E4): six elites, each aimed at a
+  // kind of build. Scales calibrated in checkpoint 3.
+  { id: 'jamming-array', name: 'Jamming Array', tier: 'elite', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['interference'], loadout: [p('buffer-overflow'), p('ping'), p('doorknob-rattle')], scale: 1.05 },
+  { id: 'memory-governor', name: 'Memory Governor', tier: 'elite', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['hard-limit'], loadout: [p('patch'), p('basic-auth'), p('steady-drip')], scale: 1.4 },
+  { id: 'lockdown-service', name: 'Lockdown Service', tier: 'elite', archetypes: ['exploit', 'daemon'], minLayer: 3, mods: ['lockout'], loadout: [p('circuit-breaker'), p('deadlock'), p('watchdog-timer')], scale: 1.5 },
+  { id: 'fast-path-router', name: 'Fast Path Router', tier: 'elite', archetypes: ['overclock', 'honeypot'], minLayer: 3, mods: ['fast-path'], loadout: [p('pipeline-flush'), p('priority-override'), p('tarpit')], scale: 1.4 },
+  { id: 'purge-daemon', name: 'Purge Daemon', tier: 'elite', archetypes: ['daemon', 'overclock'], minLayer: 4, mods: ['purge'], loadout: [p('fork-bomb'), p('cache-hit'), p('memory-leak')], scale: 1.3 },
+  { id: 'reaper-process', name: 'Reaper Process', tier: 'elite', archetypes: ['exploit', 'honeypot'], minLayer: 4, mods: ['collection'], loadout: [p('packet-sniffer'), p('sinkhole'), p('race-condition')], scale: 1.3 },
   { id: 'hypervisor', name: 'Hypervisor', tier: 'elite', archetypes: ['daemon', 'overclock'], minLayer: 4, mods: ['resource-quota'], loadout: [p('priority-override'), CONTEXT_SWITCH, p('fork-bomb')], scale: 1.31 },
 ];
 

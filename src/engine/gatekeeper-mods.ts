@@ -25,7 +25,14 @@ export type GatekeeperModId =
   | 'power-siphon'
   | 'escalation'
   | 'evidence-chain'
-  | 'resource-quota';
+  | 'resource-quota'
+  // Session 67's elites (docs/enemies-design.md E4)
+  | 'interference'
+  | 'hard-limit'
+  | 'lockout'
+  | 'fast-path'
+  | 'purge'
+  | 'collection';
 
 export interface GatekeeperModDefinition {
   id: GatekeeperModId;
@@ -62,6 +69,21 @@ export const POWER_SIPHON_GROWTH = 1;
  * this share of its starting threshold, up to ESCALATION_MAX in all. */
 export const ESCALATION_STEP = 0.05;
 export const ESCALATION_MAX = 0.25;
+/** Interference (session 67, E4): Breach its opponent loses per Instant
+ * Hook going off. TBD/measured. */
+export const INTERFERENCE_LOSS = 2;
+/** Hard Limit: the most Ward its opponent can hold. */
+export const HARD_LIMIT_WARD = 6;
+/** Lockout: every this-many of its turns, its opponent's top subroutine
+ * skips their next turn. */
+export const LOCKOUT_EVERY = 2;
+/** Fast Path: its pegging points count this many times toward its initiative. */
+export const FAST_PATH_MULTIPLIER = 2;
+/** Purge: counts each of its opponent's Hooks loses at the start of a hand. */
+export const PURGE_COUNTS = 1;
+/** Collection: the share of growth its opponent's subroutines keep at the
+ * end of a hand. */
+export const COLLECTION_KEEP = 0.5;
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 const share = (n: number) => ({ 0.5: 'half', 0.75: 'three-quarters', 0.25: 'a quarter' })[n] ?? pct(n);
@@ -87,5 +109,12 @@ export const GATEKEEPER_MODS: Record<GatekeeperModId, GatekeeperModDefinition> =
   },
   'evidence-chain': { id: 'evidence-chain', name: 'Evidence Chain', text: 'Whenever it gives you Heat, it also Credits that much.', tier: 'elite' },
   'resource-quota': { id: 'resource-quota', name: 'Resource Quota', text: "Your bottom subroutine doesn't fire.", tier: 'elite' },
+  // --- Session 67's elites (E4): each aimed at a kind of build ---
+  interference: { id: 'interference', name: 'Interference', text: `Each time one of your Instant Hooks goes off, your Breach loses ${INTERFERENCE_LOSS}.`, tier: 'elite' },
+  'hard-limit': { id: 'hard-limit', name: 'Hard Limit', text: `Your Ward can't go above ${HARD_LIMIT_WARD}.`, tier: 'elite' },
+  lockout: { id: 'lockout', name: 'Lockout', text: `Every ${LOCKOUT_EVERY === 2 ? 'second' : `${LOCKOUT_EVERY}th`} turn it takes, your top subroutine skips your next turn.`, tier: 'elite' },
+  'fast-path': { id: 'fast-path', name: 'Fast Path', text: `Points it scores while pegging count ${FAST_PATH_MULTIPLIER === 2 ? 'double' : `${FAST_PATH_MULTIPLIER} times`} toward its initiative.`, tier: 'elite' },
+  purge: { id: 'purge', name: 'Purge', text: `At the start of each hand, each of your Hooks loses ${PURGE_COUNTS === 1 ? '1 count' : `${PURGE_COUNTS} counts`}.`, tier: 'elite' },
+  collection: { id: 'collection', name: 'Collection', text: `At the end of each hand, your growing subroutines lose ${COLLECTION_KEEP === 0.5 ? 'half' : pct(1 - COLLECTION_KEEP)} their growth.`, tier: 'elite' },
   escalation: { id: 'escalation', name: 'Escalation', text: `Each of its turns lowers its initiative threshold by ${pct(ESCALATION_STEP)} (at most ${pct(ESCALATION_MAX)} in all), so its turns come faster.`, tier: 'elite' },
 };

@@ -13,6 +13,7 @@ import type { ModId } from './mod-types';
 import type { BurnerId, BurnerTiming } from './burner-types';
 import { BURNER_DEFINITIONS } from './burners';
 import { OVERCLOCKED_KERNEL_BAR } from './mods';
+import { FAST_PATH_MULTIPLIER } from './gatekeeper-mods';
 import {
   occurrencesFromPeggingEvent,
   occurrencesFromHandEvents,
@@ -36,6 +37,7 @@ import {
   bridgeUpgradedFor,
   addSideHeat,
   countLateralPairs,
+  hasSideMod,
   armThirtyOne,
   playerHasMod,
   createCombatState,
@@ -681,6 +683,8 @@ export function* combatGenerator(
     if (winner !== null) return winner;
 
     let points = occurrencePoints(occurrence);
+    // Fast Path (session 67, E4): its pegging points count double for its initiative.
+    if (phase === 'peg' && hasSideMod(combatState, occurrence.player, 'fast-path')) points *= FAST_PATH_MULTIPLIER;
     // Lateral Movement II (session 65, M10): the scorer's second pair each
     // hand gives a turn at once (a pair royal is three pairs).
     if (occurrence.category === 'pair' && bridgeUpgradedFor(combatState, occurrence.player, 'exploit-overclock')) {
