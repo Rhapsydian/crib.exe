@@ -1,6 +1,6 @@
 # Enemies (session 67)
 
-**Status: batch 1 (elites) built, session 67; batch 2 (gatekeepers, regulars) designing, session 68.** The last piece of the content pass (`BACKLOG.md` →
+**Status: built (sessions 67-68): elites, gatekeepers, regulars, calibration, Wraith, Skeleton Key.** The last piece of the content pass (`BACKLOG.md` →
 Priorities): more enemies of all three tiers, and elites with teeth.
 Decided live, one question at a time.
 
@@ -287,3 +287,16 @@ player strength), plus `run-outcomes.ts`.
   gatekeeper Breach and Containment gauges are bigger still." ("Digging in"
   read as a battlefield, not a network.) First-time tips at the first
   elite or gatekeeper fight on each layer.
+- **E18. Skeleton Key reworked (the user):** contraband (Event-only):
+  "If you lose a gatekeeper fight, you aren't quarantined: the fight
+  starts over, once. Used up when it saves you." The lost attempt costs no
+  Heat; the toll is still due on the win; the retry is a new deal. Marked
+  `passive` (works by itself), so it is kept rather than sold as a no-use
+  Burner. Measured (100 seeds a class): starting with a Key, victory 25.5
+  → 34.0% (+8.5) and it saves 58% of runs (gatekeeper losses are the
+  commonest ending); at the Events' natural supply, 1.7% of runs ever hold
+  one, it saves 0.8%, victory unchanged at 25.5%.
+- **Checkpoint 8, screens and loose ends (done):** the gatekeeper named
+  above its map node (E12, checked at phone width with the longest name);
+  the bigger-gauge card (E9); the Skeleton Key (E18) with its notice.
+  Batch 2 done.
