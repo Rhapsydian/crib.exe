@@ -637,3 +637,15 @@ describe('Events never grant a set-aside item by name (session 58)', () => {
         }
   });
 });
+
+describe('Salvage Protocol and Fast Learner skip a rank III (session 69)', () => {
+  it('a gained Daemon already at rank III leaves the Mod unused for the next one', async () => {
+    const { applyOnSubroutineAcquiredMods } = await import('./mods');
+    const { createInitialPlayerState } = await import('./run');
+    const { ALL_POOL_SUBROUTINES } = await import('./subroutines');
+    const daemon = ALL_POOL_SUBROUTINES.find((p) => p.archetype === 'daemon')!;
+    const base: RunPlayerState = { ...createInitialPlayerState('daemon-honeypot'), ownedModIds: ['salvage-protocol'], installedLoadout: [{ ...daemon, rank: 3 }], rank: { [daemon.id]: 3 } };
+    const after = applyOnSubroutineAcquiredMods(base, daemon);
+    expect(after.modRunState['salvage-protocol:used'] ?? 0).toBe(0);
+  });
+});

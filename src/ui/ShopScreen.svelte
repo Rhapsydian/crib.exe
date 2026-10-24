@@ -6,7 +6,7 @@
   import { modText } from './kit';
   import { acquireNote, burnerText, burnerWhere, pieceLines, rarityOf } from './reward-text';
   import type { Archetype } from '../engine/subroutine-types';
-  import { BURNER_DEFINITIONS } from '../engine/burners';
+  import { BURNER_CAP, BURNER_DEFINITIONS } from '../engine/burners';
   import { burnerSellPrice, subroutineSellPrice } from '../engine/shop';
   import { ALL_SUBROUTINES } from '../engine/subroutines';
   import { rankMark } from './visit-text';
@@ -24,6 +24,23 @@
 
   const shop = $derived(request.shop);
   const player = $derived(request.playerState);
+  // The player as this visit's purchases leave them (session 69, a
+  // tester's note: every note read as if nothing had been bought, so
+  // buying past the loadout and bench, or past the Burner limit, came with
+  // no warning).
+  const afterBuys = $derived.by(() => {
+    const installed = [...player.installedLoadout];
+    const bench = [...player.bench];
+    const owned = (id: string) => installed.some((p) => p.id === id) || bench.some((p) => p.id === id);
+    for (const i of shop.bought.subroutine) {
+      const piece = shop.slates.subroutine[i]?.piece;
+      if (!piece || owned(piece.id)) continue;
+      const used = installed.filter((p) => !player.grantedByMod[p.id]).length;
+      (used < INSTALLED_SLOT_CAP ? installed : bench).push(piece);
+    }
+    return { ...player, installedLoadout: installed, bench };
+  });
+  const burnersAfterBuys = $derived(player.carriedBurnerIds.length - shop.sold.burner.length + shop.bought.burner.length);
   type Item = { slate: ShopSlate; index: number; name: string; tag: string; lines: string[]; note?: string; icon?: Archetype; glyph?: string; cost: number };
   const sections = $derived.by((): { slate: ShopSlate; title: string; items: Item[] }[] => [
     {
@@ -35,7 +52,7 @@
         name: o.piece.name,
         tag: rarityOf(o.piece.id),
         lines: pieceLines(o.piece),
-        note: acquireNote(o.piece, player, INSTALLED_SLOT_CAP, BENCH_CAP),
+        note: shop.bought.subroutine.includes(index) ? undefined : acquireNote(o.piece, afterBuys, INSTALLED_SLOT_CAP, BENCH_CAP),
         icon: o.piece.archetype,
         cost: o.cost,
       })),
@@ -48,7 +65,23 @@
     {
       slate: 'burner',
       title: 'BURNERS',
-      items: shop.slates.burner.map((o, index) => ({ slate: 'burner', index, name: o.burner.name, tag: `${o.burner.contraband ? 'contraband' : o.burner.rarity} · ${burnerWhere(o.burner)}`, lines: [burnerText(o.burner)], glyph: '⏏︎', cost: o.cost })),
+      items: shop.slates.burner.map((o, index) => ({
+        slate: 'burner',
+        index,
+        name: o.burner.name,
+        tag: `${o.burner.contraband ? 'contraband' : o.burner.rarity} · ${burnerWhere(o.burner)}`,
+        lines: [burnerText(o.burner)],
+        note:
+          !shop.bought.burner.includes(index) && burnersAfterBuys >= BURNER_CAP
+            ? `You carry ${BURNER_CAP} Burners, the most you can: buying this means giving one up.`
+            : o.burner.contexts.includes('shop')
+              ? // A tester's Stolen Coupon "didn't prompt" (session 69): one
+                // bought here works from the next Shop you enter.
+                "A Shop Burner: you're offered it as you enter your next Shop."
+              : undefined,
+        glyph: '⏏︎',
+        cost: o.cost,
+      })),
     },
   ]);
   // What's left to sell: the bench and carried Burners, less what this

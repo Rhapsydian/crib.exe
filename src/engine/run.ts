@@ -1054,7 +1054,10 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       // The last layer's gatekeeper ends the run (session 63, the tutorial
       // playthrough): its rewards would never be used, so none are offered.
       const runOver = node.type === 'gatekeeperFight' && layerIndex === layerNodeCounts.length - 1 && !outcome.quarantined;
-      if (runOver) {
+      // Caught by this encounter's Heat (session 69, a tester's note): the
+      // run ends below, so its rewards would never be used either.
+      const caught = afterEncounter.maxed && !evaded;
+      if (runOver || caught) {
         outcome.rewardOptions = [];
         outcome.modRewardOptions = [];
         outcome.burnerRewardOptions = [];

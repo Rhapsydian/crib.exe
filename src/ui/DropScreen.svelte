@@ -5,6 +5,7 @@
   import { BENCH_CAP } from '../engine/loadout';
   import SuitIcon from './SuitIcon.svelte';
   import { pieceLines, rarityOf } from './reward-text';
+  import { rankMark } from './visit-text';
 
   // The bench is over its cap (milestone 3 checkpoint 3, M2): drop one
   // piece for good. The newest piece is marked; dropping it turns the
@@ -17,6 +18,9 @@
   const all = $derived([...player.installedLoadout, ...player.bench]);
   const chosen = $derived(all.find((p) => p.id === selected));
   const isInstalled = (p: SubroutineDefinition) => player.installedLoadout.some((x) => x.id === p.id);
+  // Its Merge rank and banked copies (session 69, a tester's note: a rank
+  // II could be dropped without seeing it).
+  const copies = (p: SubroutineDefinition) => player.material[p.id] ?? 0;
   const consequence = $derived(
     !chosen
       ? 'Tap a piece to choose it.'
@@ -38,6 +42,8 @@
     <button class="piece" class:sel={selected === p.id} disabled={granted} onclick={() => (selected = selected === p.id ? null : p.id)}>
       <SuitIcon archetype={p.archetype} size={14} />
       {p.name}
+      {#if p.rank}<span class="rank" title="Merge rank">{rankMark(p.rank)}</span>{/if}
+      {#if copies(p)}<span class="tag">{copies(p)} {copies(p) === 1 ? 'copy' : 'copies'} banked</span>{/if}
       {#if granted}<span class="tag">Mod-granted</span>{/if}
     </button>
   {/each}
@@ -46,13 +52,15 @@
     <button class="piece" class:sel={selected === p.id} onclick={() => (selected = selected === p.id ? null : p.id)}>
       <SuitIcon archetype={p.archetype} size={14} />
       {p.name}
+      {#if p.rank}<span class="rank" title="Merge rank">{rankMark(p.rank)}</span>{/if}
+      {#if copies(p)}<span class="tag">{copies(p)} {copies(p) === 1 ? 'copy' : 'copies'} banked</span>{/if}
       {#if p.id === newest.id}<span class="tag new">NEW</span>{/if}
     </button>
   {/each}
 
   {#if chosen}
     <div class="detail">
-      <div class="name"><SuitIcon archetype={chosen.archetype} size={15} /> <b>{chosen.name}</b> <span class="dim">· {rarityOf(chosen.id)}</span></div>
+      <div class="name"><SuitIcon archetype={chosen.archetype} size={15} /> <b>{chosen.name}</b> <span class="dim">· {rarityOf(chosen.id)}{chosen.rank ? ` · rank ${rankMark(chosen.rank)}` : ''}{copies(chosen) ? ` · ${copies(chosen)} banked` : ''}</span></div>
       {#each pieceLines(chosen) as line (line)}<div><RichText text={line} /></div>{/each}
     </div>
   {/if}
@@ -107,6 +115,12 @@
   .piece.sel {
     border-color: var(--danger);
     box-shadow: 0 0 0 1px var(--danger) inset;
+  }
+  .rank {
+    font-size: 10px;
+    color: var(--accent);
+    margin-left: 4px;
+    font-weight: 700;
   }
   .tag {
     margin-left: auto;

@@ -41,6 +41,12 @@
     return () => clearTimeout(t);
   });
   const ending = $derived(done && !cardUp && fight.result ? fight.result.winner : null);
+  // Reading the log after the fight (session 69, a tester's note): the
+  // result card steps aside, and comes back on request.
+  let reviewing = $state(false);
+  $effect(() => {
+    if (!fight.result) reviewing = false;
+  });
   // A run's fight: the Heat its result cost, as the engine charges it (the
   // user's ask, session 63) -- a win's baseline, alarms and performance
   // term; a loss's price and alarms. A lost gatekeeper is Quarantine, not
@@ -60,7 +66,11 @@
   <FightScreen snapshot={fight.frame} {replay} heat={fight.heat} {ending} over={done} onplay={(c) => fight.answer(c)} ondiscard={(c) => fight.answer(c)} onburner={(id) => fight.answer(id)} />
 {/if}
 
-{#if fight.result && cardUp}
+{#if fight.result && cardUp && reviewing}
+  <button class="back-to-result" onclick={() => (reviewing = false)}>result ▸</button>
+{/if}
+
+{#if fight.result && cardUp && !reviewing}
   {@const r = fight.result}
   {@const pts = pointsSummary(r.timeline)}
   <div class="scrim"></div>
@@ -86,12 +96,25 @@
       </tbody>
     </table>
     <div class="buttons">
+      <button class="secondary" onclick={() => (reviewing = true)}>view log</button>
       {#each actions as a (a.label)}<button onclick={a.onclick}>{a.label}</button>{/each}
     </div>
   </div>
 {/if}
 
 <style>
+  .back-to-result {
+    position: fixed;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    z-index: 26;
+    padding: 8px 14px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--bg-sunken);
+    color: var(--accent);
+    font: inherit;
+  }
   .scrim {
     position: fixed;
     inset: 0;

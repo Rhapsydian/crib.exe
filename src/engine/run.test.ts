@@ -730,3 +730,25 @@ describe('a lost fight ejects the player (session 67)', () => {
     expect(checked).toBeGreaterThan(0);
   }, 60_000);
 });
+
+describe('caught by a fight’s Heat (session 69, a tester’s note)', () => {
+  it('offers no rewards from the fight that caught you', async () => {
+    const { runRequests } = await import('./run');
+    let checked = 0;
+    for (let seed = 0; seed < 300 && checked < 3; seed++) {
+      const run = runRequests({ seed, classId: 'exploit-daemon', traversalStrategy: opportunisticTraversal });
+      let step = run.next();
+      let sinceWin: string[] | null = null;
+      while (!step.done) {
+        const req = step.value;
+        if (req.kind === 'fightEnd') sinceWin = req.result.winner === 0 ? [] : null;
+        else if (sinceWin) sinceWin.push(req.kind);
+        step = run.next(req.fallback());
+      }
+      if (step.value.outcome !== 'heatMaxed' || !sinceWin) continue;
+      expect(sinceWin).not.toContain('reward');
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(0);
+  }, 120_000);
+});

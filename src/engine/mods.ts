@@ -5,7 +5,7 @@ import { CLASS_DEFINITIONS } from './classes';
 import type { Rarity } from './rewards';
 import type { Rng } from './rng';
 import type { RunPlayerState } from './run';
-import { mergeSubroutine } from './merge';
+import { MERGE_RANK_CAP, mergeSubroutine } from './merge';
 import { archetypeLadderPosition, rarityLadderPosition } from './loadout';
 
 /**
@@ -538,6 +538,9 @@ function applyFirstArchetypeUpgradeMod(
   if (!playerState.ownedModIds.includes(modId)) return playerState;
   if (acquired.archetype !== archetype) return playerState;
   if ((playerState.modRunState[`${modId}:used`] ?? 0) > 0) return playerState;
+  // One already at rank III can't be Merged: it doesn't use the Mod up
+  // (session 69; it used to, for nothing).
+  if ((playerState.rank[acquired.id] ?? 0) >= MERGE_RANK_CAP) return playerState;
   const withMaterial = { ...playerState, material: { ...playerState.material, [acquired.id]: (playerState.material[acquired.id] ?? 0) + 1 } };
   const merged = mergeSubroutine(withMaterial, acquired.id);
   return { ...merged, modRunState: { ...merged.modRunState, [`${modId}:used`]: 1 } };
