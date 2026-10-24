@@ -711,3 +711,22 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
     expect(traced).toBeGreaterThan(0);
   }, 150_000);
 });
+
+describe('a lost fight ejects the player (session 67)', () => {
+  it('after a closed node, the next move starts where the player came from', () => {
+    let checked = 0;
+    for (let seed = 0; seed < 40 && checked < 5; seed++) {
+      const log = playRun({ seed, classId: 'exploit-daemon', traversalStrategy: opportunisticTraversal, installedLoadoutOverride: NEGLIGIBLE_LOADOUT }).log;
+      for (let i = 0; i < log.length; i++) {
+        const e = log[i];
+        if (e.type !== 'encounter' || e.outcome.newState !== 'closed') continue;
+        const before = log.slice(0, i).reverse().find((x) => x.type === 'move');
+        const after = log.slice(i + 1).find((x) => x.type === 'move' || x.type === 'layerGenerated' || x.type === 'runEnded');
+        if (!before || before.type !== 'move' || !after || after.type !== 'move') continue;
+        expect(after.from).toBe(before.from);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  }, 60_000);
+});

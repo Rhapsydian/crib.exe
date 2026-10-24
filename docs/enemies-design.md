@@ -112,3 +112,16 @@ player strength), plus `run-outcomes.ts`.
   lost elite closes its node (DESIGN.md: impassable) and closures can cut
   the gatekeeper off; 0.38 elite losses a run. Open: what losing a
   regular or elite should do to the map.
+- **E6. Full-run victory 24-30% (the user), and closures stay.** A drop
+  from ~40% was wanted anyway. Losing a regular or elite still closes its
+  node: runs should occasionally end with no route forward, but far less
+  than a third of them; map generation is the lever.
+- **E7. No new map rule (the user: re-measure first).** The third of runs
+  ending with no route was a bug: a lost regular or elite closed its node
+  but left the player standing on it, so the route check found no way
+  out. Ejecting the player back where they came from (as DESIGN.md says)
+  fixed it. Measured (`scripts/run-endings.ts`, 50 seeds a class): with an
+  elite-free-route rule, victory 28.0%, no route 0%; without it, victory
+  24.3%, no route 0.3% ("on occasion"). The rule was dropped. Heat now
+  ends ~13% of runs (lost elites cost Heat; 0.49 lost a run), for the Heat
+  pass.

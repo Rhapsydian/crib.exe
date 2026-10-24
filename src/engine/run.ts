@@ -976,6 +976,11 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       );
       if (isFightNode) fightsResolved++;
       graph = { ...graph, nodes: graph.nodes.map((n) => (n.id === node.id ? { ...n, state: outcome.newState } : n)) };
+      // A lost regular or elite fight closes its node and ejects the player
+      // back where they came from (DESIGN.md). Left standing on the closed
+      // node, the route check below found no way out and ended the run
+      // (session 67: a third of runs, once players started losing elites).
+      if (outcome.newState === 'closed') position = { ...position, nodeId: fromNodeId };
       // Ghost Credentials (session 65): each fight adds more Heat, booked
       // as `mod` Heat (before any map Burner's cut, which then cuts it too).
       if (isFightNode && playerState.ownedModIds.includes('ghost-credentials') && outcome.heatDelta > 0) {
