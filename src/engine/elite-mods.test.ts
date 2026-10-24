@@ -55,3 +55,22 @@ describe('session 67 elite Mods', () => {
     expect(applyHandEndMods(s).sides[0].loadout[0].state.growthTotal).toBe(grown * COLLECTION_KEEP);
   });
 });
+
+describe('Fast Path (session 67)', () => {
+  it('its pegging points fill its initiative faster, and it says so', async () => {
+    const { playCombat } = await import('./combat');
+    const loadouts: [SubroutineDefinition[], SubroutineDefinition[]] = [[credit('a', 0.1)], [credit('e', 0.1)]];
+    const turns = (mods: GatekeeperModId[]) => {
+      let n = 0, noted = 0;
+      for (let seed = 0; seed < 20; seed++) {
+        const r = playCombat(loadouts, { seed, gaugeThreshold: [12, 12], winThreshold: [1000, 1000], gatekeeperMods: [[], mods] });
+        n += r.timeline.filter((b) => b.kind === 'turn' && b.side === 1).length;
+        noted += r.timeline.filter((b) => b.kind === 'mod' && b.side === 1).length;
+      }
+      return { n, noted };
+    };
+    const fast = turns(['fast-path']);
+    expect(fast.n).toBeGreaterThan(turns([]).n);
+    expect(fast.noted).toBeGreaterThan(0);
+  });
+});

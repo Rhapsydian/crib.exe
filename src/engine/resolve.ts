@@ -925,6 +925,11 @@ export function playerHasMod(combatState: CombatState, id: ModId): boolean {
   return hasMod(combatState, id);
 }
 
+/** Notes a gatekeeper or elite Mod acting, for combat.ts (Fast Path). */
+export function noteSideMod(combatState: CombatState, side: PlayerIndex, id: GatekeeperModId): void {
+  noteMod(combatState, side, gk(id));
+}
+
 /** Notes a player Mod acting, for combat.ts. */
 export function notePlayerMod(combatState: CombatState, id: ModId): void {
   noteMod(combatState, 0, ownMod(id));

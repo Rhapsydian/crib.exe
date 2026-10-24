@@ -38,6 +38,7 @@ import {
   addSideHeat,
   countLateralPairs,
   hasSideMod,
+  noteSideMod,
   armThirtyOne,
   playerHasMod,
   createCombatState,
@@ -684,7 +685,10 @@ export function* combatGenerator(
 
     let points = occurrencePoints(occurrence);
     // Fast Path (session 67, E4): its pegging points count double for its initiative.
-    if (phase === 'peg' && hasSideMod(combatState, occurrence.player, 'fast-path')) points *= FAST_PATH_MULTIPLIER;
+    if (phase === 'peg' && hasSideMod(combatState, occurrence.player, 'fast-path')) {
+      noteSideMod(combatState, occurrence.player, 'fast-path');
+      points *= FAST_PATH_MULTIPLIER;
+    }
     // Lateral Movement II (session 65, M10): the scorer's second pair each
     // hand gives a turn at once (a pair royal is three pairs).
     if (occurrence.category === 'pair' && bridgeUpgradedFor(combatState, occurrence.player, 'exploit-overclock')) {

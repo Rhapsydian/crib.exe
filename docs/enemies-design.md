@@ -1,6 +1,6 @@
 # Enemies (session 67)
 
-**Status: designing.** The last piece of the content pass (`BACKLOG.md` →
+**Status: batch 1 (elites) built, session 67; batch 2 (gatekeepers, regulars) next.** The last piece of the content pass (`BACKLOG.md` →
 Priorities): more enemies of all three tiers, and elites with teeth.
 Decided live, one question at a time.
 
@@ -146,3 +146,8 @@ player strength), plus `run-outcomes.ts`.
   takes gatekeepers from 78-84% player wins to 70-75% and so pulls it
   down. By class (the round before): Breacher 35.7, Warden 32.7, Operator
   31.0, Eidolon 26.0, Blackhat 22.0, Wraith 18.7%.
+- **Checkpoint 4, screens.** The six elite Mods show in the fight kit
+  with an "elite Mod" tag and their rule; each flashes "◆ their …" in
+  the log when it acts (checked in the browser over five fights each).
+  Fast Path never announced itself: now it does. The bigger-gauge card
+  waits for the gatekeeper pass (E9). Batch 1 done.
