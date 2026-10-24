@@ -18,7 +18,16 @@ import { combatPegSpot } from './fight';
  */
 export type SkillDecision =
   | { kind: 'discard'; handIndex: number; hand: Card[]; thrown: [Card, Card]; ownCrib: boolean }
-  | { kind: 'play'; handIndex: number; spot: PegSpot; played: Card };
+  | {
+      kind: 'play';
+      handIndex: number;
+      spot: PegSpot;
+      played: Card;
+      /** The table as the drawer shows it: the player's cards (legal or
+       * not) and the cut. */
+      hand: Card[];
+      starter?: Card;
+    };
 
 /** The player's answer to a fight request, as a decision to rate; null
  * for anything else (a Burner, a short hand a Mod pulled a card from). */
@@ -29,7 +38,8 @@ export function decisionFor(request: CombatRequest, answer: CombatAnswer): Skill
   }
   if (request.kind === 'play' && answer && !Array.isArray(answer) && typeof answer === 'object') {
     const spot = combatPegSpot(request);
-    if (spot) return { kind: 'play', handIndex, spot, played: answer as Card };
+    const cut = request.view.timeline.findLast((b) => b.kind === 'cut');
+    if (spot) return { kind: 'play', handIndex, spot, played: answer as Card, hand: request.pegging.hand, starter: cut?.kind === 'cut' ? cut.starter : undefined };
   }
   return null;
 }
@@ -63,6 +73,8 @@ export interface SkillMistake {
   /** Points given up. */
   lost: number;
   text: string;
+  /** The choice itself, for the drawer to lay out the cards. */
+  decision: SkillDecision;
 }
 
 export interface SkillRating {
@@ -106,6 +118,7 @@ export function rateSkill(decisions: readonly SkillDecision[], withMistakes = tr
         .map(({ d, lost }) => ({
           kind: d.kind,
           hand: d.handIndex + 1,
+          decision: d,
           lost,
           text: d.kind === 'discard' ? discardReview(d.hand, d.thrown, d.ownCrib).text : pegReview(d.spot, d.played).text,
         }))

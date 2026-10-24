@@ -30,7 +30,7 @@ describe('the review coach', () => {
   });
 
   it("skips a play that didn't matter, and has nothing to rate with nothing asked", () => {
-    const only: SkillDecision = { kind: 'play', handIndex: 0, spot: { legal: [c(4)], count: 20, sequence: [c(10), c(10, 1)], known: [c(4)], opponentCards: 2 }, played: c(4) };
+    const only: SkillDecision = { kind: 'play', handIndex: 0, spot: { legal: [c(4)], count: 20, sequence: [c(10), c(10, 1)], known: [c(4)], opponentCards: 2 }, played: c(4), hand: [c(4)] };
     expect(rateSkill([only])).toBeNull();
     expect(rateSkill([])).toBeNull();
   });
@@ -38,15 +38,15 @@ describe('the review coach', () => {
   it('keeps a slot for the worst pegging play, even when discards cost more', () => {
     const spot = { legal: [c(5), c(4, 1)], count: 0, sequence: [], known: [c(5), c(4, 1), c(9, 2), c(9, 3)], opponentCards: 4 };
     const bigDiscards = [0, 1, 3].map((h) => ({ ...discard([c(5), c(5, 1)]), handIndex: h }));
-    const r = rateSkill([...bigDiscards, { kind: 'play', handIndex: 4, spot, played: c(5) }])!;
+    const r = rateSkill([...bigDiscards, { kind: 'play', handIndex: 4, spot, played: c(5), hand: [c(5), c(4, 1)] }])!;
     expect(r.mistakes.map((m) => m.kind)).toEqual(['discard', 'discard', 'play']);
   });
 
   it('marks a pegging play that hands over a fifteen', () => {
     // Leading a 5 invites any ten-card for 15; a 4 can't be made 15.
     const spot = { legal: [c(5), c(4, 1)], count: 0, sequence: [], known: [c(5), c(4, 1), c(9, 2), c(9, 3)], opponentCards: 4 };
-    const bad = rateSkill([{ kind: 'play', handIndex: 1, spot, played: c(5) }])!;
-    const good = rateSkill([{ kind: 'play', handIndex: 1, spot, played: c(4, 1) }])!;
+    const bad = rateSkill([{ kind: 'play', handIndex: 1, spot, played: c(5), hand: [c(5), c(4, 1)] }])!;
+    const good = rateSkill([{ kind: 'play', handIndex: 1, spot, played: c(4, 1), hand: [c(5), c(4, 1)] }])!;
     expect(good.rating).toBe(100);
     expect(bad.rating).toBeLessThan(good.rating);
     expect(bad.mistakes[0]?.kind).toBe('play');
