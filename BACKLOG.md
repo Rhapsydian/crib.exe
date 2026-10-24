@@ -15,23 +15,23 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 64)
+## Current state (end of session 65)
 
 The game is playable in the browser on desktop and phones
 (<https://rhapsydian.github.io/crib.exe/>, branch `playable`): a full
 four-layer run with six classes, a guided tutorial, first-time tips, plain
 Cribbage with a coach and lessons, and saves. Milestone 5 (polish and
-playtesting) is under way. 826 tests, `npm run check` clean.
+playtesting) is under way. 860 tests, `npm run check` clean.
 
-**The content pass is on `content-pass`** (branched from `playable` in
-session 64; the user merges it into `playable` after playing it locally):
-24 Burners (lumps, rule-benders, temporary subroutines, map Heat tools,
-four Event-only contraband) and 18 Events with story, some held to deeper
-layers (`docs/burners-events-design.md`). Content otherwise: 36 player
-subroutines, 27 enemies plus the tutorial's Firewall Beta, 37 Mods.
-Balance on `content-pass`: 21.0-31.0% victory by class, average 26.5%; the
-user (session 64): testers new to Cribbage find the game too hard, so
-rising win rates are welcome.
+**The content pass is on `content-pass`** (pushed; the user merges it into
+`playable` after playing it locally; save version 2 discards old saves):
+24 Burners and 24 Events with story (`docs/burners-events-design.md`);
+55 Mods: 12 new rule-benders in the pool, and 6 double-edged Mods and 6
+class Mod upgrades offered only by Events (`docs/mods-design.md`).
+Content otherwise: 36 player subroutines, 27 enemies plus the tutorial's
+Firewall Beta. Balance on `content-pass`: 34.0-42.0% victory by class,
+average 38.0%; the user: rising rates are welcome, and Heat, win-rate and
+Mod-supply tuning come after the content (elite tuning before them).
 
 ---
 
@@ -41,9 +41,11 @@ In this order:
 
 1. **More content**, all of it: subroutines, Mods, Burners, Events, and
    enemies of all three tiers. Player side first, then enemies.
-   **Burners and the first ten new Events are done** (session 64). Next:
-   **Mods** (double-edged Mods, upgrades for the class Mods, their Events),
-   then subroutines, then enemies; Event mini-games after. The user's notes:
+   **Burners and the first ten new Events are done** (session 64), **Mods
+   and their six Events** (session 65). Next (to settle at session 66's
+   start): subroutines, the enemy pool (elites first: the user wants elite
+   tuning before Heat and win rates), then Heat, win-rate and Mod-supply
+   tuning; Event mini-games after. The user's notes:
    - **Burners:** the economy ones (Data, Shop discounts) are the only
      ones worth carrying; tune up the combat and map Burners.
    - **Events** can be a source of rare, high-value Burners.
@@ -78,6 +80,12 @@ most, refine some of the map icons.
 ## Open items
 
 Balance and content:
+- **Heat rarely ends a simulated run** (1-3% heat-maxed or caught), so
+  Ghost Credentials (-26 Heat a run) and Black Market Ties (+19) measure
+  ~0 victory (session 65). Revisit both with Heat tuning.
+- **Mirror Hand** (0.33 of the uncommon average) and **Persistent
+  Payload** (a fixture floor) are unmeasured in builds that suit them; the
+  six-commons duel fixture reads build-dependent Mods low.
 - **Elites barely threaten a 6-subroutine loadout** (97.7% player wins at
   layer 2, session 64's Burner check) and regular/elite losses are rare
   (the user: rarely contained outside gatekeepers). Look at regular and
@@ -91,8 +99,11 @@ Balance and content:
   5 hands at ~10 Containment a turn: the worst case for a slow-ramping
   class. Warden beats it 77% (vs 100% against Firewall Prime). Consider a
   trim for onboarding (its scale, or Reception Protocol once per fight).
-- **Win rates** on `content-pass`: average 26.5% (Breacher 31.0% to
-  Wraith 21.0%); the reworked Burners added ~6 points. The user (session
+- **Win rates** on `content-pass`: average 38.0% (Breacher 42.0% to
+  Eidolon 34.0%, session 65); the reworked Burners added ~6 points, the
+  Mods ~11 (most from the rule-benders raising the pool's uncommon and
+  rare share at the same supply: the user's call is content first, then
+  tune supply). The user (session
   64): testers new to Cribbage find it too hard, so higher is welcome;
   report shifts, don't chase the old 15-20% band. Warden gains from Burners
   as much as the rest once they're saved for elites and gatekeepers; it's

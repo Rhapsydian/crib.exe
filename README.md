@@ -43,6 +43,9 @@ README's old session-by-session narrative is archived in
   (not yet merged into `playable`): 24 reworked Burners (lumps,
   rule-benders, temporary subroutines, Heat tools, Event-only contraband)
   and 18 Events, each with story (`docs/burners-events-design.md`).
+- **Session 65:** Mods, on `content-pass`: 12 rule-benders, 6 double-edged
+  Mods and 6 class Mod upgrades, offered by 6 new Events (24 in all); a
+  pair royal counts as three pairs (`docs/mods-design.md`).
 
 What exists, all headless and test-covered:
 
@@ -53,8 +56,8 @@ What exists, all headless and test-covered:
 | Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
 | Run progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge (everything at once, at a Safehouse), a Shop that buys and sells, Burners, the trace evasion |
 | Meta-progression (between runs) | **undesigned** — a priority after the content pass |
-| Content | **authored** — 36 player subroutines, 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod) plus the tutorial's Firewall Beta; 37 Mods (Static Shield set aside); on `content-pass`, 24 Burners (4 Event-only contraband) and 18 Events with story (`playable` still has 9 and 8). The content pass continues: Mods, subroutines, enemies |
-| Balance | testers new to Cribbage find it too hard, so rising win rates are welcome (session 64); on `content-pass` 21.0–31.0% by class, average 26.5% |
+| Content | **authored** — 36 player subroutines, 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod) plus the tutorial's Firewall Beta; 37 Mods (Static Shield set aside); on `content-pass`, 55 Mods (12 new rule-benders; 6 double-edged and 6 class upgrades, Event-only), 24 Burners (4 Event-only contraband) and 24 Events with story (`playable` still has 37, 9 and 8). The content pass continues: subroutines, enemies |
+| Balance | testers new to Cribbage find it too hard, so rising win rates are welcome (session 64); on `content-pass` 34.0–42.0% by class, average 38.0% (session 65); elite, Heat, win-rate and Mod-supply tuning to follow |
 | UI | a whole run and plain Cribbage with a coach and lessons, on desktop and phones, saved after every choice; a guided tutorial, first-time tips, the Heat bar |
 | Art | the current terminal look is the intended style; no sprite pass planned (at most, refined map icons) |
 
@@ -66,7 +69,7 @@ done; milestone 5, polish and playtesting, is under way.
 
 ```bash
 npm install
-npm test        # Vitest suite (826 tests)
+npm test        # Vitest suite (860 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server: the main menu (the roguelite, Cribbage); #test is the single-fight harness
 ```
@@ -119,6 +122,7 @@ kit, reporting threshold vs. attrition wins on each side.
 | `npx tsx scripts/build-check.ts` | A real build (by layer) against that layer's gatekeepers |
 | `npx tsx scripts/engine-bench.ts` | Simulation speed (fights per second): run before and after any engine change |
 | `npx tsx scripts/evasion-check.ts` | Trace evasion escape odds by head start and skill, and the head starts real runs produce |
+| `npx tsx scripts/mod-check.ts [--double] \| --part=run --only=… \| --part=class` | Each Mod with and without it: Containment cut against a layer's elites (as a multiple of its rarity's average), full-run victory, or each class with its upgrade |
 | `npx tsx scripts/burner-check.ts --part=combat\|map` | Each Burner with and without it: Containment prevented against a layer's elites (as a multiple of Flash Drive), or Heat saved in full runs |
 | `npx tsx scripts/tutorial-seed.ts` / `tutorial-gatekeeper.ts` | The tutorial's seed (its first hand, winnable at every skill) and its gatekeeper's pass rate |
 
@@ -187,6 +191,7 @@ Current:
 | `docs/tutorial-design.md` | The guided tutorial run and first-time tips (session 63) |
 | `docs/trace-evasion-design.md` | The trace evasion: rules TE1–TE8, measurements, screens (session 63) |
 | `docs/burners-events-design.md` | The Burner rework and Event story (BE1–BE10, session 64) |
+| `docs/mods-design.md` | Rule-benders, double-edged Mods, class Mod upgrades and their Events (M1–M14, session 65) |
 | `docs/session-logs/` | Per-session record of decisions and results |
 | `docs/calibration/` | Raw measurement output cited by the design records and the code |
 
