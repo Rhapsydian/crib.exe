@@ -129,3 +129,8 @@ player strength), plus `run-outcomes.ts`.
   of runs, reopening a closed node is too rare to carry a Burner for. Its
   rework (perhaps a contraband "lose a gatekeeper, try once more") is
   flagged for the gatekeeper pass.
+- **E9. A warning card for bigger gauges (the user):** a first-time card
+  at layer 3 and again at layer 4 saying the Breach and Containment gauges
+  are bigger there. Elites have them now; gatekeepers will in batch 2,
+  regulars won't. **The card is built after the gatekeeper tuning, with
+  its wording settled then** (the user), so it covers both tiers.

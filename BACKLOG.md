@@ -80,6 +80,10 @@ most, refine some of the map icons.
 ## Open items
 
 Balance and content:
+- **Bigger-gauge warning card, after the gatekeeper pass** (session 67,
+  E9): a first-time card at layers 3 and 4 that elites' and gatekeepers'
+  Breach and Containment gauges are bigger there; wording settled once
+  gatekeepers are tuned.
 - **Skeleton Key rework, for the gatekeeper pass** (session 67): set aside
   once the ejection fix made no-route endings ~0.3% of runs; one idea, a
   contraband second try at a lost gatekeeper (measure: gatekeeper losses
