@@ -1,6 +1,6 @@
 # Enemies (session 67)
 
-**Status: batch 1 (elites) built, session 67; batch 2 (gatekeepers, regulars) next.** The last piece of the content pass (`BACKLOG.md` →
+**Status: batch 1 (elites) built, session 67; batch 2 (gatekeepers, regulars) designing, session 68.** The last piece of the content pass (`BACKLOG.md` →
 Priorities): more enemies of all three tiers, and elites with teeth.
 Decided live, one question at a time.
 
@@ -58,6 +58,58 @@ Players beat elites about 98% of the time; gatekeepers about 73% (session
     of each hand, each of your Hooks loses 1 count.
   - Layer 4, **Reaper Process** (Exploit, Honeypot). **Collection:** at the
     end of each hand, your growing subroutines lose half their growth.
+
+- **E10. Batch 2's order (session 68, the user):** design and build the
+  eight new gatekeepers, then calibrate all sixteen together (as elites
+  were: a gatekeeper gauge curve by layer for 5+ hands, each gatekeeper's
+  own strength for 70-75%, by replay; Firewall Prime's 12-hand fights
+  need its No Way In cap loosened), then the eight regulars (variety,
+  difficulty unchanged), then the bigger-gauge card (E9) and the Skeleton
+  Key rework (E8).
+
+- **E11. The eight new gatekeepers** (signature subroutine and
+  four-subroutine loadout drafted at build; strength and gauges per E10;
+  the player can't see a gatekeeper before its fight, so these are about
+  adapting in it, not preparing):
+  - Layer 1, **The House** (Exploit, Overclock). **House Edge:** points
+    from its crib count double toward its initiative.
+  - Layer 1, **Bandwidth Cap** (Daemon, Overclock). **Throttled Link:**
+    your initiative bar is 3 longer.
+  - Layer 2, **Signature Lock** (Exploit, Daemon). **Hardened:** your
+    Hooks need one more count to go off.
+  - Layer 2, **Sandbox** (Exploit, Honeypot). **Behavior Analysis:** each
+    turn you take gives it Ward 2. (Drafted as Detonation Chamber; the
+    user: the name didn't match the effect.)
+  - Layer 3, **Watchtower** (Exploit, Overclock). **Pattern Match:** the
+    first run you score each hand gives it a turn at once.
+  - Layer 3, **Mirror Fabric** (Overclock, Honeypot). **Reflection:**
+    whenever its Ward absorbs your Credit, it Credits half of what was
+    absorbed.
+  - Layer 4, **Black Ice** (Exploit, Daemon, Honeypot). **Counter-Trace:**
+    each time one of your Hooks goes off, you gain 1 Heat. (Drafted as
+    Trace Burn.)
+  - Layer 4, **System Architect** (Daemon, Overclock, Honeypot).
+    **Rewrite:** at the start of each hand, it swaps your top and bottom
+    subroutines. (Drafted as The Architect.)
+- **E12. The map names the layer's gatekeeper (the user):** its name
+  above the gatekeeper node, so the run can shape itself around it.
+
+## Checkpoint plan (batch 2: gatekeepers, regulars)
+
+Each checkpoint: engine, text, tests, `npm run check`, then a pause for
+sign-off.
+
+5. **The eight gatekeepers** (E11): Mods, signature subroutines,
+   loadouts, text, tests.
+6. **Calibrating all sixteen** (E10): a gatekeeper gauge curve by layer
+   (5+ hands), each gatekeeper's own strength (70-75% player wins), by
+   `fight-calibrate.ts --tier=gatekeeper`; Firewall Prime's cap; full-run
+   victory toward 24-30% (E6).
+7. **The eight regulars:** a slate for review first (variety; difficulty
+   as today), then built.
+8. **Screens and loose ends:** the gatekeeper's name above its map node
+   (E12); the bigger-gauge card (E9, wording settled then); the Skeleton
+   Key rework (E8); browser check at desktop and phone width.
 
 ## Checkpoint plan (batch 1: elites)
 
