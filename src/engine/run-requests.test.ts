@@ -210,14 +210,14 @@ describe('Burner swap at the carry cap', () => {
   it('swaps out the Burner the driver names for the new one, or keeps them all', async () => {
     const { acquireBurnerAsking } = await import('./run');
     const { BURNER_DEFINITIONS } = await import('./burners');
-    const full = { ...createInitialPlayerState('exploit-overclock'), carriedBurnerIds: ['flash-drive', 'emp-charge', 'skeleton-key'] as BurnerId[] };
+    const full = { ...createInitialPlayerState('exploit-overclock'), carriedBurnerIds: ['flash-drive', 'emp-charge', 'zero-day'] as BurnerId[] };
     const incoming = BURNER_DEFINITIONS['stolen-coupon'];
     const ask = acquireBurnerAsking(full, incoming);
     const first = ask.next();
     expect(first.done).toBe(false);
     expect(first.value).toMatchObject({ kind: 'burnerSwap', incoming });
     const swapped = ask.next('emp-charge');
-    expect(swapped.done && swapped.value.carriedBurnerIds).toEqual(['flash-drive', 'skeleton-key', 'stolen-coupon']);
+    expect(swapped.done && swapped.value.carriedBurnerIds).toEqual(['flash-drive', 'zero-day', 'stolen-coupon']);
     const keep = acquireBurnerAsking(full, incoming);
     keep.next();
     const kept = keep.next(null);

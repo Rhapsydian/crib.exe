@@ -12,9 +12,9 @@
   }: { request: Extract<RunRequest, { kind: 'eventResult' | 'cacheOpened' | 'burnerSaved' }>; layer: number; oncontinue: () => void } = $props();
 
   const view = $derived.by(() => {
-    // Skeleton Key (session 68): a lost gatekeeper fight starts over, once.
+    // Restore Point (session 68): a lost gatekeeper fight starts over, once.
     if (request.kind === 'burnerSaved') {
-      return { kicker: 'BURNER · SKELETON KEY', title: "You aren't quarantined.", lines: [`The Skeleton Key turns. Your fight against ${request.enemy.name} starts over.`, 'The Key is used up.'] };
+      return { kicker: 'BURNER · RESTORE POINT', title: "You aren't quarantined.", lines: [`The Restore Point loads. Your fight against ${request.enemy.name} starts over.`, 'The Restore Point is used up.'] };
     }
     if (request.kind === 'cacheOpened') {
       const lines =

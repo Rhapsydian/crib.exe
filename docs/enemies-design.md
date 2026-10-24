@@ -300,3 +300,9 @@ player strength), plus `run-outcomes.ts`.
   above its map node (E12, checked at phone width with the longest name);
   the bigger-gauge card (E9); the Skeleton Key (E18) with its notice.
   Batch 2 done.
+- **E18, renamed Restore Point (the user):** "Skeleton Key" fit opening a
+  locked node; coming back from a failed fight is a restore. The old
+  Key's leftovers went with it: tapping closed nodes to reopen them on the
+  map, and the simulated player's map strategy for it (four tests
+  retired). It stays a rare find through the contraband Event grants, no
+  dedicated Event for now; revisit in the next Events batch.

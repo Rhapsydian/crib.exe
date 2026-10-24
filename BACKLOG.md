@@ -79,14 +79,10 @@ most, refine some of the map icons.
 ## Open items
 
 Balance and content:
-- **Bigger-gauge warning card, after the gatekeeper pass** (session 67,
-  E9): a first-time card at layers 3 and 4 that elites' and gatekeepers'
-  Breach and Containment gauges are bigger there; wording settled once
-  gatekeepers are tuned.
-- **Skeleton Key rework, for the gatekeeper pass** (session 67): set aside
-  once the ejection fix made no-route endings ~0.3% of runs; one idea, a
-  contraband second try at a lost gatekeeper (measure: gatekeeper losses
-  end ~58% of runs).
+- **Restore Point** (was Skeleton Key, session 68): a contraband second
+  try at a lost gatekeeper; only ~1.7% of runs find one through the
+  contraband Event grants. A dedicated Event to chase it is an option for
+  the next Events batch.
 - **Class spread widening** (session 66): Breacher 50.7%, Warden 47.7%,
   Operator 43.0% against Wraith 32.7% and Blackhat 33.0% (system strain
   and diluted Exploit/Overclock pools); for the win-rate pass.

@@ -28,7 +28,7 @@ export type BurnerId =
   | 'honeynet-shim'
   // Map: Heat tools (BE4)
   | 'ghost-protocol'
-  | 'skeleton-key'
+  | 'restore-point'
   | 'log-wiper'
   | 'proxy-chain'
   | 'spoofed-credentials'
@@ -110,7 +110,7 @@ export interface BurnerDefinition {
   sellValue?: number;
   /** Offered only by Events, never in Shops or fight rewards (BE5). */
   contraband?: boolean;
-  /** Works by itself, never activated (session 68: Skeleton Key); kept, not
+  /** Works by itself, never activated (session 68: Restore Point); kept, not
    * sold as a no-use Burner. */
   passive?: true;
 }

@@ -127,7 +127,7 @@ describe('Map-context activation -- MapBurnerStrategy', () => {
     expect(zeroCostMoves.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('Skeleton Key reopens a closed node back to unresolved -- reopenNode against a hand-built graph', () => {
+  it('reopenNode returns a closed node to unresolved -- against a hand-built graph', () => {
     const a = createNode('a', 'regularFight');
     const closed = { ...createNode('b', 'regularFight'), state: 'closed' as const };
     const gk = createNode('gk', 'gatekeeperFight');
@@ -141,7 +141,7 @@ describe('Map-context activation -- MapBurnerStrategy', () => {
     expect(reopenNode(graph, 'does-not-exist')).toBe(graph);
   });
 
-  it("Skeleton Key (session 68): a lost gatekeeper fight starts over once, and the Key is used up", async () => {
+  it("Restore Point (session 68): a lost gatekeeper fight starts over once, and the Burner is used up", async () => {
     const { runRequests } = await import('./run');
     const weak: SubroutineDefinition[] = [{ id: 'weak', name: 'weak', archetype: 'exploit', alpha: { verb: 'credit', amount: 0.1 } }];
     const play = (burners: BurnerId[]) => {
@@ -159,11 +159,11 @@ describe('Map-context activation -- MapBurnerStrategy', () => {
     const without = play([]);
     expect(without.result.outcome).toBe('quarantined');
     expect(without.gatekeeperFights).toBe(1);
-    const withKey = play(['skeleton-key']);
+    const withKey = play(['restore-point']);
     expect(withKey.saved).toBe(1);
     expect(withKey.gatekeeperFights).toBe(2);
     expect(withKey.result.outcome).toBe('quarantined');
-    expect(withKey.result.playerState.carriedBurnerIds).not.toContain('skeleton-key');
+    expect(withKey.result.playerState.carriedBurnerIds).not.toContain('restore-point');
   });
 
   it('neverActivateMapBurner is the default -- no activation without an explicit strategy', () => {
@@ -383,14 +383,14 @@ describe('Burners smoke test -- a full run with Burners carried and used across 
 describe('synergyAwareBurnerAcquisition / synergyAwareBurnerShopStrategy', () => {
   const common = BURNER_DEFINITIONS['flash-drive']; // common
   const uncommon = BURNER_DEFINITIONS['emp-charge']; // uncommon
-  const rare = BURNER_DEFINITIONS['skeleton-key']; // rare
+  const rare = BURNER_DEFINITIONS['zero-day']; // rare
 
   function stateWithData(data: number): RunPlayerState {
     return { ...createInitialPlayerState('exploit-overclock'), data };
   }
 
   it('picks the rarest offered Burner', () => {
-    expect(synergyAwareBurnerAcquisition([common, rare, uncommon], stateWithData(0))?.id).toBe('skeleton-key');
+    expect(synergyAwareBurnerAcquisition([common, rare, uncommon], stateWithData(0))?.id).toBe('zero-day');
   });
 
   it('falls to the earliest option when rarities tie, matching alwaysAcquireFirstBurner', () => {
@@ -409,7 +409,7 @@ describe('synergyAwareBurnerAcquisition / synergyAwareBurnerShopStrategy', () =>
     ];
     const state = stateWithData(200);
     expect(buyCheapestAffordableBurner(offerings, state)?.burner.id).toBe('flash-drive');
-    expect(synergyAwareBurnerShopStrategy(offerings, state)?.burner.id).toBe('skeleton-key');
+    expect(synergyAwareBurnerShopStrategy(offerings, state)?.burner.id).toBe('zero-day');
   });
 
   it('never buys an unaffordable Burner', () => {
@@ -492,8 +492,7 @@ describe('synergyAwareShopBurnerStrategy', () => {
 describe('synergyAwareMapBurnerStrategy', () => {
   /** Two hand-built graphs sharing a shape: entry 'a', gatekeeper 'gk',
    * and node 'b' as the only path between them. With 'b' closed the
-   * gatekeeper is unreachable and Skeleton Key is the only way through;
-   * with 'b' open it is reachable and spending the Burner buys nothing. */
+   * gatekeeper is unreachable; with 'b' open it is reachable. */
   function graphWithBClosed(closed: boolean): LayerGraph {
     const b = closed ? { ...createNode('b', 'regularFight'), state: 'closed' as const } : createNode('b', 'regularFight');
     return {
@@ -517,32 +516,6 @@ describe('synergyAwareMapBurnerStrategy', () => {
       closedNodeIds: graph.nodes.filter((n) => n.state === 'closed').map((n) => n.id),
     };
   }
-
-  it('spends Skeleton Key only when the gatekeeper is genuinely unreachable', () => {
-    const picked = synergyAwareMapBurnerStrategy(mapCtx(graphWithBClosed(true), ['skeleton-key']));
-    expect(picked).toEqual({ burnerId: 'skeleton-key', targetNodeId: 'b' });
-  });
-
-  it('holds Skeleton Key while the gatekeeper is still reachable', () => {
-    expect(synergyAwareMapBurnerStrategy(mapCtx(graphWithBClosed(false), ['skeleton-key']))).toBeNull();
-  });
-
-  it('targets a closed node that actually restores the route, not merely the first one', () => {
-    // 'dead-end' is closed too, but reopening it changes nothing --
-    // picking it would spend the rarest Burner in the game for no effect.
-    const base = graphWithBClosed(true);
-    const graph: LayerGraph = {
-      ...base,
-      nodes: [...base.nodes, { ...createNode('dead-end', 'regularFight'), state: 'closed' as const }],
-    };
-    const ctx = { ...mapCtx(graph, ['skeleton-key']), closedNodeIds: ['dead-end', 'b'] };
-    expect(synergyAwareMapBurnerStrategy(ctx)).toEqual({ burnerId: 'skeleton-key', targetNodeId: 'b' });
-  });
-
-  it('prefers Skeleton Key over the others when the route is severed', () => {
-    const picked = synergyAwareMapBurnerStrategy(mapCtx(graphWithBClosed(true), ['log-wiper', 'ghost-protocol', 'skeleton-key']));
-    expect(picked?.burnerId).toBe('skeleton-key');
-  });
 
   it('spends Ghost Protocol when a move would cost Heat', () => {
     const picked = synergyAwareMapBurnerStrategy(mapCtx(graphWithBClosed(false), ['tunnel', 'ghost-protocol']));

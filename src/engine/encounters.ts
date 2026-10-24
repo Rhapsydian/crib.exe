@@ -153,8 +153,8 @@ function ownedSubroutineIds(playerState: RunPlayerState): string[] {
   return [...playerState.installedLoadout, ...playerState.bench].map((p) => p.id);
 }
 
-/** Skeleton Key's retry plays a different deal from the lost fight. */
-const SKELETON_KEY_SEED_STEP = 7919;
+/** Restore Point's retry plays a different deal from the lost fight. */
+const RESTORE_POINT_SEED_STEP = 7919;
 
 export function combatThresholdsFor(
   playerState: RunPlayerState,
@@ -630,14 +630,14 @@ function* resolveFight(
   let result: CombatResult = synthetic ? syntheticCombatResult(synthetic, seed) : yield* fight(seed);
   yield* ask({ kind: 'fightEnd', enemy, tier: kind, result, fallback: () => null });
 
-  // Skeleton Key (session 68, E18): a lost gatekeeper fight starts over,
-  // once, and the Key is used up. The lost attempt costs no Heat (a
+  // Restore Point (session 68, E18): a lost gatekeeper fight starts over,
+  // once, and the Burner is used up. The lost attempt costs no Heat (a
   // gatekeeper loss never did); the toll is still due on a win.
-  if (kind === 'gatekeeper' && result.winner !== 0 && !synthetic && playerState.carriedBurnerIds.includes('skeleton-key')) {
-    const spent = [...result.burnersUsedThisCombat, 'skeleton-key' as BurnerId];
-    yield* ask({ kind: 'burnerSaved', burnerId: 'skeleton-key', enemy, fallback: () => null });
+  if (kind === 'gatekeeper' && result.winner !== 0 && !synthetic && playerState.carriedBurnerIds.includes('restore-point')) {
+    const spent = [...result.burnersUsedThisCombat, 'restore-point' as BurnerId];
+    yield* ask({ kind: 'burnerSaved', burnerId: 'restore-point', enemy, fallback: () => null });
     yield* ask({ kind: 'fightStart', enemy, tier: kind, layer: layerIndex, playerState, fallback: () => null });
-    const retry = yield* fight(seed + SKELETON_KEY_SEED_STEP);
+    const retry = yield* fight(seed + RESTORE_POINT_SEED_STEP);
     result = { ...retry, burnersUsedThisCombat: [...spent, ...retry.burnersUsedThisCombat] };
     yield* ask({ kind: 'fightEnd', enemy, tier: kind, result, fallback: () => null });
   }

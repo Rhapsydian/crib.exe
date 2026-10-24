@@ -149,12 +149,13 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     text: 'Your next 6 moves cost no Heat.',
     mapEffect: { kind: 'freeMoves', count: 6 },
   },
-  // Reworked (session 68, docs/enemies-design.md E18): was a map Burner
-  // reopening a closed node, too rarely needed once no-route endings fell
-  // to ~2% of runs. Now contraband, used by itself when it saves you.
-  'skeleton-key': {
-    id: 'skeleton-key',
-    name: 'Skeleton Key',
+  // Reworked and renamed (session 68, docs/enemies-design.md E18): was
+  // Skeleton Key, a map Burner reopening a closed node, too rarely needed
+  // once no-route endings fell to ~2% of runs. Now contraband, used by
+  // itself when it saves you.
+  'restore-point': {
+    id: 'restore-point',
+    name: 'Restore Point',
     rarity: 'rare',
     contraband: true,
     passive: true,

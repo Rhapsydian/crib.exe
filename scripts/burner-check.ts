@@ -91,7 +91,7 @@ if (part === 'combat') {
     );
   }
 } else {
-  const map = (Object.keys(BURNER_DEFINITIONS) as BurnerId[]).filter((id) => BURNER_DEFINITIONS[id].mapEffect && id !== 'skeleton-key' && id !== 'tunnel');
+  const map = (Object.keys(BURNER_DEFINITIONS) as BurnerId[]).filter((id) => BURNER_DEFINITIONS[id].mapEffect && id !== 'tunnel');
   const runs = (burner: BurnerId | null) => {
     let wins = 0, saved = 0, n = 0;
     for (const classId of ALL_CLASS_IDS) {

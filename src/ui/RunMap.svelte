@@ -43,12 +43,11 @@
   const allowance = $derived(player.heatAllowance ?? 1);
   const heatPct = $derived(Math.min(100, (request.heat / allowance) * 100));
   const moveCost = $derived(request.freeMove ? 0 : applyOnMoveMods(player.ownedModIds, HEAT_PER_MOVE));
-  const has = (id: BurnerId) => player.carriedBurnerIds.includes(id);
   // Map Burners (session 64, BE4): every carried one can be used from the
   // card (Skeleton Key from a closed node's card), and what's in effect
   // is listed.
   const fx = $derived(player.mapEffects);
-  const usableMapBurners = $derived([...new Set(player.carriedBurnerIds)].filter((id) => BURNER_DEFINITIONS[id].mapEffect && id !== 'skeleton-key'));
+  const usableMapBurners = $derived([...new Set(player.carriedBurnerIds)].filter((id) => BURNER_DEFINITIONS[id].mapEffect));
   const inEffect = $derived.by(() => {
     const out: string[] = [];
     if (fx?.nextFightHeat !== undefined) out.push(`the next ${fx.nextFightHeatFights ?? 1} fights' Heat halved`);
@@ -92,8 +91,7 @@
         .filter((id) => graph.nodes.find((n) => n.id === id)?.state !== 'closed'),
     ),
   );
-  // With a Skeleton Key, closed nodes can be tapped too (to reopen them).
-  const selectable = $derived(has('skeleton-key') ? new Set([...linked, ...graph.nodes.filter((n) => n.state === 'closed').map((n) => n.id)]) : linked);
+  const selectable = $derived(linked);
   let selected = $state<string | null>(null);
   // First-time tips (T6) the map can see: an elite on the map, a
   // gatekeeper one move away, Heat past three-quarters, a ranked
@@ -172,7 +170,6 @@
       </div>
       {#if node.state === 'closed'}
         <div class="about">Closed: a fight lost here shut it. Routes through it are cut.</div>
-        <button class="move burner-use" onclick={() => onburner('skeleton-key', node.id)}>⏏︎ Reopen with Skeleton Key</button>
       {:else}
         {@const fh = node.state === 'unresolved' ? fightHeat(node.type) : null}
         <div class="about" class:short={fh}>{node.state === 'inert' && node.type !== 'relay' ? 'Already resolved: passing through only costs the move.' : k.about}</div>
@@ -182,7 +179,6 @@
     {:else}
       <div class="hint">
         Tap a linked node to see what it is. {fx?.freeMoves ? `Your next ${fx.freeMoves === 1 ? 'move is' : `${fx.freeMoves} moves are`} free.` : `Each move costs ${fmt(moveCost)} Heat.`} The gatekeeper ⛨︎ leads to the next layer.
-        {#if has('skeleton-key') && graph.nodes.some((n) => n.state === 'closed')}Tap a closed node to reopen it with your Skeleton Key.{/if}
       </div>
       {#if inEffect.length}<div class="in-effect">In effect: {inEffect.join(' · ')}</div>{/if}
       {#if usableMapBurners.length}
@@ -382,10 +378,6 @@
     background: transparent;
     color: var(--warn);
     font-size: 11px;
-  }
-  .move.burner-use {
-    border-color: var(--warn);
-    color: var(--warn);
   }
   .notes {
     font-size: 10.5px;
