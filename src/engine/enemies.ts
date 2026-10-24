@@ -33,6 +33,15 @@ export type EnemyId =
   | 'edr-sensor'
   | 'integrity-monitor'
   | 'firewall-cluster'
+  // Regular, session 68 (docs/enemies-design.md E16)
+  | 'port-knocker'
+  | 'scheduler-bot'
+  | 'spam-filter'
+  | 'packet-logger'
+  | 'credential-harvester'
+  | 'load-shedder'
+  | 'decoy-grid'
+  | 'rootkit-scanner'
   // Elite
   | 'threat-intel-feed'
   | 'incident-response'

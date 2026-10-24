@@ -94,6 +94,16 @@ export const AUTHORED_REGULARS: AuthoredEnemy[] = [
   { id: 'integrity-monitor', name: 'Integrity Monitor', tier: 'regular', archetypes: ['overclock', 'daemon'], minLayer: 4, loadout: [p('burst-clock'), CONTEXT_SWITCH, GARBAGE_COLLECTOR], scale: 1.6 },
   // Slows you, and strips Ward as you get close.
   { id: 'firewall-cluster', name: 'Firewall Cluster', tier: 'regular', archetypes: ['exploit', 'overclock'], minLayer: 4, loadout: [PRIVILEGE_DROP, THROTTLE, p('port-scan')], scale: 1.52 },
+  // Session 68 (docs/enemies-design.md E16): eight regulars for variety,
+  // two per layer, at today's regular difficulty; scales measured.
+  { id: 'port-knocker', name: 'Port Knocker', tier: 'regular', archetypes: ['exploit', 'overclock'], minLayer: 1, loadout: [p('sequence-attack'), p('pipeline-flush')], scale: 1.3 },
+  { id: 'scheduler-bot', name: 'Scheduler Bot', tier: 'regular', archetypes: ['daemon', 'overclock'], minLayer: 1, loadout: [p('rolling-update'), p('cache-hit')], scale: 1.2 },
+  { id: 'spam-filter', name: 'Spam Filter', tier: 'regular', archetypes: ['honeypot', 'exploit'], minLayer: 2, loadout: [p('bait-file'), p('buffer-overflow'), SESSION_RESET], scale: 1.4 },
+  { id: 'packet-logger', name: 'Packet Logger', tier: 'regular', archetypes: ['daemon'], minLayer: 2, loadout: [p('thread-pool'), p('steady-drip')], scale: 1.6 },
+  { id: 'credential-harvester', name: 'Credential Harvester', tier: 'regular', archetypes: ['exploit', 'honeypot'], minLayer: 3, loadout: [p('packet-sniffer'), p('mantrap')], scale: 1.5 },
+  { id: 'load-shedder', name: 'Load Shedder', tier: 'regular', archetypes: ['overclock', 'daemon'], minLayer: 3, loadout: [p('backpressure'), p('superscalar'), THROTTLE], scale: 1.4 },
+  { id: 'decoy-grid', name: 'Decoy Grid', tier: 'regular', archetypes: ['honeypot', 'overclock'], minLayer: 4, loadout: [p('anomaly-detector'), p('tarpit'), COUNTERMEASURE], scale: 1.5 },
+  { id: 'rootkit-scanner', name: 'Rootkit Scanner', tier: 'regular', archetypes: ['exploit', 'daemon'], minLayer: 4, loadout: [p('replay-attack'), p('rolling-update'), AUDIT_LOG], scale: 1.5 },
 ];
 
 /** Elites (E2: 4; each one small rule-bending Mod -- docs/archive/enemy-review.md

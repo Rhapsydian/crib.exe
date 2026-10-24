@@ -102,6 +102,17 @@ Players beat elites about 98% of the time; gatekeepers about 73% (session
   then fix Wraith (its opening: starting loadout or class Mod), then
   retune elites and gatekeepers.
 
+- **E16. The eight new regulars** (no Mods; variety from loadouts, six
+  using session 66's subroutines, four with one enemy-only piece; at
+  today's regular difficulty): layer 1 **Port Knocker** (Sequence Attack,
+  Pipeline Flush), **Scheduler Bot** (Rolling Update, Cache Hit); layer 2
+  **Spam Filter** (Bait File, Buffer Overflow, Session Reset), **Packet
+  Logger** (Thread Pool, Steady Drip); layer 3 **Credential Harvester**
+  (Packet Sniffer, Mantrap), **Load Shedder** (Backpressure, Superscalar,
+  Throttle); layer 4 **Decoy Grid** (Anomaly Detector, Tarpit,
+  Countermeasure), **Rootkit Scanner** (Replay Attack, Rolling Update,
+  Audit Log). No Suspend on regulars.
+
 ## Checkpoint plan (batch 2: gatekeepers, regulars)
 
 Each checkpoint: engine, text, tests, `npm run check`, then a pause for
@@ -246,3 +257,8 @@ player strength), plus `run-outcomes.ts`.
   27.0, Eidolon 24.5, Warden 24.0, Operator 20.5, Wraith 9.5%. Victory sits
   a point under E6's band with Heat now ending a fifth of runs: the Heat
   pass is the lever.
+- **Checkpoint 7, the regulars.** Built per E16. Measured (100 seeds a
+  class): players win 100% against every regular, old and new; the new
+  eight's fights match their layer's (5.7-5.9 hands from layer 1, 4.9-5.2
+  from layer 2, 4.0 from layer 3, 2.9-3.0 at layer 4). 21 regulars,
+  7/13/17/21 eligible by layer.
