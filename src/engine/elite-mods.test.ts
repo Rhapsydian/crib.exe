@@ -74,3 +74,61 @@ describe('Fast Path (session 67)', () => {
     expect(fast.noted).toBeGreaterThan(0);
   });
 });
+
+describe("session 68's gatekeeper Mods (E11)", () => {
+  const pairHook: Beta = { source: 'cards', category: 'pair', shape: 'graded', cap: 9, effect: { verb: 'enhance', amount: 1 } };
+
+  it('Hardened: a waiting Hook needs one more count; a graded Hook counts one fewer', () => {
+    const stepped = credit('s', 1, { source: 'cards', category: 'pair', shape: 'stepped', at: 2, effect: { verb: 'enhance', amount: 1 } });
+    const s = fight('hardened', [stepped]);
+    expect(s.sides[0].loadout[0].definition.beta?.shape === 'stepped' && s.sides[0].loadout[0].definition.beta.at).toBe(3);
+    let g = fight('hardened', [credit('g', 1, pairHook)]);
+    g = applyOccurrence(applyOccurrence(g, { category: 'pair', player: 0, magnitude: 2 }), { category: 'pair', player: 0, magnitude: 2 });
+    expect(breach(fireTurn(g, 0, { isDealer: false }).combatState)).toBe(1 + 1);
+  });
+
+  it('Behavior Analysis: each player turn gives it Ward', () => {
+    // A player who only Wards, so none of the gained Ward is spent absorbing.
+    expect(fireTurn(fight('behavior-analysis', [piece('w', { verb: 'ward', amount: 1 })]), 0, { isDealer: false }).combatState.sides[1].wardShield).toBe(2);
+  });
+
+  it('Reflection: Credit its Ward absorbs comes back as its Credit, halved', () => {
+    const s = fight('reflection');
+    const warded = { ...s, sides: [s.sides[0], { ...s.sides[1], wardShield: 4 }] as CombatState['sides'] };
+    expect(resolveEffect({ verb: 'credit', amount: 4 }, warded, 0).sides[1].winGauge.progress).toBe(2);
+  });
+
+  it('Counter-Trace: each player Hook going off gives the player Heat', () => {
+    let s = fight('counter-trace', [credit('g', 1, pairHook)]);
+    s = applyOccurrence(s, { category: 'pair', player: 0, magnitude: 2 });
+    expect(fireTurn(s, 0, { isDealer: false }).combatState.sides[0].heat).toBe(1);
+  });
+
+  it('Rewrite: the player top and bottom subroutines swap at the start of a hand', () => {
+    const s = fight('rewrite', [credit('top', 1), credit('mid', 1), credit('bottom', 1)]);
+    expect(clearHandKnowledge(s).sides[0].loadout.map((e) => e.definition.id)).toEqual(['bottom', 'mid', 'top']);
+  });
+
+  it('Throttled Link, House Edge and Pattern Match act in a real fight', async () => {
+    const { playCombat } = await import('./combat');
+    const loadouts: [SubroutineDefinition[], SubroutineDefinition[]] = [[credit('a', 0.1)], [credit('e', 0.1)]];
+    const fightWith = (mod: GatekeeperModId | null) => {
+      let playerTurns = 0, enemyTurns = 0, noted = 0;
+      for (let seed = 0; seed < 20; seed++) {
+        const r = playCombat(loadouts, { seed, gaugeThreshold: [12, 12], winThreshold: [1000, 1000], gatekeeperMods: [[], mod ? [mod] : []] });
+        playerTurns += r.timeline.filter((b) => b.kind === 'turn' && b.side === 0).length;
+        enemyTurns += r.timeline.filter((b) => b.kind === 'turn' && b.side === 1).length;
+        noted += r.timeline.filter((b) => b.kind === 'mod' && b.side === 1).length;
+      }
+      return { playerTurns, enemyTurns, noted };
+    };
+    const none = fightWith(null);
+    expect(fightWith('throttled-link').playerTurns).toBeLessThan(none.playerTurns);
+    const house = fightWith('house-edge');
+    expect(house.enemyTurns).toBeGreaterThan(none.enemyTurns);
+    expect(house.noted).toBeGreaterThan(0);
+    const watch = fightWith('pattern-match');
+    expect(watch.enemyTurns).toBeGreaterThan(none.enemyTurns);
+    expect(watch.noted).toBeGreaterThan(0);
+  });
+});

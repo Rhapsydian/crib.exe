@@ -22,6 +22,10 @@ import {
   LOCKOUT_EVERY,
   PURGE_COUNTS,
   COLLECTION_KEEP,
+  HARDENED_COUNTS,
+  BEHAVIOR_ANALYSIS_WARD,
+  REFLECTION_SHARE,
+  COUNTER_TRACE_HEAT,
   type GatekeeperModId,
 } from './gatekeeper-mods';
 import type { EnemyPassiveId } from './enemies';
@@ -263,7 +267,9 @@ export function createCombatState(
   // Reactive-subroutine Mods (session 30's "fires outside the loadout"
   // bucket) are appended to side 0's loadout: no slot, no cap, otherwise
   // ordinary entries that fire on the player's turns.
-  const playerLoadoutWithMods = modAdjustedLoadout([...playerLoadout, ...reactiveModSubroutines(effectiveModIds)], effectiveModIds);
+  const modded = modAdjustedLoadout([...playerLoadout, ...reactiveModSubroutines(effectiveModIds)], effectiveModIds);
+  // Hardened (session 68, E11): the player's waiting Hooks need one more count.
+  const playerLoadoutWithMods = sideMods[1].includes('hardened') ? hardenedLoadout(modded) : modded;
   return {
     sides: [
       createCombatSideState(playerLoadoutWithMods, gaugeThreshold[0], winThreshold[0]),
@@ -278,10 +284,39 @@ export function createCombatState(
   };
 }
 
+/** Hardened (E11): a Hook that waits for counts needs HARDENED_COUNTS
+ * more (graded Hooks lose that many from their count when they fire). */
+function hardenedLoadout(loadout: SubroutineDefinition[]): SubroutineDefinition[] {
+  return loadout.map((piece) => {
+    const beta = piece.beta;
+    if (!beta || (beta.source !== 'cards' && beta.source !== 'progress')) return piece;
+    if (beta.shape === 'stepped') return { ...piece, beta: { ...beta, at: beta.at + HARDENED_COUNTS } };
+    if (beta.shape === 'immediate') return { ...piece, beta: { ...beta, at: (beta.at ?? 1) + HARDENED_COUNTS } };
+    return piece;
+  });
+}
+
 /** Clears both sides' hand-scoped intel and forced discards -- called once
  * per hand, before that hand's deal, so nothing stale carries over. */
 export function clearHandKnowledge(combatState: CombatState): CombatState {
-  return purgeHooks(clearHandKnowledgeOnly(combatState));
+  return rewriteLoadouts(purgeHooks(clearHandKnowledgeOnly(combatState)));
+}
+
+/** Rewrite (session 68, E11): at the start of each hand, the opponent's
+ * top and bottom installed subroutines swap. */
+function rewriteLoadouts(combatState: CombatState): CombatState {
+  let state = combatState;
+  for (const side of [0, 1] as PlayerIndex[]) {
+    if (!hasSideMod(state, side, 'rewrite')) continue;
+    const victim = opponentOf(side);
+    const bottom = bottomInstalledIndex(state, victim);
+    if (bottom <= 0) continue;
+    noteMod(state, side, gk('rewrite'));
+    const loadout = [...state.sides[victim].loadout];
+    [loadout[0], loadout[bottom]] = [loadout[bottom], loadout[0]];
+    state = withSide(state, victim, { loadout });
+  }
+  return state;
 }
 
 /** Purge (session 67, E4): at the start of each hand, each of the
@@ -1020,6 +1055,12 @@ export function resolveEffect(
         noteMod(next, target, gk('power-siphon'));
         next = growDaemons(next, target, POWER_SIPHON_GROWTH);
       }
+      // Reflection (session 68, E11): the defender Credits half of what its
+      // Ward absorbed.
+      if (absorbed > 0 && hasSideMod(next, target, 'reflection')) {
+        noteMod(next, target, gk('reflection'));
+        next = creditWinGauge(next, target, absorbed * REFLECTION_SHARE);
+      }
       // Foothold II (M10): Ward that blocks a hit Credits a third of it.
       if (absorbed > 0 && bridgeUpgradedFor(next, target, 'exploit-honeypot')) {
         noteMod(next, target, bridgeMod('exploit-honeypot'));
@@ -1273,6 +1314,12 @@ export function fireTurn(
   selfContext: { isDealer: boolean },
 ): { combatState: CombatState; events: FireEvent[] } {
   let state = applyBridgeOnTurnStart(combatState, side);
+  // Behavior Analysis (session 68, E11): each turn `side` takes gives the
+  // owner Ward.
+  if (hasSideMod(state, opponentOf(side), 'behavior-analysis')) {
+    noteMod(state, opponentOf(side), gk('behavior-analysis'));
+    state = addWard(state, opponentOf(side), BEHAVIOR_ANALYSIS_WARD);
+  }
   const events: FireEvent[] = [];
   const pass = fireLoadoutOnce(state, side, selfContext);
   state = pass.combatState;
@@ -1326,6 +1373,14 @@ export function fireTurn(
     events.push(...echo.events);
   }
   return { combatState: tickTimedTempo(state, side), events };
+}
+
+/** Counter-Trace (session 68, E11): `side`'s Hook going off gives it Heat. */
+function counterTrace(combatState: CombatState, side: PlayerIndex): CombatState {
+  const owner = opponentOf(side);
+  if (!hasSideMod(combatState, owner, 'counter-trace')) return combatState;
+  noteMod(combatState, owner, gk('counter-trace'));
+  return giveHeat(combatState, owner, COUNTER_TRACE_HEAT);
 }
 
 /** Root Cause (session 65): a player Hook going off gives the subroutine
@@ -1411,7 +1466,10 @@ function fireLoadoutOnce(
     const beta = definition.beta;
     const modMark = state.modTriggers?.length ?? 0;
     const context = buildTriggerContext(state, side, selfContext.isDealer, firedThisTurn, i);
-    const charges = beta ? betaCharges(definition, entry.state, context) : 0;
+    const counted = beta ? betaCharges(definition, entry.state, context) : 0;
+    // Hardened (E11): a graded Hook counts one fewer.
+    const hardened = beta?.shape === 'graded' && (beta.source === 'cards' || beta.source === 'progress') && hasSideMod(state, opponentOf(side), 'hardened');
+    const charges = hardened ? Math.max(0, counted - HARDENED_COUNTS) : counted;
     let scale = beta ? betaScale(beta, charges) : 0;
     // Zero-Day (session 64): for the rest of the hand, every Hook goes off
     // and applies twice (an instant Hook keeps its own timing).
@@ -1446,6 +1504,7 @@ function fireLoadoutOnce(
     state = mapLoadout(state, side, (e, index) => (index === i ? recordFire(e.state, definition) : e.state));
 
     if (elevated) state = rootCause(state, side, i);
+    if (elevated) state = counterTrace(state, side);
     events.push({ subroutineId: definition.id, side, alpha, beta: resolved.beta, elevated, charges, immediate: false, gauges: readGauges(state), ...takeMods(state, modMark) });
     firedThisTurn.push({ definition, elevated });
   }
@@ -1504,6 +1563,7 @@ export function fireImmediateBetas(combatState: CombatState, dealer: PlayerIndex
       // standalone beta effect only counts against the fire cap.
       state = mapLoadout(state, side, (e, index) => (index === i ? (alpha ? recordFire(e.state, definition) : { ...e.state, fireCount: e.state.fireCount + 1 }) : e.state));
       state = rootCause(state, side, i);
+      state = counterTrace(state, side);
       // Interference (E4): an Instant Hook going off costs its owner Breach.
       if (hasSideMod(state, opponentOf(side), 'interference')) {
         noteMod(state, opponentOf(side), gk('interference'));

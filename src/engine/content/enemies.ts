@@ -157,6 +157,47 @@ const BALANCE_SHEET: SubroutineDefinition = {
   alpha: { verb: 'credit', amount: 1 },
   beta: { source: 'state', condition: { kind: 'opponentGaugeAbove', fraction: 0.5 }, shape: 'whileTrue', effect: { verb: 'credit', amount: 1, from: 'opponent' } },
 };
+// Session 68's gatekeepers' signatures (docs/enemies-design.md E11).
+const HOUSE_DEALER: SubroutineDefinition = {
+  id: 'house-dealer', name: 'House Dealer', archetype: 'exploit',
+  alpha: { verb: 'credit', amount: 2 },
+  beta: { source: 'cards', category: 'pair', shape: 'graded', cap: 2, effect: { verb: 'enhance', amount: 1 } },
+};
+const TRAFFIC_SHAPER: SubroutineDefinition = {
+  id: 'traffic-shaper', name: 'Traffic Shaper', archetype: 'overclock',
+  alpha: { verb: 'tempo', target: 'opponent', mode: 'gauge', amount: 1 / 8 },
+  beta: { source: 'progress', metric: 'fires', per: 3, shape: 'stepped', at: 1, effect: { verb: 'suppress', amount: 2 } },
+};
+const LOCKFILE: SubroutineDefinition = {
+  id: 'lockfile', name: 'Lockfile', archetype: 'daemon',
+  alpha: { verb: 'suppress', amount: 1, growth: 0.25, growthCap: 2 },
+  beta: { source: 'state', condition: { kind: 'opponentGaugeAbove', fraction: 0.5 }, shape: 'whileTrue', effect: { verb: 'enhance', amount: 2 } },
+};
+const ANALYSIS_VM: SubroutineDefinition = {
+  id: 'analysis-vm', name: 'Analysis VM', archetype: 'honeypot',
+  alpha: { verb: 'ward', amount: 2 },
+  beta: { source: 'state', condition: { kind: 'wardAbove', amount: 6 }, shape: 'whileTrue', effect: { verb: 'credit', amount: 2, piercing: true } },
+};
+const LOOKOUT_POST: SubroutineDefinition = {
+  id: 'lookout-post', name: 'Lookout Post', archetype: 'overclock',
+  alpha: { verb: 'credit', amount: 1 },
+  beta: { source: 'cards', category: 'run', shape: 'graded', cap: 2, effect: { verb: 'enhance', amount: 2 } },
+};
+const MIRROR_SHARD: SubroutineDefinition = {
+  id: 'mirror-shard', name: 'Mirror Shard', archetype: 'honeypot',
+  alpha: { verb: 'ward', amount: 2 },
+  beta: { source: 'progress', metric: 'absorbed', per: 3, shape: 'graded', cap: 2, effect: { verb: 'credit', amount: 2, piercing: true } },
+};
+const ICE_WALL: SubroutineDefinition = {
+  id: 'ice-wall', name: 'ICE Wall', archetype: 'honeypot',
+  alpha: { verb: 'credit', amount: 2 },
+  beta: { source: 'progress', metric: 'fires', per: 3, shape: 'stepped', at: 1, effect: { verb: 'credit', amount: 3, from: 'opponent' } },
+};
+const BLUEPRINT: SubroutineDefinition = {
+  id: 'blueprint', name: 'Blueprint', archetype: 'daemon',
+  alpha: { verb: 'credit', amount: 1, growth: 0.5, growthCap: 4 },
+  beta: { source: 'cards', category: 'fifteen', shape: 'graded', cap: 2, effect: { verb: 'charge', amount: 1, target: 'all' } },
+};
 const SELF_MODIFYING_CODE: SubroutineDefinition = {
   id: 'self-modifying-code', name: 'Self-Modifying Code', archetype: 'daemon',
   alpha: { verb: 'credit', amount: 1, growth: 0.5, growthCap: 4 },
@@ -192,11 +233,20 @@ export const AUTHORED_GATEKEEPERS: AuthoredEnemy[] = [
     loadout: [WELCOME_PACKET, p('port-scan'), p('cache-hit'), p('burst-clock')] },
   { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 1, mods: ['no-way-in'], scale: 0.982,
     loadout: [DEFAULT_DENY, p('watchdog-timer'), p('buffer-overflow'), p('cron-job')] },
+  // Session 68 (E11): scales are first guesses, calibrated with all sixteen.
+  { id: 'the-house', name: 'The House', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['house-edge'], scale: 1.3,
+    loadout: [HOUSE_DEALER, p('buffer-overflow'), p('ping'), p('jackpot')] },
+  { id: 'bandwidth-cap', name: 'Bandwidth Cap', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 1, mods: ['throttled-link'], scale: 1.2,
+    loadout: [TRAFFIC_SHAPER, p('cron-job'), p('burst-clock'), p('watchdog-timer')] },
   // --- Layer 2: the internal LAN ---
   { id: 'quarantine-ward', name: 'Quarantine Ward', tier: 'gatekeeper', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['containment'], scale: 1.98,
     loadout: [ISOLATION_CHAMBER, p('patch'), p('sinkhole'), p('memory-leak')] },
   { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 2, mods: ['zero-sum'], scale: 1.52,
     loadout: [BALANCE_SHEET, p('ping'), p('elevated-session'), p('tarpit')] },
+  { id: 'signature-lock', name: 'Signature Lock', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 2, mods: ['hardened'], scale: 1.8,
+    loadout: [LOCKFILE, p('port-scan'), p('patch'), p('credential-stuffing')] },
+  { id: 'sandbox', name: 'Sandbox', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 2, mods: ['behavior-analysis'], scale: 1.7,
+    loadout: [ANALYSIS_VM, p('fail2ban'), p('buffer-overflow'), p('basic-auth')] },
   // --- Layer 3: the servers ---
   { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 3, mods: ['adaptation'], scale: 2.66,
     loadout: [SELF_MODIFYING_CODE, p('fork-bomb'), p('ping'), p('steady-drip')] },
@@ -205,11 +255,19 @@ export const AUTHORED_GATEKEEPERS: AuthoredEnemy[] = [
   // feed would hand you Breach.
   { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 3, mods: ['spotlight'], scale: 2.4,
     loadout: [BEACON, p('port-scan'), p('tarpit'), p('credential-stuffing')] },
+  { id: 'watchtower', name: 'Watchtower', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 3, mods: ['pattern-match'], scale: 2.3,
+    loadout: [LOOKOUT_POST, p('ping'), p('port-scan'), p('elevated-session')] },
+  { id: 'mirror-fabric', name: 'Mirror Fabric', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 3, mods: ['reflection'], scale: 2.2,
+    loadout: [MIRROR_SHARD, p('tarpit'), p('priority-override'), p('sinkhole')] },
   // --- Layer 4: the core ---
   { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['exploit', 'overclock', 'honeypot'], minLayer: 4, mods: ['null-session'], scale: 2.17,
     loadout: [NULL_ROUTE, p('zero-day-chain'), p('priority-override'), p('zero-trust')] },
   { id: 'root-authority', name: 'Root Authority', tier: 'gatekeeper', archetypes: ['exploit', 'daemon', 'overclock'], minLayer: 4, mods: ['root-access'], scale: 1.91,
     loadout: [KERNEL_PANIC, p('chain-reaction'), p('memory-leak'), p('race-condition')] },
+  { id: 'black-ice', name: 'Black Ice', tier: 'gatekeeper', archetypes: ['exploit', 'daemon', 'honeypot'], minLayer: 4, mods: ['counter-trace'], scale: 2.0,
+    loadout: [ICE_WALL, p('memory-leak'), p('zero-trust'), p('race-condition')] },
+  { id: 'system-architect', name: 'System Architect', tier: 'gatekeeper', archetypes: ['daemon', 'overclock', 'honeypot'], minLayer: 4, mods: ['rewrite'], scale: 1.9,
+    loadout: [BLUEPRINT, p('fork-bomb'), p('chain-reaction'), p('air-gapped-vault')] },
 ];
 
 /** E3's budget table: Credit per turn by tier and first layer. */

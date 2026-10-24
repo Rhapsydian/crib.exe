@@ -27,13 +27,13 @@ import {
 // gatekeepers, minLayer > 1 regulars) retired with it.
 
 describe('ENEMY_ROSTER structural integrity', () => {
-  it('E2 shape (session 60, CP4; session 67 elites): 13 regular, 12 elite (3/6/9/12 eligible by layer), two gatekeepers per layer; every layer adds new regulars', () => {
+  it('E2 shape (session 60, CP4; sessions 67-68): 13 regular, 12 elite (3/6/9/12 eligible by layer), four gatekeepers per layer; every layer adds new regulars', () => {
     expect(ENEMY_ROSTER.filter((e) => e.tier === 'regular')).toHaveLength(13);
     expect(ENEMY_ROSTER.filter((e) => e.tier === 'elite')).toHaveLength(12);
     expect([1, 2, 3, 4].map((l) => ENEMY_ROSTER.filter((e) => e.tier === 'elite' && e.minLayer <= l).length)).toEqual([3, 6, 9, 12]);
     for (let layer = 1; layer <= 4; layer++) expect(ENEMY_ROSTER.some((e) => e.tier === 'regular' && e.minLayer === layer), `layer ${layer}`).toBe(true);
     for (let layer = 1; layer <= 4; layer++) {
-      expect(ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper' && e.minLayer === layer), `layer ${layer}`).toHaveLength(2);
+      expect(ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper' && e.minLayer === layer), `layer ${layer}`).toHaveLength(4);
     }
   });
 
@@ -90,8 +90,8 @@ describe('eligibleEnemies', () => {
   });
 
   it('gatekeeper eligibility is an exact match, not a floor', () => {
-    expect(eligibleEnemies('gatekeeper', 1).map((e) => e.id)).toEqual(['the-concierge', 'firewall-prime']);
-    expect(eligibleEnemies('gatekeeper', 2).map((e) => e.id)).toEqual(['quarantine-ward', 'zero-sum']);
+    expect(eligibleEnemies('gatekeeper', 1).map((e) => e.id)).toEqual(['the-concierge', 'firewall-prime', 'the-house', 'bandwidth-cap']);
+    expect(eligibleEnemies('gatekeeper', 2).map((e) => e.id)).toEqual(['quarantine-ward', 'zero-sum', 'signature-lock', 'sandbox']);
   });
 });
 
@@ -126,11 +126,11 @@ describe('assignGatekeeperEnemy / gatekeeperEnemyForNode', () => {
   });
 
   it("throws loudly when ablation excludes a layer's whole stable", () => {
-    expect(() => assignGatekeeperEnemy(graph(), 1, createRng(1), ['the-concierge', 'firewall-prime'])).toThrow();
+    expect(() => assignGatekeeperEnemy(graph(), 1, createRng(1), ['the-concierge', 'firewall-prime', 'the-house', 'bandwidth-cap'])).toThrow();
   });
 
-  it('ablating one of a layer pair leaves the other assigned', () => {
-    const g = assignGatekeeperEnemy(graph(), 1, createRng(1), ['the-concierge']);
+  it('ablating all but one of a layer leaves that one assigned', () => {
+    const g = assignGatekeeperEnemy(graph(), 1, createRng(1), ['the-concierge', 'the-house', 'bandwidth-cap']);
     expect(g.nodes[0].assignedEnemyId).toBe('firewall-prime');
   });
 });

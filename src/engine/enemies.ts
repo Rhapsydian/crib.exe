@@ -40,15 +40,30 @@ export type EnemyId =
   | 'intrusion-alarm'
   | 'threat-hunter'
   | 'hypervisor'
-  // Gatekeepers, two per layer
+  // Elite, session 67 (docs/enemies-design.md E4)
+  | 'jamming-array'
+  | 'memory-governor'
+  | 'lockdown-service'
+  | 'fast-path-router'
+  | 'purge-daemon'
+  | 'reaper-process'
+  // Gatekeepers, four per layer (session 68 added two each, E11)
   | 'the-concierge'
   | 'firewall-prime'
+  | 'the-house'
+  | 'bandwidth-cap'
   | 'quarantine-ward'
   | 'zero-sum'
+  | 'signature-lock'
+  | 'sandbox'
   | 'adaptive-threat'
   | 'total-compromise'
+  | 'watchtower'
+  | 'mirror-fabric'
   | 'null-session'
   | 'root-authority'
+  | 'black-ice'
+  | 'system-architect'
   // The tutorial's own, never in a real run (session 63)
   | 'firewall-beta';
 

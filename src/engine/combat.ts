@@ -13,7 +13,7 @@ import type { ModId } from './mod-types';
 import type { BurnerId, BurnerTiming } from './burner-types';
 import { BURNER_DEFINITIONS } from './burners';
 import { OVERCLOCKED_KERNEL_BAR } from './mods';
-import { FAST_PATH_MULTIPLIER } from './gatekeeper-mods';
+import { FAST_PATH_MULTIPLIER, HOUSE_EDGE_MULTIPLIER, THROTTLED_LINK_BAR } from './gatekeeper-mods';
 import {
   occurrencesFromPeggingEvent,
   occurrencesFromHandEvents,
@@ -586,8 +586,13 @@ export function* combatGenerator(
   let consecutiveTurns = 0;
   let lastTurnSide: PlayerIndex | null = null;
   let scores: [number, number] = [0, 0];
-  // Overclocked Kernel (session 65): the player's initiative bar is longer.
-  const thresholds: [number, number] = ownedModIds.includes('overclocked-kernel') ? [gaugeThreshold[0] + OVERCLOCKED_KERNEL_BAR, gaugeThreshold[1]] : gaugeThreshold;
+  // Overclocked Kernel (session 65): the player's initiative bar is longer;
+  // Throttled Link (session 68, E11) lengthens its opponent's.
+  const sideModList = gatekeeperMods ?? [[], []];
+  const thresholds: [number, number] = [
+    gaugeThreshold[0] + (ownedModIds.includes('overclocked-kernel') ? OVERCLOCKED_KERNEL_BAR : 0) + (sideModList[1].includes('throttled-link') ? THROTTLED_LINK_BAR : 0),
+    gaugeThreshold[1] + (sideModList[0].includes('throttled-link') ? THROTTLED_LINK_BAR : 0),
+  ];
   const created = createCombatState(loadouts[0], loadouts[1], thresholds, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds, opponentBridge, gatekeeperMods);
   let combatState = applyModOnCombatStartPassives({ ...created, modTriggers: [], standby: benched, bridgeUpgraded: [classModUpgraded, false] });
   const hands: HandResult[] = [];
@@ -670,11 +675,15 @@ export function* combatGenerator(
     return step({ combatState: afterBurner, winner: resolution(afterBurner) });
   }
 
+  // Pattern Match (session 68, E11): the hand each side last answered a run in.
+  const patternMatched: [number, number] = [-1, -1];
+
   function* resolveOccurrence(
     tableOccurrence: ScoringOccurrence,
     handDealer: PlayerIndex,
     handIndex: number,
     cards?: Card[],
+    fromCrib = false,
   ): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
     // The scorer's own scoring rule (the Folds) reprices it first.
     const occurrence = repriceOccurrence(tableOccurrence, combatState.sides[tableOccurrence.player].scoringRule);
@@ -684,6 +693,11 @@ export function* combatGenerator(
     if (winner !== null) return winner;
 
     let points = occurrencePoints(occurrence);
+    // House Edge (session 68, E11): its crib points count double for its initiative.
+    if (fromCrib && hasSideMod(combatState, occurrence.player, 'house-edge')) {
+      noteSideMod(combatState, occurrence.player, 'house-edge');
+      points *= HOUSE_EDGE_MULTIPLIER;
+    }
     // Fast Path (session 67, E4): its pegging points count double for its initiative.
     if (phase === 'peg' && hasSideMod(combatState, occurrence.player, 'fast-path')) {
       noteSideMod(combatState, occurrence.player, 'fast-path');
@@ -709,7 +723,29 @@ export function* combatGenerator(
     const { gauge, turnsTriggered } = addPoints(combatState.sides[occurrence.player].gauge, points);
     combatState = replaceSideGauge(combatState, occurrence.player, gauge);
     beat({ kind: 'points', phase, occurrence, gauges: readGauges(combatState), ...(cards ? { cards } : {}) });
+    winner = yield* takeTurns(occurrence.player, turnsTriggered, handDealer, handIndex);
+    if (winner !== null) return winner;
 
+    // Pattern Match (E11): the first run its opponent scores each hand gives
+    // it a turn at once.
+    const watcher = (1 - occurrence.player) as PlayerIndex;
+    if (occurrence.category === 'run' && patternMatched[watcher] !== handIndex && hasSideMod(combatState, watcher, 'pattern-match')) {
+      patternMatched[watcher] = handIndex;
+      noteSideMod(combatState, watcher, 'pattern-match');
+      const g = combatState.sides[watcher].gauge;
+      const given = addPoints(g, g.threshold - g.progress);
+      combatState = replaceSideGauge(combatState, watcher, given.gauge);
+      flushMods();
+      return yield* takeTurns(watcher, given.turnsTriggered, handDealer, handIndex);
+    }
+    return null;
+  }
+
+  /** `side` takes `turnsTriggered` turns now (a scoring occurrence filled
+   * its initiative, or a Mod gave one). */
+  function* takeTurns(side: PlayerIndex, turnsTriggered: number, handDealer: PlayerIndex, handIndex: number): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
+    let winner: PlayerIndex | null = null;
+    const occurrence = { player: side };
     if (turnsTriggered > 0) {
       consecutiveTurns = occurrence.player === lastTurnSide ? consecutiveTurns + turnsTriggered : turnsTriggered;
       lastTurnSide = occurrence.player;
@@ -964,7 +1000,7 @@ export function* combatGenerator(
       winner = step(immediates(applyShowMods(combatState, player, cards), dealer, log));
       if (winner !== null) return finish(winner);
       for (let k = 0; k < occurrences.length; k++) {
-        winner = yield* resolveOccurrence(occurrences[k], dealer, i, events[k].cards);
+        winner = yield* resolveOccurrence(occurrences[k], dealer, i, events[k].cards, owner === 'crib');
         if (winner !== null) return finish(winner);
       }
     }

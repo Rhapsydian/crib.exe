@@ -32,7 +32,16 @@ export type GatekeeperModId =
   | 'lockout'
   | 'fast-path'
   | 'purge'
-  | 'collection';
+  | 'collection'
+  // Session 68's gatekeepers (docs/enemies-design.md E11)
+  | 'house-edge'
+  | 'throttled-link'
+  | 'hardened'
+  | 'behavior-analysis'
+  | 'pattern-match'
+  | 'reflection'
+  | 'counter-trace'
+  | 'rewrite';
 
 export interface GatekeeperModDefinition {
   id: GatekeeperModId;
@@ -84,6 +93,19 @@ export const PURGE_COUNTS = 1;
 /** Collection: the share of growth its opponent's subroutines keep at the
  * end of a hand. */
 export const COLLECTION_KEEP = 0.5;
+/** House Edge (session 68, E11): its crib points count this many times
+ * toward its initiative. TBD/measured. */
+export const HOUSE_EDGE_MULTIPLIER = 2;
+/** Throttled Link: how much longer its opponent's initiative bar is. */
+export const THROTTLED_LINK_BAR = 3;
+/** Hardened: extra counts its opponent's Hooks need to go off. */
+export const HARDENED_COUNTS = 1;
+/** Behavior Analysis: Ward it gains for each turn its opponent takes. */
+export const BEHAVIOR_ANALYSIS_WARD = 2;
+/** Reflection: the share of Credit its Ward absorbs that it Credits back. */
+export const REFLECTION_SHARE = 0.5;
+/** Counter-Trace: Heat its opponent gains per Hook going off. */
+export const COUNTER_TRACE_HEAT = 1;
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 const share = (n: number) => ({ 0.5: 'half', 0.75: 'three-quarters', 0.25: 'a quarter' })[n] ?? pct(n);
@@ -116,5 +138,14 @@ export const GATEKEEPER_MODS: Record<GatekeeperModId, GatekeeperModDefinition> =
   'fast-path': { id: 'fast-path', name: 'Fast Path', text: `Points it scores while pegging count ${FAST_PATH_MULTIPLIER === 2 ? 'double' : `${FAST_PATH_MULTIPLIER} times`} toward its initiative.`, tier: 'elite' },
   purge: { id: 'purge', name: 'Purge', text: `At the start of each hand, each of your Hooks loses ${PURGE_COUNTS === 1 ? '1 count' : `${PURGE_COUNTS} counts`}.`, tier: 'elite' },
   collection: { id: 'collection', name: 'Collection', text: `At the end of each hand, your growing subroutines lose ${COLLECTION_KEEP === 0.5 ? 'half' : pct(1 - COLLECTION_KEEP)} their growth.`, tier: 'elite' },
+  // --- Session 68's gatekeepers (E11): each changes how the fight plays ---
+  'house-edge': { id: 'house-edge', name: 'House Edge', text: `Points from its crib count ${HOUSE_EDGE_MULTIPLIER === 2 ? 'double' : `${HOUSE_EDGE_MULTIPLIER} times`} toward its initiative.`, tier: 'gatekeeper' },
+  'throttled-link': { id: 'throttled-link', name: 'Throttled Link', text: `Your initiative bar is ${THROTTLED_LINK_BAR} longer.`, tier: 'gatekeeper' },
+  hardened: { id: 'hardened', name: 'Hardened', text: `Your Hooks need ${HARDENED_COUNTS === 1 ? 'one more count' : `${HARDENED_COUNTS} more counts`} to go off.`, tier: 'gatekeeper' },
+  'behavior-analysis': { id: 'behavior-analysis', name: 'Behavior Analysis', text: `Each turn you take gives it Ward ${BEHAVIOR_ANALYSIS_WARD}.`, tier: 'gatekeeper' },
+  'pattern-match': { id: 'pattern-match', name: 'Pattern Match', text: 'The first run you score each hand gives it a turn at once.', tier: 'gatekeeper' },
+  reflection: { id: 'reflection', name: 'Reflection', text: `Whenever its Ward absorbs your Credit, it Credits ${REFLECTION_SHARE === 0.5 ? 'half' : pct(REFLECTION_SHARE)} of what was absorbed.`, tier: 'gatekeeper' },
+  'counter-trace': { id: 'counter-trace', name: 'Counter-Trace', text: `Each time one of your Hooks goes off, you gain ${COUNTER_TRACE_HEAT} Heat.`, tier: 'gatekeeper' },
+  rewrite: { id: 'rewrite', name: 'Rewrite', text: 'At the start of each hand, it swaps your top and bottom subroutines.', tier: 'gatekeeper' },
   escalation: { id: 'escalation', name: 'Escalation', text: `Each of its turns lowers its initiative threshold by ${pct(ESCALATION_STEP)} (at most ${pct(ESCALATION_MAX)} in all), so its turns come faster.`, tier: 'elite' },
 };
