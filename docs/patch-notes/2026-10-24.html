@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>crib.exe Patch Notes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: the game's own terminal look (one dark theme, on purpose, as the game has): a mono masthead, a sticky section rail, a readable sans body. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0f14; --raised: #121a23; --line: #22303d;
+  --text: #d6e2ee; --strong: #eef5fb; --dim: #7d8fa1; --accent: #39ff9c; --warn: #ffb347;
+  --exploit: #ff3d8b; --daemon: #3ddc84; --overclock: #29d3ff; --honeypot: #ffc23d; --mod: #c49bff; --heat: #ff8a3d;
+  --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; }
+.prompt { font-family: var(--mono); font-size: 13px; color: var(--dim); letter-spacing: .04em; }
+.prompt b { color: var(--accent); font-weight: 400; }
+h1 { font-family: var(--mono); font-weight: 800; font-size: clamp(28px, 6vw, 44px); line-height: 1.1; margin: 0; text-wrap: balance; color: var(--strong); }
+h1 .cursor { color: var(--accent); }
+.suits { display: flex; gap: 6px; }
+.suits span { width: 28px; height: 4px; border-radius: 2px; }
+.lede { color: var(--dim); max-width: 62ch; margin: 0; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; gap: 4px 16px; flex-wrap: wrap; padding-block: 12px; border-block: 1px solid var(--line); font-family: var(--mono); font-size: 12px; }
+nav a { color: var(--dim); text-decoration: none; }
+nav a:hover, nav a:focus-visible { color: var(--accent); outline: none; text-decoration: underline; }
+section { padding-top: 32px; scroll-margin-top: 72px; }
+h2 { font-family: var(--mono); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; text-wrap: balance; }
+h2::before { content: "// "; color: var(--dim); }
+h3 { font-family: var(--mono); font-size: 14px; font-weight: 700; margin: 22px 0 6px; color: var(--strong); }
+.h3-note { font-weight: 400; color: var(--dim); font-size: 12px; }
+p { margin: 0 0 12px; max-width: 68ch; }
+ul { margin: 0 0 12px; padding-left: 20px; max-width: 68ch; }
+li { margin: 4px 0; }
+li::marker { color: var(--dim); }
+ul ul { margin: 4px 0 6px; }
+b { font-weight: 600; color: var(--strong); }
+i { color: var(--dim); }
+code { font-family: var(--mono); font-size: .9em; }
+.notice { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--warn); border-radius: 6px; background: var(--raised); font-size: 15px; }
+.notice b { color: var(--warn); }
+li.suit { list-style: none; margin-left: -20px; padding-left: 12px; border-left: 3px solid var(--c); }
+li.suit b { color: var(--c); font-family: var(--mono); font-size: 14px; }
+.suit-exploit { --c: var(--exploit); } .suit-daemon { --c: var(--daemon); } .suit-overclock { --c: var(--overclock); } .suit-honeypot { --c: var(--honeypot); }
+#new-mods h3 { color: var(--mod); }
+#new-burners h3 { color: var(--heat); }
+#what-we-d-like-you-to-watch-for { margin-top: 32px; padding: 20px 18px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--raised); }
+footer { margin-top: 40px; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="prompt"><b>&gt;</b> ./crib.exe --changelog</div>
+  <h1>Patch notes<span class="cursor">_</span></h1>
+  <div class="suits" aria-hidden="true"><span style="background:var(--exploit)"></span><span style="background:var(--daemon)"></span><span style="background:var(--overclock)"></span><span style="background:var(--honeypot)"></span></div>
+  <p class="lede">The content update: what's new for testers since the current demo build.</p>
+</header>
+<nav aria-label="Sections"><a href="#highlights">Highlights</a><a href="#new-the-review-coach">New: the review coach</a><a href="#new-burners">New Burners</a><a href="#new-events">New Events</a><a href="#new-mods">New Mods</a><a href="#new-subroutines">New subroutines</a><a href="#new-enemies">New enemies</a><a href="#rule-and-balance-changes">Rule and balance changes</a><a href="#screen-and-quality-of-life-changes">Screen and quality-of-life changes</a><a href="#fixes">Fixes</a><a href="#what-we-d-like-you-to-watch-for">What we&#x27;d like you to watch for</a></nav>
+<section><p>What's new for testers since the current demo build. This update roughly doubles the game's content: new Burners, Events, Mods, subroutines and enemies, plus a full balance pass and a Cribbage review coach.</p>
+<aside class="notice"><b>Heads up:</b> a run saved on the old build won't continue after the update. Finish it first, or just start fresh.</aside>
+<section id="highlights"><h2>Highlights</h2>
+<ul>
+<li><b>Review coach.</b> Every fight's result card now rates your Cribbage ("Cribbage: 82% (Sharp)"). Tap it to see your costliest mistakes from that fight, with the cards laid out and what the coach would have done instead. Your rating for the whole run is on the end-of-run card.
+</li>
+<li><b>Burners got a real role in fights.</b> Arm one from the Burner row in a fight. Each one says when it acts ("Now" or "Next turn"), and some install a temporary subroutine for a few turns.
+</li>
+<li><b>Many more Events,</b> each with a short story, and some only appear deeper in the network.
+</li>
+<li><b>New Mods:</b> rule-benders, double-edged Mods with a big upside and a real cost, and a "II" upgrade for every class Mod (from Events).
+</li>
+<li><b>16 new subroutines</b> (four per archetype), and <b>rank III now strengthens the Process too</b>, not just the Hook.
+</li>
+<li><b>22 new enemies.</b> Elites now have teeth, gatekeepers get harder layer by layer, and each layer's gatekeeper is named on the map.
+</li>
+<li><b>Balance pass:</b> a full run should be won about a quarter of the time, with the six classes close together.
+</li></ul>
+</section><section id="new-the-review-coach"><h2>New: the review coach</h2>
+<ul>
+<li>After each fight, the result card shows <b>Cribbage: N% (label)</b>. The ladder runs <b>Learning, Steady, Sharp, Expert, Flawless</b>.
+</li>
+<li>The rating measures how close your discards and pegging plays came to the coach's best, by the points each choice gave up. Discards count double. Plays where your choice didn't matter aren't counted.
+</li>
+<li><b>Tap the rating</b> for the review: up to three of the fight's costliest mistakes, one of them a pegging play when there is one.
+<ul>
+<li>A discard shows the whole hand you were dealt, the two you threw, and whose crib they went into.
+</li>
+<li>A pegging play shows the table: the count and the cards on it, your hand (with the card you played raised), the cut, and how many cards they held.
+</li></ul>
+</li>
+<li>For a sense of scale: the game's own simulated player rates about 87 (Sharp), and the AI at full strength about 95 (Expert).
+</li></ul>
+</section><section id="new-burners"><h2>New Burners</h2>
+<p>Burners now say when they act. <b>Now</b> acts as soon as you arm it (you can disarm it until your next discard or card). <b>Next turn</b> acts at the start of your next turn. You can carry 3. <b>Contraband</b> Burners come only from Events (or Shops, with Black Market Ties).</p>
+<h3>In fights</h3>
+<ul>
+<li><b>Patch Tuesday</b> (common): Next turn, Ward 8.
+</li>
+<li><b>Packet Storm</b> (common): each fifteen you score this hand also Credits 3.
+</li>
+<li><b>Noise Floor</b> (uncommon): each pair you score this hand and the next also Suppresses 6.
+</li>
+<li><b>Overclock Script</b> (uncommon): your loadout fires twice on each of your next two turns.
+</li>
+<li><b>Zero-Day</b> (rare): for 4 hands, every Hook in your loadout goes off, and applies twice.
+</li>
+<li><b>Bootstrap Loader</b> (uncommon): a temporary subroutine at the top for 3 turns that Empowers the rest of your loadout.
+</li>
+<li><b>Logic Bomb</b> (uncommon): a temporary subroutine at the bottom for 3 turns that Credits more for each Hook that fired.
+</li>
+<li><b>Honeynet Shim</b> (common): a temporary Ward subroutine for 3 turns.
+</li>
+<li><b>Denial of Service</b> (rare, contraband): the enemy's next 2 turns are skipped.
+</li>
+<li><b>Botnet</b> (rare, contraband): a temporary subroutine for 6 turns, Credit 4, plus 4 more on fifteens.
+</li>
+<li><b>Kill Switch</b> (rare, contraband): the enemy's Containment drops to 0.
+</li></ul>
+<h3>On the map <span class="h3-note">(Heat tools)</span></h3>
+<ul>
+<li><b>Log Wiper</b> (common): lower your Heat by 10.
+</li>
+<li><b>Proxy Chain</b> (uncommon): the next 3 fights' Heat is halved.
+</li>
+<li><b>Spoofed Credentials</b> (rare): the next gatekeeper has no Heat toll.
+</li>
+<li><b>Tunnel</b> (uncommon): pass through the next Shop or Safehouse without using it up. It stays for later.
+</li>
+<li><b>Golden Ticket</b> (rare, contraband): Heat to 0, and the next gatekeeper has no Heat toll.
+</li></ul>
+<h3>Passive</h3>
+<ul>
+<li><b>Restore Point</b> (rare, contraband): if you lose a gatekeeper fight, the fight starts over instead of quarantining you. Once.
+</li></ul>
+<p><i>Retired:</i> Recon Ping. Skeleton Key became Restore Point.</p>
+</section><section id="new-events"><h2>New Events</h2>
+<p>16 new Events (24 in all). Every Event, old and new, now has a scene and a line of story for each outcome. Some only appear from layer 2 or 3, with bigger stakes. Some choices need Data. Each Event comes up at most once per run.</p>
+<p>Honeypot Lure · Sysadmin on Call · Forked Repository · Ghost in the Mailroom · The Bounty Board · Firmware Update · The Mining Rig · The Counting Engine · Dead Man's Login · The Darknet Broker · Rogue Process · Audit Season · The Fence · Cold Storage · Root Shell · Clean Room</p>
+</section><section id="new-mods"><h2>New Mods</h2>
+<h3>Rule-benders</h3>
+<ul>
+<li><b>Nobs Exploit</b> (uncommon): each Jack in your hand or crib at the show Credits 4.
+</li>
+<li><b>Run Splicer</b> (uncommon): each run you score also counts as two pairs for your Hooks and class Mod.
+</li>
+<li><b>Last Word</b> (uncommon): each go point gives 2 extra initiative.
+</li>
+<li><b>Lucky Cut</b> (uncommon): a cut in your class's suits Credits 4.
+</li>
+<li><b>Ward Converter</b> (uncommon): at the end of each hand, Credit your remaining Ward (Honeypot classes).
+</li>
+<li><b>Mirror Hand</b> (uncommon): the enemy's pairs count toward your pair Hooks.
+</li>
+<li><b>Hot Standby</b> (rare): your benched subroutines fire their Processes each turn.
+</li>
+<li><b>Echo Chamber</b> (rare): your top subroutine fires again at the end of each turn.
+</li>
+<li><b>Thirty-One</b> (rare): pegging to 31 gives you a turn at once, and your Hooks all go off.
+</li>
+<li><b>Deep Cache</b> (rare): Hooks bank up to twice their usual counts, and start each fight with one banked.
+</li>
+<li><b>Root Cause</b> (rare): each Hook that goes off gives the subroutine below it a count.
+</li>
+<li><b>Persistent Payload</b> (rare): your Burners' timed effects last twice as long.
+</li>
+<li><b>Proof of Concept</b> / <b>Lure Template</b> (uncommon): the next Exploit / Honeypot subroutine you gain is Merged once for free. These join Salvage Protocol and Fast Learner, one for each archetype.
+</li></ul>
+<h3>Double-edged <span class="h3-note">(from Events: a big upside with a real cost, and you keep them for the run)</span></h3>
+<ul>
+<li><b>Fifteen Fold:</b> fifteens worth 3, pairs worth 1.
+</li>
+<li><b>Pair Fold:</b> pairs worth 5, fifteens worth 1. (You can't hold both Folds.)
+</li>
+<li><b>Overclocked Kernel:</b> your first two turns each fight fire twice, but your initiative bar is 2 longer.
+</li>
+<li><b>Ghost Credentials:</b> moving adds no Heat, but fights add 25% more.
+</li>
+<li><b>Black Market Ties:</b> Shops 30% cheaper and selling contraband, but each visit adds 8 Heat.
+</li>
+<li><b>Glass Cannon:</b> each Credit is 2 higher, but enemies start a quarter of the way to containing you.
+</li></ul>
+<p><b>Class Mod II</b> (from Events): each class Mod gains a second clause: Lateral Movement II, Backdoor Maintenance II, Invocation II, Foothold II, Hardened Perimeter II, Phase Shift II.</p>
+</section><section id="new-subroutines"><h2>New subroutines</h2>
+<p>Four per archetype (52 in all). Tap any subroutine in a fight or the Shop for its full rules.</p>
+<ul>
+<li class="suit suit-exploit"><b>Exploit:</b> Sequence Attack, Replay Attack, Packet Sniffer, Circuit Breaker.
+</li>
+<li class="suit suit-daemon"><b>Daemon:</b> Rolling Update, Thread Pool, Backpressure, Deadlock.
+</li>
+<li class="suit suit-overclock"><b>Overclock:</b> Pipeline Flush, Superscalar, Branch Predictor, Clock Skew.
+</li>
+<li class="suit suit-honeypot"><b>Honeypot:</b> Anomaly Detector, Mantrap, Bait File, Reflector.
+</li></ul>
+<p>New mechanics along with them:</p>
+<ul>
+<li><b>Run Hooks:</b> some Hooks now count runs, and each run in a group counts (4-4-5-6 is two runs).
+</li>
+<li><b>Suspend:</b> a few Hooks make one of the enemy's subroutines skip its next turn.
+</li></ul>
+</section><section id="new-enemies"><h2>New enemies</h2>
+<ul>
+<li><b>Regulars</b> (more variety): Port Knocker, Scheduler Bot, Spam Filter, Packet Logger, Credential Harvester, Load Shedder, Decoy Grid, Rootkit Scanner.
+</li>
+<li><b>Elites</b>, each built to test a kind of build:
+<ul>
+<li><b>Jamming Array</b> (Interference): each of your Instant Hooks costs you 2 Breach.
+</li>
+<li><b>Memory Governor</b> (Hard Limit): your Ward can't go above 6.
+</li>
+<li><b>Lockdown Service</b> (Lockout): every second turn it takes, your top subroutine skips a turn.
+</li>
+<li><b>Fast Path Router</b> (Fast Path): its pegging points count double toward its initiative.
+</li>
+<li><b>Purge Daemon</b> (Purge): each hand, your Hooks lose a count.
+</li>
+<li><b>Reaper Process</b> (Collection): each hand, your growing subroutines lose half their growth.
+</li></ul>
+</li>
+<li><b>Gatekeepers,</b> four per layer now, named on the map above their node:
+<ul>
+<li><b>The House</b> (House Edge): its crib points count double toward its initiative.
+</li>
+<li><b>Bandwidth Cap</b> (Throttled Link): your initiative bar is 3 longer.
+</li>
+<li><b>Signature Lock</b> (Hardened): your Hooks need one more count.
+</li>
+<li><b>Sandbox</b> (Behavior Analysis): each turn you take gives it Ward 2.
+</li>
+<li><b>Watchtower</b> (Pattern Match): your first run each hand gives it a turn.
+</li>
+<li><b>Mirror Fabric</b> (Reflection): it Credits half of what its Ward absorbs.
+</li>
+<li><b>Black Ice</b> (Counter-Trace): each of your Hooks that goes off adds 1 Heat.
+</li>
+<li><b>System Architect</b> (Rewrite): each hand, it swaps your top and bottom subroutines.
+</li></ul>
+</li>
+<li><b>Firewall Prime reworked:</b> Stateful Inspection (Credit past 6 a turn is halved) replaces its hard cap.
+</li></ul>
+</section><section id="rule-and-balance-changes"><h2>Rule and balance changes</h2>
+<ul>
+<li><b>Enemies play better Cribbage:</b> regulars no longer make really poor plays, and elites play well.
+</li>
+<li><b>Elites and gatekeepers scale with depth.</b> From layer 3 their Breach and Containment gauges are bigger, so fights last longer (a tip explains this the first time). Gatekeepers get harder each layer.
+</li>
+<li><b>System strain:</b> taking four or more turns in a row adds Heat, doubling with each extra turn.
+</li>
+<li><b>Heat allowance grows by layer</b> (56 / 63 / 72 / 80), so later layers are as explorable as the first.
+</li>
+<li><b>Rank III</b> also strengthens a subroutine's Process.
+</li>
+<li><b>A pair royal counts as three pairs</b> (a double pair royal as six) for Hooks, class Mods and Burners.
+</li>
+<li><b>Subroutines you own are three times as likely in rewards,</b> to help Merging.
+</li>
+<li><b>Class Mods retuned</b> so every class wins about as often: Lateral Movement, Backdoor Maintenance, Invocation and Phase Shift changed. Phase Shift (Wraith) was reworked.
+</li>
+<li><b>Salvage Protocol and Fast Learner</b> say clearly what they do, and skip a subroutine already at rank III.
+</li></ul>
+</section><section id="screen-and-quality-of-life-changes"><h2>Screen and quality-of-life changes</h2>
+<ul>
+<li><b>View log</b> on the fight result card shows the fight's log (on phones, it slides the log drawer open). Tap <b>result ▸</b> to come back.
+</li>
+<li><b>Shop warnings:</b> buying more subroutines than you have room for, or a Burner when you already carry 3, now tells you what you'd have to give up. A Shop Burner says when you'll get to use it.
+</li>
+<li><b>Reward swaps</b> show each subroutine's rank and how many copies you have banked.
+</li>
+<li><b>Event choices</b> show the Mod they grant, with its rules.
+</li>
+<li><b>Map Burners</b> have their own buttons, and an "In effect" note shows what's active.
+</li>
+<li><b>Clearer tutorial text</b> on initiative: your points fill only your initiative. Your subroutines fill your Breach.
+</li></ul>
+</section><section id="fixes"><h2>Fixes</h2>
+<ul>
+<li>Losing a regular or elite fight could leave you stranded on the closed node and end the run with "no route forward". You're now moved back correctly.
+</li>
+<li>If a fight's Heat catches you, you no longer get offered that fight's rewards.
+</li></ul>
+</section><section id="what-we-d-like-you-to-watch-for"><h2>What we'd like you to watch for</h2>
+<ul>
+<li><b>The review coach:</b> does your rating feel fair? Are the mistakes it picks the ones you'd want to learn from?
+</li>
+<li><b>Elites and gatekeepers:</b> too hard, too easy, too long? The aim is winning about 4 in 5 elite fights, and gatekeepers getting harder from about 85% down to about 72% by layer 4, with fights lasting 5 hands or more.
+</li>
+<li><b>Heat:</b> does it feel like a real choice on layers 3 and 4?
+</li>
+<li><b>New content:</b> any Burner, Mod or subroutine that feels useless, or too strong to pass up.
+</li>
+<li><b>Anything confusing</b> in the text, especially the new Burner timings and double-edged Mods.
+</li></ul></section>
+<footer>crib.exe · the content update (sessions 64 to 70)</footer>
+</div>
+</body>
+</html>

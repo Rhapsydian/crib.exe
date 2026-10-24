@@ -40,7 +40,7 @@ README's old session-by-session narrative is archived in
   economy, a guided tutorial and tips, Heat shown up front, and the trace
   evasion (`docs/tutorial-design.md`, `docs/trace-evasion-design.md`).
 - **Session 64:** the content pass began, on the `content-pass` branch
-  (not yet merged into `playable`): 24 reworked Burners (lumps,
+  (merged into `playable` in session 70): 24 reworked Burners (lumps,
   rule-benders, temporary subroutines, Heat tools, Event-only contraband)
   and 18 Events, each with story (`docs/burners-events-design.md`).
 - **Session 65:** Mods, on `content-pass`: 12 rule-benders, 6 double-edged
@@ -67,7 +67,8 @@ README's old session-by-session narrative is archived in
   you, Shop over-buy warnings, the log after a fight), two new Mods (Proof
   of Concept, Lure Template), and the review coach: a Cribbage rating on
   each fight's result card and the run's end card, with a drawer of the
-  fight's costliest mistakes.
+  fight's costliest mistakes. `content-pass` merged into `playable`;
+  patch notes for testers in `docs/patch-notes/`.
 
 What exists, all headless and test-covered:
 
@@ -78,8 +79,8 @@ What exists, all headless and test-covered:
 | Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
 | Run progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge (everything at once, at a Safehouse), a Shop that buys and sells, Burners, the trace evasion |
 | Meta-progression (between runs) | **undesigned** — a priority after the content pass |
-| Content | **authored** — 36 player subroutines (52 on `content-pass`), 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod; on `content-pass` 49: 21 regulars, 12 elites, 16 gatekeepers) plus the tutorial's Firewall Beta; 37 Mods (Static Shield set aside); on `content-pass`, 55 Mods (12 new rule-benders; 6 double-edged and 6 class upgrades, Event-only), 24 Burners (4 Event-only contraband) and 24 Events with story (`playable` still has 37, 9 and 8). The content pass continues: enemies |
-| Balance | testers new to Cribbage find it too hard, so rising win rates are welcome (session 64); on `content-pass` players beat elites 82–84% and gatekeepers 86 / 82 / 76 / 74% by layer; victory ~26% (target 24–30%), classes 23.7–28.3%, Heat ending ~12% of runs (session 69's tuning pass) |
+| Content | **authored** — 52 player subroutines, 20 enemy-only; 49 enemies (21 regulars, 12 elites, 16 gatekeepers, elites and gatekeepers each with a Mod) plus the tutorial's Firewall Beta; 57 Mods (rule-benders, 6 double-edged and 6 class upgrades from Events; Static Shield set aside), 24 Burners (4 Event-only contraband) and 24 Events with story. Patch notes for testers: `PATCH_NOTES.md`, `docs/patch-notes/` |
+| Balance | testers new to Cribbage find it too hard, so rising win rates are welcome (session 64); players beat elites 82–84% and gatekeepers 86 / 82 / 76 / 74% by layer; victory ~26% (target 24–30%), classes 23.7–28.3%, Heat ending ~12% of runs (session 69's tuning pass) |
 | UI | a whole run and plain Cribbage with a coach and lessons, on desktop and phones, saved after every choice; a guided tutorial, first-time tips, the Heat bar |
 | Art | the current terminal look is the intended style; no sprite pass planned (at most, refined map icons) |
 

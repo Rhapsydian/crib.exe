@@ -23,9 +23,9 @@ four-layer run with six classes, a guided tutorial, first-time tips, plain
 Cribbage with a coach and lessons, and saves. Milestone 5 (polish and
 playtesting) is under way. 891 tests, `npm run check` clean.
 
-**The content pass and its tuning pass are done, on `content-pass`**
-(pushed; the user merges it into `playable` after playing it locally; save
-version 2): Burners and Events, Mods, subroutines, the enemy pool, then
+**The content pass and its tuning pass are done, and live on `playable`**
+(merged in session 70, a fast-forward; save version 2, so old saves don't
+resume; patch notes in `docs/patch-notes/`): Burners and Events, Mods, subroutines, the enemy pool, then
 Heat, Mod supply and class tuning (`docs/tuning-design.md`). Run victory
 ~26% (target 24-30%), classes 23.7-28.3%, Heat ending ~12% of runs, about
 65-71% of each layer explorable, ~12 Mods by a winning run's end.
@@ -122,7 +122,7 @@ Balance and content:
   5 hands at ~10 Containment a turn: the worst case for a slow-ramping
   class. Warden beats it 77% (vs 100% against Firewall Prime). Consider a
   trim for onboarding (its scale, or Reception Protocol once per fight).
-- **Win rates** on `content-pass`: average 38.0% (Breacher 42.0% to
+- **Win rates** (session 66, before the enemy and tuning passes): average 38.0% (Breacher 42.0% to
   Eidolon 34.0%, session 65); the reworked Burners added ~6 points, the
   Mods ~11 (most from the rule-benders raising the pool's uncommon and
   rare share at the same supply: the user's call is content first, then
