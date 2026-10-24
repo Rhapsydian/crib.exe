@@ -346,10 +346,17 @@ function enemyMagnitudeScaler(enemy: EnemyDefinition, layerIndex: number, fights
   return (enemy.scale ?? 1) * (ENEMY_LAYER_SCALER[layerIndex - 1] / ENEMY_LAYER_SCALER[enemy.minLayer - 1]) * elite;
 }
 
-/** Both win gauges' multiple for a fight (session 67): an elite's layer
- * sets it; everything else plays at the usual size. */
+/** Gatekeepers' win gauges by layer (session 68, E10): as elites', for
+ * fights of 5+ hands; their strength is each one's own scale, calibrated to
+ * 70-75% player wins. TBD/playtesting. */
+export const GATEKEEPER_LAYER_GAUGES = [1.15, 1.1, 2.2, 2.6] as const;
+
+/** Both win gauges' multiple for a fight (sessions 67-68): an elite's or a
+ * gatekeeper's layer sets it; regulars play at the usual size. */
 export function winGaugeScaleFor(enemy: EnemyDefinition, layerIndex: number): number {
-  return enemy.tier === 'elite' ? ELITE_LAYER_TUNING.gauges[layerIndex - 1] : 1;
+  if (enemy.tier === 'elite') return ELITE_LAYER_TUNING.gauges[layerIndex - 1];
+  if (enemy.tier === 'gatekeeper') return GATEKEEPER_LAYER_GAUGES[layerIndex - 1];
+  return 1;
 }
 
 /** The real magnitude scaler for any enemy encounter, regardless of

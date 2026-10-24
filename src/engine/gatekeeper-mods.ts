@@ -53,10 +53,12 @@ export interface GatekeeperModDefinition {
 }
 
 /** No Way In: the most Credit its opponent may gain in one of their turns. */
-export const NO_WAY_IN_CAP = 6;
+// 9 since session 68 (was 6): its fights ran 12 hands, twice anyone else's.
+export const NO_WAY_IN_CAP = 9;
 /** Rate Limit: No Way In, loosened for the tutorial's Firewall Beta
  * (session 63, the user's call: the tutorial should be fairly easy). */
-export const RATE_LIMIT_CAP = 8;
+// 12 since session 68 (was 8): it must stay looser than No Way In's 9.
+export const RATE_LIMIT_CAP = 12;
 /** Zero-Sum: Credit its opponent gains past this in a turn... */
 export const ZERO_SUM_THRESHOLD = 4;
 /** ...feeds the Zero-Sum owner this share of the excess. */

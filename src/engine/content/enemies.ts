@@ -229,44 +229,44 @@ const KERNEL_PANIC: SubroutineDefinition = {
  * fight length). */
 export const AUTHORED_GATEKEEPERS: AuthoredEnemy[] = [
   // --- Layer 1: the perimeter ---
-  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['reception-protocol'], scale: 1.42,
+  { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['reception-protocol'], scale: 1.6,
     loadout: [WELCOME_PACKET, p('port-scan'), p('cache-hit'), p('burst-clock')] },
-  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 1, mods: ['no-way-in'], scale: 0.982,
+  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 1, mods: ['no-way-in'], scale: 1.4,
     loadout: [DEFAULT_DENY, p('watchdog-timer'), p('buffer-overflow'), p('cron-job')] },
   // Session 68 (E11): scales are first guesses, calibrated with all sixteen.
-  { id: 'the-house', name: 'The House', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['house-edge'], scale: 1.3,
+  { id: 'the-house', name: 'The House', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['house-edge'], scale: 1.25,
     loadout: [HOUSE_DEALER, p('buffer-overflow'), p('ping'), p('jackpot')] },
-  { id: 'bandwidth-cap', name: 'Bandwidth Cap', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 1, mods: ['throttled-link'], scale: 1.2,
+  { id: 'bandwidth-cap', name: 'Bandwidth Cap', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 1, mods: ['throttled-link'], scale: 1.7,
     loadout: [TRAFFIC_SHAPER, p('cron-job'), p('burst-clock'), p('watchdog-timer')] },
   // --- Layer 2: the internal LAN ---
-  { id: 'quarantine-ward', name: 'Quarantine Ward', tier: 'gatekeeper', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['containment'], scale: 1.98,
+  { id: 'quarantine-ward', name: 'Quarantine Ward', tier: 'gatekeeper', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['containment'], scale: 2.02,
     loadout: [ISOLATION_CHAMBER, p('patch'), p('sinkhole'), p('memory-leak')] },
-  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 2, mods: ['zero-sum'], scale: 1.52,
+  { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 2, mods: ['zero-sum'], scale: 1.6,
     loadout: [BALANCE_SHEET, p('ping'), p('elevated-session'), p('tarpit')] },
-  { id: 'signature-lock', name: 'Signature Lock', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 2, mods: ['hardened'], scale: 1.8,
+  { id: 'signature-lock', name: 'Signature Lock', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 2, mods: ['hardened'], scale: 2.05,
     loadout: [LOCKFILE, p('port-scan'), p('patch'), p('credential-stuffing')] },
-  { id: 'sandbox', name: 'Sandbox', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 2, mods: ['behavior-analysis'], scale: 1.7,
+  { id: 'sandbox', name: 'Sandbox', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 2, mods: ['behavior-analysis'], scale: 2.05,
     loadout: [ANALYSIS_VM, p('fail2ban'), p('buffer-overflow'), p('basic-auth')] },
   // --- Layer 3: the servers ---
-  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 3, mods: ['adaptation'], scale: 2.66,
+  { id: 'adaptive-threat', name: 'Adaptive Threat', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 3, mods: ['adaptation'], scale: 2.15,
     loadout: [SELF_MODIFYING_CODE, p('fork-bomb'), p('ping'), p('steady-drip')] },
   // E7 gatekeeper tracer: does not try hard to contain you; makes you loud
   // before the toll. Credential Stuffing rather than Jackpot, whose beta
   // feed would hand you Breach.
-  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 3, mods: ['spotlight'], scale: 2.4,
+  { id: 'total-compromise', name: 'Total Compromise', tier: 'gatekeeper', archetypes: ['exploit', 'honeypot'], minLayer: 3, mods: ['spotlight'], scale: 2.5,
     loadout: [BEACON, p('port-scan'), p('tarpit'), p('credential-stuffing')] },
-  { id: 'watchtower', name: 'Watchtower', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 3, mods: ['pattern-match'], scale: 2.3,
+  { id: 'watchtower', name: 'Watchtower', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 3, mods: ['pattern-match'], scale: 2.2,
     loadout: [LOOKOUT_POST, p('ping'), p('port-scan'), p('elevated-session')] },
-  { id: 'mirror-fabric', name: 'Mirror Fabric', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 3, mods: ['reflection'], scale: 2.2,
+  { id: 'mirror-fabric', name: 'Mirror Fabric', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 3, mods: ['reflection'], scale: 1.65,
     loadout: [MIRROR_SHARD, p('tarpit'), p('priority-override'), p('sinkhole')] },
   // --- Layer 4: the core ---
-  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['exploit', 'overclock', 'honeypot'], minLayer: 4, mods: ['null-session'], scale: 2.17,
+  { id: 'null-session', name: 'Null Session', tier: 'gatekeeper', archetypes: ['exploit', 'overclock', 'honeypot'], minLayer: 4, mods: ['null-session'], scale: 2.5,
     loadout: [NULL_ROUTE, p('zero-day-chain'), p('priority-override'), p('zero-trust')] },
-  { id: 'root-authority', name: 'Root Authority', tier: 'gatekeeper', archetypes: ['exploit', 'daemon', 'overclock'], minLayer: 4, mods: ['root-access'], scale: 1.91,
+  { id: 'root-authority', name: 'Root Authority', tier: 'gatekeeper', archetypes: ['exploit', 'daemon', 'overclock'], minLayer: 4, mods: ['root-access'], scale: 2.2,
     loadout: [KERNEL_PANIC, p('chain-reaction'), p('memory-leak'), p('race-condition')] },
-  { id: 'black-ice', name: 'Black Ice', tier: 'gatekeeper', archetypes: ['exploit', 'daemon', 'honeypot'], minLayer: 4, mods: ['counter-trace'], scale: 2.0,
+  { id: 'black-ice', name: 'Black Ice', tier: 'gatekeeper', archetypes: ['exploit', 'daemon', 'honeypot'], minLayer: 4, mods: ['counter-trace'], scale: 3.0,
     loadout: [ICE_WALL, p('memory-leak'), p('zero-trust'), p('race-condition')] },
-  { id: 'system-architect', name: 'System Architect', tier: 'gatekeeper', archetypes: ['daemon', 'overclock', 'honeypot'], minLayer: 4, mods: ['rewrite'], scale: 1.9,
+  { id: 'system-architect', name: 'System Architect', tier: 'gatekeeper', archetypes: ['daemon', 'overclock', 'honeypot'], minLayer: 4, mods: ['rewrite'], scale: 2.85,
     loadout: [BLUEPRINT, p('fork-bomb'), p('chain-reaction'), p('air-gapped-vault')] },
 ];
 

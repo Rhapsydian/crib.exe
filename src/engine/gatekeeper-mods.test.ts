@@ -19,8 +19,8 @@ const progress = (s: CombatState, side: 0 | 1) => s.sides[side].winGauge.progres
 describe('gatekeeper Mods (step 3, E4)', () => {
   it('No Way In caps what the player gains in one turn', () => {
     let s = withMods([credit('a')], [credit('g')], ['no-way-in']);
-    s = creditWinGauge(s, 0, 4);
-    s = creditWinGauge(s, 0, 4);
+    s = creditWinGauge(s, 0, NO_WAY_IN_CAP - 1);
+    s = creditWinGauge(s, 0, NO_WAY_IN_CAP - 1);
     expect(progress(s, 0)).toBe(NO_WAY_IN_CAP);
     // A new turn of the player's resets the cap.
     s = fireTurn(s, 0, { isDealer: false }).combatState;
@@ -29,8 +29,8 @@ describe('gatekeeper Mods (step 3, E4)', () => {
 
   it("Rate Limit (the tutorial's) is No Way In with a looser cap", () => {
     let s = withMods([credit('a')], [credit('g')], ['rate-limit']);
-    s = creditWinGauge(s, 0, 5);
-    s = creditWinGauge(s, 0, 5);
+    s = creditWinGauge(s, 0, RATE_LIMIT_CAP - 1);
+    s = creditWinGauge(s, 0, RATE_LIMIT_CAP - 1);
     expect(progress(s, 0)).toBe(RATE_LIMIT_CAP);
     expect(RATE_LIMIT_CAP).toBeGreaterThan(NO_WAY_IN_CAP);
   });

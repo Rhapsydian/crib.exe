@@ -203,3 +203,15 @@ player strength), plus `run-outcomes.ts`.
   the log when it acts (checked in the browser over five fights each).
   Fast Path never announced itself: now it does. The bigger-gauge card
   waits for the gatekeeper pass (E9). Batch 1 done.
+- **Checkpoint 6, gatekeeper calibration (in progress).**
+  `GATEKEEPER_LAYER_GAUGES` 1.15 / 1.1 / 2.2 / 2.6 (enemies.ts); each
+  gatekeeper's own scale by replay (`fight-calibrate.ts --tier=gatekeeper`);
+  No Way In's cap 6 → 9 (Firewall Prime ran 12 hands), so the tutorial's
+  Rate Limit 8 → 12 to stay looser. Replayed: all sixteen 68-77% player
+  wins, layers 72-74%, 5.7-7.4 hands (Firewall Prime 11). Full runs (100
+  seeds a class): gatekeepers 75.0 / 79.8 / 75.4 / 70.5% by layer;
+  elites 84-87%. **Victory 19.2%**, under E6's 24-30%: four gatekeepers
+  at ~72.5% alone leave ~28% of runs (0.725^4), before Heat and the rest.
+  By class: Breacher 27.5, Blackhat 22.5, Eidolon 22.0, Warden 18.0,
+  Operator 17.0, Wraith 8.0%. Open: E1's gatekeeper rate against E6's
+  victory.
