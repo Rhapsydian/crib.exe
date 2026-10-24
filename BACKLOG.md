@@ -15,23 +15,21 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 66)
+## Current state (end of session 67)
 
 The game is playable in the browser on desktop and phones
 (<https://rhapsydian.github.io/crib.exe/>, branch `playable`): a full
 four-layer run with six classes, a guided tutorial, first-time tips, plain
 Cribbage with a coach and lessons, and saves. Milestone 5 (polish and
-playtesting) is under way. 873 tests, `npm run check` clean.
+playtesting) is under way. 881 tests, `npm run check` clean.
 
 **The content pass is on `content-pass`** (pushed; the user merges it into
-`playable` after playing it locally; save version 2): 24 Burners and 24
-Events with story (`docs/burners-events-design.md`); 55 Mods
-(`docs/mods-design.md`); 52 player subroutines, Merge rank III boosting
-the Process, owned subroutines x3 in reward draws, system strain
-(`docs/subroutines-design.md`). Enemies: 27 plus the tutorial's Firewall
-Beta. Balance on `content-pass`: 32.7-50.7% victory by class, average
-40.4%; tuning (elites first, then Heat, win rates, Mod supply) after the
-enemy pool.
+`playable` after playing it locally; save version 2): Burners and Events
+(`docs/burners-events-design.md`), Mods (`docs/mods-design.md`),
+subroutines (`docs/subroutines-design.md`), and the enemy pool's batch 1:
+twelve elites calibrated to 80-85% player wins by layer, enemy Cribbage
+skill raised, the ejection fix (`docs/enemies-design.md`). Run endings:
+victory 31.2% (target 24-30%), lost gatekeeper 50.8%, Heat 16.9%.
 
 ---
 
@@ -42,10 +40,11 @@ In this order:
 1. **More content**, all of it: subroutines, Mods, Burners, Events, and
    enemies of all three tiers. Player side first, then enemies.
    **Burners and the first ten new Events are done** (session 64), **Mods
-   and their six Events** (session 65), **subroutines** (session 66).
-   Next: the enemy pool (elites first: the user wants elite tuning before
-   Heat and win rates), then Heat, win-rate and Mod-supply tuning; Event
-   mini-games after. The user's notes:
+   and their six Events** (session 65), **subroutines** (session 66),
+   **elites** (session 67). Next: the enemy pool's batch 2 (gatekeepers:
+   8 new, 4 per layer, 70-75% player wins, 5+ hands; regulars: 8 new for
+   variety), then Heat, win-rate and Mod-supply tuning; Event mini-games
+   after. The user's notes:
    - **Burners:** the economy ones (Data, Shop discounts) are the only
      ones worth carrying; tune up the combat and map Burners.
    - **Events** can be a source of rare, high-value Burners.
@@ -93,9 +92,11 @@ Balance and content:
   and diluted Exploit/Overclock pools); for the win-rate pass.
 - **System strain** (S12): its first step (~1.5 Heat at layer 1, doubling)
   is a dial for the Heat pass; the user is keeping an eye on it.
-- **Regular and elite losses never happen** in simulated runs, even at
-  skill 0.3 (a run test needed a feeble loadout to see one): elite tuning
-  first in the enemy pass.
+- **Heat ends ~13-17% of runs** since elites bite (0.4 elites lost a run,
+  each costing Heat); for the Heat pass.
+- **Gatekeepers at 78-84% player wins, 2.8-8.7 hands** (layer 3-4 fights
+  under 4 hands; Firewall Prime 12): batch 2 brings them to 70-75% and 5+
+  hands, likely with layer-scaled gauges like elites.
 - **Heat rarely ends a simulated run** (1-3% heat-maxed or caught), so
   Ghost Credentials (-26 Heat a run) and Black Market Ties (+19) measure
   ~0 victory (session 65). Revisit both with Heat tuning.

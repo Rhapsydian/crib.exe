@@ -50,6 +50,11 @@ README's old session-by-session narrative is archived in
   every run in a double run counting, Merge rank III boosting the Process,
   owned subroutines likelier in rewards, and system strain for long turn
   chains (`docs/subroutines-design.md`).
+- **Session 67:** the enemy pool, batch 1, on `content-pass`: six new
+  elites aimed at kinds of builds, elites calibrated to 80-85% player wins
+  by layer with bigger gauges deep, enemy Cribbage skill raised, and a lost
+  fight now ejects the player instead of ending the run
+  (`docs/enemies-design.md`).
 
 What exists, all headless and test-covered:
 
@@ -60,8 +65,8 @@ What exists, all headless and test-covered:
 | Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
 | Run progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge (everything at once, at a Safehouse), a Shop that buys and sells, Burners, the trace evasion |
 | Meta-progression (between runs) | **undesigned** — a priority after the content pass |
-| Content | **authored** — 36 player subroutines (52 on `content-pass`), 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod) plus the tutorial's Firewall Beta; 37 Mods (Static Shield set aside); on `content-pass`, 55 Mods (12 new rule-benders; 6 double-edged and 6 class upgrades, Event-only), 24 Burners (4 Event-only contraband) and 24 Events with story (`playable` still has 37, 9 and 8). The content pass continues: enemies |
-| Balance | testers new to Cribbage find it too hard, so rising win rates are welcome (session 64); on `content-pass` 32.7–50.7% by class, average 40.4% (session 66); elite, Heat, win-rate and Mod-supply tuning to follow |
+| Content | **authored** — 36 player subroutines (52 on `content-pass`), 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod; 12 elites on `content-pass`) plus the tutorial's Firewall Beta; 37 Mods (Static Shield set aside); on `content-pass`, 55 Mods (12 new rule-benders; 6 double-edged and 6 class upgrades, Event-only), 24 Burners (4 Event-only contraband) and 24 Events with story (`playable` still has 37, 9 and 8). The content pass continues: enemies |
+| Balance | testers new to Cribbage find it too hard, so rising win rates are welcome (session 64); on `content-pass` players beat elites 82–86% by layer, victory 31.2% (session 67; target 24–30%); gatekeepers, Heat, win-rate and Mod-supply tuning to follow |
 | UI | a whole run and plain Cribbage with a coach and lessons, on desktop and phones, saved after every choice; a guided tutorial, first-time tips, the Heat bar |
 | Art | the current terminal look is the intended style; no sprite pass planned (at most, refined map icons) |
 
@@ -73,7 +78,7 @@ done; milestone 5, polish and playtesting, is under way.
 
 ```bash
 npm install
-npm test        # Vitest suite (873 tests)
+npm test        # Vitest suite (881 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server: the main menu (the roguelite, Cribbage); #test is the single-fight harness
 ```
@@ -126,6 +131,9 @@ kit, reporting threshold vs. attrition wins on each side.
 | `npx tsx scripts/build-check.ts` | A real build (by layer) against that layer's gatekeepers |
 | `npx tsx scripts/engine-bench.ts` | Simulation speed (fights per second): run before and after any engine change |
 | `npx tsx scripts/evasion-check.ts` | Trace evasion escape odds by head start and skill, and the head starts real runs produce |
+| `npx tsx scripts/enemy-rates.ts [--by=enemy]` | Player win rate and mean hands a fight by tier and layer (and by enemy), from full runs |
+| `npx tsx scripts/fight-calibrate.ts --tier=elite [--breach=… --containment=… --strength=…]` | Captures the player at every fight of a tier in full runs and replays those fights under trial per-layer settings |
+| `npx tsx scripts/run-endings.ts` | How simulated runs end: victory, lost gatekeeper, no route, Heat; lost fights a run |
 | `npx tsx scripts/subroutine-check.ts` | Each subroutine in the top slot of six-subroutine class loadouts against a placeholder, vs a layer's elites, as a multiple of its archetype's average at its rarity |
 | `npx tsx scripts/merge-frequency.ts` | How far the simulated player Merges: subroutines by rank at a run's end, runs reaching rank III |
 | `npx tsx scripts/mod-check.ts [--double] \| --part=run --only=… \| --part=class` | Each Mod with and without it: Containment cut against a layer's elites (as a multiple of its rarity's average), full-run victory, or each class with its upgrade |
@@ -199,6 +207,7 @@ Current:
 | `docs/burners-events-design.md` | The Burner rework and Event story (BE1–BE10, session 64) |
 | `docs/mods-design.md` | Rule-benders, double-edged Mods, class Mod upgrades and their Events (M1–M14, session 65) |
 | `docs/subroutines-design.md` | Sixteen new subroutines, run counting, Merge rank III, Suspend, system strain (S1–S13, session 66) |
+| `docs/enemies-design.md` | Enemy roles and targets, six new elites, elite calibration, the ejection fix (E1–E9, session 67; batch 2 to come) |
 | `docs/session-logs/` | Per-session record of decisions and results |
 | `docs/calibration/` | Raw measurement output cited by the design records and the code |
 
