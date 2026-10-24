@@ -13,7 +13,7 @@ describe('kit (Mods and Burners on screen)', () => {
     expect(yours[0].text).toMatch(/^Each fifteen you score: Ward/);
     const theirs = modsOf(state, 1);
     expect(theirs.map((m) => m.name)).toEqual(['Backdoor Maintenance', 'Null Session']);
-    expect(theirs[0].text).toBe('Each fifteen it scores: Suppress 1. The first fifteen each hand Suppresses 1 more.');
+    expect(theirs[0].text).toBe('Each fifteen it scores: Suppress 1.5. The first fifteen each hand Suppresses 1 more.');
   });
 
   it('marks spent Burners one for one', () => {

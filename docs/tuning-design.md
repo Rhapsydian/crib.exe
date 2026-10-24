@@ -47,3 +47,10 @@ end).
   across all runs; `scripts/mod-supply.ts`), with run victory a touch
   under 24-30% (classes 19.7-28.7%, average 23.4%, 300 seeds a class).
   Classes next.
+- **Classes (T1: each within ±3 of the average), one round through the
+  class Mods:** Lateral Movement +1.5 initiative a pair (was 1); Backdoor
+  Maintenance Suppress 1.5 a fifteen (was 1); Invocation three-quarters of
+  a fire's growth (was half); Phase Shift Credits over a Ward of 5 (was 4).
+  Full runs (300 seeds a class): Operator 28.3, Breacher 26.7, Wraith
+  26.3, Blackhat 24.7, Eidolon 24.0, Warden 23.7%; **average 25.6%**,
+  every class within ±3 (was 19.7-28.7%, average 23.4%).

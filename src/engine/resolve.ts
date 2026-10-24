@@ -590,16 +590,16 @@ function modAdjustedLoadout(loadout: SubroutineDefinition[], ownedModIds: ModId[
 
 /** Exploit + Overclock (K2): each pair you score adds this fraction of a
  * turn to your initiative gauge. */
-export const BRIDGE_EXPLOIT_OVERCLOCK_HASTE = 1 / 12;
+export const BRIDGE_EXPLOIT_OVERCLOCK_HASTE = 1.5 / 12;
 /** Exploit + Daemon: each fifteen you score also Suppresses... */
-export const BRIDGE_EXPLOIT_DAEMON_SUPPRESS = 1;
+export const BRIDGE_EXPLOIT_DAEMON_SUPPRESS = 1.5;
 /** ...and the first fifteen each hand Suppresses this much more (session
  * 62: Operator sat under the band). */
 export const BRIDGE_EXPLOIT_DAEMON_FIRST = 1;
 const EXPLOIT_DAEMON_THIS_HAND = 'bridge-exploit-daemon:hand';
 /** Daemon + Overclock (K3): each fifteen you score grows each Daemon
  * piece by this share of one fire's growth (still up to its cap). */
-export const BRIDGE_DAEMON_OVERCLOCK_GROWTH = 0.5;
+export const BRIDGE_DAEMON_OVERCLOCK_GROWTH = 0.75;
 /** ...and, on the first fifteen each hand, gives each Overclock piece's
  * Hook this many extra counts. */
 export const BRIDGE_DAEMON_OVERCLOCK_COUNTS = 1;
@@ -637,7 +637,7 @@ export const BRIDGE_II_WRAITH_INITIATIVE = 1;
  * while the owner's Ward is over BRIDGE_OVERCLOCK_HONEYPOT_ABOVE it also
  * Credits BRIDGE_OVERCLOCK_HONEYPOT_CREDIT. TBD/measured. */
 export const BRIDGE_OVERCLOCK_HONEYPOT_WARD = 1;
-export const BRIDGE_OVERCLOCK_HONEYPOT_ABOVE = 4;
+export const BRIDGE_OVERCLOCK_HONEYPOT_ABOVE = 5;
 export const BRIDGE_OVERCLOCK_HONEYPOT_CREDIT = 1;
 
 const bankWard = (combatState: CombatState, side: PlayerIndex, amount: number) => addWard(combatState, side, amount);
