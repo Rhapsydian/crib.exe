@@ -146,6 +146,12 @@ export const CONTAINMENT_THRESHOLD = 50;
  * composes with Null Session's authored 65 instead of flattening every
  * enemy in the game to one number. See RunPlayerState's own note.
  */
+/** The subroutines the player owns, installed or benched (S13: reward
+ * draws favour them, so Merge copies turn up). */
+function ownedSubroutineIds(playerState: RunPlayerState): string[] {
+  return [...playerState.installedLoadout, ...playerState.bench].map((p) => p.id);
+}
+
 export function combatThresholdsFor(
   playerState: RunPlayerState,
   enemy: EnemyDefinition,
@@ -636,10 +642,10 @@ function* resolveFight(
       dataForTier(rewardTier),
       // An elite's subroutines are uncommon or better (session 62): it
       // now offers a subroutine OR a Mod, so its subroutines must compete.
-      kind === 'elite' ? drawCacheRewardOptions(playerState.classId, rng) : drawRewardOptions(playerState.classId, rewardTier, rng),
+      kind === 'elite' ? drawCacheRewardOptions(playerState.classId, rng, ownedSubroutineIds(playerState)) : drawRewardOptions(playerState.classId, rewardTier, rng, ownedSubroutineIds(playerState)),
       kind,
       rng,
-      (r) => drawUpgradedRewardOptions(playerState.classId, r),
+      (r) => drawUpgradedRewardOptions(playerState.classId, r, ownedSubroutineIds(playerState)),
     );
     // R6: a win pays the posted baseline plus the performance term, read
     // off the enemy's FINAL Containment, plus whatever its alarms raised.
@@ -1258,7 +1264,7 @@ export function* resolveEncounterRequests(
         burnerRerollCost: 0,
       };
       if (roll < subroutineOdds) {
-        const rewardOptions = drawCacheRewardOptions(playerState.classId, rng);
+        const rewardOptions = drawCacheRewardOptions(playerState.classId, rng, ownedSubroutineIds(playerState));
         yield* ask({ kind: 'cacheOpened', contents: 'subroutine', data: 0, burners: [], fallback: () => null });
         // Every Cache holds a Burner (session 63): a choice alongside this one.
         return { ...base, rewardTier: 'better', dataAwarded: 0, rewardOptions, modRewardOptions: [], burnerRewardOptions: drawBurnerRewardOptions(rng) };

@@ -84,11 +84,18 @@ export function offClassPoolForClass(classId: ClassId): SubroutineDefinition[] {
   return ARCHETYPES.filter((archetype) => !own.has(archetype)).flatMap(allRarities);
 }
 
+/** How much likelier a subroutine the player already owns is to be
+ * offered (session 66, docs/subroutines-design.md S13): copies are what
+ * Merging needs, and a bigger pool made them rare. TBD/measured. */
+export const OWNED_REWARD_WEIGHT = 3;
+
 /** On-class pieces at their rarity weight, off-class ones scaled down by
- * OFF_CLASS_WEIGHT -- the weighted list both reward draws sample from. */
-function weightedRewardPool(classId: ClassId, rarityWeights: Record<Rarity, number>): { piece: SubroutineDefinition; weight: number }[] {
-  const onClass = rewardPoolForClass(classId).map((piece) => ({ piece, weight: rarityWeights[rarityOf(piece.id)] }));
-  const offClass = offClassPoolForClass(classId).map((piece) => ({ piece, weight: rarityWeights[rarityOf(piece.id)] * OFF_CLASS_WEIGHT }));
+ * OFF_CLASS_WEIGHT, owned ones (`ownedIds`) scaled up by
+ * OWNED_REWARD_WEIGHT -- the weighted list the reward draws sample from. */
+function weightedRewardPool(classId: ClassId, rarityWeights: Record<Rarity, number>, ownedIds: readonly string[] = []): { piece: SubroutineDefinition; weight: number }[] {
+  const owned = (piece: SubroutineDefinition) => (ownedIds.includes(piece.id) ? OWNED_REWARD_WEIGHT : 1);
+  const onClass = rewardPoolForClass(classId).map((piece) => ({ piece, weight: rarityWeights[rarityOf(piece.id)] * owned(piece) }));
+  const offClass = offClassPoolForClass(classId).map((piece) => ({ piece, weight: rarityWeights[rarityOf(piece.id)] * OFF_CLASS_WEIGHT * owned(piece) }));
   return [...onClass, ...offClass];
 }
 
@@ -132,10 +139,10 @@ function weightedSampleWithoutReplacement(
  * subroutines from the class's full reward pool, rarity-weighted by
  * tier (regular fights skew common/uncommon; elite/gatekeeper fights
  * give a real shot at rares). Empty for a 'none' tier (a loss). */
-export function drawRewardOptions(classId: ClassId, tier: RewardTier, rng: Rng): SubroutineDefinition[] {
+export function drawRewardOptions(classId: ClassId, tier: RewardTier, rng: Rng, ownedIds: readonly string[] = []): SubroutineDefinition[] {
   if (tier === 'none') return [];
   const weights = RARITY_WEIGHTS_BY_TIER[tier];
-  const weighted = weightedRewardPool(classId, weights);
+  const weighted = weightedRewardPool(classId, weights, ownedIds);
   return weightedSampleWithoutReplacement(weighted, REWARD_OPTIONS_COUNT, rng);
 }
 
@@ -145,8 +152,8 @@ const CACHE_RARITY_WEIGHTS: Record<Rarity, number> = { common: 0, uncommon: 40, 
 
 /** A Cache's subroutine choice: REWARD_OPTIONS_COUNT distinct pieces, no
  * commons (starting-loadout pieces count as commons, so they're out too). */
-export function drawCacheRewardOptions(classId: ClassId, rng: Rng): SubroutineDefinition[] {
-  return weightedSampleWithoutReplacement(weightedRewardPool(classId, CACHE_RARITY_WEIGHTS), REWARD_OPTIONS_COUNT, rng);
+export function drawCacheRewardOptions(classId: ClassId, rng: Rng, ownedIds: readonly string[] = []): SubroutineDefinition[] {
+  return weightedSampleWithoutReplacement(weightedRewardPool(classId, CACHE_RARITY_WEIGHTS, ownedIds), REWARD_OPTIONS_COUNT, rng);
 }
 
 // TBD/playtesting -- a real shot at rares beyond even 'better', Black
@@ -156,7 +163,7 @@ const UPGRADED_RARITY_WEIGHTS: Record<Rarity, number> = { common: 20, uncommon: 
 /** Black Budget (Mods checkpoint H): re-draws a reward choice at a
  * rarity weighting even more generous than 'better', rather than adding
  * a 4th RewardTier value just for one Mod's own upgrade chance. */
-export function drawUpgradedRewardOptions(classId: ClassId, rng: Rng): SubroutineDefinition[] {
-  const weighted = weightedRewardPool(classId, UPGRADED_RARITY_WEIGHTS);
+export function drawUpgradedRewardOptions(classId: ClassId, rng: Rng, ownedIds: readonly string[] = []): SubroutineDefinition[] {
+  const weighted = weightedRewardPool(classId, UPGRADED_RARITY_WEIGHTS, ownedIds);
   return weightedSampleWithoutReplacement(weighted, REWARD_OPTIONS_COUNT, rng);
 }

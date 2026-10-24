@@ -202,3 +202,14 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
   `scripts/merge-frequency.ts`: installed subroutines by rank at a run's
   end, per run, 4.50 / 1.18 / 0.34 / 0.13; **10.7% of runs end with a
   rank III** (9.3% with 36 subroutines); 1.57 copies left banked a run.
+- **S13. Owned subroutines are three times as likely in reward draws**
+  (the user, after checkpoint 3's 10.7%): fight rewards, Caches and Black
+  Budget's redraw weight a subroutine you own (installed or benched) x3,
+  so Merge copies turn up; the Shop is unchanged. Aim: a quarter to a
+  third of runs reach rank III. Measured (`merge-frequency.ts`, 50 seeds a
+  class), x1 / x2 / x3: runs reaching rank III 10.7 / 14.7 / 27.7%; rank
+  II or III per run 0.47 / 0.75 / 0.90; different subroutines offered per
+  run 25.2 / 22.9 / 21.0; owned at the end 8.1 / 7.8 / 7.7. The user chose
+  x3 after weighing the variety cost (doubling was the first call).
+  Full runs at x3 (300 a class): Blackhat 33.0, Operator 43.0, Eidolon
+  35.3, Breacher 50.7, Warden 47.7, Wraith 32.7; average 40.4% (38.8).

@@ -118,3 +118,16 @@ describe("session 66's sixteen (S1, S6)", () => {
     for (const n of names) expect(others.has(n), n).toBe(false);
   });
 });
+
+describe('S13: owned subroutines are likelier in reward draws', () => {
+  it('a subroutine you own is offered more often', async () => {
+    const { drawRewardOptions } = await import('./rewards');
+    const { createRng } = await import('./rng');
+    const count = (owned: string[]) => {
+      let n = 0;
+      for (let seed = 0; seed < 400; seed++) n += drawRewardOptions('exploit-daemon', 'standard', createRng(seed), owned).filter((p) => p.id === 'patch').length;
+      return n;
+    };
+    expect(count(['patch'])).toBeGreaterThan(count([]) * 1.8);
+  });
+});
