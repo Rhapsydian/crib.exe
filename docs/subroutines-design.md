@@ -91,9 +91,9 @@ Hooks wait for several events (stepped).
     initiative) from their initiative gauge. Hook: Instant: every time
     you've scored 2 runs, add ½ a turn (6 initiative) to your initiative
     gauge right away. Rank III 150%.
-- **S11. The Honeypot slate** (Motion Sensor, drafted as Tripwire, stays on
+- **S11. The Honeypot slate** (Anomaly Detector, drafted as Tripwire, stays on
   the opponent's runs, the user's call):
-  - **Motion Sensor** (drafted as Tripwire) (common, Run Hook): Process: Ward 2. Hook: For each run
+  - **Anomaly Detector** (drafted as Tripwire) (common, Run Hook): Process: Ward 2. Hook: For each run
     the opponent has scored since it last fired, also Credit 2 that ignores
     their Ward (at most 4). Rank III 100%.
   - **Mantrap** (uncommon, stepped pair Hook): Process: Ward 1. Hook: Once
@@ -175,4 +175,22 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
 - **Checkpoint 2, names.** Four drafted names clashed with existing ones
   and were renamed (for the user's review): Kill Switch (a contraband
   Burner) → Circuit Breaker; Throttle and Canary Token (enemy subroutines)
-  → Backpressure and Bait File; Tripwire (a regular enemy) → Motion Sensor.
+  → Backpressure and Bait File; Tripwire (a regular enemy) → Anomaly Detector (the user: Motion Sensor read too physical).
+- **Checkpoint 2, measured** (`scripts/subroutine-check.ts`: each
+  subroutine in the top slot of six-subroutine class loadouts, against a
+  Credit 1 placeholder, vs the layer-2 elites, 30 seeds; as a multiple of
+  its archetype's existing average at its rarity). The first two fixtures
+  were wrong (swapping against a different common per class; the last
+  slot, which leaves Charge-next and Empower-the-rest nothing below). One
+  tuning round (the user approved): Mantrap takes 2; Thread Pool waits for
+  3 pairs; Packet Sniffer's Hook takes 1 more; Anomaly Detector Credits 1
+  a run; Pipeline Flush ⅙ of a turn; Reflector every 4 absorbed; Bait
+  File's Hook Wards 3; **Branch Predictor reworked** to Charge every
+  other Hook (charging only the next measured below zero). After it:
+  Sequence Attack ~0.8 (vs other archetypes' commons), Replay Attack ~1.4
+  (vs all uncommons), Packet Sniffer 3.3, Circuit Breaker 1.47; Rolling
+  Update 1.14, Thread Pool 2.30, Backpressure 1.38, Deadlock 1.05;
+  Pipeline Flush 1.28, Superscalar 1.30, Branch Predictor 0.97, Clock
+  Skew 1.30; Anomaly Detector 1.63, Mantrap 2.25, Bait File 1.62,
+  Reflector 1.53. The measure is the enemy's Containment, so anything
+  that lowers it directly (Suppress, stealing, Ward) reads high.

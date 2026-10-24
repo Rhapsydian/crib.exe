@@ -4,10 +4,13 @@
  * (with and without), against its own archetype and rarity.
  *
  * For each archetype, the classes that have it play six-subroutine
- * loadouts (as mod-check.ts builds them) against a layer's elites. Each
- * subroutine of that archetype not already in a class's loadout is swapped
- * into its last slot (a common), and the enemy's final Containment fill is
- * compared with the unswapped loadout. A subroutine's cut is reported as a
+ * loadouts (as mod-check.ts builds them) against a layer's elites, the top
+ * slot held by a plain placeholder (Credit 1, no Hook: swapping against a
+ * real common read each swap against a different piece per class). Each
+ * subroutine of that archetype not already in a class's loadout takes the
+ * top slot (so Charge-next and Empower-the-rest pieces have subroutines
+ * below them), and the enemy's final Containment fill is compared with the
+ * placeholder's. A subroutine's cut is reported as a
  * multiple of the average cut of its archetype's existing subroutines of
  * the same rarity (session 66's sixteen are marked * and left out of the
  * average).
@@ -38,12 +41,15 @@ const NEW = new Set([
   'sequence-attack', 'replay-attack', 'packet-sniffer', 'circuit-breaker',
   'rolling-update', 'thread-pool', 'backpressure', 'deadlock',
   'pipeline-flush', 'superscalar', 'branch-predictor', 'clock-skew',
-  'motion-sensor', 'mantrap', 'bait-file', 'reflector',
+  'anomaly-detector', 'mantrap', 'bait-file', 'reflector',
 ]);
 
 const commonsFor = (classId: ClassId) =>
   ALL_POOL_SUBROUTINES.filter((q) => CLASS_DEFINITIONS[classId].archetypes.includes(q.archetype) && rarityOf(q.id) === 'common' && !NEW.has(q.id) && !CLASS_STARTING_LOADOUTS[classId].some((x) => x.id === q.id));
-const loadoutFor = (classId: ClassId) => [...CLASS_STARTING_LOADOUTS[classId], ...commonsFor(classId).slice(0, 6 - CLASS_STARTING_LOADOUTS[classId].length)];
+const PLACEHOLDER: SubroutineDefinition = { id: 'placeholder', name: 'Placeholder', archetype: 'exploit', alpha: { verb: 'credit', amount: 1 } };
+// The tested slot is the top, so a subroutine that acts on the ones below
+// it (Charge next, Empower the rest) has something to act on.
+const loadoutFor = (classId: ClassId) => [PLACEHOLDER, ...CLASS_STARTING_LOADOUTS[classId], ...commonsFor(classId).slice(0, 5 - CLASS_STARTING_LOADOUTS[classId].length)];
 const scalerAt = (e: EnemyDefinition) => (e.scale ?? 1) * (ENEMY_LAYER_SCALER[layer - 1] / ENEMY_LAYER_SCALER[e.minLayer - 1]);
 const enemySkill = enemySkillFor('elite', layer, 99);
 const elites = ENEMY_ROSTER.filter((e) => e.tier === 'elite' && e.minLayer <= layer);
@@ -68,7 +74,7 @@ function fill(classId: ClassId, loadout: SubroutineDefinition[]): number {
   return (100 * total) / n;
 }
 
-console.log(`SUBROUTINE CHECK -- layer ${layer} elites (${elites.map((e) => e.name).join(', ')}), ${seeds} seeds each; swapped into the last slot`);
+console.log(`SUBROUTINE CHECK -- layer ${layer} elites (${elites.map((e) => e.name).join(', ')}), ${seeds} seeds each; swapped into the top slot`);
 for (const archetype of archetypes) {
   const classes = ALL_CLASS_IDS.filter((c) => CLASS_DEFINITIONS[c].archetypes.includes(archetype));
   const base = new Map(classes.map((c) => [c, fill(c, loadoutFor(c))]));
@@ -78,7 +84,7 @@ for (const archetype of archetypes) {
     for (const c of classes) {
       const loadout = loadoutFor(c);
       if (loadout.some((x) => x.id === piece.id)) continue;
-      cut += base.get(c)! - fill(c, [...loadout.slice(0, 5), piece]);
+      cut += base.get(c)! - fill(c, [piece, ...loadout.slice(1)]);
       n++;
     }
     return { piece, rarity: rarityOf(piece.id), cut: n ? cut / n : NaN };

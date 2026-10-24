@@ -113,13 +113,13 @@ const ROLLING_UPDATE: SubroutineDefinition = {
   beta: { source: 'cards', category: 'run', shape: 'graded', cap: 3, effect: { verb: 'suppress', amount: 1 } },
 };
 
-/** Stepped pair Hook: 2 pairs, Suppress being worth less than a burst. */
+/** Stepped pair Hook (3 pairs: at 2 it measured 2.5x its rarity). */
 const THREAD_POOL: SubroutineDefinition = {
   id: 'thread-pool',
   name: 'Thread Pool',
   archetype: 'daemon',
   alpha: { verb: 'suppress', amount: 1, growth: 0.25, growthCap: 1 },
-  beta: { source: 'cards', category: 'pair', shape: 'stepped', at: 2, effect: { verb: 'enhance', amount: 4 } },
+  beta: { source: 'cards', category: 'pair', shape: 'stepped', at: 3, effect: { verb: 'enhance', amount: 4 } },
 };
 
 /** New Process: a slow that keeps re-applying (Tempo threshold, 2 turns). */

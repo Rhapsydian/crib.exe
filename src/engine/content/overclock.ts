@@ -133,7 +133,7 @@ const PIPELINE_FLUSH: SubroutineDefinition = {
   name: 'Pipeline Flush',
   archetype: 'overclock',
   alpha: { verb: 'credit', amount: 1 },
-  beta: { source: 'cards', category: 'run', shape: 'immediate', at: 1, effect: { verb: 'tempo', target: 'own', mode: 'gauge', amount: 1 / 4 } },
+  beta: { source: 'cards', category: 'run', shape: 'immediate', at: 1, effect: { verb: 'tempo', target: 'own', mode: 'gauge', amount: 1 / 6 } },
 };
 
 /** Stepped pair Hook: Empowers everything below it. */
@@ -145,12 +145,14 @@ const SUPERSCALAR: SubroutineDefinition = {
   beta: { source: 'cards', category: 'pair', shape: 'stepped', at: 3, effect: { verb: 'empower', amount: 1, scope: 'rest' } },
 };
 
-/** New Process: pure Charge, powering the subroutine below. */
+/** New Process: pure Charge for every other Hook (charging only the next
+ * one measured below zero: a Hook that reads a condition or a position
+ * can't use counts). */
 const BRANCH_PREDICTOR: SubroutineDefinition = {
   id: 'branch-predictor',
   name: 'Branch Predictor',
   archetype: 'overclock',
-  alpha: { verb: 'charge', amount: 1, target: 'next' },
+  alpha: { verb: 'charge', amount: 1, target: 'all' },
   beta: { source: 'cards', category: 'fifteen', shape: 'graded', cap: 1, effect: { verb: 'enhance', amount: 1 } },
 };
 

@@ -56,7 +56,7 @@ export const RANK_THREE_PROCESS_SHARE: Record<string, number> = {
   'superscalar': 1.5,
   'branch-predictor': 1,
   'clock-skew': 1.5,
-  'motion-sensor': 1,
+  'anomaly-detector': 1,
   'mantrap': 1.5,
   'bait-file': 1,
   'reflector': 0.75,

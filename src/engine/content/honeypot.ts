@@ -129,12 +129,12 @@ const AIR_GAPPED_VAULT: SubroutineDefinition = {
 // stepped pair Hook, a new Process and a rare build-definer. TBD/measured.
 
 /** Run Hook: the opponent's runs, punished (the user's call). */
-const MOTION_SENSOR: SubroutineDefinition = {
-  id: 'motion-sensor',
-  name: 'Motion Sensor',
+const ANOMALY_DETECTOR: SubroutineDefinition = {
+  id: 'anomaly-detector',
+  name: 'Anomaly Detector',
   archetype: 'honeypot',
   alpha: { verb: 'ward', amount: 2 },
-  beta: { source: 'cards', category: 'run', watch: 'opponent', shape: 'graded', cap: 2, effect: { verb: 'credit', amount: 2, piercing: true } },
+  beta: { source: 'cards', category: 'run', watch: 'opponent', shape: 'graded', cap: 2, effect: { verb: 'credit', amount: 1, piercing: true } },
 };
 
 /** Stepped pair Hook: a pair build turned into stealing. */
@@ -143,7 +143,7 @@ const MANTRAP: SubroutineDefinition = {
   name: 'Mantrap',
   archetype: 'honeypot',
   alpha: { verb: 'ward', amount: 1 },
-  beta: { source: 'cards', category: 'pair', shape: 'stepped', at: 3, effect: { verb: 'credit', amount: 3, from: 'opponent' } },
+  beta: { source: 'cards', category: 'pair', shape: 'stepped', at: 3, effect: { verb: 'credit', amount: 2, from: 'opponent' } },
 };
 
 /** New Process: spending Ward, fed by the opponent's pairs. */
@@ -152,7 +152,7 @@ const BAIT_FILE: SubroutineDefinition = {
   name: 'Bait File',
   archetype: 'honeypot',
   alpha: { verb: 'credit', amount: 2, from: 'ward' },
-  beta: { source: 'cards', category: 'pair', watch: 'opponent', shape: 'graded', cap: 2, effect: { verb: 'ward', amount: 2 } },
+  beta: { source: 'cards', category: 'pair', watch: 'opponent', shape: 'graded', cap: 2, effect: { verb: 'ward', amount: 3 } },
 };
 
 /** Rare: the harder they hit your Ward, the harder it hits back. */
@@ -161,11 +161,11 @@ const REFLECTOR: SubroutineDefinition = {
   name: 'Reflector',
   archetype: 'honeypot',
   alpha: { verb: 'ward', amount: 2 },
-  beta: { source: 'progress', metric: 'absorbed', per: 3, shape: 'graded', cap: 3, effect: { verb: 'credit', amount: 2, piercing: true } },
+  beta: { source: 'progress', metric: 'absorbed', per: 4, shape: 'graded', cap: 3, effect: { verb: 'credit', amount: 2, piercing: true } },
 };
 
 export const HONEYPOT_POOL: ArchetypePool = {
-  commons: [TARPIT, HONEYTOKEN, BASIC_AUTH, RATE_LIMITING, MOTION_SENSOR],
+  commons: [TARPIT, HONEYTOKEN, BASIC_AUTH, RATE_LIMITING, ANOMALY_DETECTOR],
   uncommons: [SINKHOLE, FAIL2BAN, DEEP_PACKET_INSPECTION, MANTRAP, BAIT_FILE],
   rares: [ZERO_TRUST, AIR_GAPPED_VAULT, REFLECTOR],
 };
