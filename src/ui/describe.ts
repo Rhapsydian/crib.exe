@@ -114,6 +114,8 @@ export function describeEffect(effect: Effect, thresholds: Thresholds = USUAL): 
       return `each of their Hooks loses ${effect.amount === 1 ? '1 count' : `${fmt(effect.amount)} counts`}${feed}`;
     case 'strip':
       return `they lose ${fmt(effect.amount)} Ward${feed}`;
+    case 'suspend':
+      return `their bottom subroutine skips its next ${effect.amount === 1 ? 'turn' : `${fmt(effect.amount)} turns`}${feed}`;
   }
 }
 
@@ -228,7 +230,7 @@ function stateText(beta: Extract<Beta, { source: 'state' }>): { while: string; m
 /** The most a graded Hook adds, as an amount ("at most 2") or, for an
  * effect with no amount to add up, a count ("at most twice"). */
 function gradedCap(effect: BetaEffect, capCount: number, enhance: boolean): string {
-  if (effect.verb === 'tempo' || effect.verb === 'disrupt' || effect.verb === 'charge') return `at most ${times(capCount)}`;
+  if (effect.verb === 'tempo' || effect.verb === 'disrupt' || effect.verb === 'charge' || effect.verb === 'suspend') return `at most ${times(capCount)}`;
   return `at most ${fmt(effect.amount * capCount)}${enhance ? ' more' : ''}`;
 }
 
@@ -247,7 +249,7 @@ export function describeHook(piece: SubroutineDefinition, thresholds: Thresholds
   // "Credits 1 more" (enhance) or "also Suppress 1" (its own effect).
   // A Disrupt reads on its own ("next hand, ..."), without the "also";
   // so do the enemy-only effects, which say what happens to the other side.
-  const standalone = effect.verb === 'disrupt' || effect.verb === 'trace' || effect.verb === 'wipe' || effect.verb === 'strip';
+  const standalone = effect.verb === 'disrupt' || effect.verb === 'trace' || effect.verb === 'wipe' || effect.verb === 'strip' || effect.verb === 'suspend';
   const does = enhance ? moreText(piece.alpha, effect.amount) : `${standalone ? '' : 'also '}${describeEffect(effect, thresholds)}`;
   // A noisy enhance Hook's drawback, paid each time it applies.
   const noise = enhance && effect.feed ? ` — and whenever it does, it also adds ${fmt(effect.feed)} to their Containment` : '';

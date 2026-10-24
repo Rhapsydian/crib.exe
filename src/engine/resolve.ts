@@ -793,6 +793,11 @@ export function countLateralPairs(combatState: CombatState, side: PlayerIndex, p
   return { combatState: setPassiveStat(combatState, side, LATERAL_PAIRS_THIS_HAND, after), turn };
 }
 
+/** Adds Heat raised against `side` this fight (S12's system strain). */
+export function addSideHeat(combatState: CombatState, side: PlayerIndex, amount: number): CombatState {
+  return withSide(combatState, side, { heat: combatState.sides[side].heat + amount });
+}
+
 /** Whether `side`'s class Mod is its "II" version (M10). */
 function isBridgeUpgraded(combatState: CombatState, side: PlayerIndex): boolean {
   return combatState.bridgeUpgraded?.[side] ?? false;
@@ -824,7 +829,7 @@ function applyRuleBendersOnOccurrence(combatState: CombatState, occurrence: Scor
   if (own && occurrence.category === 'run' && hasMod(state, 'run-splicer')) {
     noteMod(state, 0, ownMod('run-splicer'));
     const pair: ScoringOccurrence = { category: 'pair', player: 0, magnitude: 2 };
-    for (let k = 0; k < RUN_SPLICER_PAIRS; k++) {
+    for (let k = 0; k < RUN_SPLICER_PAIRS * occurrenceCount(occurrence); k++) {
       state = applyBridgeOnOccurrence(state, pair, dealer);
       state = mapLoadout(state, 0, (entry) => chargeFromOccurrence(entry.state, entry.definition, pair, 0));
     }
@@ -1017,8 +1022,17 @@ export function resolveEffect(
       const victim = opponentOf(caster);
       return withSide(state, victim, { wardShield: Math.max(0, state.sides[victim].wardShield - effect.amount) });
     }
+    case 'suspend': {
+      // Suspend (S5): the target's bottom subroutine skips its next turn(s).
+      const victim = opponentOf(caster);
+      const turns = Math.max(1, Math.round(effect.amount));
+      return withSide(state, victim, { passiveState: { ...state.sides[victim].passiveState, [SUSPENDED_TURNS]: (state.sides[victim].passiveState[SUSPENDED_TURNS] ?? 0) + turns } });
+    }
   }
 }
+
+/** Suspend (S5): turns `side`'s bottom subroutine still skips. */
+const SUSPENDED_TURNS = 'suspend:turns';
 
 function resolveTempo(effect: TempoEffect, combatState: CombatState, caster: PlayerIndex): CombatState {
   const affected = effect.target === 'own' ? caster : opponentOf(caster);
@@ -1242,6 +1256,9 @@ export function fireTurn(
     state = again.combatState;
     events.push(...again.events);
   }
+  // A Suspend lasts the turn (every pass of it), then counts down.
+  const suspendedTurns = state.sides[side].passiveState[SUSPENDED_TURNS] ?? 0;
+  if (suspendedTurns > 0) state = setPassiveStat(state, side, SUSPENDED_TURNS, suspendedTurns - 1);
   if (side === 0) {
     if (state.sides[0].passiveState[THIRTY_ONE_HOOKS]) state = setPassiveStat(state, 0, THIRTY_ONE_HOOKS, 0);
     state = hotStandby(state);
@@ -1312,12 +1329,15 @@ function fireLoadoutOnce(
   const loadoutLength = state.sides[side].loadout.length;
   // Resource Quota (EM6): the side's bottom installed subroutine doesn't
   // fire -- the last entry that isn't a reactive Mod's appended piece.
-  const quotaSkip = hasSideMod(state, opponentOf(side), 'resource-quota') ? bottomInstalledIndex(state, side) : -1;
+  const quota = hasSideMod(state, opponentOf(side), 'resource-quota');
+  // Suspend (S5) skips the same subroutine, for this turn.
+  const suspended = (state.sides[side].passiveState[SUSPENDED_TURNS] ?? 0) > 0;
+  const quotaSkip = quota || suspended ? bottomInstalledIndex(state, side) : -1;
 
   for (let i = 0; i < loadoutLength; i++) {
     const entry = state.sides[side].loadout[i];
     if (i === quotaSkip) {
-      noteMod(state, opponentOf(side), gk('resource-quota'));
+      if (quota) noteMod(state, opponentOf(side), gk('resource-quota'));
       continue;
     }
     if (!withinFiringGates(entry.definition, entry.state)) continue;

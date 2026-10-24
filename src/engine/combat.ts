@@ -34,6 +34,7 @@ import {
   applyHandEndMods,
   applyShowMods,
   bridgeUpgradedFor,
+  addSideHeat,
   countLateralPairs,
   armThirtyOne,
   playerHasMod,
@@ -66,7 +67,14 @@ import {
  * criteria are met, and continues until Breach/Containment resolves.
  */
 
+/** System strain (S12) starts on the player's third turn in a row. */
+export const STRAIN_FROM = 3;
+
 export interface CombatOptions {
+  /** System strain (session 66, S12): the Heat the player's third
+   * consecutive turn adds, rising by this much each further turn. Absent:
+   * no strain (duels). */
+  strainHeat?: number;
   /** The player's class Mod is its "II" version (session 65, M10). */
   classModUpgraded?: boolean;
   /** The player's benched subroutines (session 65): Hot Standby fires
@@ -490,6 +498,13 @@ export type CombatBeat = (
       side: PlayerIndex;
     }
   | {
+      /** System strain (S12): the player's turns in a row, and the Heat
+       * this one added. */
+      kind: 'strain';
+      heat: number;
+      turns: number;
+    }
+  | {
       /** A Burner spent before a turn. */
       kind: 'burner';
       side: PlayerIndex;
@@ -550,6 +565,7 @@ export function* combatGenerator(
     carriedBurnerIds = [],
     benched = [],
     classModUpgraded = false,
+    strainHeat = 0,
   } = options;
 
   const rng = createRng(seed);
@@ -703,6 +719,14 @@ export function* combatGenerator(
 
     for (let turn = 0; turn < turnsTriggered; turn++) {
       beat({ kind: 'turn', side: occurrence.player });
+      // System strain (S12): the player's third turn in a row and every
+      // one after adds Heat, more each turn.
+      const inARow = consecutiveTurns - turnsTriggered + turn + 1;
+      if (occurrence.player === 0 && strainHeat > 0 && inARow >= STRAIN_FROM) {
+        const heat = strainHeat * (inARow - STRAIN_FROM + 1);
+        combatState = addSideHeat(combatState, 0, heat);
+        beat({ kind: 'strain', heat, turns: inARow });
+      }
       // Denial of Service (session 64): a skipped turn fires nothing.
       const skip = takeSkippedTurn(combatState, occurrence.player);
       if (skip.skipped) {

@@ -24,6 +24,9 @@ export interface HandScoreBreakdown {
 export interface HandScoreEvent {
   category: 'fifteen' | 'pair' | 'run' | 'flush' | 'nobs';
   points: number;
+  /** A run group's runs (session 66, S8): 4-4-5-6 is two runs of three,
+   * 4-4-4-5-6 three, 4-4-5-5-6 four. Absent means one. */
+  runs?: number;
 }
 
 function fifteenEvents(fiveCards: Card[]): HandScoreEvent[] {
@@ -81,7 +84,7 @@ function runEvents(fiveCards: Card[]): HandScoreEvent[] {
       for (let k = i; k <= j; k++) {
         product *= counts.get(distinctRanks[k])!;
       }
-      events.push({ category: 'run', points: runLength * product });
+      events.push({ category: 'run', points: runLength * product, ...(product > 1 ? { runs: product } : {}) });
     }
     i = j + 1;
   }

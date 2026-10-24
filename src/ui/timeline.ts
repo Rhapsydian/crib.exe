@@ -65,6 +65,7 @@ export function stepSide(step: Step): PlayerIndex | null {
   if (b.kind === 'burner') return b.side;
   if (b.kind === 'mod') return b.side;
   if (b.kind === 'turn') return b.side;
+  if (b.kind === 'strain') return 0;
   return null;
 }
 
@@ -99,6 +100,8 @@ export function stepDelay(step: Step): number {
       return 550;
     case 'turn':
       return 500;
+    case 'strain':
+      return 900;
   }
 }
 
@@ -282,8 +285,12 @@ export function describeBeat(beat: CombatBeat): string {
       return `◆ ${triggerLabel(beat)}`;
     case 'turn':
       return `▶ ${beat.side === 0 ? 'your' : 'their'} turn`;
+    case 'strain':
+      return `⚠ System strain: +${fmtHeat(beat.heat)} Heat (${beat.turns} turns in a row)`;
   }
 }
+
+const fmtHeat = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 /** Points one side scored over a fight, by where they came from -- the
  * points that filled its initiative gauge. Counted from the timeline's

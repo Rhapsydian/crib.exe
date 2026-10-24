@@ -1,3 +1,4 @@
+import { RANK_THREE_DEFAULT_SHARE, RANK_THREE_PROCESS_SHARE } from './content/rank-three';
 import type { Beta, BetaEffect, Effect, SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
 import { HEAT_HIGH_FRACTION, currentHeatCeiling } from './heat';
@@ -74,7 +75,29 @@ function loosenedShape(beta: Beta): Beta {
  *   all, upgrades its alpha instead -- a rank is never silently wasted
  *   unless the piece has no magnitude anywhere.
  */
+/** Rank III's Process bonus (S4): the authored share of the Process's
+ * base amount (a growing Process with none: of its growth cap). Points
+ * round to the nearest half (at least a half), Charge counts to a whole
+ * (at least one); Tempo stays exact. */
+export function rankThreeBonus(definition: SubroutineDefinition): number {
+  const alpha = definition.alpha;
+  if (alpha.verb === 'disrupt') return 0;
+  const base = alpha.amount > 0 ? alpha.amount : (alpha.growthCap ?? 0);
+  const raw = base * (RANK_THREE_PROCESS_SHARE[definition.id] ?? RANK_THREE_DEFAULT_SHARE);
+  if (raw <= 0) return 0;
+  if (isTempo(alpha)) return raw;
+  if (alpha.verb === 'charge') return Math.max(1, Math.round(raw));
+  return Math.max(0.5, Math.round(raw * 2) / 2);
+}
+
 export function upgradedDefinition(definition: SubroutineDefinition): SubroutineDefinition {
+  const upgraded = upgradedDefinitionOnce(definition);
+  // Rank III, the last (S4): the Process gets its bonus too.
+  if (upgraded.rank !== MERGE_RANK_CAP || upgraded.alpha.verb === 'disrupt') return upgraded;
+  return { ...upgraded, alpha: { ...upgraded.alpha, amount: upgraded.alpha.amount + rankThreeBonus(definition) } };
+}
+
+function upgradedDefinitionOnce(definition: SubroutineDefinition): SubroutineDefinition {
   // A growing subroutine (Daemon's ramp) also grows further: its strength
   // is mostly growth, which a bigger Hook barely touched, so Merge-led
   // Daemon kits fell behind (session 61). Tempo growth gets the tempo step.
@@ -83,7 +106,9 @@ export function upgradedDefinition(definition: SubroutineDefinition): Subroutine
     growth === undefined ? definition.alpha : { ...definition.alpha, growthCap: (growthCap ?? 0) + (isTempo(definition.alpha) ? MERGE_TEMPO_BONUS : MERGE_MAGNITUDE_BONUS) };
   const ranked = { ...definition, alpha, rank: (definition.rank ?? 0) + 1 };
   const { beta } = definition;
-  if (beta && beta.effect.verb !== 'disrupt') {
+  // A Suspend loosens its shape instead (S5): another turn skipped per rank
+  // would be far too much.
+  if (beta && beta.effect.verb !== 'disrupt' && beta.effect.verb !== 'suspend') {
     const tempoUnits = beta.effect.verb === 'enhance' ? isTempo(definition.alpha) : isTempo(beta.effect);
     return { ...ranked, beta: { ...beta, effect: bumpedEffect(beta.effect, tempoUnits) } };
   }

@@ -224,6 +224,14 @@ export interface StripEffect extends EffectBase {
   amount: number;
 }
 
+/** The enemy's bottom subroutine skips its next `amount` turns (session
+ * 66, docs/subroutines-design.md S5): Resource Quota's rule, on the
+ * player's side. A Hook's effect only, never a Process (the user). */
+export interface SuspendEffect extends EffectBase {
+  verb: 'suspend';
+  amount: number;
+}
+
 export type Effect =
   | CreditEffect
   | SuppressEffect
@@ -234,11 +242,15 @@ export type Effect =
   | ChargeEffect
   | TraceEffect
   | WipeEffect
-  | StripEffect;
+  | StripEffect
+  | SuspendEffect;
 
 export type Verb = Effect['verb'];
 
-export const VERBS: readonly Verb[] = ['credit', 'suppress', 'ward', 'empower', 'tempo', 'disrupt', 'charge', 'trace', 'wipe', 'strip'];
+export const VERBS: readonly Verb[] = ['credit', 'suppress', 'ward', 'empower', 'tempo', 'disrupt', 'charge', 'trace', 'wipe', 'strip', 'suspend'];
+
+/** Verbs only a Hook may carry, never a Process (S5). */
+export const HOOK_ONLY_VERBS: readonly Verb[] = ['suspend'];
 
 /** The enemy-only verbs (CP1). */
 export const ENEMY_ONLY_VERBS: readonly Verb[] = ['trace', 'wipe', 'strip'];

@@ -111,6 +111,11 @@
     const fire = replay?.current?.type === 'fire' ? replay.current.fire : null;
     if (fire && fire.side === 0 && fire.immediate) tips.offer('instant');
   });
+  // System strain (S12): its first time.
+  $effect(() => {
+    const step = replay?.current;
+    if (step?.type === 'beat' && step.beat.kind === 'strain') tips.offer('strain');
+  });
   $effect(() => {
     const enemyOnly = ['trace', 'wipe', 'strip'];
     if (f.view.combatState.sides[1].loadout.some((e) => enemyOnly.includes(e.definition.alpha.verb) || enemyOnly.includes(e.definition.beta?.effect.verb ?? ''))) tips.offer('enemyEffects');
@@ -196,6 +201,7 @@
     if (step?.type !== 'beat') return null;
     const b = step.beat;
     if (b.kind === 'burner') return { text: `⏏︎ ${burnerLabel(b.burnerId)}`, side: b.side, key: replay!.shown, tone: 'burner' };
+    if (b.kind === 'strain') return { text: `⚠ strain +${Number.isInteger(b.heat) ? b.heat : b.heat.toFixed(1)} Heat`, side: 0, key: replay!.shown, tone: 'burner' };
     if (b.kind === 'mod') return { text: `◆ ${b.side === 0 ? 'your' : 'their'} ${modName(b.mod, f.view.combatState.bridgeUpgraded?.[b.side])}`, side: b.side, key: replay!.shown, tone: 'mod' };
     return null;
   });

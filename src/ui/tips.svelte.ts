@@ -7,7 +7,7 @@
  * TipBanner shows them one at a time.
  */
 
-export type TipId = 'elite' | 'event' | 'cache' | 'quarantine' | 'heat' | 'rank' | 'mods' | 'instant' | 'enemyEffects';
+export type TipId = 'elite' | 'event' | 'cache' | 'quarantine' | 'heat' | 'rank' | 'mods' | 'instant' | 'enemyEffects' | 'strain';
 
 export const TIP_TEXT: Record<TipId, string> = {
   elite: 'Elites are tougher than regular fights and bend one rule with their own Mod. Beat one and choose a subroutine or a Mod.',
@@ -18,9 +18,10 @@ export const TIP_TEXT: Record<TipId, string> = {
   quarantine:
     "Each layer ends with a gatekeeper. Win to breach the layer; lose and you're quarantined, ending the run. Winning still costs a Heat toll, and if that maxes out your Heat, you must outscore it over 3 hands of Cribbage to evade a run-ending trace.",
   heat: "Your Heat is past three-quarters of this layer's limit. Reach the limit and you're caught; resting at a Safehouse or clearing the gatekeeper lowers it.",
-  rank: 'Merged subroutines show their rank (I-III): each rank makes the Hook stronger. Spare copies bank until a Safehouse Merge.',
+  rank: 'Merged subroutines show their rank (I-III): each rank makes the Hook stronger, and rank III makes the Process stronger too. Spare copies bank until a Safehouse Merge.',
   mods: 'Your Mods are permanent effects for the run. Tap one to read it; some act in fights, others on the map or in Shops.',
   instant: "An Instant Hook just went off between turns: it doesn't wait for your turn to fire.",
+  strain: 'System strain: taking three or more turns in a row pushes the system too hard. Each extra turn adds Heat, more every time.',
   enemyEffects: 'This enemy can work against your build: Wipe takes counts from your Hooks, Strip takes your Ward, Trace gives you Heat.',
 };
 

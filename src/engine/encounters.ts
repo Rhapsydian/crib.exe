@@ -7,7 +7,7 @@ import { ask, driveWithFallbacks, type RunRequest, type ShopAction, type ShopSla
 import { discardSkillStrategy, pegSkillStrategy } from './ai';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
-import { currentHeatCeiling, eventHeat, fightBaselineHeat, fightPerformanceHeat, heatFromLoss } from './heat';
+import { SYSTEM_STRAIN_LOSSES, currentHeatCeiling, eventHeat, fightBaselineHeat, fightPerformanceHeat, heatFromLoss } from './heat';
 import { drawCacheRewardOptions, drawRewardOptions, drawUpgradedRewardOptions, rewardPoolForClass, rarityOf, type RewardTier } from './rewards';
 import { dataForTier } from './data';
 import { MERGE_RANK_CAP, pickMergeTarget, preferMergeWhenAvailable, type MergeTargetStrategy, type SafehouseStrategy } from './merge';
@@ -607,6 +607,7 @@ function* resolveFight(
         ...enemyCombatOptions(enemy),
         ownedModIds: playerState.ownedModIds,
         classModUpgraded: playerState.classModUpgraded,
+        strainHeat: eventHeat(SYSTEM_STRAIN_LOSSES, layer0),
         benched: playerState.bench,
         fightTier: kind,
         // Filtered to combat-context Burners only -- a carried map/shop-only

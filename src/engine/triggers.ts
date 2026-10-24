@@ -79,6 +79,9 @@ export interface ScoringOccurrence {
   /** The points this side actually scores, when a scoring rule (the
    * Folds, docs/mods-design.md M7) reprices them; `magnitude` otherwise. */
   points?: number;
+  /** A show run group's runs (session 66, S8); absent means one. Kept
+   * apart from magnitude: pegging's run of 6 scores 6 and is one run. */
+  runs?: number;
 }
 
 /** The points an occurrence scores for its side (gauge, hand points,
@@ -92,8 +95,9 @@ export const pairsIn = (occurrence: ScoringOccurrence): number => (occurrence.ca
 
 /** How many times an occurrence counts for whatever watches its category
  * (Hooks, class Mods, Burner bonuses): a pair royal counts as three
- * pairs, everything else once. */
-export const occurrenceCount = (occurrence: ScoringOccurrence): number => (occurrence.category === 'pair' ? pairsIn(occurrence) : 1);
+ * pairs, a double run as two runs (S8), everything else once. */
+export const occurrenceCount = (occurrence: ScoringOccurrence): number =>
+  occurrence.category === 'pair' ? pairsIn(occurrence) : occurrence.category === 'run' ? (occurrence.runs ?? 1) : 1;
 
 /** A side's scoring rule (the Folds): points per fifteen and per pair,
  * replacing Cribbage's 2. Pegging and the show alike; never the trace
@@ -144,7 +148,7 @@ const HAND_EVENT_CATEGORY: Record<HandScoreEvent['category'], OccurrenceCategory
  * royal stays the single magnitude-variant event scoring.ts makes it
  * (occurrenceCount is what counts it as three pairs). */
 export function occurrencesFromHandEvents(events: HandScoreEvent[], player: PlayerIndex): ScoringOccurrence[] {
-  return events.map((event) => ({ category: HAND_EVENT_CATEGORY[event.category], player, magnitude: event.points }));
+  return events.map((event) => ({ category: HAND_EVENT_CATEGORY[event.category], player, magnitude: event.points, ...(event.runs ? { runs: event.runs } : {}) }));
 }
 
 /** His Heels scores at the cut, always for the dealer. */
