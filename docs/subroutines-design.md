@@ -130,3 +130,11 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
    the text; the Merge screen's rank III before/after; the new
    subroutines in rewards, Shop and the loadout. Browser check on desktop
    and phone width.
+- **S12. System strain** (the user's playtest note: Priority Override and
+  Elevated Session snowball): from the player's third consecutive turn on
+  (turns with no enemy turn between, across hands; every source of turns
+  counts), each extra turn adds Heat, starting near the small Event amount
+  (~4 at layer 1, scaled by layer) and rising with each further turn.
+  Player only. Shown on the fight's Heat gauge, as a log line ("System
+  strain: +4 Heat (3 turns in a row)") and with a first-time tip card.
+  Built in checkpoint 1; measured.
