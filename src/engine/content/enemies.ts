@@ -109,7 +109,7 @@ export const AUTHORED_ELITES: AuthoredEnemy[] = [
   // Keeps you down: Heartbeat heals hardest while you lead, Race
   // Condition pays while you're under half, and the first time you pass
   // three-quarters it rolls you back to half (Rollback).
-  { id: 'incident-response', name: 'Incident Response', tier: 'elite', archetypes: ['exploit', 'daemon'], minLayer: 1, mods: ['rollback'], loadout: [p('race-condition'), p('heartbeat-monitor'), p('cron-job')], scale: 0.98 },
+  { id: 'incident-response', name: 'Incident Response', tier: 'elite', archetypes: ['exploit', 'daemon'], minLayer: 1, mods: ['rollback'], loadout: [p('race-condition'), p('heartbeat-monitor'), p('cron-job')], scale: 1.05 },
   // The grinder: it walls up, Memory Leak ramps the longer you take, and
   // hitting its Ward speeds the ramp (Power Siphon).
   { id: 'blackout-cell', name: 'Blackout Cell', tier: 'elite', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['power-siphon'], loadout: [p('memory-leak'), p('sinkhole'), p('basic-auth')], scale: 1.54 },
@@ -117,21 +117,21 @@ export const AUTHORED_ELITES: AuthoredEnemy[] = [
   // fire makes you louder -- win fast or pay in Heat. Pressure is 1/8 a
   // fire: at 1/2 it pushed ~20 Heat a fight (57% of layer 2's
   // allowance), since its pieces fire on turns AND as immediate betas.
-  { id: 'intrusion-alarm', name: 'Intrusion Alarm', tier: 'elite', archetypes: ['overclock', 'honeypot'], minLayer: 2, mods: ['escalation'], loadout: [tracing(p('priority-override'), 0.125), tracing(p('elevated-session'), 0.125), p('tarpit')], scale: 1.18 },
+  { id: 'intrusion-alarm', name: 'Intrusion Alarm', tier: 'elite', archetypes: ['overclock', 'honeypot'], minLayer: 2, mods: ['escalation'], loadout: [tracing(p('priority-override'), 0.125), tracing(p('elevated-session'), 0.125), p('tarpit')], scale: 1.0 },
   // Builds a case: its fifteens and its Ward absorbing your Credit give you
   // Heat, and every bit of Heat it gives you Credits it too (Evidence Chain).
-  { id: 'threat-hunter', name: 'Threat Hunter', tier: 'elite', archetypes: ['exploit', 'honeypot'], minLayer: 3, mods: ['evidence-chain'], loadout: [AUDIT_LOG, HONEYNET, p('fail2ban')], scale: 1.84 },
+  { id: 'threat-hunter', name: 'Threat Hunter', tier: 'elite', archetypes: ['exploit', 'honeypot'], minLayer: 3, mods: ['evidence-chain'], loadout: [AUDIT_LOG, HONEYNET, p('fail2ban')], scale: 2.8 },
   // Rations your CPU: your bottom subroutine never fires (Resource Quota).
   // Context Switch sits beside Priority Override so its Hook can apply.
   // Session 67 (docs/enemies-design.md E4): six elites, each aimed at a
   // kind of build. Scales calibrated in checkpoint 3.
-  { id: 'jamming-array', name: 'Jamming Array', tier: 'elite', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['interference'], loadout: [p('buffer-overflow'), p('ping'), p('doorknob-rattle')], scale: 1.05 },
-  { id: 'memory-governor', name: 'Memory Governor', tier: 'elite', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['hard-limit'], loadout: [p('patch'), p('basic-auth'), p('steady-drip')], scale: 1.4 },
-  { id: 'lockdown-service', name: 'Lockdown Service', tier: 'elite', archetypes: ['exploit', 'daemon'], minLayer: 3, mods: ['lockout'], loadout: [p('circuit-breaker'), p('deadlock'), p('watchdog-timer')], scale: 1.5 },
-  { id: 'fast-path-router', name: 'Fast Path Router', tier: 'elite', archetypes: ['overclock', 'honeypot'], minLayer: 3, mods: ['fast-path'], loadout: [p('pipeline-flush'), p('priority-override'), p('tarpit')], scale: 1.4 },
-  { id: 'purge-daemon', name: 'Purge Daemon', tier: 'elite', archetypes: ['daemon', 'overclock'], minLayer: 4, mods: ['purge'], loadout: [p('fork-bomb'), p('cache-hit'), p('memory-leak')], scale: 1.3 },
-  { id: 'reaper-process', name: 'Reaper Process', tier: 'elite', archetypes: ['exploit', 'honeypot'], minLayer: 4, mods: ['collection'], loadout: [p('packet-sniffer'), p('sinkhole'), p('race-condition')], scale: 1.3 },
-  { id: 'hypervisor', name: 'Hypervisor', tier: 'elite', archetypes: ['daemon', 'overclock'], minLayer: 4, mods: ['resource-quota'], loadout: [p('priority-override'), CONTEXT_SWITCH, p('fork-bomb')], scale: 1.31 },
+  { id: 'jamming-array', name: 'Jamming Array', tier: 'elite', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['interference'], loadout: [p('buffer-overflow'), p('ping'), p('doorknob-rattle')], scale: 1.2 },
+  { id: 'memory-governor', name: 'Memory Governor', tier: 'elite', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['hard-limit'], loadout: [p('patch'), p('basic-auth'), p('steady-drip')], scale: 1.5 },
+  { id: 'lockdown-service', name: 'Lockdown Service', tier: 'elite', archetypes: ['exploit', 'daemon'], minLayer: 3, mods: ['lockout'], loadout: [p('circuit-breaker'), p('deadlock'), p('watchdog-timer')], scale: 1.65 },
+  { id: 'fast-path-router', name: 'Fast Path Router', tier: 'elite', archetypes: ['overclock', 'honeypot'], minLayer: 3, mods: ['fast-path'], loadout: [p('pipeline-flush'), p('priority-override'), p('tarpit')], scale: 1.25 },
+  { id: 'purge-daemon', name: 'Purge Daemon', tier: 'elite', archetypes: ['daemon', 'overclock'], minLayer: 4, mods: ['purge'], loadout: [p('fork-bomb'), p('cache-hit'), p('memory-leak')], scale: 1.6 },
+  { id: 'reaper-process', name: 'Reaper Process', tier: 'elite', archetypes: ['exploit', 'honeypot'], minLayer: 4, mods: ['collection'], loadout: [p('packet-sniffer'), p('sinkhole'), p('race-condition')], scale: 1.5 },
+  { id: 'hypervisor', name: 'Hypervisor', tier: 'elite', archetypes: ['daemon', 'overclock'], minLayer: 4, mods: ['resource-quota'], loadout: [p('priority-override'), CONTEXT_SWITCH, p('fork-bomb')], scale: 1.1 },
 ];
 
 // --- Gatekeepers' bespoke pieces (session 43's rule: every gatekeeper

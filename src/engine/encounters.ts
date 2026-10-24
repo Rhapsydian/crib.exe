@@ -23,6 +23,7 @@ import {
   type EnemyDefinition,
   enemyCombatOptions,
   type EnemyId,
+  winGaugeScaleFor,
 } from './enemies';
 import {
   shopOfferingsForClass,
@@ -159,14 +160,16 @@ export function combatThresholdsFor(
   fightNumber: number,
 ): { gaugeThreshold: [number, number]; winThreshold: [number, number] } {
   const containment = winThresholdFor(enemy, layerIndex, fightNumber, CONTAINMENT_THRESHOLD);
+  // An elite's layer sets both gauges' size (session 67, E5: fights last).
+  const gauges = winGaugeScaleFor(enemy, layerIndex);
   return {
     gaugeThreshold: [
       playerState.initiativeThreshold ?? GAUGE_THRESHOLD,
       gaugeThresholdFor(enemy, layerIndex, fightNumber, GAUGE_THRESHOLD),
     ],
     winThreshold: [
-      playerState.breachThreshold ?? BREACH_THRESHOLD,
-      Math.max(1, Math.round(containment * (playerState.containmentThresholdScaler ?? 1))),
+      Math.round((playerState.breachThreshold ?? BREACH_THRESHOLD) * gauges),
+      Math.max(1, Math.round(containment * gauges * (playerState.containmentThresholdScaler ?? 1))),
     ],
   };
 }

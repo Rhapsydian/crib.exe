@@ -599,7 +599,7 @@ describe("session 65's Mod Events (docs/mods-design.md M11)", () => {
 describe('an Event comes up once a run (session 65, the user rule)', () => {
   it('never repeats within a run', () => {
     let events = 0;
-    for (let seed = 0; seed < 40; seed++) {
+    for (let seed = 0; seed < 80; seed++) {
       const ids = playRun({ seed, classId: 'exploit-daemon', traversalStrategy: opportunisticTraversal, eventChoiceStrategy: alwaysFirstEventChoice }).log.flatMap((e) => (e.type === 'encounter' && e.outcome.eventId ? [e.outcome.eventId] : []));
       expect(new Set(ids).size).toBe(ids.length);
       events += ids.length;

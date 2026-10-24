@@ -308,13 +308,33 @@ export function enemySkill(tier: EnemyTier, layerIndex: number, fightsResolved: 
 // layer-1-hardest gap but didn't close it). TBD/playtesting.
 const OPENER_MAGNITUDE_SCALER = 1; // the opener window pins this to no scaling too, same as skill
 
+/**
+ * Elites by layer (session 67, docs/enemies-design.md E3, E5): their
+ * strength on top of the shared layer curve, and both win gauges (the
+ * player's Breach and their Containment) as multiples of the usual 50 --
+ * calibrated with scripts/fight-calibrate.ts against the player as they
+ * stand at each layer's elite fights: 80-85% player wins, at least 5
+ * hands (a fixed gauge let deeper elite fights end in 3). TBD/playtesting.
+ */
+export const ELITE_LAYER_TUNING = {
+  strength: [1.55, 1.6, 1.8, 2.2],
+  gauges: [1, 1, 1.4, 2.2],
+} as const;
+
 /** Step 3: the authored scale at the enemy's first layer, times
  * content/enemies.ts's ENEMY_LAYER_SCALER relative to that layer -- a
  * curve that follows the player's measured power (+38% into layer 2,
  * then nearly flat), replacing the linear REGULAR_ELITE_MAGNITUDE_STEP. */
 function enemyMagnitudeScaler(enemy: EnemyDefinition, layerIndex: number, fightsResolved: number): number {
   if (isOpenerWindow(fightsResolved)) return OPENER_MAGNITUDE_SCALER;
-  return (enemy.scale ?? 1) * (ENEMY_LAYER_SCALER[layerIndex - 1] / ENEMY_LAYER_SCALER[enemy.minLayer - 1]);
+  const elite = enemy.tier === 'elite' ? ELITE_LAYER_TUNING.strength[layerIndex - 1] : 1;
+  return (enemy.scale ?? 1) * (ENEMY_LAYER_SCALER[layerIndex - 1] / ENEMY_LAYER_SCALER[enemy.minLayer - 1]) * elite;
+}
+
+/** Both win gauges' multiple for a fight (session 67): an elite's layer
+ * sets it; everything else plays at the usual size. */
+export function winGaugeScaleFor(enemy: EnemyDefinition, layerIndex: number): number {
+  return enemy.tier === 'elite' ? ELITE_LAYER_TUNING.gauges[layerIndex - 1] : 1;
 }
 
 /** The real magnitude scaler for any enemy encounter, regardless of

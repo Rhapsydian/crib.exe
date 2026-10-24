@@ -97,3 +97,18 @@ player strength), plus `run-outcomes.ts`.
   the player's power outgrows a fixed Breach gauge, so layer 3-4 elites
   and gatekeepers end in 2.4-4.2 hands, under E5's 5. Firewall Prime runs
   12.1 hands (No Way In's cap). Regulars: players win ~100% everywhere.
+- **Checkpoint 3, elite calibration (in progress).**
+  `scripts/fight-calibrate.ts` captures the player at every elite fight
+  of full runs and replays those fights under trial settings.
+  `ELITE_LAYER_TUNING` (enemies.ts): elite strength 1.55/1.6/1.8/2.2 on
+  top of the shared layer curve; both win gauges 1/1/1.4/2.2 by layer.
+  Per-elite scales nudged (Intrusion Alarm 1.0, Threat Hunter 2.8, Fast
+  Path Router 1.25, Hypervisor 1.1, Purge Daemon 1.6, Reaper Process 1.5,
+  Jamming Array 1.2, Lockdown Service 1.65, Incident Response 1.05,
+  Memory Governor 1.5): replayed, eleven of twelve within 73-90% (Reaper
+  Process: 11 fights, too few). Full runs: elites 86.9 / 83.3 / 79.9 /
+  86.2% by layer, 5.8-7.7 hands. **But full-run victory fell from about
+  40% to about 21%:** a third of runs now end `noRouteRemains`, since a
+  lost elite closes its node (DESIGN.md: impassable) and closures can cut
+  the gatekeeper off; 0.38 elite losses a run. Open: what losing a
+  regular or elite should do to the map.
