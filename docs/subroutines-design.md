@@ -194,3 +194,11 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
   Skew 1.30; Anomaly Detector 1.63, Mantrap 2.25, Bait File 1.62,
   Reflector 1.53. The measure is the enemy's Containment, so anything
   that lowers it directly (Suppress, stealing, Ward) reads high.
+- **Checkpoint 3, full runs and Merge.** Full runs with all sixteen (300
+  a class): Blackhat 31.3, Operator 38.0, Eidolon 34.7, Breacher 47.0,
+  Warden 46.0, Wraith 36.0; average 38.8% (38.7 before them): no class
+  jumps, so the duel check's high readings (Suppress, stealing) don't
+  carry into runs; Blackhat -4.0 is the largest move (noise about ±2.7).
+  `scripts/merge-frequency.ts`: installed subroutines by rank at a run's
+  end, per run, 4.50 / 1.18 / 0.34 / 0.13; **10.7% of runs end with a
+  rank III** (9.3% with 36 subroutines); 1.57 copies left banked a run.
