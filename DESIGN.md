@@ -43,9 +43,11 @@ vs. push forward, risk vs. reward on the map. It is a **per-layer
 budget** (`heat.ts`; the decisions are run-economy D1–D7 and
 recalibration R5–R8, `docs/archive/recalibration-design.md`):
 
-- each layer has its own **allowance**, tightening with depth
-  (`LAYER_HEAT_ALLOWANCE`, 76 / 68 / 61 / 53, plus Backup Generator's
-  bonus); **reaching it ends the run** (caught);
+- each layer has its own **allowance**, growing with depth so each layer
+  leaves about the same room to explore (`LAYER_HEAT_ALLOWANCE`, 56 / 63 /
+  72 / 80, plus Backup Generator's bonus; session 69,
+  `docs/tuning-design.md` T2: shrinking ones left layer 1 slack and layer 4
+  a straight route); **reaching it ends the run** (caught);
 - **every move costs Heat** (`HEAT_PER_MOVE`), in any direction, onto any
   node, resolved or not — see Map & Run Structure;
 - every fight's Heat is a **posted baseline** (tier × layer, knowable

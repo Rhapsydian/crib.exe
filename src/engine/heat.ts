@@ -44,7 +44,10 @@ export const HEAT_PER_MOVE = 2; // TBD/playtesting
  * maxed or caught, the rest ~10%); the gatekeepers were then re-tuned to
  * the pass-rate curve (enemies content scales).
  */
-export const LAYER_HEAT_ALLOWANCE: readonly number[] = [76, 68, 61, 53]; // TBD/playtesting
+// Session 69 (docs/tuning-design.md T2): growing by layer, not shrinking
+// (76/68/61/53 let the simulated player visit 76% of layer 1 but 48% of
+// layer 4); now about 65-71% of every layer, Heat ending ~12% of runs.
+export const LAYER_HEAT_ALLOWANCE: readonly number[] = [56, 63, 72, 80]; // TBD/playtesting
 
 /** The allowance for a 0-based layer index, plus any Backup Generator
  * bonus (RunPlayerState.maxHeatBonus, now added to every layer). Layers

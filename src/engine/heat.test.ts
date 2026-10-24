@@ -38,8 +38,8 @@ describe('addHeat', () => {
 });
 
 describe('layer allowances (D4, D5)', () => {
-  it('tighten with depth', () => {
-    for (let i = 1; i < LAYER_HEAT_ALLOWANCE.length; i++) expect(LAYER_HEAT_ALLOWANCE[i]).toBeLessThan(LAYER_HEAT_ALLOWANCE[i - 1]);
+  it('grow with depth, so each layer leaves about the same room to explore (session 69, T2)', () => {
+    for (let i = 1; i < LAYER_HEAT_ALLOWANCE.length; i++) expect(LAYER_HEAT_ALLOWANCE[i]).toBeGreaterThan(LAYER_HEAT_ALLOWANCE[i - 1]);
   });
 
   it('add the Backup Generator bonus to every layer, and reuse the last entry past the table', () => {
