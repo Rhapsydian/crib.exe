@@ -280,3 +280,10 @@ player strength), plus `run-outcomes.ts`.
   6-7 hands. Run endings (100 seeds): **victory 25.5%**, quarantined
   55.0%, Heat 17.2%, no route 2.3%. By class (200 seeds): Breacher 30.0,
   Wraith 25.0, Eidolon 24.0, Blackhat 23.0, Warden 22.0, Operator 20.0%.
+- **E9, the card's wording (the user):** layer 3 "The deeper you go, the
+  bigger the systems: from layer 3, elite and gatekeeper Breach and
+  Containment gauges are bigger, so those fights take longer to win, and
+  to lose."; layer 4 "The core runs the biggest systems: elite and
+  gatekeeper Breach and Containment gauges are bigger still." ("Digging in"
+  read as a battlefield, not a network.) First-time tips at the first
+  elite or gatekeeper fight on each layer.

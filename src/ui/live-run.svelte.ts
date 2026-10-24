@@ -7,6 +7,7 @@ import { SYNERGY_AWARE_PROFILE } from '../engine/profiles';
 import { gatekeeperReachable, opportunisticTraversal, runRequests, type RunPlayerState, type RunResult } from '../engine/run';
 import { currentHeatCeiling } from '../engine/heat';
 import { GHOST_CREDENTIALS_FIGHT_HEAT, HEAT_SINK_HEAT_REFUND } from '../engine/mods';
+import { tips } from './tips.svelte';
 import type { RunRequest } from '../engine/run-requests';
 import { BURNER_DEFINITIONS } from '../engine/burners';
 import { acquireSubroutine } from '../engine/loadout';
@@ -312,6 +313,8 @@ export class LiveRun {
         case 'fightStart':
           this.fights++;
           this.fight = new RunFight(r.enemy, r.tier, r.layer, r.playerState, (a) => this.answer(a));
+          // Bigger gauges deep (session 68, E9): their first time on layers 3 and 4.
+          if (r.tier !== 'regular' && r.layer >= 3) tips.offer(r.layer === 3 ? 'gauges3' : 'gauges4');
           step = this.#run.next(null);
           continue;
         case 'combat': {

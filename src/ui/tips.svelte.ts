@@ -7,7 +7,7 @@
  * TipBanner shows them one at a time.
  */
 
-export type TipId = 'elite' | 'event' | 'cache' | 'quarantine' | 'heat' | 'rank' | 'mods' | 'instant' | 'enemyEffects' | 'strain';
+export type TipId = 'elite' | 'event' | 'cache' | 'quarantine' | 'heat' | 'rank' | 'mods' | 'instant' | 'enemyEffects' | 'strain' | 'gauges3' | 'gauges4';
 
 export const TIP_TEXT: Record<TipId, string> = {
   elite: 'Elites are tougher than regular fights and bend one rule with their own Mod. Beat one and choose a subroutine or a Mod.',
@@ -22,6 +22,10 @@ export const TIP_TEXT: Record<TipId, string> = {
   mods: 'Your Mods are permanent effects for the run. Tap one to read it; some act in fights, others on the map or in Shops.',
   instant: "An Instant Hook just went off between turns: it doesn't wait for your turn to fire.",
   strain: 'System strain: taking four or more turns in a row pushes the system too hard. Each extra turn adds Heat, doubling every time.',
+  // Session 68 (docs/enemies-design.md E9, the user's wording): at the
+  // first elite or gatekeeper fight on layers 3 and 4.
+  gauges3: 'The deeper you go, the bigger the systems: from layer 3, elite and gatekeeper Breach and Containment gauges are bigger, so those fights take longer to win, and to lose.',
+  gauges4: 'The core runs the biggest systems: elite and gatekeeper Breach and Containment gauges are bigger still.',
   enemyEffects: 'This enemy can work against your build: Wipe takes counts from your Hooks, Strip takes your Ward, Trace gives you Heat.',
 };
 
