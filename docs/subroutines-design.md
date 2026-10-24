@@ -1,0 +1,132 @@
+# Subroutines (session 66)
+
+**Status: designing.** The third piece of the player-side content pass
+(`BACKLOG.md` → Priorities): more subroutines, more variety in what they
+do, and a look at Merge. Decided live, one question at a time.
+
+Where subroutines stood: 36, 9 per archetype (4 common, 3 uncommon, 2
+rare). Hooks watch fifteens (7, counting the enemy's) and pairs (3 own);
+nothing watches runs, flushes, His Nobs or 31s. 24 of 36 Processes just
+Credit (one Empower, one Tempo, three Suppress, Ward only on Honeypot);
+stealing, Charge, Disrupt and Ward-spending Credit barely appear. Few
+Hooks wait for several events (stepped).
+
+## Decisions
+
+- **S1. How many: +16, to 52.** Four per archetype: 1 common, 2 uncommon,
+  1 rare (each archetype 13: 5/5/3). The user: enough depth without
+  diluting the pool, since Merging needs copies to turn up.
+- **S2. Runs get Hooks; flushes, His Nobs and 31s don't** (the user: runs
+  are the third most frequent score; the others are too rare to build a
+  Hook on).
+- **S3. Processes need more variety** (the user agrees): fewer plain
+  Credits among the new sixteen.
+- **S4. Merge rank III also buffs the Process** (the user's idea, the
+  feedback being that ranks don't feel impactful): ranks I-III keep the
+  Hook bump; rank III adds a percentage of the Process's base amount,
+  authored per subroutine within 50-150%: weaker or situational Processes
+  higher (~150% for 1-point or conditional ones, ~100% typical, ~50% big),
+  rarer subroutines higher (three copies of a rare is a feat). Rounded to
+  half points; on the definition, so the Merge screen shows it. All 52
+  get one; measured against Merged subroutines without it.
+- **S5. Existing tools plus one new mechanic, Suspend** ("the enemy's
+  bottom subroutine skips its next turn"; Resource Quota's rule, player
+  side), **only as a Hook's effect, never a Process** (the user). The rest
+  from what the engine already has: Credit variants (steal, from Ward,
+  piercing), Tempo, Empower, Charge, Disrupt, Suppress, Ward, growth; Hooks
+  on scoring (runs included), the enemy's scoring, points, fires, Ward
+  absorbed, gauge levels, loadout position. Trace, Wipe and Strip stay
+  enemy-only.
+- **S6. The same four roles per archetype**, each in its own flavour:
+  (1) a Run Hook (common or uncommon); (2) a pair or stepped Hook
+  (uncommon), for the thin builds (Mirror Hand, Run Splicer, the pair class
+  Mods, Threshold Exploit); (3) a new, non-Credit Process (uncommon); (4) a
+  rare build-definer (Suspend lives on one or two rares' Hooks). Drafted
+  one archetype at a time.
+- **S7. The Exploit slate** (numbers measured at build time):
+  - **Sequence Attack** (common, Run Hook): Process: Credit 1. Hook:
+    Credits 2 more for each run you've scored since it last fired (at most
+    4 more). Rank III 150%.
+  - **Replay Attack** (uncommon, stepped pair Hook): Process: Credit 1.
+    Hook: Once you've scored 3 pairs since its Hook last went off, it
+    Credits 6 more. Rank III 150%.
+  - **Packet Sniffer** (uncommon, new Process): Process: Take 1 of their
+    Containment and add it to your Breach. Hook: While their Containment is
+    over half, it takes 2 more. Rank III 100%.
+  - **Kill Switch** (rare, build-definer): Process: Credit 2. Hook: Once
+    you've scored 3 fifteens since its Hook last went off, their bottom
+    subroutine skips its next turn (Suspend). Rank III 100%.
+- **S8. Each run counts** (the M8 treatment for runs, the user's ask): a
+  show run group is recorded with how many runs it holds (4-4-5-6: two;
+  4-4-4-5-6: three; 4-4-5-5-6: four), and everything that counts runs
+  counts each (Run Hooks, Run Splicer, any run bonus). Points unchanged.
+  Pegging already scores one run per play (correct Cribbage). Stored with
+  the run, not derived from its points (pegging's run of 6 scores 6 and is
+  one run). Built first. **Run Splicer may need retuning** (a double run
+  now gives four pairs): re-measure it.
+- **S9. The Daemon slate:**
+  - **Rolling Update** (common, Run Hook): Process: Credit 1, growing 0.25
+    each time it fires (up to 2). Hook: Suppresses 1 for each run you've
+    scored since it last fired (at most 3). Rank III 150%.
+  - **Thread Pool** (uncommon, stepped pair Hook): Process: Suppress 1,
+    growing 0.25 each time it fires (up to 2). Hook: Once you've scored 2
+    pairs since its Hook last went off, it Suppresses 4 more. Rank III 100%.
+  - **Throttle** (uncommon, new Process): Process: Their initiative bar is
+    1 longer for their next 2 turns. Hook: Every 3rd time it fires, also
+    Suppress 2. Rank III 150%.
+  - **Deadlock** (rare, build-definer): Process: Credit 1, growing 0.5 each
+    time it fires (up to 4). Hook: Every 4th time it fires, their bottom
+    subroutine skips its next turn (Suspend). Rank III 75%.
+- **S10. The Overclock slate:**
+  - **Pipeline Flush** (common, Run Hook): Process: Credit 1. Hook:
+    Instant: every time you score a run, add ¼ of a turn (3 initiative) to
+    your initiative gauge right away. Rank III 150%.
+  - **Superscalar** (uncommon, stepped pair Hook): Process: Credit 1. Hook:
+    Once you've scored 3 pairs since its Hook last went off, also Empower 1
+    the rest of your loadout this turn. Rank III 150%.
+  - **Branch Predictor** (uncommon, new Process): Process: Give the next
+    subroutine's Hook one extra count. Hook: Gives it 2 instead if you've
+    scored a fifteen since it last fired. Rank III 100%.
+  - **Clock Skew** (rare, build-definer): Process: Remove ⅛ of a turn (1.5
+    initiative) from their initiative gauge. Hook: Instant: every time
+    you've scored 2 runs, add ½ a turn (6 initiative) to your initiative
+    gauge right away. Rank III 150%.
+- **S11. The Honeypot slate** (Tripwire stays on the opponent's runs, the
+  user's call):
+  - **Tripwire** (common, Run Hook): Process: Ward 2. Hook: For each run
+    the opponent has scored since it last fired, also Credit 2 that ignores
+    their Ward (at most 4). Rank III 100%.
+  - **Mantrap** (uncommon, stepped pair Hook): Process: Ward 1. Hook: Once
+    you've scored 3 pairs since its Hook last went off, also take 3 from
+    their Containment and add it to your Breach. Rank III 150%.
+  - **Canary Token** (uncommon, new Process): Process: Spend up to 2 of
+    your Ward to Credit that much. Hook: For each pair the opponent has
+    scored since it last fired, also Ward 2 (at most 4). Rank III 100%.
+  - **Reflector** (rare, build-definer): Process: Ward 2. Hook: For every 3
+    of their Credit your Ward has absorbed since it last fired, Credit 2
+    that ignores their Ward (at most 6). Rank III 75%.
+
+## Checkpoint plan
+
+Each checkpoint: engine, text, tests, `npm run check`, then a pause for
+sign-off. Measurement: a new `scripts/subroutine-check.ts` (each new
+subroutine swapped into the six class loadouts against the layer-2
+elites, with and without, as a multiple of its rarity's existing average),
+then full runs (`run-outcomes.ts`). Shifts reported, not chased.
+
+1. **Foundations.** S8: show run groups carry their run count, and
+   everything that counts runs counts each (Run Splicer re-measured).
+   S5: Suspend as a Hook effect (Resource Quota's skip, player side). S4:
+   Merge rank III adds an authored percentage of the Process; the 36
+   existing subroutines get theirs by the guideline (drafted for the
+   user's review); measured against rank III without it.
+2. **The sixteen** (S7, S9-S11): definitions, rarities, archetype pools,
+   text. `subroutine-check.ts` built here; tuned against their rarity's
+   existing subroutines.
+3. **Full runs and Merge.** Class rates after the sixteen and rank III;
+   the simulated player's acquisition and Merge picks sanity-checked with
+   the bigger pool (S1: Merging still has to happen).
+4. **Screens.** Suspend, stealing, Charge and spending-Ward Processes in
+   the text; the Merge screen's rank III before/after; the new
+   subroutines in rewards, Shop and the loadout. Browser check on desktop
+   and phone width.
