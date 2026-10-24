@@ -26,7 +26,7 @@ export const RANK_THREE_PROCESS_SHARE: Record<string, number> = {
   'load-balancer': 1.25, // Load Balancer (rare): credit 2
   'fork-bomb': 1.5, // Fork Bomb (rare): credit 1 growing to 3
   'ping': 1.5, // Ping (common): credit 1
-  'cache-hit': 1.5, // Cache Hit (common): empower 1
+  'cache-hit': 1, // Cache Hit (common): empower 1 (the user: 100%, as Empower 2.5 strengthened the next subroutine too much)
   'burst-clock': 1.5, // Burst Clock (common): credit 1
   'elevated-session': 1.5, // Elevated Session (common): credit 1
   'priority-override': 1.5, // Priority Override (uncommon): credit 1

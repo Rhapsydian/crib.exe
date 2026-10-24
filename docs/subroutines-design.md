@@ -131,10 +131,35 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
    subroutines in rewards, Shop and the loadout. Browser check on desktop
    and phone width.
 - **S12. System strain** (the user's playtest note: Priority Override and
-  Elevated Session snowball): from the player's third consecutive turn on
+  Elevated Session snowball): from the player's fourth consecutive turn on
   (turns with no enemy turn between, across hands; every source of turns
   counts), each extra turn adds Heat, starting near the small Event amount
   (~4 at layer 1, scaled by layer) and rising with each further turn.
   Player only. Shown on the fight's Heat gauge, as a log line ("System
-  strain: +4 Heat (3 turns in a row)") and with a first-time tip card.
-  Built in checkpoint 1; measured.
+  strain: +4 Heat (4 turns in a row)") and with a first-time tip card.
+  Built in checkpoint 1; measured. **Starts at the fourth turn, not the
+  third** (the user, after measuring): a third turn in a row came in 47%
+  of ordinary fights (7% of player turns) and took full-run victory from
+  38.7% to 23.3%; a fourth is 0.5% of player turns. To keep an eye on.
+
+## Built
+
+- **Checkpoint 1, foundations.** S8 (`runs` on show run groups and
+  occurrences; `occurrenceCount`), S5 (`suspend`, `HOOK_ONLY_VERBS`; a
+  Merge loosens it), S4 (`content/rank-three.ts`, `rankThreeBonus`; the 36
+  shares drafted by the guideline and approved, Cache Hit at 100% by the
+  user's call), S12 (`STRAIN_FROM` 4, `strainHeat` from
+  `SYSTEM_STRAIN_LOSSES`, a `strain` beat, log line and tip;
+  `subroutine-foundations.test.ts`). Measured:
+  - Run Splicer after S8: 0.69 of the uncommon average (unchanged: the
+    fixture rarely scores double runs). No retune.
+  - Rank III: about +0.5 victory, because the simulated player ends only
+    9% of runs with a rank III subroutine (0.11 a run). Checkpoint 3
+    looks at Merge frequency.
+  - Strain at 3 turns: 47% of ordinary fights strained, victory 38.7 to
+    23.3%. At 4: Blackhat's starting loadout strained in 13% of fights
+    (0.5 Heat a fight), an Overclock snowball loadout in 48% (4 Heat a
+    fight at layer 1). Full runs (300 a class): Blackhat 33.3, Operator
+    34.0, Eidolon 30.0, Breacher 44.3, Warden 43.0, Wraith 28.3; average
+    35.5% (38.7 without strain); heat-maxed 2-6%. The Overclock classes
+    pay most (Wraith -7.7).

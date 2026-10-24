@@ -67,11 +67,12 @@ import {
  * criteria are met, and continues until Breach/Containment resolves.
  */
 
-/** System strain (S12) starts on the player's third turn in a row. */
-export const STRAIN_FROM = 3;
+/** System strain (S12) starts on the player's fourth turn in a row (the
+ * user; a third came in 47% of ordinary fights). */
+export const STRAIN_FROM = 4;
 
 export interface CombatOptions {
-  /** System strain (session 66, S12): the Heat the player's third
+  /** System strain (session 66, S12): the Heat the player's fourth
    * consecutive turn adds, rising by this much each further turn. Absent:
    * no strain (duels). */
   strainHeat?: number;
@@ -719,7 +720,7 @@ export function* combatGenerator(
 
     for (let turn = 0; turn < turnsTriggered; turn++) {
       beat({ kind: 'turn', side: occurrence.player });
-      // System strain (S12): the player's third turn in a row and every
+      // System strain (S12): the player's fourth turn in a row and every
       // one after adds Heat, more each turn.
       const inARow = consecutiveTurns - turnsTriggered + turn + 1;
       if (occurrence.player === 0 && strainHeat > 0 && inARow >= STRAIN_FROM) {

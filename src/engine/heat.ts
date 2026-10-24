@@ -195,7 +195,7 @@ export interface FightHeatOutlook {
   caughtIfLose: boolean;
 }
 
-/** System strain (session 66, S12): the player's third turn in a row
+/** System strain (session 66, S12): the player's fourth turn in a row
  * adds this many layer elite-loss charges of Heat, rising by as much each
  * further turn (the small Event amount: ~4 at layer 1). TBD/measured. */
 export const SYSTEM_STRAIN_LOSSES = 0.27;
