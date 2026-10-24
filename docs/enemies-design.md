@@ -94,6 +94,14 @@ Players beat elites about 98% of the time; gatekeepers about 73% (session
 - **E12. The map names the layer's gatekeeper (the user):** its name
   above the gatekeeper node, so the run can shape itself around it.
 
+- **E15. Wraith before the final retune (the user).** Wraith is weak from
+  its first fight (players win 58% of layer-1 elite fights with it, ~88%
+  with the others; 55-59% against layer-2 gatekeepers, ~89%), in 8-10-hand
+  fights: too little damage to finish. Because calibration averaged the
+  classes, layers 1-2 read 89% for the other five. Order: the regulars,
+  then fix Wraith (its opening: starting loadout or class Mod), then
+  retune elites and gatekeepers.
+
 ## Checkpoint plan (batch 2: gatekeepers, regulars)
 
 Each checkpoint: engine, text, tests, `npm run check`, then a pause for

@@ -7,7 +7,7 @@
  * 70-75%, per layer; fights averaging at least 5 hands (E5).
  *
  * Usage:
- *   npx tsx scripts/enemy-rates.ts [--seeds=100] [--by=enemy]
+ *   npx tsx scripts/enemy-rates.ts [--seeds=100] [--by=enemy] [--classes=overclock-honeypot]
  */
 import { playRun, opportunisticTraversal } from '../src/engine/run';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
@@ -18,13 +18,14 @@ import { enemyById } from '../src/engine/enemies';
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')));
 const seeds = Number(args.seeds ?? 100);
 const byEnemy = args.by === 'enemy';
+const classes = (args.classes ? String(args.classes).split(',') : ALL_CLASS_IDS) as typeof ALL_CLASS_IDS;
 
 type Tally = { wins: number; fights: number; hands: number };
 const tiers: Record<string, Tally[]> = { regular: [], elite: [], gatekeeper: [] };
 const enemies: Record<string, Tally & { tier: string; layers: Set<number> }> = {};
 for (const t of Object.values(tiers)) for (let l = 0; l < 4; l++) t.push({ wins: 0, fights: 0, hands: 0 });
 
-for (const classId of ALL_CLASS_IDS) {
+for (const classId of classes) {
   for (let seed = 0; seed < seeds; seed++) {
     const r = playRun({ ...SYNERGY_AWARE_PROFILE, seed, classId, traversalStrategy: opportunisticTraversal, safehouseStrategy: opportunisticSafehouseStrategy, playerSkill: 0.85 });
     for (const e of r.log) {
@@ -47,7 +48,7 @@ for (const classId of ALL_CLASS_IDS) {
 
 // Fight length (E5, the user): under 5 hands on average is too fast.
 const pct = (t: Tally) => (t.fights ? `${((100 * t.wins) / t.fights).toFixed(1)}% ${(t.hands / t.fights).toFixed(1)}h` : '-');
-console.log(`ENEMY RATES -- player win rate and mean hands a fight (h), by tier and layer, ${seeds} seeds x 6 classes`);
+console.log(`ENEMY RATES -- player win rate and mean hands a fight (h), by tier and layer, ${seeds} seeds x ${classes.length} classes`);
 console.log(`${'tier'.padEnd(11)}${['layer 1', 'layer 2', 'layer 3', 'layer 4'].map((s) => s.padEnd(16)).join('')}`);
 for (const [tier, cells] of Object.entries(tiers)) console.log(`${tier.padEnd(11)}${cells.map((c) => pct(c).padEnd(16)).join('')}`);
 if (byEnemy) {
