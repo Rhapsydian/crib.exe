@@ -1,3 +1,4 @@
+import { RATE_LIMIT_THRESHOLD } from '../engine/gatekeeper-mods';
 /**
  * The tutorial coach (session 63, docs/tutorial-design.md T1, T4-T5): in
  * the guided run only, it explains each new thing the first time it shows
@@ -51,7 +52,7 @@ export const GUIDE_TEXT: Record<GuideStep, string> = {
   gatekeeperNear:
     "The gatekeeper is next. Beat it to breach the layer; lose and you're quarantined, which ends the run. Winning also costs Heat: a toll that grows the closer it came to containing you, shown on the Heat bar during the fight. If the toll maxes out your Heat, you must outscore it over 3 hands of Cribbage to escape.",
   gatekeeper:
-    "Gatekeepers bend a rule with their own Mod. Firewall Beta's, Rate Limit: you can't gain more than 8 Credit in a single turn. Tap its Mod (◆) to read it.",
+    `Gatekeepers bend a rule with their own Mod. Firewall Beta's, Rate Limit: Credit you gain past ${RATE_LIMIT_THRESHOLD} in a single turn is halved. Tap its Mod (◆) to read it.`,
 };
 
 class Guide {

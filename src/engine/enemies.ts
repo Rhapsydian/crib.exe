@@ -193,7 +193,7 @@ export const ENEMY_ROSTER: EnemyDefinition[] = [...AUTHORED_REGULARS, ...AUTHORE
 export const TUTORIAL_GATEKEEPER_SCALE = 0.8;
 
 /** The tutorial's gatekeeper (session 63): Firewall Prime turned down,
- * with Rate Limit for No Way In. Kept out of ENEMY_ROSTER so a real run
+ * with Rate Limit for Stateful Inspection. Kept out of ENEMY_ROSTER so a real run
  * never draws it; `enemyById` finds either. */
 export const TUTORIAL_GATEKEEPER: EnemyDefinition = (() => {
   const prime = ENEMY_ROSTER.find((e) => e.id === 'firewall-prime')!;
@@ -350,6 +350,10 @@ function enemyMagnitudeScaler(enemy: EnemyDefinition, layerIndex: number, fights
  * fights of 5+ hands; their strength is each one's own scale, calibrated to
  * 70-75% player wins. TBD/playtesting. */
 export const GATEKEEPER_LAYER_GAUGES = [1.15, 1.1, 2.2, 2.6] as const;
+/** Gatekeepers' strength by layer, on top of each one's own scale
+ * (session 68, E13): harder by layer, players winning about 85 / 80 / 75
+ * / 72%. TBD/playtesting. */
+export const GATEKEEPER_LAYER_STRENGTH = [0.85, 0.92, 0.98, 1.03] as const;
 
 /** Both win gauges' multiple for a fight (sessions 67-68): an elite's or a
  * gatekeeper's layer sets it; regulars play at the usual size. */
@@ -365,7 +369,7 @@ export function winGaugeScaleFor(enemy: EnemyDefinition, layerIndex: number): nu
  * regular/elite compute theirs live via enemyMagnitudeScaler above. One
  * call site for encounters.ts/gatekeeper-check.ts to use either way. */
 export function magnitudeScalerFor(enemy: EnemyDefinition, layerIndex: number, fightsResolved: number): number {
-  if (enemy.tier === 'gatekeeper') return enemy.magnitudeScaler ?? 1;
+  if (enemy.tier === 'gatekeeper') return (enemy.magnitudeScaler ?? 1) * (GATEKEEPER_LAYER_STRENGTH[layerIndex - 1] ?? 1);
   return enemyMagnitudeScaler(enemy, layerIndex, fightsResolved);
 }
 

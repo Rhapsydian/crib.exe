@@ -221,3 +221,20 @@ player strength), plus `run-outcomes.ts`.
   through all four (0.725^4) before Heat, so E6's 24-30% victory needs a
   ramp; ~37% through all four, ~26-28% victory after Heat. Gentle for
   newcomers at layer 1, a wall at layer 4.
+- **E14. Firewall Prime reworked (the user): Stateful Inspection**
+  replaces No Way In: "Credit you gain past 6 in one turn is halved." (a
+  hard cap made its fights grind, and hit burst builds hardest). The
+  tutorial's Rate Limit is the same rule past 9. Its loadout swaps
+  Watchdog Timer for Port Scan: two Suppress pieces had walled the
+  player's Breach for 11 hands whatever its strength.
+- **Checkpoint 6, gatekeeper calibration (done).** `GATEKEEPER_LAYER_GAUGES`
+  1.15 / 1.1 / 2.2 / 2.6 and `GATEKEEPER_LAYER_STRENGTH` 0.85 / 0.92 /
+  0.98 / 1.03 (on each gatekeeper's own scale). Replayed: each gatekeeper
+  66-85%, Firewall Prime 79% in 9.5 hands. Full runs (150 seeds a class):
+  **players win 85.8 / 84.1 / 76.5 / 70.7% of gatekeeper fights by layer,
+  6-7 hands**; elites 83.7-85.5%. Run endings (100 seeds a class): victory
+  23.3%, quarantined 53.8%, Heat 21.5% (maxed 12.2, caught after a breach
+  9.3), no route 1.3%. By class (200 seeds): Breacher 32.0, Blackhat
+  27.0, Eidolon 24.5, Warden 24.0, Operator 20.5, Wraith 9.5%. Victory sits
+  a point under E6's band with Heat now ending a fifth of runs: the Heat
+  pass is the lever.

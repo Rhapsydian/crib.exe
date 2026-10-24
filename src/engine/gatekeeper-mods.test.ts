@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Alpha, Archetype, Beta, SubroutineDefinition } from './subroutine-types';
 import { applyOccurrence, clearHandKnowledge, createCombatState, creditWinGauge, fireTurn, resolveEffect, type CombatState } from './resolve';
-import { NO_WAY_IN_CAP, RATE_LIMIT_CAP, SPOTLIGHT_HEAT, ZERO_SUM_SHARE, ZERO_SUM_THRESHOLD, ADAPTATION_EVERY, ADAPTATION_STEP, ESCALATION_MAX, POWER_SIPHON_GROWTH, ROLLBACK_TO, type GatekeeperModId } from './gatekeeper-mods';
+import { STATEFUL_INSPECTION_THRESHOLD, STATEFUL_INSPECTION_KEEP, RATE_LIMIT_THRESHOLD, SPOTLIGHT_HEAT, ZERO_SUM_SHARE, ZERO_SUM_THRESHOLD, ADAPTATION_EVERY, ADAPTATION_STEP, ESCALATION_MAX, POWER_SIPHON_GROWTH, ROLLBACK_TO, type GatekeeperModId } from './gatekeeper-mods';
 
 // Step 3, E4: the eight gatekeeper Mods. Side 1 carries the Mod (a
 // gatekeeper); side 0 is the player it acts on, unless noted.
@@ -17,22 +17,18 @@ function withMods(player: SubroutineDefinition[], gatekeeper: SubroutineDefiniti
 const progress = (s: CombatState, side: 0 | 1) => s.sides[side].winGauge.progress;
 
 describe('gatekeeper Mods (step 3, E4)', () => {
-  it('No Way In caps what the player gains in one turn', () => {
-    let s = withMods([credit('a')], [credit('g')], ['no-way-in']);
-    s = creditWinGauge(s, 0, NO_WAY_IN_CAP - 1);
-    s = creditWinGauge(s, 0, NO_WAY_IN_CAP - 1);
-    expect(progress(s, 0)).toBe(NO_WAY_IN_CAP);
-    // A new turn of the player's resets the cap.
-    s = fireTurn(s, 0, { isDealer: false }).combatState;
-    expect(progress(s, 0)).toBe(NO_WAY_IN_CAP + 1);
+  it('Stateful Inspection halves what the player gains past the threshold in one turn (session 68)', () => {
+    let s = withMods([credit('a')], [credit('g')], ['stateful-inspection']);
+    s = creditWinGauge(s, 0, STATEFUL_INSPECTION_THRESHOLD - 2);
+    s = creditWinGauge(s, 0, 4);
+    expect(progress(s, 0)).toBe(STATEFUL_INSPECTION_THRESHOLD + 2 * STATEFUL_INSPECTION_KEEP);
   });
 
-  it("Rate Limit (the tutorial's) is No Way In with a looser cap", () => {
+  it("Rate Limit (the tutorial's) is Stateful Inspection with a looser threshold", () => {
     let s = withMods([credit('a')], [credit('g')], ['rate-limit']);
-    s = creditWinGauge(s, 0, RATE_LIMIT_CAP - 1);
-    s = creditWinGauge(s, 0, RATE_LIMIT_CAP - 1);
-    expect(progress(s, 0)).toBe(RATE_LIMIT_CAP);
-    expect(RATE_LIMIT_CAP).toBeGreaterThan(NO_WAY_IN_CAP);
+    s = creditWinGauge(s, 0, RATE_LIMIT_THRESHOLD + 2);
+    expect(progress(s, 0)).toBe(RATE_LIMIT_THRESHOLD + 2 * STATEFUL_INSPECTION_KEEP);
+    expect(RATE_LIMIT_THRESHOLD).toBeGreaterThan(STATEFUL_INSPECTION_THRESHOLD);
   });
 
   it('Zero-Sum feeds the owner a share of what the player gains past the threshold', () => {

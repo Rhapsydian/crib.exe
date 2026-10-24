@@ -231,15 +231,17 @@ export const AUTHORED_GATEKEEPERS: AuthoredEnemy[] = [
   // --- Layer 1: the perimeter ---
   { id: 'the-concierge', name: 'The Concierge', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['reception-protocol'], scale: 1.6,
     loadout: [WELCOME_PACKET, p('port-scan'), p('cache-hit'), p('burst-clock')] },
-  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 1, mods: ['no-way-in'], scale: 1.4,
-    loadout: [DEFAULT_DENY, p('watchdog-timer'), p('buffer-overflow'), p('cron-job')] },
+  { id: 'firewall-prime', name: 'Firewall Prime', tier: 'gatekeeper', archetypes: ['exploit', 'daemon'], minLayer: 1, mods: ['stateful-inspection'], scale: 1.5,
+    // Port Scan for Watchdog Timer (session 68): two Suppress pieces made a
+    // wall that pushed Breach back for 11 hands whatever its strength.
+    loadout: [DEFAULT_DENY, p('port-scan'), p('buffer-overflow'), p('cron-job')] },
   // Session 68 (E11): scales are first guesses, calibrated with all sixteen.
   { id: 'the-house', name: 'The House', tier: 'gatekeeper', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['house-edge'], scale: 1.25,
     loadout: [HOUSE_DEALER, p('buffer-overflow'), p('ping'), p('jackpot')] },
   { id: 'bandwidth-cap', name: 'Bandwidth Cap', tier: 'gatekeeper', archetypes: ['daemon', 'overclock'], minLayer: 1, mods: ['throttled-link'], scale: 1.7,
     loadout: [TRAFFIC_SHAPER, p('cron-job'), p('burst-clock'), p('watchdog-timer')] },
   // --- Layer 2: the internal LAN ---
-  { id: 'quarantine-ward', name: 'Quarantine Ward', tier: 'gatekeeper', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['containment'], scale: 2.02,
+  { id: 'quarantine-ward', name: 'Quarantine Ward', tier: 'gatekeeper', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['containment'], scale: 2.05,
     loadout: [ISOLATION_CHAMBER, p('patch'), p('sinkhole'), p('memory-leak')] },
   { id: 'zero-sum', name: 'Zero-Sum', tier: 'gatekeeper', archetypes: ['overclock', 'honeypot'], minLayer: 2, mods: ['zero-sum'], scale: 1.6,
     loadout: [BALANCE_SHEET, p('ping'), p('elevated-session'), p('tarpit')] },

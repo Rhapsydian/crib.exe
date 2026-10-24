@@ -7,8 +7,9 @@ import { CLASS_DEFINITIONS } from './classes';
 import {
   ADAPTATION_EVERY,
   ADAPTATION_STEP,
-  NO_WAY_IN_CAP,
-  RATE_LIMIT_CAP,
+  STATEFUL_INSPECTION_THRESHOLD,
+  STATEFUL_INSPECTION_KEEP,
+  RATE_LIMIT_THRESHOLD,
   SPOTLIGHT_HEAT,
   ZERO_SUM_SHARE,
   ZERO_SUM_THRESHOLD,
@@ -407,13 +408,15 @@ export function creditWinGauge(combatState: CombatState, side: PlayerIndex, cred
     return withSide(state, side, { passiveState: { ...scratch, [NULL_SESSION_SPENT]: 1 } });
   }
   const gained = scratch[GAINED_THIS_TURN] ?? 0;
-  // No Way In: a per-turn cap on what `side` can gain.
-  // Rate Limit is the same rule with a looser cap (the tutorial's).
-  for (const [id, cap] of [['no-way-in', NO_WAY_IN_CAP], ['rate-limit', RATE_LIMIT_CAP]] as const) {
+  // Stateful Inspection (session 68, E14): Credit `side` gains past the
+  // threshold in a turn is halved. Rate Limit is the same rule, looser
+  // (the tutorial's).
+  for (const [id, threshold] of [['stateful-inspection', STATEFUL_INSPECTION_THRESHOLD], ['rate-limit', RATE_LIMIT_THRESHOLD]] as const) {
     if (!hasSideMod(state, opponent, id)) continue;
-    const capped = Math.min(amount, Math.max(0, cap - gained));
-    if (capped < amount) noteMod(state, opponent, gk(id));
-    amount = capped;
+    const over = Math.max(0, gained + amount - threshold) - Math.max(0, gained - threshold);
+    if (over <= 0) continue;
+    noteMod(state, opponent, gk(id));
+    amount -= over * (1 - STATEFUL_INSPECTION_KEEP);
   }
   if (amount <= 0) return state;
   // Zero-Sum: Credit past the threshold in a turn feeds the opponent.

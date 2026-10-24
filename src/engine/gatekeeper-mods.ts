@@ -12,7 +12,7 @@
  */
 export type GatekeeperModId =
   | 'reception-protocol'
-  | 'no-way-in'
+  | 'stateful-inspection'
   | 'rate-limit'
   | 'containment'
   | 'zero-sum'
@@ -52,13 +52,15 @@ export interface GatekeeperModDefinition {
   tier: 'elite' | 'gatekeeper';
 }
 
-/** No Way In: the most Credit its opponent may gain in one of their turns. */
-// 9 since session 68 (was 6): its fights ran 12 hands, twice anyone else's.
-export const NO_WAY_IN_CAP = 9;
-/** Rate Limit: No Way In, loosened for the tutorial's Firewall Beta
- * (session 63, the user's call: the tutorial should be fairly easy). */
-// 12 since session 68 (was 8): it must stay looser than No Way In's 9.
-export const RATE_LIMIT_CAP = 12;
+/** Stateful Inspection (session 68, E14; was No Way In, a hard cap at 6
+ * that made Firewall Prime's fights run 12 hands): Credit its opponent
+ * gains past this in one of their turns is halved. */
+export const STATEFUL_INSPECTION_THRESHOLD = 6;
+/** The share of Credit past the threshold that still gets through. */
+export const STATEFUL_INSPECTION_KEEP = 0.5;
+/** Rate Limit: Stateful Inspection, loosened for the tutorial's Firewall
+ * Beta (session 63, the user's call: the tutorial should be fairly easy). */
+export const RATE_LIMIT_THRESHOLD = 9;
 /** Zero-Sum: Credit its opponent gains past this in a turn... */
 export const ZERO_SUM_THRESHOLD = 4;
 /** ...feeds the Zero-Sum owner this share of the excess. */
@@ -114,8 +116,8 @@ const share = (n: number) => ({ 0.5: 'half', 0.75: 'three-quarters', 0.25: 'a qu
 
 export const GATEKEEPER_MODS: Record<GatekeeperModId, GatekeeperModDefinition> = {
   'reception-protocol': { id: 'reception-protocol', name: 'Reception Protocol', text: 'The first time one of its Exploit Hooks goes off each hand, it applies twice.', tier: 'gatekeeper' },
-  'no-way-in': { id: 'no-way-in', name: 'No Way In', text: `You can't gain more than ${NO_WAY_IN_CAP} Credit in one turn.`, tier: 'gatekeeper' },
-  'rate-limit': { id: 'rate-limit', name: 'Rate Limit', text: `You can't gain more than ${RATE_LIMIT_CAP} Credit in one turn.`, tier: 'gatekeeper' },
+  'stateful-inspection': { id: 'stateful-inspection', name: 'Stateful Inspection', text: `Credit you gain past ${STATEFUL_INSPECTION_THRESHOLD} in one turn is ${STATEFUL_INSPECTION_KEEP === 0.5 ? 'halved' : `cut to ${pct(STATEFUL_INSPECTION_KEEP)}`}.`, tier: 'gatekeeper' },
+  'rate-limit': { id: 'rate-limit', name: 'Rate Limit', text: `Credit you gain past ${RATE_LIMIT_THRESHOLD} in one turn is ${STATEFUL_INSPECTION_KEEP === 0.5 ? 'halved' : `cut to ${pct(STATEFUL_INSPECTION_KEEP)}`}.`, tier: 'gatekeeper' },
   containment: { id: 'containment', name: 'Containment', text: 'Its Ward also absorbs your Credit that ignores Ward.', tier: 'gatekeeper' },
   'zero-sum': { id: 'zero-sum', name: 'Zero-Sum', text: `Whenever you gain more than ${ZERO_SUM_THRESHOLD} Credit in a turn, half of everything past ${ZERO_SUM_THRESHOLD} is added to its Containment too.`, tier: 'gatekeeper' },
   adaptation: { id: 'adaptation', name: 'Adaptation', text: `Every ${ADAPTATION_EVERY}rd hand, its growing subroutines can grow ${ADAPTATION_STEP} further.`, tier: 'gatekeeper' },

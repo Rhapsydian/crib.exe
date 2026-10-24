@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { GATEKEEPER_LAYER_STRENGTH } from './enemies';
 import { AUTHORED_GATEKEEPERS } from './content/enemies';
 import { GATEKEEPER_MODS } from './gatekeeper-mods';
 import { createRng } from './rng';
@@ -164,9 +165,9 @@ describe('magnitudeScalerFor (session 39 per-layer difficulty scaler)', () => {
     for (const gatekeeper of ENEMY_ROSTER.filter((e) => e.tier === 'gatekeeper')) expect(gatekeeper.magnitudeScaler).toBeDefined();
   });
 
-  it("reads a gatekeeper's own stored value, not a live layer formula", () => {
-    expect(magnitudeScalerFor(gate(1), 1, 10)).toBe(gate(1).magnitudeScaler);
-    expect(magnitudeScalerFor(gate(4), 4, 10)).toBe(gate(4).magnitudeScaler);
+  it("reads a gatekeeper's own stored value, times its layer's strength (session 68)", () => {
+    expect(magnitudeScalerFor(gate(1), 1, 10)).toBeCloseTo(gate(1).magnitudeScaler! * GATEKEEPER_LAYER_STRENGTH[0]);
+    expect(magnitudeScalerFor(gate(4), 4, 10)).toBeCloseTo(gate(4).magnitudeScaler! * GATEKEEPER_LAYER_STRENGTH[3]);
     // A gatekeeper's authored scale (content/enemies.ts) becomes its stored value.
     const authored = AUTHORED_GATEKEEPERS.find((e) => e.id === 'quarantine-ward')!;
     expect(ENEMY_ROSTER.find((e) => e.id === 'quarantine-ward')!.magnitudeScaler).toBe(authored.scale);
