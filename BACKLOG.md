@@ -15,7 +15,7 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 68)
+## Current state (end of session 69)
 
 The game is playable in the browser on desktop and phones
 (<https://rhapsydian.github.io/crib.exe/>, branch `playable`): a full
@@ -23,12 +23,12 @@ four-layer run with six classes, a guided tutorial, first-time tips, plain
 Cribbage with a coach and lessons, and saves. Milestone 5 (polish and
 playtesting) is under way. 883 tests, `npm run check` clean.
 
-**The content pass is done, on `content-pass`** (pushed; the user merges it
-into `playable` after playing it locally; save version 2): Burners and
-Events, Mods, subroutines, and the enemy pool (21 regulars, 12 elites, 16
-gatekeepers; `docs/enemies-design.md`). Players win 82-84% of elite fights
-and 86 / 82 / 76 / 74% of gatekeeper fights by layer; run victory 25.5%
-(target 24-30%), classes 20-30%.
+**The content pass and its tuning pass are done, on `content-pass`**
+(pushed; the user merges it into `playable` after playing it locally; save
+version 2): Burners and Events, Mods, subroutines, the enemy pool, then
+Heat, Mod supply and class tuning (`docs/tuning-design.md`). Run victory
+~26% (target 24-30%), classes 23.7-28.3%, Heat ending ~12% of runs, about
+65-71% of each layer explorable, ~12 Mods by a winning run's end.
 
 ---
 
@@ -41,8 +41,8 @@ In this order:
    **Burners and the first ten new Events are done** (session 64), **Mods
    and their six Events** (session 65), **subroutines** (session 66),
    **elites** (session 67), **gatekeepers and regulars** (session 68): the
-   content pass is done. Next: the tuning pass (Heat, win rates by class,
-   Mod supply); Event mini-games after. The user's notes:
+   content pass is done, and its tuning pass (session 69). Next: Event
+   mini-games, then meta-progression and Daily Runs. The user's notes:
    - **Burners:** the economy ones (Data, Shop discounts) are the only
      ones worth carrying; tune up the combat and map Burners.
    - **Events** can be a source of rare, high-value Burners.
@@ -89,8 +89,8 @@ Balance and content:
 - **Heat** (session 69): allowances now grow by layer (56/63/72/80), about
   65-71% of each layer explorable, Heat ending ~12% of runs. Two dials if
   it comes up again: layer 1 to ~52, and flatter fight Heat at layers 3-4.
-- **Operator lowest at 20%** (Breacher 30%) after the enemy pass; for the
-  win-rate pass. Phase Shift (Wraith) has room for fine tuning there too.
+- **Classes** (session 69): 23.7-28.3%, Operator at the top edge (28.3%):
+  Backdoor Maintenance at Suppress 1.25 would centre it if needed.
 - **Heat rarely ends a simulated run** (1-3% heat-maxed or caught), so
   Ghost Credentials (-26 Heat a run) and Black Market Ties (+19) measure
   ~0 victory (session 65). Revisit both with Heat tuning.

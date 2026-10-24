@@ -59,6 +59,10 @@ README's old session-by-session narrative is archived in
   layer, named on the map, harder by layer) and eight regulars; Firewall
   Prime and Wraith's class Mod reworked; Restore Point, a contraband second
   try at a lost gatekeeper.
+- **Session 69:** the tuning pass, on `content-pass`: Heat allowances grow
+  by layer so each layer is about equally explorable, and the class Mods
+  tuned so every class sits within 3 points of a ~26% average
+  (`docs/tuning-design.md`).
 
 What exists, all headless and test-covered:
 
@@ -70,7 +74,7 @@ What exists, all headless and test-covered:
 | Run progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge (everything at once, at a Safehouse), a Shop that buys and sells, Burners, the trace evasion |
 | Meta-progression (between runs) | **undesigned** — a priority after the content pass |
 | Content | **authored** — 36 player subroutines (52 on `content-pass`), 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod; on `content-pass` 49: 21 regulars, 12 elites, 16 gatekeepers) plus the tutorial's Firewall Beta; 37 Mods (Static Shield set aside); on `content-pass`, 55 Mods (12 new rule-benders; 6 double-edged and 6 class upgrades, Event-only), 24 Burners (4 Event-only contraband) and 24 Events with story (`playable` still has 37, 9 and 8). The content pass continues: enemies |
-| Balance | testers new to Cribbage find it too hard, so rising win rates are welcome (session 64); on `content-pass` players beat elites 82–84% and gatekeepers 86 / 82 / 76 / 74% by layer; victory 25.5% (target 24–30%), classes 20–30% (session 68); Heat, win-rate and Mod-supply tuning to follow |
+| Balance | testers new to Cribbage find it too hard, so rising win rates are welcome (session 64); on `content-pass` players beat elites 82–84% and gatekeepers 86 / 82 / 76 / 74% by layer; victory ~26% (target 24–30%), classes 23.7–28.3%, Heat ending ~12% of runs (session 69's tuning pass) |
 | UI | a whole run and plain Cribbage with a coach and lessons, on desktop and phones, saved after every choice; a guided tutorial, first-time tips, the Heat bar |
 | Art | the current terminal look is the intended style; no sprite pass planned (at most, refined map icons) |
 
@@ -135,6 +139,8 @@ kit, reporting threshold vs. attrition wins on each side.
 | `npx tsx scripts/build-check.ts` | A real build (by layer) against that layer's gatekeepers |
 | `npx tsx scripts/engine-bench.ts` | Simulation speed (fights per second): run before and after any engine change |
 | `npx tsx scripts/evasion-check.ts` | Trace evasion escape odds by head start and skill, and the head starts real runs produce |
+| `npx tsx scripts/layer-explore.ts` | Per layer: share of nodes visited, fights, peak Heat against the allowance; how runs end |
+| `npx tsx scripts/mod-supply.ts` | Mods by a run's end (all runs, winning runs), by source |
 | `npx tsx scripts/enemy-rates.ts [--by=enemy]` | Player win rate and mean hands a fight by tier and layer (and by enemy), from full runs |
 | `npx tsx scripts/fight-calibrate.ts --tier=elite [--breach=… --containment=… --strength=…]` | Captures the player at every fight of a tier in full runs and replays those fights under trial per-layer settings |
 | `npx tsx scripts/run-endings.ts` | How simulated runs end: victory, lost gatekeeper, no route, Heat; lost fights a run |
@@ -211,6 +217,7 @@ Current:
 | `docs/burners-events-design.md` | The Burner rework and Event story (BE1–BE10, session 64) |
 | `docs/mods-design.md` | Rule-benders, double-edged Mods, class Mod upgrades and their Events (M1–M14, session 65) |
 | `docs/subroutines-design.md` | Sixteen new subroutines, run counting, Merge rank III, Suspend, system strain (S1–S13, session 66) |
+| `docs/tuning-design.md` | The tuning pass: Heat by layer, Mod supply, class win rates (T1–T3, session 69) |
 | `docs/enemies-design.md` | Enemy roles and targets, new elites, gatekeepers and regulars, calibration, the ejection fix, Wraith, Restore Point (E1–E18, sessions 67–68) |
 | `docs/session-logs/` | Per-session record of decisions and results |
 | `docs/calibration/` | Raw measurement output cited by the design records and the code |
