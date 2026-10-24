@@ -125,3 +125,7 @@ player strength), plus `run-outcomes.ts`.
   24.3%, no route 0.3% ("on occasion"). The rule was dropped. Heat now
   ends ~13% of runs (lost elites cost Heat; 0.49 lost a run), for the Heat
   pass.
+- **E8. Skeleton Key set aside (the user).** With no route left in ~0.3%
+  of runs, reopening a closed node is too rare to carry a Burner for. Its
+  rework (perhaps a contraband "lose a gatekeeper, try once more") is
+  flagged for the gatekeeper pass.

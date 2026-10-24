@@ -122,10 +122,11 @@ describe('combat Burners (session 64)', () => {
     expect(progress(s, 0)).toBe(4);
   });
 
-  it('the pool: 24 Burners, 4 of them contraband and never offered outside Events', () => {
+  it('the pool: 24 Burners, 4 of them contraband and never offered outside Events; Skeleton Key set aside (session 67)', () => {
     expect(Object.keys(BURNER_DEFINITIONS)).toHaveLength(24);
     expect(Object.values(BURNER_DEFINITIONS).filter((b) => b.contraband)).toHaveLength(4);
-    expect(generalBurnerPool()).toHaveLength(20);
+    expect(generalBurnerPool()).toHaveLength(19);
+    expect(generalBurnerPool().some((b) => b.id === 'skeleton-key')).toBe(false);
     for (const b of Object.values(BURNER_DEFINITIONS)) expect(b.text.length).toBeGreaterThan(10);
   });
 });

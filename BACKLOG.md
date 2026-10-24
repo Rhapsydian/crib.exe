@@ -80,6 +80,10 @@ most, refine some of the map icons.
 ## Open items
 
 Balance and content:
+- **Skeleton Key rework, for the gatekeeper pass** (session 67): set aside
+  once the ejection fix made no-route endings ~0.3% of runs; one idea, a
+  contraband second try at a lost gatekeeper (measure: gatekeeper losses
+  end ~58% of runs).
 - **Class spread widening** (session 66): Breacher 50.7%, Warden 47.7%,
   Operator 43.0% against Wraith 32.7% and Blackhat 33.0% (system strain
   and diluted Exploit/Overclock pools); for the win-rate pass.

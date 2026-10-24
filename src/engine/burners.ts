@@ -269,7 +269,11 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
 
 /** Burners set aside: defined, but never offered. Empty since session 64
  * (Recon Ping was retired outright: no fog of war to reveal). */
-export const BURNERS_SET_ASIDE: ReadonlySet<BurnerId> = new Set<BurnerId>();
+// Skeleton Key (session 67, the user's call): with the ejection fix, a run
+// is left with no route forward in about 0.3% of runs, too rare to carry a
+// Burner for. Set aside; its rework (perhaps a contraband second try at a
+// gatekeeper) is flagged for the gatekeeper pass.
+export const BURNERS_SET_ASIDE: ReadonlySet<BurnerId> = new Set<BurnerId>(['skeleton-key']);
 
 /** The general Burner pool -- archetype-agnostic by default (DESIGN.md:
  * "not tied to the 4 archetypes"), unlike Mods' targeted-archetype
