@@ -262,3 +262,12 @@ player strength), plus `run-outcomes.ts`.
   eight's fights match their layer's (5.7-5.9 hands from layer 1, 4.9-5.2
   from layer 2, 4.0 from layer 3, 2.9-3.0 at layer 4). 21 regulars,
   7/13/17/21 eligible by layer.
+- **E17. Wraith's Phase Shift reworked (the user, after measuring both
+  options):** "Each fifteen you score: Ward 1. While your Ward is over 4,
+  each fifteen also Credits 1." (was the first fifteen on hands Wraith
+  deals: Ward 0.5 and 1 initiative, paying at most every other hand, the
+  weakest class Mod by far). Measured (300 runs): Wraith victory 9.5% →
+  31.3% (Ward into damage) against 28.3% for a tempo version (Ward 1 and 1
+  initiative a fifteen), which also pushed Heat losses to 19% through
+  system strain. Phase Shift II unchanged; fine tuning in the win-rate
+  pass. Next: retune elites and gatekeepers (E15).

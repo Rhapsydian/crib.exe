@@ -8,7 +8,8 @@ import {
   BRIDGE_EXPLOIT_DAEMON_SUPPRESS,
   BRIDGE_EXPLOIT_HONEYPOT_WARD,
   BRIDGE_EXPLOIT_OVERCLOCK_HASTE,
-  BRIDGE_OVERCLOCK_HONEYPOT_HASTE,
+  BRIDGE_OVERCLOCK_HONEYPOT_ABOVE,
+  BRIDGE_OVERCLOCK_HONEYPOT_CREDIT,
   BRIDGE_OVERCLOCK_HONEYPOT_WARD,
   applyOccurrence,
   createCombatState,
@@ -379,17 +380,17 @@ describe('class bridge passives (step 3, C1)', () => {
     expect(applyOccurrence(s, fifteen).sides[0].wardShield).toBe(0);
   });
 
-  it('Overclock + Honeypot: the first fifteen you score each hand you deal banks Ward and adds initiative', () => {
+  it('Overclock + Honeypot (Phase Shift, session 68): each fifteen Wards; over a Ward of 4 it also Credits', () => {
     const s = state([credit('a', 'overclock')], 'overclock-honeypot');
-    const after = applyOccurrence(s, fifteen, 0);
+    const after = applyOccurrence(s, fifteen, 1);
     expect(after.sides[0].wardShield).toBe(BRIDGE_OVERCLOCK_HONEYPOT_WARD);
-    expect(after.sides[0].gauge.progress).toBeCloseTo(12 * BRIDGE_OVERCLOCK_HONEYPOT_HASTE);
-    // Once per hand: a second fifteen does nothing, until the next deal.
-    expect(applyOccurrence(after, fifteen, 0).sides[0].wardShield).toBe(BRIDGE_OVERCLOCK_HONEYPOT_WARD);
-    expect(applyOccurrence(clearHandKnowledge(after), fifteen, 0).sides[0].wardShield).toBe(2 * BRIDGE_OVERCLOCK_HONEYPOT_WARD);
-    // Only on hands you deal, and only on fifteens.
-    expect(applyOccurrence(s, fifteen, 1).sides[0].wardShield).toBe(0);
+    expect(after.sides[0].winGauge.progress).toBe(0);
+    // Every fifteen, either side dealing; pairs don't count.
+    expect(applyOccurrence(after, fifteen, 0).sides[0].wardShield).toBe(2 * BRIDGE_OVERCLOCK_HONEYPOT_WARD);
     expect(applyOccurrence(s, pair, 0).sides[0].wardShield).toBe(0);
+    // Over the threshold, a fifteen also Credits.
+    const warded = { ...s, sides: [{ ...s.sides[0], wardShield: BRIDGE_OVERCLOCK_HONEYPOT_ABOVE + 1 }, s.sides[1]] as typeof s.sides };
+    expect(applyOccurrence(warded, fifteen, 0).sides[0].winGauge.progress).toBe(BRIDGE_OVERCLOCK_HONEYPOT_CREDIT);
   });
 
   it('a bridge can sit on side 1 for pricing duels', () => {

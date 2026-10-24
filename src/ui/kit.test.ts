@@ -10,7 +10,7 @@ describe('kit (Mods and Burners on screen)', () => {
     const yours = modsOf(state, 0);
     expect(yours.map((m) => m.name)).toEqual(['Phase Shift']);
     expect(yours[0].tag).toBe('Wraith class Mod');
-    expect(yours[0].text).toMatch(/^The first fifteen you score each hand you deal: Ward/);
+    expect(yours[0].text).toMatch(/^Each fifteen you score: Ward/);
     const theirs = modsOf(state, 1);
     expect(theirs.map((m) => m.name)).toEqual(['Backdoor Maintenance', 'Null Session']);
     expect(theirs[0].text).toBe('Each fifteen it scores: Suppress 1. The first fifteen each hand Suppresses 1 more.');

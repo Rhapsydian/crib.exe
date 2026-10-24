@@ -52,14 +52,14 @@ import {
   BRIDGE_EXPLOIT_DAEMON_SUPPRESS,
   BRIDGE_EXPLOIT_HONEYPOT_WARD,
   BRIDGE_EXPLOIT_OVERCLOCK_HASTE,
-  BRIDGE_OVERCLOCK_HONEYPOT_HASTE,
+  BRIDGE_OVERCLOCK_HONEYPOT_ABOVE,
   BRIDGE_II_WARDEN_WARD,
   BRIDGE_II_BLACKHAT_PAIRS,
   BRIDGE_II_EIDOLON_FIRES,
   BRIDGE_II_EIDOLON_CAP_FIRES,
   BRIDGE_II_BREACHER_SHARE,
   BRIDGE_II_WRAITH_INITIATIVE,
-  BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND,
+  BRIDGE_OVERCLOCK_HONEYPOT_CREDIT,
   BRIDGE_OVERCLOCK_HONEYPOT_WARD,
   type CombatState,
   type ModRef,
@@ -99,7 +99,7 @@ const BRIDGE_TEXT: Record<ClassId, string> = {
   'daemon-overclock': `Each fifteen you score grows each of your Daemon subroutines by ${growthShare(BRIDGE_DAEMON_OVERCLOCK_GROWTH)} one fire's growth (still up to its cap). The first fifteen each hand also gives your Overclock subroutines' Hooks ${BRIDGE_DAEMON_OVERCLOCK_COUNTS === 1 ? 'one extra count' : `${BRIDGE_DAEMON_OVERCLOCK_COUNTS} extra counts`}.`,
   'exploit-honeypot': `Each pair you score: Ward ${BRIDGE_EXPLOIT_HONEYPOT_WARD}.`,
   'daemon-honeypot': `Each pair you score: Suppress ${BRIDGE_DAEMON_HONEYPOT_SUPPRESS} and Ward ${BRIDGE_DAEMON_HONEYPOT_WARD}.`,
-  'overclock-honeypot': `${BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND === 1 ? 'The first fifteen' : `The first ${BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND} fifteens`} you score each hand you deal: Ward ${BRIDGE_OVERCLOCK_HONEYPOT_WARD}, and ${hasteText(BRIDGE_OVERCLOCK_HONEYPOT_HASTE)}.`,
+  'overclock-honeypot': `Each fifteen you score: Ward ${BRIDGE_OVERCLOCK_HONEYPOT_WARD}. While your Ward is over ${BRIDGE_OVERCLOCK_HONEYPOT_ABOVE}, each fifteen also Credits ${BRIDGE_OVERCLOCK_HONEYPOT_CREDIT}.`,
 };
 
 /** Every Mod that can appear as a reward, in the Shop or from an Event

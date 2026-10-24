@@ -356,7 +356,7 @@ function clearHandKnowledgeOnly(combatState: CombatState): CombatState {
       // A hand-long Burner bonus counts down a hand (Noise Floor lasts two).
       handBonuses: sideState.handBonuses?.map((b) => ({ ...b, handsLeft: b.handsLeft - 1 })).filter((b) => b.handsLeft > 0),
       handPoints: 0,
-      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [OVERCLOCK_HONEYPOT_THIS_HAND]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0, [LATERAL_PAIRS_THIS_HAND]: 0, [BURNER_HOOKS_TWICE]: Math.max(0, (sideState.passiveState[BURNER_HOOKS_TWICE] ?? 0) - 1) },
+      passiveState: { ...sideState.passiveState, [HANDS_SEEN]: hands, [RECEPTION_SPENT]: 0, [ROOT_ACCESS_SPENT]: 0, [DAEMON_OVERCLOCK_THIS_HAND]: 0, [EXPLOIT_DAEMON_THIS_HAND]: 0, [LATERAL_PAIRS_THIS_HAND]: 0, [BURNER_HOOKS_TWICE]: Math.max(0, (sideState.passiveState[BURNER_HOOKS_TWICE] ?? 0) - 1) },
     };
   }) as [CombatSideState, CombatSideState];
   return { ...combatState, sides };
@@ -631,10 +631,14 @@ export const BRIDGE_II_BREACHER_SHARE = 1 / 3;
 /** Phase Shift II: initiative when Ward fully blocks a hit. */
 export const BRIDGE_II_WRAITH_INITIATIVE = 1;
 
-export const BRIDGE_OVERCLOCK_HONEYPOT_WARD = 0.5;
-export const BRIDGE_OVERCLOCK_HONEYPOT_HASTE = 1 / 12;
-export const BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND = 1;
-const OVERCLOCK_HONEYPOT_THIS_HAND = 'bridge-overclock-honeypot:hand';
+/** Phase Shift (session 68, docs/enemies-design.md E17; was "the first
+ * fifteen each hand you deal: Ward 0.5 and 1 initiative", the weakest
+ * class Mod by far): each fifteen its owner scores Wards this much, and
+ * while the owner's Ward is over BRIDGE_OVERCLOCK_HONEYPOT_ABOVE it also
+ * Credits BRIDGE_OVERCLOCK_HONEYPOT_CREDIT. TBD/measured. */
+export const BRIDGE_OVERCLOCK_HONEYPOT_WARD = 1;
+export const BRIDGE_OVERCLOCK_HONEYPOT_ABOVE = 4;
+export const BRIDGE_OVERCLOCK_HONEYPOT_CREDIT = 1;
 
 const bankWard = (combatState: CombatState, side: PlayerIndex, amount: number) => addWard(combatState, side, amount);
 
@@ -650,9 +654,9 @@ const haste = (combatState: CombatState, side: PlayerIndex, fraction: number) =>
   resolveTempo({ verb: 'tempo', target: 'own', mode: 'gauge', amount: fraction }, combatState, side);
 
 /** A scoring occurrence: every bridge is keyed on the owner's own
- * fifteens or pairs. `dealer` is this hand's dealer (Phase Shift only
- * works on hands its owner deals). */
-function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOccurrence, dealer: PlayerIndex | undefined): CombatState {
+ * fifteens or pairs. `_dealer`, this hand's dealer, is unused since Phase
+ * Shift stopped caring who deals (session 68). */
+function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOccurrence, _dealer: PlayerIndex | undefined): CombatState {
   const side = occurrence.player;
   const bridge = combatState.bridges[side];
   if (!bridge) return combatState;
@@ -692,13 +696,12 @@ function applyBridgeOnOccurrence(combatState: CombatState, occurrence: ScoringOc
     noteMod(combatState, side, bridgeMod(bridge));
     return bankWard(reduceWinGauge(combatState, opponentOf(side), BRIDGE_DAEMON_HONEYPOT_SUPPRESS), side, BRIDGE_DAEMON_HONEYPOT_WARD);
   }
-  if (bridge === 'overclock-honeypot' && fifteen && dealer === side) {
-    const sideState = combatState.sides[side];
-    const used = sideState.passiveState[OVERCLOCK_HONEYPOT_THIS_HAND] ?? 0;
-    if (used >= BRIDGE_OVERCLOCK_HONEYPOT_PER_HAND) return combatState;
+  // Phase Shift (E17): each fifteen Wards; over a Ward of 4, it also Credits.
+  if (bridge === 'overclock-honeypot' && fifteen) {
     noteMod(combatState, side, bridgeMod(bridge));
-    const counted = withSide(combatState, side, { passiveState: { ...sideState.passiveState, [OVERCLOCK_HONEYPOT_THIS_HAND]: used + 1 } });
-    return haste(bankWard(counted, side, BRIDGE_OVERCLOCK_HONEYPOT_WARD), side, BRIDGE_OVERCLOCK_HONEYPOT_HASTE);
+    const ward = combatState.sides[side].wardShield;
+    const warded = bankWard(combatState, side, BRIDGE_OVERCLOCK_HONEYPOT_WARD);
+    return ward > BRIDGE_OVERCLOCK_HONEYPOT_ABOVE ? creditWinGauge(warded, side, BRIDGE_OVERCLOCK_HONEYPOT_CREDIT) : warded;
   }
   return combatState;
 }
