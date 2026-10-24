@@ -17,7 +17,9 @@ import type { CombatRequest } from '../engine/combat';
  * Kept in this browser's localStorage, wrapped so a blocked or full
  * storage never breaks play (the run just isn't saved).
  */
-export const SAVE_VERSION = 1;
+// 2 (session 65): the content pass (Burners, Events, Mods) changes what a
+// replay draws, so a run saved before it no longer replays.
+export const SAVE_VERSION = 2;
 const KEY = 'cribexe.run';
 
 /** One answer: the pause it answered, and the answer in plain data. */
