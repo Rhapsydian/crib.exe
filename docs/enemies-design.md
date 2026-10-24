@@ -134,3 +134,15 @@ player strength), plus `run-outcomes.ts`.
   are bigger there. Elites have them now; gatekeepers will in batch 2,
   regulars won't. **The card is built after the gatekeeper tuning, with
   its wording settled then** (the user), so it covers both tiers.
+- **Checkpoint 3, elite calibration (done).** After the ejection fix, two
+  nudge rounds: `ELITE_LAYER_TUNING` strength 1.55 / 1.6 / 1.75 / 2.3,
+  gauges 1 / 1 / 1.4 / 2.2; scales Threat Hunter 2.3, Purge Daemon 1.8,
+  Reaper Process 1.7, Blackout Cell 1.45, Intrusion Alarm 0.95. Full runs
+  (150 seeds a class): **players win 85.5 / 82.8 / 82.9 / 81.9% of elite
+  fights by layer, in 6.4-7.4 hands**; each elite 79.6-91.3% (Reaper
+  Process on 23 fights). Run endings (100 seeds a class): victory 31.2%,
+  quarantined 50.8%, Heat 16.9%, no route left 1.2%; 0.41 elites lost a
+  run. Victory sits just over 24-30% before the gatekeeper batch, which
+  takes gatekeepers from 78-84% player wins to 70-75% and so pulls it
+  down. By class (the round before): Breacher 35.7, Warden 32.7, Operator
+  31.0, Eidolon 26.0, Blackhat 22.0, Wraith 18.7%.

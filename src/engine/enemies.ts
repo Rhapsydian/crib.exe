@@ -317,7 +317,7 @@ const OPENER_MAGNITUDE_SCALER = 1; // the opener window pins this to no scaling 
  * hands (a fixed gauge let deeper elite fights end in 3). TBD/playtesting.
  */
 export const ELITE_LAYER_TUNING = {
-  strength: [1.55, 1.6, 1.8, 2.2],
+  strength: [1.55, 1.6, 1.75, 2.3],
   gauges: [1, 1, 1.4, 2.2],
 } as const;
 
