@@ -163,3 +163,12 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
     34.0, Eidolon 30.0, Breacher 44.3, Warden 43.0, Wraith 28.3; average
     35.5% (38.7 without strain); heat-maxed 2-6%. The Overclock classes
     pay most (Wraith -7.7).
+  - **Strain re-shaped (the user): a small first step, doubling.** About
+    1.5 Heat on the fourth turn in a row at layer 1 (2.4 at layer 4), then
+    3, 6, 12. Blackhat's starting loadout: 0.2 strain Heat a fight; the
+    Overclock snowball 1.6 (was 4.0 on the linear ramp). Full runs:
+    Blackhat 35.3, Operator 38.3, Eidolon 33.7, Breacher 46.0, Warden 43.7,
+    Wraith 35.3; average 38.7% (the same as without strain), heat-maxed
+    2-3%. The user's aim: a balance between haste and not drawing too much
+    attention, discouraging leaning too hard into haste. The size of the
+    first step is a dial for the Heat tuning pass.

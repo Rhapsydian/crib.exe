@@ -73,8 +73,8 @@ export const STRAIN_FROM = 4;
 
 export interface CombatOptions {
   /** System strain (session 66, S12): the Heat the player's fourth
-   * consecutive turn adds, rising by this much each further turn. Absent:
-   * no strain (duels). */
+   * consecutive turn adds, doubling each further turn. Absent: no strain
+   * (duels). */
   strainHeat?: number;
   /** The player's class Mod is its "II" version (session 65, M10). */
   classModUpgraded?: boolean;
@@ -721,10 +721,10 @@ export function* combatGenerator(
     for (let turn = 0; turn < turnsTriggered; turn++) {
       beat({ kind: 'turn', side: occurrence.player });
       // System strain (S12): the player's fourth turn in a row and every
-      // one after adds Heat, more each turn.
+      // one after adds Heat, doubling each turn.
       const inARow = consecutiveTurns - turnsTriggered + turn + 1;
       if (occurrence.player === 0 && strainHeat > 0 && inARow >= STRAIN_FROM) {
-        const heat = strainHeat * (inARow - STRAIN_FROM + 1);
+        const heat = strainHeat * 2 ** (inARow - STRAIN_FROM);
         combatState = addSideHeat(combatState, 0, heat);
         beat({ kind: 'strain', heat, turns: inARow });
       }

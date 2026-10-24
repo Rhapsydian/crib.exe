@@ -94,7 +94,7 @@ describe('S12: system strain', () => {
     const strained = playCombat(loadouts, { seed: 1, gaugeThreshold: [2, 1000], winThreshold: [1000, 1000], strainHeat: 4 });
     const beats = strained.timeline.flatMap((b) => (b.kind === 'strain' ? [b] : []));
     expect(beats.length).toBeGreaterThan(0);
-    expect(beats.every((b) => b.turns >= STRAIN_FROM && b.heat === 4 * (b.turns - STRAIN_FROM + 1))).toBe(true);
+    expect(beats.every((b) => b.turns >= STRAIN_FROM && b.heat === 4 * 2 ** (b.turns - STRAIN_FROM))).toBe(true);
     expect(strained.heatGenerated).toBeGreaterThan(0);
     const calm = playCombat(loadouts, { seed: 1, gaugeThreshold: [2, 1000], winThreshold: [1000, 1000] });
     expect(calm.timeline.some((b) => b.kind === 'strain')).toBe(false);

@@ -21,7 +21,7 @@ export const TIP_TEXT: Record<TipId, string> = {
   rank: 'Merged subroutines show their rank (I-III): each rank makes the Hook stronger, and rank III makes the Process stronger too. Spare copies bank until a Safehouse Merge.',
   mods: 'Your Mods are permanent effects for the run. Tap one to read it; some act in fights, others on the map or in Shops.',
   instant: "An Instant Hook just went off between turns: it doesn't wait for your turn to fire.",
-  strain: 'System strain: taking four or more turns in a row pushes the system too hard. Each extra turn adds Heat, more every time.',
+  strain: 'System strain: taking four or more turns in a row pushes the system too hard. Each extra turn adds Heat, doubling every time.',
   enemyEffects: 'This enemy can work against your build: Wipe takes counts from your Hooks, Strip takes your Ward, Trace gives you Heat.',
 };
 
