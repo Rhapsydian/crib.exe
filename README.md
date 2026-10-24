@@ -55,6 +55,10 @@ README's old session-by-session narrative is archived in
   by layer with bigger gauges deep, enemy Cribbage skill raised, and a lost
   fight now ejects the player instead of ending the run
   (`docs/enemies-design.md`).
+- **Session 68:** the enemy pool, batch 2: eight new gatekeepers (four per
+  layer, named on the map, harder by layer) and eight regulars; Firewall
+  Prime and Wraith's class Mod reworked; Restore Point, a contraband second
+  try at a lost gatekeeper.
 
 What exists, all headless and test-covered:
 
@@ -65,8 +69,8 @@ What exists, all headless and test-covered:
 | Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
 | Run progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge (everything at once, at a Safehouse), a Shop that buys and sells, Burners, the trace evasion |
 | Meta-progression (between runs) | **undesigned** — a priority after the content pass |
-| Content | **authored** — 36 player subroutines (52 on `content-pass`), 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod; 12 elites on `content-pass`) plus the tutorial's Firewall Beta; 37 Mods (Static Shield set aside); on `content-pass`, 55 Mods (12 new rule-benders; 6 double-edged and 6 class upgrades, Event-only), 24 Burners (4 Event-only contraband) and 24 Events with story (`playable` still has 37, 9 and 8). The content pass continues: enemies |
-| Balance | testers new to Cribbage find it too hard, so rising win rates are welcome (session 64); on `content-pass` players beat elites 82–86% by layer, victory 31.2% (session 67; target 24–30%); gatekeepers, Heat, win-rate and Mod-supply tuning to follow |
+| Content | **authored** — 36 player subroutines (52 on `content-pass`), 20 enemy-only; 27 enemies (13 regular, 6 elite and 8 gatekeepers, each with its own Mod; on `content-pass` 49: 21 regulars, 12 elites, 16 gatekeepers) plus the tutorial's Firewall Beta; 37 Mods (Static Shield set aside); on `content-pass`, 55 Mods (12 new rule-benders; 6 double-edged and 6 class upgrades, Event-only), 24 Burners (4 Event-only contraband) and 24 Events with story (`playable` still has 37, 9 and 8). The content pass continues: enemies |
+| Balance | testers new to Cribbage find it too hard, so rising win rates are welcome (session 64); on `content-pass` players beat elites 82–84% and gatekeepers 86 / 82 / 76 / 74% by layer; victory 25.5% (target 24–30%), classes 20–30% (session 68); Heat, win-rate and Mod-supply tuning to follow |
 | UI | a whole run and plain Cribbage with a coach and lessons, on desktop and phones, saved after every choice; a guided tutorial, first-time tips, the Heat bar |
 | Art | the current terminal look is the intended style; no sprite pass planned (at most, refined map icons) |
 
@@ -78,7 +82,7 @@ done; milestone 5, polish and playtesting, is under way.
 
 ```bash
 npm install
-npm test        # Vitest suite (881 tests)
+npm test        # Vitest suite (883 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server: the main menu (the roguelite, Cribbage); #test is the single-fight harness
 ```
@@ -207,7 +211,7 @@ Current:
 | `docs/burners-events-design.md` | The Burner rework and Event story (BE1–BE10, session 64) |
 | `docs/mods-design.md` | Rule-benders, double-edged Mods, class Mod upgrades and their Events (M1–M14, session 65) |
 | `docs/subroutines-design.md` | Sixteen new subroutines, run counting, Merge rank III, Suspend, system strain (S1–S13, session 66) |
-| `docs/enemies-design.md` | Enemy roles and targets, six new elites, elite calibration, the ejection fix (E1–E9, session 67; batch 2 to come) |
+| `docs/enemies-design.md` | Enemy roles and targets, new elites, gatekeepers and regulars, calibration, the ejection fix, Wraith, Restore Point (E1–E18, sessions 67–68) |
 | `docs/session-logs/` | Per-session record of decisions and results |
 | `docs/calibration/` | Raw measurement output cited by the design records and the code |
 
