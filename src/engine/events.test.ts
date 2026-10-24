@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createRng } from './rng';
 import { createNode } from './map-types';
 import { resolveEncounter, alwaysFirstEventChoice, synergyAwareEventChoice, type EventChoiceStrategy } from './encounters';
-import { createInitialPlayerState, playRun, type RunPlayerState } from './run';
+import { createInitialPlayerState, opportunisticTraversal, playRun, type RunPlayerState } from './run';
 import { EVENT_ROSTER, choiceUnavailable, eventStillOffers } from './events';
 import type { ModId } from './mod-types';
 import type { EventChoice, EventDefinition } from './event-types';
@@ -594,4 +594,16 @@ describe("session 65's Mod Events (docs/mods-design.md M11)", () => {
     // An Event without named grants is always drawable.
     expect(eventStillOffers(event('honeypot-lure'), player())).toBe(true);
   });
+});
+
+describe('an Event comes up once a run (session 65, the user rule)', () => {
+  it('never repeats within a run', () => {
+    let events = 0;
+    for (let seed = 0; seed < 40; seed++) {
+      const ids = playRun({ seed, classId: 'exploit-daemon', traversalStrategy: opportunisticTraversal, eventChoiceStrategy: alwaysFirstEventChoice }).log.flatMap((e) => (e.type === 'encounter' && e.outcome.eventId ? [e.outcome.eventId] : []));
+      expect(new Set(ids).size).toBe(ids.length);
+      events += ids.length;
+    }
+    expect(events).toBeGreaterThan(20);
+  }, 60_000);
 });

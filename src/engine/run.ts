@@ -119,6 +119,9 @@ export interface RunPlayerState {
    * docs/mods-design.md M10): its rule plus a second clause. Set by an
    * Event; permanent. */
   classModUpgraded?: boolean;
+  /** Events met this run (session 65, the user's rule): an Event never
+   * comes up twice in a run. */
+  seenEventIds?: string[];
   /** Every Burner currently carried this run (Phase 5 Burners checkpoint
    * B) -- a capped, unordered inventory, no bench/installed split (see
    * burner-types.ts's own header). Duplicates are allowed to stack
@@ -1140,6 +1143,8 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         playerState = yield* settleBench(playerState, benchCap);
       }
       if (outcome.eventGrant?.mod) playerState = acquireMod(playerState, outcome.eventGrant.mod);
+      // An Event comes up once a run (session 65).
+      if (outcome.eventId) playerState = { ...playerState, seenEventIds: [...(playerState.seenEventIds ?? []), outcome.eventId] };
       // The class Mod's "II" upgrade (session 65): permanent.
       if (outcome.eventGrant?.classModUpgrade) playerState = { ...playerState, classModUpgraded: true };
       if (outcome.eventGrant?.burner) playerState = yield* acquireBurnerAsking(playerState, outcome.eventGrant.burner);

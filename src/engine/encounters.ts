@@ -377,6 +377,8 @@ export interface EncounterOutcome {
    * ever set on an 'event' node; every other node omits the field
    * entirely rather than setting it to an empty object. */
   eventGrant?: EventGrant;
+  /** The Event met here (session 65): never met again this run. */
+  eventId?: string;
   /** Burners a Cache's bundle hands over outright (M8); only ever set on
    * a 'cache' node. */
   cacheBurners?: BurnerDefinition[];
@@ -1163,7 +1165,11 @@ export function* resolveEncounterRequests(
       // apply here: an Event, like a regular/elite fight, is one-and-
       // done, never needing a stable identity across revisits).
       // Session 64: an Event can be held back to deeper layers.
-      const eligibleEvents = EVENT_ROSTER.filter((e) => (e.minLayer ?? 1) <= layerIndex && eventStillOffers(e, playerState));
+      // Never one already met this run (session 65, the user's rule); should
+      // a run ever exhaust them, the rule gives way rather than the node.
+      const fresh = EVENT_ROSTER.filter((e) => (e.minLayer ?? 1) <= layerIndex && eventStillOffers(e, playerState));
+      const unseen = fresh.filter((e) => !(playerState.seenEventIds ?? []).includes(e.id));
+      const eligibleEvents = unseen.length > 0 ? unseen : fresh;
       const eventDef = eligibleEvents[rng.nextInt(eligibleEvents.length)];
       // A choice that pays in Data is only available when you can pay, one
       // granting a Mod you hold isn't (session 65); the simulated player
@@ -1205,6 +1211,7 @@ export function* resolveEncounterRequests(
 
       const directHeat = eventHeat(effect.heatLosses ?? 0, layerIndex - 1); // heat.ts is 0-based
       return {
+        eventId: eventDef.id,
         newState: 'inert',
         heatDelta: directHeat + (bonusFightOutcome?.heatDelta ?? 0),
         // The bonus fight's own Heat keeps its real attribution -- only
