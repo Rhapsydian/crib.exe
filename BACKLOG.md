@@ -15,23 +15,23 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 65)
+## Current state (end of session 66)
 
 The game is playable in the browser on desktop and phones
 (<https://rhapsydian.github.io/crib.exe/>, branch `playable`): a full
 four-layer run with six classes, a guided tutorial, first-time tips, plain
 Cribbage with a coach and lessons, and saves. Milestone 5 (polish and
-playtesting) is under way. 860 tests, `npm run check` clean.
+playtesting) is under way. 873 tests, `npm run check` clean.
 
 **The content pass is on `content-pass`** (pushed; the user merges it into
-`playable` after playing it locally; save version 2 discards old saves):
-24 Burners and 24 Events with story (`docs/burners-events-design.md`);
-55 Mods: 12 new rule-benders in the pool, and 6 double-edged Mods and 6
-class Mod upgrades offered only by Events (`docs/mods-design.md`).
-Content otherwise: 36 player subroutines, 27 enemies plus the tutorial's
-Firewall Beta. Balance on `content-pass`: 34.0-42.0% victory by class,
-average 38.0%; the user: rising rates are welcome, and Heat, win-rate and
-Mod-supply tuning come after the content (elite tuning before them).
+`playable` after playing it locally; save version 2): 24 Burners and 24
+Events with story (`docs/burners-events-design.md`); 55 Mods
+(`docs/mods-design.md`); 52 player subroutines, Merge rank III boosting
+the Process, owned subroutines x3 in reward draws, system strain
+(`docs/subroutines-design.md`). Enemies: 27 plus the tutorial's Firewall
+Beta. Balance on `content-pass`: 32.7-50.7% victory by class, average
+40.4%; tuning (elites first, then Heat, win rates, Mod supply) after the
+enemy pool.
 
 ---
 
@@ -42,10 +42,10 @@ In this order:
 1. **More content**, all of it: subroutines, Mods, Burners, Events, and
    enemies of all three tiers. Player side first, then enemies.
    **Burners and the first ten new Events are done** (session 64), **Mods
-   and their six Events** (session 65). Next (to settle at session 66's
-   start): subroutines, the enemy pool (elites first: the user wants elite
-   tuning before Heat and win rates), then Heat, win-rate and Mod-supply
-   tuning; Event mini-games after. The user's notes:
+   and their six Events** (session 65), **subroutines** (session 66).
+   Next: the enemy pool (elites first: the user wants elite tuning before
+   Heat and win rates), then Heat, win-rate and Mod-supply tuning; Event
+   mini-games after. The user's notes:
    - **Burners:** the economy ones (Data, Shop discounts) are the only
      ones worth carrying; tune up the combat and map Burners.
    - **Events** can be a source of rare, high-value Burners.
@@ -80,6 +80,14 @@ most, refine some of the map icons.
 ## Open items
 
 Balance and content:
+- **Class spread widening** (session 66): Breacher 50.7%, Warden 47.7%,
+  Operator 43.0% against Wraith 32.7% and Blackhat 33.0% (system strain
+  and diluted Exploit/Overclock pools); for the win-rate pass.
+- **System strain** (S12): its first step (~1.5 Heat at layer 1, doubling)
+  is a dial for the Heat pass; the user is keeping an eye on it.
+- **Regular and elite losses never happen** in simulated runs, even at
+  skill 0.3 (a run test needed a feeble loadout to see one): elite tuning
+  first in the enemy pass.
 - **Heat rarely ends a simulated run** (1-3% heat-maxed or caught), so
   Ghost Credentials (-26 Heat a run) and Black Market Ties (+19) measure
   ~0 victory (session 65). Revisit both with Heat tuning.
