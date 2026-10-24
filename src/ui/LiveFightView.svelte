@@ -6,6 +6,8 @@
   import { untrack } from 'svelte';
   import { mergeSteps, pointsSummary, stepGauges } from './timeline';
   import { fightHeatOutlook } from '../engine/heat';
+  import { rateSkill } from './skill-review';
+  import SkillReview from './SkillReview.svelte';
 
   // A live fight on the chosen screen, and its result panel at the end.
   // Every engine pause is handed to the replay, which steps through the
@@ -59,6 +61,13 @@
     if (o.loseGain === undefined || o.ifLose === undefined) return null;
     return { gain: o.loseGain, after: o.ifLose, allowance: o.allowance, maxed: o.caughtIfLose };
   });
+  // The review coach (session 70): the fight's Cribbage rating, and a
+  // drawer of its costliest mistakes.
+  const rating = $derived(fight.result && fight.skill ? rateSkill(fight.skill) : null);
+  let coachOpen = $state(false);
+  $effect(() => {
+    if (!fight.result) coachOpen = false;
+  });
   const fmtHeat = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 </script>
 
@@ -85,6 +94,9 @@
         Heat {heatGained.gain < 0 ? '−' : '+'}{fmtHeat(Math.abs(heatGained.gain))} → {fmtHeat(heatGained.after)}/{fmtHeat(heatGained.allowance)}{heatGained.maxed ? ' · maxed' : ''}
       </div>
     {/if}
+    {#if rating}
+      <button class="rating" onclick={() => (coachOpen = true)}>Cribbage: <b>{rating.rating}%</b> ({rating.label}) <span class="review">review ▸</span></button>
+    {/if}
     <table class="points">
       <thead><tr><th>points scored</th><th class="you">you</th><th class="them">them</th></tr></thead>
       <tbody>
@@ -100,6 +112,7 @@
       {#each actions as a (a.label)}<button onclick={a.onclick}>{a.label}</button>{/each}
     </div>
   </div>
+  {#if coachOpen && rating}<SkillReview {rating} onclose={() => (coachOpen = false)} />{/if}
 {/if}
 
 <style>
@@ -159,6 +172,27 @@
   .dim {
     color: var(--text-dim);
     font-size: 11px;
+  }
+  .rating {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--bg-raised);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+  }
+  .rating b {
+    color: var(--accent);
+  }
+  .rating .review {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--accent);
   }
   .points {
     width: 100%;

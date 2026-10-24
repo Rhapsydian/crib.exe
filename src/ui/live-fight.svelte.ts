@@ -15,6 +15,7 @@ import { CLASS_DEFINITIONS, type ClassId } from '../engine/classes';
 import type { BurnerId } from '../engine/burner-types';
 import type { FightSnapshot, PlayerRequest } from './snapshot';
 import type { FightSession } from './fight-session';
+import { decisionFor, type SkillDecision } from './skill-review';
 
 /**
  * The UI driver (P1): runs one real fight through `combatGenerator`.
@@ -41,6 +42,7 @@ export class LiveFight implements FightSession {
   result = $state.raw<CombatResult | null>(null);
 
   readonly setup: FightSetup;
+  readonly skill: SkillDecision[] = [];
   get enemyName(): string {
     return this.setup.enemy.name;
   }
@@ -77,6 +79,8 @@ export class LiveFight implements FightSession {
   /** The player's answer to the current request. */
   answer(answer: CombatAnswer): void {
     if (!this.frame || this.result) return;
+    const decision = decisionFor(this.frame.request, answer);
+    if (decision) this.skill.push(decision);
     this.#run(this.#fight.next(answer));
   }
 

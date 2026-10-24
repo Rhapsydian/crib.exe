@@ -137,10 +137,14 @@ describe('LiveRun', () => {
         const resumed = LiveRun.resume(JSON.parse(JSON.stringify(run.save)));
         expect(resumed).not.toBeNull();
         expect(where(resumed!)).toBe(where(run));
+        // The review coach's choices replay too (session 70).
+        expect(resumed!.skill.length).toBe(run.skill.length);
+        expect(resumed!.fight?.skill.length).toBe(run.fight?.skill.length);
         checked++;
       }
     }
     expect(checked).toBeGreaterThan(2);
+    expect(run.skill.length).toBeGreaterThan(20);
   });
 
   it('a trace evasion: its intro, your Cribbage, its result -- and a save mid-evasion resumes there (session 63)', () => {

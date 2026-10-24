@@ -1,6 +1,7 @@
 import type { CombatAnswer, CombatResult } from '../engine/combat';
 import type { FightSnapshot } from './snapshot';
 import type { FightTier } from '../engine/heat';
+import type { SkillDecision } from './skill-review';
 
 /** The run's Heat as a fight starts, and how that fight charges it. */
 export interface FightHeatContext {
@@ -31,6 +32,9 @@ export interface FightSession {
   /** A run's fight only (session 63): what its Heat bar needs. */
   readonly heat?: FightHeatContext;
   answer(answer: CombatAnswer): void;
+  /** The player's discards and plays so far (the review coach, session
+   * 70). */
+  readonly skill?: readonly SkillDecision[];
 }
 
 /** A result-panel button. */

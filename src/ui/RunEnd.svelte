@@ -4,6 +4,7 @@
   import { summarizeRun } from './run-summary';
   import { NODE_KIND } from './map-kinds';
   import { rankMark } from './visit-text';
+  import { rateSkill, type SkillDecision } from './skill-review';
   import { MOD_DEFINITIONS } from '../engine/mods';
   import { BURNER_DEFINITIONS } from '../engine/burners';
   import type { SubroutineDefinition } from '../engine/subroutine-types';
@@ -23,7 +24,10 @@
     onmenu,
     seed,
     tutorial = false,
-  }: { result: RunResult; className: string; onagain: () => void; onretry?: () => void; onmenu?: () => void; seed?: number; tutorial?: boolean } = $props();
+    skill = [],
+  }: { result: RunResult; className: string; onagain: () => void; onretry?: () => void; onmenu?: () => void; seed?: number; tutorial?: boolean; skill?: readonly SkillDecision[] } = $props();
+  // The run's Cribbage rating (session 70), over every fight's choices.
+  const rating = $derived(rateSkill(skill, false));
   const TUTORIAL_ENDINGS = {
     won: { title: '>> TUTORIAL COMPLETE', line: "You breached your first layer. A real run is four layers deep, and you choose your class. You're ready.", won: true },
     lost: { title: '>> TUTORIAL OVER', line: "Not this time. Try the tutorial again, or jump into a real run.", won: false },
@@ -59,6 +63,7 @@
     <div><b>{fightsWon}</b> fight{fightsWon === 1 ? '' : 's'} won</div>
     <div><b>{player.data}</b> Data left</div>
     <!-- Heat resets on a breach, so it only tells a story on a loss. -->
+    {#if rating}<div>Cribbage <b>{rating.rating}%</b> ({rating.label})</div>{/if}
     {#if result.outcome !== 'victory'}<div>Heat <b>{Math.round(summary.finalHeat)}</b>/{summary.allowance} at the end</div>{/if}
   </div>
 

@@ -338,3 +338,19 @@ export function showSummary(timeline: readonly CribbageBeat[]): string[] {
     return `${whose}: ${parts.join(', ')} = ${b.total}.`;
   });
 }
+
+/** What a discard gave up (the review coach, session 70): the coach's
+ * keep less yours, in expected points over every cut and the crib. */
+export function discardLoss(hand: Card[], thrown: [Card, Card], ownCrib: boolean): number {
+  const best = predictBestDiscard(hand, ownCrib);
+  return Math.max(0, scoreDiscard(hand, best, ownCrib) - scoreDiscard(hand, thrown, ownCrib));
+}
+
+/** What a pegging play gave up: the coach's play's net less yours (points
+ * now, less the opponent's expected reply). Null when the choice didn't
+ * matter: one card to play, or every card as good as another. */
+export function pegLoss(spot: PegSpot, played: Card): number | null {
+  const nets = spot.legal.map((c) => judgePlay(c, spot).net);
+  if (Math.max(...nets) - Math.min(...nets) <= 0.05) return null;
+  return Math.max(0, judgePlay(bestPlay(spot), spot).net - judgePlay(played, spot).net);
+}

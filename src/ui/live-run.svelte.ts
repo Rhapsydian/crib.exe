@@ -14,6 +14,7 @@ import { acquireSubroutine } from '../engine/loadout';
 import { cloneKeepingPrototypes } from './live-fight.svelte';
 import type { FightHeatContext, FightSession } from './fight-session';
 import type { FightSnapshot } from './snapshot';
+import { decisionFor, type SkillDecision } from './skill-review';
 import type { EventChoice } from '../engine/event-types';
 import { SAVE_VERSION, decodeCombat, encodeCombat, type RunSave, type SavedAnswer } from './run-save';
 
@@ -57,6 +58,7 @@ class RunFight implements FightSession {
   readonly enemy: EnemyDefinition;
   readonly tier: 'regular' | 'elite' | 'gatekeeper';
   readonly #answer: (a: CombatAnswer) => void;
+  readonly skill: SkillDecision[] = [];
 
   readonly heat: FightHeatContext;
 
@@ -88,6 +90,9 @@ export class LiveRun {
   evasion = $state.raw<RunEvasion | null>(null);
   /** How many fights this run has started (keys each fight's screen). */
   fights = $state(0);
+  /** Every discard and pegging play of the run, for the review coach
+   * (session 70); a resumed run rebuilds it as its answers replay. */
+  readonly skill: SkillDecision[] = [];
   /** Decisions answered for the player for now, newest last. */
   notes = $state.raw<string[]>([]);
 
@@ -164,6 +169,10 @@ export class LiveRun {
   answer(answer: unknown): void {
     if (!this.pause || this.pause.kind === 'over') return;
     this.answers.push(this.#encode(answer));
+    if (this.pause.kind === 'fight' && this.fight?.frame && !this.fight.result) {
+      const decision = decisionFor(this.fight.frame.request, answer as CombatAnswer);
+      if (decision) this.fight.skill.push(decision), this.skill.push(decision);
+    }
     if (this.pause.kind === 'fight' && this.fight?.result) this.fight = null;
     if (this.pause.kind === 'evasion' && this.pause.request.kind === 'evasionEnd') this.evasion = null;
     this.#advance(this.#run.next(answer));

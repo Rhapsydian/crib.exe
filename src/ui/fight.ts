@@ -59,7 +59,11 @@ export function pickFromLog(snapshot: FightSnapshot, side: 0 | 1, subroutineId: 
 /** A fight's pegging request as the Cribbage coach reads it (coach.ts's
  * PegSpot; live-cribbage's pegSpot for a fight), or null off a play. */
 export function fightPegSpot(snapshot: FightSnapshot): PegSpot | null {
-  const { request } = snapshot;
+  return combatPegSpot(snapshot.request);
+}
+
+/** The same, from the engine's request itself. */
+export function combatPegSpot(request: FightSnapshot['request']): PegSpot | null {
   if (request.kind !== 'play') return null;
   const played = request.pegging.events.flatMap((e) => (e.type === 'play' ? [e.card] : []));
   // This hand's cut: the timeline's latest.
