@@ -43,7 +43,9 @@ Levels. Fresh victory unchanged (~25%); fully upgraded ~90%; Security
 Levels 1 / 5 / 10 at ~84 / ~26 / ~2% fully upgraded.
 
 **Meta-progression and Daily Runs are live on `playable`** (merged at
-session 72's close-out, a fast-forward from `daily-runs`; save version 3,
+session 72's close-out, a fast-forward from `daily-runs`, which was then
+deleted with the other merged branches; new work branches from `playable`;
+save version 3,
 so older saves don't resume; patch notes `docs/patch-notes/2026-10-25.html`;
 `docs/daily-runs-design.md`
 DR1-DR10): the date's salted seed, a random class, a Directive dealt from

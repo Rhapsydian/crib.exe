@@ -82,7 +82,9 @@ README's old session-by-session narrative is archived in
   streak and history (`docs/daily-runs-design.md`). Then the user's
   playtest notes: new map icons, Safehouse renamed Quiet Host and Merge
   renamed Refactor, fight-gauge fixes, a menu button in runs. Merged into
-  `playable` with meta-progression; patch notes in `docs/patch-notes/`.
+  `playable` and `master` with meta-progression; patch notes in
+  `docs/patch-notes/`. The demo moved to cribexe.com; merged feature
+  branches were deleted, leaving `playable` and `master`.
 
 What exists, all headless and test-covered:
 
@@ -264,4 +266,4 @@ none either — it was never closed out; its record is
 
 ---
 
-Domain: `cribexe.com` (registered available, not yet purchased).
+Domain: `cribexe.com` (live since session 72; GitHub Pages serves `playable`).
