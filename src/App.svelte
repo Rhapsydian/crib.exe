@@ -66,6 +66,9 @@
   // answer and clears its save when it ends; the class screen offers to
   // resume one.
   let saved = $state.raw(loadSave());
+  // A Daily Run's save has its own slot (session 72).
+  let savedDaily = $state.raw(loadSave('daily'));
+  const slotOf = (r: LiveRun) => (r.setup.daily ? 'daily' : 'run');
   let resumeFailed = $state(false);
   function begin(next: LiveRun) {
     next.onsave = () => {
@@ -86,10 +89,10 @@
           const securityLevel = next.setup.securityLevel ?? 0;
           profile.awardRun(next.id, repForRun(result, securityLevel).lines, firstGatekeeperBeaten(result) ? nextClass(next.classId) : null, { classId: next.classId, securityLevel, won: result.outcome === 'victory' });
         }
-        clearSave();
-      } else writeSave(next.save);
+        clearSave(slotOf(next));
+      } else writeSave(next.save, slotOf(next));
     };
-    if (next.pause?.kind !== 'over') writeSave(next.save);
+    if (next.pause?.kind !== 'over') writeSave(next.save, slotOf(next));
     run = next;
   }
   function resume() {
@@ -105,6 +108,18 @@
   function backToClasses() {
     run = null;
     saved = loadSave();
+    savedDaily = loadSave('daily');
+  }
+  /** The Daily Run in progress, resumed from its slot. */
+  function resumeDaily() {
+    const next = savedDaily && LiveRun.resume(savedDaily);
+    if (next) begin(next);
+    else {
+      clearSave('daily');
+      savedDaily = null;
+      menuWarning = "That saved daily is from an older version of the game and couldn't be loaded.";
+      screen = 'menu';
+    }
   }
 
   // The front door (milestone 4, V5): the main menu, then a mode. A run
@@ -169,6 +184,7 @@
     cribbage = null;
     run = null;
     saved = loadSave();
+    savedDaily = loadSave('daily');
     cribbageSaved = loadCribbageSave();
     screen = 'menu';
   }
@@ -234,10 +250,11 @@
       onboard={() => (screen = 'board')}
       ondaily={() => (screen = 'daily')}
       today={today()}
+      dailyInProgress={savedDaily ? { date: savedDaily.setup.daily?.date ?? '', practice: savedDaily.setup.daily?.practice ?? false } : null}
       resumeFailed={menuWarning}
     />
   {:else if screen === 'daily'}
-    <DailyBrief date={today()} onstart={beginDaily} onmenu={toMenu} />
+    <DailyBrief date={today()} saved={savedDaily ? { date: savedDaily.setup.daily?.date ?? '', layer: savedDaily.summary.layer, practice: savedDaily.setup.daily?.practice ?? false } : null} onresume={resumeDaily} onstart={beginDaily} onmenu={toMenu} />
   {:else if screen === 'board'}
     <MessageBoard onmenu={toMenu} />
   {:else if screen === 'tutorial'}

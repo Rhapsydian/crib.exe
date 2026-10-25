@@ -10,7 +10,18 @@
   // The daily briefing (session 72, docs/daily-runs-design.md DR9): the
   // day's class and every Mod in full, whether this is the scored attempt
   // or practice, the streak and the last 14 days.
-  let { date, onstart, onmenu }: { date: string; onstart: () => void; onmenu: () => void } = $props();
+  // `saved` is a daily in progress in its own save slot (session 72): today's
+  // is resumed rather than restarted (a restart would replace the scored
+  // attempt's save); an earlier date's can be resumed, or replaced with a
+  // warning.
+  let {
+    date,
+    saved = null,
+    onresume,
+    onstart,
+    onmenu,
+  }: { date: string; saved?: { date: string; layer: number; practice: boolean } | null; onresume: () => void; onstart: () => void; onmenu: () => void } = $props();
+  const todayInProgress = $derived(saved?.date === date);
   const plan = $derived(rollDaily(date));
   const cls = $derived(CLASS_DEFINITIONS[plan.classId]);
   const mod = $derived(classModFor(plan.classId));
@@ -41,6 +52,13 @@
     {/each}
   </div>
 
+  {#if todayInProgress && saved}
+    <div class="note scored">Today's {saved.practice ? 'practice run' : 'scored attempt'} is in progress, on layer {saved.layer}.</div>
+    <button class="start" onclick={onresume}>▶ resume today's {saved.practice ? 'practice run' : 'scored attempt'}</button>
+  {:else}
+  {#if saved}
+    <button class="resume-old" onclick={onresume}>▶ resume your daily from {saved.date} · layer {saved.layer}</button>
+  {/if}
   {#if record?.scored !== undefined}
     <div class="note">You've played today's scored attempt: <b>{fmt(record.scored)}</b>. This run is practice{record.best ? `; your best practice is ${fmt(record.best)}` : ''}.</div>
   {:else if record?.started}
@@ -48,7 +66,9 @@
   {:else}
     <div class="note scored">This is your <b>scored attempt</b>. Runs after it are practice.</div>
   {/if}
+  {#if saved}<div class="note warn">Starting today's daily replaces your unfinished daily from {saved.date}.</div>{/if}
   <button class="start" onclick={onstart}>▶ jack in as {cls.name}</button>
+  {/if}
 
   <div class="caption">STREAK · {streak} day{streak === 1 ? '' : 's'}</div>
   <div class="history">
@@ -163,6 +183,18 @@
   }
   .note.scored {
     color: var(--text);
+  }
+  .note.warn {
+    color: var(--warn);
+  }
+  .resume-old {
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--bg-raised);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
   }
   .start {
     padding: 10px;

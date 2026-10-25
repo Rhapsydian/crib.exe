@@ -30,6 +30,7 @@
     onboard,
     ondaily,
     today,
+    dailyInProgress = null,
     resumeFailed = null,
   }: {
     runSave: { className: string; layer: number } | null;
@@ -43,6 +44,7 @@
     onboard: () => void;
     ondaily: () => void;
     today: string;
+    dailyInProgress?: { date: string; practice: boolean } | null;
     resumeFailed?: string | null;
   } = $props();
 
@@ -107,7 +109,7 @@
          glance, and today's scored attempt once played. -->
     <button class="entry daily" onclick={ondaily}>
       <b>Daily Run <span class="date">{today}</span>{#if scored !== undefined}<span class="rep">★ {scored.toLocaleString('en-US')} today</span>{/if}</b>
-      <span>Today: {CLASS_DEFINITIONS[plan.classId].name} · {DAILY_MODS[plan.mods[0].id].name} · {plan.mods.length - 1} more twist{plan.mods.length === 2 ? '' : 's'}. One scored attempt a day.</span>
+      <span>{dailyInProgress ? (dailyInProgress.date === today ? `Today's ${dailyInProgress.practice ? 'practice run' : 'scored attempt'} is in progress: resume it on the next screen.` : `Your daily from ${dailyInProgress.date} is unfinished: resume it on the next screen.`) : `Today: ${CLASS_DEFINITIONS[plan.classId].name} · ${DAILY_MODS[plan.mods[0].id].name} · ${plan.mods.length - 1} more twist${plan.mods.length === 2 ? '' : 's'}. One scored attempt a day.`}</span>
     </button>
     <!-- The Message Board (session 71, MP16): not listed until a first
          finished run (the tutorial counts). -->

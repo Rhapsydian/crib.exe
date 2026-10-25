@@ -23,7 +23,10 @@ import type { RunSetup } from '../engine/meta';
 // 3 (session 71): a run's id and its meta-progression setup, pinned so a
 // replay rebuilds the same run after later purchases.
 export const SAVE_VERSION = 3;
-const KEY = 'cribexe.run';
+/** Save slots (session 72): a normal run and a Daily Run each keep their
+ * own, so starting one never wipes the other. */
+export type SaveSlot = 'run' | 'daily';
+const KEYS: Record<SaveSlot, string> = { run: 'cribexe.run', daily: 'cribexe.daily' };
 
 /** One answer: the pause it answered, and the answer in plain data. */
 export interface SavedAnswer {
@@ -46,9 +49,9 @@ export interface RunSave {
   summary: { className: string; layer: number; savedAt: number };
 }
 
-export function loadSave(): RunSave | null {
+export function loadSave(slot: SaveSlot = 'run'): RunSave | null {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEYS[slot]);
     if (!raw) return null;
     const save = JSON.parse(raw) as RunSave;
     return save && save.version === SAVE_VERSION && Array.isArray(save.answers) ? save : null;
@@ -57,17 +60,17 @@ export function loadSave(): RunSave | null {
   }
 }
 
-export function writeSave(save: RunSave): void {
+export function writeSave(save: RunSave, slot: SaveSlot = 'run'): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(save));
+    localStorage.setItem(KEYS[slot], JSON.stringify(save));
   } catch {
     // Storage blocked or full: play on unsaved.
   }
 }
 
-export function clearSave(): void {
+export function clearSave(slot: SaveSlot = 'run'): void {
   try {
-    localStorage.removeItem(KEY);
+    localStorage.removeItem(KEYS[slot]);
   } catch {
     // Nothing to clear.
   }
