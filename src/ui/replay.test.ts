@@ -20,7 +20,9 @@ const fire = (side: 0 | 1, id: string, a: number, b: number): Step => ({ type: '
 const card = (rank: number, suit: Card['suit'] = 0): Card => ({ rank, suit }) as Card;
 const play = (player: 0 | 1, c: Card, count: number, firesBefore = 0): CombatBeat => ({
   kind: 'peg',
-  event: { type: 'play', player, card: c, count, score: 0, breakdown: { fifteen: 0, pair: 0, run: 0, thirtyOne: 0, total: 0 } },
+  // A play to 31 carries its 2 in the breakdown, as a real one does (the
+  // sweep reads it, so Short Count's 21 sweeps too).
+  event: { type: 'play', player, card: c, count, score: 0, breakdown: { fifteen: 0, pair: 0, run: 0, thirtyOne: count === 31 ? 2 : 0, total: 0 } },
   firesBefore,
 });
 const firedId = (s: Step | null) => (s?.type === 'fire' ? s.fire.subroutineId : null);
