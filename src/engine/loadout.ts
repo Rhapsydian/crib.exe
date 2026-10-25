@@ -21,6 +21,12 @@ import { rarityOf, type Rarity } from './rewards';
 
 export const INSTALLED_SLOT_CAP = 6; // TBD/playtesting -- floated as flavor only, session 7
 
+/** How many subroutines can be installed: INSTALLED_SLOT_CAP plus the
+ * subroutine slot upgrade (session 71, MP7). */
+export function slotCapOf(playerState: { meta?: { subroutineSlots: number } }): number {
+  return INSTALLED_SLOT_CAP + (playerState.meta?.subroutineSlots ?? 0);
+}
+
 /** The bench's cap (milestone 3, M2, the user's call: "not a ton, maybe
  * 2-3 inactive slots"). It was unlimited; past this, a piece has to go
  * (run.ts asks which, via a 'drop' request). */

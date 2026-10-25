@@ -1,7 +1,7 @@
 <script lang="ts">
   import RichText from './RichText.svelte';
   import type { RunPlayerState } from '../engine/run';
-  import { BENCH_CAP, INSTALLED_SLOT_CAP } from '../engine/loadout';
+  import { BENCH_CAP, slotCapOf } from '../engine/loadout';
   import SuitIcon from './SuitIcon.svelte';
   import { pieceLines, rarityOf } from './reward-text';
   import { rankMark } from './visit-text';
@@ -24,6 +24,7 @@
 
   const installed = $derived(player.installedLoadout.map((p) => p.id));
   const bench = $derived(player.bench.map((p) => p.id));
+  const slotCap = $derived(slotCapOf(player));
   const capped = $derived(player.installedLoadout.filter((p) => !player.grantedByMod[p.id]).length);
   const locked = (id: string) => Boolean(player.grantedByMod[id]);
   const piece = $derived(selected ? [...player.installedLoadout, ...player.bench].find((p) => p.id === selected!.id) : undefined);
@@ -78,7 +79,7 @@
   }
   function install() {
     if (!selected) return;
-    if (capped >= INSTALLED_SLOT_CAP) return void (swapping = true);
+    if (capped >= slotCap) return void (swapping = true);
     send(
       [...installed, selected.id],
       bench.filter((x) => x !== selected!.id),
@@ -87,7 +88,7 @@
 </script>
 
 <div class="editor">
-  <div class="caption">LOADOUT · {capped}/{INSTALLED_SLOT_CAP} · fires top → bottom</div>
+  <div class="caption">LOADOUT · {capped}/{slotCap} · fires top → bottom</div>
   {#each player.installedLoadout as p, i (p.id)}
     <button class="piece" class:sel={selected?.id === p.id} class:target={swapping && canSwapWith('loadout', p.id)} onclick={() => tap('loadout', p.id)}>
       <span class="n">{i + 1}</span>
@@ -118,7 +119,7 @@
           <button onclick={() => shift(1)} disabled={installed.indexOf(selected.id) === installed.length - 1}>▼ down</button>
           <button onclick={toBench} disabled={locked(selected.id) || swapping}>{bench.length >= BENCH_CAP ? 'swap to bench' : 'to bench'}</button>
         {:else}
-          <button onclick={install} disabled={swapping}>{capped >= INSTALLED_SLOT_CAP ? 'swap in' : 'install'}</button>
+          <button onclick={install} disabled={swapping}>{capped >= slotCap ? 'swap in' : 'install'}</button>
         {/if}
         {#if swapping}<button onclick={() => (swapping = false)}>cancel</button>{/if}
       </div>

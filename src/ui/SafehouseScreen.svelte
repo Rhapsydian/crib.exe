@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { RunRequest } from '../engine/run-requests';
-  import { REST_HEAT_REDUCTION } from '../engine/encounters';
+  import { restHeatFor } from '../engine/encounters';
   import SuitIcon from './SuitIcon.svelte';
   import { MERGE_RANK_CAP, mergeChange, rankMark } from './visit-text';
   import { mergePlan } from '../engine/merge';
@@ -22,8 +22,8 @@
   <div class="blurb">Lie low or tune your kit: one, not both.</div>
 
   <button class="option rest" onclick={() => onchoose('rest')}>
-    <div class="name"><b>Rest</b> <span class="tag">−{REST_HEAT_REDUCTION} Heat</span></div>
-    <div class="line">Heat {fmt(request.heat)} → {fmt(Math.max(0, request.heat - REST_HEAT_REDUCTION))} of {fmt(allowance)}.</div>
+    <div class="name"><b>Rest</b> <span class="tag">−{restHeatFor(player)} Heat</span></div>
+    <div class="line">Heat {fmt(request.heat)} → {fmt(Math.max(0, request.heat - restHeatFor(player)))} of {fmt(allowance)}.</div>
   </button>
 
   <div class="caption">MERGE · spend every banked copy (each subroutine up to rank {rankMark(MERGE_RANK_CAP)})</div>

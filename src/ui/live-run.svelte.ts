@@ -73,7 +73,7 @@ class RunFight implements FightSession {
       tier,
       layerIndex: layer - 1,
       refund: tier !== 'regular' && player.ownedModIds.includes('heat-sink') ? HEAT_SINK_HEAT_REFUND : 0,
-      multiplier: player.ownedModIds.includes('ghost-credentials') ? GHOST_CREDENTIALS_FIGHT_HEAT : 1,
+      multiplier: (player.ownedModIds.includes('ghost-credentials') ? GHOST_CREDENTIALS_FIGHT_HEAT : 1) * (player.meta?.fightHeat ?? 1),
     };
     this.enemy = enemy;
     this.tier = tier;
@@ -140,7 +140,9 @@ export class LiveRun {
       traversalStrategy: opportunisticTraversal,
       playerSkill: 0.85,
       subroutineAcquirer: acquireSubroutine,
-      ...(tutorial ? TUTORIAL_OPTIONS : {}),
+      // The profile's upgrades and starting picks (session 71); a
+      // tutorial plays without them.
+      ...(tutorial ? TUTORIAL_OPTIONS : { setup }),
     });
     this.#advance(this.#run.next());
   }

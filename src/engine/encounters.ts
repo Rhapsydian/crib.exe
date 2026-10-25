@@ -1,6 +1,6 @@
 import type { MapNode, NodeState } from './map-types';
 import type { Rng } from './rng';
-import type { SubroutineDefinition } from './subroutine-types';
+import { scaledProcess, type SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
 import { combatGenerator, neverActivateBurner, type BurnerActivationStrategy, type CombatAnswer, type CombatOptions, type CombatResult } from './combat';
 import { ask, driveWithFallbacks, type RunRequest, type ShopAction, type ShopSlate, type ShopVisit } from './run-requests';
@@ -53,7 +53,7 @@ import {
 import type { ModDefinition, ModId } from './mod-types';
 import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersForOwnedMods, modPoolForClass, BLACK_MARKET_VISIT_HEAT } from './mods';
 import type { BurnerId, BurnerDefinition } from './burner-types';
-import { BURNER_CAP, BURNER_DEFINITIONS, shopModifiersForActivatedBurner, drawBurnerRewardOptions, generalBurnerPool } from './burners';
+import { burnerCapOf, BURNER_DEFINITIONS, shopModifiersForActivatedBurner, drawBurnerRewardOptions, generalBurnerPool } from './burners';
 import type { ClassId } from './classes';
 import type { EventDefinition, EventChoice, EventGrant, EventRiskTier, Grant } from './event-types';
 import { EVENT_ROSTER, choiceUnavailable, eventStillOffers } from './events';
@@ -70,6 +70,10 @@ import { EVENT_ROSTER, choiceUnavailable, eventStillOffers } from './events';
 // Was 20 against the old run-long cap of 100; a layer's allowance is now
 // ~30-40 (heat.ts), so Rest keeps roughly the same share of the budget.
 export const REST_HEAT_REDUCTION = 12; // TBD/playtesting
+/** A Safehouse rest's Heat, with the rest upgrade (session 71, MP7). */
+export function restHeatFor(playerState: Pick<RunPlayerState, 'meta'>): number {
+  return REST_HEAT_REDUCTION + (playerState.meta?.restHeat ?? 0);
+}
 
 // Phase 5 checkpoint C replaced the old flat single-burst-per-tier
 // dummy loadouts with real named-enemy selection (enemies.ts) -- see
@@ -227,6 +231,8 @@ export interface HeatSources {
   /** A double-edged Mod's Heat (session 65): Ghost Credentials' extra on
    * each fight, Black Market Ties' on each Shop visit. */
   mod: number;
+  /** Negative. The fight Heat upgrade's cut (session 71, MP7). */
+  upgrade: number;
   /** Heat an Event applied directly. An Event's bonus fight is NOT
    * counted here -- its Heat is folded into the real categories above,
    * so "Heat from Containment losses" stays true wherever the fight
@@ -244,6 +250,7 @@ export const NO_HEAT_SOURCES: HeatSources = {
   rest: 0,
   burner: 0,
   mod: 0,
+  upgrade: 0,
   event: 0,
 };
 
@@ -258,12 +265,13 @@ export function addHeatSources(a: HeatSources, b: HeatSources): HeatSources {
     rest: a.rest + b.rest,
     burner: a.burner + b.burner,
     mod: a.mod + b.mod,
+    upgrade: a.upgrade + b.upgrade,
     event: a.event + b.event,
   };
 }
 
 export function totalHeatSources(s: HeatSources): number {
-  return s.containmentLoss + s.attritionLoss + s.baseline + s.alarm + s.performance + s.refund + s.rest + s.burner + s.mod + s.event;
+  return s.containmentLoss + s.attritionLoss + s.baseline + s.alarm + s.performance + s.refund + s.rest + s.burner + s.mod + s.upgrade + s.event;
 }
 
 export interface EncounterOutcome {
@@ -610,7 +618,11 @@ function* resolveFight(
   const layer0 = layerIndex - 1;
   const baseline = fightBaselineHeat(kind, layer0);
   yield* ask({ kind: 'fightStart', enemy, tier: kind, layer: layerIndex, playerState, fallback: () => null });
-  const fight = (fightSeed: number) => fightRequests([playerState.installedLoadout, scaledLoadout], {
+  // The archetype power upgrades (session 71, MP7) strengthen each
+  // subroutine's Process by its archetype.
+  const process = playerState.meta?.process;
+  const playerLoadout = process ? playerState.installedLoadout.map((p) => scaledProcess(p, process[p.archetype])) : playerState.installedLoadout;
+  const fight = (fightSeed: number) => fightRequests([playerLoadout, scaledLoadout], {
         seed: fightSeed,
         ...combatThresholdsFor(playerState, enemy, layerIndex, fightNumber),
         classId: playerState.classId,
@@ -1028,8 +1040,8 @@ export function* resolveEncounterRequests(
       }
       return {
         newState: 'inert',
-        heatDelta: -REST_HEAT_REDUCTION,
-        heatSources: { ...NO_HEAT_SOURCES, rest: -REST_HEAT_REDUCTION },
+        heatDelta: -restHeatFor(playerState),
+        heatSources: { ...NO_HEAT_SOURCES, rest: -restHeatFor(playerState) },
         quarantined: false,
         rewardTier: 'none',
         dataAwarded: 0,
@@ -1074,7 +1086,9 @@ export function* resolveEncounterRequests(
       // Vendor Discount (the larger of the two applies, not a compounded
       // multiply -- see burners.ts's shopModifiersForActivatedBurner).
       const { discountFraction: modDiscountFraction, extraCommons, extraUncommons } = shopModifiersForOwnedMods(playerState.ownedModIds);
-      const discountFraction = Math.max(modDiscountFraction, burnerModifiers.discountFraction);
+      // The Shop price upgrade (session 71, MP7) multiplies whatever
+      // discount applies, so prices can't fall to nothing.
+      const discountFraction = 1 - (1 - Math.max(modDiscountFraction, burnerModifiers.discountFraction)) * (playerState.meta?.shopPrice ?? 1);
       // Black Market Ties (session 65): a contraband Burner on every Burner
       // slate, and each visit adds Heat.
       const blackMarket = playerState.ownedModIds.includes('black-market-ties');
@@ -1376,7 +1390,7 @@ function spendFreelyAction(visit: ShopVisit, playerState: RunPlayerState, s: Sho
   // subroutines, then Burners while there's room under the carry cap (a
   // Burner past it only asks for a swap).
   const now = { ...playerState, data: visit.data };
-  const burnerRoom = BURNER_CAP - (wallets.length + left(playerState.carriedBurnerIds, visit.sold.burner).filter((id) => BURNER_DEFINITIONS[id].contexts.length > 0).length) - visit.bought.burner.length;
+  const burnerRoom = burnerCapOf(playerState) - (wallets.length + left(playerState.carriedBurnerIds, visit.sold.burner).filter((id) => BURNER_DEFINITIONS[id].contexts.length > 0).length) - visit.bought.burner.length;
   for (const slate of ['mod', 'subroutine', 'burner'] as ShopSlate[]) {
     if (slate === 'burner' && burnerRoom <= 0) continue;
     const all = visit.slates[slate] as { cost: number }[];

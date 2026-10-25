@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { RunRequest } from '../engine/run-requests';
   import type { BurnerId } from '../engine/burner-types';
-  import { BURNER_CAP, BURNER_DEFINITIONS } from '../engine/burners';
+  import { burnerCapOf, BURNER_DEFINITIONS } from '../engine/burners';
   import { burnerText, burnerWhere } from './reward-text';
 
   // A Burner arriving at the carry cap (the user's call, session 58):
@@ -16,7 +16,7 @@
 
 <div class="swap">
   <div class="title">BURNERS FULL · SWAP ONE?</div>
-  <div class="blurb">You carry {BURNER_CAP}, the most you can. Swap one out for the new one, or keep yours.</div>
+  <div class="blurb">You carry {burnerCapOf(request.playerState)}, the most you can. Swap one out for the new one, or keep yours.</div>
 
   <div class="caption">NEW</div>
   <div class="burner incoming">

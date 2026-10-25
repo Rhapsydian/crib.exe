@@ -1,12 +1,12 @@
 <script lang="ts">
   import RichText from './RichText.svelte';
   import type { RunRequest, ShopAction, ShopSlate } from '../engine/run-requests';
-  import { BENCH_CAP, INSTALLED_SLOT_CAP } from '../engine/loadout';
+  import { BENCH_CAP, slotCapOf } from '../engine/loadout';
   import SuitIcon from './SuitIcon.svelte';
   import { modText } from './kit';
   import { acquireNote, burnerText, burnerWhere, pieceLines, rarityOf } from './reward-text';
   import type { Archetype } from '../engine/subroutine-types';
-  import { BURNER_CAP, BURNER_DEFINITIONS } from '../engine/burners';
+  import { burnerCapOf, BURNER_DEFINITIONS } from '../engine/burners';
   import { burnerSellPrice, subroutineSellPrice } from '../engine/shop';
   import { ALL_SUBROUTINES } from '../engine/subroutines';
   import { rankMark } from './visit-text';
@@ -36,7 +36,7 @@
       const piece = shop.slates.subroutine[i]?.piece;
       if (!piece || owned(piece.id)) continue;
       const used = installed.filter((p) => !player.grantedByMod[p.id]).length;
-      (used < INSTALLED_SLOT_CAP ? installed : bench).push(piece);
+      (used < slotCapOf(player) ? installed : bench).push(piece);
     }
     return { ...player, installedLoadout: installed, bench };
   });
@@ -52,7 +52,7 @@
         name: o.piece.name,
         tag: rarityOf(o.piece.id),
         lines: pieceLines(o.piece),
-        note: shop.bought.subroutine.includes(index) ? undefined : acquireNote(o.piece, afterBuys, INSTALLED_SLOT_CAP, BENCH_CAP),
+        note: shop.bought.subroutine.includes(index) ? undefined : acquireNote(o.piece, afterBuys, slotCapOf(player), BENCH_CAP),
         icon: o.piece.archetype,
         cost: o.cost,
       })),
@@ -72,8 +72,8 @@
         tag: `${o.burner.contraband ? 'contraband' : o.burner.rarity} · ${burnerWhere(o.burner)}`,
         lines: [burnerText(o.burner)],
         note:
-          !shop.bought.burner.includes(index) && burnersAfterBuys >= BURNER_CAP
-            ? `You carry ${BURNER_CAP} Burners, the most you can: buying this means giving one up.`
+          !shop.bought.burner.includes(index) && burnersAfterBuys >= burnerCapOf(player)
+            ? `You carry ${burnerCapOf(player)} Burners, the most you can: buying this means giving one up.`
             : o.burner.contexts.includes('shop')
               ? // A tester's Stolen Coupon "didn't prompt" (session 69): one
                 // bought here works from the next Shop you enter.

@@ -458,6 +458,14 @@ export function scaledDefinition(piece: SubroutineDefinition, multiplier: number
   return { ...piece, alpha, beta: piece.beta ? { ...piece.beta, effect: scale(piece.beta.effect) } : undefined };
 }
 
+/** Multiplies only a piece's Process (alpha) and its growth: the
+ * archetype power upgrades (session 71, MP7). The Hook is untouched. */
+export function scaledProcess(piece: SubroutineDefinition, multiplier: number): SubroutineDefinition {
+  if (multiplier === 1) return piece;
+  const scaled = scaledDefinition(piece, multiplier);
+  return { ...scaled, beta: piece.beta };
+}
+
 /** Whether an effect is Tempo -- whose amount is a fraction of a turn or
  * of a threshold, so anything doing *additive* arithmetic on it (a flat
  * Merge bonus, a flat Empower) must not treat it as points: adding 3 to a

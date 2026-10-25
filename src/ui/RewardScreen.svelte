@@ -4,8 +4,8 @@
   import type { SubroutineDefinition } from '../engine/subroutine-types';
   import type { ModDefinition } from '../engine/mod-types';
   import type { BurnerDefinition } from '../engine/burner-types';
-  import { BENCH_CAP, INSTALLED_SLOT_CAP } from '../engine/loadout';
-  import { BURNER_CAP } from '../engine/burners';
+  import { BENCH_CAP, slotCapOf } from '../engine/loadout';
+  import { burnerCapOf } from '../engine/burners';
   import SuitIcon from './SuitIcon.svelte';
   import { modText } from './kit';
   import { acquireNote, burnerText, burnerWhere, pieceLines, rarityOf } from './reward-text';
@@ -28,7 +28,7 @@
     name: p.name,
     tag: rarityOf(p.id),
     lines: pieceLines(p),
-    note: acquireNote(p, player, INSTALLED_SLOT_CAP, BENCH_CAP),
+    note: acquireNote(p, player, slotCapOf(player), BENCH_CAP),
     icon: p.archetype,
     value: p,
   });
@@ -44,7 +44,7 @@
       name: b.name,
       tag: `${b.rarity} Burner · ${burnerWhere(b)}`,
       lines: [burnerText(b)],
-      note: player.carriedBurnerIds.length >= BURNER_CAP ? `You carry ${BURNER_CAP}, the most you can: you'll choose one to swap out.` : undefined,
+      note: player.carriedBurnerIds.length >= burnerCapOf(player) ? `You carry ${burnerCapOf(player)}, the most you can: you'll choose one to swap out.` : undefined,
       value: b,
     }));
   });

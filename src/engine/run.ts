@@ -9,12 +9,14 @@ import { ask, driveWithFallbacks, type MoveAnswer, type RunRequest } from './run
 import { addHeat, currentHeatCeiling, layerHeatAllowance, postedFightRisk, HEAT_PER_MOVE, HEAT_HIGH_FRACTION, HEAT_LOW_FRACTION } from './heat';
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
+import { ALL_SUBROUTINES } from './subroutines';
+import { applyUpgrades, type MetaBonuses, type RunSetup } from './meta';
 import {
   acquireSubroutine,
   alwaysAcquireFirst,
   installGrantedSubroutine,
   keepAcquisitionOrder,
-  INSTALLED_SLOT_CAP,
+  slotCapOf,
   BENCH_CAP,
   dropFromBench,
   arrangeLoadout,
@@ -66,7 +68,7 @@ import {
   type ModAcquisitionStrategy,
 } from './mods';
 import type { BurnerDefinition, BurnerId } from './burner-types';
-import { BURNER_CAP, BURNER_DEFINITIONS, alwaysAcquireFirstBurner, type BurnerAcquisitionStrategy } from './burners';
+import { BURNER_DEFINITIONS, alwaysAcquireFirstBurner, burnerCapOf, type BurnerAcquisitionStrategy } from './burners';
 import type { BurnerActivationStrategy } from './combat';
 
 /**
@@ -156,7 +158,12 @@ export interface RunPlayerState {
   initiativeThreshold?: number;
   breachThreshold?: number;
   containmentThresholdScaler?: number;
+  /** The rest of the profile's upgrades in this run (session 71, MP7):
+   * fight and rest Heat, Shop prices, archetype Process, the Burner and
+   * subroutine caps. Absent without upgrades. */
+  meta?: MetaBonuses;
 }
+
 
 /** Map Burners in effect (RunPlayerState.mapEffects). */
 export interface MapEffects {
@@ -212,7 +219,7 @@ function acquireMod(playerState: RunPlayerState, mod: ModDefinition): RunPlayerS
  * duplicates aren't deduplicated -- a Burner is a consumable item, not a
  * unique permanent passive, so carrying two of the same one is legal. */
 function acquireBurner(playerState: RunPlayerState, burner: BurnerDefinition): RunPlayerState {
-  if (playerState.carriedBurnerIds.length >= BURNER_CAP) return playerState;
+  if (playerState.carriedBurnerIds.length >= burnerCapOf(playerState)) return playerState;
   return { ...playerState, carriedBurnerIds: [...playerState.carriedBurnerIds, burner.id] };
 }
 
@@ -220,7 +227,7 @@ function acquireBurner(playerState: RunPlayerState, burner: BurnerDefinition): R
  * out for the new one (null keeps them all and leaves the new one, which
  * is also the simulated player's answer -- so simulations are unchanged). */
 export function* acquireBurnerAsking(playerState: RunPlayerState, burner: BurnerDefinition): Generator<RunRequest, RunPlayerState, unknown> {
-  if (playerState.carriedBurnerIds.length < BURNER_CAP) return acquireBurner(playerState, burner);
+  if (playerState.carriedBurnerIds.length < burnerCapOf(playerState)) return acquireBurner(playerState, burner);
   const out = yield* ask({ kind: 'burnerSwap', incoming: burner, playerState, fallback: (): BurnerId | null => null });
   if (!out || !playerState.carriedBurnerIds.includes(out)) return playerState;
   return acquireBurner(removeOneCarriedBurner(playerState, out), burner);
@@ -691,6 +698,10 @@ export interface RunOptions {
    * rather than replaying the run's own outcome. Undefined by default --
    * a no-op for every existing caller. */
   onBeforeGatekeeperFight?: (context: GatekeeperFightContext) => void;
+  /** What the run starts with from the profile (session 71): upgrades,
+   * a 4th starter, a starting Burner. Absent for the simulation's usual
+   * fresh player. */
+  setup?: RunSetup;
 }
 
 /** runRequests, answered by its fallbacks (the simulation): every
@@ -735,7 +746,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
     acquisitionStrategy = alwaysAcquireFirst,
     modAcquisitionStrategy = alwaysAcquireFirstMod,
     burnerAcquisitionStrategy = alwaysAcquireFirstBurner,
-    installedSlotCap = INSTALLED_SLOT_CAP,
+    installedSlotCap: installedSlotCapOption,
     benchCap = BENCH_CAP,
     safehouseStrategy = preferMergeWhenAvailable,
     mergeTargetStrategy = pickMergeTarget,
@@ -757,6 +768,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
     excludedGatekeeperIds,
     gatekeeperOverrides,
     onBeforeGatekeeperFight,
+    setup,
   } = options;
 
   const rng = createRng(seed);
@@ -774,6 +786,13 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
   let playerState = installedLoadoutOverride
     ? { ...createInitialPlayerState(classId), installedLoadout: installedLoadoutOverride }
     : createInitialPlayerState(classId);
+  // The profile's upgrades and starting picks (session 71, MP7-MP9): a
+  // 4th starter from the library, a starting common Burner.
+  playerState = applyUpgrades(playerState, setup?.upgrades);
+  const starter = setup?.starter ? ALL_SUBROUTINES.find((p) => p.id === setup.starter) : undefined;
+  if (starter) playerState = { ...playerState, installedLoadout: [...playerState.installedLoadout, starter] };
+  if (setup?.burner && BURNER_DEFINITIONS[setup.burner]) playerState = acquireBurner(playerState, BURNER_DEFINITIONS[setup.burner]);
+  const installedSlotCap = installedSlotCapOption ?? slotCapOf(playerState);
   // Routed through the same acquireMod each real Mod pickup uses (not a
   // raw ownedModIds splice), so onModAcquired's real side effects
   // (Backup Generator's max-Heat raise, Auxiliary Process's granted
@@ -987,6 +1006,14 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         const extra = outcome.heatDelta * (GHOST_CREDENTIALS_FIGHT_HEAT - 1);
         outcome.heatDelta += extra;
         outcome.heatSources = { ...outcome.heatSources, mod: outcome.heatSources.mod + extra };
+      }
+      // The fight Heat upgrade (session 71, MP7): a fight that adds Heat
+      // adds less, booked as `upgrade` Heat.
+      const fightHeat = playerState.meta?.fightHeat ?? 1;
+      if (isFightNode && fightHeat !== 1 && outcome.heatDelta > 0) {
+        const cut = outcome.heatDelta * (fightHeat - 1);
+        outcome.heatDelta += cut;
+        outcome.heatSources = { ...outcome.heatSources, upgrade: outcome.heatSources.upgrade + cut };
       }
       // Map Burners' cuts (session 64, BE4): Proxy Chain cuts the next
       // fight's Heat, win or lose; Spoofed Credentials / Golden Ticket cut

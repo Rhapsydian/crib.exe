@@ -20,6 +20,12 @@ import { rarityLadderPosition } from './loadout';
 
 export const BURNER_CAP = 3; // TBD/playtesting -- mirrors StS's own 2-3 potion slots (DESIGN.md)
 
+/** How many Burners can be carried: BURNER_CAP plus the Burner slot
+ * upgrades (session 71, MP7). */
+export function burnerCapOf(playerState: { meta?: { burnerSlots: number } }): number {
+  return BURNER_CAP + (playerState.meta?.burnerSlots ?? 0);
+}
+
 /** Stolen Coupon's discount fraction. */
 export const STOLEN_COUPON_DISCOUNT_FRACTION = 0.25;
 
