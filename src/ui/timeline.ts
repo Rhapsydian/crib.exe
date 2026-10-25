@@ -1,4 +1,5 @@
 import type { Card } from '../engine/cards';
+import { DAILY_MODS, type DailyModId } from '../engine/daily';
 import type { CombatBeat } from '../engine/combat';
 import type { PlayerIndex } from '../engine/game';
 import type { FireEvent, GaugeReading } from '../engine/resolve';
@@ -76,6 +77,11 @@ export function stepMods(step: Step | null): ModTrigger[] {
   return step.beat.kind === 'mod' ? [{ side: step.beat.side, mod: step.beat.mod }] : [];
 }
 
+/** The daily Mod acting at a step (session 72: its panel entry flashes). */
+export function stepDaily(step: Step | null): string | null {
+  return step?.type === 'beat' && step.beat.kind === 'daily' ? step.beat.id : null;
+}
+
 /** Milliseconds a step holds the screen at normal speed. Your own card is
  * quick (you just chose it); the enemy's gets time to be seen; points
  * give the callout time to read. */
@@ -97,6 +103,7 @@ export function stepDelay(step: Step): number {
     case 'burner':
       return 800;
     case 'mod':
+    case 'daily':
       return 550;
     case 'turn':
       return 500;
@@ -283,6 +290,8 @@ export function describeBeat(beat: CombatBeat): string {
       return `${beat.side === 0 ? 'you burn' : 'they burn'} ${burnerLabel(beat.burnerId)}`;
     case 'mod':
       return `◆ ${triggerLabel(beat)}`;
+    case 'daily':
+      return `◇ daily: ${DAILY_MODS[beat.id as DailyModId]?.name ?? beat.id}`;
     case 'turn':
       return `▶ ${beat.side === 0 ? 'your' : 'their'} turn`;
     case 'strain':

@@ -81,6 +81,15 @@ describe('Glitches', () => {
     expect(scoreDiscard(hand, [c(2), c(9)], true, undefined, undefined, c(5, 2))).toBeGreaterThan(scoreDiscard(hand, [c(2), c(9)], true));
   });
 
+  it('a daily effect that acts leaves a daily beat for the screen to flash', () => {
+    const ids = (g: CombatOptions['glitches']) => fight(g).timeline.flatMap((b) => (b.kind === 'daily' ? [b.id] : []));
+    expect(ids({ countLimit: 21 })).toContain('short-count');
+    expect(ids({ luckySevens: 3 })).toContain('lucky-sevens');
+    expect(ids({ rule: { fifteenPlus: 1 } })).toContain('fifteen-flood');
+    expect(ids({ earlyCut: true }).filter((id) => id === 'early-cut').length).toBe(fight({ earlyCut: true }).hands.length);
+    expect(ids(undefined)).toEqual([]);
+  });
+
   it('Lucky Sevens and Suit Surge change a fight; no Glitches changes nothing', () => {
     const plain = fight();
     expect(fight(undefined).log.length).toBe(plain.log.length);

@@ -2,7 +2,7 @@
   import { stickToBottom } from './stick-to-bottom';
   import { untrack } from 'svelte';
   import DailyKit from './DailyKit.svelte';
-  import type { DailyPlan } from '../engine/daily';
+  import { DAILY_MODS, type DailyModId, type DailyPlan } from '../engine/daily';
   import RichText from './RichText.svelte';
   import type { FightSnapshot } from './snapshot';
   import type { Card } from '../engine/cards';
@@ -14,7 +14,7 @@
   import Hand from './Hand.svelte';
   import Log from './Log.svelte';
   import DetailSheet from './DetailSheet.svelte';
-  import { burnerLabel, scoreLabel, stepLine, stepMods, tableAt, type Step } from './timeline';
+  import { burnerLabel, scoreLabel, stepLine, stepMods, tableAt, type Step, stepDaily } from './timeline';
   import { burnersOf, modKey, modName, modsOf, type KitItem } from './kit';
   import KitList from './KitList.svelte';
   import ShowPanel from './ShowPanel.svelte';
@@ -220,6 +220,7 @@
     if (b.kind === 'burner') return { text: `⏏︎ ${burnerLabel(b.burnerId)}`, side: b.side, key: replay!.shown, tone: 'burner' };
     if (b.kind === 'strain') return { text: `⚠ strain +${Number.isInteger(b.heat) ? b.heat : b.heat.toFixed(1)} Heat`, side: 0, key: replay!.shown, tone: 'burner' };
     if (b.kind === 'mod') return { text: `◆ ${b.side === 0 ? 'your' : 'their'} ${modName(b.mod, f.view.combatState.bridgeUpgraded?.[b.side])}`, side: b.side, key: replay!.shown, tone: 'mod' };
+    if (b.kind === 'daily') return { text: `◇ daily: ${DAILY_MODS[b.id as DailyModId]?.name ?? b.id}`, side: 0, key: replay!.shown, tone: 'mod' };
     return null;
   });
   // A new hand: a banner over the table while its beat is up.
@@ -325,7 +326,7 @@
       <div class="caption sub">YOUR BURNERS</div>
       <KitList items={yourBurners} onpick={(k) => (pickedKit = k)} />
     {/if}
-    {#if daily}<DailyKit plan={daily.plan} practice={daily.practice} />{/if}
+    {#if daily}<DailyKit plan={daily.plan} practice={daily.practice} flashing={stepDaily(replay?.current ?? null)} />{/if}
   </aside>
 
   <main class="main">

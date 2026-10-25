@@ -6,13 +6,15 @@
   // A Daily Run's Mods beside the loadout (session 72, the user's ask): on
   // the map's loadout drawer and the fight screen's loadouts panel, so the
   // day's twists are in view wherever they matter.
-  let { plan, practice = false }: { plan: DailyPlan; practice?: boolean } = $props();
+  // `flashing` is the daily Mod acting right now in a fight's replay (the
+  // user's ask: a flash when a daily effect triggers).
+  let { plan, practice = false, flashing = null }: { plan: DailyPlan; practice?: boolean; flashing?: string | null } = $props();
 </script>
 
 <div class="caption">DAILY · {plan.date}{practice ? ' · practice' : ''}</div>
 {#each plan.mods as m (m.id)}
   {@const cat = DAILY_MODS[m.id].category}
-  <div class="kit {cat}">
+  <div class="kit {cat}" class:flash={flashing === m.id}>
     <div><span class="tag">{CATEGORY_NAME[cat]}</span> {dailyModName(m)}</div>
     <div class="kit-text"><RichText text={dailyModText(m)} /></div>
   </div>
@@ -41,6 +43,16 @@
     font-size: 9px;
     letter-spacing: 0.06em;
     color: var(--c);
+  }
+  .flash {
+    animation: flash 0.55s ease-out;
+  }
+  @keyframes flash {
+    0%,
+    60% {
+      background: var(--c);
+      color: var(--bg);
+    }
   }
   .directive {
     --c: var(--accent);

@@ -2,6 +2,7 @@ import { createRng, deriveAiNoiseSeed } from './rng';
 import type { Card } from './cards';
 import { createDeck, shuffle } from './deck';
 import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardContext, type DiscardStrategy } from './deal';
+import { ARCHETYPE_SUITS } from './subroutine-types';
 import { advancePegging, COUNT_LIMIT, playLowestLegal, playPeggingCard, startPegging, type PeggingEvent, type PlayContext, type PlayStrategy } from './pegging';
 import { countHandEvents, countCribEvents, type ShowScoreEvent } from './scoring';
 import type { HandResult, PlayerIndex } from './game';
@@ -505,6 +506,12 @@ export type CombatBeat = (
       mod: ModRef;
     }
   | {
+      /** A Daily Run's Mod acting (session 72, the user's ask: a flash
+       * when a daily effect triggers): its daily Mod id. */
+      kind: 'daily';
+      id: string;
+    }
+  | {
       /** A turn starting (the user's ask: a toast for every turn, either
        * side). Comes before the turn's Burner offer and its fires. */
       kind: 'turn';
@@ -672,6 +679,18 @@ export function* combatGenerator(
     for (const t of sink.splice(0)) timeline.push({ kind: 'mod', side: t.side, mod: t.mod, firesBefore: log.length });
   }
   let phase: 'cut' | 'peg' | 'show' = 'cut';
+  /** A daily Mod acting, for the screen's flash. */
+  const dailyBeat = (id: string) => timeline.push({ kind: 'daily', id, firesBefore: log.length });
+  /** Which scoring Glitch changed an occurrence, if any. */
+  const glitchFor = (o: ScoringOccurrence): string | null => {
+    const rule = glitches?.rule;
+    if (o.category === 'thirtyOne' && countLimit !== COUNT_LIMIT) return 'short-count';
+    if (!rule) return null;
+    if (o.category === 'fifteen' && rule.fifteenPlus) return 'fifteen-flood';
+    if ((o.category === 'run' && rule.runTimes) || (o.category === 'pair' && rule.pairMinus)) return 'running-wild';
+    if ((o.category === 'hisNobs' && rule.hisNobs) || (o.category === 'hisHeels' && rule.hisHeels)) return 'nobs-and-heels';
+    return null;
+  };
 
   /** Offers `side` its available Burners of one timing (session 64,
    * BE2) and applies the one chosen. Only the player carries Burners. */
@@ -705,6 +724,8 @@ export function* combatGenerator(
   ): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
     // The scorer's own scoring rule (the Folds) reprices it first.
     const occurrence = repriceOccurrence(tableOccurrence, combatState.sides[tableOccurrence.player].scoringRule);
+    const glitch = glitchFor(tableOccurrence);
+    if (glitch) dailyBeat(glitch);
     // Charges first, so a beta charged by this very occurrence applies
     // on the turn it buys.
     let winner = step(immediates(applyOccurrence(combatState, occurrence, handDealer), handDealer, log));
@@ -824,6 +845,8 @@ export function* combatGenerator(
     beat({ kind: 'peg', event });
     // Lucky Sevens and Suit Surge (daily Glitches): the player's card.
     if (glitches && event.type === 'play' && event.player === 0) {
+      if (glitches.luckySevens && event.card.rank === 7) dailyBeat('lucky-sevens');
+      if (glitches.suitSurge && event.card.suit === ARCHETYPE_SUITS[glitches.suitSurge]) dailyBeat('suit-surge');
       const winner = step(immediates(applyGlitchPlay(combatState, event.card, glitches), handDealer, log));
       if (winner !== null) return winner;
     }
@@ -874,6 +897,7 @@ export function* combatGenerator(
     // Early Cut (a daily Glitch, session 72): the starter is turned before
     // the discard; its beat and His Heels still come where they always do.
     earlyStarter = glitches?.earlyCut ? cut(stock, rng).starter : undefined;
+    if (earlyStarter) dailyBeat('early-cut');
 
     // After the deal: reveal the opponent's dealt hand, and pull one
     // adversarially chosen card out of it into the crib.
