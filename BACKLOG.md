@@ -79,6 +79,11 @@ most, refine some of the map icons.
 
 ## Open items
 
+- **!!! REMOVE BEFORE RELEASE: testing URL switches** (session 71, the
+  user: not around forever). `?resetprofile` wipes the meta-progression
+  profile; `?unlockall` opens every class and the library. Both live in
+  `src/ui/testing-flags.ts`.
+
 - **Review coach** (session 70): falloff 1.0 calibrated so the simulated
   player (0.85) reads Sharp (87); regular enemies' skill reads Learning,
   elites' Steady, the full-strength AI Expert (95). Watch in playtesting

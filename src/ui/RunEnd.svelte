@@ -5,6 +5,7 @@
   import { NODE_KIND } from './map-kinds';
   import { rankMark } from './visit-text';
   import { rateSkill, type SkillDecision } from './skill-review';
+  import { profile } from './profile.svelte';
   import { MOD_DEFINITIONS } from '../engine/mods';
   import { BURNER_DEFINITIONS } from '../engine/burners';
   import type { SubroutineDefinition } from '../engine/subroutine-types';
@@ -25,7 +26,11 @@
     seed,
     tutorial = false,
     skill = [],
-  }: { result: RunResult; className: string; onagain: () => void; onretry?: () => void; onmenu?: () => void; seed?: number; tutorial?: boolean; skill?: readonly SkillDecision[] } = $props();
+    runId,
+  }: { result: RunResult; className: string; onagain: () => void; onretry?: () => void; onmenu?: () => void; seed?: number; tutorial?: boolean; skill?: readonly SkillDecision[]; runId?: string } = $props();
+  // The run's Rep (session 71), as the profile awarded it.
+  const award = $derived(runId && profile.lastAward?.runId === runId ? profile.lastAward.lines : null);
+  const repTotal = $derived(award?.reduce((s, l) => s + l.rep, 0) ?? 0);
   // The run's Cribbage rating (session 70), over every fight's choices.
   const rating = $derived(rateSkill(skill, false));
   const TUTORIAL_ENDINGS = {
@@ -66,6 +71,15 @@
     {#if rating}<div>Cribbage <b>{rating.rating}%</b> ({rating.label})</div>{/if}
     {#if result.outcome !== 'victory'}<div>Heat <b>{Math.round(summary.finalHeat)}</b>/{summary.allowance} at the end</div>{/if}
   </div>
+
+  {#if award && (award.length || !tutorial)}
+    <div class="rep">
+      <div class="rep-head"><span class="caption">REP EARNED</span><span class="rep-total">◆ +{repTotal}</span></div>
+      {#each award as line, i (i)}<div class="rep-line"><span>{line.label}</span><span>{line.rep}</span></div>{/each}
+      {#if !award.length}<div class="rep-line dim">No Rep this time: breach a layer or beat an elite to earn some.</div>{/if}
+      <div class="rep-line dim"><span>Rep to spend</span><span>◆ {profile.data.rep}</span></div>
+    </div>
+  {/if}
 
   {#if !tutorial && summary.layers.length}
     <div class="caption">THE RUN</div>
@@ -133,6 +147,33 @@
   .line {
     font-size: 13px;
     margin-bottom: 8px;
+  }
+  .rep {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--bg-raised);
+    font-size: 12px;
+  }
+  .rep-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .rep-total {
+    color: var(--mod);
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .rep-line {
+    display: flex;
+    justify-content: space-between;
+  }
+  .rep-line.dim {
+    color: var(--text-dim);
   }
   .stats {
     display: flex;

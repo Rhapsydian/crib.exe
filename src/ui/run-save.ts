@@ -1,6 +1,7 @@
 import type { Card } from '../engine/cards';
 import type { ClassId } from '../engine/classes';
 import type { CombatRequest } from '../engine/combat';
+import type { RunSetup } from '../engine/meta';
 
 /**
  * Saving a run (milestone 3 checkpoint 5). A run is a deterministic
@@ -19,7 +20,9 @@ import type { CombatRequest } from '../engine/combat';
  */
 // 2 (session 65): the content pass (Burners, Events, Mods) changes what a
 // replay draws, so a run saved before it no longer replays.
-export const SAVE_VERSION = 2;
+// 3 (session 71): a run's id and its meta-progression setup, pinned so a
+// replay rebuilds the same run after later purchases.
+export const SAVE_VERSION = 3;
 const KEY = 'cribexe.run';
 
 /** One answer: the pause it answered, and the answer in plain data. */
@@ -34,6 +37,10 @@ export interface RunSave {
   seed: number;
   /** The guided first run (session 63). */
   tutorial?: boolean;
+  /** Session 71: which run this is (Rep is awarded once per id), and what
+   * it started with from the profile. */
+  id: string;
+  setup: RunSetup;
   answers: SavedAnswer[];
   /** For the resume button: class name, layer, when. */
   summary: { className: string; layer: number; savedAt: number };

@@ -15,8 +15,12 @@ import { cloneKeepingPrototypes } from './live-fight.svelte';
 import type { FightHeatContext, FightSession } from './fight-session';
 import type { FightSnapshot } from './snapshot';
 import { decisionFor, type SkillDecision } from './skill-review';
+import type { RunSetup } from '../engine/meta';
 import type { EventChoice } from '../engine/event-types';
 import { SAVE_VERSION, decodeCombat, encodeCombat, type RunSave, type SavedAnswer } from './run-save';
+
+/** A run's id (session 71): unique enough to award Rep once per run. */
+const newRunId = () => `${Date.now().toString(36)}-${Math.floor(Math.random() * 2 ** 31).toString(36)}`;
 
 /**
  * The UI driver for a whole run (milestone 3 checkpoints 2-4): drives
@@ -99,6 +103,10 @@ export class LiveRun {
   readonly classId: ClassId;
   readonly className: string;
   readonly seed: number;
+  /** Which run this is (Rep is awarded once per id), and what it started
+   * with from the profile (session 71); both saved. */
+  readonly id: string;
+  readonly setup: RunSetup;
   readonly #run: Generator<RunRequest, RunResult, unknown>;
   /** Data before the current encounter, so the first reward after it can
    * say what it paid. */
@@ -118,7 +126,9 @@ export class LiveRun {
    * (engine/tutorial.ts), the coach, and its own ending. */
   readonly tutorial: boolean;
 
-  constructor(classId: ClassId, seed: number, tutorial = false) {
+  constructor(classId: ClassId, seed: number, tutorial = false, setup: RunSetup = {}, id = newRunId()) {
+    this.id = id;
+    this.setup = setup;
     this.classId = classId;
     this.className = CLASS_DEFINITIONS[classId].name;
     this.seed = seed;
@@ -138,7 +148,7 @@ export class LiveRun {
   /** A run rebuilt from a save: its answers replayed into a fresh run.
    * Null if any answer no longer fits (the game changed under the save). */
   static resume(save: RunSave): LiveRun | null {
-    const run = new LiveRun(save.classId, save.seed, save.tutorial ?? false);
+    const run = new LiveRun(save.classId, save.seed, save.tutorial ?? false, save.setup, save.id);
     for (const saved of save.answers) if (!run.#replay(saved)) return null;
     return run;
   }
@@ -150,6 +160,8 @@ export class LiveRun {
       classId: this.classId,
       seed: this.seed,
       tutorial: this.tutorial || undefined,
+      id: this.id,
+      setup: this.setup,
       answers: this.answers,
       summary: { className: this.tutorial ? `the tutorial (${this.className})` : this.className, layer: this.#layer, savedAt: Date.now() },
     };

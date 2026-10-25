@@ -137,6 +137,9 @@ describe('LiveRun', () => {
         const resumed = LiveRun.resume(JSON.parse(JSON.stringify(run.save)));
         expect(resumed).not.toBeNull();
         expect(where(resumed!)).toBe(where(run));
+        // The run's id and setup carry over (session 71).
+        expect(resumed!.id).toBe(run.id);
+        expect(resumed!.setup).toEqual(run.setup);
         // The review coach's choices replay too (session 70).
         expect(resumed!.skill.length).toBe(run.skill.length);
         expect(resumed!.fight?.skill.length).toBe(run.fight?.skill.length);

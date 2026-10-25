@@ -13,6 +13,8 @@
   import ClassSelect from './ui/ClassSelect.svelte';
   import RunView from './ui/RunView.svelte';
   import { clearSave, loadSave, writeSave } from './ui/run-save';
+  import { profile } from './ui/profile.svelte';
+  import { repForRun } from './engine/meta';
   import MainMenu from './ui/MainMenu.svelte';
   import TipBanner from './ui/TipBanner.svelte';
   import GuideBanner from './ui/GuideBanner.svelte';
@@ -63,8 +65,12 @@
   let resumeFailed = $state(false);
   function begin(next: LiveRun) {
     next.onsave = () => {
-      if (next.pause?.kind === 'over') clearSave();
-      else writeSave(next.save);
+      if (next.pause?.kind === 'over') {
+        // The run's Rep (session 71): awarded once, before the save goes.
+        if (next.tutorial) profile.finishTutorial(next.id);
+        else profile.awardRun(next.id, repForRun(next.pause.result).lines);
+        clearSave();
+      } else writeSave(next.save);
     };
     if (next.pause?.kind !== 'over') writeSave(next.save);
     run = next;
