@@ -9,6 +9,9 @@
 export interface InitiativeGauge {
   progress: number;
   threshold: number;
+  /** How many times this gauge has filled this fight (session 72): the
+   * screen wraps the bar exactly when this rises. */
+  fills?: number;
 }
 
 export function createInitiativeGauge(threshold: number): InitiativeGauge {
@@ -48,7 +51,7 @@ export function addPoints(gauge: InitiativeGauge, points: number): InitiativeGau
     progress -= threshold;
     turnsTriggered += 1;
   }
-  return { gauge: { ...gauge, progress }, turnsTriggered };
+  return { gauge: { ...gauge, progress, ...(turnsTriggered ? { fills: (gauge.fills ?? 0) + turnsTriggered } : {}) }, turnsTriggered };
 }
 
 /**

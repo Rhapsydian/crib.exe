@@ -1210,6 +1210,9 @@ export interface GaugeReading {
   winThreshold: number;
   initiative: number;
   initiativeThreshold: number;
+  /** Times the initiative gauge has filled so far (session 72; absent on
+   * older readings, read as 0). */
+  initiativeFills?: number;
   ward: number;
   heat: number;
 }
@@ -1228,6 +1231,7 @@ export function readGauges(combatState: CombatState): [GaugeReading, GaugeReadin
     winThreshold: s.winGauge.threshold,
     initiative: s.gauge.progress,
     initiativeThreshold: s.gauge.threshold,
+    initiativeFills: s.gauge.fills ?? 0,
     ward: s.wardShield,
     heat: s.heat,
   });

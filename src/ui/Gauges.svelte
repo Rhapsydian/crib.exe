@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CombatSideState, GaugeReading } from '../engine/resolve';
   import { tip } from './tip';
+  import { untrack } from 'svelte';
 
   // One side's meters: the win gauge (Breach for you, Containment for
   // them), initiative toward the next turn, Ward, and -- yours only, once
@@ -56,6 +57,7 @@
       winThreshold: side.winGauge.threshold,
       initiative: side.gauge.progress,
       initiativeThreshold: side.gauge.threshold,
+      initiativeFills: side.gauge.fills ?? 0,
       ward: side.wardShield,
       heat: side.heat,
     },
@@ -63,6 +65,57 @@
   const win = $derived(Math.min(1, g.win / g.winThreshold));
   const init = $derived(Math.min(1, g.initiative / g.initiativeThreshold));
   const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+  // The initiative bar only fills left to right (session 72, the user's
+  // ask): when the gauge fills (its count of fills rises), the bar fills to
+  // the end, flashes once, resets to the left without animating, then fills
+  // to what's left over. A real drain (initiative taken away) still
+  // shrinks it, and a turn a Mod grants outright leaves it alone.
+  const WRAP_MS = 220;
+  const fills = $derived(g.initiativeFills ?? 0);
+  let shownInit = $state(0);
+  let instant = $state(false);
+  let filled = $state(false);
+  let fillsSeen: number | null = null;
+  let latest = 0;
+  let wrapping: ReturnType<typeof setTimeout> | null = null;
+  $effect(() => {
+    const target = init;
+    const f = fills;
+    untrack(() => {
+      latest = target;
+      if (fillsSeen === null || f < fillsSeen) {
+        fillsSeen = f;
+        shownInit = target;
+        return;
+      }
+      if (f > fillsSeen) {
+        fillsSeen = f;
+        if (wrapping) clearTimeout(wrapping);
+        instant = false;
+        shownInit = 1;
+        filled = true;
+        wrapping = setTimeout(() => {
+          instant = true;
+          shownInit = 0;
+          // A short beat so the reset paints before the fill animates again
+          // (a timer, not animation frames, which stall in a background tab
+          // and would leave the bar stuck at empty).
+          wrapping = setTimeout(() => {
+            instant = false;
+            filled = false;
+            wrapping = null;
+            shownInit = latest;
+          }, 40);
+        }, WRAP_MS);
+        return;
+      }
+      if (!wrapping) shownInit = target;
+    });
+  });
+  $effect(() => () => {
+    if (wrapping) clearTimeout(wrapping);
+  });
 </script>
 
 <div class="gauges" class:compact>
@@ -73,7 +126,7 @@
   </div>
   <div class="row" use:tip={tips.init}>
     <span class="label">INIT</span>
-    <div class="bar init"><span style="width: {init * 100}%"></span></div>
+    <div class="bar init" class:filled><span class:instant style="width: {shownInit * 100}%"></span></div>
     <span class="num">{fmt(g.initiative)}/{fmt(g.initiativeThreshold)}</span>
   </div>
   <div class="row chips">
@@ -195,6 +248,20 @@
   }
   .bar.enemy span {
     background: var(--danger);
+  }
+  .bar span.instant {
+    transition: none;
+  }
+  /* The turn's flash: once, as the bar fills. */
+  .bar.init.filled {
+    animation: init-flash 0.32s ease-out;
+  }
+  @keyframes init-flash {
+    0%,
+    50% {
+      box-shadow: 0 0 0 2px var(--suit-overclock);
+      background: var(--suit-overclock);
+    }
   }
   .bar.init span {
     background: var(--suit-overclock);

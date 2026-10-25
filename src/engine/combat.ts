@@ -506,6 +506,12 @@ export type CombatBeat = (
       mod: ModRef;
     }
   | {
+      /** The fight's end (session 72): its final meters, so the screen
+       * ends on the true state (the winning push sometimes left no
+       * reading, and the Breach bar stopped short of full). */
+      kind: 'end';
+    }
+  | {
       /** A Daily Run's Mod acting (session 72, the user's ask: a flash
        * when a daily effect triggers): its daily Mod id. */
       kind: 'daily';
@@ -535,7 +541,13 @@ export type CombatBeat = (
       burnerId: BurnerId;
       gauges: [GaugeReading, GaugeReading];
     }
-) & { firesBefore: number };
+) & {
+  firesBefore: number;
+  /** Both sides' meters as this beat stands (session 72: every beat
+   * carries them, so the screen's gauges move step by step instead of
+   * leaping at the next reading). */
+  gauges?: [GaugeReading, GaugeReading];
+};
 
 /**
  * Plays a fight to its end, answering every request from the given
@@ -632,7 +644,7 @@ export function* combatGenerator(
   // always empty until burnerActivationStrategies is actually wired up.
   const burnersUsedThisCombat: BurnerId[] = [];
 
-  const finish = (winner: PlayerIndex, resolvedBy: 'threshold' | 'attrition' = 'threshold'): CombatResult => (flushMods(), {
+  const finish = (winner: PlayerIndex, resolvedBy: 'threshold' | 'attrition' = 'threshold'): CombatResult => (flushMods(), timeline.push({ kind: 'end', firesBefore: log.length, gauges: readGauges(combatState) }), {
     winner,
     log,
     timeline,
@@ -673,18 +685,18 @@ export function* combatGenerator(
     return { combatState, log, timeline, hands, handIndex, dealer: handDealer, countLimit, ...(earlyStarter ? { earlyStarter } : {}) };
   };
   const beat = (b: DistributiveOmit<CombatBeat, 'firesBefore'>): void => {
-    timeline.push({ ...b, firesBefore: log.length } as CombatBeat);
+    timeline.push({ gauges: readGauges(combatState), ...b, firesBefore: log.length } as CombatBeat);
     flushMods();
   };
   /** Mod triggers no fire took become beats where they stand. */
   function flushMods(): void {
     const sink = combatState.modTriggers;
     if (!sink || sink.length === 0) return;
-    for (const t of sink.splice(0)) timeline.push({ kind: 'mod', side: t.side, mod: t.mod, firesBefore: log.length });
+    for (const t of sink.splice(0)) timeline.push({ kind: 'mod', side: t.side, mod: t.mod, firesBefore: log.length, gauges: readGauges(combatState) });
   }
   let phase: 'cut' | 'peg' | 'show' = 'cut';
   /** A daily Mod acting, for the screen's flash. */
-  const dailyBeat = (id: string, gauges?: [GaugeReading, GaugeReading]) => timeline.push({ kind: 'daily', id, firesBefore: log.length, ...(gauges ? { gauges } : {}) });
+  const dailyBeat = (id: string, gauges: [GaugeReading, GaugeReading] = readGauges(combatState)) => timeline.push({ kind: 'daily', id, firesBefore: log.length, gauges });
   /** Which scoring Glitch changed an occurrence, if any. */
   const glitchFor = (o: ScoringOccurrence): string | null => {
     const rule = glitches?.rule;

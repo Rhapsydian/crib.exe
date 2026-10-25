@@ -70,12 +70,20 @@ export class Replay {
   sync(steps: readonly Step[], live: [GaugeReading, GaugeReading]): void {
     if (steps.length < this.shown) this.reset();
     if (steps.length > this.shown) {
-      // A new batch: anything still playing from the last one finishes.
-      this.#clear();
-      this.holding = false;
-      this.shown = Math.max(this.shown, this.steps.length);
-      this.batchStart = this.shown;
-      this.before = this.#previous;
+      const midBatch = this.shown < this.steps.length;
+      if (this.holding) {
+        // The last step was holding the screen: the new ones follow it.
+        this.#clear();
+        this.holding = false;
+      }
+      // A pause that arrives mid-batch queues its steps after the unplayed
+      // ones (session 72, the user's report: it used to jump to the old
+      // batch's end, so the skipped steps landed in the log at once and
+      // the gauges leapt forward).
+      if (!midBatch) {
+        this.batchStart = this.shown;
+        this.before = this.#previous;
+      }
     }
     this.steps = steps;
     this.#previous = live;

@@ -52,8 +52,8 @@ export function mergeSteps(timeline: readonly CombatBeat[], log: readonly FireEv
 export function stepGauges(step: Step): [GaugeReading, GaugeReading] | null {
   if (step.type === 'clear') return null;
   if (step.type === 'fire') return step.fire.gauges;
-  if (step.beat.kind === 'daily') return step.beat.gauges ?? null;
-  return step.beat.kind === 'points' || step.beat.kind === 'burner' ? step.beat.gauges : null;
+  // Every beat carries the meters as it stands (session 72).
+  return step.beat.gauges ?? null;
 }
 
 /** Who a step belongs to, for pacing and colour. */
@@ -106,6 +106,8 @@ export function stepDelay(step: Step): number {
     case 'mod':
     case 'daily':
       return 550;
+    case 'end':
+      return 300;
     case 'turn':
       return 500;
     case 'strain':
@@ -293,6 +295,8 @@ export function describeBeat(beat: CombatBeat): string {
       return `◆ ${triggerLabel(beat)}`;
     case 'daily':
       return `◇ daily: ${DAILY_MODS[beat.id as DailyModId]?.name ?? beat.id}`;
+    case 'end':
+      return '// the fight ends';
     case 'turn':
       return `▶ ${beat.side === 0 ? 'your' : 'their'} turn`;
     case 'strain':
