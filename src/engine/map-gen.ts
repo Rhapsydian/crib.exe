@@ -77,6 +77,12 @@ export interface LayerGenOptions {
   /** Overrides for the weighted roll (forces the roll, even for a real
    * layer). Unspecified types fall back to the default. */
   typeWeights?: Partial<Record<FillerNodeType, number>>;
+  /** Shops dealt in place of regular fights (Port Flood, a daily
+   * Advisory: twice as many). */
+  extraShops?: number;
+  /** The chance this layer gets a Cache, overriding CACHE_CHANCE (Cache
+   * Bloom, a daily Advisory). */
+  cacheChance?: number;
 }
 
 // ---------------------------------------------------------------- grid
@@ -131,11 +137,11 @@ function tryLayer(options: LayerGenOptions, dealt: LayerNumber | undefined, stri
   const edges = link(ids, pos, rng, strict);
   if (!edges) return null;
   if (strict && somethingBehindGatekeeper(ids, edges)) return null;
-  const types = dealt ? dealTypes(ids, edges, dealt, rng) : rollTypes(ids, rng, options.typeWeights);
+  const types = dealt ? dealTypes(ids, edges, dealt, rng, options.extraShops ?? 0) : rollTypes(ids, rng, options.typeWeights);
   if (!types) return null;
   const nodes: MapNode[] = ids.map((id) => ({ ...createNode(id, types[id]), x: pos[id].x, y: pos[id].y }));
   const graph: LayerGraph = { nodes, edges, entryNodeId: 'n0', gatekeeperNodeId: 'n1' };
-  if (dealt && rng.next() < CACHE_CHANCE[dealt]) {
+  if (dealt && rng.next() < (options.cacheChance ?? CACHE_CHANCE[dealt])) {
     const spot = placeCache(ids, edges, pos);
     if (spot) {
       graph.nodes.push({ ...createNode(spot.id, 'cache'), x: spot.at.x, y: spot.at.y });
@@ -299,10 +305,14 @@ function rollTypes(ids: string[], rng: Rng, overrides?: Partial<Record<FillerNod
 
 /** Deals a real layer's mix under the placement rules (see the header);
  * null if no shuffle fits this layout. */
-function dealTypes(ids: string[], edges: MapEdge[], layer: LayerNumber, rng: Rng): Record<string, NodeType> | null {
+function dealTypes(ids: string[], edges: MapEdge[], layer: LayerNumber, rng: Rng, extraShops = 0): Record<string, NodeType> | null {
   const filler = ids.slice(2);
   const { core, flex } = LAYER_MIX[layer];
   const deck: FillerNodeType[] = (Object.entries(core) as [FillerNodeType, number][]).flatMap(([t, k]) => Array<FillerNodeType>(k).fill(t));
+  for (let i = 0; i < extraShops; i++) {
+    const at = deck.indexOf('regularFight');
+    if (at !== -1) deck[at] = 'shop';
+  }
   for (let i = 0; i < flex; i++) deck.push(pickWeighted(FLEX_WEIGHTS, rng));
   const neighbours = (id: string) => edges.flatMap((e) => (e.a === id ? [e.b] : e.b === id ? [e.a] : []));
   const fromGatekeeper = bfs(edges, ['n1']);

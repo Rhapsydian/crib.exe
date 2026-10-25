@@ -164,13 +164,13 @@ function ownedSubroutineIds(playerState: RunPlayerState): string[] {
  * regulars and elites, any tier for gatekeepers, never one the enemy has.
  * Chosen by the enemy's id and the level, so the same fight always draws
  * the same Mods. */
-export function securityMods(enemy: EnemyDefinition, kind: FightKind, layerIndex: number, security: SecurityRules | undefined): GatekeeperModId[] {
-  if (!security) return [];
-  const x = security.extraMods;
-  const count = kind === 'regular' ? x.regular : kind === 'elite' ? x.elite : (layerIndex >= 3 ? x.gatekeeper : 0) + (layerIndex === 4 ? x.finalGatekeeper : 0);
+export function securityMods(enemy: EnemyDefinition, kind: FightKind, layerIndex: number, security: SecurityRules | undefined, dailyEliteMods = 0): GatekeeperModId[] {
+  const x = security?.extraMods ?? { regular: 0, elite: 0, gatekeeper: 0, finalGatekeeper: 0 };
+  // Hardened Elites (a daily Advisory) adds to an elite's.
+  const count = kind === 'regular' ? x.regular : kind === 'elite' ? Math.max(x.elite, dailyEliteMods) : (layerIndex >= 3 ? x.gatekeeper : 0) + (layerIndex === 4 ? x.finalGatekeeper : 0);
   if (!count) return [];
   const pool = (Object.keys(GATEKEEPER_MODS) as GatekeeperModId[]).filter((id) => (kind === 'gatekeeper' || GATEKEEPER_MODS[id].tier === 'elite') && !(enemy.mods ?? []).includes(id));
-  const rng = createRng([...enemy.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) + security.level);
+  const rng = createRng([...enemy.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) + (security?.level ?? 0));
   const picked: GatekeeperModId[] = [];
   while (picked.length < count && picked.length < pool.length) {
     const id = pool[rng.nextInt(pool.length)];
@@ -656,7 +656,7 @@ function* resolveFight(
         seed: fightSeed,
         ...combatThresholdsFor(playerState, enemy, layerIndex, fightNumber),
         classId: playerState.classId,
-        gatekeeperMods: [[], [...(enemy.mods ?? []), ...securityMods(enemy, kind, layerIndex, security)]],
+        gatekeeperMods: [[], [...(enemy.mods ?? []), ...securityMods(enemy, kind, layerIndex, security, playerState.daily?.eliteMods)]],
         ownedModIds: playerState.ownedModIds,
         classModUpgraded: playerState.classModUpgraded,
         strainHeat: eventHeat(SYSTEM_STRAIN_LOSSES, layer0),

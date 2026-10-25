@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { dailyScore, DAILY_BLOCKED_PAIRS, DAILY_MAX_BURNERS, DAILY_MAX_SUBROUTINES, DAILY_MODS, dailyDate, dailyRunStart, dailySeed, rollDaily } from './daily';
+import { applyDailyStart, dailyScore, type DailyMod, type DailyPlan, DAILY_BLOCKED_PAIRS, DAILY_MAX_BURNERS, DAILY_MAX_SUBROUTINES, DAILY_MODS, dailyDate, dailyRunStart, dailySeed, rollDaily } from './daily';
 import { ALL_SUBROUTINES } from './subroutines';
 import { BURNER_DEFINITIONS } from './burners';
-import { playRun, opportunisticTraversal } from './run';
+import { createInitialPlayerState, playRun, opportunisticTraversal } from './run';
+import { burnerCapOf } from './burners';
+import { slotCapOf } from './loadout';
+import { ENEMY_ROSTER } from './enemies';
+import { securityMods } from './encounters';
+import { generateLayer } from './map-gen';
+import { createRng } from './rng';
 import { SYNERGY_AWARE_PROFILE } from './profiles';
 
 // Session 72 (docs/daily-runs-design.md DR4-DR8): the day.
@@ -104,5 +110,49 @@ describe('the daily score (DR2)', () => {
     expect(dailyScore(run, 'flawless-form', 95).lines.at(-1)?.points).toBe(1000);
     expect(dailyScore(run, 'flawless-form', 89).lines.some((l) => l.directive)).toBe(false);
     expect(dailyScore(run, 'shopping-spree', 80).total).toBe(without + run.tally!.dataSpent);
+  });
+});
+
+describe('Advisories and Bulletins (DR3, DR7)', () => {
+  const plan = (...mods: DailyMod[]): DailyPlan => ({ date: 'test', seed: 1, classId: 'exploit-overclock', mods });
+  const fresh = () => createInitialPlayerState('exploit-overclock');
+  /** A real date whose roll includes `id`. */
+  const dateWith = (id: string) => dates.find((d) => rollDaily(d).mods.some((m) => m.id === id))!;
+  const daily = (id: string) => {
+    const date = dateWith(id);
+    const { classId, seed, setup } = dailyRunStart(date);
+    return playRun({ ...SYNERGY_AWARE_PROFILE, seed, classId, traversalStrategy: opportunisticTraversal, playerSkill: 0.85, setup });
+  };
+
+  it('Bulletins set the kit: Burners, a 4th starter, rank II, Data, the class Mod II, the caps', () => {
+    const s = applyDailyStart(fresh(), plan({ id: 'go-bag', burners: ['flash-drive', 'log-wiper'] }, { id: 'field-kit', subroutine: 'thread-pool' }, { id: 'veteran-loadout' }, { id: 'seed-money' }, { id: 'new-hardware' }, { id: 'burner-rig' }));
+    expect(s.carriedBurnerIds).toEqual(['flash-drive', 'log-wiper']);
+    expect(s.installedLoadout.map((p) => p.id)).toContain('thread-pool');
+    expect(s.installedLoadout.slice(0, 3).every((p) => p.rank === 2)).toBe(true);
+    expect(s.data).toBe(150);
+    expect(s.classModUpgraded).toBe(true);
+    expect(burnerCapOf(s)).toBe(4);
+    expect(slotCapOf(applyDailyStart(fresh(), plan({ id: 'expanded-memory' })))).toBe(7);
+    expect(slotCapOf(applyDailyStart(fresh(), plan({ id: 'memory-leak' })))).toBe(5);
+  });
+
+  it('Advisories set the run: move and fight Heat, Heat carry, fight Data, elite Mods, Shop prices', () => {
+    const s = applyDailyStart(fresh(), plan({ id: 'quiet-network' }, { id: 'cold-trail' }, { id: 'lean-times' }, { id: 'hardened-elites' }));
+    expect(s.daily).toEqual({ moveHeat: 0, heatCarry: 0.25, fightData: 0.5, eliteMods: 1 });
+    expect(s.meta).toMatchObject({ fightHeat: 1.5, shopPrice: 0.7 });
+    const elite = ENEMY_ROSTER.find((e) => e.tier === 'elite')!;
+    expect(securityMods(elite, 'elite', 1, undefined, 1)).toHaveLength(1);
+  });
+
+  it('Port Flood deals a second Shop; Cache Bloom always places a Cache when it fits', () => {
+    const shops = (extraShops: number) => generateLayer({ rng: createRng(4), nodeCount: 12, layer: 2, extraShops }).nodes.filter((n) => n.type === 'shop').length;
+    expect(shops(1)).toBe(shops(0) + 1);
+    const caches = Array.from({ length: 30 }, (_, i) => generateLayer({ rng: createRng(i), nodeCount: 12, layer: 2, cacheChance: 1 }).nodes.some((n) => n.type === 'cache')).filter(Boolean).length;
+    expect(caches).toBeGreaterThan(25);
+  });
+
+  it('a Quiet Network day charges no move Heat', () => {
+    const r = daily('quiet-network');
+    expect(r.log.filter((e) => e.type === 'move').every((e) => e.type === 'move' && e.heatCost === 0)).toBe(true);
   });
 });

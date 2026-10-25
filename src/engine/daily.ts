@@ -3,9 +3,11 @@ import type { ClassId } from './classes';
 import type { BurnerId } from './burner-types';
 import type { Archetype } from './subroutine-types';
 import { BURNER_DEFINITIONS } from './burners';
-import { ARCHETYPE_POOLS } from './subroutines';
-import { CLASS_ORDER, STARTING_BURNERS, type RunSetup } from './meta';
-import type { RunEvent, RunResult } from './run';
+import { ALL_SUBROUTINES, ARCHETYPE_POOLS } from './subroutines';
+import { CLASS_ORDER, NO_META_BONUSES, STARTING_BURNERS, type RunSetup } from './meta';
+import { upgradedDefinition } from './merge';
+import type { SubroutineDefinition } from './subroutine-types';
+import type { RunEvent, RunPlayerState, RunResult } from './run';
 import { layerHeatAllowance } from './heat';
 
 /**
@@ -320,4 +322,58 @@ export function dailyScore(result: RunResult, directive: DailyModId, rating: num
   }
   if (directive === 'flawless-form' && rating !== null && rating >= 90) add('Flawless Form: Cribbage 90%+', 1000);
   return { lines, total: lines.reduce((s, l) => s + l.points, 0) };
+}
+
+/** What a day's Advisories change during the run (beyond the caps and
+ * prices, which go through the upgrades' MetaBonuses: a daily has no
+ * upgrades of its own). */
+export interface DailyEffects {
+  /** Multiplies move Heat (Quiet Network: 0). */
+  moveHeat: number;
+  /** The share of Heat kept between layers (Cold Trail). */
+  heatCarry: number;
+  /** Multiplies the Data fights pay (Lean Times). */
+  fightData: number;
+  /** Extra Mods for each elite (Hardened Elites). */
+  eliteMods: number;
+}
+
+/** Port Flood's and Cache Bloom's effect on each layer's map. */
+export function dailyMapOptions(plan: DailyPlan): { extraShops: number; cacheChance?: number } {
+  const has = (id: DailyModId) => plan.mods.some((m) => m.id === id);
+  return { extraShops: has('port-flood') ? 1 : 0, cacheChance: has('cache-bloom') ? 1 : undefined };
+}
+
+/** Rank II for a starting subroutine (Veteran Loadout): Merged twice. */
+function rankTwo(piece: SubroutineDefinition): SubroutineDefinition {
+  return upgradedDefinition(upgradedDefinition(piece));
+}
+
+/** A daily's start: its Bulletins (the kit) and Advisories (the run's
+ * effects) applied to a fresh player (DR3, DR7). */
+export function applyDailyStart(state: RunPlayerState, plan: DailyPlan): RunPlayerState {
+  const has = (id: DailyModId) => plan.mods.some((m) => m.id === id);
+  let s: RunPlayerState = { ...state };
+  const meta = { ...NO_META_BONUSES, process: { ...NO_META_BONUSES.process } };
+  if (has('memory-leak')) meta.subroutineSlots = -1;
+  if (has('expanded-memory')) meta.subroutineSlots = 1;
+  if (has('burner-rig')) meta.burnerSlots = 1;
+  if (has('lean-times')) meta.shopPrice = 0.7;
+  if (has('quiet-network')) meta.fightHeat = 1.5;
+  s.meta = meta;
+  s.daily = { moveHeat: has('quiet-network') ? 0 : 1, heatCarry: has('cold-trail') ? 0.25 : 0, fightData: has('lean-times') ? 0.5 : 1, eliteMods: has('hardened-elites') ? 1 : 0 };
+  if (has('veteran-loadout')) {
+    s.installedLoadout = s.installedLoadout.map(rankTwo);
+    s.rank = { ...s.rank, ...Object.fromEntries(s.installedLoadout.map((p) => [p.id, 2])) };
+  }
+  for (const m of plan.mods) {
+    if (m.burners) s.carriedBurnerIds = [...s.carriedBurnerIds, ...m.burners];
+    if (m.subroutine) {
+      const piece = ALL_SUBROUTINES.find((p) => p.id === m.subroutine);
+      if (piece) s.installedLoadout = [...s.installedLoadout, piece];
+    }
+  }
+  if (has('seed-money')) s.data += 150;
+  if (has('new-hardware')) s.classModUpgraded = true;
+  return s;
 }

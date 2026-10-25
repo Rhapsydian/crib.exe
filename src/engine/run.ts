@@ -11,6 +11,7 @@ import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
 import { ALL_SUBROUTINES } from './subroutines';
 import { applySecurity, applyUpgrades, type MetaBonuses, type RunSetup, type SecurityRules } from './meta';
+import { applyDailyStart, dailyMapOptions, rollDaily, type DailyEffects } from './daily';
 import {
   acquireSubroutine,
   alwaysAcquireFirst,
@@ -165,6 +166,8 @@ export interface RunPlayerState {
   /** The run's Security Level rules (session 71, MP13-MP14). Absent at
    * level 0. */
   security?: SecurityRules;
+  /** A Daily Run's Advisory effects (session 72, DR3). */
+  daily?: DailyEffects;
 }
 
 
@@ -804,6 +807,10 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
   playerState = applyUpgrades(playerState, setup?.upgrades);
   playerState = applySecurity(playerState, setup?.securityLevel);
   const security = playerState.security;
+  // A Daily Run (session 72): the day's Bulletins and Advisories.
+  const dailyPlan = setup?.daily ? rollDaily(setup.daily.date) : undefined;
+  if (dailyPlan) playerState = applyDailyStart(playerState, dailyPlan);
+  const mapOptions = dailyPlan ? dailyMapOptions(dailyPlan) : undefined;
   const starter = setup?.starter ? ALL_SUBROUTINES.find((p) => p.id === setup.starter) : undefined;
   // A starter the class already starts with arrives as a Merge copy.
   if (starter && playerState.installedLoadout.some((p) => p.id === starter.id)) playerState = { ...playerState, material: { ...playerState.material, [starter.id]: (playerState.material[starter.id] ?? 0) + 1 } };
@@ -860,7 +867,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
     const authored = layerGraphs?.[layerIndex];
     let graph = authored
       ? { ...authored, nodes: authored.nodes.map((n) => ({ ...n })), edges: [...authored.edges] }
-      : generateLayer({ rng, nodeCount: layerNodeCounts[layerIndex], layer: (layerIndex + 1) as LayerNumber });
+      : generateLayer({ rng, nodeCount: layerNodeCounts[layerIndex], layer: (layerIndex + 1) as LayerNumber, ...mapOptions });
     // Fixes this layer's gatekeeper identity for the whole run (Phase 5
     // checkpoint C) -- kept as a separate post-processing step rather
     // than a generateLayer option, so map-gen.ts itself stays
@@ -983,7 +990,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       const freeMove = (playerState.mapEffects?.freeMoves ?? 0) > 0;
       if (freeMove) playerState = { ...playerState, mapEffects: { ...playerState.mapEffects!, freeMoves: playerState.mapEffects!.freeMoves - 1 } };
       // A Security Level raises all Heat gained (MP14).
-      const moveHeatCost = (freeMove ? 0 : applyOnMoveMods(playerState.ownedModIds, moveResult.heatCost)) * (security?.heatGain ?? 1);
+      const moveHeatCost = (freeMove ? 0 : applyOnMoveMods(playerState.ownedModIds, moveResult.heatCost)) * (security?.heatGain ?? 1) * (playerState.daily?.moveHeat ?? 1);
       playerState = applyQuietHoursMod(playerState); // session 44: Data trickle every QUIET_HOURS_MOVE_INTERVAL moves
       const afterMove = addHeat(heat, moveHeatCost, ceiling());
       heat = afterMove.heat;
@@ -1125,6 +1132,8 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       // in practice, but an Event's dataDelta (checkpoint H) is a
       // genuine signed delta -- a future negative-cost Event choice
       // should still apply correctly, not get silently dropped.
+      // Lean Times (a daily Advisory): fights pay half the Data.
+      if (isFightNode && outcome.dataAwarded > 0 && playerState.daily && playerState.daily.fightData !== 1) outcome.dataAwarded = Math.round(outcome.dataAwarded * playerState.daily.fightData);
       if (outcome.dataAwarded < 0) spend(-outcome.dataAwarded);
       if (outcome.dataAwarded !== 0) playerState = { ...playerState, data: playerState.data + outcome.dataAwarded };
       // An elite win (session 62): one choice, a subroutine or a Mod. The
@@ -1277,7 +1286,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       if (gatekeeperBeaten) {
         // D4: survive the toll and Heat resets for the next layer -- in
         // part only at Security Level 2+ (D6).
-        heat = heat * (security?.heatCarry ?? 0);
+        heat = heat * (security?.heatCarry ?? playerState.daily?.heatCarry ?? 0);
         layerCleared = true;
       }
     }
