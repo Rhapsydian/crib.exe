@@ -75,7 +75,7 @@
         <g class="icon" transform="translate({-s / 2},{-s / 2}) scale({s / 24})" style="stroke: {k.tone}">
           {#each k.icon as d, i (i)}<path {d} />{/each}
         </g>
-      {:else if k.glyph}<text dominant-baseline="central" style="fill: {k.tone}" font-size={big ? 6 : 4.6}>{k.glyph}</text>{/if}
+      {:else if k.glyph}<text dominant-baseline="central" class:sans={n.type === 'shop'} style="fill: {k.tone}" font-size={big ? 6 : n.type === 'shop' ? 5.4 : 4.6}>{k.glyph}</text>{/if}
       {#if n.state === 'closed'}<path d="M{-r * 0.7},{-r * 0.7} L{r * 0.7},{r * 0.7} M{r * 0.7},{-r * 0.7} L{-r * 0.7},{r * 0.7}" class="strike" />{/if}
       {#if n.id === here}<circle r={r + 1.8} class="here" />{/if}
       {#if selected === n.id}<circle r={r + 2.6} class="pick" />{/if}
@@ -102,6 +102,12 @@
     stroke: var(--line);
     stroke-width: 0.25;
     opacity: 0.55;
+  }
+  /* The Shop's "$" (the user's pick from a mockup): bold sans, like the
+     line icons' weight. */
+  text.sans {
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-weight: 700;
   }
   .icon path {
     fill: none;
