@@ -108,11 +108,13 @@ export const occurrenceCount = (occurrence: ScoringOccurrence): number =>
 export interface ScoringRule {
   fifteen?: number;
   pair?: number;
-  /** Daily Glitches (session 72), for both sides: fifteens and runs
-   * multiplied (Fifteen Flood, Running Wild), His Nobs and His Heels
-   * repriced (Nobs and Heels). */
-  fifteenTimes?: number;
+  /** Daily Glitches (session 72), for both sides, adjusting on top of a
+   * Fold rather than overwriting it (the user): fifteens +1 (Fifteen
+   * Flood), runs doubled and pairs 1 less, never below 1 (Running Wild),
+   * His Nobs and His Heels repriced (Nobs and Heels). */
+  fifteenPlus?: number;
   runTimes?: number;
+  pairMinus?: number;
   hisNobs?: number;
   hisHeels?: number;
 }
@@ -135,8 +137,8 @@ export interface FightGlitches {
  * repriced (a royal under pairs-worth-5 scores 15). */
 export function repriceOccurrence(occurrence: ScoringOccurrence, rule: ScoringRule | undefined): ScoringOccurrence {
   if (!rule) return occurrence;
-  if (occurrence.category === 'fifteen' && (rule.fifteen !== undefined || rule.fifteenTimes !== undefined)) return { ...occurrence, points: (rule.fifteen ?? occurrence.magnitude) * (rule.fifteenTimes ?? 1) };
-  if (occurrence.category === 'pair' && rule.pair !== undefined) return { ...occurrence, points: pairsIn(occurrence) * rule.pair };
+  if (occurrence.category === 'fifteen' && (rule.fifteen !== undefined || rule.fifteenPlus !== undefined)) return { ...occurrence, points: (rule.fifteen ?? occurrence.magnitude) + (rule.fifteenPlus ?? 0) };
+  if (occurrence.category === 'pair' && (rule.pair !== undefined || rule.pairMinus !== undefined)) return { ...occurrence, points: pairsIn(occurrence) * Math.max(1, (rule.pair ?? 2) - (rule.pairMinus ?? 0)) };
   if (occurrence.category === 'run' && rule.runTimes !== undefined) return { ...occurrence, points: occurrence.magnitude * rule.runTimes };
   if (occurrence.category === 'hisNobs' && rule.hisNobs !== undefined) return { ...occurrence, points: rule.hisNobs };
   if (occurrence.category === 'hisHeels' && rule.hisHeels !== undefined) return { ...occurrence, points: rule.hisHeels };

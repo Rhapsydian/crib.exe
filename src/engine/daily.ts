@@ -98,8 +98,8 @@ const def = (id: DailyModId, name: string, category: DailyCategory, text: string
 export const DAILY_MODS: Record<DailyModId, DailyModDefinition> = Object.fromEntries([
   def('lucky-sevens', 'Lucky Sevens', 'glitch', 'Each 7 you play while pegging Credits 3.'),
   def('suit-surge', 'Suit Surge', 'glitch', "Each card of the day's suit you play while pegging adds 1 initiative."),
-  def('fifteen-flood', 'Fifteen Flood', 'glitch', 'Fifteens score 3, for both sides.'),
-  def('running-wild', 'Running Wild', 'glitch', 'Runs score double; pairs score 1.'),
+  def('fifteen-flood', 'Fifteen Flood', 'glitch', 'Fifteens score 1 more, for both sides.'),
+  def('running-wild', 'Running Wild', 'glitch', 'Runs score double; pairs score 1 less (never below 1).'),
   def('nobs-and-heels', 'Nobs and Heels', 'glitch', 'His Nobs and His Heels are worth 4.'),
   def('early-cut', 'Early Cut', 'glitch', 'The cut card is turned before the discard: you choose your discard knowing the starter.'),
   def('short-count', 'Short Count', 'glitch', 'The count stops at 21, not 31. Anything that happens on 31 happens on 21.'),
@@ -346,8 +346,8 @@ export interface DailyEffects {
 export function dailyGlitches(plan: DailyPlan): FightGlitches | undefined {
   const has = (id: DailyModId) => plan.mods.some((m) => m.id === id);
   const rule: ScoringRule = {};
-  if (has('fifteen-flood')) rule.fifteenTimes = 1.5;
-  if (has('running-wild')) (rule.runTimes = 2), (rule.pair = 1);
+  if (has('fifteen-flood')) rule.fifteenPlus = 1;
+  if (has('running-wild')) (rule.runTimes = 2), (rule.pairMinus = 1);
   if (has('nobs-and-heels')) (rule.hisNobs = 4), (rule.hisHeels = 4);
   const g: FightGlitches = {};
   if (Object.keys(rule).length) g.rule = rule;

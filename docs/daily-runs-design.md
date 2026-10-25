@@ -72,8 +72,8 @@ stretch goal.
   |---|---|
   | Lucky Sevens | Each 7 you play while pegging Credits 3. |
   | Suit Surge | The day's suit is drawn; each card of it you peg adds 1 initiative. |
-  | Fifteen Flood | Fifteens score double for both sides. |
-  | Running Wild (the user's name) | Runs score double; pairs score 1. |
+  | Fifteen Flood | Fifteens score 1 more, for both sides. |
+  | Running Wild (the user's name) | Runs score double; pairs score 1 less (never below 1). |
   | Nobs and Heels | His Nobs and His Heels are worth 4. |
   | ● Early Cut | The cut card is turned before the discard: you discard knowing the starter. |
   | ● Short Count | The pegging count resets at 21, not 31. |
@@ -144,8 +144,14 @@ Bulletin alone within about ±15 points of victory (Expanded Memory, rare
 by design, excepted); each Directive adding a few hundred points.
 
 - **Veteran Loadout:** rank I, not rank II (+30 → +10).
-- **Fifteen Flood:** fifteens score 3 for both sides, not double (−17 →
-  −12.5).
+- **Fifteen Flood:** fifteens score 1 more for both sides, not double
+  (−17 → −11).
+- **Scoring Glitches adjust on top of a Fold, never overwrite it (the
+  user):** Fifteen Flood adds 1 (Fifteen Fold's fifteens 3 → 4, Pair
+  Fold's 1 → 2); Running Wild doubles runs and takes 1 from each pair,
+  never below 1 (Pair Fold's pairs 5 → 4). Before this, Running Wild's
+  "pairs score 1" erased Pair Fold's upside, and Fifteen Flood gave
+  fractional points.
 - **Treasure Map:** Caches score 500 each (+93 → +280).
 - **Ghost Run:** under 60% of the allowance, not half (+108 → +338).
 - Left as measured: Memory Leak −16 (one of the hard days), Running Wild

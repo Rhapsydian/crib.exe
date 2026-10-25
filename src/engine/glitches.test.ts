@@ -16,9 +16,14 @@ describe('Glitches', () => {
   it('scoring Glitches reprice for a side, on top of a Fold', () => {
     const rule = dailyGlitches(plan({ id: 'fifteen-flood' }, { id: 'running-wild' }, { id: 'nobs-and-heels' }))!.rule!;
     expect(repriceOccurrence({ category: 'fifteen', player: 0, magnitude: 2 }, rule).points).toBe(3);
-    expect(repriceOccurrence({ category: 'fifteen', player: 0, magnitude: 2 }, { fifteen: 3, ...rule }).points).toBe(4.5);
     expect(repriceOccurrence({ category: 'run', player: 0, magnitude: 3 }, rule).points).toBe(6);
     expect(repriceOccurrence({ category: 'pair', player: 0, magnitude: 6 }, rule).points).toBe(3); // a royal: three pairs at 1
+    // On top of a Fold, never overwriting it: Fifteen Fold's fifteens 3 -> 4
+    // (its pairs stay 1, the floor); Pair Fold's fifteens 1 -> 2, pairs 5 -> 4.
+    expect(repriceOccurrence({ category: 'fifteen', player: 0, magnitude: 2 }, { fifteen: 3, pair: 1, ...rule }).points).toBe(4);
+    expect(repriceOccurrence({ category: 'pair', player: 0, magnitude: 2 }, { fifteen: 3, pair: 1, ...rule }).points).toBe(1);
+    expect(repriceOccurrence({ category: 'fifteen', player: 0, magnitude: 2 }, { fifteen: 1, pair: 5, ...rule }).points).toBe(2);
+    expect(repriceOccurrence({ category: 'pair', player: 0, magnitude: 2 }, { fifteen: 1, pair: 5, ...rule }).points).toBe(4);
     expect(repriceOccurrence({ category: 'hisNobs', player: 0, magnitude: 1 }, rule).points).toBe(4);
     expect(repriceOccurrence({ category: 'hisHeels', player: 1, magnitude: 2 }, rule).points).toBe(4);
   });
