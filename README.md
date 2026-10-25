@@ -69,6 +69,11 @@ README's old session-by-session narrative is archived in
   each fight's result card and the run's end card, with a drawer of the
   fight's costliest mistakes. `content-pass` merged into `playable`;
   patch notes for testers in `docs/patch-notes/`.
+- **Session 71:** meta-progression, on the `meta-progression` branch (not
+  yet merged into `playable`): Rep earned by depth; classes unlocking in a
+  chain (Blackhat first) with a Rep fallback; the Message Board (upgrades,
+  a subroutine library, starting Burners); ten Security Levels for players
+  who've unlocked everything and won (`docs/meta-progression-design.md`).
 
 What exists, all headless and test-covered:
 
@@ -92,7 +97,7 @@ done; milestone 5, polish and playtesting, is under way.
 
 ```bash
 npm install
-npm test        # Vitest suite (891 tests)
+npm test        # Vitest suite (917 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server: the main menu (the roguelite, Cribbage); #test is the single-fight harness
 ```

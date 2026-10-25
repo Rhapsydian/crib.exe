@@ -15,13 +15,13 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 70)
+## Current state (end of session 71)
 
 The game is playable in the browser on desktop and phones
 (<https://rhapsydian.github.io/crib.exe/>, branch `playable`): a full
 four-layer run with six classes, a guided tutorial, first-time tips, plain
 Cribbage with a coach and lessons, and saves. Milestone 5 (polish and
-playtesting) is under way. 891 tests, `npm run check` clean.
+playtesting) is under way. 917 tests, `npm run check` clean.
 
 **The content pass and its tuning pass are done, and live on `playable`**
 (merged in session 70, a fast-forward; save version 2, so old saves don't
@@ -32,6 +32,14 @@ Heat, Mod supply and class tuning (`docs/tuning-design.md`). Run victory
 Session 70 added the playtest fixes, Proof of Concept and Lure Template,
 and the review coach (a Cribbage rating per fight and run, and a drawer of
 mistakes; `src/ui/skill-review.ts`).
+
+**Meta-progression is built, on branch `meta-progression`** (session 71,
+pushed, not merged into `playable`; save version 3;
+`docs/meta-progression-design.md` MP1-MP17): Rep by depth, a class unlock
+chain, the Message Board (11 upgrade tracks, the 52-subroutine library,
+starting Burners), a play-without-upgrades toggle, and ten Security
+Levels. Fresh victory unchanged (~25%); fully upgraded ~90%; Security
+Levels 1 / 5 / 10 at ~84 / ~26 / ~2% fully upgraded.
 
 ---
 
@@ -54,13 +62,9 @@ In this order:
    - Enemy-only effects (Trace, Wipe, Strip) stay off the player pool; a
      player-side Suspend ("your bottom subroutine skips a turn") was
      floated in session 60.
-2. **Meta-progression.** Ideas so far: more Burner slots (session 64).
-   Undesigned: plan it in a `/decision-session`.
-   `DESIGN.md` requires it to credit how deep a run got, including
-   *breached, then caught*, below a full continue. Related, also
-   undesigned: **ascension-style difficulty**, and the session-56
-   observation that **player power plateaus after layer 2** once the six
-   slots fill (slot unlocks, stronger Merge, rares).
+2. **Meta-progression.** **Built in session 71** on branch
+   `meta-progression` (Security Levels are its ascension). Next: the user
+   plays it locally, then it merges into `playable`; patch notes for it.
 3. **Daily Runs** (the user, session 62). The date is hashed into a
    seed: everyone gets the same run that day, with a randomly chosen
    class and one or more **daily-only Mods** that bend the rules in
@@ -79,6 +83,14 @@ most, refine some of the map icons.
 
 ## Open items
 
+- **Meta-progression follow-ups** (session 71): profile export/import
+  waits for a settings menu (an opaque code with a checksum, MP12); a mark
+  for winning a Security Level without upgrades was floated (MP17); track
+  names are placeholders to revisit (Low Profile, Exploit Research, Clean
+  Exits, ...); Burner Rig and Safehouse Upgrades measure ~0 for the
+  simulated player, which uses Burners and rests sparingly, so watch
+  their value in playtesting; Security Level 5 sits at ~26% fully
+  upgraded (target ~20%, left there).
 - **!!! REMOVE BEFORE RELEASE: testing URL switches** (session 71, the
   user: not around forever). `?resetprofile` wipes the meta-progression
   profile; `?unlockall` opens every class and the library. Both live in
