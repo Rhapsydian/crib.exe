@@ -18,7 +18,11 @@
   const replay = new Replay();
   /** Whether a resumed fight has been brought up to the present. */
   let caughtUp = false;
-  $effect(() => {
+  // Before the screen redraws (session 72, the user's report: INIT
+  // re-ran its fill at the end of pegging): a plain effect let the screen
+  // draw the new pause's end state for an instant before the replay
+  // rewound it, and the gauges took that instant as a fill.
+  $effect.pre(() => {
     const { frame, result } = fight;
     const source = result ?? frame?.request.view;
     if (!source) return;

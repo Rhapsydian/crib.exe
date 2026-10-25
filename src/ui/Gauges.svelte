@@ -85,6 +85,12 @@
     untrack(() => {
       latest = target;
       if (fillsSeen === null || f < fillsSeen) {
+        // A rewind (or the first reading) also calls off a wrap under
+        // way, so a fill the readings took back never plays out.
+        if (wrapping) clearTimeout(wrapping);
+        wrapping = null;
+        instant = false;
+        filled = false;
         fillsSeen = f;
         shownInit = target;
         return;
