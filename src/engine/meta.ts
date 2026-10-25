@@ -30,8 +30,8 @@ export const TUTORIAL_REP = 20;
  * about one new idea per class; the fiddliest last. */
 export const CLASS_ORDER: readonly ClassId[] = ['exploit-overclock', 'exploit-honeypot', 'exploit-daemon', 'daemon-honeypot', 'daemon-overclock', 'overclock-honeypot'];
 /** The steep fallback (MP6): the next locked class, bought outright, for
- * about 3-4 first-gatekeeper runs' Rep (first pass; set by pacing). */
-export const CLASS_FALLBACK_REP = 75;
+ * about 3-4 early runs' Rep (checkpoint 5: early runs earn ~45). */
+export const CLASS_FALLBACK_REP = 150;
 
 /** The class a milestone with `classId` opens: the next in the chain. */
 export function nextClass(classId: ClassId): ClassId | null {
@@ -157,20 +157,20 @@ export function repForRun(result: RunResult): { lines: RepLine[]; total: number 
 }
 
 /** The upgrade tracks as the Message Board shows them (MP16): a name, what
- * a level does, and each level's price in Rep (first pass; set by pacing,
- * checkpoint 5). */
+ * a level does, and each level's price in Rep (checkpoint 5's pacing:
+ * an upgrades-first player buys them all in ~30 runs). */
 export const UPGRADE_VIEW: Record<UpgradeId, { name: string; effect: (level: number) => string; prices: readonly number[] }> = {
-  containment: { name: 'Low Profile', effect: (l) => `Enemy Containment +${l * 3}%`, prices: [10, 15, 22, 30, 40] },
-  breach: { name: 'Exploit Research', effect: (l) => `Your Breach −${l * 3}%`, prices: [10, 15, 22, 30, 40] },
-  fightHeat: { name: 'Clean Exits', effect: (l) => `Fight Heat −${l * 4}%`, prices: [10, 15, 22, 30, 40] },
-  restHeat: { name: 'Safehouse Upgrades', effect: (l) => `Rest sheds ${l * 3} more Heat`, prices: [10, 15, 22, 30] },
-  shopPrice: { name: 'Trade Contacts', effect: (l) => `Shop prices −${l * 4}%`, prices: [10, 15, 22, 30, 40] },
-  'power-exploit': { name: 'Exploit Tuning', effect: (l) => `Exploit Processes +${l * 4}%`, prices: [12, 18, 25, 35, 45] },
-  'power-daemon': { name: 'Daemon Tuning', effect: (l) => `Daemon Processes +${l * 4}%`, prices: [12, 18, 25, 35, 45] },
-  'power-overclock': { name: 'Overclock Tuning', effect: (l) => `Overclock Processes +${l * 4}%`, prices: [12, 18, 25, 35, 45] },
-  'power-honeypot': { name: 'Honeypot Tuning', effect: (l) => `Honeypot Processes +${l * 4}%`, prices: [12, 18, 25, 35, 45] },
-  burnerSlots: { name: 'Burner Rig', effect: (l) => `Carry ${3 + l} Burners`, prices: [60, 100] },
-  subroutineSlot: { name: 'Expanded Memory', effect: (l) => `Install ${6 + l} subroutines`, prices: [150] },
+  containment: { name: 'Low Profile', effect: (l) => `Enemy Containment +${l * 3}%`, prices: [12, 18, 26, 36, 48] },
+  breach: { name: 'Exploit Research', effect: (l) => `Your Breach −${l * 3}%`, prices: [12, 18, 26, 36, 48] },
+  fightHeat: { name: 'Clean Exits', effect: (l) => `Fight Heat −${l * 4}%`, prices: [12, 18, 26, 36, 48] },
+  restHeat: { name: 'Safehouse Upgrades', effect: (l) => `Rest sheds ${l * 3} more Heat`, prices: [12, 18, 26, 36] },
+  shopPrice: { name: 'Trade Contacts', effect: (l) => `Shop prices −${l * 4}%`, prices: [12, 18, 26, 36, 48] },
+  'power-exploit': { name: 'Exploit Tuning', effect: (l) => `Exploit Processes +${l * 4}%`, prices: [15, 22, 30, 42, 54] },
+  'power-daemon': { name: 'Daemon Tuning', effect: (l) => `Daemon Processes +${l * 4}%`, prices: [15, 22, 30, 42, 54] },
+  'power-overclock': { name: 'Overclock Tuning', effect: (l) => `Overclock Processes +${l * 4}%`, prices: [15, 22, 30, 42, 54] },
+  'power-honeypot': { name: 'Honeypot Tuning', effect: (l) => `Honeypot Processes +${l * 4}%`, prices: [15, 22, 30, 42, 54] },
+  burnerSlots: { name: 'Burner Rig', effect: (l) => `Carry ${3 + l} Burners`, prices: [75, 120] },
+  subroutineSlot: { name: 'Expanded Memory', effect: (l) => `Install ${6 + l} subroutines`, prices: [180] },
 };
 
 /** The next level's price, or null when the track is bought out. */
@@ -178,8 +178,9 @@ export function upgradePrice(id: UpgradeId, level: number): number | null {
   return UPGRADE_VIEW[id].prices[level] ?? null;
 }
 
-/** The library's prices by rarity (MP8: rares very high; first pass). */
-export const LIBRARY_PRICE: Record<Rarity, number> = { common: 15, uncommon: 35, rare: 80 };
+/** The library's prices by rarity (MP8: rares very high; checkpoint 5's
+ * pacing: commons ~20 runs, uncommons ~50, all ~100). */
+export const LIBRARY_PRICE: Record<Rarity, number> = { common: 25, uncommon: 90, rare: 400 };
 
 /** What the library offers now (MP8): one subroutine per archetype, the
  * next locked in its pool's order; every common in every archetype
@@ -202,4 +203,4 @@ export const STARTING_BURNERS: readonly BurnerId[] = (Object.keys(BURNER_DEFINIT
   const b = BURNER_DEFINITIONS[id];
   return b.rarity === 'common' && b.contexts.length > 0 && !b.contraband;
 });
-export const STARTING_BURNER_PRICE = 20;
+export const STARTING_BURNER_PRICE = 25;

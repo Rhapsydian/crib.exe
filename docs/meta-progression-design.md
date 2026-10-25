@@ -53,7 +53,11 @@ run's depth be credited, *breached, then caught* below a full continue
   | Burner slots (now 3) | 2 | +1 | 5 |
   | Subroutine slot (now 6) | 1 | +1 | 7 |
 
-  Movement Heat gets no track (already small, the user).
+  Movement Heat gets no track (already small, the user). **Sizes kept
+  after measuring (checkpoint 5):** fresh victory 25%, every track bought
+  out plus a 4th starter 90% (subroutine slot +18, Breach +14, fight Heat
+  +11, Containment +9 on their own). The user: a maxed player may stomp
+  Security Level 0, having earned it; the Security Levels claw it back.
 - **MP8. The library (the user's design):** unlocked subroutines can
   start a run as a **4th starter** (added, not swapped: six slots fill
   fast). The store shows **one subroutine per archetype**, its next in a
@@ -73,7 +77,15 @@ run's depth be credited, *breached, then caught* below a full continue
   runs** (the big slots mid-arc); all commons ~20 runs, uncommons ~50,
   **the whole library ~100 runs**; prices rise level by level. Set by
   measurement (a progression script), tuned for a player a little below
-  the simulated one.
+  the simulated one. **Set in checkpoint 5** (`scripts/meta-pacing.ts
+  --part=career`, skill 0.75, 6 careers): track levels 12-48 Rep
+  (archetype tracks 15-54), Burner Rig 75 / 120, Expanded Memory 180;
+  library commons 25, uncommons 90, rares 400; starting Burners 25; the
+  class fallback 150 (early runs earn ~45 Rep, later ~90). Reached by
+  run, upgrades-first / cheapest-first: all tracks 25 / 57, commons 30 /
+  17, uncommons 51 / 53, the library 102 / 108. Victory climbs from ~40%
+  over the first 20 runs to ~85-90% after, which the Security Levels
+  answer.
 - **MP12. No refunds.** A **testing-only `?resetprofile`** flag wipes the
   profile (**REMOVE BEFORE RELEASE**, as MP5). No settings menu yet;
   **profile export/import** waits for one (BACKLOG; an opaque code with a
@@ -102,7 +114,12 @@ run's depth be credited, *breached, then caught* below a full continue
   | 9 | Safehouse rest sheds half the Heat | allowance −20% |
   | 10 | The final gatekeeper takes three Mods | elites a third Mod |
 
-  Targets (a fully upgraded simulated player): victory ~40-50% at 0,
+  Two more pressures (the user): **every level adds +5% to all Heat
+  gained** (fights, moves, alarms, tolls; +50% at 10), and **at levels 2,
+  5 and 8 enemy Containment −5% and your Breach +5%**, so by level 8 the
+  gauge upgrades are fully offset.
+
+  Targets (a fully upgraded simulated player): victory ~90% at 0 (measured),
   ~20% at 5, **~3-5% at 10** (the user: very hard, bragging rights).
   Tuned by measurement.
 - **MP15. Bragging rights:** a Security Level badge ("SEC 10 · Victory") on the end-of-run card,
