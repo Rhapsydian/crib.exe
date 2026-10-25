@@ -180,15 +180,27 @@ function dayNumber(date: string): number {
  * day, so none repeats within its cycle (the user deepened the pool so a
  * repeat takes ~2 weeks). */
 function directiveFor(date: string): DailyModDefinition {
-  const deck = Object.values(DAILY_MODS).filter((m) => m.category === 'directive');
   const day = dayNumber(date);
-  const cycle = Math.floor(day / deck.length);
+  const size = Object.values(DAILY_MODS).filter((m) => m.category === 'directive').length;
+  const cycle = Math.floor(day / size);
+  const deck = directiveDeck(cycle);
+  // A cycle never opens on the card the last one closed on (only the
+  // first two cards can move, so the previous cycle's last card is its
+  // shuffle's own).
+  if (deck[0] === directiveDeck(cycle - 1)[size - 1]) [deck[0], deck[1]] = [deck[1], deck[0]];
+  return deck[day % size];
+}
+
+/** A cycle's shuffled deck of Directives (Fisher-Yates, seeded by the
+ * cycle). */
+function directiveDeck(cycle: number): DailyModDefinition[] {
+  const deck = Object.values(DAILY_MODS).filter((m) => m.category === 'directive');
   const rng = createRng(dailySeed(`directives-${cycle}`));
   for (let i = deck.length - 1; i > 0; i--) {
     const j = rng.nextInt(i + 1);
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
-  return deck[day % deck.length];
+  return deck;
 }
 
 /** The day's class and Mods (DR4-DR8): one Directive, then two or three

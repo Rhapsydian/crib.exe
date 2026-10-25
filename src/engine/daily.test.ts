@@ -42,6 +42,11 @@ describe('the daily', () => {
     expect(new Set(cycle.map((d) => rollDaily(d).mods[0].id)).size).toBe(directives);
   });
 
+  it('never repeats a Directive on consecutive days, cycle boundaries included', () => {
+    const run = Array.from({ length: 1300 }, (_, i) => rollDaily(dailyDate(new Date(2026, 0, 1 + i))).mods[0].id);
+    for (let i = 1; i < run.length; i++) expect(run[i]).not.toBe(run[i - 1]);
+  });
+
   it("rolls each Bulletin's items: common or contraband Burners, an uncommon subroutine, a suit", () => {
     const rolled = dates.flatMap((d) => rollDaily(d).mods);
     const goBag = rolled.find((m) => m.id === 'go-bag')!;
