@@ -75,11 +75,14 @@ README's old session-by-session narrative is archived in
   a subroutine library, starting Burners); ten Security Levels for players
   who've unlocked everything and won (`docs/meta-progression-design.md`).
 - **Session 72:** Daily Runs, on the `daily-runs` branch (built on
-  `meta-progression`, neither merged into `playable`): a run of the day
+  `meta-progression`): a run of the day
   from the date's salted hash, a random class, and daily Mods in four
   kinds (Glitches, Advisories, Bulletins, Directives); one scored attempt a
   day with an itemized score and a share line, practice runs after, a
-  streak and history (`docs/daily-runs-design.md`).
+  streak and history (`docs/daily-runs-design.md`). Then the user's
+  playtest notes: new map icons, Safehouse renamed Quiet Host and Merge
+  renamed Refactor, fight-gauge fixes, a menu button in runs. Merged into
+  `playable` with meta-progression; patch notes in `docs/patch-notes/`.
 
 What exists, all headless and test-covered:
 
@@ -103,7 +106,7 @@ done; milestone 5, polish and playtesting, is under way.
 
 ```bash
 npm install
-npm test        # Vitest suite (938 tests)
+npm test        # Vitest suite (946 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server: the main menu (the roguelite, Cribbage); #test is the single-fight harness
 ```

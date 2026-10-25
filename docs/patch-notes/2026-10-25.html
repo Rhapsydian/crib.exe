@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>crib.exe Patch Notes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: the game's own terminal look (one dark theme, on purpose, as the game has): a mono masthead, a sticky section rail, a readable sans body. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0f14; --raised: #121a23; --line: #22303d;
+  --text: #d6e2ee; --strong: #eef5fb; --dim: #7d8fa1; --accent: #39ff9c; --warn: #ffb347;
+  --exploit: #ff3d8b; --daemon: #3ddc84; --overclock: #29d3ff; --honeypot: #ffc23d; --mod: #c49bff; --heat: #ff8a3d;
+  --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; }
+.prompt { font-family: var(--mono); font-size: 13px; color: var(--dim); letter-spacing: .04em; }
+.prompt b { color: var(--accent); font-weight: 400; }
+h1 { font-family: var(--mono); font-weight: 800; font-size: clamp(28px, 6vw, 44px); line-height: 1.1; margin: 0; text-wrap: balance; color: var(--strong); }
+h1 .cursor { color: var(--accent); }
+.suits { display: flex; gap: 6px; }
+.suits span { width: 28px; height: 4px; border-radius: 2px; }
+.lede { color: var(--dim); max-width: 62ch; margin: 0; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; gap: 4px 16px; flex-wrap: wrap; padding-block: 12px; border-block: 1px solid var(--line); font-family: var(--mono); font-size: 12px; }
+nav a { color: var(--dim); text-decoration: none; }
+nav a:hover, nav a:focus-visible { color: var(--accent); outline: none; text-decoration: underline; }
+section { padding-top: 32px; scroll-margin-top: 72px; }
+h2 { font-family: var(--mono); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; text-wrap: balance; }
+h2::before { content: "// "; color: var(--dim); }
+h3 { font-family: var(--mono); font-size: 14px; font-weight: 700; margin: 22px 0 6px; color: var(--strong); }
+.h3-note { font-weight: 400; color: var(--dim); font-size: 12px; }
+p { margin: 0 0 12px; max-width: 68ch; }
+ul { margin: 0 0 12px; padding-left: 20px; max-width: 68ch; }
+li { margin: 4px 0; }
+li::marker { color: var(--dim); }
+ul ul { margin: 4px 0 6px; }
+b { font-weight: 600; color: var(--strong); }
+i { color: var(--dim); }
+code { font-family: var(--mono); font-size: .9em; }
+.notice { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--warn); border-radius: 6px; background: var(--raised); font-size: 15px; }
+.notice b { color: var(--warn); }
+li.suit { list-style: none; margin-left: -20px; padding-left: 12px; border-left: 3px solid var(--c); }
+li.suit b { color: var(--c); font-family: var(--mono); font-size: 14px; }
+.suit-exploit { --c: var(--exploit); } .suit-daemon { --c: var(--daemon); } .suit-overclock { --c: var(--overclock); } .suit-honeypot { --c: var(--honeypot); }
+#new-mods h3 { color: var(--mod); }
+#new-burners h3 { color: var(--heat); }
+#what-we-d-like-you-to-watch-for { margin-top: 32px; padding: 20px 18px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--raised); }
+.table-wrap { overflow-x: auto; margin: 0 0 12px; }
+table { border-collapse: collapse; font-size: 15px; min-width: 100%; }
+th, td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 12px; color: var(--dim); font-weight: 400; }
+footer { margin-top: 40px; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="prompt"><b>&gt;</b> ./crib.exe --changelog</div>
+  <h1>Patch notes<span class="cursor">_</span></h1>
+  <div class="suits" aria-hidden="true"><span style="background:var(--exploit)"></span><span style="background:var(--daemon)"></span><span style="background:var(--overclock)"></span><span style="background:var(--honeypot)"></span></div>
+  <p class="lede">Progression and Daily Runs: what's new for testers since the content update.</p>
+</header>
+<nav aria-label="Sections"><a href="#highlights">Highlights</a><a href="#rep">Rep</a><a href="#classes">Classes</a><a href="#the-message-board">The Message Board</a><a href="#security-levels">Security Levels</a><a href="#daily-runs">Daily Runs</a><a href="#map-and-names">Map and names</a><a href="#screen-and-quality-of-life-changes">Screen and quality-of-life changes</a><a href="#what-we-d-like-you-to-watch-for">What we&#x27;d like you to watch for</a></nav>
+<section><p>What's new for testers since the content update. This update adds progress that carries between runs, a run of the day, and a round of polish from playtest notes. (The previous notes are in <code>docs/patch-notes/2026-10-24.html</code>.)</p>
+<aside class="notice"><b>Heads up:</b> a run saved on the old build won't continue, and progress starts fresh: Blackhat is the only class unlocked at first.</aside>
+<section id="highlights"><h2>Highlights</h2>
+<ul>
+<li><b>Rep and the Message Board.</b> Every run earns Rep. Spend it on the Message Board (in the main menu after your first run) on upgrades that make every run a little stronger, on subroutines to start a run with, and on Burners to carry in.
+</li>
+<li><b>Classes unlock one at a time.</b> Beat the first gatekeeper with a class to unlock the next.
+</li>
+<li><b>Security Levels.</b> Once every class is unlocked and you've won a run, ten harder networks open up, each paying more Rep. Level 10 is for bragging rights.
+</li>
+<li><b>Daily Runs.</b> The same run for everyone each day, with a random class and a handful of twists. Your first attempt counts; share your score.
+</li>
+<li><b>Map icons, and two renames:</b> Safehouses are now <b>Quiet Hosts</b>, and Merging is now <b>Refactoring</b>.
+</li></ul>
+</section><section id="rep"><h2>Rep</h2>
+<p>A run earns Rep by how deep it gets, shown on the end-of-run card:</p>
+<ul>
+<li>Each layer breached: 10 / 15 / 20 / 25 (a layer breached, then caught, earns 75% of that).
+</li>
+<li>Each elite beaten: +2. A victory: +20.
+</li>
+<li>Finishing the tutorial: a one-time 20.
+</li></ul>
+</section><section id="classes"><h2>Classes</h2>
+<p>The chain: <b>Blackhat → Breacher → Operator → Warden → Eidolon → Wraith.</b> Beat the first gatekeeper with a class to unlock the next. Stuck? The next locked class can also be bought outright for 150 Rep on the class screen.</p>
+</section><section id="the-message-board"><h2>The Message Board</h2>
+<p>Appears in the main menu after your first finished run. Purchases are permanent.</p>
+<p><b>Upgrades</b> (each has levels):</p>
+<div class="table-wrap"><table><thead><tr><th>Upgrade</th><th>Per level</th></tr></thead><tbody><tr><td>Low Profile</td><td>Enemy Containment +3%</td></tr><tr><td>Exploit Research</td><td>Your Breach −3%</td></tr><tr><td>Clean Exits</td><td>Fight Heat −4%</td></tr><tr><td>Quiet Host Upgrades</td><td>Rest sheds 3 more Heat</td></tr><tr><td>Trade Contacts</td><td>Shop prices −4%</td></tr><tr><td>Exploit / Daemon / Overclock / Honeypot Tuning</td><td>That archetype's Process +4%</td></tr><tr><td>Burner Rig</td><td>Carry one more Burner (two levels)</td></tr><tr><td>Expanded Memory</td><td>Install a 7th subroutine</td></tr></tbody></table></div>
+<p><b>Library:</b> subroutines you can add as a <b>4th starter</b> when you start a run, from any archetype. One per archetype is on offer at a time; every common comes before any uncommon, and every uncommon before the rares.</p>
+<p><b>Burners:</b> unlock common Burners to carry one into a run.</p>
+<p><b>On the class screen:</b> choose your 4th starter and starting Burner (both remembered), or tick <b>Play without Message Board upgrades</b> for a base-game run.</p>
+</section><section id="security-levels"><h2>Security Levels</h2>
+<p>Unlocked once every class is open and you've won a run. Win at your highest level to open the next. Each level makes enemies a little stronger and Heat build a little faster, adds a new rule, and pays <b>+15% Rep</b>. Your best level with each class shows on the class screen, and your end-of-run card wears a <b>SEC</b> badge.</p>
+<p>The new rules, level by level: elites take a second Mod · some Heat carries over between layers, and enemy Containment −5% / your Breach +5% · Shop prices up · enemies play better Cribbage · rewards offer 2 choices, and more Heat carries over, and the gauges shift again · a smaller Heat allowance · layer 3 and 4 gatekeepers take a second Mod, and Shop prices up again · regular enemies take a Mod, and the gauges shift a third time · Quiet Host rest sheds less Heat · the final gatekeeper takes three Mods, and elites a third.</p>
+</section><section id="daily-runs"><h2>Daily Runs</h2>
+<p>In the main menu: <b>Daily Run</b> and today's date.</p>
+<ul>
+<li>Everyone gets the same run each day: the same class (any class, even one you haven't unlocked), the same map and the same twists. No Message Board upgrades.
+</li>
+<li><b>Your first attempt each day is the one that counts</b> and earns Rep. Later attempts are practice, with your best kept.
+</li>
+<li>The end card scores your run, item by item, with a <b>share line</b> you can copy. The briefing shows your <b>streak</b> and your last 14 days.
+</li>
+<li>A daily keeps its own save, separate from a normal run.
+</li></ul>
+<p><b>The score:</b> each layer breached 1,000 (750 if caught after), a victory 1,000, each elite 150, each Cache 100, each Data earned 1, and each point of your Cribbage rating 5.</p>
+<p><b>Each day's twists:</b> one <b>Directive</b> (a scoring twist), plus two or three <b>Glitches</b> (Cribbage rules), <b>Advisories</b> (the network) or <b>Bulletins</b> (your starting kit). They show in the briefing, beside your loadout on the map and in fights, and flash when they act.</p>
+<ul>
+<li><b>Directives:</b> Bounty Hunt, Treasure Map, Payday, Card Sharp, Deep Dive, Clean Sweep, Ghost Run, Shopping Spree, Full Arsenal, Refactor Master, Burn Rate, Clean Breach, Flawless Form.
+</li>
+<li><b>Glitches:</b> Lucky Sevens, Suit Surge, Fifteen Flood, Running Wild, Nobs and Heels, Early Cut (the cut is turned before you discard), Short Count (the count stops at 21, and anything that happens on 31 happens on 21).
+</li>
+<li><b>Advisories:</b> Port Flood, Quiet Network, Hardened Elites, Cold Trail, Memory Leak, Lean Times, Cache Bloom.
+</li>
+<li><b>Bulletins:</b> Go Bag, Contraband Drop, Field Kit, Veteran Loadout, Seed Money, New Hardware, Burner Rig, Expanded Memory (rare).
+</li></ul>
+</section><section id="map-and-names"><h2>Map and names</h2>
+<ul>
+<li><b>New map icons:</b> a bot for fights, a skull for elites, a firewall for the gatekeeper, an eye-off for Quiet Hosts, a floppy disk for Caches, a message for Events. The Cache is now teal, apart from the elite's amber.
+</li>
+<li>The gatekeeper's name always sits above its node.
+</li>
+<li><b>Safehouse → Quiet Host:</b> a node with little going on and little monitoring, where you can lie low (Rest) or work on your loadout.
+</li>
+<li><b>Merge → Refactor:</b> spare copies bank for a Refactor at a Quiet Host; ranks read "Refactored once / twice".
+</li></ul>
+</section><section id="screen-and-quality-of-life-changes"><h2>Screen and quality-of-life changes</h2>
+<ul>
+<li><b>Initiative fills forward only:</b> when it fills, the bar fills to the end, flashes once, and starts again from the left (no more sliding backwards).
+</li>
+<li><b>Gauges move step by step</b> instead of leaping, and the winner's bar is full when the fight ends.
+</li>
+<li><b>Owned subroutines</b> in rewards and Shops say where they are (loadout or bench), their rank and your banked copies, updating as you buy and sell.
+</li>
+<li><b>A menu button</b> on the run map takes you back to the main menu; the run is saved and resumes where you left it.
+</li>
+<li><b>Resuming mid-fight</b> opens right where you were, without replaying the earlier hands.
+</li>
+<li>The main menu's flying cards are brighter, each with a trail in its own suit colour.
+</li></ul>
+</section><section id="what-we-d-like-you-to-watch-for"><h2>What we'd like you to watch for</h2>
+<ul>
+<li><b>Pacing:</b> does Rep come in at a good rate, and do the upgrades feel worth buying? Prices are a first pass.
+</li>
+<li><b>Daily Runs:</b> do the twists feel fun, and do any feel unfair? Does the score reward the runs you'd expect?
+</li>
+<li><b>Security Levels:</b> how far can you climb?
+</li>
+<li><b>The new names and icons:</b> do Quiet Host, Refactor and the map icons read clearly?
+</li></ul></section>
+<footer>crib.exe · progression and Daily Runs (sessions 71 and 72)</footer>
+</div>
+</body>
+</html>

@@ -21,7 +21,7 @@ The game is playable in the browser on desktop and phones
 (<https://rhapsydian.github.io/crib.exe/>, branch `playable`): a full
 four-layer run with six classes, a guided tutorial, first-time tips, plain
 Cribbage with a coach and lessons, and saves. Milestone 5 (polish and
-playtesting) is under way. 938 tests, `npm run check` clean.
+playtesting) is under way. 946 tests, `npm run check` clean.
 
 **The content pass and its tuning pass are done, and live on `playable`**
 (merged in session 70, a fast-forward; save version 2, so old saves don't
@@ -33,16 +33,18 @@ Session 70 added the playtest fixes, Proof of Concept and Lure Template,
 and the review coach (a Cribbage rating per fight and run, and a drawer of
 mistakes; `src/ui/skill-review.ts`).
 
-**Meta-progression is built, on branch `meta-progression`** (session 71,
-pushed, not merged into `playable`; save version 3;
+**Meta-progression is built** (session 71, live on `playable` since
+session 72's close-out; save version 3;
 `docs/meta-progression-design.md` MP1-MP17): Rep by depth, a class unlock
 chain, the Message Board (11 upgrade tracks, the 52-subroutine library,
 starting Burners), a play-without-upgrades toggle, and ten Security
 Levels. Fresh victory unchanged (~25%); fully upgraded ~90%; Security
 Levels 1 / 5 / 10 at ~84 / ~26 / ~2% fully upgraded.
 
-**Daily Runs are built, on branch `daily-runs`** (session 72, pushed; from
-`meta-progression`, so it merges after it; `docs/daily-runs-design.md`
+**Meta-progression and Daily Runs are live on `playable`** (merged at
+session 72's close-out, a fast-forward from `daily-runs`; save version 3,
+so older saves don't resume; patch notes `docs/patch-notes/2026-10-25.html`;
+`docs/daily-runs-design.md`
 DR1-DR10): the date's salted seed, a random class, a Directive dealt from
 a 13-day deck plus two or three Glitches, Advisories or Bulletins (34
 Mods); one scored attempt a day, practice after, an itemized score, a
@@ -71,12 +73,10 @@ In this order:
    - Enemy-only effects (Trace, Wipe, Strip) stay off the player pool; a
      player-side Suspend ("your bottom subroutine skips a turn") was
      floated in session 60.
-2. **Meta-progression.** **Built in session 71** on branch
-   `meta-progression` (Security Levels are its ascension). Next: the user
-   plays it locally, then it merges into `playable`; patch notes for it.
+2. **Meta-progression.** **Built in session 71** (Security Levels are its
+   ascension); live on `playable` since session 72's close-out.
 3. **Daily Runs.** **Built in session 72** on branch `daily-runs` (Phase 1:
-   no server). Next: the user plays meta-progression and Daily Runs
-   locally, then both merge into `playable`, with patch notes. Deferred:
+   no server); live on `playable` with meta-progression. Deferred:
    a server leaderboard (unless the game gets popular, the user), and
    playing a chosen seed.
 
