@@ -74,6 +74,7 @@ import {
   occurrencePoints,
   type FiredThisTurn,
   type ScoringOccurrence,
+  type FightGlitches,
   type ScoringRule,
   type SubroutineRuntimeState,
   type SuitPlayed,
@@ -953,6 +954,15 @@ export function applyShowMods(combatState: CombatState, player: PlayerIndex, car
   if (jacks === 0) return combatState;
   noteMod(combatState, 0, ownMod('nobs-exploit'));
   return creditWinGauge(combatState, 0, jacks * NOBS_EXPLOIT_CREDIT);
+}
+
+/** Lucky Sevens and Suit Surge (daily Glitches, session 72): a card the
+ * player pegs. */
+export function applyGlitchPlay(combatState: CombatState, card: Card, glitches: FightGlitches): CombatState {
+  let state = combatState;
+  if (glitches.luckySevens && card.rank === 7) state = creditWinGauge(state, 0, glitches.luckySevens);
+  if (glitches.suitSurge && card.suit === ARCHETYPE_SUITS[glitches.suitSurge]) state = haste(state, 0, 1 / state.sides[0].startingThreshold);
+  return state;
 }
 
 /** Thirty-One (session 65): the next player turn sets off every Hook. */

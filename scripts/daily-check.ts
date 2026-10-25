@@ -12,18 +12,52 @@
  * PROVENANCE: synergy acquisition, opportunistic traversal and Safehouse,
  * skill 0.85, current content.
  *
+ * --part=mods: each Glitch, Advisory and Bulletin forced alone on the same
+ * seeds, against none: victory, layers and base score.
+ *
  * Usage:
  *   npx tsx scripts/daily-check.ts [--days=120]
+ *   npx tsx scripts/daily-check.ts --part=mods [--days=60]
  */
 import { playRun, opportunisticTraversal } from '../src/engine/run';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
 import { SYNERGY_AWARE_PROFILE } from '../src/engine/profiles';
-import { DAILY_MODS, dailyDate, dailyRunStart, dailyScore, type DailyModId } from '../src/engine/daily';
+import { DAILY_MODS, dailyDate, dailyRunStart, dailyScore, rollDaily, type DailyMod, type DailyModId } from '../src/engine/daily';
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')));
 const days = Number(args.days ?? 120);
 const RATING = 87;
 const directives = (Object.keys(DAILY_MODS) as DailyModId[]).filter((id) => DAILY_MODS[id].category === 'directive');
+
+if (args.part === 'mods') {
+  const play = (i: number, mods: DailyMod[]) => {
+    const date = dailyDate(new Date(2026, 0, 1 + i));
+    const { classId, seed, setup } = dailyRunStart(date);
+    return playRun({ ...SYNERGY_AWARE_PROFILE, seed, classId, traversalStrategy: opportunisticTraversal, safehouseStrategy: opportunisticSafehouseStrategy, playerSkill: 0.85, setup: { ...setup, daily: { date, mods } } });
+  };
+  const measure = (mods: (i: number) => DailyMod[]) => {
+    let v = 0, layers = 0, score = 0;
+    for (let i = 0; i < days; i++) {
+      const r = play(i, mods(i));
+      v += Number(r.outcome === 'victory');
+      layers += r.layersCompleted;
+      score += dailyScore(r, 'clean-breach', RATING).lines.filter((l) => !l.directive).reduce((s, l) => s + l.points, 0);
+    }
+    return { v: (100 * v) / days, layers: layers / days, score: score / days };
+  };
+  const none = measure(() => []);
+  console.log(`
+DAILY MODS ALONE -- ${days} days, skill 0.85. None: victory ${none.v.toFixed(1)}%, layers ${none.layers.toFixed(2)}, score ${none.score.toFixed(0)}.
+`);
+  for (const id of (Object.keys(DAILY_MODS) as DailyModId[]).filter((m) => DAILY_MODS[m].category !== 'directive')) {
+    // A Bulletin's rolled items: borrow them from the first day that rolls it.
+    const rolled = Array.from({ length: 400 }, (_, i) => rollDaily(dailyDate(new Date(2026, 0, 1 + i))).mods.find((m) => m.id === id)).find(Boolean) ?? { id };
+    const m = measure(() => [rolled]);
+    const d = (x: number, y: number, f = 1) => `${x - y >= 0 ? '+' : ''}${(x - y).toFixed(f)}`;
+    console.log(`  ${DAILY_MODS[id].category.padEnd(9)} ${DAILY_MODS[id].name.padEnd(17)} victory ${m.v.toFixed(1).padStart(5)}% (${d(m.v, none.v)})  layers ${d(m.layers, none.layers, 2)}  score ${d(m.score, none.score, 0)}`);
+  }
+  process.exit(0);
+}
 
 const parts: Record<string, number> = { layers: 0, victory: 0, elites: 0, caches: 0, data: 0, cribbage: 0 };
 const bonus: Record<string, number> = Object.fromEntries(directives.map((d) => [d, 0]));

@@ -2,7 +2,7 @@ import { createRng, deriveAiNoiseSeed } from './rng';
 import type { Card } from './cards';
 import { createDeck, shuffle } from './deck';
 import { deal, discardToCrib, discardLowestTwo, cut, hisHeels, type DiscardContext, type DiscardStrategy } from './deal';
-import { advancePegging, playLowestLegal, playPeggingCard, startPegging, type PeggingEvent, type PlayContext, type PlayStrategy } from './pegging';
+import { advancePegging, COUNT_LIMIT, playLowestLegal, playPeggingCard, startPegging, type PeggingEvent, type PlayContext, type PlayStrategy } from './pegging';
 import { countHandEvents, countCribEvents, type ShowScoreEvent } from './scoring';
 import type { HandResult, PlayerIndex } from './game';
 import type { SubroutineDefinition } from './subroutine-types';
@@ -22,6 +22,7 @@ import {
   pairsIn,
   repriceOccurrence,
   suitPlayedFromPeggingEvent,
+  type FightGlitches,
   type ScoringOccurrence,
 } from './triggers';
 import { addPoints, shrinkDuelThreshold, type InitiativeGauge } from './gauges';
@@ -30,6 +31,7 @@ import {
   applyModOnCombatStartPassives,
   applyOccurrence,
   applySuitPlayed,
+  applyGlitchPlay,
   clearHandKnowledge,
   applyCutMods,
   applyHandEndMods,
@@ -119,6 +121,9 @@ export interface CombatOptions {
   /** Each side's gatekeeper Mods (step 3, E4). Side 1's are a
    * gatekeeper's; side 0's only for pricing duels. */
   gatekeeperMods?: [GatekeeperModId[], GatekeeperModId[]];
+  /** A daily's Glitches (session 72): scoring for both sides, the
+   * player's pegging bonuses, the crib's owner, the count's limit. */
+  glitches?: FightGlitches;
   /** Which passive(s) side 1 (the enemy) carries this combat -- Phase 5
    * checkpoint B. Defaults to none, same "absent = no passives active"
    * treatment classId already gets. */
@@ -446,6 +451,10 @@ export interface CombatView {
   /** The hand being played (0-based), and its dealer. */
   handIndex: number;
   dealer: PlayerIndex;
+  /** Whose crib it is (the dealer's, or the non-dealer's under Turncoat
+   * Crib, session 72), and the pegging count's limit (31, or 21). */
+  cribOwner: PlayerIndex;
+  countLimit: number;
 }
 
 export type CombatAnswer = [Card, Card] | Card | BurnerId | null;
@@ -570,7 +579,9 @@ export function* combatGenerator(
     benched = [],
     classModUpgraded = false,
     strainHeat = 0,
+    glitches,
   } = options;
+  const countLimit = glitches?.countLimit ?? COUNT_LIMIT;
 
   const rng = createRng(seed);
   // Session 26: a separate, decorrelated stream for AI-decision noise
@@ -595,6 +606,11 @@ export function* combatGenerator(
   ];
   const created = createCombatState(loadouts[0], loadouts[1], thresholds, classId, winThreshold, enemyPassiveIds, ownedModIds, carriedBurnerIds, opponentBridge, gatekeeperMods);
   let combatState = applyModOnCombatStartPassives({ ...created, modTriggers: [], standby: benched, bridgeUpgraded: [classModUpgraded, false] });
+  // A daily's scoring Glitches apply to both sides, on top of a Fold.
+  if (glitches?.rule) {
+    const sides = combatState.sides.map((side) => ({ ...side, scoringRule: { ...side.scoringRule, ...glitches.rule } })) as typeof combatState.sides;
+    combatState = { ...combatState, sides };
+  }
   const hands: HandResult[] = [];
   const log: FireEvent[] = [];
   const timeline: CombatBeat[] = [];
@@ -641,7 +657,7 @@ export function* combatGenerator(
   // Built as the engine pauses, so any Mod triggers still pending go out first.
   const view = (handIndex: number, handDealer: PlayerIndex): CombatView => {
     flushMods();
-    return { combatState, log, timeline, hands, handIndex, dealer: handDealer };
+    return { combatState, log, timeline, hands, handIndex, dealer: handDealer, cribOwner: glitches?.turncoatCrib ? ((1 - handDealer) as PlayerIndex) : handDealer, countLimit };
   };
   const beat = (b: DistributiveOmit<CombatBeat, 'firesBefore'>): void => {
     timeline.push({ ...b, firesBefore: log.length } as CombatBeat);
@@ -804,6 +820,11 @@ export function* combatGenerator(
    * scoring occurrences; a go point's occurrence. */
   function* resolvePeggingEvent(event: PeggingEvent, handDealer: PlayerIndex, handIndex: number): Generator<CombatRequest, PlayerIndex | null, CombatAnswer> {
     beat({ kind: 'peg', event });
+    // Lucky Sevens and Suit Surge (daily Glitches): the player's card.
+    if (glitches && event.type === 'play' && event.player === 0) {
+      const winner = step(immediates(applyGlitchPlay(combatState, event.card, glitches), handDealer, log));
+      if (winner !== null) return winner;
+    }
     const suitPlayed = suitPlayedFromPeggingEvent(event);
     if (suitPlayed) {
       const winner = step(immediates(applySuitPlayed(combatState, suitPlayed), handDealer, log));
@@ -866,7 +887,9 @@ export function* combatGenerator(
     // A forced discard (Disrupt) is decided by the engine, so no request
     // is yielded for that side.
     function* discardFor(side: PlayerIndex, knownCribCards?: [Card, Card]): Generator<CombatRequest, ReturnType<typeof discardToCrib>, CombatAnswer> {
-      const context: DiscardContext = { hand: dealtHands[side], isOwnCrib: dealer === side, knownOpponentHand: combatState.sides[side].knownOpponentHand, knownCribCards, rng: aiRng };
+      // Turncoat Crib (a daily Glitch): the crib is the non-dealer's.
+      const cribOwner = glitches?.turncoatCrib ? 1 - dealer : dealer;
+      const context: DiscardContext = { hand: dealtHands[side], isOwnCrib: cribOwner === side, knownOpponentHand: combatState.sides[side].knownOpponentHand, knownCribCards, rng: aiRng };
       const forced = combatState.sides[side].forcedDiscardPair;
       const chosen = forced ?? ((yield { kind: 'discard', side, context, view: view(i, dealer) }) as [Card, Card]);
       // "Now" Burners commit with your decision (BE2): offered right after
@@ -943,7 +966,7 @@ export function* combatGenerator(
     // Pegging, live (P8). Each side's own recon (knownCrib/knownOpponentHand)
     // is static once pegging starts, as before.
     phase = 'peg';
-    const pegging = startPegging(kept[0], kept[1], nonDealer);
+    const pegging = startPegging(kept[0], kept[1], nonDealer, countLimit);
     hand.peggingEvents = pegging.events;
     hand.peggingScores = pegging.scores;
     for (;;) {
@@ -957,7 +980,7 @@ export function* combatGenerator(
       const card = (yield {
         kind: 'play',
         side: player,
-        context: { legalCards, count, sequence, knownCrib: combatState.sides[player].knownCrib, knownOpponentHand: combatState.sides[player].knownOpponentHand, rng: aiRng },
+        context: { legalCards, count, sequence, ...(countLimit !== COUNT_LIMIT ? { limit: countLimit } : {}), knownCrib: combatState.sides[player].knownCrib, knownOpponentHand: combatState.sides[player].knownOpponentHand, rng: aiRng },
         view: view(i, dealer),
         pegging: { hand: pegging.hands[player].slice(), opponentCardsLeft: pegging.hands[(1 - player) as PlayerIndex].length, events: pegging.events },
       }) as Card;
@@ -988,7 +1011,7 @@ export function* combatGenerator(
     const show: [owner: 'hand' | 'crib', player: PlayerIndex, cards: Card[], events: ShowScoreEvent[], total: number][] = [
       ['hand', nonDealer, kept[nonDealer], nonDealerEvents, hand.nonDealerHandScore],
       ['hand', dealer, kept[dealer], dealerEvents, hand.dealerHandScore],
-      ['crib', dealer, crib, cribEvents, hand.cribScore],
+      ['crib', (glitches?.turncoatCrib ? 1 - dealer : dealer) as PlayerIndex, crib, cribEvents, hand.cribScore],
     ];
     for (const [owner, player, cards, events, tableTotal] of show) {
       const occurrences = occurrencesFromHandEvents(events, player);

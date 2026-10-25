@@ -135,12 +135,12 @@ export function discardHint(hand: Card[], ownCrib: boolean): string {
 }
 
 /** What playing `card` scores right now, in words. */
-function playScore(card: Card, count: number, sequence: Card[]): { pts: number; what: string[] } {
+function playScore(card: Card, count: number, sequence: Card[], limit = 31): { pts: number; what: string[] } {
   const after = count + cardValue(card);
   const what: string[] = [];
   let pts = 0;
   if (after === 15) (pts += 2), what.push('fifteen for 2');
-  if (after === 31) (pts += 2), what.push('31 for 2');
+  if (after === limit) (pts += 2), what.push(`${limit} for 2`);
   // Pairs with the cards just played.
   let same = 0;
   for (let i = sequence.length - 1; i >= 0 && sequence[i].rank === card.rank; i--) same++;
@@ -168,6 +168,8 @@ export interface PegSpot {
   known: Card[];
   /** How many cards the opponent still holds. */
   opponentCards: number;
+  /** The count's limit when it isn't 31 (Short Count, session 72). */
+  limit?: number;
 }
 
 /** C(n, k) ratio C(n - m, k) / C(n, k): the chance k random cards from n
@@ -188,12 +190,13 @@ function judgePlay(
   card: Card,
   spot: PegSpot,
 ): { pts: number; what: string[]; risk: number; net: number; threat: string; threatWho: string; threatWhat: string; scorers: number; scorerText: string } {
-  const { pts, what } = playScore(card, spot.count, spot.sequence);
+  const limit = spot.limit ?? 31;
+  const { pts, what } = playScore(card, spot.count, spot.sequence, limit);
   const after = spot.count + cardValue(card);
-  const count = after === 31 ? 0 : after;
-  const sequence = after === 31 ? [] : [...spot.sequence, card];
+  const count = after === limit ? 0 : after;
+  const sequence = after === limit ? [] : [...spot.sequence, card];
   const unseen = unseenCards([...spot.known, card]);
-  const replies = unseen.map((u) => (count + cardValue(u) <= 31 ? { u, ...playScore(u, count, sequence) } : { u, pts: 0, what: [] as string[] }));
+  const replies = unseen.map((u) => (count + cardValue(u) <= limit ? { u, ...playScore(u, count, sequence, limit) } : { u, pts: 0, what: [] as string[] }));
   const k = Math.min(spot.opponentCards, unseen.length);
   // E[best reply] = sum over t of P(they hold a reply worth at least t).
   let risk = 0;
@@ -225,7 +228,7 @@ function judgePlay(
   // pair it"). A card that scores two ways is counted once, under its
   // first.
   const PLURAL = ['', 'aces', 'twos', 'threes', 'fours', 'fives', 'sixes', 'sevens', 'eights', 'nines', 'tens', 'jacks', 'queens', 'kings'];
-  const verbOf = (w: string) => (w.startsWith('fifteen') ? 'make fifteen' : w.startsWith('31') ? 'make 31' : w.includes('run') ? 'make a run' : 'pair it');
+  const verbOf = (w: string) => (w.startsWith('fifteen') ? 'make fifteen' : w.startsWith(String(limit)) ? `make ${limit}` : w.includes('run') ? 'make a run' : 'pair it');
   const groups = [...byWhat].map(([w, g]) => {
     const rs = [...g.ranks].sort((a, b) => a - b);
     const single = (r: number) => (g.n === 1 ? PLURAL[r].replace(/s$/, '').replace(/sixe$/, 'six') : PLURAL[r]);
@@ -241,7 +244,7 @@ function judgePlay(
     return { n: g.n, text: `${who} to ${verbOf(w)}` };
   });
   const scorers = replies.filter((r) => r.pts > 0).length;
-  const ORDER = ['make fifteen', 'make 31', 'make a run', 'pair it'];
+  const ORDER = ['make fifteen', `make ${limit}`, 'make a run', 'pair it'];
   const scorerText = groups
     .sort((x, y) => ORDER.findIndex((o) => x.text.endsWith(o)) - ORDER.findIndex((o) => y.text.endsWith(o)))
     .map((g) => g.text)

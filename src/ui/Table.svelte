@@ -19,6 +19,7 @@
     count,
     starter,
     playerIsDealer,
+    limit = 31,
     opponentCardsLeft,
     small = false,
     pile,
@@ -29,6 +30,8 @@
     count: number;
     starter?: Card;
     playerIsDealer: boolean;
+    /** The count's limit (Short Count's 21, session 72). */
+    limit?: number;
     opponentCardsLeft: number;
     small?: boolean;
     pile?: PileCard[];
@@ -45,7 +48,7 @@
     <div class="caption dealer">{playerIsDealer ? 'YOU DEAL' : 'THEY DEAL'}</div>
   </div>
   <div class="pile">
-    <div class="count">{count}<span>/31</span></div>
+    <div class="count">{count}<span>/{limit}</span></div>
     <div class="cards">
       {#each cards as c, i (c.key)}
         <div class="arrive" class:over7={i === 6} class:over8={i === 7} class:from-you={pile && c.player === 0} class:from-them={pile && c.player === 1}>

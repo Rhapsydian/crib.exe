@@ -657,6 +657,7 @@ function* resolveFight(
         ...combatThresholdsFor(playerState, enemy, layerIndex, fightNumber),
         classId: playerState.classId,
         gatekeeperMods: [[], [...(enemy.mods ?? []), ...securityMods(enemy, kind, layerIndex, security, playerState.daily?.eliteMods)]],
+        glitches: playerState.daily?.glitches,
         ownedModIds: playerState.ownedModIds,
         classModUpgraded: playerState.classModUpgraded,
         strainHeat: eventHeat(SYSTEM_STRAIN_LOSSES, layer0),

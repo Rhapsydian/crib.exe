@@ -1,6 +1,7 @@
 import type { PeggingEvent, PlayerIndex } from './pegging';
 import type { HandScoreEvent } from './scoring';
 import type { Suit } from './cards';
+import type { Archetype } from './subroutine-types';
 import {
   ARCHETYPE_SUITS,
   matchesSequence,
@@ -82,6 +83,8 @@ export interface ScoringOccurrence {
   /** A show run group's runs (session 66, S8); absent means one. Kept
    * apart from magnitude: pegging's run of 6 scores 6 and is one run. */
   runs?: number;
+  /** A 'thirtyOne' occurrence's count: 31, or Short Count's 21. */
+  count?: number;
 }
 
 /** The points an occurrence scores for its side (gauge, hand points,
@@ -105,14 +108,38 @@ export const occurrenceCount = (occurrence: ScoringOccurrence): number =>
 export interface ScoringRule {
   fifteen?: number;
   pair?: number;
+  /** Daily Glitches (session 72), for both sides: fifteens and runs
+   * multiplied (Fifteen Flood, Running Wild), His Nobs and His Heels
+   * repriced (Nobs and Heels). */
+  fifteenTimes?: number;
+  runTimes?: number;
+  hisNobs?: number;
+  hisHeels?: number;
+}
+
+/** A daily's Glitches as a fight reads them (session 72, DR3). */
+export interface FightGlitches {
+  /** Merged into both sides' scoring rules. */
+  rule?: ScoringRule;
+  /** Each 7 the player pegs Credits this much (Lucky Sevens). */
+  luckySevens?: number;
+  /** Each card of this suit the player pegs adds 1 initiative (Suit Surge). */
+  suitSurge?: Archetype;
+  /** The crib belongs to the non-dealer (Turncoat Crib). */
+  turncoatCrib?: boolean;
+  /** The count's limit (Short Count: 21). */
+  countLimit?: number;
 }
 
 /** Reprices an occurrence under `rule`; the pairs inside a royal are each
  * repriced (a royal under pairs-worth-5 scores 15). */
 export function repriceOccurrence(occurrence: ScoringOccurrence, rule: ScoringRule | undefined): ScoringOccurrence {
   if (!rule) return occurrence;
-  if (occurrence.category === 'fifteen' && rule.fifteen !== undefined) return { ...occurrence, points: rule.fifteen };
+  if (occurrence.category === 'fifteen' && (rule.fifteen !== undefined || rule.fifteenTimes !== undefined)) return { ...occurrence, points: (rule.fifteen ?? occurrence.magnitude) * (rule.fifteenTimes ?? 1) };
   if (occurrence.category === 'pair' && rule.pair !== undefined) return { ...occurrence, points: pairsIn(occurrence) * rule.pair };
+  if (occurrence.category === 'run' && rule.runTimes !== undefined) return { ...occurrence, points: occurrence.magnitude * rule.runTimes };
+  if (occurrence.category === 'hisNobs' && rule.hisNobs !== undefined) return { ...occurrence, points: rule.hisNobs };
+  if (occurrence.category === 'hisHeels' && rule.hisHeels !== undefined) return { ...occurrence, points: rule.hisHeels };
   return occurrence;
 }
 
@@ -126,7 +153,7 @@ export function occurrencesFromPeggingEvent(event: PeggingEvent): ScoringOccurre
     if (breakdown.fifteen > 0) occurrences.push({ category: 'fifteen', player, magnitude: breakdown.fifteen });
     if (breakdown.pair > 0) occurrences.push({ category: 'pair', player, magnitude: breakdown.pair });
     if (breakdown.run > 0) occurrences.push({ category: 'run', player, magnitude: breakdown.run });
-    if (breakdown.thirtyOne > 0) occurrences.push({ category: 'thirtyOne', player, magnitude: breakdown.thirtyOne });
+    if (breakdown.thirtyOne > 0) occurrences.push({ category: 'thirtyOne', player, magnitude: breakdown.thirtyOne, count: event.count });
     return occurrences;
   }
   if (event.type === 'go-point') {

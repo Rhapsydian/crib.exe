@@ -21,6 +21,7 @@
     sequence,
     phase = 'play',
     playerIsDealer = false,
+    countLimit = 31,
     onplay,
     ondiscard,
     inactive = false,
@@ -30,7 +31,10 @@
     count: number;
     sequence: Card[];
     phase?: 'discard' | 'play';
+    /** Whether the crib is yours (the dealer's, or under Turncoat Crib the
+     * non-dealer's). */
     playerIsDealer?: boolean;
+    countLimit?: number;
     onplay?: (card: Card) => void;
     ondiscard?: (cards: [Card, Card]) => void;
     inactive?: boolean;
@@ -74,8 +78,8 @@
     if (phase !== 'play' || lifted.length === 0) return null;
     const card = lifted[0];
     const next = count + cardValue(card);
-    const b = scoreCardPlay([...sequence, card], next);
-    const parts = [b.fifteen && 'fifteen', b.pair && (b.pair === 2 ? 'pair' : b.pair === 6 ? 'pair royal' : 'double pair royal'), b.run && `run of ${b.run}`, b.thirtyOne && '31'].filter(Boolean);
+    const b = scoreCardPlay([...sequence, card], next, countLimit);
+    const parts = [b.fifteen && 'fifteen', b.pair && (b.pair === 2 ? 'pair' : b.pair === 6 ? 'pair royal' : 'double pair royal'), b.run && `run of ${b.run}`, b.thirtyOne && String(countLimit)].filter(Boolean);
     return { count: next, score: b.total, label: parts.length ? `${parts.join(' + ')} for ${b.total}` : 'no score' };
   });
 

@@ -30,6 +30,10 @@ export function fightParts(snapshot: FightSnapshot) {
     opponentCardsLeft: discarding ? 6 : playing ? request.pegging.opponentCardsLeft : 0,
     starter: discarding ? undefined : view.hands[view.handIndex]?.starter,
     playerIsDealer: view.dealer === 0,
+    /** Whose crib (Turncoat Crib, a daily Glitch, gives it to the
+     * non-dealer), and the count's limit (Short Count's 21). */
+    playerOwnsCrib: (view.cribOwner ?? view.dealer) === 0,
+    countLimit: view.countLimit ?? 31,
     burners: request.kind === 'burner' ? request.context.availableBurnerIds : [],
     enemyName: snapshot.enemy.name,
     className: snapshot.className,
@@ -75,5 +79,6 @@ export function combatPegSpot(request: FightSnapshot['request']): PegSpot | null
     sequence: request.context.sequence,
     known: [...request.pegging.hand, ...played, ...(starter ? [starter] : [])],
     opponentCards: request.pegging.opponentCardsLeft,
+    ...(request.context.limit ? { limit: request.context.limit } : {}),
   };
 }

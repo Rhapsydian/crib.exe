@@ -3,7 +3,7 @@ import { CRIB_TABLE } from './crib-table';
 import { cardValue, cardsEqual } from './cards';
 import { createDeck } from './deck';
 import { countHand, countCrib } from './scoring';
-import { scoreCardPlay, type PlayContext, type PlayStrategy } from './pegging';
+import { COUNT_LIMIT, scoreCardPlay, type PlayContext, type PlayStrategy } from './pegging';
 import type { DiscardStrategy } from './deal';
 import type { Rng } from './rng';
 
@@ -275,10 +275,10 @@ const DEFENSIVE_RISK_PENALTY = 3; // TBD/playtesting
  * run detection here -- setupValue's own adjacent-rank heuristic already
  * covers that space approximately, and a precise run check needs the
  * live sequence, not just the opponent's hand in isolation. */
-function knownOpponentThreatensThisPlay(card: Card, newCount: number, knownOpponentHand: Card[]): boolean {
+function knownOpponentThreatensThisPlay(card: Card, newCount: number, knownOpponentHand: Card[], limit = COUNT_LIMIT): boolean {
   const completes15Or31 = knownOpponentHand.some((c) => {
     const value = cardValue(c);
-    return newCount + value === 15 || newCount + value === 31;
+    return newCount + value === 15 || newCount + value === limit;
   });
   const canPair = knownOpponentHand.some((c) => c.rank === card.rank);
   return completes15Or31 || canPair;
@@ -358,14 +358,17 @@ export function interpolatePegWeights(skill: number): PegWeights {
  * `knownOpponentHand` (session 40 continued) upgrades defensiveRisk from
  * RISKY_COUNTS' blanket guess to a real, resolved read whenever it's
  * populated -- see knownOpponentThreatensThisPlay's own doc comment. */
-export function scorePegCandidate(card: Card, ctx: Pick<PlayContext, 'legalCards' | 'count' | 'sequence' | 'knownOpponentHand'>, weights: PegWeights): number {
+export function scorePegCandidate(card: Card, ctx: Pick<PlayContext, 'legalCards' | 'count' | 'sequence' | 'knownOpponentHand' | 'limit'>, weights: PegWeights): number {
+  // Short Count (session 72): the limit is 21, so 11 is the count a
+  // ten-card turns into a limit hit, as 21 is under 31.
+  const limit = ctx.limit ?? COUNT_LIMIT;
   const newCount = ctx.count + cardValue(card);
-  const immediateScore = scoreCardPlay([...ctx.sequence, card], newCount).total;
+  const immediateScore = scoreCardPlay([...ctx.sequence, card], newCount, limit).total;
   const defensiveRisk = ctx.knownOpponentHand
-    ? knownOpponentThreatensThisPlay(card, newCount, ctx.knownOpponentHand)
+    ? knownOpponentThreatensThisPlay(card, newCount, ctx.knownOpponentHand, limit)
       ? DEFENSIVE_RISK_PENALTY
       : 0
-    : RISKY_COUNTS.has(newCount)
+    : (limit === COUNT_LIMIT ? RISKY_COUNTS.has(newCount) : newCount === 5 || newCount === limit - 10)
       ? DEFENSIVE_RISK_PENALTY
       : 0;
   const setupValue = ctx.legalCards.filter((c) => !cardsEqual(c, card) && Math.abs(c.rank - card.rank) <= 1).length;

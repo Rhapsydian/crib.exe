@@ -11,7 +11,7 @@ import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
 import { ALL_SUBROUTINES } from './subroutines';
 import { applySecurity, applyUpgrades, type MetaBonuses, type RunSetup, type SecurityRules } from './meta';
-import { applyDailyStart, dailyMapOptions, rollDaily, type DailyEffects } from './daily';
+import { applyDailyStart, dailyMapOptions, rollDaily, type DailyEffects, type DailyMod } from './daily';
 import {
   acquireSubroutine,
   alwaysAcquireFirst,
@@ -808,7 +808,8 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
   playerState = applySecurity(playerState, setup?.securityLevel);
   const security = playerState.security;
   // A Daily Run (session 72): the day's Bulletins and Advisories.
-  const dailyPlan = setup?.daily ? rollDaily(setup.daily.date) : undefined;
+  // `mods` replaces the day's roll (measurement scripts only).
+  const dailyPlan = setup?.daily ? { ...rollDaily(setup.daily.date), ...(setup.daily.mods ? { mods: setup.daily.mods as DailyMod[] } : {}) } : undefined;
   if (dailyPlan) playerState = applyDailyStart(playerState, dailyPlan);
   const mapOptions = dailyPlan ? dailyMapOptions(dailyPlan) : undefined;
   const starter = setup?.starter ? ALL_SUBROUTINES.find((p) => p.id === setup.starter) : undefined;

@@ -139,7 +139,7 @@ export interface RunSetup {
   plain?: boolean;
   /** A Daily Run (session 72): its date, from which daily.ts rebuilds
    * the day's class, Mods and seed. */
-  daily?: { date: string; practice?: boolean };
+  daily?: { date: string; practice?: boolean; mods?: { id: string }[] };
 }
 
 /** Security Levels (MP13-MP14): players see "Security Level 7", badged

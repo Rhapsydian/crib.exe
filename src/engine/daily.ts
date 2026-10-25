@@ -8,6 +8,7 @@ import { CLASS_ORDER, NO_META_BONUSES, STARTING_BURNERS, type RunSetup } from '.
 import { upgradedDefinition } from './merge';
 import type { SubroutineDefinition } from './subroutine-types';
 import type { RunEvent, RunPlayerState, RunResult } from './run';
+import type { FightGlitches, ScoringRule } from './triggers';
 import { layerHeatAllowance } from './heat';
 
 /**
@@ -336,6 +337,26 @@ export interface DailyEffects {
   fightData: number;
   /** Extra Mods for each elite (Hardened Elites). */
   eliteMods: number;
+  /** The day's Glitches, for every fight (never the trace evasion, which
+   * stays plain Cribbage, M12). */
+  glitches?: FightGlitches;
+}
+
+/** The day's Glitches as fights read them. */
+export function dailyGlitches(plan: DailyPlan): FightGlitches | undefined {
+  const has = (id: DailyModId) => plan.mods.some((m) => m.id === id);
+  const rule: ScoringRule = {};
+  if (has('fifteen-flood')) rule.fifteenTimes = 2;
+  if (has('running-wild')) (rule.runTimes = 2), (rule.pair = 1);
+  if (has('nobs-and-heels')) (rule.hisNobs = 4), (rule.hisHeels = 4);
+  const g: FightGlitches = {};
+  if (Object.keys(rule).length) g.rule = rule;
+  if (has('lucky-sevens')) g.luckySevens = 3;
+  const surge = plan.mods.find((m) => m.id === 'suit-surge')?.suit;
+  if (surge) g.suitSurge = surge;
+  if (has('turncoat-crib')) g.turncoatCrib = true;
+  if (has('short-count')) g.countLimit = 21;
+  return Object.keys(g).length ? g : undefined;
 }
 
 /** Port Flood's and Cache Bloom's effect on each layer's map. */
@@ -361,7 +382,7 @@ export function applyDailyStart(state: RunPlayerState, plan: DailyPlan): RunPlay
   if (has('lean-times')) meta.shopPrice = 0.7;
   if (has('quiet-network')) meta.fightHeat = 1.5;
   s.meta = meta;
-  s.daily = { moveHeat: has('quiet-network') ? 0 : 1, heatCarry: has('cold-trail') ? 0.25 : 0, fightData: has('lean-times') ? 0.5 : 1, eliteMods: has('hardened-elites') ? 1 : 0 };
+  s.daily = { moveHeat: has('quiet-network') ? 0 : 1, heatCarry: has('cold-trail') ? 0.25 : 0, fightData: has('lean-times') ? 0.5 : 1, eliteMods: has('hardened-elites') ? 1 : 0, glitches: dailyGlitches(plan) };
   if (has('veteran-loadout')) {
     s.installedLoadout = s.installedLoadout.map(rankTwo);
     s.rank = { ...s.rank, ...Object.fromEntries(s.installedLoadout.map((p) => [p.id, 2])) };

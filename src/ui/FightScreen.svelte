@@ -247,12 +247,12 @@
     onplay?.(card);
   }
   function discard(cards: [Card, Card]) {
-    lastDiscard = { handIndex: f.view.handIndex, hand: f.hand, thrown: cards, ownCrib: f.playerIsDealer };
+    lastDiscard = { handIndex: f.view.handIndex, hand: f.hand, thrown: cards, ownCrib: f.playerOwnsCrib };
     ondiscard?.(cards);
   }
   const coachSections = $derived.by<CoachSection[]>(() => {
     if (!cribbageCoach || !handReady || replay?.playing) return [];
-    const ownCrib = f.playerIsDealer;
+    const ownCrib = f.playerOwnsCrib;
     const first = f.view.handIndex === 0;
     const sections: CoachSection[] = [];
     if (f.phase === 'discard') {
@@ -341,9 +341,9 @@
       {#if table?.show}
         <ShowPanel show={table.show} />
       {:else if table}
-        <Table sequence={[]} pile={table.pile} leaving={table.leaving} count={table.count} starter={table.starter} playerIsDealer={table.dealer === 0} opponentCardsLeft={table.cardsLeft[1]} {callout} />
+        <Table sequence={[]} pile={table.pile} leaving={table.leaving} count={table.count} limit={f.countLimit} starter={table.starter} playerIsDealer={table.dealer === 0} opponentCardsLeft={table.cardsLeft[1]} {callout} />
       {:else}
-        <Table sequence={f.sequence} count={f.count} starter={f.starter} playerIsDealer={f.playerIsDealer} opponentCardsLeft={f.opponentCardsLeft} />
+        <Table sequence={f.sequence} count={f.count} limit={f.countLimit} starter={f.starter} playerIsDealer={f.playerIsDealer} opponentCardsLeft={f.opponentCardsLeft} />
       {/if}
       {#if gapToast}
         {#key gapToast.key}
@@ -411,7 +411,7 @@
          catch, milestone 4). -->
     <div class="hand-slot">
     {#if handReady && f.phase !== 'burner'}
-      <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase === 'discard' ? 'discard' : 'play'} playerIsDealer={f.playerIsDealer} onplay={onplay && play} ondiscard={ondiscard && discard} inactive={replay?.playing ?? false} />
+      <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase === 'discard' ? 'discard' : 'play'} playerIsDealer={f.playerOwnsCrib} countLimit={f.countLimit} onplay={onplay && play} ondiscard={ondiscard && discard} inactive={replay?.playing ?? false} />
     {:else}
       <div class="hand-wait">…</div>
     {/if}

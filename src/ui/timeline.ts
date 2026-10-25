@@ -36,7 +36,7 @@ export function mergeSteps(timeline: readonly CombatBeat[], log: readonly FireEv
       resetPending = false;
     }
     steps.push({ type: 'beat', beat });
-    if (beat.kind === 'peg' && (beat.event.type === 'go-point' || (beat.event.type === 'play' && beat.event.count === 31))) resetPending = true;
+    if (beat.kind === 'peg' && (beat.event.type === 'go-point' || (beat.event.type === 'play' && beat.event.breakdown.thirtyOne > 0))) resetPending = true;
   }
   while (fires < log.length) steps.push({ type: 'fire', fire: log[fires++] });
   // A reset at the end of what has happened so far (the enemy took the
@@ -209,15 +209,15 @@ export function scoreLabel(o: ScoringOccurrence, phase: 'cut' | 'peg' | 'show' =
     case 'pair':
       return `${m >= 12 ? 'double pair royal' : m >= 6 ? 'pair royal' : 'pair'} for ${occurrencePoints(o)}`;
     case 'run':
-      return phase === 'show' ? `${showRunName(m)} for ${m}` : `run of ${m} for ${m}`;
+      return phase === 'show' ? `${showRunName(m)} for ${occurrencePoints(o)}` : `run of ${m} for ${occurrencePoints(o)}`;
     case 'flush':
       return `flush for ${m}`;
     case 'hisNobs':
-      return `his nobs for ${m}`;
+      return `his nobs for ${occurrencePoints(o)}`;
     case 'hisHeels':
-      return `his heels for ${m}`;
+      return `his heels for ${occurrencePoints(o)}`;
     case 'thirtyOne':
-      return `31 for ${m}`;
+      return `${o.count ?? 31} for ${m}`;
     case 'go':
       return `go for ${m}`;
   }

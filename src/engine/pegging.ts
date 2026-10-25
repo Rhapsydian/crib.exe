@@ -11,10 +11,15 @@ import type { Rng } from './rng';
  * payloads (resolve.ts) -- absent whenever no such recon fired this
  * hand.
  */
+/** The pegging count's limit in plain Cribbage. */
+export const COUNT_LIMIT = 31;
+
 export interface PlayContext {
   legalCards: Card[];
   count: number;
   sequence: Card[];
+  /** The count's limit when it isn't 31 (Short Count, session 72). */
+  limit?: number;
   knownCrib?: Card[];
   knownOpponentHand?: Card[];
   /** Session 26: same AI-decision-noise Rng stream as DiscardContext.rng
@@ -85,11 +90,13 @@ interface SequenceCard {
  * `Card[]` shape `PlayContext.sequence` already carries (who played each
  * card was never actually used below).
  */
-export function scoreCardPlay(cardsSinceReset: Card[], count: number): PegScoreBreakdown {
+export function scoreCardPlay(cardsSinceReset: Card[], count: number, limit = COUNT_LIMIT): PegScoreBreakdown {
   let fifteen = 0;
   let thirtyOne = 0;
   if (count === 15) fifteen += 2;
-  if (count === 31) thirtyOne += 2;
+  // The count's limit is 31, or Short Count's 21 (a daily Glitch, session
+  // 72: "21 is the 31"); hitting it exactly scores 2 either way.
+  if (count === limit) thirtyOne += 2;
 
   const ranks = cardsSinceReset.map((c) => c.rank);
   const lastRank = ranks[ranks.length - 1];
@@ -141,6 +148,8 @@ export interface PeggingState {
   scores: [number, number];
   events: PeggingEvent[];
   done: boolean;
+  /** The count's limit (31; Short Count's 21). */
+  limit: number;
 }
 
 /** What the player to act must decide: they hold at least one legal card. */
@@ -149,10 +158,12 @@ export interface PeggingDecision {
   legalCards: Card[];
   count: number;
   sequence: Card[];
+  limit: number;
 }
 
-export function startPegging(hand0: Card[], hand1: Card[], firstToAct: PlayerIndex): PeggingState {
+export function startPegging(hand0: Card[], hand1: Card[], firstToAct: PlayerIndex, limit = COUNT_LIMIT): PeggingState {
   return {
+    limit,
     hands: [hand0.slice(), hand1.slice()],
     count: 0,
     sequence: [],
@@ -187,9 +198,9 @@ export function advancePegging(state: PeggingState): { events: PeggingEvent[]; d
       break;
     }
     const player = state.turn;
-    const legal = state.hands[player].filter((c) => state.count + cardValue(c) <= 31);
+    const legal = state.hands[player].filter((c) => state.count + cardValue(c) <= state.limit);
     if (legal.length > 0) {
-      return { events, decision: { player, legalCards: legal, count: state.count, sequence: state.sequence.map((s) => s.card) } };
+      return { events, decision: { player, legalCards: legal, count: state.count, sequence: state.sequence.map((s) => s.card), limit: state.limit } };
     }
     push({ type: 'go', player });
     state.passesInARow += 1;
@@ -215,13 +226,13 @@ export function playPeggingCard(state: PeggingState, card: Card): PegPlayEvent {
   state.hands[player] = state.hands[player].filter((c) => !cardsEqual(c, card));
   state.count += cardValue(card);
   state.sequence.push({ card, player });
-  const breakdown = scoreCardPlay(state.sequence.map((s) => s.card), state.count);
+  const breakdown = scoreCardPlay(state.sequence.map((s) => s.card), state.count, state.limit);
   state.scores[player] += breakdown.total;
   const event: PegPlayEvent = { type: 'play', player, card, count: state.count, score: breakdown.total, breakdown };
   state.events.push(event);
   state.lastPlayerToAct = player;
   state.passesInARow = 0;
-  if (state.count === 31) {
+  if (state.count === state.limit) {
     state.count = 0;
     state.sequence = [];
     state.lastPlayerToAct = null; // already paid via the +2 above, no separate go point
