@@ -18,7 +18,8 @@ is a thin interface onto the engine.
 ## Current state (end of session 72)
 
 The game is playable in the browser on desktop and phones
-(<https://rhapsydian.github.io/crib.exe/>, branch `playable`): a full
+(<https://cribexe.com>, branch `playable`; the old GitHub Pages address
+redirects there): a full
 four-layer run with six classes, a guided tutorial, first-time tips, plain
 Cribbage with a coach and lessons, and saves. Milestone 5 (polish and
 playtesting) is under way. 946 tests, `npm run check` clean.
@@ -211,7 +212,8 @@ Platform:
   making the run engine resumable from state.
 - **CI:** the deploy workflow's actions target Node 20 (deprecated);
   bump `actions/checkout` and `actions/setup-node`.
-- **Hosting:** a custom domain on the GitHub-hosted site, and itch.io.
+- **Hosting:** the custom domain is live (cribexe.com, session 72; the
+  old GitHub Pages address redirects); itch.io still to come.
 - **Drag and drop** as an alternative card input.
 
 Code and tools:

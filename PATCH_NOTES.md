@@ -1,5 +1,7 @@
 # crib.exe patch notes: progression and Daily Runs
 
+**Play it at cribexe.com.**
+
 What's new for testers since the content update. This update adds
 progress that carries between runs, a run of the day, and a round of
 polish from playtest notes. (The previous notes are in

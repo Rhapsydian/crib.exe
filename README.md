@@ -17,7 +17,7 @@ guided tutorial run and first-time tips. Polish and playtesting are under
 way; next is more content, then meta-progression and Daily Runs
 (`BACKLOG.md` → Priorities).
 
-**Play the demo:** <https://rhapsydian.github.io/crib.exe/> — the
+**Play the demo:** <https://cribexe.com> — the
 `playable` branch, rebuilt on every push (`.github/workflows/deploy-demo.yml`).
 
 How it got here, in arcs (each session's detail is in `docs/session-logs/`;
