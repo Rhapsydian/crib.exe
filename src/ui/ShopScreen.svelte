@@ -28,17 +28,26 @@
   // tester's note: every note read as if nothing had been bought, so
   // buying past the loadout and bench, or past the Burner limit, came with
   // no warning).
+  // Sales count too (session 72, the user's ask): a sold bench subroutine
+  // is no longer owned, a sold copy leaves the bank, and a bought copy of
+  // an owned one joins it.
   const afterBuys = $derived.by(() => {
     const installed = [...player.installedLoadout];
-    const bench = [...player.bench];
+    const bench = player.bench.filter((p) => !shop.sold.subroutine.includes(p.id));
+    const material = { ...player.material };
+    for (const id of shop.sold.copy) material[id] = Math.max(0, (material[id] ?? 0) - 1);
     const owned = (id: string) => installed.some((p) => p.id === id) || bench.some((p) => p.id === id);
     for (const i of shop.bought.subroutine) {
       const piece = shop.slates.subroutine[i]?.piece;
-      if (!piece || owned(piece.id)) continue;
+      if (!piece) continue;
+      if (owned(piece.id)) {
+        material[piece.id] = (material[piece.id] ?? 0) + 1;
+        continue;
+      }
       const used = installed.filter((p) => !player.grantedByMod[p.id]).length;
       (used < slotCapOf(player) ? installed : bench).push(piece);
     }
-    return { ...player, installedLoadout: installed, bench };
+    return { ...player, installedLoadout: installed, bench, material };
   });
   const burnersAfterBuys = $derived(player.carriedBurnerIds.length - shop.sold.burner.length + shop.bought.burner.length);
   type Item = { slate: ShopSlate; index: number; name: string; tag: string; lines: string[]; note?: string; icon?: Archetype; glyph?: string; cost: number };

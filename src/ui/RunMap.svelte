@@ -1,4 +1,6 @@
 <script lang="ts">
+  import DailyKit from './DailyKit.svelte';
+  import type { DailyPlan } from '../engine/daily';
   import { tips } from './tips.svelte';
   import type { RunRequest } from '../engine/run-requests';
   import { HEAT_PER_MOVE, postedFightRisk, type FightTier } from '../engine/heat';
@@ -26,8 +28,11 @@
     onarrange,
     onburner,
     tutorial = false,
+    daily,
   }: {
     request: Extract<RunRequest, { kind: 'move' }>;
+    /** A Daily Run's Mods (session 72), in the loadout drawer. */
+    daily?: { plan: DailyPlan; practice: boolean } | null;
     className: string;
     notes: string[];
     onmove: (id: string) => void;
@@ -138,6 +143,7 @@
       <div class="kit"><div><span class="burner-glyph">⏏︎</span> {BURNER_DEFINITIONS[id].name}</div><div class="kit-text">{burnerText(BURNER_DEFINITIONS[id])}</div></div>
     {/each}
   {/if}
+  {#if daily}<DailyKit plan={daily.plan} practice={daily.practice} />{/if}
 </aside>
 <div class="run-map">
   <div class="top">

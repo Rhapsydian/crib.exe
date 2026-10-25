@@ -2,6 +2,7 @@ import type { CombatAnswer, CombatResult } from '../engine/combat';
 import type { FightSnapshot } from './snapshot';
 import type { FightTier } from '../engine/heat';
 import type { SkillDecision } from './skill-review';
+import type { DailyPlan } from '../engine/daily';
 
 /** The run's Heat as a fight starts, and how that fight charges it. */
 export interface FightHeatContext {
@@ -35,6 +36,8 @@ export interface FightSession {
   /** The player's discards and plays so far (the review coach, session
    * 70). */
   readonly skill?: readonly SkillDecision[];
+  /** A Daily Run's Mods (session 72), shown beside the loadouts. */
+  readonly daily?: { plan: DailyPlan; practice: boolean };
 }
 
 /** A result-panel button. */

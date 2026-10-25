@@ -1,6 +1,8 @@
 <script lang="ts">
   import { stickToBottom } from './stick-to-bottom';
   import { untrack } from 'svelte';
+  import DailyKit from './DailyKit.svelte';
+  import type { DailyPlan } from '../engine/daily';
   import RichText from './RichText.svelte';
   import type { FightSnapshot } from './snapshot';
   import type { Card } from '../engine/cards';
@@ -51,6 +53,7 @@
     ending = null,
     over = false,
     showLog = false,
+    daily,
   }: {
     snapshot: FightSnapshot;
     onplay?: (card: Card) => void;
@@ -67,6 +70,8 @@
     /** The result card's "view log" (session 70): opens the log, the
      * slide-in drawer on phones; false closes it again. */
     showLog?: boolean;
+    /** A Daily Run's Mods (session 72), in the loadouts panel. */
+    daily?: { plan: DailyPlan; practice: boolean };
   } = $props();
   const f = $derived(fightParts(snapshot));
   let picked = $state<Picked | null>(null);
@@ -320,6 +325,7 @@
       <div class="caption sub">YOUR BURNERS</div>
       <KitList items={yourBurners} onpick={(k) => (pickedKit = k)} />
     {/if}
+    {#if daily}<DailyKit plan={daily.plan} practice={daily.practice} />{/if}
   </aside>
 
   <main class="main">

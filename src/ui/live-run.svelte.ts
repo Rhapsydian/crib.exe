@@ -16,6 +16,7 @@ import type { FightHeatContext, FightSession } from './fight-session';
 import type { FightSnapshot } from './snapshot';
 import { decisionFor, type SkillDecision } from './skill-review';
 import type { RunSetup } from '../engine/meta';
+import { rollDaily, type DailyPlan } from '../engine/daily';
 import type { EventChoice } from '../engine/event-types';
 import { SAVE_VERSION, decodeCombat, encodeCombat, type RunSave, type SavedAnswer } from './run-save';
 
@@ -63,6 +64,7 @@ class RunFight implements FightSession {
   readonly tier: 'regular' | 'elite' | 'gatekeeper';
   readonly #answer: (a: CombatAnswer) => void;
   readonly skill: SkillDecision[] = [];
+  daily?: { plan: DailyPlan; practice: boolean };
 
   readonly heat: FightHeatContext;
 
@@ -121,6 +123,15 @@ export class LiveRun {
   readonly answers: SavedAnswer[] = [];
   /** Called after each answer, to write the save. */
   onsave: (() => void) | null = null;
+
+  /** A Daily Run's day (session 72): its plan, as the engine rolls it,
+   * and whether this run is practice. */
+  get daily(): { plan: DailyPlan; practice: boolean } | null {
+    const d = this.setup.daily;
+    if (!d) return null;
+    const plan = rollDaily(d.date);
+    return { plan: d.mods ? { ...plan, mods: d.mods as DailyPlan['mods'] } : plan, practice: d.practice ?? false };
+  }
 
   /** The guided first run (session 63): its fixed class, seed and layer
    * (engine/tutorial.ts), the coach, and its own ending. */
@@ -337,6 +348,7 @@ export class LiveRun {
         case 'fightStart':
           this.fights++;
           this.fight = new RunFight(r.enemy, r.tier, r.layer, r.playerState, (a) => this.answer(a));
+          this.fight.daily = this.daily ?? undefined;
           // Bigger gauges deep (session 68, E9): their first time on layers 3 and 4.
           if (r.tier !== 'regular' && r.layer >= 3) tips.offer(r.layer === 3 ? 'gauges3' : 'gauges4');
           step = this.#run.next(null);
