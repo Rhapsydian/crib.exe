@@ -36,6 +36,10 @@ export interface FightSession {
   /** The player's discards and plays so far (the review coach, session
    * 70). */
   readonly skill?: readonly SkillDecision[];
+  /** Rebuilt from a save (session 72, the user's report): the screen opens
+   * at its current moment instead of replaying every step since the
+   * fight began. */
+  readonly resumed?: boolean;
   /** A Daily Run's Mods (session 72), shown beside the loadouts. */
   readonly daily?: { plan: DailyPlan; practice: boolean };
 }

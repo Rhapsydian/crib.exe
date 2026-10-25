@@ -137,6 +137,10 @@ describe('LiveRun', () => {
         const resumed = LiveRun.resume(JSON.parse(JSON.stringify(run.save)));
         expect(resumed).not.toBeNull();
         expect(where(resumed!)).toBe(where(run));
+        // A fight rebuilt by the resume opens at its present (session 72);
+        // one reached in play replays as usual.
+        if (resumed!.fight) expect(resumed!.fight.resumed).toBe(true);
+        if (run.fight) expect(run.fight.resumed).toBe(false);
         // The run's id and setup carry over (session 71).
         expect(resumed!.id).toBe(run.id);
         expect(resumed!.setup).toEqual(run.setup);

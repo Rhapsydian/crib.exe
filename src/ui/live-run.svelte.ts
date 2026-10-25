@@ -65,6 +65,8 @@ class RunFight implements FightSession {
   readonly #answer: (a: CombatAnswer) => void;
   readonly skill: SkillDecision[] = [];
   daily?: { plan: DailyPlan; practice: boolean };
+  /** Rebuilt while a save replayed: the screen skips to the present. */
+  resumed = false;
 
   readonly heat: FightHeatContext;
 
@@ -118,6 +120,8 @@ export class LiveRun {
   /** The piece the Safehouse screen chose to Merge, answered when the run
    * asks for the target. */
   #mergeTarget: string | null = null;
+  /** True while a save's answers are replaying (resume). */
+  #replaying = false;
   /** Every answer the player has given, in plain data -- the save
    * (run-save.ts). */
   readonly answers: SavedAnswer[] = [];
@@ -162,7 +166,9 @@ export class LiveRun {
    * Null if any answer no longer fits (the game changed under the save). */
   static resume(save: RunSave): LiveRun | null {
     const run = new LiveRun(save.classId, save.seed, save.tutorial ?? false, save.setup, save.id);
+    run.#replaying = true;
     for (const saved of save.answers) if (!run.#replay(saved)) return null;
+    run.#replaying = false;
     return run;
   }
 
@@ -349,6 +355,7 @@ export class LiveRun {
           this.fights++;
           this.fight = new RunFight(r.enemy, r.tier, r.layer, r.playerState, (a) => this.answer(a));
           this.fight.daily = this.daily ?? undefined;
+          this.fight.resumed = this.#replaying;
           // Bigger gauges deep (session 68, E9): their first time on layers 3 and 4.
           if (r.tier !== 'regular' && r.layer >= 3) tips.offer(r.layer === 3 ? 'gauges3' : 'gauges4');
           step = this.#run.next(null);

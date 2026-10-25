@@ -16,6 +16,8 @@
   // `actions` are the result panel's buttons (fight again / continue).
   let { fight, actions }: { fight: FightSession; actions: ResultAction[] } = $props();
   const replay = new Replay();
+  /** Whether a resumed fight has been brought up to the present. */
+  let caughtUp = false;
   $effect(() => {
     const { frame, result } = fight;
     const source = result ?? frame?.request.view;
@@ -24,7 +26,13 @@
     const fromSteps = steps.map(stepGauges).findLast((g) => g !== null) ?? null;
     const live = result ? (fromSteps ?? readGauges(frame!.request.view.combatState)) : readGauges(frame!.request.view.combatState);
     // Only a new pause re-runs this, not the replay's own stepping.
-    untrack(() => replay.sync(steps, live));
+    untrack(() => {
+      replay.sync(steps, live);
+      // A fight rebuilt from a save opens at its current moment (session
+      // 72): its steps so far were already seen before the reload.
+      if (fight.resumed && !caughtUp) replay.skip();
+      caughtUp = true;
+    });
   });
   $effect(() => () => replay.reset());
   const pct = (n: number) => `${Math.round(n * 100)}%`;
