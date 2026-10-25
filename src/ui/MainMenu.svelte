@@ -1,6 +1,8 @@
 <script lang="ts">
   import { tips } from './tips.svelte';
   import { profile } from './profile.svelte';
+  import { DAILY_MODS, rollDaily } from '../engine/daily';
+  import { CLASS_DEFINITIONS } from '../engine/classes';
   import CardView from './CardView.svelte';
   import type { Card } from '../engine/cards';
   let tipsReset = $state(false);
@@ -26,6 +28,8 @@
     onrun,
     ontutorial,
     onboard,
+    ondaily,
+    today,
     resumeFailed = null,
   }: {
     runSave: { className: string; layer: number } | null;
@@ -37,9 +41,13 @@
     onrun: () => void;
     ontutorial: () => void;
     onboard: () => void;
+    ondaily: () => void;
+    today: string;
     resumeFailed?: string | null;
   } = $props();
 
+  const plan = $derived(rollDaily(today));
+  const scored = $derived(profile.data.daily[today]?.scored);
   const levels = Object.entries(DIFFICULTIES) as [Difficulty, (typeof DIFFICULTIES)[Difficulty]][];
   let setup = $state(false);
   let difficulty = $state<Difficulty>('easy');
@@ -94,6 +102,12 @@
     <button class="entry run" onclick={onrun}>
       <b>Start a Run</b>
       <span>{runSave ? `Saved run: ${runSave.className}, layer ${runSave.layer}. Resume it on the next screen.` : 'Break into a network, four layers deep. Every fight is Cribbage.'}</span>
+    </button>
+    <!-- The Daily Run (session 72, DR9): today's class and Directive at a
+         glance, and today's scored attempt once played. -->
+    <button class="entry daily" onclick={ondaily}>
+      <b>Daily Run <span class="date">{today}</span>{#if scored !== undefined}<span class="rep">★ {scored.toLocaleString('en-US')} today</span>{/if}</b>
+      <span>Today: {CLASS_DEFINITIONS[plan.classId].name} · {DAILY_MODS[plan.mods[0].id].name} · {plan.mods.length - 1} more twist{plan.mods.length === 2 ? '' : 's'}. One scored attempt a day.</span>
     </button>
     <!-- The Message Board (session 71, MP16): not listed until a first
          finished run (the tutorial counts). -->
@@ -379,5 +393,10 @@
     float: right;
     color: var(--mod);
     font-weight: 400;
+  }
+  .date {
+    margin-left: 6px;
+    font-weight: 400;
+    color: var(--text-dim);
   }
 </style>

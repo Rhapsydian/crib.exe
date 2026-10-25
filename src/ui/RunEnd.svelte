@@ -6,6 +6,7 @@
   import { rankMark } from './visit-text';
   import { rateSkill, type SkillDecision } from './skill-review';
   import { profile } from './profile.svelte';
+  import { shareLine } from './daily-text';
   import { CLASS_DEFINITIONS } from '../engine/classes';
   import { MOD_DEFINITIONS } from '../engine/mods';
   import { BURNER_DEFINITIONS } from '../engine/burners';
@@ -33,6 +34,21 @@
   // The run's Rep (session 71), as the profile awarded it.
   const award = $derived(runId && profile.lastAward?.runId === runId ? profile.lastAward.lines : null);
   const unlocked = $derived(runId && profile.lastAward?.runId === runId ? profile.lastAward.unlocked : undefined);
+  // A Daily Run's score (session 72, DR2, DR9), itemized, with the share
+  // line and a copy button.
+  const daily = $derived(runId && profile.lastDaily?.runId === runId ? profile.lastDaily : null);
+  const share = $derived(daily ? shareLine(daily.date, daily.total, result.layersCompleted, className, daily.rating, daily.practice) : '');
+  let copied = $state<'idle' | 'done' | 'select'>('idle');
+  let shareEl = $state<HTMLInputElement | null>(null);
+  async function copyShare() {
+    try {
+      await navigator.clipboard.writeText(share);
+      copied = 'done';
+    } catch {
+      shareEl?.select();
+      copied = 'select';
+    }
+  }
   const securityOpened = $derived(runId && profile.lastAward?.runId === runId ? profile.lastAward.securityOpened : undefined);
   const repTotal = $derived(award?.reduce((s, l) => s + l.rep, 0) ?? 0);
   // The run's Cribbage rating (session 70), over every fight's choices.
@@ -76,6 +92,19 @@
     {#if rating}<div>Cribbage <b>{rating.rating}%</b> ({rating.label})</div>{/if}
     {#if result.outcome !== 'victory'}<div>Heat <b>{Math.round(summary.finalHeat)}</b>/{summary.allowance} at the end</div>{/if}
   </div>
+
+  {#if daily}
+    <div class="daily">
+      <div class="rep-head"><span class="caption">DAILY SCORE · {daily.date}</span><span class="daily-total">{daily.total.toLocaleString('en-US')}</span></div>
+      <div class="rep-line dim">{daily.practice ? `practice${profile.data.daily[daily.date]?.best ? ` · best ${profile.data.daily[daily.date].best!.toLocaleString('en-US')}` : ''}${profile.data.daily[daily.date]?.scored !== undefined ? ` · scored ${profile.data.daily[daily.date].scored!.toLocaleString('en-US')}` : ''}` : 'your scored attempt'}</div>
+      {#each daily.lines as line, i (i)}<div class="rep-line" class:directive={line.directive}><span>{line.directive ? '◇ ' : ''}{line.label}</span><span>{line.points.toLocaleString('en-US')}</span></div>{/each}
+      <div class="share">
+        <input bind:this={shareEl} readonly value={share} id="share-line" aria-label="share line" />
+        <button onclick={copyShare}>{copied === 'done' ? 'copied' : 'copy'}</button>
+      </div>
+      {#if copied === 'select'}<div class="rep-line dim">Copy isn't allowed here; the line is selected for you to copy.</div>{/if}
+    </div>
+  {/if}
 
   {#if award && (award.length || !tutorial)}
     <div class="rep">
@@ -168,6 +197,50 @@
   .sec-badge.won {
     border-color: var(--accent);
     color: var(--accent);
+  }
+  .daily {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--bg-raised);
+    font-size: 12px;
+  }
+  .daily-total {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .rep-line.directive {
+    color: var(--accent);
+  }
+  .share {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .share input {
+    flex: 1;
+    min-width: 0;
+    padding: 5px 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--bg-sunken);
+    color: var(--text);
+    font: inherit;
+    font-size: 11px;
+  }
+  .share button {
+    padding: 5px 10px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--bg-sunken);
+    color: var(--accent);
+    font: inherit;
+    font-size: 11px;
   }
   .unlock {
     padding: 8px 10px;

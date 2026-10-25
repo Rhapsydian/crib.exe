@@ -1,6 +1,7 @@
 import type { ClassId } from '../engine/classes';
 import { CLASS_FALLBACK_REP, CLASS_ORDER, SECURITY_MAX, LIBRARY_PRICE, STARTING_BURNER_PRICE, STARTING_BURNERS, TUTORIAL_REP, libraryOffers, upgradeLevel, upgradePrice, type RepLine, type UpgradeId } from '../engine/meta';
 import type { BurnerId } from '../engine/burner-types';
+import { dailyDate, type ScoreLine } from '../engine/daily';
 import { ALL_SUBROUTINES } from '../engine/subroutines';
 import { RESET_PROFILE_FLAG, UNLOCK_ALL_FLAG } from './testing-flags';
 
@@ -52,13 +53,23 @@ export interface Profile {
   securityPick: number;
   /** The class select's last "without Message Board upgrades" choice. */
   plainPick: boolean;
+  /** Daily Runs by date (session 72, DR1, DR9): the scored attempt's score
+   * (`started` once it begins, so later runs are practice even if it's
+   * abandoned) and the best practice score. */
+  daily: Record<string, DailyRecord>;
+}
+
+export interface DailyRecord {
+  started?: boolean;
+  scored?: number;
+  best?: number;
 }
 
 export const PROFILE_VERSION = 1;
 const KEY = 'cribexe.profile';
 
 export function freshProfile(): Profile {
-  return { version: PROFILE_VERSION, rep: 0, repEarned: 0, runsFinished: 0, tutorialGranted: false, classes: ['exploit-overclock'], upgrades: {}, lastRunId: null, library: [], burners: [], boardIntroduced: false, starter: null, burner: null, victories: 0, securityOpen: 0, securityBest: {}, securityPick: 0, plainPick: false };
+  return { version: PROFILE_VERSION, rep: 0, repEarned: 0, runsFinished: 0, tutorialGranted: false, classes: ['exploit-overclock'], upgrades: {}, lastRunId: null, library: [], burners: [], boardIntroduced: false, starter: null, burner: null, victories: 0, securityOpen: 0, securityBest: {}, securityPick: 0, plainPick: false, daily: {} };
 }
 
 /** An older profile brought up to this version, keeping what it has: each
@@ -186,6 +197,56 @@ class ProfileStore {
     this.lastAward = { runId, lines: [...lines], unlocked, securityOpened };
     this.data = { ...this.data, rep: this.data.rep + total, repEarned: this.data.repEarned + total, runsFinished: this.data.runsFinished + 1, lastRunId: runId, classes, victories, securityOpen, securityBest };
     this.#save();
+  }
+
+  /** The latest daily's score, itemized, for its end card (not saved). */
+  lastDaily = $state.raw<{ runId: string; date: string; practice: boolean; lines: ScoreLine[]; total: number; rating: number | null } | null>(null);
+
+  /** A daily's attempt begins: the first one of a date is the scored
+   * attempt; it returns whether this one is practice. */
+  startDaily(date: string): boolean {
+    const record = this.data.daily[date] ?? {};
+    if (record.started) return true;
+    this.data = { ...this.data, daily: { ...this.data.daily, [date]: { ...record, started: true } } };
+    this.#save();
+    return false;
+  }
+
+  /** A daily run's end (DR1, DR6): the scored attempt's score and Rep (no
+   * class unlocks or Security Levels: those belong to normal runs); a
+   * practice run's best, and no Rep. */
+  finishDaily(runId: string, date: string, practice: boolean, scoreLines: ScoreLine[], rating: number | null, lines: readonly RepLine[]): void {
+    if (this.data.lastRunId === runId) return;
+    const score = scoreLines.reduce((s, l) => s + l.points, 0);
+    this.lastDaily = { runId, date, practice, lines: scoreLines, total: score, rating };
+    const record = this.data.daily[date] ?? {};
+    const next: DailyRecord = practice ? { ...record, best: Math.max(record.best ?? 0, score) } : { ...record, started: true, scored: score };
+    const total = practice ? 0 : lines.reduce((s, l) => s + l.rep, 0);
+    this.lastAward = { runId, lines: practice ? [] : [...lines] };
+    this.data = { ...this.data, daily: { ...this.data.daily, [date]: next }, rep: this.data.rep + total, repEarned: this.data.repEarned + total, runsFinished: this.data.runsFinished + 1, lastRunId: runId };
+    this.#save();
+  }
+
+  /** Consecutive days with a scored attempt, ending today (or yesterday,
+   * if today's isn't played yet). */
+  dailyStreak(today: string): number {
+    const day = (d: string, back: number) => {
+      const [y, m, dd] = d.split('-').map(Number);
+      return dailyDate(new Date(y, m - 1, dd - back));
+    };
+    let back = this.data.daily[today]?.scored !== undefined ? 0 : 1;
+    let n = 0;
+    while (this.data.daily[day(today, back)]?.scored !== undefined) n++, back++;
+    return n;
+  }
+
+  /** The last `n` days, today first: each date and its record. */
+  dailyHistory(today: string, n = 14): { date: string; record: DailyRecord | undefined }[] {
+    const [y, m, d] = today.split('-').map(Number);
+    return Array.from({ length: n }, (_, i) => {
+      const date = dailyDate(new Date(y, m - 1, d - i));
+      return { date, record: this.data.daily[date] };
+    });
   }
 
   /** The tutorial's one-time grant (it still counts as a finished run). */

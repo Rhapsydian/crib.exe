@@ -60,6 +60,25 @@ describe('the profile', () => {
     expect(profile.data.securityOpen).toBe(2); // only the highest open level opens the next
   });
 
+  it('dailies: the first attempt counts and pays Rep; later ones are practice with a best; a streak and history (DR1, DR6, DR9)', () => {
+    profile.data = { ...profile.data, rep: 0, daily: {} };
+    expect(profile.startDaily('2026-10-24')).toBe(false); // the scored attempt
+    expect(profile.startDaily('2026-10-24')).toBe(true); // already started: practice
+    profile.finishDaily('d-1', '2026-10-24', false, [{ label: 'Layer 1 breached', points: 1000 }], 80, [{ label: 'Layer 1 breached', rep: 10 }]);
+    expect(profile.data.daily['2026-10-24'].scored).toBe(1000);
+    expect(profile.data.rep).toBe(10);
+    profile.finishDaily('d-2', '2026-10-24', true, [{ label: 'Layers', points: 2500 }], 80, [{ label: 'x', rep: 25 }]);
+    expect(profile.data.daily['2026-10-24']).toMatchObject({ scored: 1000, best: 2500 });
+    expect(profile.data.rep).toBe(10); // practice pays none
+    expect(profile.lastDaily).toMatchObject({ practice: true, total: 2500 });
+    profile.finishDaily('d-3', '2026-10-23', false, [{ label: 'x', points: 500 }], null, []);
+    expect(profile.dailyStreak('2026-10-25')).toBe(2); // today not played yet: counts from yesterday
+    expect(profile.dailyStreak('2026-10-24')).toBe(2);
+    const history = profile.dailyHistory('2026-10-24', 3);
+    expect(history.map((h) => h.date)).toEqual(['2026-10-24', '2026-10-23', '2026-10-22']);
+    expect(history[2].record).toBeUndefined();
+  });
+
   it('awards a run once, and the tutorial grant only the first time', () => {
     profile.data = { ...profile.data, rep: 0 };
     const before = profile.data.rep;
@@ -70,6 +89,6 @@ describe('the profile', () => {
     profile.finishTutorial('tut-1');
     profile.finishTutorial('tut-2');
     expect(profile.data.rep).toBe(before + 10 + TUTORIAL_REP);
-    expect(profile.data.runsFinished).toBe(8);
+    expect(profile.data.runsFinished).toBe(11);
   });
 });

@@ -17,6 +17,9 @@
   import { firstGatekeeperBeaten, nextClass, repForRun } from './engine/meta';
   import MainMenu from './ui/MainMenu.svelte';
   import MessageBoard from './ui/MessageBoard.svelte';
+  import DailyBrief from './ui/DailyBrief.svelte';
+  import { dailyDate, dailyRunStart, dailyScore, rollDaily } from './engine/daily';
+  import { rateSkill } from './ui/skill-review';
   import TipBanner from './ui/TipBanner.svelte';
   import GuideBanner from './ui/GuideBanner.svelte';
   import { guide } from './ui/guide.svelte';
@@ -69,7 +72,15 @@
       if (next.pause?.kind === 'over') {
         // The run's Rep (session 71): awarded once, before the save goes.
         if (next.tutorial) profile.finishTutorial(next.id);
-        else {
+        else if (next.setup.daily) {
+          // A Daily Run (session 72): its score, its record, and Rep for the
+          // scored attempt only.
+          const result = next.pause.result;
+          const { date, practice } = next.setup.daily;
+          const rating = rateSkill(next.skill, false)?.rating ?? null;
+          const score = dailyScore(result, rollDaily(date).mods[0].id, rating);
+          profile.finishDaily(next.id, date, practice ?? false, score.lines, rating, repForRun(result).lines);
+        } else {
           const result = next.pause.result;
           // The class milestone (MP2): the first gatekeeper beaten opens the next class.
           const securityLevel = next.setup.securityLevel ?? 0;
@@ -98,7 +109,15 @@
 
   // The front door (milestone 4, V5): the main menu, then a mode. A run
   // keeps its class screen; a Cribbage game saves itself like a run.
-  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson' | 'tutorial' | 'board'>('menu');
+  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson' | 'tutorial' | 'board' | 'daily'>('menu');
+  // Today's daily (session 72): the local date as YYYY-MM-DD.
+  const today = () => dailyDate(new Date());
+  function beginDaily() {
+    const date = today();
+    const practice = profile.startDaily(date);
+    const { classId, seed, setup } = dailyRunStart(date, practice);
+    begin(new LiveRun(classId, seed, false, setup));
+  }
   // Learn to play (checkpoint 5): the hub, a lesson, and progress.
   let lessonIndex = $state(0);
   let lessonsDone = $state.raw(loadProgress());
@@ -213,8 +232,12 @@
         screen = 'tutorial';
       }}
       onboard={() => (screen = 'board')}
+      ondaily={() => (screen = 'daily')}
+      today={today()}
       resumeFailed={menuWarning}
     />
+  {:else if screen === 'daily'}
+    <DailyBrief date={today()} onstart={beginDaily} onmenu={toMenu} />
   {:else if screen === 'board'}
     <MessageBoard onmenu={toMenu} />
   {:else if screen === 'tutorial'}
