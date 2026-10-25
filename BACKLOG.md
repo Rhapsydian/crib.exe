@@ -15,13 +15,13 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 71)
+## Current state (end of session 72)
 
 The game is playable in the browser on desktop and phones
 (<https://rhapsydian.github.io/crib.exe/>, branch `playable`): a full
 four-layer run with six classes, a guided tutorial, first-time tips, plain
 Cribbage with a coach and lessons, and saves. Milestone 5 (polish and
-playtesting) is under way. 917 tests, `npm run check` clean.
+playtesting) is under way. 938 tests, `npm run check` clean.
 
 **The content pass and its tuning pass are done, and live on `playable`**
 (merged in session 70, a fast-forward; save version 2, so old saves don't
@@ -40,6 +40,15 @@ chain, the Message Board (11 upgrade tracks, the 52-subroutine library,
 starting Burners), a play-without-upgrades toggle, and ten Security
 Levels. Fresh victory unchanged (~25%); fully upgraded ~90%; Security
 Levels 1 / 5 / 10 at ~84 / ~26 / ~2% fully upgraded.
+
+**Daily Runs are built, on branch `daily-runs`** (session 72, pushed; from
+`meta-progression`, so it merges after it; `docs/daily-runs-design.md`
+DR1-DR10): the date's salted seed, a random class, a Directive dealt from
+a 13-day deck plus two or three Glitches, Advisories or Bulletins (34
+Mods); one scored attempt a day, practice after, an itemized score, a
+share line, a streak and history; normal Rep for the scored attempt.
+Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
++22).
 
 ---
 
@@ -65,16 +74,11 @@ In this order:
 2. **Meta-progression.** **Built in session 71** on branch
    `meta-progression` (Security Levels are its ascension). Next: the user
    plays it locally, then it merges into `playable`; patch notes for it.
-3. **Daily Runs** (the user, session 62). The date is hashed into a
-   seed: everyone gets the same run that day, with a randomly chosen
-   class and one or more **daily-only Mods** that bend the rules in
-   unusual ways (e.g. something happens whenever a card of a given rank or
-   suit is played). Stretch goal: players upload a successful run's log
-   (the save's replay of answers) to a **daily leaderboard** that verifies
-   it by replaying it server-side. Notes: the demo is static GitHub Pages,
-   so a leaderboard needs a backend; saves break across game updates, so
-   a daily run's log must pin the game version. A way to **play a chosen
-   seed** (the end screen now shows it) is a natural first step.
+3. **Daily Runs.** **Built in session 72** on branch `daily-runs` (Phase 1:
+   no server). Next: the user plays meta-progression and Daily Runs
+   locally, then both merge into `playable`, with patch notes. Deferred:
+   a server leaderboard (unless the game gets popular, the user), and
+   playing a chosen seed.
 
 **Art:** the user is happy with the current look; no sprite pass. At
 most, refine some of the map icons.
@@ -83,6 +87,12 @@ most, refine some of the map icons.
 
 ## Open items
 
+- **Daily Runs follow-ups** (session 72): Short Count's "/21" and Early
+  Cut's face-up starter haven't been seen on screen (covered by engine
+  tests; they show only on days that roll them); Turncoat Crib's large
+  run-level penalty was never fully explained (it's scrapped, but the
+  note stands if a crib rule comes back); Memory Leak is the hardest day
+  (−16 alone); Flawless Form needs a 90%+ Cribbage rating.
 - **Meta-progression follow-ups** (session 71): profile export/import
   waits for a settings menu (an opaque code with a checksum, MP12); a mark
   for winning a Security Level without upgrades was floated (MP17); track

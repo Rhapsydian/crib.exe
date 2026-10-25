@@ -74,6 +74,12 @@ README's old session-by-session narrative is archived in
   chain (Blackhat first) with a Rep fallback; the Message Board (upgrades,
   a subroutine library, starting Burners); ten Security Levels for players
   who've unlocked everything and won (`docs/meta-progression-design.md`).
+- **Session 72:** Daily Runs, on the `daily-runs` branch (built on
+  `meta-progression`, neither merged into `playable`): a run of the day
+  from the date's salted hash, a random class, and daily Mods in four
+  kinds (Glitches, Advisories, Bulletins, Directives); one scored attempt a
+  day with an itemized score and a share line, practice runs after, a
+  streak and history (`docs/daily-runs-design.md`).
 
 What exists, all headless and test-covered:
 
@@ -97,7 +103,7 @@ done; milestone 5, polish and playtesting, is under way.
 
 ```bash
 npm install
-npm test        # Vitest suite (917 tests)
+npm test        # Vitest suite (938 tests)
 npm run check   # svelte-check + tsc across src/, vite config, and scripts/
 npm run dev     # Vite dev server: the main menu (the roguelite, Cribbage); #test is the single-fight harness
 ```
