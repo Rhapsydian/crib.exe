@@ -84,7 +84,10 @@ README's old session-by-session narrative is archived in
   renamed Refactor, fight-gauge fixes, a menu button in runs. Merged into
   `playable` and `master` with meta-progression; patch notes in
   `docs/patch-notes/`. The demo moved to cribexe.com; merged feature
-  branches were deleted, leaving `playable` and `master`.
+  branches were deleted, leaving `playable` and `master`. Then **one AI**:
+  the coach's pegging judgement became the AI's (they had been separate
+  algorithms), and the Cribbage rating became 100 less 10 for each point
+  given up per hand.
 
 What exists, all headless and test-covered:
 

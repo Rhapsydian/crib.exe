@@ -1,0 +1,113 @@
+<title>crib.exe Patch Notes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: the game's own terminal look (one dark theme, on purpose, as the game has): a mono masthead, a sticky section rail, a readable sans body. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0f14; --raised: #121a23; --line: #22303d;
+  --text: #d6e2ee; --strong: #eef5fb; --dim: #7d8fa1; --accent: #39ff9c; --warn: #ffb347;
+  --exploit: #ff3d8b; --daemon: #3ddc84; --overclock: #29d3ff; --honeypot: #ffc23d; --mod: #c49bff; --heat: #ff8a3d;
+  --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; }
+.prompt { font-family: var(--mono); font-size: 13px; color: var(--dim); letter-spacing: .04em; }
+.prompt b { color: var(--accent); font-weight: 400; }
+h1 { font-family: var(--mono); font-weight: 800; font-size: clamp(28px, 6vw, 44px); line-height: 1.1; margin: 0; text-wrap: balance; color: var(--strong); }
+h1 .cursor { color: var(--accent); }
+.suits { display: flex; gap: 6px; }
+.suits span { width: 28px; height: 4px; border-radius: 2px; }
+.lede { color: var(--dim); max-width: 62ch; margin: 0; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; gap: 4px 16px; flex-wrap: wrap; padding-block: 12px; border-block: 1px solid var(--line); font-family: var(--mono); font-size: 12px; }
+nav a { color: var(--dim); text-decoration: none; }
+nav a:hover, nav a:focus-visible { color: var(--accent); outline: none; text-decoration: underline; }
+section { padding-top: 32px; scroll-margin-top: 72px; }
+h2 { font-family: var(--mono); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; text-wrap: balance; }
+h2::before { content: "// "; color: var(--dim); }
+h3 { font-family: var(--mono); font-size: 14px; font-weight: 700; margin: 22px 0 6px; color: var(--strong); }
+.h3-note { font-weight: 400; color: var(--dim); font-size: 12px; }
+p { margin: 0 0 12px; max-width: 68ch; }
+ul { margin: 0 0 12px; padding-left: 20px; max-width: 68ch; }
+li { margin: 4px 0; }
+li::marker { color: var(--dim); }
+ul ul { margin: 4px 0 6px; }
+b { font-weight: 600; color: var(--strong); }
+i { color: var(--dim); }
+code { font-family: var(--mono); font-size: .9em; }
+.notice { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--warn); border-radius: 6px; background: var(--raised); font-size: 15px; }
+.notice b { color: var(--warn); }
+li.suit { list-style: none; margin-left: -20px; padding-left: 12px; border-left: 3px solid var(--c); }
+li.suit b { color: var(--c); font-family: var(--mono); font-size: 14px; }
+.suit-exploit { --c: var(--exploit); } .suit-daemon { --c: var(--daemon); } .suit-overclock { --c: var(--overclock); } .suit-honeypot { --c: var(--honeypot); }
+#new-mods h3 { color: var(--mod); }
+#new-burners h3 { color: var(--heat); }
+#what-we-d-like-you-to-watch-for { margin-top: 32px; padding: 20px 18px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--raised); }
+.table-wrap { overflow-x: auto; margin: 0 0 12px; }
+table { border-collapse: collapse; font-size: 15px; min-width: 100%; }
+th, td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 12px; color: var(--dim); font-weight: 400; }
+footer { margin-top: 40px; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+<div class="wrap">
+<header>
+  <div class="prompt"><b>&gt;</b> ./crib.exe --changelog</div>
+  <h1>Patch notes<span class="cursor">_</span></h1>
+  <div class="suits" aria-hidden="true"><span style="background:var(--exploit)"></span><span style="background:var(--daemon)"></span><span style="background:var(--overclock)"></span><span style="background:var(--honeypot)"></span></div>
+  <p class="lede">Progression and Daily Runs: what's new for testers since the content update.</p>
+</header>
+<nav aria-label="Sections"><a href="#highlights">Highlights</a><a href="#one-ai">One AI</a><a href="#the-cribbage-rating">The Cribbage rating</a><a href="#daily-runs">Daily Runs</a><a href="#fixes">Fixes</a></nav>
+<section><h3>Play it at cribexe.com.</h3>
+<p>A small update since the progression and Daily Runs notes (now in <code>docs/patch-notes/2026-10-25.html</code>). It brings the Cribbage coach and the computer's play together, a rating you can check yourself, and a handful of fixes from playtest reports.</p>
+<section id="highlights"><h2>Highlights</h2>
+<ul>
+<li><b>One Cribbage AI.</b> The coach and the computer opponent now think the same way. What the coach recommends is exactly what the opponent plays at full strength.
+</li>
+<li><b>A simpler Cribbage rating.</b> Your rating is now plain arithmetic: 100, less 10 for each point you gave up per hand.
+</li>
+<li><b>Flawless Form</b> now needs a Flawless rating (96% or better).
+</li></ul>
+</section><section id="one-ai"><h2>One AI</h2>
+<p>The coach and the opponent used to judge pegging differently: the coach weighed what the other player might be holding, while the opponent followed a few rules of thumb. Head to head, the coach's way won 57% of games. Now there's one way, the coach's, everywhere:</p>
+<ul>
+<li>In fights, trace evasion, and Play Cribbage, the opponent pegs the way the coach would, more or less carefully by its skill.
+</li>
+<li>Hard in Play Cribbage plays exactly what the coach recommends.
+</li>
+<li>When a Mod shows you the opponent's hand, the coach takes it into account too.
+</li></ul>
+<p>Expect opponents to peg a little more sharply: they now avoid leaving counts you can score off, based on what you could actually be holding.</p>
+</section><section id="the-cribbage-rating"><h2>The Cribbage rating</h2>
+<p>Each discard and pegging play is compared with what the coach would have done, in points. Your rating adds up the points you gave up, divides by the hands played, and takes 10 off 100 for each point:</p>
+<ul>
+<li>Gave up 2.0 points a hand: <b>80</b>.
+</li>
+<li>Gave up 0.5 points a hand: <b>95</b>.
+</li></ul>
+<p>The review now says it in words: <i>"You gave up 3.7 points a hand to the coach's choices, over 11 hands."</i> It lists only mistakes that cost a whole point or more. Most players will see their ratings go up: small slips now cost only what they're worth.</p>
+<p>The labels are unchanged: Learning, Steady (60+), Sharp (75+), Expert (88+) and Flawless (96+). A run's rating counts every hand from every fight.</p>
+</section><section id="daily-runs"><h2>Daily Runs</h2>
+<ul>
+<li>The score's Cribbage line uses the new rating (5 points per rating point, doubled on Card Sharp days).
+</li>
+<li><b>Flawless Form:</b> a Flawless rating (96% or better) scores +1,000. It used to be 90%, which the new rating made too easy to reach.
+</li></ul>
+</section><section id="fixes"><h2>Fixes</h2>
+<ul>
+<li>The INIT bar no longer replays its fill when pegging ends.
+</li>
+<li>The tutorial's cards stay on their own screen: the reward explanation no longer pops up at the start of the next fight.
+</li>
+<li>The Quiet Host's Refactor preview shows suit icons instead of <code>[[suit:0]]</code>.
+</li>
+<li>The elite tip waits until an elite is one move away, not the start of the run.
+</li>
+<li>In the loadout, a long subroutine name keeps its rank beside it, and "+1 banked" stays on one line.
+</li></ul></section>
+<footer>crib.exe · one AI and the Cribbage rating (session 72)</footer>
+</div>

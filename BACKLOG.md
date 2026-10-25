@@ -95,7 +95,8 @@ most, refine some of the map icons.
   tests; they show only on days that roll them); Turncoat Crib's large
   run-level penalty was never fully explained (it's scrapped, but the
   note stands if a crib rule comes back); Memory Leak is the hardest day
-  (−16 alone); Flawless Form needs a 90%+ Cribbage rating.
+  (−16 alone); Flawless Form needs a Flawless (96+) Cribbage rating
+  (session 72; it was 90%+ before the rating changed).
 - **Meta-progression follow-ups** (session 71): profile export/import
   waits for a settings menu (an opaque code with a checksum, MP12); a mark
   for winning a Security Level without upgrades was floated (MP17); track
@@ -109,11 +110,12 @@ most, refine some of the map icons.
   profile; `?unlockall` opens every class and the library. Both live in
   `src/ui/testing-flags.ts`.
 
-- **Review coach** (session 70): falloff 1.0 calibrated so the simulated
-  player (0.85) reads Sharp (87); regular enemies' skill reads Learning,
-  elites' Steady, the full-strength AI Expert (95). Watch in playtesting
-  whether the bands feel fair; the run-end rating wasn't checked in the
-  browser. Trace evasion hands aren't rated.
+- **Review coach** (sessions 70, 72): the rating is 100 less 10 for each
+  point given up per hand, against the AI at full strength (players found
+  the old curve low and arcane). Measured: skill 0.25 rates 59, 0.5 70,
+  0.65 80, the simulated player 94, full strength 100. Watch whether the
+  bands feel fair now; the run-end rating wasn't checked in the browser.
+  Trace evasion hands aren't rated.
 - **Stolen Coupon "didn't prompt"** (a playtest note, session 70): not
   reproduced (likely bought in the same Shop, or the Shop already
   visited); a Shop note now says when it's offered.
@@ -198,9 +200,13 @@ UI and text:
 - **Lesson texts** (`src/ui/lessons.ts`) still use double dashes.
 - **Breached, then caught** at layer 4 shows "4/4 layers breached" under
   a losing title (the rules' count); revisit if testers find it odd.
-- **The coach is a first model:** pegging plays are judged one reply
-  deep, against random opponent cards; the crib table takes the other
-  two crib cards as random.
+- **One AI** (session 72, the user's rule): the coach and every opponent
+  share one judgement (`src/engine/ai.ts`); never add a second. It is still
+  a first model: pegging plays are judged one reply deep, against random
+  opponent cards; the crib table takes the other two crib cards as random.
+  Unified enemies peg better against real players (the simulated player
+  improved alongside them, so victory held at ~25%); the user judged the
+  enemy strength fine without measuring it.
 - **Difficulty levels:** Easy (0.6) may still be hard for a true beginner;
   moving it is one number.
 - **Pegboard:** the strip and street-board mockups remain at #pegboard if
