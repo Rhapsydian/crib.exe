@@ -790,7 +790,9 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
   // 4th starter from the library, a starting common Burner.
   playerState = applyUpgrades(playerState, setup?.upgrades);
   const starter = setup?.starter ? ALL_SUBROUTINES.find((p) => p.id === setup.starter) : undefined;
-  if (starter) playerState = { ...playerState, installedLoadout: [...playerState.installedLoadout, starter] };
+  // A starter the class already starts with arrives as a Merge copy.
+  if (starter && playerState.installedLoadout.some((p) => p.id === starter.id)) playerState = { ...playerState, material: { ...playerState.material, [starter.id]: (playerState.material[starter.id] ?? 0) + 1 } };
+  else if (starter) playerState = { ...playerState, installedLoadout: [...playerState.installedLoadout, starter] };
   if (setup?.burner && BURNER_DEFINITIONS[setup.burner]) playerState = acquireBurner(playerState, BURNER_DEFINITIONS[setup.burner]);
   const installedSlotCap = installedSlotCapOption ?? slotCapOf(playerState);
   // Routed through the same acquireMod each real Mod pickup uses (not a

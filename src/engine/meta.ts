@@ -3,6 +3,10 @@ import type { ClassId } from './classes';
 import type { Archetype } from './subroutine-types';
 import type { BurnerId } from './burner-types';
 import { BREACH_THRESHOLD } from './encounters';
+import { ARCHETYPE_POOLS } from './subroutines';
+import { BURNER_DEFINITIONS } from './burners';
+import type { SubroutineDefinition } from './subroutine-types';
+import type { Rarity } from './rewards';
 
 /**
  * Meta-progression (session 71, docs/meta-progression-design.md): what
@@ -151,3 +155,51 @@ export function repForRun(result: RunResult): { lines: RepLine[]; total: number 
   if (result.outcome === 'victory') lines.push({ label: 'Victory', rep: VICTORY_REP });
   return { lines, total: lines.reduce((s, l) => s + l.rep, 0) };
 }
+
+/** The upgrade tracks as the Message Board shows them (MP16): a name, what
+ * a level does, and each level's price in Rep (first pass; set by pacing,
+ * checkpoint 5). */
+export const UPGRADE_VIEW: Record<UpgradeId, { name: string; effect: (level: number) => string; prices: readonly number[] }> = {
+  containment: { name: 'Low Profile', effect: (l) => `Enemy Containment +${l * 3}%`, prices: [10, 15, 22, 30, 40] },
+  breach: { name: 'Exploit Research', effect: (l) => `Your Breach −${l * 3}%`, prices: [10, 15, 22, 30, 40] },
+  fightHeat: { name: 'Clean Exits', effect: (l) => `Fight Heat −${l * 4}%`, prices: [10, 15, 22, 30, 40] },
+  restHeat: { name: 'Safehouse Upgrades', effect: (l) => `Rest sheds ${l * 3} more Heat`, prices: [10, 15, 22, 30] },
+  shopPrice: { name: 'Trade Contacts', effect: (l) => `Shop prices −${l * 4}%`, prices: [10, 15, 22, 30, 40] },
+  'power-exploit': { name: 'Exploit Tuning', effect: (l) => `Exploit Processes +${l * 4}%`, prices: [12, 18, 25, 35, 45] },
+  'power-daemon': { name: 'Daemon Tuning', effect: (l) => `Daemon Processes +${l * 4}%`, prices: [12, 18, 25, 35, 45] },
+  'power-overclock': { name: 'Overclock Tuning', effect: (l) => `Overclock Processes +${l * 4}%`, prices: [12, 18, 25, 35, 45] },
+  'power-honeypot': { name: 'Honeypot Tuning', effect: (l) => `Honeypot Processes +${l * 4}%`, prices: [12, 18, 25, 35, 45] },
+  burnerSlots: { name: 'Burner Rig', effect: (l) => `Carry ${3 + l} Burners`, prices: [60, 100] },
+  subroutineSlot: { name: 'Expanded Memory', effect: (l) => `Install ${6 + l} subroutines`, prices: [150] },
+};
+
+/** The next level's price, or null when the track is bought out. */
+export function upgradePrice(id: UpgradeId, level: number): number | null {
+  return UPGRADE_VIEW[id].prices[level] ?? null;
+}
+
+/** The library's prices by rarity (MP8: rares very high; first pass). */
+export const LIBRARY_PRICE: Record<Rarity, number> = { common: 15, uncommon: 35, rare: 80 };
+
+/** What the library offers now (MP8): one subroutine per archetype, the
+ * next locked in its pool's order; every common in every archetype
+ * before any uncommon is shown, every uncommon before the rares. */
+export function libraryOffers(unlocked: readonly string[]): { piece: SubroutineDefinition; rarity: Rarity; price: number }[] {
+  const owned = new Set(unlocked);
+  for (const rarity of ['common', 'uncommon', 'rare'] as const) {
+    const key = rarity === 'common' ? 'commons' : rarity === 'uncommon' ? 'uncommons' : 'rares';
+    const offers = Object.values(ARCHETYPE_POOLS).flatMap((pool) => {
+      const next = pool[key].find((p) => !owned.has(p.id));
+      return next ? [{ piece: next, rarity, price: LIBRARY_PRICE[rarity] }] : [];
+    });
+    if (offers.length) return offers;
+  }
+  return [];
+}
+
+/** The common Burners a run can start with once unlocked (MP9). */
+export const STARTING_BURNERS: readonly BurnerId[] = (Object.keys(BURNER_DEFINITIONS) as BurnerId[]).filter((id) => {
+  const b = BURNER_DEFINITIONS[id];
+  return b.rarity === 'common' && b.contexts.length > 0 && !b.contraband;
+});
+export const STARTING_BURNER_PRICE = 20;

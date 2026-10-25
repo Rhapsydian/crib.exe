@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { applyUpgrades, UPGRADE_TRACKS, upgradeLevel } from './meta';
-import { createInitialPlayerState, playRun, type RunEvent } from './run';
+import { applyUpgrades, UPGRADE_TRACKS, upgradeLevel, libraryOffers, LIBRARY_PRICE, STARTING_BURNERS } from './meta';
+import { createInitialPlayerState, playRun, runRequests, type RunEvent, type RunPlayerState } from './run';
 import { BREACH_THRESHOLD, combatThresholdsFor, restHeatFor, REST_HEAT_REDUCTION, totalHeatSources } from './encounters';
 import { burnerCapOf, BURNER_CAP } from './burners';
 import { slotCapOf, INSTALLED_SLOT_CAP } from './loadout';
 import { scaledProcess } from './subroutine-types';
 import { ENEMY_ROSTER } from './enemies';
-import { ALL_SUBROUTINES } from './subroutines';
+import { ALL_SUBROUTINES, ARCHETYPE_POOLS } from './subroutines';
 
 // Session 71 (docs/meta-progression-design.md MP7-MP9): the upgrades
 // inside a run.
@@ -67,5 +67,34 @@ describe('upgrades in a run', () => {
     const fights = r.log.filter((e): e is Extract<RunEvent, { type: 'encounter' }> => e.type === 'encounter' && e.outcome.heatDelta !== 0);
     expect(fights.some((e) => e.outcome.heatSources.upgrade < 0)).toBe(true);
     for (const e of fights) expect(totalHeatSources(e.outcome.heatSources)).toBeCloseTo(e.outcome.heatDelta);
+  });
+});
+
+describe('the library and starting Burners (MP8-MP9)', () => {
+  it('offers one per archetype, every common before any uncommon, every uncommon before the rares', () => {
+    const first = libraryOffers([]);
+    expect(first).toHaveLength(4);
+    expect(first.every((o) => o.rarity === 'common')).toBe(true);
+    expect(new Set(first.map((o) => o.piece.archetype)).size).toBe(4);
+    // Every Exploit common unlocked: three archetypes still offer commons.
+    const exploitCommons = ARCHETYPE_POOLS.exploit.commons.map((p) => p.id);
+    expect(libraryOffers(exploitCommons).map((o) => o.piece.archetype).sort()).toEqual(['daemon', 'honeypot', 'overclock']);
+    const allCommons = Object.values(ARCHETYPE_POOLS).flatMap((p) => p.commons.map((c) => c.id));
+    expect(libraryOffers(allCommons).every((o) => o.rarity === 'uncommon')).toBe(true);
+    const allButRares = Object.values(ARCHETYPE_POOLS).flatMap((p) => [...p.commons, ...p.uncommons].map((c) => c.id));
+    expect(libraryOffers(allButRares).every((o) => o.rarity === 'rare' && o.price === LIBRARY_PRICE.rare)).toBe(true);
+    expect(libraryOffers(ALL_SUBROUTINES.map((p) => p.id))).toEqual([]);
+  });
+
+  it('starting Burners are the general commons', () => {
+    expect(STARTING_BURNERS.length).toBe(6);
+    expect(STARTING_BURNERS).toContain('flash-drive');
+  });
+
+  it("a starter the class already has arrives as a Merge copy", () => {
+    const own = createInitialPlayerState('exploit-overclock').installedLoadout[0];
+    const first = runRequests({ seed: 3, classId: 'exploit-overclock', setup: { starter: own.id } }).next().value as { playerState: RunPlayerState };
+    expect(first.playerState.installedLoadout.filter((p) => p.id === own.id)).toHaveLength(1);
+    expect(first.playerState.material[own.id]).toBe(1);
   });
 });

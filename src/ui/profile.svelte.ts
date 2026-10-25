@@ -1,5 +1,7 @@
 import type { ClassId } from '../engine/classes';
-import { CLASS_FALLBACK_REP, CLASS_ORDER, TUTORIAL_REP, type RepLine } from '../engine/meta';
+import { CLASS_FALLBACK_REP, CLASS_ORDER, LIBRARY_PRICE, STARTING_BURNER_PRICE, STARTING_BURNERS, TUTORIAL_REP, libraryOffers, upgradeLevel, upgradePrice, type RepLine, type UpgradeId } from '../engine/meta';
+import type { BurnerId } from '../engine/burner-types';
+import { ALL_SUBROUTINES } from '../engine/subroutines';
 import { RESET_PROFILE_FLAG, UNLOCK_ALL_FLAG } from './testing-flags';
 
 /**
@@ -28,13 +30,23 @@ export interface Profile {
   upgrades: Record<string, number>;
   /** The last run awarded, so a run never pays twice. */
   lastRunId: string | null;
+  /** Subroutines unlocked in the library (MP8): a run can start with one
+   * as a 4th starter. */
+  library: string[];
+  /** Common Burners unlocked to start a run with (MP9). */
+  burners: BurnerId[];
+  /** The Message Board's one-time introduction has been seen (MP16). */
+  boardIntroduced: boolean;
+  /** The class select's last starting picks, remembered. */
+  starter: string | null;
+  burner: BurnerId | null;
 }
 
 export const PROFILE_VERSION = 1;
 const KEY = 'cribexe.profile';
 
 export function freshProfile(): Profile {
-  return { version: PROFILE_VERSION, rep: 0, repEarned: 0, runsFinished: 0, tutorialGranted: false, classes: ['exploit-overclock'], upgrades: {}, lastRunId: null };
+  return { version: PROFILE_VERSION, rep: 0, repEarned: 0, runsFinished: 0, tutorialGranted: false, classes: ['exploit-overclock'], upgrades: {}, lastRunId: null, library: [], burners: [], boardIntroduced: false, starter: null, burner: null };
 }
 
 /** An older profile brought up to this version, keeping what it has: each
@@ -85,6 +97,53 @@ class ProfileStore {
     } catch {
       // Storage blocked or full: progress lasts the session.
     }
+  }
+
+  #spend(price: number, change: Partial<Profile>): boolean {
+    if (this.data.rep < price) return false;
+    this.data = { ...this.data, ...change, rep: this.data.rep - price };
+    this.#save();
+    return true;
+  }
+
+  /** An upgrade's next level (MP7; no refunds, MP12). */
+  buyUpgrade(id: UpgradeId): boolean {
+    const level = upgradeLevel(this.data.upgrades, id);
+    const price = upgradePrice(id, level);
+    return price !== null && this.#spend(price, { upgrades: { ...this.data.upgrades, [id]: level + 1 } });
+  }
+
+  /** Library subroutines that can start a run (`?unlockall`: all). */
+  get library(): string[] {
+    return UNLOCK_ALL_FLAG ? ALL_SUBROUTINES.map((p) => p.id) : this.data.library;
+  }
+
+  /** A library subroutine, only while it's on offer (MP8's order). */
+  buyLibrary(id: string): boolean {
+    const offer = libraryOffers(this.data.library).find((o) => o.piece.id === id);
+    return !!offer && this.#spend(LIBRARY_PRICE[offer.rarity], { library: [...this.data.library, id] });
+  }
+
+  /** Starting Burners unlocked (`?unlockall`: all). */
+  get burners(): BurnerId[] {
+    return UNLOCK_ALL_FLAG ? [...STARTING_BURNERS] : this.data.burners;
+  }
+
+  buyBurner(id: BurnerId): boolean {
+    if (!STARTING_BURNERS.includes(id) || this.data.burners.includes(id)) return false;
+    return this.#spend(STARTING_BURNER_PRICE, { burners: [...this.data.burners, id] });
+  }
+
+  /** The Message Board's introduction, seen. */
+  introduceBoard(): void {
+    this.data = { ...this.data, boardIntroduced: true };
+    this.#save();
+  }
+
+  /** The class select's starting picks, remembered for next time. */
+  rememberPicks(starter: string | null, burner: BurnerId | null): void {
+    this.data = { ...this.data, starter, burner };
+    this.#save();
   }
 
   /** A finished run's Rep, once per run, and the class its milestone

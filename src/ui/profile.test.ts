@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { freshProfile, migrate, profile, PROFILE_VERSION } from './profile.svelte';
-import { CLASS_FALLBACK_REP, TUTORIAL_REP } from '../engine/meta';
+import { CLASS_FALLBACK_REP, TUTORIAL_REP, libraryOffers } from '../engine/meta';
+import { ARCHETYPE_POOLS } from '../engine/subroutines';
 
 // Session 71 (docs/meta-progression-design.md MP10): the profile.
 describe('the profile', () => {
@@ -25,6 +26,23 @@ describe('the profile', () => {
     expect(profile.buyClass('exploit-daemon')).toBe(true);
     expect(profile.data.rep).toBe(5);
     expect(profile.nextLocked).toBe('daemon-honeypot');
+  });
+
+  it('buys upgrades level by level, library offers only, Burners once (MP7-MP9)', () => {
+    profile.data = { ...profile.data, rep: 1000 };
+    expect(profile.buyUpgrade('subroutineSlot')).toBe(true);
+    expect(profile.buyUpgrade('subroutineSlot')).toBe(false); // bought out
+    expect(profile.data.upgrades.subroutineSlot).toBe(1);
+    const offer = libraryOffers(profile.data.library)[0].piece.id;
+    const notOffered = ARCHETYPE_POOLS.exploit.rares[0].id;
+    expect(profile.buyLibrary(notOffered)).toBe(false);
+    expect(profile.buyLibrary(offer)).toBe(true);
+    expect(profile.data.library).toContain(offer);
+    expect(profile.buyBurner('flash-drive')).toBe(true);
+    expect(profile.buyBurner('flash-drive')).toBe(false);
+    expect(profile.buyBurner('kill-switch')).toBe(false); // not a starting Burner
+    profile.data = { ...profile.data, rep: 0 };
+    expect(profile.buyUpgrade('breach')).toBe(false);
   });
 
   it('awards a run once, and the tutorial grant only the first time', () => {

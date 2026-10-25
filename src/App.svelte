@@ -16,6 +16,7 @@
   import { profile } from './ui/profile.svelte';
   import { firstGatekeeperBeaten, nextClass, repForRun } from './engine/meta';
   import MainMenu from './ui/MainMenu.svelte';
+  import MessageBoard from './ui/MessageBoard.svelte';
   import TipBanner from './ui/TipBanner.svelte';
   import GuideBanner from './ui/GuideBanner.svelte';
   import { guide } from './ui/guide.svelte';
@@ -96,7 +97,7 @@
 
   // The front door (milestone 4, V5): the main menu, then a mode. A run
   // keeps its class screen; a Cribbage game saves itself like a run.
-  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson' | 'tutorial'>('menu');
+  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson' | 'tutorial' | 'board'>('menu');
   // Learn to play (checkpoint 5): the hub, a lesson, and progress.
   let lessonIndex = $state(0);
   let lessonsDone = $state.raw(loadProgress());
@@ -210,8 +211,11 @@
         markVisited();
         screen = 'tutorial';
       }}
+      onboard={() => (screen = 'board')}
       resumeFailed={menuWarning}
     />
+  {:else if screen === 'board'}
+    <MessageBoard onmenu={toMenu} />
   {:else if screen === 'tutorial'}
     <TutorialStart
       resumable={Boolean(saved?.tutorial)}
@@ -222,7 +226,7 @@
   {:else}
     <ClassSelect
       onmenu={toMenu}
-      onstart={(classId) => begin(new LiveRun(classId, newSeed()))}
+      onstart={(classId, picks) => begin(new LiveRun(classId, newSeed(), false, { upgrades: { ...profile.data.upgrades }, ...picks }))}
       ontest={() => (location.hash = '#test')}
       saved={saved?.summary ?? null}
       onresume={resume}

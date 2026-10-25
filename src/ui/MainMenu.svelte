@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tips } from './tips.svelte';
+  import { profile } from './profile.svelte';
   import CardView from './CardView.svelte';
   import type { Card } from '../engine/cards';
   let tipsReset = $state(false);
@@ -24,6 +25,7 @@
     onresumecribbage,
     onrun,
     ontutorial,
+    onboard,
     resumeFailed = null,
   }: {
     runSave: { className: string; layer: number } | null;
@@ -34,6 +36,7 @@
     onresumecribbage: () => void;
     onrun: () => void;
     ontutorial: () => void;
+    onboard: () => void;
     resumeFailed?: string | null;
   } = $props();
 
@@ -92,6 +95,15 @@
       <b>Start a Run</b>
       <span>{runSave ? `Saved run: ${runSave.className}, layer ${runSave.layer}. Resume it on the next screen.` : 'Break into a network, four layers deep. Every fight is Cribbage.'}</span>
     </button>
+    <!-- The Message Board (session 71, MP16): not listed until a first
+         finished run (the tutorial counts). -->
+    {#if profile.data.runsFinished > 0}
+      <button class="entry board" class:nudge={!profile.data.boardIntroduced} onclick={onboard}>
+        {#if !profile.data.boardIntroduced}<span class="badge">new</span>{/if}
+        <b>Message Board <span class="rep">◆ {profile.data.rep} rep</span></b>
+        <span>Spend the Rep your runs earn on upgrades, subroutines and Burners.</span>
+      </button>
+    {/if}
   </section>
 
   <section>
@@ -362,5 +374,10 @@
     color: var(--accent);
     font-weight: 700;
     font-size: 13px;
+  }
+  .rep {
+    float: right;
+    color: var(--mod);
+    font-weight: 400;
   }
 </style>

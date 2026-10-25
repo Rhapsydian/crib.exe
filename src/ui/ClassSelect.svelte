@@ -4,6 +4,9 @@
   import { classModFor } from './kit';
   import { profile } from './profile.svelte';
   import { CLASS_FALLBACK_REP, CLASS_ORDER } from '../engine/meta';
+  import { ALL_SUBROUTINES } from '../engine/subroutines';
+  import { BURNER_DEFINITIONS } from '../engine/burners';
+  import type { BurnerId } from '../engine/burner-types';
 
   // Run setup (milestone 3 checkpoint 2): pick a class and jack in. Each
   // card shows its two suits, its class Mod (the bridge between them) and
@@ -20,7 +23,7 @@
     onresume,
     resumeFailed = false,
   }: {
-    onstart: (classId: ClassId) => void;
+    onstart: (classId: ClassId, picks: { starter?: string; burner?: BurnerId }) => void;
     ontest: () => void;
     onmenu?: () => void;
     saved?: { className: string; layer: number; savedAt: number } | null;
@@ -29,6 +32,15 @@
   } = $props();
   const classes = CLASS_ORDER.map((id) => CLASS_DEFINITIONS[id]);
   let chosen = $state<ClassId>(CLASS_ORDER.findLast((id) => profile.hasClass(id)) ?? CLASS_ORDER[0]);
+  // Starting picks (MP8-MP9): a 4th starter from the library and a common
+  // Burner, once any are unlocked; the last picks are remembered.
+  const library = $derived(profile.library.map((id) => ALL_SUBROUTINES.find((p) => p.id === id)).filter((p) => p !== undefined));
+  let starter = $state<string>(profile.library.includes(profile.data.starter ?? '') ? (profile.data.starter ?? '') : '');
+  let burner = $state<string>(profile.burners.includes(profile.data.burner as BurnerId) ? (profile.data.burner ?? '') : '');
+  function start() {
+    profile.rememberPicks(starter || null, (burner || null) as BurnerId | null);
+    onstart(chosen, { starter: starter || undefined, burner: (burner || undefined) as BurnerId | undefined });
+  }
   const prevName = (id: ClassId) => CLASS_DEFINITIONS[CLASS_ORDER[CLASS_ORDER.indexOf(id) - 1]].name;
 </script>
 
@@ -71,7 +83,30 @@
       {/if}
     {/each}
   </div>
-  <button class="start" onclick={() => onstart(chosen)}>▶ jack in as {CLASS_DEFINITIONS[chosen].name}</button>
+  {#if library.length || profile.burners.length}
+    <div class="caption">STARTING PICKS</div>
+    <div class="picks">
+      {#if library.length}
+        <label>
+          <span class="dim">4th starting subroutine</span>
+          <select bind:value={starter} id="starter-pick">
+            <option value="">none</option>
+            {#each library as p (p.id)}<option value={p.id}>{p.name} ({p.archetype})</option>{/each}
+          </select>
+        </label>
+      {/if}
+      {#if profile.burners.length}
+        <label>
+          <span class="dim">Starting Burner</span>
+          <select bind:value={burner} id="burner-pick">
+            <option value="">none</option>
+            {#each profile.burners as id (id)}<option value={id}>{BURNER_DEFINITIONS[id].name}</option>{/each}
+          </select>
+        </label>
+      {/if}
+    </div>
+  {/if}
+  <button class="start" onclick={start}>▶ jack in as {CLASS_DEFINITIONS[chosen].name}</button>
   <button class="test" onclick={ontest}>test a single fight instead</button>
 </div>
 
@@ -118,6 +153,25 @@
     flex-direction: column;
     gap: 4px;
     font-size: 11.5px;
+  }
+  .picks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    font-size: 12px;
+  }
+  .picks label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .picks select {
+    padding: 4px 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--bg-raised);
+    color: var(--text);
+    font: inherit;
   }
   .cls.locked {
     opacity: 0.75;
