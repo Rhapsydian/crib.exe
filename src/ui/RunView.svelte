@@ -43,6 +43,10 @@
   $effect(() => {
     if (!run.tutorial) return;
     const pause = run.pause;
+    // The coach's cards belong to their screen: leaving one drops its
+    // leftovers rather than carrying them into the next.
+    const kind = pause?.kind;
+    guide.enter(kind === 'move' ? 'map' : kind === 'fight' ? 'fight' : kind === 'reward' ? 'reward' : kind === 'shop' ? 'shop' : kind === 'safehouse' ? 'safehouse' : null);
     if (pause?.kind === 'move') {
       guide.offer('map');
       guide.offer('class');

@@ -56,6 +56,29 @@ export const GUIDE_TEXT: Record<GuideStep, string> = {
     `Gatekeepers bend a rule with their own Mod. Firewall Beta's, Rate Limit: Credit you gain past ${RATE_LIMIT_THRESHOLD} in a single turn is halved. Tap its Mod (◆) to read it.`,
 };
 
+/** The screen each step belongs to (session 72, the user's report: the
+ * reward explanation, queued behind "Breached!", followed the player into
+ * the next fight). Leaving a screen drops its steps still waiting. */
+export type GuideScreen = 'map' | 'fight' | 'reward' | 'shop' | 'safehouse';
+const STEP_SCREEN: Record<GuideStep, GuideScreen> = {
+  map: 'map',
+  class: 'map',
+  order: 'map',
+  gatekeeperNear: 'map',
+  fight: 'fight',
+  cribbageCoach: 'fight',
+  turn: 'fight',
+  hook: 'fight',
+  enemyTurn: 'fight',
+  burner: 'fight',
+  burnerFired: 'fight',
+  gatekeeper: 'fight',
+  won: 'reward',
+  reward: 'reward',
+  shop: 'shop',
+  safehouse: 'safehouse',
+};
+
 class Guide {
   /** True during the guided run. */
   active = $state(false);
@@ -94,6 +117,19 @@ class Guide {
     this.#seen.add(step);
     if (this.current === null) this.current = step;
     else this.#queue.push(step);
+  }
+
+  /** A screen comes up: steps belonging to another screen, on screen or
+   * waiting, are dropped, and can show again when their moment next comes
+   * (they weren't read). */
+  enter(screen: GuideScreen | null): void {
+    const stale = (s: GuideStep) => STEP_SCREEN[s] !== screen;
+    for (const s of this.#queue.filter(stale)) this.#seen.delete(s);
+    this.#queue = this.#queue.filter((s) => !stale(s));
+    if (this.current && stale(this.current)) {
+      this.#seen.delete(this.current);
+      this.current = this.#queue.shift() ?? null;
+    }
   }
 
   /** "Got it": the next step, if one is waiting. */

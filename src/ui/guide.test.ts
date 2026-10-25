@@ -25,6 +25,30 @@ describe('the tutorial coach', () => {
     expect(guide.current).toBeNull();
   });
 
+  it("drops a screen's leftover cards when it's left, to show again next time (the user's report)", () => {
+    guide.start();
+    guide.enter('reward');
+    guide.offer('won');
+    guide.offer('reward'); // waits behind "Breached!"
+    expect(guide.current).toBe('won');
+    // The player picks a reward without "got it", and moves on.
+    guide.enter('map');
+    expect(guide.current).toBeNull();
+    guide.enter('fight');
+    guide.offer('fight');
+    expect(guide.current).toBe('fight'); // not the reward card
+    guide.dismiss();
+    expect(guide.current).toBeNull();
+    // The next reward screen explains rewards after all.
+    guide.enter('reward');
+    guide.offer('won');
+    guide.offer('reward');
+    expect(guide.current).toBe('won');
+    guide.dismiss();
+    expect(guide.current).toBe('reward');
+    guide.stop();
+  });
+
   it('starts fresh with each guided run', () => {
     guide.start();
     guide.offer('shop');
