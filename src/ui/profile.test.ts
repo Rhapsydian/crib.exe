@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { freshProfile, migrate, profile, PROFILE_VERSION } from './profile.svelte';
-import { TUTORIAL_REP } from '../engine/meta';
+import { CLASS_FALLBACK_REP, TUTORIAL_REP } from '../engine/meta';
 
 // Session 71 (docs/meta-progression-design.md MP10): the profile.
 describe('the profile', () => {
@@ -13,7 +13,22 @@ describe('the profile', () => {
     expect(migrate(old)).toMatchObject({ version: PROFILE_VERSION, rep: 55, classes: ['exploit-overclock', 'exploit-honeypot'], upgrades: {} });
   });
 
+  it('unlocks the next class by milestone, and sells only the next locked one (MP2, MP6)', () => {
+    profile.awardRun('run-unlock', [], 'exploit-honeypot');
+    expect(profile.hasClass('exploit-honeypot')).toBe(true);
+    expect(profile.lastAward?.unlocked).toBe('exploit-honeypot');
+    expect(profile.nextLocked).toBe('exploit-daemon');
+    profile.data = { ...profile.data, rep: CLASS_FALLBACK_REP - 1 };
+    expect(profile.buyClass('exploit-daemon')).toBe(false);
+    profile.data = { ...profile.data, rep: CLASS_FALLBACK_REP + 5 };
+    expect(profile.buyClass('daemon-overclock')).toBe(false);
+    expect(profile.buyClass('exploit-daemon')).toBe(true);
+    expect(profile.data.rep).toBe(5);
+    expect(profile.nextLocked).toBe('daemon-honeypot');
+  });
+
   it('awards a run once, and the tutorial grant only the first time', () => {
+    profile.data = { ...profile.data, rep: 0 };
     const before = profile.data.rep;
     profile.awardRun('run-a', [{ label: 'Layer 1 breached', rep: 10 }]);
     profile.awardRun('run-a', [{ label: 'Layer 1 breached', rep: 10 }]);
@@ -22,6 +37,6 @@ describe('the profile', () => {
     profile.finishTutorial('tut-1');
     profile.finishTutorial('tut-2');
     expect(profile.data.rep).toBe(before + 10 + TUTORIAL_REP);
-    expect(profile.data.runsFinished).toBe(3);
+    expect(profile.data.runsFinished).toBe(4);
   });
 });

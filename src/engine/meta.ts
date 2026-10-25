@@ -1,4 +1,5 @@
 import type { RunResult } from './run';
+import type { ClassId } from './classes';
 
 /**
  * Meta-progression (session 71, docs/meta-progression-design.md): what
@@ -17,6 +18,24 @@ export const ELITE_REP = 2;
 export const VICTORY_REP = 20;
 /** The tutorial's one-time grant: about one small upgrade. */
 export const TUTORIAL_REP = 20;
+
+/** The class unlock chain (MP4): Blackhat, the tutorial's class, first;
+ * about one new idea per class; the fiddliest last. */
+export const CLASS_ORDER: readonly ClassId[] = ['exploit-overclock', 'exploit-honeypot', 'exploit-daemon', 'daemon-honeypot', 'daemon-overclock', 'overclock-honeypot'];
+/** The steep fallback (MP6): the next locked class, bought outright, for
+ * about 3-4 first-gatekeeper runs' Rep (first pass; set by pacing). */
+export const CLASS_FALLBACK_REP = 75;
+
+/** The class a milestone with `classId` opens: the next in the chain. */
+export function nextClass(classId: ClassId): ClassId | null {
+  return CLASS_ORDER[CLASS_ORDER.indexOf(classId) + 1] ?? null;
+}
+
+/** Whether a run beat layer 1's gatekeeper (MP2's milestone; a Restore
+ * Point retry that wins counts). */
+export function firstGatekeeperBeaten(result: RunResult): boolean {
+  return result.log.some((e) => e.type === 'encounter' && e.layerIndex === 0 && e.nodeType === 'gatekeeperFight' && e.outcome.newState === 'inert');
+}
 
 /** What a run starts with from the profile, pinned in its save so a
  * replay rebuilds the same run after later purchases (checkpoint 3 adds

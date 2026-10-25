@@ -1,6 +1,6 @@
 import type { ClassId } from '../engine/classes';
-import { TUTORIAL_REP, type RepLine } from '../engine/meta';
-import { RESET_PROFILE_FLAG } from './testing-flags';
+import { CLASS_FALLBACK_REP, CLASS_ORDER, TUTORIAL_REP, type RepLine } from '../engine/meta';
+import { RESET_PROFILE_FLAG, UNLOCK_ALL_FLAG } from './testing-flags';
 
 /**
  * The meta-progression profile (session 71, docs/meta-progression-design.md
@@ -58,7 +58,26 @@ class ProfileStore {
   data = $state<Profile>(load());
   /** The latest run's award, itemized, for its end-of-run card (not
    * saved). */
-  lastAward = $state.raw<{ runId: string; lines: RepLine[] } | null>(null);
+  lastAward = $state.raw<{ runId: string; lines: RepLine[]; unlocked?: ClassId } | null>(null);
+
+  /** Whether a class can be played (`?unlockall` opens them all). */
+  hasClass(id: ClassId): boolean {
+    return UNLOCK_ALL_FLAG || this.data.classes.includes(id);
+  }
+
+  /** The first locked class in the chain: the only one the fallback
+   * sells (MP6). */
+  get nextLocked(): ClassId | null {
+    return CLASS_ORDER.find((id) => !this.hasClass(id)) ?? null;
+  }
+
+  /** The fallback: buy the next locked class for CLASS_FALLBACK_REP. */
+  buyClass(id: ClassId): boolean {
+    if (id !== this.nextLocked || this.data.rep < CLASS_FALLBACK_REP) return false;
+    this.data = { ...this.data, rep: this.data.rep - CLASS_FALLBACK_REP, classes: [...this.data.classes, id] };
+    this.#save();
+    return true;
+  }
 
   #save(): void {
     try {
@@ -68,12 +87,14 @@ class ProfileStore {
     }
   }
 
-  /** A finished run's Rep, once per run. */
-  awardRun(runId: string, lines: readonly RepLine[]): void {
+  /** A finished run's Rep, once per run, and the class its milestone
+   * unlocks (MP2), if any and not already open. */
+  awardRun(runId: string, lines: readonly RepLine[], unlock: ClassId | null = null): void {
     if (this.data.lastRunId === runId) return;
     const total = lines.reduce((s, l) => s + l.rep, 0);
-    this.lastAward = { runId, lines: [...lines] };
-    this.data = { ...this.data, rep: this.data.rep + total, repEarned: this.data.repEarned + total, runsFinished: this.data.runsFinished + 1, lastRunId: runId };
+    const unlocked = unlock && !this.data.classes.includes(unlock) ? unlock : undefined;
+    this.lastAward = { runId, lines: [...lines], unlocked };
+    this.data = { ...this.data, rep: this.data.rep + total, repEarned: this.data.repEarned + total, runsFinished: this.data.runsFinished + 1, lastRunId: runId, classes: unlocked ? [...this.data.classes, unlocked] : this.data.classes };
     this.#save();
   }
 

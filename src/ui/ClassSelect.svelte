@@ -2,11 +2,14 @@
   import { CLASS_DEFINITIONS, type ClassId } from '../engine/classes';
   import SuitIcon from './SuitIcon.svelte';
   import { classModFor } from './kit';
+  import { profile } from './profile.svelte';
+  import { CLASS_FALLBACK_REP, CLASS_ORDER } from '../engine/meta';
 
   // Run setup (milestone 3 checkpoint 2): pick a class and jack in. Each
   // card shows its two suits, its class Mod (the bridge between them) and
-  // its starting pieces. All six are open (meta-progression unlocks come
-  // later).
+  // its starting pieces. Classes unlock in a chain (session 71, MP2-MP6):
+  // a locked one says what opens it, and the next locked one can be
+  // bought outright with Rep.
   // A saved run (checkpoint 5) shows a resume button above the classes;
   // starting a new run replaces it.
   let {
@@ -24,8 +27,9 @@
     onresume?: () => void;
     resumeFailed?: boolean;
   } = $props();
-  const classes = Object.values(CLASS_DEFINITIONS);
-  let chosen = $state<ClassId>(classes[0].id);
+  const classes = CLASS_ORDER.map((id) => CLASS_DEFINITIONS[id]);
+  let chosen = $state<ClassId>(CLASS_ORDER.findLast((id) => profile.hasClass(id)) ?? CLASS_ORDER[0]);
+  const prevName = (id: ClassId) => CLASS_DEFINITIONS[CLASS_ORDER[CLASS_ORDER.indexOf(id) - 1]].name;
 </script>
 
 <div class="setup">
@@ -38,10 +42,24 @@
   {#if resumeFailed}
     <div class="small warn">That save is from an older version of the game and couldn't be loaded. Start a new run below.</div>
   {/if}
-  <div class="caption">CHOOSE A CLASS</div>
+  <div class="caption">CHOOSE A CLASS{#if profile.data.repEarned > 0}<span class="rep">◆ {profile.data.rep} rep</span>{/if}</div>
   <div class="classes">
     {#each classes as c (c.id)}
       {@const mod = classModFor(c.id)}
+      {#if !profile.hasClass(c.id)}
+        <div class="cls locked">
+          <div class="head">
+            <span class="icons">{#each c.archetypes as a (a)}<SuitIcon archetype={a} size={15} />{/each}</span>
+            <b>{c.name}</b> <span class="lock">locked</span>
+          </div>
+          <div class="dim">Beat the first gatekeeper as {prevName(c.id)} to unlock.</div>
+          {#if profile.nextLocked === c.id}
+            <button class="buy" disabled={profile.data.rep < CLASS_FALLBACK_REP} onclick={() => profile.buyClass(c.id) && (chosen = c.id)}>
+              or unlock it now for ◆ {CLASS_FALLBACK_REP}{profile.data.rep < CLASS_FALLBACK_REP ? ` (you have ${profile.data.rep})` : ''}
+            </button>
+          {/if}
+        </div>
+      {:else}
       <button class="cls" class:chosen={chosen === c.id} onclick={() => (chosen = c.id)}>
         <div class="head">
           <span class="icons">{#each c.archetypes as a (a)}<SuitIcon archetype={a} size={15} />{/each}</span>
@@ -50,6 +68,7 @@
         <div class="mod"><span class="glyph">◆</span> {mod.name}: <span class="dim">{mod.text}</span></div>
         <div class="pieces dim">{c.startingLoadout.map((p) => p.name).join(' · ')}</div>
       </button>
+      {/if}
     {/each}
   </div>
   <button class="start" onclick={() => onstart(chosen)}>▶ jack in as {CLASS_DEFINITIONS[chosen].name}</button>
@@ -99,6 +118,36 @@
     flex-direction: column;
     gap: 4px;
     font-size: 11.5px;
+  }
+  .cls.locked {
+    opacity: 0.75;
+    border-style: dashed;
+  }
+  .lock {
+    font-size: 10px;
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0 5px;
+  }
+  .buy {
+    align-self: flex-start;
+    padding: 4px 8px;
+    border: 1px solid var(--mod);
+    border-radius: var(--radius);
+    background: var(--bg-sunken);
+    color: var(--mod);
+    font: inherit;
+    font-size: 11px;
+  }
+  .buy:disabled {
+    border-color: var(--line);
+    color: var(--text-dim);
+  }
+  .caption .rep {
+    float: right;
+    color: var(--mod);
+    letter-spacing: 0;
   }
   .cls.chosen {
     border-color: var(--accent);

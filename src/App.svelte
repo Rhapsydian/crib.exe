@@ -14,7 +14,7 @@
   import RunView from './ui/RunView.svelte';
   import { clearSave, loadSave, writeSave } from './ui/run-save';
   import { profile } from './ui/profile.svelte';
-  import { repForRun } from './engine/meta';
+  import { firstGatekeeperBeaten, nextClass, repForRun } from './engine/meta';
   import MainMenu from './ui/MainMenu.svelte';
   import TipBanner from './ui/TipBanner.svelte';
   import GuideBanner from './ui/GuideBanner.svelte';
@@ -68,7 +68,11 @@
       if (next.pause?.kind === 'over') {
         // The run's Rep (session 71): awarded once, before the save goes.
         if (next.tutorial) profile.finishTutorial(next.id);
-        else profile.awardRun(next.id, repForRun(next.pause.result).lines);
+        else {
+          const result = next.pause.result;
+          // The class milestone (MP2): the first gatekeeper beaten opens the next class.
+          profile.awardRun(next.id, repForRun(result).lines, firstGatekeeperBeaten(result) ? nextClass(next.classId) : null);
+        }
         clearSave();
       } else writeSave(next.save);
     };

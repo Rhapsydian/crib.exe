@@ -6,6 +6,7 @@
   import { rankMark } from './visit-text';
   import { rateSkill, type SkillDecision } from './skill-review';
   import { profile } from './profile.svelte';
+  import { CLASS_DEFINITIONS } from '../engine/classes';
   import { MOD_DEFINITIONS } from '../engine/mods';
   import { BURNER_DEFINITIONS } from '../engine/burners';
   import type { SubroutineDefinition } from '../engine/subroutine-types';
@@ -30,6 +31,7 @@
   }: { result: RunResult; className: string; onagain: () => void; onretry?: () => void; onmenu?: () => void; seed?: number; tutorial?: boolean; skill?: readonly SkillDecision[]; runId?: string } = $props();
   // The run's Rep (session 71), as the profile awarded it.
   const award = $derived(runId && profile.lastAward?.runId === runId ? profile.lastAward.lines : null);
+  const unlocked = $derived(runId && profile.lastAward?.runId === runId ? profile.lastAward.unlocked : undefined);
   const repTotal = $derived(award?.reduce((s, l) => s + l.rep, 0) ?? 0);
   // The run's Cribbage rating (session 70), over every fight's choices.
   const rating = $derived(rateSkill(skill, false));
@@ -80,6 +82,7 @@
       <div class="rep-line dim"><span>Rep to spend</span><span>◆ {profile.data.rep}</span></div>
     </div>
   {/if}
+  {#if unlocked}<div class="unlock">NEW CLASS UNLOCKED: <b>{CLASS_DEFINITIONS[unlocked].name}</b>. Choose it for your next contract.</div>{/if}
 
   {#if !tutorial && summary.layers.length}
     <div class="caption">THE RUN</div>
@@ -147,6 +150,13 @@
   .line {
     font-size: 13px;
     margin-bottom: 8px;
+  }
+  .unlock {
+    padding: 8px 10px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    color: var(--accent);
+    font-size: 12px;
   }
   .rep {
     display: flex;
