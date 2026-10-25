@@ -510,6 +510,10 @@ export type CombatBeat = (
        * when a daily effect triggers): its daily Mod id. */
       kind: 'daily';
       id: string;
+      /** Both sides' meters once the effect has applied, when it moves
+       * them (Lucky Sevens' Credit, Suit Surge's initiative): the screen
+       * redraws its gauges from these, as from a points beat. */
+      gauges?: [GaugeReading, GaugeReading];
     }
   | {
       /** A turn starting (the user's ask: a toast for every turn, either
@@ -680,7 +684,7 @@ export function* combatGenerator(
   }
   let phase: 'cut' | 'peg' | 'show' = 'cut';
   /** A daily Mod acting, for the screen's flash. */
-  const dailyBeat = (id: string) => timeline.push({ kind: 'daily', id, firesBefore: log.length });
+  const dailyBeat = (id: string, gauges?: [GaugeReading, GaugeReading]) => timeline.push({ kind: 'daily', id, firesBefore: log.length, ...(gauges ? { gauges } : {}) });
   /** Which scoring Glitch changed an occurrence, if any. */
   const glitchFor = (o: ScoringOccurrence): string | null => {
     const rule = glitches?.rule;
@@ -845,10 +849,15 @@ export function* combatGenerator(
     beat({ kind: 'peg', event });
     // Lucky Sevens and Suit Surge (daily Glitches): the player's card.
     if (glitches && event.type === 'play' && event.player === 0) {
-      if (glitches.luckySevens && event.card.rank === 7) dailyBeat('lucky-sevens');
-      if (glitches.suitSurge && event.card.suit === ARCHETYPE_SUITS[glitches.suitSurge]) dailyBeat('suit-surge');
-      const winner = step(immediates(applyGlitchPlay(combatState, event.card, glitches), handDealer, log));
-      if (winner !== null) return winner;
+      const lucky = Boolean(glitches.luckySevens && event.card.rank === 7);
+      const surge = Boolean(glitches.suitSurge && event.card.suit === ARCHETYPE_SUITS[glitches.suitSurge]);
+      if (lucky || surge) {
+        const winner = step(immediates(applyGlitchPlay(combatState, event.card, glitches), handDealer, log));
+        // The beat follows the effect, carrying the meters it moved.
+        if (lucky) dailyBeat('lucky-sevens', readGauges(combatState));
+        if (surge) dailyBeat('suit-surge', readGauges(combatState));
+        if (winner !== null) return winner;
+      }
     }
     const suitPlayed = suitPlayedFromPeggingEvent(event);
     if (suitPlayed) {

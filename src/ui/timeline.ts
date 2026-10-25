@@ -52,6 +52,7 @@ export function mergeSteps(timeline: readonly CombatBeat[], log: readonly FireEv
 export function stepGauges(step: Step): [GaugeReading, GaugeReading] | null {
   if (step.type === 'clear') return null;
   if (step.type === 'fire') return step.fire.gauges;
+  if (step.beat.kind === 'daily') return step.beat.gauges ?? null;
   return step.beat.kind === 'points' || step.beat.kind === 'burner' ? step.beat.gauges : null;
 }
 
