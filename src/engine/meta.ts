@@ -134,6 +134,9 @@ export interface RunSetup {
   burner?: BurnerId;
   /** Security Level 0-10 (MP13; "ascension" in code). */
   securityLevel?: number;
+  /** Played without the Message Board (the user, session 71): no upgrades
+   * and no starting picks, recorded so the run says so. */
+  plain?: boolean;
 }
 
 /** Security Levels (MP13-MP14): players see "Security Level 7", badged
@@ -183,7 +186,7 @@ export function securityRules(levelIn: number): SecurityRules {
     level,
     enemyStrength: 1 + SECURITY_STRENGTH_STEP * level,
     heatGain: 1 + SECURITY_HEAT_STEP * level,
-    heatCarry: at(6) ? 0.25 : at(2) ? 0.1 : 0,
+    heatCarry: at(5) ? 0.25 : at(2) ? 0.1 : 0,
     shopPrice: at(7) ? 1.3 : at(3) ? 1.15 : 1,
     skillOffset: at(4) ? 0.1 : 0,
     rewardChoices: at(5) ? 2 : 3,

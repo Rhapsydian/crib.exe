@@ -50,13 +50,15 @@ export interface Profile {
   securityBest: Partial<Record<ClassId, number>>;
   /** The class select's last Security Level pick. */
   securityPick: number;
+  /** The class select's last "without Message Board upgrades" choice. */
+  plainPick: boolean;
 }
 
 export const PROFILE_VERSION = 1;
 const KEY = 'cribexe.profile';
 
 export function freshProfile(): Profile {
-  return { version: PROFILE_VERSION, rep: 0, repEarned: 0, runsFinished: 0, tutorialGranted: false, classes: ['exploit-overclock'], upgrades: {}, lastRunId: null, library: [], burners: [], boardIntroduced: false, starter: null, burner: null, victories: 0, securityOpen: 0, securityBest: {}, securityPick: 0 };
+  return { version: PROFILE_VERSION, rep: 0, repEarned: 0, runsFinished: 0, tutorialGranted: false, classes: ['exploit-overclock'], upgrades: {}, lastRunId: null, library: [], burners: [], boardIntroduced: false, starter: null, burner: null, victories: 0, securityOpen: 0, securityBest: {}, securityPick: 0, plainPick: false };
 }
 
 /** An older profile brought up to this version, keeping what it has: each
@@ -159,8 +161,8 @@ class ProfileStore {
   }
 
   /** The class select's starting picks, remembered for next time. */
-  rememberPicks(starter: string | null, burner: BurnerId | null, securityPick = this.data.securityPick): void {
-    this.data = { ...this.data, starter, burner, securityPick };
+  rememberPicks(starter: string | null, burner: BurnerId | null, securityPick = this.data.securityPick, plainPick = this.data.plainPick): void {
+    this.data = { ...this.data, starter, burner, securityPick, plainPick };
     this.#save();
   }
 

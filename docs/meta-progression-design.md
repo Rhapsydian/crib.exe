@@ -135,7 +135,17 @@ run's depth be credited, *breached, then caught* below a full continue
   at −10% and its rest sheds 85% (were −20% and half); the final
   gatekeeper takes three Mods in all (a bug gave it four). Measured, fully
   upgraded / fresh: level 1 84% / 19%, 2 67% / 5%, 3 56% / 2%, 4 49%, 5
-  30%, 6 17%, 7 6%, 8 6%, 9 3%, 10 2%.
+  30%, 6 17%, 7 6%, 8 6%, 9 3%, 10 2%. The user: level 10 all but
+  impossible is fine (the cap of bragging rights), and fresh players at
+  Security Levels aren't a worry. **Level 5 eased toward 20%:** the
+  bigger Heat carry-over (25%) moved from level 6 to 5, taking it to
+  ~26% (moving the allowance cut or the Shop price escalation instead
+  measured ~no change, so they stay at 6 and 7).
+- **MP17. Play without the Message Board (the user):** a class-select
+  toggle switches off every upgrade and the starting picks for a run
+  (recorded in its setup as `plain`); off by default, the last choice
+  remembered, like the picks (which default to none). Rep, class
+  unlocks and Security Levels work as normal.
 - **MP15. Bragging rights:** a Security Level badge ("SEC 10 · Victory") on the end-of-run card,
   and each class's highest level beaten on the class select (unlocks stay
   global).

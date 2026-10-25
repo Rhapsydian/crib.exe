@@ -24,7 +24,7 @@
     onresume,
     resumeFailed = false,
   }: {
-    onstart: (classId: ClassId, picks: { starter?: string; burner?: BurnerId; securityLevel?: number }) => void;
+    onstart: (classId: ClassId, picks: { starter?: string; burner?: BurnerId; securityLevel?: number; plain?: boolean }) => void;
     ontest: () => void;
     onmenu?: () => void;
     saved?: { className: string; layer: number; savedAt: number } | null;
@@ -40,9 +40,15 @@
   let burner = $state<string>(profile.burners.includes(profile.data.burner as BurnerId) ? (profile.data.burner ?? '') : '');
   // Security Level (MP13): once open, any level up to the highest.
   let securityLevel = $state(Math.min(profile.data.securityPick, profile.securityOpen));
+  // Without the Message Board (the user, session 71): no upgrades and no
+  // starting picks this run; off unless chosen, then remembered.
+  const hasBoard = $derived(Object.values(profile.data.upgrades).some((l) => l > 0) || library.length > 0 || profile.burners.length > 0);
+  let plain = $state(profile.data.plainPick);
   function start() {
-    profile.rememberPicks(starter || null, (burner || null) as BurnerId | null, securityLevel);
-    onstart(chosen, { starter: starter || undefined, burner: (burner || undefined) as BurnerId | undefined, securityLevel: securityLevel || undefined });
+    profile.rememberPicks(starter || null, (burner || null) as BurnerId | null, securityLevel, plain);
+    const level = securityLevel || undefined;
+    if (plain && hasBoard) onstart(chosen, { securityLevel: level, plain: true });
+    else onstart(chosen, { starter: starter || undefined, burner: (burner || undefined) as BurnerId | undefined, securityLevel: level });
   }
   const prevName = (id: ClassId) => CLASS_DEFINITIONS[CLASS_ORDER[CLASS_ORDER.indexOf(id) - 1]].name;
 </script>
@@ -98,7 +104,13 @@
       <span class="dim">{securityLevel ? `+${Math.round(securityLevel * SECURITY_REP_STEP * 100)}% Rep · ${SECURITY_LEVEL_TEXT[securityLevel]}` : 'No changes.'}</span>
     </div>
   {/if}
-  {#if library.length || profile.burners.length}
+  {#if hasBoard}
+    <label class="plain">
+      <input type="checkbox" bind:checked={plain} id="plain-pick" />
+      <span><b>Play without Message Board upgrades</b> <span class="dim">no upgrades and no starting picks this run</span></span>
+    </label>
+  {/if}
+  {#if (library.length || profile.burners.length) && !plain}
     <div class="caption">STARTING PICKS</div>
     <div class="picks">
       {#if library.length}
@@ -168,6 +180,13 @@
     flex-direction: column;
     gap: 4px;
     font-size: 11.5px;
+  }
+  .plain {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    font-size: 11.5px;
+    margin-top: 6px;
   }
   .best {
     margin-left: auto;

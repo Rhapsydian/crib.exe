@@ -15,6 +15,10 @@ describe('Security Levels', () => {
     expect(r.containment).toBeCloseTo(0.85);
     expect(r.breach).toBeCloseTo(1.15);
     expect(securityRules(1)).toMatchObject({ rewardChoices: 3, heatCarry: 0, extraMods: { elite: 1, gatekeeper: 0, regular: 0 } });
+    // Level 5 takes the bigger Heat carry-over; the allowance cut is level 6's.
+    expect(securityRules(4)).toMatchObject({ heatCarry: 0.1, allowance: 1 });
+    expect(securityRules(5)).toMatchObject({ heatCarry: 0.25, allowance: 1 });
+    expect(securityRules(6)).toMatchObject({ allowance: 0.9 });
   });
 
   it('offsets the gauges on top of upgrades (levels 2, 5, 8)', () => {

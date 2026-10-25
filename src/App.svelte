@@ -227,7 +227,7 @@
   {:else}
     <ClassSelect
       onmenu={toMenu}
-      onstart={(classId, picks) => begin(new LiveRun(classId, newSeed(), false, { upgrades: { ...profile.data.upgrades }, ...picks }))}
+      onstart={(classId, picks) => begin(new LiveRun(classId, newSeed(), false, picks.plain ? picks : { upgrades: { ...profile.data.upgrades }, ...picks }))}
       ontest={() => (location.hash = '#test')}
       saved={saved?.summary ?? null}
       onresume={resume}
