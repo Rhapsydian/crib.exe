@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RichText from './RichText.svelte';
   import type { RunRequest } from '../engine/run-requests';
   import { restHeatFor } from '../engine/encounters';
   import SuitIcon from './SuitIcon.svelte';
@@ -32,8 +33,8 @@
       {#each plan as o (o.piece.id)}
         <div class="name"><SuitIcon archetype={o.piece.archetype} size={15} /> <b>{o.piece.name}</b> <span class="tag">rank {rankMark(o.from) || '0'} → {rankMark(o.to)}</span></div>
         {#each mergeChange(o.piece, o.to - o.from) as c (c.after)}
-          <div class="line dim">{c.before}</div>
-          <div class="line up">→ {c.after}</div>
+          <div class="line dim"><RichText text={c.before} /></div>
+          <div class="line up">→ <RichText text={c.after} /></div>
         {/each}
       {/each}
     </div>
