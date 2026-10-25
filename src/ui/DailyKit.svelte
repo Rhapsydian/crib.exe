@@ -15,7 +15,7 @@
 {#each plan.mods as m (m.id)}
   {@const cat = DAILY_MODS[m.id].category}
   <div class="kit {cat}" class:flash={flashing === m.id}>
-    <div><span class="tag">{CATEGORY_NAME[cat]}</span> {dailyModName(m)}</div>
+    <div><span class="tag">{CATEGORY_NAME[cat]}</span> {dailyModName(m)}:</div>
     <div class="kit-text"><RichText text={dailyModText(m)} /></div>
   </div>
 {/each}

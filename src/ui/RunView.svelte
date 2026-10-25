@@ -94,6 +94,7 @@
     onburner={(burnerId, targetNodeId) => run.answer({ useBurner: { burnerId, targetNodeId } })}
     tutorial={run.tutorial}
     daily={run.daily}
+    {onmenu}
   />
 {:else if run.pause?.kind === 'reward'}
   <RewardScreen request={run.pause.request} gained={run.pause.gained} onpick={(choice) => run.answer(choice)} />

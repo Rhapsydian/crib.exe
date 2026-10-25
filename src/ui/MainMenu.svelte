@@ -4,6 +4,7 @@
   import { DAILY_MODS, rollDaily } from '../engine/daily';
   import { CLASS_DEFINITIONS } from '../engine/classes';
   import CardView from './CardView.svelte';
+  import { suitInfo } from './suits';
   import type { Card } from '../engine/cards';
   let tipsReset = $state(false);
   const HEADER_CARDS: Card[] = [
@@ -81,7 +82,7 @@
     <h1><span class="prompt">&gt;</span> ./crib.exe<span class="cursor" aria-hidden="true"></span></h1>
     <div class="fly" aria-hidden="true">
       {#each HEADER_CARDS as card, i (i)}
-        <span class="flying" style="--i: {i}"><CardView {card} small /></span>
+        <span class="flying" style="--i: {i}; --trail: {suitInfo(card.suit).color}"><CardView {card} small /></span>
       {/each}
     </div>
   </div>
@@ -219,8 +220,9 @@
       opacity: 0;
     }
   }
-  /* Each card further along, higher, more tilted and fainter, with a
-     motion streak behind it: a hand thrown off to the right. */
+  /* Each card further along, higher and more tilted, with a motion
+     streak behind it in its own suit's colour: a hand thrown off to the
+     right (session 72, the user: no fading, matching trails). */
   .fly {
     position: relative;
     flex: 1;
@@ -235,7 +237,6 @@
     left: calc(8px + var(--i) * min(46px, (100% - 56px) / 3));
     top: calc(10px - var(--i) * 3px);
     transform: rotate(calc(6deg + var(--i) * 7deg));
-    opacity: calc(1 - var(--i) * 0.16);
     animation: drift 3.2s ease-in-out infinite;
     animation-delay: calc(var(--i) * -0.4s);
   }
@@ -247,8 +248,8 @@
     width: calc(8px + var(--i) * 2px);
     height: 2px;
     margin-right: 2px;
-    background: linear-gradient(to right, transparent, var(--accent));
-    opacity: 0.45;
+    background: linear-gradient(to right, transparent, var(--trail, var(--accent)));
+    opacity: 0.8;
   }
   @keyframes drift {
     50% {

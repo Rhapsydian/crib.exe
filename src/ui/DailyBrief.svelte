@@ -47,7 +47,7 @@
       {@const cat = DAILY_MODS[m.id].category}
       <div class="mod {cat}">
         <span class="tag">{CATEGORY_NAME[cat]}</span>
-        <div><b>{dailyModName(m)}</b> <RichText text={dailyModText(m)} /></div>
+        <div><b>{dailyModName(m)}:</b> <RichText text={dailyModText(m)} /></div>
       </div>
     {/each}
   </div>

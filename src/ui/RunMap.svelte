@@ -30,8 +30,12 @@
     onburner,
     tutorial = false,
     daily,
+    onmenu,
   }: {
     request: Extract<RunRequest, { kind: 'move' }>;
+    /** Back to the main menu (session 72, the user's ask): the run is
+     * saved after every answer, so it resumes from there. */
+    onmenu?: () => void;
     /** A Daily Run's Mods (session 72), in the loadout drawer. */
     daily?: { plan: DailyPlan; practice: boolean } | null;
     className: string;
@@ -148,6 +152,7 @@
 </aside>
 <div class="run-map">
   <div class="top">
+    {#if onmenu}<button class="menu-button" onclick={onmenu} title="Back to the menu; the run is saved">◂ menu</button>{/if}
     <span class="layer">{tutorial ? 'TUTORIAL' : `LAYER ${layer}/4`}</span>
     <span class="cls">{className}</span>
     <button class="loadout-button" onclick={() => (showLoadout = true)}>◀ loadout</button>
@@ -483,5 +488,13 @@
   }
   .burner-glyph {
     color: var(--warn);
+  }
+  .menu-button {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 11px;
+    padding: 0 6px 0 0;
   }
 </style>
