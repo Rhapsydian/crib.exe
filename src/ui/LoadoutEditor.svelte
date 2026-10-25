@@ -93,7 +93,7 @@
     <button class="piece" class:sel={selected?.id === p.id} class:target={swapping && canSwapWith('loadout', p.id)} onclick={() => tap('loadout', p.id)}>
       <span class="n">{i + 1}</span>
       <SuitIcon archetype={p.archetype} size={14} />
-      {p.name}{#if p.rank}&nbsp;<span class="rank">{rankMark(p.rank)}</span>{/if}
+      <span class="label">{p.name}{#if p.rank}&nbsp;<span class="rank">{rankMark(p.rank)}</span>{/if}</span>
       {#if player.material[p.id]}<span class="banked" title="banked copies, for Refactoring at a Quiet Host">+{player.material[p.id]} banked</span>{/if}
       {#if locked(p.id)}<span class="tag">Mod-granted</span>{/if}
     </button>
@@ -102,7 +102,7 @@
   {#each player.bench as p (p.id)}
     <button class="piece benched" class:sel={selected?.id === p.id} class:target={swapping && canSwapWith('bench', p.id)} onclick={() => tap('bench', p.id)}>
       <SuitIcon archetype={p.archetype} size={14} />
-      {p.name}{#if p.rank}&nbsp;<span class="rank">{rankMark(p.rank)}</span>{/if}
+      <span class="label">{p.name}{#if p.rank}&nbsp;<span class="rank">{rankMark(p.rank)}</span>{/if}</span>
       {#if player.material[p.id]}<span class="banked" title="banked copies, for Refactoring at a Quiet Host">+{player.material[p.id]} banked</span>{/if}
     </button>
   {:else}
@@ -146,10 +146,17 @@
     font-weight: 700;
     color: var(--accent);
   }
+  /* The name and its rank stay together; the banked tag keeps to one
+     line at the right (session 72, the user's screenshot: a wrapped name
+     split the rank and the tag). */
+  .label {
+    flex: 1;
+  }
   .banked {
     margin-left: auto;
     font-size: 10px;
     color: var(--accent);
+    white-space: nowrap;
   }
   .editor {
     display: flex;
