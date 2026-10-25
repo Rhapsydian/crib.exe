@@ -78,14 +78,18 @@ run's depth be credited, *breached, then caught* below a full continue
   **the whole library ~100 runs**; prices rise level by level. Set by
   measurement (a progression script), tuned for a player a little below
   the simulated one. **Set in checkpoint 5** (`scripts/meta-pacing.ts
-  --part=career`, skill 0.75, 6 careers): track levels 12-48 Rep
-  (archetype tracks 15-54), Burner Rig 75 / 120, Expanded Memory 180;
-  library commons 25, uncommons 90, rares 400; starting Burners 25; the
-  class fallback 150 (early runs earn ~45 Rep, later ~90). Reached by
-  run, upgrades-first / cheapest-first: all tracks 25 / 57, commons 30 /
-  17, uncommons 51 / 53, the library 102 / 108. Victory climbs from ~40%
-  over the first 20 runs to ~85-90% after, which the Security Levels
-  answer.
+  --part=career`, skill 0.75, 6 careers). The user found victory nearing
+  90% by run 20 too quick, and chose **option A**: the four strongest
+  tracks climb steeply. Targets: victory ~50% by run 20, an upgrades-first
+  player maxed out ~run 50-60. Prices: Low Profile, Exploit Research and
+  Clean Exits 25 / 50 / 90 / 150 / 240; Expanded Memory 800; the other
+  tracks 12-48 (Tuning 15-54); Burner Rig 75 / 120; library commons 25,
+  uncommons 90, rares 320; starting Burners 25; the class fallback 150
+  (early runs earn ~40 Rep, later ~85-95). Measured, upgrades-first /
+  cheapest-first: victory 40% / 45% over runs 11-20; all tracks by run
+  52 / 130; commons 59 / 16, uncommons 80 / 59, the library ~120 / 121.
+  The simulation plays no Security Levels; their +15% Rep a level brings
+  the library nearer ~100 runs in practice.
 - **MP12. No refunds.** A **testing-only `?resetprofile`** flag wipes the
   profile (**REMOVE BEFORE RELEASE**, as MP5). No settings menu yet;
   **profile export/import** waits for one (BACKLOG; an opaque code with a

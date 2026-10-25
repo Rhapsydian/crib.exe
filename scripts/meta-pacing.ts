@@ -133,7 +133,7 @@ if (args.part === 'career') {
   const runs = Number(args.runs ?? 120);
   const milestones: Record<string, number[]> = { classes: [], tracks: [], commons: [], uncommons: [], library: [], burners: [], slot: [], burnerSlots: [] };
   const repPerRun: number[] = new Array(runs).fill(0);
-  const winsByStretch: number[] = new Array(Math.ceil(runs / 20)).fill(0);
+  const winsByStretch: number[] = new Array(Math.ceil(runs / 10)).fill(0);
   for (let c = 0; c < careers; c++) {
     let rep = 20; // the tutorial's grant
     const upgrades: Record<string, number> = {};
@@ -150,7 +150,7 @@ if (args.part === 'career') {
       const earned = repForRun(result).total;
       rep += earned;
       repPerRun[i] += earned / careers;
-      winsByStretch[Math.floor(i / 20)] += Number(result.outcome === 'victory');
+      winsByStretch[Math.floor(i / 10)] += Number(result.outcome === 'victory');
       if (firstGatekeeperBeaten(result)) {
         const next = nextClass(classId);
         if (next && !classes.includes(next)) classes.push(next);
@@ -190,5 +190,5 @@ if (args.part === 'career') {
   for (const [k, xs] of Object.entries(milestones)) console.log(`  ${k.padEnd(12)} ${String(med(xs)).padStart(4)}   (${xs.length}/${careers})`);
   const avg = (from: number, to: number) => (repPerRun.slice(from, to).reduce((a, b) => a + b, 0) / (to - from)).toFixed(1);
   console.log(`\nRep per run: runs 1-10 ${avg(0, 10)}, 11-30 ${avg(10, 30)}, 31-60 ${avg(30, 60)}, 61+ ${avg(60, runs)}`);
-  console.log(`victory by 20 runs: ${winsByStretch.map((w, k) => `${((100 * w) / (Math.min(20, runs - 20 * k) * careers)).toFixed(0)}%`).join(' / ')}`);
+  console.log(`victory by 10 runs: ${winsByStretch.map((w, k) => `${((100 * w) / (Math.min(10, runs - 10 * k) * careers)).toFixed(0)}%`).join(' / ')}`);
 }
