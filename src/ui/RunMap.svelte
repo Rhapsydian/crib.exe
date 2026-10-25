@@ -58,7 +58,7 @@
     const out: string[] = [];
     if (fx?.nextFightHeat !== undefined) out.push(`the next ${fx.nextFightHeatFights ?? 1} fights' Heat halved`);
     if (fx?.nextGatekeeperToll !== undefined) out.push(fx.nextGatekeeperToll === 0 ? 'the next gatekeeper has no Heat toll' : "the next gatekeeper's Heat toll halved");
-    if (fx?.tunnel) out.push('Tunnel: the next Shop or Safehouse is passed through');
+    if (fx?.tunnel) out.push('Tunnel: the next Shop or Quiet Host is passed through');
     return out;
   });
   // A fight's posted Heat (session 63, the user: "be clearer about Heat"),

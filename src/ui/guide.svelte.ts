@@ -49,7 +49,7 @@ export const GUIDE_TEXT: Record<GuideStep, string> = {
   burnerFired: 'Your Burner fired at the start of the turn, then it was spent.',
   shop: 'The Shop: spend Data on subroutines, Mods (permanent effects for the run) and Burners. Tap one to read it, then buy. You can also sell subroutines you no longer use.',
   safehouse:
-    "A Safehouse gives you one choice. Rest to lower your Heat, or Merge: spend your banked spare copies to rank subroutines up, each rank making a Hook stronger. You have a spare Port Scan banked.",
+    "A Quiet Host gives you one choice. Rest to lower your Heat, or Merge: spend your banked spare copies to rank subroutines up, each rank making a Hook stronger. You have a spare Port Scan banked.",
   gatekeeperNear:
     "The gatekeeper is next. Beat it to breach the layer; lose and you're quarantined, which ends the run. Winning also costs Heat: a toll that grows the closer it came to containing you, shown on the Heat bar during the fight. If the toll maxes out your Heat, you must outscore it over 3 hands of Cribbage to escape.",
   gatekeeper:

@@ -250,7 +250,7 @@ export const UPGRADE_VIEW: Record<UpgradeId, { name: string; effect: (level: num
   containment: { name: 'Low Profile', effect: (l) => `Enemy Containment +${l * 3}%`, prices: [25, 50, 90, 150, 240] },
   breach: { name: 'Exploit Research', effect: (l) => `Your Breach −${l * 3}%`, prices: [25, 50, 90, 150, 240] },
   fightHeat: { name: 'Clean Exits', effect: (l) => `Fight Heat −${l * 4}%`, prices: [25, 50, 90, 150, 240] },
-  restHeat: { name: 'Safehouse Upgrades', effect: (l) => `Rest sheds ${l * 3} more Heat`, prices: [12, 18, 26, 36] },
+  restHeat: { name: 'Quiet Host Upgrades', effect: (l) => `Rest sheds ${l * 3} more Heat`, prices: [12, 18, 26, 36] },
   shopPrice: { name: 'Trade Contacts', effect: (l) => `Shop prices −${l * 4}%`, prices: [12, 18, 26, 36, 48] },
   'power-exploit': { name: 'Exploit Tuning', effect: (l) => `Exploit Processes +${l * 4}%`, prices: [15, 22, 30, 42, 54] },
   'power-daemon': { name: 'Daemon Tuning', effect: (l) => `Daemon Processes +${l * 4}%`, prices: [15, 22, 30, 42, 54] },

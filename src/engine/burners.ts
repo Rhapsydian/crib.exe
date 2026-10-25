@@ -197,7 +197,7 @@ export const BURNER_DEFINITIONS: Record<BurnerId, BurnerDefinition> = {
     name: 'Tunnel',
     rarity: 'uncommon',
     contexts: ['map'],
-    text: 'The next Shop or Safehouse you move onto, you pass through without visiting it. It stays for later.',
+    text: 'The next Shop or Quiet Host you move onto, you pass through without visiting it. It stays for later.',
     mapEffect: { kind: 'tunnel' },
   },
 

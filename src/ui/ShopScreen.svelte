@@ -116,7 +116,7 @@
       const left = n - shop.sold.copy.filter((c) => c === id).length;
       const piece = ALL_SUBROUTINES.find((p) => p.id === id) ?? player.installedLoadout.find((p) => p.id === id) ?? player.bench.find((p) => p.id === id);
       if (!piece || left <= 0) return [];
-      return Array.from({ length: left }, (_, i) => ({ key: `sell:c:${i}:${id}`, item: 'copy' as const, id, name: piece.name, tag: `${rarityOf(id)} · banked copy`, lines: ['A spare copy, banked for Merging at a Safehouse.'], icon: piece.archetype, price: subroutineSellPrice(id) }));
+      return Array.from({ length: left }, (_, i) => ({ key: `sell:c:${i}:${id}`, item: 'copy' as const, id, name: piece.name, tag: `${rarityOf(id)} · banked copy`, lines: ['A spare copy, banked for Merging at a Quiet Host.'], icon: piece.archetype, price: subroutineSellPrice(id) }));
     }),
     ...without(player.carriedBurnerIds, shop.sold.burner).map((id, i) => {
       const def = BURNER_DEFINITIONS[id];

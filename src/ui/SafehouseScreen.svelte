@@ -18,7 +18,7 @@
 </script>
 
 <div class="safe">
-  <div class="title">SAFEHOUSE</div>
+  <div class="title">QUIET HOST</div>
   <div class="blurb">Lie low or tune your kit: one, not both.</div>
 
   <button class="option rest" onclick={() => onchoose('rest')}>

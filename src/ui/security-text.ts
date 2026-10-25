@@ -18,7 +18,7 @@ const ADDS: Record<number, string> = {
   6: 'Heat allowance −10%',
   7: 'Layer 3 and 4 gatekeepers take a second Mod; Shop prices +30%',
   8: 'Regular enemies take a Mod; enemy Containment −5% and your Breach +5% more',
-  9: 'Safehouse rest sheds less Heat',
+  9: 'Quiet Host rest sheds less Heat',
   10: 'The final gatekeeper takes three Mods; elites take a third',
 };
 
