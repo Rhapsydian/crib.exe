@@ -72,7 +72,8 @@
         else {
           const result = next.pause.result;
           // The class milestone (MP2): the first gatekeeper beaten opens the next class.
-          profile.awardRun(next.id, repForRun(result).lines, firstGatekeeperBeaten(result) ? nextClass(next.classId) : null);
+          const securityLevel = next.setup.securityLevel ?? 0;
+          profile.awardRun(next.id, repForRun(result, securityLevel).lines, firstGatekeeperBeaten(result) ? nextClass(next.classId) : null, { classId: next.classId, securityLevel, won: result.outcome === 'victory' });
         }
         clearSave();
       } else writeSave(next.save);

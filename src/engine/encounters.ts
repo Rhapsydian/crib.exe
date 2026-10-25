@@ -2,6 +2,9 @@ import type { MapNode, NodeState } from './map-types';
 import type { Rng } from './rng';
 import { scaledProcess, type SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
+import type { SecurityRules } from './meta';
+import { GATEKEEPER_MODS, type GatekeeperModId } from './gatekeeper-mods';
+import { createRng } from './rng';
 import { combatGenerator, neverActivateBurner, type BurnerActivationStrategy, type CombatAnswer, type CombatOptions, type CombatResult } from './combat';
 import { ask, driveWithFallbacks, type RunRequest, type ShopAction, type ShopSlate, type ShopVisit } from './run-requests';
 import { discardSkillStrategy, pegSkillStrategy } from './ai';
@@ -21,7 +24,7 @@ import {
   scaledEnemyLoadout,
   enemyById,
   type EnemyDefinition,
-  enemyCombatOptions,
+
   type EnemyId,
   winGaugeScaleFor,
 } from './enemies';
@@ -71,8 +74,8 @@ import { EVENT_ROSTER, choiceUnavailable, eventStillOffers } from './events';
 // ~30-40 (heat.ts), so Rest keeps roughly the same share of the budget.
 export const REST_HEAT_REDUCTION = 12; // TBD/playtesting
 /** A Safehouse rest's Heat, with the rest upgrade (session 71, MP7). */
-export function restHeatFor(playerState: Pick<RunPlayerState, 'meta'>): number {
-  return REST_HEAT_REDUCTION + (playerState.meta?.restHeat ?? 0);
+export function restHeatFor(playerState: Pick<RunPlayerState, 'meta' | 'security'>): number {
+  return (REST_HEAT_REDUCTION + (playerState.meta?.restHeat ?? 0)) * (playerState.security?.rest ?? 1);
 }
 
 // Phase 5 checkpoint C replaced the old flat single-burst-per-tier
@@ -157,6 +160,25 @@ function ownedSubroutineIds(playerState: RunPlayerState): string[] {
   return [...playerState.installedLoadout, ...playerState.bench].map((p) => p.id);
 }
 
+/** A Security Level's extra enemy Mods (MP14): elite-tier rules for
+ * regulars and elites, any tier for gatekeepers, never one the enemy has.
+ * Chosen by the enemy's id and the level, so the same fight always draws
+ * the same Mods. */
+export function securityMods(enemy: EnemyDefinition, kind: FightKind, layerIndex: number, security: SecurityRules | undefined): GatekeeperModId[] {
+  if (!security) return [];
+  const x = security.extraMods;
+  const count = kind === 'regular' ? x.regular : kind === 'elite' ? x.elite : (layerIndex >= 3 ? x.gatekeeper : 0) + (layerIndex === 4 ? x.finalGatekeeper : 0);
+  if (!count) return [];
+  const pool = (Object.keys(GATEKEEPER_MODS) as GatekeeperModId[]).filter((id) => (kind === 'gatekeeper' || GATEKEEPER_MODS[id].tier === 'elite') && !(enemy.mods ?? []).includes(id));
+  const rng = createRng([...enemy.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) + security.level);
+  const picked: GatekeeperModId[] = [];
+  while (picked.length < count && picked.length < pool.length) {
+    const id = pool[rng.nextInt(pool.length)];
+    if (!picked.includes(id)) picked.push(id);
+  }
+  return picked;
+}
+
 /** Restore Point's retry plays a different deal from the lost fight. */
 const RESTORE_POINT_SEED_STEP = 7919;
 
@@ -233,6 +255,8 @@ export interface HeatSources {
   mod: number;
   /** Negative. The fight Heat upgrade's cut (session 71, MP7). */
   upgrade: number;
+  /** A Security Level's extra Heat (session 71, MP14). */
+  security: number;
   /** Heat an Event applied directly. An Event's bonus fight is NOT
    * counted here -- its Heat is folded into the real categories above,
    * so "Heat from Containment losses" stays true wherever the fight
@@ -251,6 +275,7 @@ export const NO_HEAT_SOURCES: HeatSources = {
   burner: 0,
   mod: 0,
   upgrade: 0,
+  security: 0,
   event: 0,
 };
 
@@ -266,12 +291,13 @@ export function addHeatSources(a: HeatSources, b: HeatSources): HeatSources {
     burner: a.burner + b.burner,
     mod: a.mod + b.mod,
     upgrade: a.upgrade + b.upgrade,
+    security: a.security + b.security,
     event: a.event + b.event,
   };
 }
 
 export function totalHeatSources(s: HeatSources): number {
-  return s.containmentLoss + s.attritionLoss + s.baseline + s.alarm + s.performance + s.refund + s.rest + s.burner + s.mod + s.upgrade + s.event;
+  return s.containmentLoss + s.attritionLoss + s.baseline + s.alarm + s.performance + s.refund + s.rest + s.burner + s.mod + s.upgrade + s.security + s.event;
 }
 
 export interface EncounterOutcome {
@@ -456,9 +482,11 @@ function strategiesForFight(
    * (discardLowestTwo/playLowestLegal), same as before this parameter
    * existed. */
   playerSkill?: number,
+  /** A Security Level's lift to enemy skill (MP14, levels 4 and 8). */
+  skillOffset = 0,
 ): { discardStrategies?: [DiscardStrategy, DiscardStrategy]; playStrategies?: [PlayStrategy, PlayStrategy] } {
   if (discardStrategies || playStrategies) return { discardStrategies, playStrategies };
-  const skill = enemySkill(kind, layerIndex, fightNumber);
+  const skill = Math.min(1, enemySkill(kind, layerIndex, fightNumber) + skillOffset);
   const playerDiscard = playerSkill === undefined ? discardLowestTwo : discardSkillStrategy(playerSkill);
   const playerPeg = playerSkill === undefined ? playLowestLegal : pegSkillStrategy(playerSkill);
   return {
@@ -603,13 +631,15 @@ function* resolveFight(
   syntheticGatekeeper?: SyntheticGatekeeper,
 ): Generator<RunRequest, EncounterOutcome, unknown> {
   const enemy = enemyForFight(kind, node, layerIndex, fightNumber, rng, enemyIdOverride);
-  const strategies = strategiesForFight(kind, layerIndex, fightNumber, discardStrategies, playStrategies, playerSkill);
+  const security = playerState.security;
+  const strategies = strategiesForFight(kind, layerIndex, fightNumber, discardStrategies, playStrategies, playerSkill, security?.skillOffset);
   const seed = rng.nextInt(2 ** 31);
   // Per-layer difficulty scaler (session 39) -- applied here, not baked
   // into ENEMY_ROSTER's own authored data, so that data stays static and
   // regular/elite (which can appear at several layers) get a fresh scale
   // each encounter rather than a fixed one.
-  const scaledLoadout = scaledEnemyLoadout(enemy.loadout, magnitudeScalerFor(enemy, layerIndex, fightNumber));
+  // A Security Level makes every enemy stronger (MP14).
+  const scaledLoadout = scaledEnemyLoadout(enemy.loadout, magnitudeScalerFor(enemy, layerIndex, fightNumber) * (security?.enemyStrength ?? 1));
   // Gated on `kind` so an Event's bonus fight, which reaches this same
   // function, is never synthesised along with the layer's gatekeeper.
   const synthetic = kind === 'gatekeeper' ? syntheticGatekeeper : undefined;
@@ -626,7 +656,7 @@ function* resolveFight(
         seed: fightSeed,
         ...combatThresholdsFor(playerState, enemy, layerIndex, fightNumber),
         classId: playerState.classId,
-        ...enemyCombatOptions(enemy),
+        gatekeeperMods: [[], [...(enemy.mods ?? []), ...securityMods(enemy, kind, layerIndex, security)]],
         ownedModIds: playerState.ownedModIds,
         classModUpgraded: playerState.classModUpgraded,
         strainHeat: eventHeat(SYSTEM_STRAIN_LOSSES, layer0),
@@ -690,11 +720,12 @@ function* resolveFight(
       quarantined: false,
       rewardTier,
       dataAwarded: modified.dataAwarded,
-      rewardOptions: modified.rewardOptions,
+      // Security Level 5+ offers fewer choices (MP14).
+      rewardOptions: modified.rewardOptions.slice(0, security?.rewardChoices ?? undefined),
       mergeTargetId: null,
       shopPurchases: [],
       rerollCost: 0,
-      modRewardOptions,
+      modRewardOptions: modRewardOptions.slice(0, security?.rewardChoices ?? undefined),
       // Session 62 (the user's call): an elite win offers a subroutine OR
       // a Mod, one choice, not both.
       eliteChoice: kind === 'elite' ? true : undefined,
@@ -1088,7 +1119,8 @@ export function* resolveEncounterRequests(
       const { discountFraction: modDiscountFraction, extraCommons, extraUncommons } = shopModifiersForOwnedMods(playerState.ownedModIds);
       // The Shop price upgrade (session 71, MP7) multiplies whatever
       // discount applies, so prices can't fall to nothing.
-      const discountFraction = 1 - (1 - Math.max(modDiscountFraction, burnerModifiers.discountFraction)) * (playerState.meta?.shopPrice ?? 1);
+      // A Security Level raises prices (MP14, levels 3 and 7).
+      const discountFraction = 1 - (1 - Math.max(modDiscountFraction, burnerModifiers.discountFraction)) * (playerState.meta?.shopPrice ?? 1) * (playerState.security?.shopPrice ?? 1);
       // Black Market Ties (session 65): a contraband Burner on every Burner
       // slate, and each visit adds Heat.
       const blackMarket = playerState.ownedModIds.includes('black-market-ties');

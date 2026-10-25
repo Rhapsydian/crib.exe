@@ -28,10 +28,12 @@
     tutorial = false,
     skill = [],
     runId,
-  }: { result: RunResult; className: string; onagain: () => void; onretry?: () => void; onmenu?: () => void; seed?: number; tutorial?: boolean; skill?: readonly SkillDecision[]; runId?: string } = $props();
+    securityLevel = 0,
+  }: { result: RunResult; className: string; onagain: () => void; onretry?: () => void; onmenu?: () => void; seed?: number; tutorial?: boolean; skill?: readonly SkillDecision[]; runId?: string; securityLevel?: number } = $props();
   // The run's Rep (session 71), as the profile awarded it.
   const award = $derived(runId && profile.lastAward?.runId === runId ? profile.lastAward.lines : null);
   const unlocked = $derived(runId && profile.lastAward?.runId === runId ? profile.lastAward.unlocked : undefined);
+  const securityOpened = $derived(runId && profile.lastAward?.runId === runId ? profile.lastAward.securityOpened : undefined);
   const repTotal = $derived(award?.reduce((s, l) => s + l.rep, 0) ?? 0);
   // The run's Cribbage rating (session 70), over every fight's choices.
   const rating = $derived(rateSkill(skill, false));
@@ -64,6 +66,7 @@
 
 <div class="end" class:won={end.won}>
   <div class="title">{end.title}</div>
+  {#if securityLevel}<div class="sec-badge" class:won={end.won}>SEC {securityLevel}{end.won ? ' · Victory' : ''}</div>{/if}
   <div class="line">{tutorial ? end.line : summary.headline}</div>
   <div class="stats">
     <div><b>{result.layersCompleted}</b>/{tutorial ? 1 : 4} layer{tutorial ? '' : 's'} breached</div>
@@ -82,6 +85,7 @@
       <div class="rep-line dim"><span>Rep to spend</span><span>◆ {profile.data.rep}</span></div>
     </div>
   {/if}
+  {#if securityOpened}<div class="unlock">{securityOpened === 1 ? 'SECURITY LEVELS UNLOCKED: harder networks for more Rep. Choose one on the class screen.' : `SECURITY LEVEL ${securityOpened} UNLOCKED.`}</div>{/if}
   {#if unlocked}<div class="unlock">NEW CLASS UNLOCKED: <b>{CLASS_DEFINITIONS[unlocked].name}</b>. Choose it for your next contract.</div>{/if}
 
   {#if !tutorial && summary.layers.length}
@@ -150,6 +154,20 @@
   .line {
     font-size: 13px;
     margin-bottom: 8px;
+  }
+  .sec-badge {
+    align-self: flex-start;
+    padding: 2px 8px;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius);
+    color: var(--danger);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  .sec-badge.won {
+    border-color: var(--accent);
+    color: var(--accent);
   }
   .unlock {
     padding: 8px 10px;

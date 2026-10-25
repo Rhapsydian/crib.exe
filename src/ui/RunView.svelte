@@ -121,7 +121,7 @@
     <CribbageScreen game={run.evasion} onagain={() => run.answer(null)} />
   {/key}
 {:else if run.pause?.kind === 'over'}
-  <RunEnd result={run.pause.result} className={run.className} {onagain} {onretry} {onmenu} seed={run.seed} tutorial={run.tutorial} skill={run.skill} runId={run.id} />
+  <RunEnd result={run.pause.result} className={run.className} {onagain} {onretry} {onmenu} seed={run.seed} tutorial={run.tutorial} skill={run.skill} runId={run.id} securityLevel={run.setup.securityLevel ?? 0} />
 {/if}
 
 {#if banner}

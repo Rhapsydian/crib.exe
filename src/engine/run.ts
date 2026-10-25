@@ -10,7 +10,7 @@ import { addHeat, currentHeatCeiling, layerHeatAllowance, postedFightRisk, HEAT_
 import { CLASS_DEFINITIONS, DEFAULT_CLASS_ID, type ClassId } from './classes';
 import type { SubroutineDefinition } from './subroutine-types';
 import { ALL_SUBROUTINES } from './subroutines';
-import { applyUpgrades, type MetaBonuses, type RunSetup } from './meta';
+import { applySecurity, applyUpgrades, type MetaBonuses, type RunSetup, type SecurityRules } from './meta';
 import {
   acquireSubroutine,
   alwaysAcquireFirst,
@@ -162,6 +162,9 @@ export interface RunPlayerState {
    * fight and rest Heat, Shop prices, archetype Process, the Burner and
    * subroutine caps. Absent without upgrades. */
   meta?: MetaBonuses;
+  /** The run's Security Level rules (session 71, MP13-MP14). Absent at
+   * level 0. */
+  security?: SecurityRules;
 }
 
 
@@ -789,6 +792,8 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
   // The profile's upgrades and starting picks (session 71, MP7-MP9): a
   // 4th starter from the library, a starting common Burner.
   playerState = applyUpgrades(playerState, setup?.upgrades);
+  playerState = applySecurity(playerState, setup?.securityLevel);
+  const security = playerState.security;
   const starter = setup?.starter ? ALL_SUBROUTINES.find((p) => p.id === setup.starter) : undefined;
   // A starter the class already starts with arrives as a Merge copy.
   if (starter && playerState.installedLoadout.some((p) => p.id === starter.id)) playerState = { ...playerState, material: { ...playerState.material, [starter.id]: (playerState.material[starter.id] ?? 0) + 1 } };
@@ -849,7 +854,8 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
     // D4/D5: each layer has its own allowance, tightening with depth.
     // Read live rather than once, since Backup Generator can raise it
     // mid-layer, and recorded on the player state for strategies.
-    const ceiling = (): number => layerHeatAllowance(layerIndex, playerState.maxHeatBonus);
+    // A Security Level shrinks the allowance (MP14, levels 6 and 9).
+    const ceiling = (): number => Math.round(layerHeatAllowance(layerIndex, playerState.maxHeatBonus) * (security?.allowance ?? 1));
     playerState = { ...playerState, heatAllowance: ceiling() };
 
     while (!layerCleared) {
@@ -940,7 +946,8 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       // Footing (a move can never refund Heat, only discount/waive it).
       const freeMove = (playerState.mapEffects?.freeMoves ?? 0) > 0;
       if (freeMove) playerState = { ...playerState, mapEffects: { ...playerState.mapEffects!, freeMoves: playerState.mapEffects!.freeMoves - 1 } };
-      const moveHeatCost = freeMove ? 0 : applyOnMoveMods(playerState.ownedModIds, moveResult.heatCost);
+      // A Security Level raises all Heat gained (MP14).
+      const moveHeatCost = (freeMove ? 0 : applyOnMoveMods(playerState.ownedModIds, moveResult.heatCost)) * (security?.heatGain ?? 1);
       playerState = applyQuietHoursMod(playerState); // session 44: Data trickle every QUIET_HOURS_MOVE_INTERVAL moves
       const afterMove = addHeat(heat, moveHeatCost, ceiling());
       heat = afterMove.heat;
@@ -1011,6 +1018,13 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       }
       // The fight Heat upgrade (session 71, MP7): a fight that adds Heat
       // adds less, booked as `upgrade` Heat.
+      // A Security Level raises all Heat an encounter adds (MP14), booked
+      // as `security` Heat.
+      if (security && outcome.heatDelta > 0) {
+        const extra = outcome.heatDelta * (security.heatGain - 1);
+        outcome.heatDelta += extra;
+        outcome.heatSources = { ...outcome.heatSources, security: outcome.heatSources.security + extra };
+      }
       const fightHeat = playerState.meta?.fightHeat ?? 1;
       if (isFightNode && fightHeat !== 1 && outcome.heatDelta > 0) {
         const cut = outcome.heatDelta * (fightHeat - 1);
@@ -1222,8 +1236,9 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
         return finish(ending);
       }
       if (gatekeeperBeaten) {
-        // D4: survive the toll and Heat resets for the next layer.
-        heat = 0;
+        // D4: survive the toll and Heat resets for the next layer -- in
+        // part only at Security Level 2+ (D6).
+        heat = heat * (security?.heatCarry ?? 0);
         layerCleared = true;
       }
     }

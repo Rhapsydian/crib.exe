@@ -132,6 +132,81 @@ export interface RunSetup {
   upgrades?: Record<string, number>;
   starter?: string;
   burner?: BurnerId;
+  /** Security Level 0-10 (MP13; "ascension" in code). */
+  securityLevel?: number;
+}
+
+/** Security Levels (MP13-MP14): players see "Security Level 7", badged
+ * "SEC 7". */
+export const SECURITY_MAX = 10;
+/** Rep per level (MP13): +15%, 2.5x at 10. */
+export const SECURITY_REP_STEP = 0.15;
+/** Every level: enemies this much stronger, and Heat gained this much
+ * more (MP14; set by checkpoint 6's tuning). */
+export const SECURITY_STRENGTH_STEP = 0.03;
+export const SECURITY_HEAT_STEP = 0.04;
+
+/** What a Security Level changes in a run (MP14's ladder, cumulative). */
+export interface SecurityRules {
+  level: number;
+  /** Multiplies enemy subroutines. */
+  enemyStrength: number;
+  /** Multiplies all Heat gained. */
+  heatGain: number;
+  /** The share of Heat kept when a layer's gatekeeper is beaten (D6; 0
+   * resets fully). */
+  heatCarry: number;
+  /** Multiplies Shop prices. */
+  shopPrice: number;
+  /** Added to enemy Cribbage skill (capped at 1). */
+  skillOffset: number;
+  /** Subroutine and Mod choices a reward offers. */
+  rewardChoices: number;
+  /** Multiplies the Heat allowance. */
+  allowance: number;
+  /** Multiplies a Safehouse rest's Heat. */
+  rest: number;
+  /** Multiply enemy Containment and the player's Breach (the gauge
+   * offsets at 2, 5, 8). */
+  containment: number;
+  breach: number;
+  /** Extra Mods by tier: a gatekeeper's from layer 3 (`gatekeeper`), the
+   * final (layer 4) gatekeeper's on top. */
+  extraMods: { regular: number; elite: number; gatekeeper: number; finalGatekeeper: number };
+}
+
+export function securityRules(levelIn: number): SecurityRules {
+  const level = Math.max(0, Math.min(SECURITY_MAX, Math.floor(levelIn)));
+  const at = (n: number) => level >= n;
+  const offsets = [2, 5, 8].filter(at).length;
+  return {
+    level,
+    enemyStrength: 1 + SECURITY_STRENGTH_STEP * level,
+    heatGain: 1 + SECURITY_HEAT_STEP * level,
+    heatCarry: at(6) ? 0.25 : at(2) ? 0.1 : 0,
+    shopPrice: at(7) ? 1.3 : at(3) ? 1.15 : 1,
+    skillOffset: at(4) ? 0.1 : 0,
+    rewardChoices: at(5) ? 2 : 3,
+    allowance: at(6) ? 0.9 : 1,
+    rest: at(9) ? 0.85 : 1,
+    containment: 1 - 0.05 * offsets,
+    breach: 1 + 0.05 * offsets,
+    extraMods: { regular: at(8) ? 1 : 0, elite: at(10) ? 2 : at(1) ? 1 : 0, gatekeeper: at(7) ? 1 : 0, finalGatekeeper: at(10) ? 1 : 0 },
+  };
+}
+
+/** A run's player state under its Security Level: the gauge offsets
+ * through the threshold sockets (on top of any upgrades), the rest kept
+ * for the run and encounters to read. */
+export function applySecurity(state: RunPlayerState, levelIn: number | undefined): RunPlayerState {
+  const rules = securityRules(levelIn ?? 0);
+  if (!rules.level) return state;
+  return {
+    ...state,
+    security: rules,
+    breachThreshold: Math.round((state.breachThreshold ?? BREACH_THRESHOLD) * rules.breach),
+    containmentThresholdScaler: (state.containmentThresholdScaler ?? 1) * rules.containment,
+  };
 }
 
 export interface RepLine {
@@ -142,7 +217,7 @@ export interface RepLine {
 /** A finished run's Rep, itemized for the end-of-run card. Depth first:
  * each layer breached (caught at the end counts at CAUGHT_REP_SHARE),
  * then elites beaten, then a victory. Regular fights and Data earn none. */
-export function repForRun(result: RunResult): { lines: RepLine[]; total: number } {
+export function repForRun(result: RunResult, securityLevel = 0): { lines: RepLine[]; total: number } {
   const lines: RepLine[] = [];
   const cleared = result.log.filter((e) => e.type === 'layerCleared').map((e) => (e.type === 'layerCleared' ? e.layerIndex : 0));
   cleared.forEach((layerIndex, i) => {
@@ -153,6 +228,10 @@ export function repForRun(result: RunResult): { lines: RepLine[]; total: number 
   const elites = result.log.filter((e) => e.type === 'encounter' && e.nodeType === 'eliteFight' && e.outcome.newState === 'inert').length;
   if (elites) lines.push({ label: `${elites} elite${elites === 1 ? '' : 's'} beaten`, rep: elites * ELITE_REP });
   if (result.outcome === 'victory') lines.push({ label: 'Victory', rep: VICTORY_REP });
+  // Security Level's bonus (MP13): +15% a level on everything above.
+  const level = securityRules(securityLevel).level;
+  const base = lines.reduce((s, l) => s + l.rep, 0);
+  if (level && base) lines.push({ label: `Security Level ${level} ×${(1 + SECURITY_REP_STEP * level).toFixed(2)}`, rep: Math.round(base * SECURITY_REP_STEP * level) });
   return { lines, total: lines.reduce((s, l) => s + l.rep, 0) };
 }
 

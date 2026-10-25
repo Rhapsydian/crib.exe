@@ -19,6 +19,7 @@
  *
  * Usage:
  *   npx tsx scripts/meta-pacing.ts --part=maxed [--seeds=100] [--skill=0.85]
+ *   npx tsx scripts/meta-pacing.ts --part=security [--seeds=30] [--levels=0,5,10] [--fresh]
  *   npx tsx scripts/meta-pacing.ts --part=career [--careers=6] [--runs=120] [--skill=0.85]
  */
 import { playRun, opportunisticTraversal, type RunResult } from '../src/engine/run';
@@ -126,6 +127,30 @@ EACH TRACK ALONE -- ${seeds} seeds x 6 classes, skill ${skill}. Fresh ${fresh.to
     const v = victory(setup);
     console.log(`  ${name.padEnd(16)} ${v.toFixed(1).padStart(5)}%  (${v - fresh >= 0 ? '+' : ''}${(v - fresh).toFixed(1)})`);
   }
+}
+
+if (args.part === 'security') {
+  // Victory by Security Level (MP14's targets, fully upgraded: ~90% at 0,
+  // ~20% at 5, ~3-5% at 10), and a fresh player at a few levels.
+  const seeds = Number(args.seeds ?? 30);
+  const levels = (args.levels ?? '0,1,2,3,4,5,6,7,8,9,10').split(',').map(Number);
+  const commons = ALL_SUBROUTINES.filter((p) => rarityOf(p.id) === 'common').map((p) => p.id);
+  const at = (level: number, maxed: boolean) => {
+    let v = 0, layers = 0, heat = 0;
+    for (const classId of ALL_CLASS_IDS) for (let seed = 0; seed < seeds; seed++) {
+      const r = run(seed, classId, maxed ? { upgrades: MAXED, starter: pickStarter(classId, commons), burner: 'flash-drive', securityLevel: level } : { securityLevel: level });
+      v += Number(r.outcome === 'victory');
+      heat += Number(r.outcome === 'heatMaxed' || r.outcome === 'breachedThenCaught');
+      layers += r.layersCompleted;
+    }
+    const n = seeds * ALL_CLASS_IDS.length;
+    return `${((100 * v) / n).toFixed(1).padStart(5)}%  ${(layers / n).toFixed(2)}  (Heat ends ${((100 * heat) / n).toFixed(0)}%)`;
+  };
+  console.log(`
+SECURITY LEVELS -- ${seeds} seeds x 6 classes, skill ${skill}.
+`);
+  console.log('level   maxed: victory layers' + (args.fresh ? ' | fresh: victory layers' : ''));
+  for (const level of levels) console.log(`${String(level).padStart(5)}   ${at(level, true)}` + (args.fresh ? `      | ${at(level, false)}` : ''));
 }
 
 if (args.part === 'career') {

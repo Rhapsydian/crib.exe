@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { freshProfile, migrate, profile, PROFILE_VERSION } from './profile.svelte';
-import { CLASS_FALLBACK_REP, TUTORIAL_REP, libraryOffers } from '../engine/meta';
+import { CLASS_FALLBACK_REP, CLASS_ORDER, TUTORIAL_REP, libraryOffers } from '../engine/meta';
 import { ARCHETYPE_POOLS } from '../engine/subroutines';
 
 // Session 71 (docs/meta-progression-design.md MP10): the profile.
@@ -45,6 +45,21 @@ describe('the profile', () => {
     expect(profile.buyUpgrade('breach')).toBe(false);
   });
 
+  it('opens Security Levels once every class is unlocked and a run is won, then one by one (MP13, MP15)', () => {
+    profile.data = { ...profile.data, classes: ['exploit-overclock'], victories: 0, securityOpen: 0, securityBest: {} };
+    profile.awardRun('sec-1', [], null, { classId: 'exploit-overclock', securityLevel: 0, won: true });
+    expect(profile.data.securityOpen).toBe(0); // not every class yet
+    profile.data = { ...profile.data, classes: [...CLASS_ORDER] };
+    profile.awardRun('sec-2', [], null, { classId: 'exploit-overclock', securityLevel: 0, won: false });
+    expect(profile.data.securityOpen).toBe(1);
+    expect(profile.lastAward?.securityOpened).toBe(1);
+    profile.awardRun('sec-3', [], null, { classId: 'exploit-daemon', securityLevel: 1, won: true });
+    expect(profile.data.securityOpen).toBe(2);
+    expect(profile.data.securityBest['exploit-daemon']).toBe(1);
+    profile.awardRun('sec-4', [], null, { classId: 'exploit-daemon', securityLevel: 1, won: true });
+    expect(profile.data.securityOpen).toBe(2); // only the highest open level opens the next
+  });
+
   it('awards a run once, and the tutorial grant only the first time', () => {
     profile.data = { ...profile.data, rep: 0 };
     const before = profile.data.rep;
@@ -55,6 +70,6 @@ describe('the profile', () => {
     profile.finishTutorial('tut-1');
     profile.finishTutorial('tut-2');
     expect(profile.data.rep).toBe(before + 10 + TUTORIAL_REP);
-    expect(profile.data.runsFinished).toBe(4);
+    expect(profile.data.runsFinished).toBe(8);
   });
 });

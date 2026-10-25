@@ -125,7 +125,17 @@ run's depth be credited, *breached, then caught* below a full continue
 
   Targets (a fully upgraded simulated player): victory ~90% at 0 (measured),
   ~20% at 5, **~3-5% at 10** (the user: very hard, bragging rights).
-  Tuned by measurement.
+
+  **Tuned in checkpoint 6** (`scripts/meta-pacing.ts --part=security`):
+  the first ladder fell off a cliff at level 2 (a fresh player 17% → 1%)
+  and sat at ~1% from level 7. Changed: enemies +3% and Heat +4% a level
+  (were 4% and 5%); Heat carried 10% at level 2 and 25% at level 6 (were
+  25% / 50%); enemy skill +0.1 from level 4 with no level-8 escalation;
+  level 7's gatekeeper Mod on layers 3-4 only; level 9's allowance stays
+  at −10% and its rest sheds 85% (were −20% and half); the final
+  gatekeeper takes three Mods in all (a bug gave it four). Measured, fully
+  upgraded / fresh: level 1 84% / 19%, 2 67% / 5%, 3 56% / 2%, 4 49%, 5
+  30%, 6 17%, 7 6%, 8 6%, 9 3%, 10 2%.
 - **MP15. Bragging rights:** a Security Level badge ("SEC 10 · Victory") on the end-of-run card,
   and each class's highest level beaten on the class select (unlocks stay
   global).

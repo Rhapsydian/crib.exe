@@ -1,5 +1,5 @@
 import type { ClassId } from '../engine/classes';
-import { CLASS_FALLBACK_REP, CLASS_ORDER, LIBRARY_PRICE, STARTING_BURNER_PRICE, STARTING_BURNERS, TUTORIAL_REP, libraryOffers, upgradeLevel, upgradePrice, type RepLine, type UpgradeId } from '../engine/meta';
+import { CLASS_FALLBACK_REP, CLASS_ORDER, SECURITY_MAX, LIBRARY_PRICE, STARTING_BURNER_PRICE, STARTING_BURNERS, TUTORIAL_REP, libraryOffers, upgradeLevel, upgradePrice, type RepLine, type UpgradeId } from '../engine/meta';
 import type { BurnerId } from '../engine/burner-types';
 import { ALL_SUBROUTINES } from '../engine/subroutines';
 import { RESET_PROFILE_FLAG, UNLOCK_ALL_FLAG } from './testing-flags';
@@ -40,13 +40,23 @@ export interface Profile {
   /** The class select's last starting picks, remembered. */
   starter: string | null;
   burner: BurnerId | null;
+  /** Full runs won, at any Security Level. */
+  victories: number;
+  /** The highest Security Level open (MP13): 0 until every class is
+   * unlocked and a run is won, then 1; winning at the highest open level
+   * opens the next, up to 10. */
+  securityOpen: number;
+  /** Each class's highest Security Level won (MP15). */
+  securityBest: Partial<Record<ClassId, number>>;
+  /** The class select's last Security Level pick. */
+  securityPick: number;
 }
 
 export const PROFILE_VERSION = 1;
 const KEY = 'cribexe.profile';
 
 export function freshProfile(): Profile {
-  return { version: PROFILE_VERSION, rep: 0, repEarned: 0, runsFinished: 0, tutorialGranted: false, classes: ['exploit-overclock'], upgrades: {}, lastRunId: null, library: [], burners: [], boardIntroduced: false, starter: null, burner: null };
+  return { version: PROFILE_VERSION, rep: 0, repEarned: 0, runsFinished: 0, tutorialGranted: false, classes: ['exploit-overclock'], upgrades: {}, lastRunId: null, library: [], burners: [], boardIntroduced: false, starter: null, burner: null, victories: 0, securityOpen: 0, securityBest: {}, securityPick: 0 };
 }
 
 /** An older profile brought up to this version, keeping what it has: each
@@ -70,7 +80,12 @@ class ProfileStore {
   data = $state<Profile>(load());
   /** The latest run's award, itemized, for its end-of-run card (not
    * saved). */
-  lastAward = $state.raw<{ runId: string; lines: RepLine[]; unlocked?: ClassId } | null>(null);
+  lastAward = $state.raw<{ runId: string; lines: RepLine[]; unlocked?: ClassId; securityOpened?: number } | null>(null);
+
+  /** The highest Security Level open (`?unlockall`: all ten). */
+  get securityOpen(): number {
+    return UNLOCK_ALL_FLAG ? SECURITY_MAX : this.data.securityOpen;
+  }
 
   /** Whether a class can be played (`?unlockall` opens them all). */
   hasClass(id: ClassId): boolean {
@@ -86,7 +101,10 @@ class ProfileStore {
   /** The fallback: buy the next locked class for CLASS_FALLBACK_REP. */
   buyClass(id: ClassId): boolean {
     if (id !== this.nextLocked || this.data.rep < CLASS_FALLBACK_REP) return false;
-    this.data = { ...this.data, rep: this.data.rep - CLASS_FALLBACK_REP, classes: [...this.data.classes, id] };
+    const classes = [...this.data.classes, id];
+    // Buying the last class can complete Security Levels' unlock (MP13).
+    const securityOpen = !this.data.securityOpen && this.data.victories > 0 && CLASS_ORDER.every((c) => classes.includes(c)) ? 1 : this.data.securityOpen;
+    this.data = { ...this.data, rep: this.data.rep - CLASS_FALLBACK_REP, classes, securityOpen };
     this.#save();
     return true;
   }
@@ -141,19 +159,30 @@ class ProfileStore {
   }
 
   /** The class select's starting picks, remembered for next time. */
-  rememberPicks(starter: string | null, burner: BurnerId | null): void {
-    this.data = { ...this.data, starter, burner };
+  rememberPicks(starter: string | null, burner: BurnerId | null, securityPick = this.data.securityPick): void {
+    this.data = { ...this.data, starter, burner, securityPick };
     this.#save();
   }
 
   /** A finished run's Rep, once per run, and the class its milestone
    * unlocks (MP2), if any and not already open. */
-  awardRun(runId: string, lines: readonly RepLine[], unlock: ClassId | null = null): void {
+  awardRun(runId: string, lines: readonly RepLine[], unlock: ClassId | null = null, run?: { classId: ClassId; securityLevel: number; won: boolean }): void {
     if (this.data.lastRunId === runId) return;
     const total = lines.reduce((s, l) => s + l.rep, 0);
     const unlocked = unlock && !this.data.classes.includes(unlock) ? unlock : undefined;
-    this.lastAward = { runId, lines: [...lines], unlocked };
-    this.data = { ...this.data, rep: this.data.rep + total, repEarned: this.data.repEarned + total, runsFinished: this.data.runsFinished + 1, lastRunId: runId, classes: unlocked ? [...this.data.classes, unlocked] : this.data.classes };
+    const classes = unlocked ? [...this.data.classes, unlocked] : this.data.classes;
+    // Security Levels (MP13, MP15): open once every class is unlocked and
+    // a run is won; a win at the highest open level opens the next.
+    let { victories, securityOpen, securityBest } = this.data;
+    if (run?.won) {
+      victories++;
+      if (run.securityLevel > (securityBest[run.classId] ?? -1)) securityBest = { ...securityBest, [run.classId]: run.securityLevel };
+      if (run.securityLevel >= 1 && run.securityLevel === securityOpen) securityOpen = Math.min(SECURITY_MAX, securityOpen + 1);
+    }
+    if (!securityOpen && victories > 0 && CLASS_ORDER.every((id) => classes.includes(id))) securityOpen = 1;
+    const securityOpened = securityOpen > this.data.securityOpen ? securityOpen : undefined;
+    this.lastAward = { runId, lines: [...lines], unlocked, securityOpened };
+    this.data = { ...this.data, rep: this.data.rep + total, repEarned: this.data.repEarned + total, runsFinished: this.data.runsFinished + 1, lastRunId: runId, classes, victories, securityOpen, securityBest };
     this.#save();
   }
 

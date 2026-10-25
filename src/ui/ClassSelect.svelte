@@ -3,7 +3,8 @@
   import SuitIcon from './SuitIcon.svelte';
   import { classModFor } from './kit';
   import { profile } from './profile.svelte';
-  import { CLASS_FALLBACK_REP, CLASS_ORDER } from '../engine/meta';
+  import { CLASS_FALLBACK_REP, CLASS_ORDER, SECURITY_REP_STEP } from '../engine/meta';
+  import { SECURITY_LEVEL_TEXT } from './security-text';
   import { ALL_SUBROUTINES } from '../engine/subroutines';
   import { BURNER_DEFINITIONS } from '../engine/burners';
   import type { BurnerId } from '../engine/burner-types';
@@ -23,7 +24,7 @@
     onresume,
     resumeFailed = false,
   }: {
-    onstart: (classId: ClassId, picks: { starter?: string; burner?: BurnerId }) => void;
+    onstart: (classId: ClassId, picks: { starter?: string; burner?: BurnerId; securityLevel?: number }) => void;
     ontest: () => void;
     onmenu?: () => void;
     saved?: { className: string; layer: number; savedAt: number } | null;
@@ -37,9 +38,11 @@
   const library = $derived(profile.library.map((id) => ALL_SUBROUTINES.find((p) => p.id === id)).filter((p) => p !== undefined));
   let starter = $state<string>(profile.library.includes(profile.data.starter ?? '') ? (profile.data.starter ?? '') : '');
   let burner = $state<string>(profile.burners.includes(profile.data.burner as BurnerId) ? (profile.data.burner ?? '') : '');
+  // Security Level (MP13): once open, any level up to the highest.
+  let securityLevel = $state(Math.min(profile.data.securityPick, profile.securityOpen));
   function start() {
-    profile.rememberPicks(starter || null, (burner || null) as BurnerId | null);
-    onstart(chosen, { starter: starter || undefined, burner: (burner || undefined) as BurnerId | undefined });
+    profile.rememberPicks(starter || null, (burner || null) as BurnerId | null, securityLevel);
+    onstart(chosen, { starter: starter || undefined, burner: (burner || undefined) as BurnerId | undefined, securityLevel: securityLevel || undefined });
   }
   const prevName = (id: ClassId) => CLASS_DEFINITIONS[CLASS_ORDER[CLASS_ORDER.indexOf(id) - 1]].name;
 </script>
@@ -76,6 +79,7 @@
         <div class="head">
           <span class="icons">{#each c.archetypes as a (a)}<SuitIcon archetype={a} size={15} />{/each}</span>
           <b>{c.name}</b>
+          {#if profile.data.securityBest[c.id] !== undefined}<span class="best">★ SEC {profile.data.securityBest[c.id]}</span>{/if}
         </div>
         <div class="mod"><span class="glyph">◆</span> {mod.name}: <span class="dim">{mod.text}</span></div>
         <div class="pieces dim">{c.startingLoadout.map((p) => p.name).join(' · ')}</div>
@@ -83,6 +87,17 @@
       {/if}
     {/each}
   </div>
+  {#if profile.securityOpen > 0}
+    <div class="caption">SECURITY LEVEL</div>
+    <div class="sec">
+      <select bind:value={securityLevel} id="security-pick">
+        {#each Array.from({ length: profile.securityOpen + 1 }, (_, i) => i) as level (level)}
+          <option value={level}>{level === 0 ? 'Standard network' : `Security Level ${level}`}</option>
+        {/each}
+      </select>
+      <span class="dim">{securityLevel ? `+${Math.round(securityLevel * SECURITY_REP_STEP * 100)}% Rep · ${SECURITY_LEVEL_TEXT[securityLevel]}` : 'No changes.'}</span>
+    </div>
+  {/if}
   {#if library.length || profile.burners.length}
     <div class="caption">STARTING PICKS</div>
     <div class="picks">
@@ -153,6 +168,26 @@
     flex-direction: column;
     gap: 4px;
     font-size: 11.5px;
+  }
+  .best {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--accent);
+  }
+  .sec {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11.5px;
+  }
+  .sec select {
+    align-self: flex-start;
+    padding: 4px 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--bg-raised);
+    color: var(--text);
+    font: inherit;
   }
   .picks {
     display: flex;
