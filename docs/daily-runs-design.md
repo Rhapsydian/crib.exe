@@ -116,7 +116,7 @@ stretch goal.
   | Merge Master | Each Merge scores 150. |
   | Burn Rate (the user's pick) | Each Burner you use scores 100. |
   | Clean Breach | Each gatekeeper beaten before it reaches half its Containment scores +300. |
-  | Flawless Form | A Cribbage rating of 90% or better scores +1,000. |
+  | Flawless Form | A Flawless Cribbage rating (96% or better) scores +1,000. |
 
   **Short Count: 21 is the 31** (the user): the count's limit moves,
   and everything tied to 31 follows it: pegging to exactly 21 scores 2
@@ -158,6 +158,9 @@ by design, excepted); each Directive adding a few hundred points.
   −12.5, Quiet Network and Cold Trail −13, Cache Bloom −12, Early Cut −8,
   Expanded Memory +22 (rare); Flawless Form pays nothing to the 87%
   simulated player but the full-strength AI clears 90% every run.
+  (Session 72, after the rating became 100 less 10 a point given up per
+  hand: the bar moved to a Flawless rating, 96+, the same number as the
+  review ladder's top step; the simulated player now rates ~94.)
 - Directives now add +280 (Treasure Map) to +765 (Deep Dive); the base
   score's depth share stays ~57%.
 

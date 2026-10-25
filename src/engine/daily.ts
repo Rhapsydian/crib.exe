@@ -130,7 +130,7 @@ export const DAILY_MODS: Record<DailyModId, DailyModDefinition> = Object.fromEnt
   def('merge-master', 'Refactor Master', 'directive', 'Each Refactor scores 150.'),
   def('burn-rate', 'Burn Rate', 'directive', 'Each Burner you use scores 100.'),
   def('clean-breach', 'Clean Breach', 'directive', 'Each gatekeeper beaten before it reaches half its Containment scores +300.'),
-  def('flawless-form', 'Flawless Form', 'directive', 'A Cribbage rating of 90% or better scores +1,000.'),
+  def('flawless-form', 'Flawless Form', 'directive', 'A Flawless Cribbage rating (96% or better) scores +1,000.'),
 ]) as Record<DailyModId, DailyModDefinition>;
 
 /** Pairs that never appear on the same day (DR10). */
@@ -257,6 +257,11 @@ export function dailyRunStart(date: string, practice = false): { classId: ClassI
   return { classId: plan.classId, seed: plan.seed, setup: { plain: true, daily: { date, ...(practice ? { practice: true } : {}) } } };
 }
 
+/** Where a Cribbage rating turns Flawless: the review ladder's top step
+ * (ui/skill-review.ts) and Flawless Form's bar, one number (session 72,
+ * the user: tie them together). 96 is at most 0.4 points given up a hand. */
+export const FLAWLESS_RATING = 96;
+
 /** The daily score's parts (DR2; tuned later by simulation). */
 export const DAILY_SCORE = {
   layer: 1000,
@@ -321,7 +326,7 @@ export function dailyScore(result: RunResult, directive: DailyModId, rating: num
     const clean = encounters.filter((e) => e.nodeType === 'gatekeeperFight' && won(e) && (e.outcome.fight?.finalFillFraction[1] ?? 1) < 0.5).length;
     add(`${clean} gatekeeper${clean === 1 ? '' : 's'} beaten before half Containment`, clean * 300);
   }
-  if (directive === 'flawless-form' && rating !== null && rating >= 90) add('Flawless Form: Cribbage 90%+', 1000);
+  if (directive === 'flawless-form' && rating !== null && rating >= FLAWLESS_RATING) add(`Flawless Form: Cribbage ${FLAWLESS_RATING}%+`, 1000);
   return { lines, total: lines.reduce((s, l) => s + l.points, 0) };
 }
 

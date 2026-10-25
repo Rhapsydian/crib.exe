@@ -2,6 +2,7 @@ import type { Card } from '../engine/cards';
 import type { CombatAnswer, CombatRequest } from '../engine/combat';
 import { discardLoss, discardReview, pegLoss, pegReview, type PegSpot } from './coach';
 import { combatPegSpot } from './fight';
+import { FLAWLESS_RATING } from '../engine/daily';
 
 /**
  * The review coach (session 70, the user's playtest idea): a Cribbage
@@ -63,7 +64,8 @@ export const SKILL_LABELS: readonly { min: number; label: string }[] = [
   { min: 60, label: 'Steady' },
   { min: 75, label: 'Sharp' },
   { min: 88, label: 'Expert' },
-  { min: 96, label: 'Flawless' },
+  // Also Flawless Form's bar (engine/daily.ts), one number.
+  { min: FLAWLESS_RATING, label: 'Flawless' },
 ];
 export const skillLabel = (rating: number) => SKILL_LABELS.findLast((l) => rating >= l.min)!.label;
 

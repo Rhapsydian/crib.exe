@@ -107,8 +107,8 @@ describe('the daily score (DR2)', () => {
     const without = base.total - (base.lines.find((l) => l.directive)?.points ?? 0);
     expect(dailyScore(run, 'card-sharp', 80).total).toBe(without + 400);
     expect(dailyScore(run, 'payday', 80).total).toBe(without + (run.tally!.dataEarned));
-    expect(dailyScore(run, 'flawless-form', 95).lines.at(-1)?.points).toBe(1000);
-    expect(dailyScore(run, 'flawless-form', 89).lines.some((l) => l.directive)).toBe(false);
+    expect(dailyScore(run, 'flawless-form', 96).lines.at(-1)?.points).toBe(1000);
+    expect(dailyScore(run, 'flawless-form', 95).lines.some((l) => l.directive)).toBe(false);
     expect(dailyScore(run, 'shopping-spree', 80).total).toBe(without + run.tally!.dataSpent);
   });
 });
