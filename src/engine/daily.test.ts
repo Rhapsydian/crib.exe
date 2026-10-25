@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { DAILY_BLOCKED_PAIRS, DAILY_MAX_BURNERS, DAILY_MAX_SUBROUTINES, DAILY_MODS, dailyDate, dailyRunStart, dailySeed, rollDaily } from './daily';
+import { dailyScore, DAILY_BLOCKED_PAIRS, DAILY_MAX_BURNERS, DAILY_MAX_SUBROUTINES, DAILY_MODS, dailyDate, dailyRunStart, dailySeed, rollDaily } from './daily';
 import { ALL_SUBROUTINES } from './subroutines';
 import { BURNER_DEFINITIONS } from './burners';
+import { playRun, opportunisticTraversal } from './run';
+import { SYNERGY_AWARE_PROFILE } from './profiles';
 
 // Session 72 (docs/daily-runs-design.md DR4-DR8): the day.
 const dates = Array.from({ length: 400 }, (_, i) => dailyDate(new Date(2026, 0, 1 + i)));
@@ -72,5 +74,35 @@ describe('the daily', () => {
     const start = dailyRunStart('2026-10-25');
     expect(start).toMatchObject({ classId: rollDaily('2026-10-25').classId, seed: dailySeed('2026-10-25'), setup: { plain: true, daily: { date: '2026-10-25' } } });
     expect(dailyRunStart('2026-10-25', true).setup.daily?.practice).toBe(true);
+  });
+});
+
+describe('the daily score (DR2)', () => {
+  const run = playRun({ ...SYNERGY_AWARE_PROFILE, seed: 21, classId: 'exploit-overclock', traversalStrategy: opportunisticTraversal, playerSkill: 0.85 });
+
+  it('tallies Data earned and spent, Merges and Burners used', () => {
+    expect(run.tally).toBeDefined();
+    const t = run.tally!;
+    // What's left is what came in less what went out (starting with none).
+    expect(t.dataEarned - t.dataSpent).toBe(run.playerState.data);
+    expect(t.merges).toBeGreaterThanOrEqual(0);
+  });
+
+  it('itemizes depth, elites, Caches, Data and the Cribbage rating', () => {
+    const s = dailyScore(run, 'clean-sweep', 80);
+    const layers = run.log.filter((e) => e.type === 'layerCleared').length;
+    expect(s.lines.find((l) => l.label.startsWith('Cribbage'))?.points).toBe(400);
+    expect(s.total).toBeGreaterThanOrEqual(layers * 750 + 400);
+    expect(s.total).toBe(s.lines.reduce((a, l) => a + l.points, 0));
+  });
+
+  it('each Directive changes the score its own way', () => {
+    const base = dailyScore(run, 'clean-sweep', 80);
+    const without = base.total - (base.lines.find((l) => l.directive)?.points ?? 0);
+    expect(dailyScore(run, 'card-sharp', 80).total).toBe(without + 400);
+    expect(dailyScore(run, 'payday', 80).total).toBe(without + (run.tally!.dataEarned));
+    expect(dailyScore(run, 'flawless-form', 95).lines.at(-1)?.points).toBe(1000);
+    expect(dailyScore(run, 'flawless-form', 89).lines.some((l) => l.directive)).toBe(false);
+    expect(dailyScore(run, 'shopping-spree', 80).total).toBe(without + run.tally!.dataSpent);
   });
 });

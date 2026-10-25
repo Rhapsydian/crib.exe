@@ -268,8 +268,18 @@ export type RunEvent =
   | { type: 'evasion'; layerIndex: number; headStart: number; finalScores: [number, number]; escaped: boolean }
   | { type: 'runEnded'; outcome: RunOutcome };
 
+/** Gross totals over a run (session 72, the daily score): Data earned
+ * and spent (not the net left over), Merges, Burners used. */
+export interface RunTally {
+  dataEarned: number;
+  dataSpent: number;
+  merges: number;
+  burnersUsed: number;
+}
+
 export interface RunResult {
   outcome: RunOutcome;
+  tally?: RunTally;
   layersCompleted: number;
   finalHeat: number;
   log: RunEvent[];
@@ -819,7 +829,32 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
   if (startingData !== undefined) playerState = { ...playerState, data: startingData };
   if (startingMaterial) playerState = { ...playerState, material: { ...playerState.material, ...startingMaterial } };
 
-  const finish = (outcome: RunOutcome): RunResult => ({ outcome, layersCompleted, finalHeat: heat, log, playerState });
+  // The run's tally (session 72): Data and rank changes settle at each
+  // step between nodes; the Shop's costs and negative Data awards are
+  // noted as they happen, so spending isn't netted against earning.
+  const tally: RunTally = { dataEarned: 0, dataSpent: 0, merges: 0, burnersUsed: 0 };
+  const rankSum = () => Object.values(playerState.rank).reduce((s, r) => s + r, 0);
+  let markData = playerState.data;
+  let markRank = rankSum();
+  let pendingSpent = 0;
+  const spend = (amount: number) => (pendingSpent += amount);
+  const settle = () => {
+    const earned = playerState.data - markData + pendingSpent;
+    tally.dataEarned += Math.max(0, earned);
+    tally.dataSpent += pendingSpent + Math.max(0, -earned);
+    tally.merges += Math.max(0, rankSum() - markRank);
+    markData = playerState.data;
+    markRank = rankSum();
+    pendingSpent = 0;
+  };
+  const finish = (outcome: RunOutcome): RunResult => {
+    settle();
+    for (const e of log) {
+      if (e.type === 'mapBurnerActivated') tally.burnersUsed++;
+      if (e.type === 'encounter') tally.burnersUsed += e.outcome.burnersUsedThisCombat.length + (e.outcome.shopBurnerUsed ? 1 : 0);
+    }
+    return { outcome, layersCompleted, finalHeat: heat, log, playerState, tally };
+  };
 
   for (let layerIndex = 0; layerIndex < layerNodeCounts.length; layerIndex++) {
     const authored = layerGraphs?.[layerIndex];
@@ -859,6 +894,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
     playerState = { ...playerState, heatAllowance: ceiling() };
 
     while (!layerCleared) {
+      settle();
       const fromNodeId = position.nodeId;
 
       // Map-context Burner activation (checkpoint D), before both this
@@ -1089,6 +1125,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       // in practice, but an Event's dataDelta (checkpoint H) is a
       // genuine signed delta -- a future negative-cost Event choice
       // should still apply correctly, not get silently dropped.
+      if (outcome.dataAwarded < 0) spend(-outcome.dataAwarded);
       if (outcome.dataAwarded !== 0) playerState = { ...playerState, data: playerState.data + outcome.dataAwarded };
       // An elite win (session 62): one choice, a subroutine or a Mod. The
       // simulated player takes a subroutine while it has a free loadout
@@ -1168,6 +1205,8 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       if (outcome.mergeTargetId) playerState = mergeEverything(playerState);
       // Sales first (session 61): their Data may have paid for the buys.
       if (outcome.shopSales) playerState = applyShopSales(playerState, outcome.shopSales);
+      spend(outcome.rerollCost + outcome.modRerollCost + outcome.burnerRerollCost);
+      for (const p of [...outcome.shopPurchases, ...outcome.modShopPurchases, ...outcome.burnerShopPurchases]) spend(p.cost);
       if (outcome.rerollCost > 0) playerState = { ...playerState, data: playerState.data - outcome.rerollCost };
       for (const purchase of outcome.shopPurchases) {
         playerState = { ...playerState, data: playerState.data - purchase.cost };

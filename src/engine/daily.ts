@@ -5,6 +5,8 @@ import type { Archetype } from './subroutine-types';
 import { BURNER_DEFINITIONS } from './burners';
 import { ARCHETYPE_POOLS } from './subroutines';
 import { CLASS_ORDER, STARTING_BURNERS, type RunSetup } from './meta';
+import type { RunEvent, RunResult } from './run';
+import { layerHeatAllowance } from './heat';
 
 /**
  * Daily Runs (session 72, docs/daily-runs-design.md): the run of the day.
@@ -250,4 +252,72 @@ export function rollDaily(date: string): DailyPlan {
 export function dailyRunStart(date: string, practice = false): { classId: ClassId; seed: number; setup: RunSetup } {
   const plan = rollDaily(date);
   return { classId: plan.classId, seed: plan.seed, setup: { plain: true, daily: { date, ...(practice ? { practice: true } : {}) } } };
+}
+
+/** The daily score's parts (DR2; tuned later by simulation). */
+export const DAILY_SCORE = {
+  layer: 1000,
+  caughtLayer: 750,
+  victory: 1000,
+  elite: 150,
+  cache: 100,
+  perData: 1,
+  perRatingPoint: 5,
+} as const;
+
+export interface ScoreLine {
+  label: string;
+  points: number;
+  /** Changed or added by the day's Directive. */
+  directive?: boolean;
+}
+
+/**
+ * A daily run's score, itemized for the end card (DR2), with the day's
+ * Directive applied. `rating` is the run's Cribbage rating (0-100; the
+ * review coach works it out in the UI), or null with none.
+ */
+export function dailyScore(result: RunResult, directive: DailyModId, rating: number | null): { lines: ScoreLine[]; total: number } {
+  const S = DAILY_SCORE;
+  const lines: ScoreLine[] = [];
+  const encounters = result.log.filter((e): e is Extract<RunEvent, { type: 'encounter' }> => e.type === 'encounter');
+  const won = (e: Extract<RunEvent, { type: 'encounter' }>) => e.outcome.newState === 'inert';
+  const cleared = result.log.flatMap((e) => (e.type === 'layerCleared' ? [e.layerIndex] : []));
+  cleared.forEach((layerIndex, i) => {
+    const caught = result.outcome === 'breachedThenCaught' && i === cleared.length - 1;
+    const base = caught ? S.caughtLayer : S.layer;
+    const deep = directive === 'deep-dive' && layerIndex >= 2;
+    lines.push({ label: `Layer ${layerIndex + 1} breached${caught ? ', then caught' : ''}${deep ? ' (×2)' : ''}`, points: deep ? base * 2 : base, directive: deep || undefined });
+  });
+  if (result.outcome === 'victory') lines.push({ label: 'Victory', points: S.victory });
+  const elites = encounters.filter((e) => e.nodeType === 'eliteFight' && won(e)).length;
+  if (elites) lines.push({ label: `${elites} elite${elites === 1 ? '' : 's'} beaten${directive === 'bounty-hunt' ? ' (×2)' : ''}`, points: elites * S.elite * (directive === 'bounty-hunt' ? 2 : 1), directive: directive === 'bounty-hunt' || undefined });
+  const caches = encounters.filter((e) => e.nodeType === 'cache').length;
+  if (caches) lines.push({ label: `${caches} Cache${caches === 1 ? '' : 's'} opened${directive === 'treasure-map' ? ' (×3)' : ''}`, points: caches * S.cache * (directive === 'treasure-map' ? 3 : 1), directive: directive === 'treasure-map' || undefined });
+  const earned = result.tally?.dataEarned ?? 0;
+  if (earned) lines.push({ label: `${earned} Data earned${directive === 'payday' ? ' (×2)' : ''}`, points: Math.round(earned * S.perData * (directive === 'payday' ? 2 : 1)), directive: directive === 'payday' || undefined });
+  if (rating !== null) lines.push({ label: `Cribbage ${rating}%${directive === 'card-sharp' ? ' (×2)' : ''}`, points: rating * S.perRatingPoint * (directive === 'card-sharp' ? 2 : 1), directive: directive === 'card-sharp' || undefined });
+  // The Directives that add a line of their own.
+  const add = (label: string, points: number) => points > 0 && lines.push({ label, points, directive: true });
+  if (directive === 'clean-sweep') {
+    const regulars = encounters.filter((e) => e.nodeType === 'regularFight' && won(e)).length;
+    add(`${regulars} regular fights won`, regulars * 50);
+  }
+  if (directive === 'ghost-run') {
+    const quiet = encounters.filter((e) => e.nodeType === 'gatekeeperFight' && won(e) && e.heatAfter < layerHeatAllowance(e.layerIndex, result.playerState.maxHeatBonus) / 2).length;
+    add(`${quiet} layer${quiet === 1 ? '' : 's'} breached under half Heat`, quiet * 500);
+  }
+  if (directive === 'shopping-spree') add(`${result.tally?.dataSpent ?? 0} Data spent`, result.tally?.dataSpent ?? 0);
+  if (directive === 'full-arsenal') {
+    const mods = result.playerState.ownedModIds.length - 1; // the class Mod isn't one you picked up
+    add(`${mods} Mods held`, mods * 100);
+  }
+  if (directive === 'merge-master') add(`${result.tally?.merges ?? 0} Merges`, (result.tally?.merges ?? 0) * 150);
+  if (directive === 'burn-rate') add(`${result.tally?.burnersUsed ?? 0} Burners used`, (result.tally?.burnersUsed ?? 0) * 100);
+  if (directive === 'clean-breach') {
+    const clean = encounters.filter((e) => e.nodeType === 'gatekeeperFight' && won(e) && (e.outcome.fight?.finalFillFraction[1] ?? 1) < 0.5).length;
+    add(`${clean} gatekeeper${clean === 1 ? '' : 's'} beaten before half Containment`, clean * 300);
+  }
+  if (directive === 'flawless-form' && rating !== null && rating >= 90) add('Flawless Form: Cribbage 90%+', 1000);
+  return { lines, total: lines.reduce((s, l) => s + l.points, 0) };
 }
