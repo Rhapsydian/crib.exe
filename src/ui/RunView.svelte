@@ -129,7 +129,7 @@
   {#key banner.key}
     <div class="layer-banner">
       <b>LAYER {banner.layer}</b>
-      <span>{banner.layer === 1 ? 'perimeter · find the gatekeeper ⛨︎' : `layer ${banner.layer - 1} breached · going deeper`}</span>
+      <span>{banner.layer === 1 ? 'perimeter · find the gatekeeper' : `layer ${banner.layer - 1} breached · going deeper`}</span>
     </div>
   {/key}
 {/if}

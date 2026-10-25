@@ -29,7 +29,7 @@ export type GuideStep =
   | 'gatekeeper';
 
 export const GUIDE_TEXT: Record<GuideStep, string> = {
-  map: "This is the network map. You start at the bottom; the gatekeeper ⛨ at the top is the way out. Tap a linked node to see what it is, then move. Every move adds Heat (top bar): reach this layer's limit and you're caught.",
+  map: "This is the network map. You start at the bottom; the gatekeeper at the top is the way out. Tap a linked node to see what it is, then move. Every move adds Heat (top bar): reach this layer's limit and you're caught.",
   class:
     "You're playing Blackhat. Your loadout of subroutines is on the left (the loadout button on phones). Your class Mod, Lateral Movement, gives you a little extra initiative for each pair you score.",
   fight:

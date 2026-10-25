@@ -19,6 +19,9 @@
   }: { graph: LayerGraph; here: string; selectable?: Set<string>; selected?: string | null; onpick?: (id: string) => void } = $props();
 
   const { W, H, P, R } = MAP_VIEW;
+  // Headroom above the layout for a gatekeeper's name at the top edge (the
+  // user: the name always sits above its node).
+  const TOP = 7;
   const X = (x: number) => P + x * (W - 2 * P);
   const Y = (y: number) => P + y * (H - 2 * P);
   const hexPath = Array.from({ length: 6 }, (_, i) => {
@@ -33,7 +36,7 @@
   };
 </script>
 
-<svg viewBox="0 0 {W} {H}" class="map">
+<svg viewBox="0 {-TOP} {W} {H + TOP}" class="map">
   <g class="backdrop">
     {#each backdrop as h, i (i)}
       <polygon points={hexPath} transform="translate({h.x},{h.y})" />
@@ -67,15 +70,20 @@
       onkeydown={() => {}}
     >
       <circle {r} style="--tone: {k.tone}" />
-      {#if k.glyph}<text dominant-baseline="central" style="fill: {k.tone}" font-size={big ? 6 : 4.6}>{k.glyph}</text>{/if}
+      {#if k.icon}
+        {@const s = big ? 6.8 : 5.2}
+        <g class="icon" transform="translate({-s / 2},{-s / 2}) scale({s / 24})" style="stroke: {k.tone}">
+          {#each k.icon as d, i (i)}<path {d} />{/each}
+        </g>
+      {:else if k.glyph}<text dominant-baseline="central" style="fill: {k.tone}" font-size={big ? 6 : 4.6}>{k.glyph}</text>{/if}
       {#if n.state === 'closed'}<path d="M{-r * 0.7},{-r * 0.7} L{r * 0.7},{r * 0.7} M{r * 0.7},{-r * 0.7} L{-r * 0.7},{r * 0.7}" class="strike" />{/if}
       {#if n.id === here}<circle r={r + 1.8} class="here" />{/if}
       {#if selected === n.id}<circle r={r + 2.6} class="pick" />{/if}
-      <!-- The layer's gatekeeper, named (session 68, E12): above its node,
-           or below when the node sits near the top edge. -->
+      <!-- The layer's gatekeeper, named (session 68, E12): always above its
+           node (the user; the map has headroom for it at the top edge). -->
       {#if big && n.assignedEnemyId}
         {@const name = enemyById(n.assignedEnemyId)?.name}
-        {#if name}<text class="gk-name" y={p.y < r + 10 ? r + 5.5 : -(r + 3.5)}>{name}</text>{/if}
+        {#if name}<text class="gk-name" y={-(r + 3.5)}>{name}</text>{/if}
       {/if}
     </g>
   {/each}
@@ -94,6 +102,13 @@
     stroke: var(--line);
     stroke-width: 0.25;
     opacity: 0.55;
+  }
+  .icon path {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
   }
   .gk-name {
     font-size: 4.4px;

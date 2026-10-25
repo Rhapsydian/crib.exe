@@ -1,4 +1,5 @@
 <script lang="ts">
+  import NodeIcon from './NodeIcon.svelte';
   import DailyKit from './DailyKit.svelte';
   import type { DailyPlan } from '../engine/daily';
   import { tips } from './tips.svelte';
@@ -170,7 +171,7 @@
     {#if node}
       {@const k = NODE_KIND[node.type]}
       <div class="what">
-        <span class="glyph" style="color: {k.tone}">{k.glyph || '·'}</span>
+        <span class="glyph"><NodeIcon type={node.type} /></span>
         <b style="color: {k.tone}">{k.label}</b>
         {#if node.state === 'inert' && node.type !== 'relay'}<span class="dim">· cleared</span>{/if}
       </div>
@@ -184,7 +185,7 @@
       {/if}
     {:else}
       <div class="hint">
-        Tap a linked node to see what it is. {fx?.freeMoves ? `Your next ${fx.freeMoves === 1 ? 'move is' : `${fx.freeMoves} moves are`} free.` : `Each move costs ${fmt(moveCost)} Heat.`} The gatekeeper ⛨︎ leads to the next layer.
+        Tap a linked node to see what it is. {fx?.freeMoves ? `Your next ${fx.freeMoves === 1 ? 'move is' : `${fx.freeMoves} moves are`} free.` : `Each move costs ${fmt(moveCost)} Heat.`} The gatekeeper leads to the next layer.
       </div>
       {#if inEffect.length}<div class="in-effect">In effect: {inEffect.join(' · ')}</div>{/if}
       {#if usableMapBurners.length}

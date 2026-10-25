@@ -3,6 +3,7 @@
   import SuitIcon from './SuitIcon.svelte';
   import { summarizeRun } from './run-summary';
   import { NODE_KIND } from './map-kinds';
+  import NodeIcon from './NodeIcon.svelte';
   import { rankMark } from './visit-text';
   import { rateSkill, type SkillDecision } from './skill-review';
   import { profile } from './profile.svelte';
@@ -125,7 +126,7 @@
           <span class="lnum">L{row.layer}</span>
           <span class="stops">
             {#each row.stops as stop, i (i)}
-              <span class="stop" class:lost={stop.won === false} style="color: {stop.won === false ? 'var(--danger)' : NODE_KIND[stop.type].tone}" title={NODE_KIND[stop.type].label}>{stop.won === false ? '✕' : NODE_KIND[stop.type].glyph}</span>
+              <span class="stop" class:lost={stop.won === false} style="color: {stop.won === false ? 'var(--danger)' : NODE_KIND[stop.type].tone}" title={NODE_KIND[stop.type].label}>{#if stop.won === false}✕{:else}<NodeIcon type={stop.type} />{/if}</span>
             {/each}
           </span>
           <span class="ending" class:bad={row.ending !== 'breached'}>{ENDING_TEXT[row.ending]}{#if row.evasion?.escaped}, evaded {row.evasion.scores[0]}-{row.evasion.scores[1]}{/if}</span>
