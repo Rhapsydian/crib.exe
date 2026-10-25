@@ -239,7 +239,7 @@
   // discard and last play. (Last hand's count is on the table already,
   // in the show.)
   const cribbageCoach = $derived(guide.active && guide.cribbageCoach);
-  let lastDiscard = $state.raw<{ handIndex: number; hand: Card[]; thrown: [Card, Card]; ownCrib: boolean } | null>(null);
+  let lastDiscard = $state.raw<{ handIndex: number; hand: Card[]; thrown: [Card, Card]; ownCrib: boolean; starter?: Card } | null>(null);
   let lastPlay = $state.raw<{ handIndex: number; spot: PegSpot; played: Card } | null>(null);
   function play(card: Card) {
     const spot = fightPegSpot(snapshot);
@@ -247,22 +247,22 @@
     onplay?.(card);
   }
   function discard(cards: [Card, Card]) {
-    lastDiscard = { handIndex: f.view.handIndex, hand: f.hand, thrown: cards, ownCrib: f.playerOwnsCrib };
+    lastDiscard = { handIndex: f.view.handIndex, hand: f.hand, thrown: cards, ownCrib: f.playerIsDealer, starter: f.starter };
     ondiscard?.(cards);
   }
   const coachSections = $derived.by<CoachSection[]>(() => {
     if (!cribbageCoach || !handReady || replay?.playing) return [];
-    const ownCrib = f.playerOwnsCrib;
+    const ownCrib = f.playerIsDealer;
     const first = f.view.handIndex === 0;
     const sections: CoachSection[] = [];
     if (f.phase === 'discard') {
-      sections.push({ title: 'NOW', lines: [...(guide.cribbageHints ? [discardHint(f.hand, ownCrib)] : []), phaseIntro('discard', ownCrib, false)] });
+      sections.push({ title: 'NOW', lines: [...(guide.cribbageHints ? [discardHint(f.hand, ownCrib, f.starter)] : []), phaseIntro('discard', ownCrib, false)] });
       if (first) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('discard', ownCrib, true)] });
     } else if (f.phase === 'play') {
       const spot = fightPegSpot(snapshot);
       sections.push({ title: 'NOW', lines: [guide.cribbageHints && spot ? pegHint(spot) : phaseIntro('peg', ownCrib, false)] });
       if (lastPlay && lastPlay.handIndex === f.view.handIndex) sections.push({ title: 'YOUR LAST PLAY', lines: [pegReview(lastPlay.spot, lastPlay.played).text] });
-      if (lastDiscard && lastDiscard.handIndex === f.view.handIndex) sections.push({ title: 'YOUR DISCARD', lines: [discardReview(lastDiscard.hand, lastDiscard.thrown, lastDiscard.ownCrib).text] });
+      if (lastDiscard && lastDiscard.handIndex === f.view.handIndex) sections.push({ title: 'YOUR DISCARD', lines: [discardReview(lastDiscard.hand, lastDiscard.thrown, lastDiscard.ownCrib, lastDiscard.starter).text] });
       if (first) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('peg', ownCrib, true)] });
     }
     return sections;
@@ -411,7 +411,7 @@
          catch, milestone 4). -->
     <div class="hand-slot">
     {#if handReady && f.phase !== 'burner'}
-      <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase === 'discard' ? 'discard' : 'play'} playerIsDealer={f.playerOwnsCrib} countLimit={f.countLimit} onplay={onplay && play} ondiscard={ondiscard && discard} inactive={replay?.playing ?? false} />
+      <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase === 'discard' ? 'discard' : 'play'} playerIsDealer={f.playerIsDealer} countLimit={f.countLimit} onplay={onplay && play} ondiscard={ondiscard && discard} inactive={replay?.playing ?? false} />
     {:else}
       <div class="hand-wait">…</div>
     {/if}

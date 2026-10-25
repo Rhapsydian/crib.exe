@@ -28,11 +28,10 @@ export function fightParts(snapshot: FightSnapshot) {
     sequence: playing ? request.context.sequence : [],
     hand: discarding ? request.context.hand : playing ? request.pegging.hand : [],
     opponentCardsLeft: discarding ? 6 : playing ? request.pegging.opponentCardsLeft : 0,
-    starter: discarding ? undefined : view.hands[view.handIndex]?.starter,
+    // Early Cut (a daily Glitch) shows the starter during the discard.
+    starter: discarding ? view.earlyStarter : view.hands[view.handIndex]?.starter,
     playerIsDealer: view.dealer === 0,
-    /** Whose crib (Turncoat Crib, a daily Glitch, gives it to the
-     * non-dealer), and the count's limit (Short Count's 21). */
-    playerOwnsCrib: (view.cribOwner ?? view.dealer) === 0,
+    /** The count's limit (Short Count's 21, a daily Glitch). */
     countLimit: view.countLimit ?? 31,
     burners: request.kind === 'burner' ? request.context.availableBurnerIds : [],
     enemyName: snapshot.enemy.name,

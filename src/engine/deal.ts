@@ -28,6 +28,9 @@ export function deal(shuffledDeck: Card[]): DealResult {
 export interface DiscardContext {
   hand: Card[];
   isOwnCrib: boolean;
+  /** The starter, already turned (Early Cut, a daily Glitch): the kept
+   * hand scores exactly rather than on average over every cut. */
+  starter?: Card;
   knownOpponentHand?: Card[];
   /** The two cards the opponent has ALREADY put in the crib (session 52,
    * Disrupt's Reveal Crib): when a side has it armed, its opponent

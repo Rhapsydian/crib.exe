@@ -1,4 +1,5 @@
 import { cardsEqual, cardValue, type Card } from '../engine/cards';
+import { countHand } from '../engine/scoring';
 import { cribTableValue, handExpectedValue, pegSkillStrategy, predictBestDiscard, scoreDiscard, unseenCards } from '../engine/ai';
 import type { CribbageBeat } from '../engine/basic-cribbage';
 import { rankLabel, suitInfo } from './suits';
@@ -86,7 +87,13 @@ export function keepScore(cards: Card[]): { pts: number; parts: string[] } {
 
 /** A keep in words: what it's sure to score, then what the cut adds on
  * average (the user's ask: "12 points, plus about 0.8 from the cut"). */
-function keepLine(kept: Card[], unseen: Card[]): { text: string; average: number } {
+function keepLine(kept: Card[], unseen: Card[], starter?: Card): { text: string; average: number } {
+  // Early Cut (a daily Glitch): the starter is known, so the keep's score
+  // is exact.
+  if (starter) {
+    const total = countHand(kept, starter).total;
+    return { text: `${total} point${total === 1 ? '' : 's'} with the ${label(starter)} cut`, average: total };
+  }
   const { pts, parts } = keepScore(kept);
   const average = handExpectedValue(kept, unseen);
   const extra = (average - pts).toFixed(1);
@@ -110,16 +117,16 @@ export interface DiscardReview {
 
 /** Your discard beside the coach's: `hand` is the six dealt, `thrown`
  * the two you put in the crib. */
-export function discardReview(hand: Card[], thrown: [Card, Card], ownCrib: boolean): DiscardReview {
-  const best = predictBestDiscard(hand, ownCrib);
+export function discardReview(hand: Card[], thrown: [Card, Card], ownCrib: boolean, starter?: Card): DiscardReview {
+  const best = predictBestDiscard(hand, ownCrib, starter);
   const keep = (pair: Card[]) => hand.filter((c) => !pair.some((p) => cardsEqual(p, c)));
   const unseen = unseenCards(hand);
-  const yours = { kept: keep(thrown), score: scoreDiscard(hand, thrown, ownCrib) };
-  const coach = { kept: keep(best), score: scoreDiscard(hand, best, ownCrib) };
+  const yours = { kept: keep(thrown), score: scoreDiscard(hand, thrown, ownCrib, undefined, undefined, starter) };
+  const coach = { kept: keep(best), score: scoreDiscard(hand, best, ownCrib, undefined, undefined, starter) };
   // Good if it's the coach's discard, or within a whisker of it.
   const same = best.every((c) => thrown.some((t) => cardsEqual(t, c))) || yours.score >= coach.score - 0.3;
-  const y = keepLine(yours.kept, unseen);
-  const c = keepLine(coach.kept, unseen);
+  const y = keepLine(yours.kept, unseen, starter);
+  const c = keepLine(coach.kept, unseen, starter);
   const text = same
     ? `Good discard. You kept ${list(yours.kept)}: ${y.text}; and threw ${throwLine(thrown, ownCrib)}.`
     : `You kept ${list(yours.kept)}: ${y.text}; and threw ${throwLine(thrown, ownCrib)}. I would have kept ${list(coach.kept)}: ${c.text}; and thrown ${throwLine(best, ownCrib)}.`;
@@ -128,10 +135,10 @@ export function discardReview(hand: Card[], thrown: [Card, Card], ownCrib: boole
 
 /** The discard the coach suggests, before you choose: what to keep and
  * why, and what to throw. */
-export function discardHint(hand: Card[], ownCrib: boolean): string {
-  const best = predictBestDiscard(hand, ownCrib);
+export function discardHint(hand: Card[], ownCrib: boolean, starter?: Card): string {
+  const best = predictBestDiscard(hand, ownCrib, starter);
   const kept = hand.filter((c) => !best.some((p) => cardsEqual(p, c)));
-  return `Keep ${list(kept)}: ${keepLine(kept, unseenCards(hand)).text}. Throw ${throwLine(best, ownCrib)}.`;
+  return `Keep ${list(kept)}: ${keepLine(kept, unseenCards(hand), starter).text}. Throw ${throwLine(best, ownCrib)}.`;
 }
 
 /** What playing `card` scores right now, in words. */
@@ -344,9 +351,9 @@ export function showSummary(timeline: readonly CribbageBeat[]): string[] {
 
 /** What a discard gave up (the review coach, session 70): the coach's
  * keep less yours, in expected points over every cut and the crib. */
-export function discardLoss(hand: Card[], thrown: [Card, Card], ownCrib: boolean): number {
-  const best = predictBestDiscard(hand, ownCrib);
-  return Math.max(0, scoreDiscard(hand, best, ownCrib) - scoreDiscard(hand, thrown, ownCrib));
+export function discardLoss(hand: Card[], thrown: [Card, Card], ownCrib: boolean, starter?: Card): number {
+  const best = predictBestDiscard(hand, ownCrib, starter);
+  return Math.max(0, scoreDiscard(hand, best, ownCrib, undefined, undefined, starter) - scoreDiscard(hand, thrown, ownCrib, undefined, undefined, starter));
 }
 
 /** What a pegging play gave up: the coach's play's net less yours (points

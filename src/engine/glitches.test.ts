@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { Card, Rank, Suit } from './cards';
 import { repriceOccurrence } from './triggers';
 import { advancePegging, playPeggingCard, scoreCardPlay, startPegging } from './pegging';
-import { playCombat, type CombatOptions } from './combat';
+import { combatGenerator, playCombat, type CombatOptions } from './combat';
 import { CLASS_STARTING_LOADOUTS } from './subroutines';
 import { BREACH_THRESHOLD, GAUGE_THRESHOLD } from './encounters';
 import { dailyGlitches, type DailyMod } from './daily';
-import { discardSkillStrategy, pegSkillStrategy } from './ai';
+import { discardSkillStrategy, pegSkillStrategy, scoreDiscard } from './ai';
 
 // Session 72 (docs/daily-runs-design.md DR10): the daily Glitches.
 const c = (rank: number, suit = 0): Card => ({ rank: rank as Rank, suit: suit as Suit });
@@ -57,15 +57,23 @@ describe('Glitches', () => {
     expect(Math.max(...counts)).toBe(21);
   });
 
-  it("a Turncoat Crib fight counts the crib for the non-dealer", () => {
-    const r = fight({ turncoatCrib: true });
-    const cribShows = r.timeline.filter((b) => b.kind === 'show' && b.owner === 'crib');
-    const hands = r.timeline.filter((b) => b.kind === 'hand');
-    expect(cribShows.length).toBeGreaterThan(0);
-    cribShows.forEach((b, i) => {
-      const hand = hands[i];
-      if (b.kind === 'show' && hand.kind === 'hand') expect(b.player).toBe(1 - hand.dealer);
-    });
+  it('an Early Cut fight turns the starter before the discard, and the hand cuts that same card', () => {
+    const gen = combatGenerator([kits[0], kits[1]], { seed: 7, gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD], winThreshold: [BREACH_THRESHOLD, BREACH_THRESHOLD], classId: 'exploit-overclock', glitches: { earlyCut: true } });
+    const known: Card[] = [];
+    const ai = [discardSkillStrategy(0.85), discardSkillStrategy(0.6)];
+    const peg = [pegSkillStrategy(0.85), pegSkillStrategy(0.6)];
+    let step = gen.next();
+    while (!step.done) {
+      const r = step.value;
+      if (r.kind === 'discard' && r.side === 0) known.push(r.context.starter!);
+      step = gen.next(r.kind === 'discard' ? ai[r.side](r.context) : r.kind === 'play' ? peg[r.side](r.context) : null);
+    }
+    const cuts = step.value.timeline.flatMap((b) => (b.kind === 'cut' ? [b.starter] : []));
+    expect(known.length).toBe(cuts.length);
+    expect(known).toEqual(cuts);
+    // The AI discards with it: the kept hand is scored exactly.
+    const hand = [c(5), c(5, 1), c(10), c(2), c(9), c(13)];
+    expect(scoreDiscard(hand, [c(2), c(9)], true, undefined, undefined, c(5, 2))).toBeGreaterThan(scoreDiscard(hand, [c(2), c(9)], true));
   });
 
   it('Lucky Sevens and Suit Surge change a fight; no Glitches changes nothing', () => {

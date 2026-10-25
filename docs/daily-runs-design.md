@@ -75,7 +75,7 @@ stretch goal.
   | Fifteen Flood | Fifteens score double for both sides. |
   | Running Wild (the user's name) | Runs score double; pairs score 1. |
   | Nobs and Heels | His Nobs and His Heels are worth 4. |
-  | ● Turncoat Crib | The crib belongs to the non-dealer (impact to measure). |
+  | ● Early Cut | The cut card is turned before the discard: you discard knowing the starter. |
   | ● Short Count | The pegging count resets at 21, not 31. |
 
   **Advisory**
@@ -123,6 +123,13 @@ stretch goal.
   and resets; Thirty-One, Last Word and Backdoor Maintenance II fire on
   21; the AI and the review coach plan around 21. Its text: "The count
   stops at 21, not 31. Anything that happens on 31 happens on 21."
+
+  **Turncoat Crib scrapped (the user, checkpoint 4):** too subtle to read
+  as a Glitch (only whose crib changed) and the harshest Mod measured
+  (−25 points of victory, mostly by evening out a skilled player's crib
+  edge); replaced by **Early Cut** (the user's pick over Open Book, since
+  there's no recon in the game; −8 measured). The AI, the coach and the
+  review coach score a kept hand exactly when the starter is known.
 
   **Never together:** Memory Leak / Expanded Memory; Go Bag / Contraband
   Drop (the Burner cap); Lean Times / Payday; Quiet Network / Ghost Run.

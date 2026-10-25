@@ -31,8 +31,6 @@
     count: number;
     sequence: Card[];
     phase?: 'discard' | 'play';
-    /** Whether the crib is yours (the dealer's, or under Turncoat Crib the
-     * non-dealer's). */
     playerIsDealer?: boolean;
     countLimit?: number;
     onplay?: (card: Card) => void;

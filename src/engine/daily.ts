@@ -46,7 +46,7 @@ export type DailyModId =
   | 'fifteen-flood'
   | 'running-wild'
   | 'nobs-and-heels'
-  | 'turncoat-crib'
+  | 'early-cut'
   | 'short-count'
   // Advisory: the network.
   | 'port-flood'
@@ -101,7 +101,7 @@ export const DAILY_MODS: Record<DailyModId, DailyModDefinition> = Object.fromEnt
   def('fifteen-flood', 'Fifteen Flood', 'glitch', 'Fifteens score double, for both sides.'),
   def('running-wild', 'Running Wild', 'glitch', 'Runs score double; pairs score 1.'),
   def('nobs-and-heels', 'Nobs and Heels', 'glitch', 'His Nobs and His Heels are worth 4.'),
-  def('turncoat-crib', 'Turncoat Crib', 'glitch', 'The crib belongs to the non-dealer.'),
+  def('early-cut', 'Early Cut', 'glitch', 'The cut card is turned before the discard: you choose your discard knowing the starter.'),
   def('short-count', 'Short Count', 'glitch', 'The count stops at 21, not 31. Anything that happens on 31 happens on 21.'),
   def('port-flood', 'Port Flood', 'advisory', 'Twice as many Shops on the map.'),
   def('quiet-network', 'Quiet Network', 'advisory', 'Moves cost no Heat; fights cost 50% more Heat.'),
@@ -354,7 +354,7 @@ export function dailyGlitches(plan: DailyPlan): FightGlitches | undefined {
   if (has('lucky-sevens')) g.luckySevens = 3;
   const surge = plan.mods.find((m) => m.id === 'suit-surge')?.suit;
   if (surge) g.suitSurge = surge;
-  if (has('turncoat-crib')) g.turncoatCrib = true;
+  if (has('early-cut')) g.earlyCut = true;
   if (has('short-count')) g.countLimit = 21;
   return Object.keys(g).length ? g : undefined;
 }

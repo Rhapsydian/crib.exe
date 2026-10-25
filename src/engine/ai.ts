@@ -121,10 +121,12 @@ export function scoreDiscard(
   isOwnCrib: boolean,
   knownOtherCribCards?: [Card, Card],
   weights: DiscardWeights = DISCARD_EXPERT_WEIGHTS,
+  /** Early Cut's starter, already turned: the kept hand scores exactly. */
+  starter?: Card,
 ): number {
   const keptHand = fullHand.filter((card) => !discardPair.some((discarded) => cardsEqual(discarded, card)));
-  const unseen = unseenCards(fullHand);
-  const handEV = handExpectedValue(keptHand, unseen);
+  const unseen = unseenCards(starter ? [...fullHand, starter] : fullHand);
+  const handEV = starter ? countHand(keptHand, starter).total : handExpectedValue(keptHand, unseen);
   const cribEV = cribExpectedValue(discardPair, unseen, knownOtherCribCards);
   return weights.handValue * handEV + (isOwnCrib ? weights.cribValue : -weights.cribValue) * cribEV;
 }
@@ -184,11 +186,11 @@ function allDiscardPairs(hand: Card[]): [Card, Card][] {
  * real prediction instead of the blind partial proxy. Not adversarial
  * like bestCardToForce -- this assumes the opponent plays well *for
  * themselves*, not that they're trying to hurt anyone. */
-export function predictBestDiscard(hand: Card[], isOwnCrib: boolean): [Card, Card] {
+export function predictBestDiscard(hand: Card[], isOwnCrib: boolean, starter?: Card): [Card, Card] {
   let best: [Card, Card] = [hand[0], hand[1]];
   let bestScore = -Infinity;
   for (const pair of allDiscardPairs(hand)) {
-    const score = scoreDiscard(hand, pair, isOwnCrib);
+    const score = scoreDiscard(hand, pair, isOwnCrib, undefined, undefined, starter);
     if (score > bestScore) {
       bestScore = score;
       best = pair;
@@ -217,7 +219,7 @@ export function discardSkillStrategy(skill: number): DiscardStrategy {
     // revealed hand, otherwise estimated. Known beats predicted.
     const otherCribHalf = ctx.knownCribCards ?? (ctx.knownOpponentHand ? predictBestDiscard(ctx.knownOpponentHand, !ctx.isOwnCrib) : undefined);
     const candidates = allDiscardPairs(ctx.hand);
-    const scores = candidates.map((pair) => scoreDiscard(ctx.hand, pair, ctx.isOwnCrib, otherCribHalf, weights));
+    const scores = candidates.map((pair) => scoreDiscard(ctx.hand, pair, ctx.isOwnCrib, otherCribHalf, weights, ctx.starter));
     if (ctx.rng && temperature > TEMPERATURE_EPSILON) {
       return softmaxPick(candidates, scores, temperature, ctx.rng);
     }

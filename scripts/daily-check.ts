@@ -17,7 +17,7 @@
  *
  * Usage:
  *   npx tsx scripts/daily-check.ts [--days=120]
- *   npx tsx scripts/daily-check.ts --part=mods [--days=60]
+ *   npx tsx scripts/daily-check.ts --part=mods [--days=60] [--only=early-cut,...]
  */
 import { playRun, opportunisticTraversal } from '../src/engine/run';
 import { opportunisticSafehouseStrategy } from '../src/engine/merge';
@@ -49,7 +49,8 @@ if (args.part === 'mods') {
   console.log(`
 DAILY MODS ALONE -- ${days} days, skill 0.85. None: victory ${none.v.toFixed(1)}%, layers ${none.layers.toFixed(2)}, score ${none.score.toFixed(0)}.
 `);
-  for (const id of (Object.keys(DAILY_MODS) as DailyModId[]).filter((m) => DAILY_MODS[m].category !== 'directive')) {
+  const only = args.only ? String(args.only).split(',') : null;
+  for (const id of (Object.keys(DAILY_MODS) as DailyModId[]).filter((m) => DAILY_MODS[m].category !== 'directive' && (!only || only.includes(m)))) {
     // A Bulletin's rolled items: borrow them from the first day that rolls it.
     const rolled = Array.from({ length: 400 }, (_, i) => rollDaily(dailyDate(new Date(2026, 0, 1 + i))).mods.find((m) => m.id === id)).find(Boolean) ?? { id };
     const m = measure(() => [rolled]);

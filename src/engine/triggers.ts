@@ -125,8 +125,8 @@ export interface FightGlitches {
   luckySevens?: number;
   /** Each card of this suit the player pegs adds 1 initiative (Suit Surge). */
   suitSurge?: Archetype;
-  /** The crib belongs to the non-dealer (Turncoat Crib). */
-  turncoatCrib?: boolean;
+  /** The starter is turned before the discard (Early Cut). */
+  earlyCut?: boolean;
   /** The count's limit (Short Count: 21). */
   countLimit?: number;
 }

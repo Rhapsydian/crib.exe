@@ -451,10 +451,10 @@ export interface CombatView {
   /** The hand being played (0-based), and its dealer. */
   handIndex: number;
   dealer: PlayerIndex;
-  /** Whose crib it is (the dealer's, or the non-dealer's under Turncoat
-   * Crib, session 72), and the pegging count's limit (31, or 21). */
-  cribOwner: PlayerIndex;
+  /** The pegging count's limit (31, or Short Count's 21, session 72). */
   countLimit: number;
+  /** The starter, when it's turned before the discard (Early Cut). */
+  earlyStarter?: Card;
 }
 
 export type CombatAnswer = [Card, Card] | Card | BurnerId | null;
@@ -582,6 +582,8 @@ export function* combatGenerator(
     glitches,
   } = options;
   const countLimit = glitches?.countLimit ?? COUNT_LIMIT;
+  /** This hand's starter, when Early Cut turns it before the discard. */
+  let earlyStarter: Card | undefined;
 
   const rng = createRng(seed);
   // Session 26: a separate, decorrelated stream for AI-decision noise
@@ -657,7 +659,7 @@ export function* combatGenerator(
   // Built as the engine pauses, so any Mod triggers still pending go out first.
   const view = (handIndex: number, handDealer: PlayerIndex): CombatView => {
     flushMods();
-    return { combatState, log, timeline, hands, handIndex, dealer: handDealer, cribOwner: glitches?.turncoatCrib ? ((1 - handDealer) as PlayerIndex) : handDealer, countLimit };
+    return { combatState, log, timeline, hands, handIndex, dealer: handDealer, countLimit, ...(earlyStarter ? { earlyStarter } : {}) };
   };
   const beat = (b: DistributiveOmit<CombatBeat, 'firesBefore'>): void => {
     timeline.push({ ...b, firesBefore: log.length } as CombatBeat);
@@ -869,6 +871,9 @@ export function* combatGenerator(
     const nonDealer: PlayerIndex = (1 - dealer) as PlayerIndex;
     const shuffled = shuffle(createDeck(), rng);
     const { hands: dealtHands, stock } = deal(shuffled);
+    // Early Cut (a daily Glitch, session 72): the starter is turned before
+    // the discard; its beat and His Heels still come where they always do.
+    earlyStarter = glitches?.earlyCut ? cut(stock, rng).starter : undefined;
 
     // After the deal: reveal the opponent's dealt hand, and pull one
     // adversarially chosen card out of it into the crib.
@@ -887,9 +892,7 @@ export function* combatGenerator(
     // A forced discard (Disrupt) is decided by the engine, so no request
     // is yielded for that side.
     function* discardFor(side: PlayerIndex, knownCribCards?: [Card, Card]): Generator<CombatRequest, ReturnType<typeof discardToCrib>, CombatAnswer> {
-      // Turncoat Crib (a daily Glitch): the crib is the non-dealer's.
-      const cribOwner = glitches?.turncoatCrib ? 1 - dealer : dealer;
-      const context: DiscardContext = { hand: dealtHands[side], isOwnCrib: cribOwner === side, knownOpponentHand: combatState.sides[side].knownOpponentHand, knownCribCards, rng: aiRng };
+      const context: DiscardContext = { hand: dealtHands[side], isOwnCrib: dealer === side, ...(earlyStarter ? { starter: earlyStarter } : {}), knownOpponentHand: combatState.sides[side].knownOpponentHand, knownCribCards, rng: aiRng };
       const forced = combatState.sides[side].forcedDiscardPair;
       const chosen = forced ?? ((yield { kind: 'discard', side, context, view: view(i, dealer) }) as [Card, Card]);
       // "Now" Burners commit with your decision (BE2): offered right after
@@ -918,7 +921,7 @@ export function* combatGenerator(
       if (armed(side, 'revealCrib')) combatState = revealCrib(combatState, side, crib);
     }
 
-    const { starter } = cut(stock, rng);
+    const starter = earlyStarter ?? cut(stock, rng).starter;
     const heelsPoints = hisHeels(starter);
     scores[dealer] += heelsPoints;
 
@@ -1011,7 +1014,7 @@ export function* combatGenerator(
     const show: [owner: 'hand' | 'crib', player: PlayerIndex, cards: Card[], events: ShowScoreEvent[], total: number][] = [
       ['hand', nonDealer, kept[nonDealer], nonDealerEvents, hand.nonDealerHandScore],
       ['hand', dealer, kept[dealer], dealerEvents, hand.dealerHandScore],
-      ['crib', (glitches?.turncoatCrib ? 1 - dealer : dealer) as PlayerIndex, crib, cribEvents, hand.cribScore],
+      ['crib', dealer, crib, cribEvents, hand.cribScore],
     ];
     for (const [owner, player, cards, events, tableTotal] of show) {
       const occurrences = occurrencesFromHandEvents(events, player);

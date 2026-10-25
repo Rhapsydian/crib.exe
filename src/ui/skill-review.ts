@@ -17,7 +17,7 @@ import { combatPegSpot } from './fight';
  * card to play, every card alike) aren't counted.
  */
 export type SkillDecision =
-  | { kind: 'discard'; handIndex: number; hand: Card[]; thrown: [Card, Card]; ownCrib: boolean }
+  | { kind: 'discard'; handIndex: number; hand: Card[]; thrown: [Card, Card]; ownCrib: boolean; starter?: Card }
   | {
       kind: 'play';
       handIndex: number;
@@ -34,7 +34,7 @@ export type SkillDecision =
 export function decisionFor(request: CombatRequest, answer: CombatAnswer): SkillDecision | null {
   const handIndex = request.view.handIndex;
   if (request.kind === 'discard' && Array.isArray(answer) && request.context.hand.length === 6) {
-    return { kind: 'discard', handIndex, hand: request.context.hand, thrown: answer as [Card, Card], ownCrib: request.context.isOwnCrib };
+    return { kind: 'discard', handIndex, hand: request.context.hand, thrown: answer as [Card, Card], ownCrib: request.context.isOwnCrib, ...(request.context.starter ? { starter: request.context.starter } : {}) };
   }
   if (request.kind === 'play' && answer && !Array.isArray(answer) && typeof answer === 'object') {
     const spot = combatPegSpot(request);
@@ -96,7 +96,7 @@ export function rateSkill(decisions: readonly SkillDecision[], withMistakes = tr
   let counted = 0;
   const costly: { d: SkillDecision; lost: number }[] = [];
   for (const d of decisions) {
-    const lost = d.kind === 'discard' ? discardLoss(d.hand, d.thrown, d.ownCrib) : pegLoss(d.spot, d.played);
+    const lost = d.kind === 'discard' ? discardLoss(d.hand, d.thrown, d.ownCrib, d.starter) : pegLoss(d.spot, d.played);
     if (lost === null) continue;
     const w = d.kind === 'discard' ? DISCARD_WEIGHT : 1;
     sum += w * Math.exp(-lost / SKILL_FALLOFF);
@@ -120,7 +120,7 @@ export function rateSkill(decisions: readonly SkillDecision[], withMistakes = tr
           hand: d.handIndex + 1,
           decision: d,
           lost,
-          text: d.kind === 'discard' ? discardReview(d.hand, d.thrown, d.ownCrib).text : pegReview(d.spot, d.played).text,
+          text: d.kind === 'discard' ? discardReview(d.hand, d.thrown, d.ownCrib, d.starter).text : pegReview(d.spot, d.played).text,
         }))
     : [];
   return { rating, label: skillLabel(rating), decisions: counted, mistakes };
