@@ -98,7 +98,7 @@ const def = (id: DailyModId, name: string, category: DailyCategory, text: string
 export const DAILY_MODS: Record<DailyModId, DailyModDefinition> = Object.fromEntries([
   def('lucky-sevens', 'Lucky Sevens', 'glitch', 'Each 7 you play while pegging Credits 3.'),
   def('suit-surge', 'Suit Surge', 'glitch', "Each card of the day's suit you play while pegging adds 1 initiative."),
-  def('fifteen-flood', 'Fifteen Flood', 'glitch', 'Fifteens score double, for both sides.'),
+  def('fifteen-flood', 'Fifteen Flood', 'glitch', 'Fifteens score 3, for both sides.'),
   def('running-wild', 'Running Wild', 'glitch', 'Runs score double; pairs score 1.'),
   def('nobs-and-heels', 'Nobs and Heels', 'glitch', 'His Nobs and His Heels are worth 4.'),
   def('early-cut', 'Early Cut', 'glitch', 'The cut card is turned before the discard: you choose your discard knowing the starter.'),
@@ -113,18 +113,18 @@ export const DAILY_MODS: Record<DailyModId, DailyModDefinition> = Object.fromEnt
   def('go-bag', 'Go Bag', 'bulletin', 'Start with two common Burners.', { starts: { burners: 2 } }),
   def('contraband-drop', 'Contraband Drop', 'bulletin', 'Start with a contraband Burner.', { starts: { burners: 1 } }),
   def('field-kit', 'Field Kit', 'bulletin', 'An uncommon subroutine joins your starters.', { starts: { subroutines: 1 } }),
-  def('veteran-loadout', 'Veteran Loadout', 'bulletin', 'Every starting subroutine begins at rank II.'),
+  def('veteran-loadout', 'Veteran Loadout', 'bulletin', 'Every starting subroutine begins at rank I.'),
   def('seed-money', 'Seed Money', 'bulletin', 'Start with 150 Data.'),
   def('new-hardware', 'New Hardware', 'bulletin', 'Your class Mod starts as its II version.'),
   def('burner-rig', 'Burner Rig', 'bulletin', 'Carry 4 Burners.'),
   def('expanded-memory', 'Expanded Memory', 'bulletin', 'Install 7 subroutines.', { weight: 0.3 }),
   def('bounty-hunt', 'Bounty Hunt', 'directive', 'Elites score double (300 each).'),
-  def('treasure-map', 'Treasure Map', 'directive', 'Caches score triple (300 each).'),
+  def('treasure-map', 'Treasure Map', 'directive', 'Caches score 500 each.'),
   def('payday', 'Payday', 'directive', 'Data earned counts double.'),
   def('card-sharp', 'Card Sharp', 'directive', 'The Cribbage rating counts double.'),
   def('deep-dive', 'Deep Dive', 'directive', 'Layers 3 and 4 score double.'),
   def('clean-sweep', 'Clean Sweep', 'directive', 'Each regular fight won scores 50.'),
-  def('ghost-run', 'Ghost Run', 'directive', 'Each layer breached with Heat under half its allowance scores +500.'),
+  def('ghost-run', 'Ghost Run', 'directive', 'Each layer breached with Heat under 60% of its allowance scores +500.'),
   def('shopping-spree', 'Shopping Spree', 'directive', 'Each Data you spend scores 1.'),
   def('full-arsenal', 'Full Arsenal', 'directive', 'Each Mod you hold at the end scores 100.'),
   def('merge-master', 'Merge Master', 'directive', 'Each Merge scores 150.'),
@@ -296,7 +296,7 @@ export function dailyScore(result: RunResult, directive: DailyModId, rating: num
   const elites = encounters.filter((e) => e.nodeType === 'eliteFight' && won(e)).length;
   if (elites) lines.push({ label: `${elites} elite${elites === 1 ? '' : 's'} beaten${directive === 'bounty-hunt' ? ' (×2)' : ''}`, points: elites * S.elite * (directive === 'bounty-hunt' ? 2 : 1), directive: directive === 'bounty-hunt' || undefined });
   const caches = encounters.filter((e) => e.nodeType === 'cache').length;
-  if (caches) lines.push({ label: `${caches} Cache${caches === 1 ? '' : 's'} opened${directive === 'treasure-map' ? ' (×3)' : ''}`, points: caches * S.cache * (directive === 'treasure-map' ? 3 : 1), directive: directive === 'treasure-map' || undefined });
+  if (caches) lines.push({ label: `${caches} Cache${caches === 1 ? '' : 's'} opened${directive === 'treasure-map' ? ' (500 each)' : ''}`, points: caches * (directive === 'treasure-map' ? 500 : S.cache), directive: directive === 'treasure-map' || undefined });
   const earned = result.tally?.dataEarned ?? 0;
   if (earned) lines.push({ label: `${earned} Data earned${directive === 'payday' ? ' (×2)' : ''}`, points: Math.round(earned * S.perData * (directive === 'payday' ? 2 : 1)), directive: directive === 'payday' || undefined });
   if (rating !== null) lines.push({ label: `Cribbage ${rating}%${directive === 'card-sharp' ? ' (×2)' : ''}`, points: rating * S.perRatingPoint * (directive === 'card-sharp' ? 2 : 1), directive: directive === 'card-sharp' || undefined });
@@ -307,8 +307,8 @@ export function dailyScore(result: RunResult, directive: DailyModId, rating: num
     add(`${regulars} regular fights won`, regulars * 50);
   }
   if (directive === 'ghost-run') {
-    const quiet = encounters.filter((e) => e.nodeType === 'gatekeeperFight' && won(e) && e.heatAfter < layerHeatAllowance(e.layerIndex, result.playerState.maxHeatBonus) / 2).length;
-    add(`${quiet} layer${quiet === 1 ? '' : 's'} breached under half Heat`, quiet * 500);
+    const quiet = encounters.filter((e) => e.nodeType === 'gatekeeperFight' && won(e) && e.heatAfter < layerHeatAllowance(e.layerIndex, result.playerState.maxHeatBonus) * 0.6).length;
+    add(`${quiet} layer${quiet === 1 ? '' : 's'} breached under 60% Heat`, quiet * 500);
   }
   if (directive === 'shopping-spree') add(`${result.tally?.dataSpent ?? 0} Data spent`, result.tally?.dataSpent ?? 0);
   if (directive === 'full-arsenal') {
@@ -346,7 +346,7 @@ export interface DailyEffects {
 export function dailyGlitches(plan: DailyPlan): FightGlitches | undefined {
   const has = (id: DailyModId) => plan.mods.some((m) => m.id === id);
   const rule: ScoringRule = {};
-  if (has('fifteen-flood')) rule.fifteenTimes = 2;
+  if (has('fifteen-flood')) rule.fifteenTimes = 1.5;
   if (has('running-wild')) (rule.runTimes = 2), (rule.pair = 1);
   if (has('nobs-and-heels')) (rule.hisNobs = 4), (rule.hisHeels = 4);
   const g: FightGlitches = {};
@@ -365,9 +365,10 @@ export function dailyMapOptions(plan: DailyPlan): { extraShops: number; cacheCha
   return { extraShops: has('port-flood') ? 1 : 0, cacheChance: has('cache-bloom') ? 1 : undefined };
 }
 
-/** Rank II for a starting subroutine (Veteran Loadout): Merged twice. */
-function rankTwo(piece: SubroutineDefinition): SubroutineDefinition {
-  return upgradedDefinition(upgradedDefinition(piece));
+/** Rank I for a starting subroutine (Veteran Loadout; checkpoint 6: rank
+ * II measured +30 victory): Merged once. */
+function rankOne(piece: SubroutineDefinition): SubroutineDefinition {
+  return upgradedDefinition(piece);
 }
 
 /** A daily's start: its Bulletins (the kit) and Advisories (the run's
@@ -384,8 +385,8 @@ export function applyDailyStart(state: RunPlayerState, plan: DailyPlan): RunPlay
   s.meta = meta;
   s.daily = { moveHeat: has('quiet-network') ? 0 : 1, heatCarry: has('cold-trail') ? 0.25 : 0, fightData: has('lean-times') ? 0.5 : 1, eliteMods: has('hardened-elites') ? 1 : 0, glitches: dailyGlitches(plan) };
   if (has('veteran-loadout')) {
-    s.installedLoadout = s.installedLoadout.map(rankTwo);
-    s.rank = { ...s.rank, ...Object.fromEntries(s.installedLoadout.map((p) => [p.id, 2])) };
+    s.installedLoadout = s.installedLoadout.map(rankOne);
+    s.rank = { ...s.rank, ...Object.fromEntries(s.installedLoadout.map((p) => [p.id, 1])) };
   }
   for (const m of plan.mods) {
     if (m.burners) s.carriedBurnerIds = [...s.carriedBurnerIds, ...m.burners];

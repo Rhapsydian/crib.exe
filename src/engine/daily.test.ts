@@ -128,7 +128,7 @@ describe('Advisories and Bulletins (DR3, DR7)', () => {
     const s = applyDailyStart(fresh(), plan({ id: 'go-bag', burners: ['flash-drive', 'log-wiper'] }, { id: 'field-kit', subroutine: 'thread-pool' }, { id: 'veteran-loadout' }, { id: 'seed-money' }, { id: 'new-hardware' }, { id: 'burner-rig' }));
     expect(s.carriedBurnerIds).toEqual(['flash-drive', 'log-wiper']);
     expect(s.installedLoadout.map((p) => p.id)).toContain('thread-pool');
-    expect(s.installedLoadout.slice(0, 3).every((p) => p.rank === 2)).toBe(true);
+    expect(s.installedLoadout.slice(0, 3).every((p) => p.rank === 1)).toBe(true);
     expect(s.data).toBe(150);
     expect(s.classModUpgraded).toBe(true);
     expect(burnerCapOf(s)).toBe(4);

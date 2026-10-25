@@ -136,6 +136,25 @@ stretch goal.
 - **Deferred:** playing a chosen seed (BACKLOG; the daily is a seed of
   the day, so it can follow cheaply later); a server leaderboard.
 
+## Tuning (checkpoint 6)
+
+Measured with `scripts/daily-check.ts` (skill 0.85; `--part=mods` forces
+one Mod at a time on the same seeds). Aims: each Glitch, Advisory and
+Bulletin alone within about ±15 points of victory (Expanded Memory, rare
+by design, excepted); each Directive adding a few hundred points.
+
+- **Veteran Loadout:** rank I, not rank II (+30 → +10).
+- **Fifteen Flood:** fifteens score 3 for both sides, not double (−17 →
+  −12.5).
+- **Treasure Map:** Caches score 500 each (+93 → +280).
+- **Ghost Run:** under 60% of the allowance, not half (+108 → +338).
+- Left as measured: Memory Leak −16 (one of the hard days), Running Wild
+  −12.5, Quiet Network and Cold Trail −13, Cache Bloom −12, Early Cut −8,
+  Expanded Memory +22 (rare); Flawless Form pays nothing to the 87%
+  simulated player but the full-strength AI clears 90% every run.
+- Directives now add +280 (Treasure Map) to +765 (Deep Dive); the base
+  score's depth share stays ~57%.
+
 ## Technical notes
 
 - **The day pins the run:** the daily's date (and so its seed, class and

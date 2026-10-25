@@ -15,8 +15,8 @@ const plan = (...mods: DailyMod[]) => ({ date: 't', seed: 1, classId: 'exploit-o
 describe('Glitches', () => {
   it('scoring Glitches reprice for a side, on top of a Fold', () => {
     const rule = dailyGlitches(plan({ id: 'fifteen-flood' }, { id: 'running-wild' }, { id: 'nobs-and-heels' }))!.rule!;
-    expect(repriceOccurrence({ category: 'fifteen', player: 0, magnitude: 2 }, rule).points).toBe(4);
-    expect(repriceOccurrence({ category: 'fifteen', player: 0, magnitude: 2 }, { fifteen: 3, ...rule }).points).toBe(6);
+    expect(repriceOccurrence({ category: 'fifteen', player: 0, magnitude: 2 }, rule).points).toBe(3);
+    expect(repriceOccurrence({ category: 'fifteen', player: 0, magnitude: 2 }, { fifteen: 3, ...rule }).points).toBe(4.5);
     expect(repriceOccurrence({ category: 'run', player: 0, magnitude: 3 }, rule).points).toBe(6);
     expect(repriceOccurrence({ category: 'pair', player: 0, magnitude: 6 }, rule).points).toBe(3); // a royal: three pairs at 1
     expect(repriceOccurrence({ category: 'hisNobs', player: 0, magnitude: 1 }, rule).points).toBe(4);
