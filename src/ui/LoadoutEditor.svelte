@@ -94,7 +94,7 @@
       <span class="n">{i + 1}</span>
       <SuitIcon archetype={p.archetype} size={14} />
       {p.name}{#if p.rank}&nbsp;<span class="rank">{rankMark(p.rank)}</span>{/if}
-      {#if player.material[p.id]}<span class="banked" title="banked copies, for Merging at a Quiet Host">+{player.material[p.id]} banked</span>{/if}
+      {#if player.material[p.id]}<span class="banked" title="banked copies, for Refactoring at a Quiet Host">+{player.material[p.id]} banked</span>{/if}
       {#if locked(p.id)}<span class="tag">Mod-granted</span>{/if}
     </button>
   {/each}
@@ -103,7 +103,7 @@
     <button class="piece benched" class:sel={selected?.id === p.id} class:target={swapping && canSwapWith('bench', p.id)} onclick={() => tap('bench', p.id)}>
       <SuitIcon archetype={p.archetype} size={14} />
       {p.name}{#if p.rank}&nbsp;<span class="rank">{rankMark(p.rank)}</span>{/if}
-      {#if player.material[p.id]}<span class="banked" title="banked copies, for Merging at a Quiet Host">+{player.material[p.id]} banked</span>{/if}
+      {#if player.material[p.id]}<span class="banked" title="banked copies, for Refactoring at a Quiet Host">+{player.material[p.id]} banked</span>{/if}
     </button>
   {:else}
     <div class="empty">empty</div>

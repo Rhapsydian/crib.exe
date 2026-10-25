@@ -10,9 +10,9 @@ describe('acquireNote', () => {
   const own = player.installedLoadout[0];
 
   it('names an owned one: loadout or bench, rank, copies banked', () => {
-    expect(acquireNote(own, player, 6, 3)).toBe('You own this (in your loadout, not yet Merged, 0 copies banked). This copy banks for a Merge at a Quiet Host.');
+    expect(acquireNote(own, player, 6, 3)).toBe('You own this (in your loadout, not yet Refactored, 0 copies banked). This copy banks for a Refactor at a Quiet Host.');
     const benched = { ...player, installedLoadout: player.installedLoadout.slice(1), bench: [own], rank: { [own.id]: 2 }, material: { [own.id]: 1 } };
-    expect(acquireNote(own, benched, 6, 3)).toBe('You own this (on your bench, rank II, 1 copy banked). This copy banks for a Merge at a Quiet Host.');
+    expect(acquireNote(own, benched, 6, 3)).toBe('You own this (on your bench, rank II, 1 copy banked). This copy banks for a Refactor at a Quiet Host.');
     const capped = { ...player, rank: { [own.id]: 3 }, material: { [own.id]: 2 } };
     expect(acquireNote(own, capped, 6, 3)).toContain("already rank III, so this copy banks and can be sold");
   });

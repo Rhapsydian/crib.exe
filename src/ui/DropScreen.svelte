@@ -34,7 +34,7 @@
 
 <div class="drop">
   <div class="title">BENCH FULL · DROP ONE</div>
-  <div class="blurb">Your bench holds {BENCH_CAP}. One piece goes for good (its Merge upgrades are kept, should you find it again).</div>
+  <div class="blurb">Your bench holds {BENCH_CAP}. One subroutine goes for good (its Refactor ranks are kept, should you find it again).</div>
 
   <div class="caption">LOADOUT</div>
   {#each player.installedLoadout as p (p.id)}
@@ -42,7 +42,7 @@
     <button class="piece" class:sel={selected === p.id} disabled={granted} onclick={() => (selected = selected === p.id ? null : p.id)}>
       <SuitIcon archetype={p.archetype} size={14} />
       {p.name}
-      {#if p.rank}<span class="rank" title="Merge rank">{rankMark(p.rank)}</span>{/if}
+      {#if p.rank}<span class="rank" title="Refactor rank">{rankMark(p.rank)}</span>{/if}
       {#if copies(p)}<span class="tag">{copies(p)} {copies(p) === 1 ? 'copy' : 'copies'} banked</span>{/if}
       {#if granted}<span class="tag">Mod-granted</span>{/if}
     </button>
@@ -52,7 +52,7 @@
     <button class="piece" class:sel={selected === p.id} onclick={() => (selected = selected === p.id ? null : p.id)}>
       <SuitIcon archetype={p.archetype} size={14} />
       {p.name}
-      {#if p.rank}<span class="rank" title="Merge rank">{rankMark(p.rank)}</span>{/if}
+      {#if p.rank}<span class="rank" title="Refactor rank">{rankMark(p.rank)}</span>{/if}
       {#if copies(p)}<span class="tag">{copies(p)} {copies(p) === 1 ? 'copy' : 'copies'} banked</span>{/if}
       {#if p.id === newest.id}<span class="tag new">NEW</span>{/if}
     </button>

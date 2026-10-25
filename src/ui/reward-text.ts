@@ -39,10 +39,10 @@ export function acquireNote(piece: SubroutineDefinition, player: RunPlayerState,
   if (installed || benched) {
     const rank = player.rank[piece.id] ?? 0;
     const banked = player.material[piece.id] ?? 0;
-    const state = [installed ? 'in your loadout' : 'on your bench', rank ? `rank ${rankMark(rank)}` : 'not yet Merged', `${banked} cop${banked === 1 ? 'y' : 'ies'} banked`].join(', ');
+    const state = [installed ? 'in your loadout' : 'on your bench', rank ? `rank ${rankMark(rank)}` : 'not yet Refactored', `${banked} cop${banked === 1 ? 'y' : 'ies'} banked`].join(', ');
     return rank >= MERGE_RANK_CAP
       ? `You own this (${state}). It's already rank III, so this copy banks and can be sold at a Shop.`
-      : `You own this (${state}). This copy banks for a Merge at a Quiet Host.`;
+      : `You own this (${state}). This copy banks for a Refactor at a Quiet Host.`;
   }
   const capped = player.installedLoadout.filter((p) => !player.grantedByMod[p.id]).length;
   if (capped < slotCap) return 'Installs at the bottom of your loadout.';

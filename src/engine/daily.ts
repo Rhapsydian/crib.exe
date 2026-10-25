@@ -127,7 +127,7 @@ export const DAILY_MODS: Record<DailyModId, DailyModDefinition> = Object.fromEnt
   def('ghost-run', 'Ghost Run', 'directive', 'Each layer breached with Heat under 60% of its allowance scores +500.'),
   def('shopping-spree', 'Shopping Spree', 'directive', 'Each Data you spend scores 1.'),
   def('full-arsenal', 'Full Arsenal', 'directive', 'Each Mod you hold at the end scores 100.'),
-  def('merge-master', 'Merge Master', 'directive', 'Each Merge scores 150.'),
+  def('merge-master', 'Refactor Master', 'directive', 'Each Refactor scores 150.'),
   def('burn-rate', 'Burn Rate', 'directive', 'Each Burner you use scores 100.'),
   def('clean-breach', 'Clean Breach', 'directive', 'Each gatekeeper beaten before it reaches half its Containment scores +300.'),
   def('flawless-form', 'Flawless Form', 'directive', 'A Cribbage rating of 90% or better scores +1,000.'),
@@ -315,7 +315,7 @@ export function dailyScore(result: RunResult, directive: DailyModId, rating: num
     const mods = result.playerState.ownedModIds.length - 1; // the class Mod isn't one you picked up
     add(`${mods} Mods held`, mods * 100);
   }
-  if (directive === 'merge-master') add(`${result.tally?.merges ?? 0} Merges`, (result.tally?.merges ?? 0) * 150);
+  if (directive === 'merge-master') add(`${result.tally?.merges ?? 0} Refactors`, (result.tally?.merges ?? 0) * 150);
   if (directive === 'burn-rate') add(`${result.tally?.burnersUsed ?? 0} Burners used`, (result.tally?.burnersUsed ?? 0) * 100);
   if (directive === 'clean-breach') {
     const clean = encounters.filter((e) => e.nodeType === 'gatekeeperFight' && won(e) && (e.outcome.fight?.finalFillFraction[1] ?? 1) < 0.5).length;

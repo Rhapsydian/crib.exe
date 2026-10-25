@@ -37,7 +37,7 @@
       <SuitIcon archetype={def.archetype} size={20} />
       <div>
         <div class="name">{def.name}</div>
-        <div class="meta">{info.name} · {rarityOf(def.id)}{def.rank ? ` · rank ${rankMark(def.rank)} (Merged ${def.rank === 1 ? 'once' : def.rank === 2 ? 'twice' : `${def.rank} times`})` : ''}</div>
+        <div class="meta">{info.name} · {rarityOf(def.id)}{def.rank ? ` · rank ${rankMark(def.rank)} (Refactored ${def.rank === 1 ? 'once' : def.rank === 2 ? 'twice' : `${def.rank} times`})` : ''}</div>
       </div>
       <button class="close" onclick={onclose} aria-label="close">✕</button>
     </div>

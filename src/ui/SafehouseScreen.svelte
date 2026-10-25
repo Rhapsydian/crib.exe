@@ -26,7 +26,7 @@
     <div class="line">Heat {fmt(request.heat)} → {fmt(Math.max(0, request.heat - restHeatFor(player)))} of {fmt(allowance)}.</div>
   </button>
 
-  <div class="caption">MERGE · spend every banked copy (each subroutine up to rank {rankMark(MERGE_RANK_CAP)})</div>
+  <div class="caption">REFACTOR · spend every banked copy (each subroutine up to rank {rankMark(MERGE_RANK_CAP)})</div>
   {#if plan.length}
     <div class="option merge">
       {#each plan as o (o.piece.id)}
@@ -37,9 +37,9 @@
         {/each}
       {/each}
     </div>
-    <button class="confirm" onclick={() => onchoose('merge', plan[0].piece.id)}>merge everything</button>
+    <button class="confirm" onclick={() => onchoose('merge', plan[0].piece.id)}>refactor everything</button>
   {:else}
-    <div class="empty">Nothing to merge: pick up a second copy of a subroutine you own to bank a copy for Merging.</div>
+    <div class="empty">Nothing to refactor: pick up a second copy of a subroutine you own to bank a copy for Refactoring.</div>
   {/if}
 </div>
 
