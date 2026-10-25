@@ -1,6 +1,6 @@
 # Meta-progression (session 71)
 
-**Status: designed, awaiting the checkpoint plan's approval.** Progression
+**Status: approved; building on branch `meta-progression`.** Progression
 between runs: Rep, class unlocks, upgrades, the subroutine and Burner
 library, and ascension. Decided live, one question at a time.
 
@@ -79,7 +79,9 @@ run's depth be credited, *breached, then caught* below a full continue
   **profile export/import** waits for one (BACKLOG; an opaque code with a
   checksum, since a profile only cheats yourself and a Daily Runs
   leaderboard would verify by replay, not by profile).
-- **MP13. Ascension (the user):** unlocks once **all six classes are
+- **MP13. Ascension, named Security Level (the user):** players see
+  "Security Level 7", badged "SEC 7" (the network hardening against you;
+  "ascension" stays the code's word). It unlocks once **all six classes are
   unlocked and a full run is won**. **10 levels**, unlocked **globally**
   (win at a level, open the next, any class); pick any unlocked level at
   run start. **+15% Rep per level** (2.5x at 10).
@@ -103,7 +105,7 @@ run's depth be credited, *breached, then caught* below a full continue
   Targets (a fully upgraded simulated player): victory ~40-50% at 0,
   ~20% at 5, **~3-5% at 10** (the user: very hard, bragging rights).
   Tuned by measurement.
-- **MP15. Bragging rights:** an ascension badge on the end-of-run card,
+- **MP15. Bragging rights:** a Security Level badge ("SEC 10 · Victory") on the end-of-run card,
   and each class's highest level beaten on the class select (unlocks stay
   global).
 - **MP16. The screens:** the store is a **main-menu screen, the Message
