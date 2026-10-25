@@ -137,6 +137,9 @@ export interface RunSetup {
   /** Played without the Message Board (the user, session 71): no upgrades
    * and no starting picks, recorded so the run says so. */
   plain?: boolean;
+  /** A Daily Run (session 72): its date, from which daily.ts rebuilds
+   * the day's class, Mods and seed. */
+  daily?: { date: string; practice?: boolean };
 }
 
 /** Security Levels (MP13-MP14): players see "Security Level 7", badged

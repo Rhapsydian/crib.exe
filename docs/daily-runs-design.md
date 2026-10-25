@@ -1,6 +1,6 @@
 # Daily Runs (session 72)
 
-**Status: designed, awaiting the checkpoint plan's approval.** The last
+**Status: approved; building on branch `daily-runs`.** The last
 major content piece: a run of the day, the same for everyone, with its
 own score and twists. Decided live, one question at a time. Built on
 branch `daily-runs` (from `meta-progression`, whose run setup and
@@ -37,7 +37,9 @@ stretch goal.
   - **Directive:** the day's scoring twist (what you chase).
 - **DR4. A day's makeup:** **one Directive, plus two or three from
   Glitch, Advisory and Bulletin** (the user), drawn by the day's seed;
-  some pairs never appear together.
+  some pairs never appear together. **The Directive is dealt from a
+  shuffled deck**, one a day (checkpoint 1: random draws repeated within
+  a week), so none repeats within its 13-day cycle.
 - **DR5. The fixed setup (the user):** the date as `YYYY-MM-DD` with a salt
   is hashed into the day's seed, which rolls the class and the Mods; the
   class is random from all six (unlocked or not; a taste of locked ones,
@@ -115,6 +117,12 @@ stretch goal.
   | Burn Rate (the user's pick) | Each Burner you use scores 100. |
   | Clean Breach | Each gatekeeper beaten before it reaches half its Containment scores +300. |
   | Flawless Form | A Cribbage rating of 90% or better scores +1,000. |
+
+  **Short Count: 21 is the 31** (the user): the count's limit moves,
+  and everything tied to 31 follows it: pegging to exactly 21 scores 2
+  and resets; Thirty-One, Last Word and Backdoor Maintenance II fire on
+  21; the AI and the review coach plan around 21. Its text: "The count
+  stops at 21, not 31. Anything that happens on 31 happens on 21."
 
   **Never together:** Memory Leak / Expanded Memory; Go Bag / Contraband
   Drop (the Burner cap); Lean Times / Payday; Quiet Network / Ghost Run.
