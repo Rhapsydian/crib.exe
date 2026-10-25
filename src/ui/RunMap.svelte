@@ -107,7 +107,9 @@
   // gatekeeper one move away, Heat past three-quarters, a ranked
   // subroutine, a handful of Mods.
   $effect(() => {
-    if (graph.nodes.some((n) => n.type === 'eliteFight' && n.state === 'unresolved')) tips.offer('elite');
+    // An elite's tip when one is a move away (session 72, the user's report:
+    // it came up at a run's start, with any elite anywhere on the map).
+    if ([...linked].some((id) => { const n = graph.nodes.find((x) => x.id === id); return n?.type === 'eliteFight' && n.state === 'unresolved'; })) tips.offer('elite');
     if ([...linked].some((id) => graph.nodes.find((n) => n.id === id)?.type === 'gatekeeperFight')) tips.offer('quarantine');
     if (heatPct >= 75) tips.offer('heat');
     if ([...player.installedLoadout, ...player.bench].some((p) => p.rank)) tips.offer('rank');
