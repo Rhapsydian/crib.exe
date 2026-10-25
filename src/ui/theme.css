@@ -20,6 +20,9 @@
   --ward: #8fb7ff;
   --mod: #c49bff;
   --heat: #ff8a3d;
+  /* The Cache node (session 72, the user's pick): teal, apart from the
+     elite's amber, which the Honeypot yellow it used to share sat beside. */
+  --cache: #2ee6d0;
 
   --mono: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', 'Consolas', monospace;
   --radius: 6px;
