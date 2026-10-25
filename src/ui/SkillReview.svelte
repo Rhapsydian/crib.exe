@@ -17,7 +17,9 @@
   <div class="head">
     <div class="kicker">CRIBBAGE REVIEW</div>
     <div class="score">{rating.rating}% <span class="label">{rating.label}</span></div>
-    <div class="about">How close your {rating.decisions} discards and pegging plays came to the coach's, by the points each gave up.</div>
+    <!-- The sum in words (session 72, the user: the rating should be
+         transparent): 100 less 10 for each point given up per hand. -->
+    <div class="about">You gave up {pts(rating.lostPerHand)} a hand to the coach's choices, over {rating.hands} {rating.hands === 1 ? 'hand' : 'hands'}. Each point a hand costs 10.</div>
   </div>
   {#if rating.mistakes.length}
     <div class="caption">COSTLIEST {rating.mistakes.length === 1 ? 'MISTAKE' : 'MISTAKES'}</div>

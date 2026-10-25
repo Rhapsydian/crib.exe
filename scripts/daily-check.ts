@@ -6,7 +6,8 @@
  * Plays each day as a daily starts (the day's class and seed, no
  * upgrades). The Cribbage rating can't be worked out here (the review
  * coach lives in the UI), so it's taken as the simulated player's measured
- * ~87. Daily Mods other than the Directive aren't applied until they're
+ * ~94 (session 72's rating: 100 less 10 a point given up per hand).
+ * Daily Mods other than the Directive aren't applied until they're
  * built.
  *
  * PROVENANCE: synergy acquisition, opportunistic traversal and Safehouse,
@@ -26,7 +27,7 @@ import { DAILY_MODS, dailyDate, dailyRunStart, dailyScore, rollDaily, type Daily
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')));
 const days = Number(args.days ?? 120);
-const RATING = 87;
+const RATING = 94;
 const directives = (Object.keys(DAILY_MODS) as DailyModId[]).filter((id) => DAILY_MODS[id].category === 'directive');
 
 if (args.part === 'mods') {

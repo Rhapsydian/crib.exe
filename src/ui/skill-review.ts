@@ -9,12 +9,14 @@ import { combatPegSpot } from './fight';
  *
  * Every discard and pegging play the player answers is kept as it was
  * asked; the rating is worked out only when it's shown. Each choice is
- * judged as the coach judges it (coach.ts): a discard by the expected
- * points of the keep and crib against the coach's best, a play by its
- * points less the opponent's expected reply. A choice's score falls off
- * with the points it gave up; the rating is their average, a discard
- * counting double (more rides on it). Choices that didn't matter (one
- * card to play, every card alike) aren't counted.
+ * judged against the AI at full strength (the coach: one AI, session
+ * 72): a discard by the expected points of the keep and crib against
+ * its best, a play by its points less the opponent's expected reply.
+ *
+ * The rating (session 72, the user: the old curve was arcane and read
+ * low) is plain arithmetic: 100 less 10 for every point given up per
+ * hand. "You gave up 2.0 points a hand: 80." A run's pools every fight's
+ * choices and hands.
  */
 export type SkillDecision =
   | { kind: 'discard'; handIndex: number; hand: Card[]; thrown: [Card, Card]; ownCrib: boolean; starter?: Card }
@@ -44,15 +46,14 @@ export function decisionFor(request: CombatRequest, answer: CombatAnswer): Skill
   return null;
 }
 
-/** Points given up at which a choice scores about 37% (1/e). Set by
- * measuring the AI at known skills (session 70, 25 fights each): skill
- * 0.15-0.35 reads 50-52 (Learning), 0.6-0.7 reads 67-73 (Steady), the
- * simulated player (0.85) 87 (Sharp), the AI at full strength 95
- * (Expert; Flawless beats it). */
-export const SKILL_FALLOFF = 1.0;
-const DISCARD_WEIGHT = 2;
-/** A mistake worth showing gave up at least this many points. */
-const MISTAKE_MIN = 0.5;
+/** Rating points lost for each point given up per hand. Measured
+ * (session 72, 25 fights a skill, the unified AI): skill 0.25 gives up
+ * 4.1 a hand and rates 59 (Learning), 0.5 70 (Steady), 0.65 80 (Sharp),
+ * the simulated player (0.85) 94 (Expert), full strength 0 and 100. */
+export const RATING_PER_POINT = 10;
+/** A mistake worth showing gave up at least a whole point (the user,
+ * session 72). */
+const MISTAKE_MIN = 1;
 const MISTAKES_SHOWN = 3;
 
 /** The ladder (the user's, session 70), lowest first: the rating it
@@ -78,11 +79,14 @@ export interface SkillMistake {
 }
 
 export interface SkillRating {
-  /** 0-100, whole. */
+  /** 0-100, whole: 100 - RATING_PER_POINT x lostPerHand. */
   rating: number;
   label: string;
   /** Choices counted. */
   decisions: number;
+  /** Hands played, and the points given up per hand. */
+  hands: number;
+  lostPerHand: number;
   /** The costliest, most first. */
   mistakes: SkillMistake[];
 }
@@ -91,21 +95,25 @@ export interface SkillRating {
  * nothing to rate. Mistakes are named only when asked (they cost the
  * most to write). */
 export function rateSkill(decisions: readonly SkillDecision[], withMistakes = true): SkillRating | null {
-  let sum = 0;
-  let weight = 0;
+  let total = 0;
   let counted = 0;
+  // Hands: a new one starts when the hand number changes or a discard
+  // follows a play (a run's next fight starts again at hand 1).
+  let hands = 0;
+  let previous: SkillDecision | null = null;
   const costly: { d: SkillDecision; lost: number }[] = [];
   for (const d of decisions) {
+    if (!previous || d.handIndex !== previous.handIndex || (d.kind === 'discard' && previous.kind === 'play')) hands++;
+    previous = d;
     const lost = d.kind === 'discard' ? discardLoss(d.hand, d.thrown, d.ownCrib, d.starter) : pegLoss(d.spot, d.played);
     if (lost === null) continue;
-    const w = d.kind === 'discard' ? DISCARD_WEIGHT : 1;
-    sum += w * Math.exp(-lost / SKILL_FALLOFF);
-    weight += w;
+    total += lost;
     counted++;
     if (lost >= MISTAKE_MIN) costly.push({ d, lost });
   }
-  if (!weight) return null;
-  const rating = Math.round((100 * sum) / weight);
+  if (!counted) return null;
+  const lostPerHand = total / hands;
+  const rating = Math.max(0, Math.min(100, Math.round(100 - RATING_PER_POINT * lostPerHand)));
   // The costliest, with one slot kept for the worst pegging play if there
   // is one (the user, session 70): discards usually cost more, and the
   // drawer should teach both halves.
@@ -123,5 +131,5 @@ export function rateSkill(decisions: readonly SkillDecision[], withMistakes = tr
           text: d.kind === 'discard' ? discardReview(d.hand, d.thrown, d.ownCrib, d.starter).text : pegReview(d.spot, d.played).text,
         }))
     : [];
-  return { rating, label: skillLabel(rating), decisions: counted, mistakes };
+  return { rating, label: skillLabel(rating), decisions: counted, hands, lostPerHand, mistakes };
 }

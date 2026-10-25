@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Card, Rank, Suit } from '../engine/cards';
 import { predictBestDiscard } from '../engine/ai';
 import { rateSkill, skillLabel, type SkillDecision } from './skill-review';
+import { discardLoss } from './coach';
 
 const c = (rank: number, suit = 0): Card => ({ rank: rank as Rank, suit: suit as Suit });
 
@@ -40,6 +41,34 @@ describe('the review coach', () => {
     const bigDiscards = [0, 1, 3].map((h) => ({ ...discard([c(5), c(5, 1)]), handIndex: h }));
     const r = rateSkill([...bigDiscards, { kind: 'play', handIndex: 4, spot, played: c(5), hand: [c(5), c(4, 1)] }])!;
     expect(r.mistakes.map((m) => m.kind)).toEqual(['discard', 'discard', 'play']);
+  });
+
+  // Session 72 (the user): plain arithmetic, 100 less 10 for each point
+  // given up per hand; only whole-point mistakes are listed.
+  const pairs = hand.flatMap((a, i) => hand.slice(i + 1).map((b) => [a, b] as [Card, Card]));
+  const lossOf = (p: [Card, Card]) => discardLoss(hand, p, false);
+
+  it('rates 100 less 10 for each point given up per hand', () => {
+    const [x, y] = [pairs[0], pairs[5]];
+    const r = rateSkill([discard(x), { ...discard(y), handIndex: 3 }])!;
+    expect(r.hands).toBe(2);
+    expect(r.lostPerHand).toBeCloseTo((lossOf(x) + lossOf(y)) / 2, 9);
+    expect(r.rating).toBe(Math.max(0, Math.round(100 - 10 * r.lostPerHand)));
+  });
+
+  it("doesn't list a choice that gave up less than a whole point", () => {
+    const small = pairs.find((p) => lossOf(p) > 0 && lossOf(p) < 1)!;
+    expect(small).toBeDefined();
+    const r = rateSkill([discard(small)])!;
+    expect(r.rating).toBeLessThan(100);
+    expect(r.mistakes).toEqual([]);
+  });
+
+  it("counts a run's hands across fights (each fight starts again at hand 1)", () => {
+    const best = predictBestDiscard(hand, false);
+    const play: SkillDecision = { kind: 'play', handIndex: 0, spot: { legal: [c(5), c(4, 1)], count: 0, sequence: [], known: [c(5), c(4, 1)], opponentCards: 4 }, played: c(4, 1), hand: [c(5), c(4, 1)] };
+    const r = rateSkill([{ ...discard(best), handIndex: 0 }, play, { ...discard(best), handIndex: 0 }, play])!;
+    expect(r.hands).toBe(2);
   });
 
   it('marks a pegging play that hands over a fifteen', () => {
