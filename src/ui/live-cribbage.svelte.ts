@@ -1,6 +1,6 @@
 import type { Card } from '../engine/cards';
 import { cribbageGame, DIFFICULTIES, type CribbageAnswer, type CribbageGameResult, type CribbageRequest, type Difficulty } from '../engine/basic-cribbage';
-import { discardSkillStrategy, pegSkillStrategy } from '../engine/ai';
+import { discardSkillStrategy, pegSkillStrategy, pegTableOf } from '../engine/ai';
 import type { CombatRequest } from '../engine/combat';
 import { cribbageBeats } from './cribbage-steps';
 import { mergeSteps, type Step } from './timeline';
@@ -9,14 +9,8 @@ import type { PegSpot } from './coach';
 
 /** A pegging request as the coach reads it (coach.ts's PegSpot). */
 export function pegSpot(request: Extract<CribbageRequest, { kind: 'play' }>): PegSpot {
-  const played = request.pegging.events.flatMap((e) => (e.type === 'play' ? [e.card] : []));
-  return {
-    legal: request.context.legalCards,
-    count: request.context.count,
-    sequence: request.context.sequence,
-    known: [...request.pegging.hand, ...played, ...(request.view.starter ? [request.view.starter] : [])],
-    opponentCards: request.pegging.opponentCardsLeft,
-  };
+  // The engine's own reading (ai.ts pegTableOf; session 72: one AI).
+  return pegTableOf(request.context);
 }
 
 /**

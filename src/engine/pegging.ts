@@ -22,6 +22,12 @@ export interface PlayContext {
   limit?: number;
   knownCrib?: Card[];
   knownOpponentHand?: Card[];
+  /** Every card this player can see (session 72, one AI): their whole
+   * hand, the cards played this hand, the cut. Unset, the judgement
+   * falls back to the legal cards and the pile (ai.ts pegTableOf). */
+  seen?: Card[];
+  /** How many cards the opponent still holds. */
+  opponentCards?: number;
   /** Session 26: same AI-decision-noise Rng stream as DiscardContext.rng
    * (deal.ts) -- see its doc comment for the full reasoning. */
   rng?: Rng;
@@ -159,6 +165,12 @@ export interface PeggingDecision {
   count: number;
   sequence: Card[];
   limit: number;
+  /** The player's whole hand still held (legal or not), every card
+   * played this hand, and how many the opponent holds (session 72: what
+   * the one AI reads). */
+  hand: Card[];
+  played: Card[];
+  opponentCards: number;
 }
 
 export function startPegging(hand0: Card[], hand1: Card[], firstToAct: PlayerIndex, limit = COUNT_LIMIT): PeggingState {
@@ -200,7 +212,20 @@ export function advancePegging(state: PeggingState): { events: PeggingEvent[]; d
     const player = state.turn;
     const legal = state.hands[player].filter((c) => state.count + cardValue(c) <= state.limit);
     if (legal.length > 0) {
-      return { events, decision: { player, legalCards: legal, count: state.count, sequence: state.sequence.map((s) => s.card), limit: state.limit } };
+      const played = state.events.flatMap((e) => (e.type === 'play' ? [e.card] : []));
+      return {
+        events,
+        decision: {
+          player,
+          legalCards: legal,
+          count: state.count,
+          sequence: state.sequence.map((s) => s.card),
+          limit: state.limit,
+          hand: state.hands[player].slice(),
+          played,
+          opponentCards: state.hands[(1 - player) as PlayerIndex].length,
+        },
+      };
     }
     push({ type: 'go', player });
     state.passesInARow += 1;
@@ -268,11 +293,13 @@ export function playPegging(
 ): PeggingResult {
   const state = startPegging(hand0, hand1, firstToAct);
   for (let step = advancePegging(state); step.decision; step = advancePegging(state)) {
-    const { player, legalCards, count, sequence } = step.decision;
+    const { player, legalCards, count, sequence, hand, played, opponentCards } = step.decision;
     const card = chooseCard[player]({
       legalCards,
       count,
       sequence,
+      seen: [...hand, ...played],
+      opponentCards,
       knownCrib: knownCrib?.[player],
       knownOpponentHand: knownOpponentHand?.[player],
       rng: aiRng,

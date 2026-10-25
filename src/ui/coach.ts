@@ -1,6 +1,6 @@
 import { cardsEqual, cardValue, type Card } from '../engine/cards';
 import { countHand } from '../engine/scoring';
-import { cribTableValue, handExpectedValue, pegSkillStrategy, predictBestDiscard, scoreDiscard, unseenCards } from '../engine/ai';
+import { bestPeg, cribTableValue, handExpectedValue, pegNet, predictBestDiscard, scoreDiscard, unseenCards, type PegTable } from '../engine/ai';
 import type { CribbageBeat } from '../engine/basic-cribbage';
 import { rankLabel, suitInfo } from './suits';
 import { suitToken } from './RichText.svelte';
@@ -165,52 +165,28 @@ function playScore(card: Card, count: number, sequence: Card[], limit = 31): { p
   return { pts, what };
 }
 
-/** The table at a pegging decision, as the coach reads it. */
-export interface PegSpot {
-  legal: Card[];
-  count: number;
-  sequence: Card[];
-  /** Every card the player can see: their hand, the cut, the cards
-   * played this hand. The opponent's cards are among the rest. */
-  known: Card[];
-  /** How many cards the opponent still holds. */
-  opponentCards: number;
-  /** The count's limit when it isn't 31 (Short Count, session 72). */
-  limit?: number;
-}
-
-/** C(n, k) ratio C(n - m, k) / C(n, k): the chance k random cards from n
- * miss all m particular ones. */
-function missAll(n: number, m: number, k: number): number {
-  let p = 1;
-  for (let i = 0; i < k; i++) p *= Math.max(0, n - m - i) / (n - i);
-  return p;
-}
+/** The table at a pegging decision, as the coach reads it: the engine's
+ * own (ai.ts PegTable), so the coach and the AI read the same thing. */
+export type PegSpot = PegTable;
 
 /**
- * A pegging play judged the way a good player does: the points it scores
- * now, less what it hands the opponent -- their best reply's expected
- * points, over every card they could still hold (more cards left, more
- * likely they hold the one that scores). The biggest threat is named.
+ * A pegging play in words: the engine's judgement (ai.ts pegNet: the
+ * points it scores now, less the opponent's expected best reply) with
+ * what it scores and the biggest threat named. The numbers are the
+ * engine's; only the words are worked out here (session 72: one AI).
  */
 function judgePlay(
   card: Card,
   spot: PegSpot,
 ): { pts: number; what: string[]; risk: number; net: number; threat: string; threatWho: string; threatWhat: string; scorers: number; scorerText: string } {
   const limit = spot.limit ?? 31;
-  const { pts, what } = playScore(card, spot.count, spot.sequence, limit);
+  const { pts, risk, net } = pegNet(card, spot);
+  const { what } = playScore(card, spot.count, spot.sequence, limit);
   const after = spot.count + cardValue(card);
   const count = after === limit ? 0 : after;
   const sequence = after === limit ? [] : [...spot.sequence, card];
   const unseen = unseenCards([...spot.known, card]);
   const replies = unseen.map((u) => (count + cardValue(u) <= limit ? { u, ...playScore(u, count, sequence, limit) } : { u, pts: 0, what: [] as string[] }));
-  const k = Math.min(spot.opponentCards, unseen.length);
-  // E[best reply] = sum over t of P(they hold a reply worth at least t).
-  let risk = 0;
-  for (let t = 1; t <= 12; t++) {
-    const m = replies.filter((r) => r.pts >= t).length;
-    if (m) risk += 1 - missAll(unseen.length, m, k);
-  }
   // The threat to name: the reply with the most at stake -- grouped by
   // what it scores, so every card that makes the same 15 counts together.
   const byWhat = new Map<string, { n: number; pts: number; ranks: Set<number> }>();
@@ -256,18 +232,11 @@ function judgePlay(
     .sort((x, y) => ORDER.findIndex((o) => x.text.endsWith(o)) - ORDER.findIndex((o) => y.text.endsWith(o)))
     .map((g) => g.text)
     .join(', ');
-  return { pts, what, risk, net: pts - risk, threat, threatWho, threatWhat, scorers, scorerText };
+  return { pts, what, risk, net, threat, threatWho, threatWhat, scorers, scorerText };
 }
 
-/** The coach's pick: the best net play; the AI at full strength breaks
- * near-ties. */
-function bestPlay(spot: PegSpot): Card {
-  const ai = pegSkillStrategy(1)({ legalCards: spot.legal, count: spot.count, sequence: spot.sequence });
-  return [...spot.legal].sort((a, b) => {
-    const d = judgePlay(b, spot).net - judgePlay(a, spot).net;
-    return Math.abs(d) > 0.05 ? d : (cardsEqual(b, ai) ? 1 : 0) - (cardsEqual(a, ai) ? 1 : 0);
-  })[0];
-}
+/** The coach's pick: the AI's at full strength (ai.ts bestPeg). */
+const bestPlay = (spot: PegSpot): Card => bestPeg(spot);
 
 /** What to play now, and why. */
 export function pegHint(spot: PegSpot): string {
@@ -360,7 +329,7 @@ export function discardLoss(hand: Card[], thrown: [Card, Card], ownCrib: boolean
  * now, less the opponent's expected reply). Null when the choice didn't
  * matter: one card to play, or every card as good as another. */
 export function pegLoss(spot: PegSpot, played: Card): number | null {
-  const nets = spot.legal.map((c) => judgePlay(c, spot).net);
+  const nets = spot.legal.map((c) => pegNet(c, spot).net);
   if (Math.max(...nets) - Math.min(...nets) <= 0.05) return null;
-  return Math.max(0, judgePlay(bestPlay(spot), spot).net - judgePlay(played, spot).net);
+  return Math.max(0, pegNet(bestPlay(spot), spot).net - pegNet(played, spot).net);
 }

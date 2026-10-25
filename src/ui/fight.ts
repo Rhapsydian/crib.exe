@@ -2,6 +2,7 @@ import type { FireEvent, LoadoutEntry } from '../engine/resolve';
 import type { Thresholds } from './describe';
 import type { FightSnapshot } from './snapshot';
 import type { PegSpot } from './coach';
+import { pegTableOf } from '../engine/ai';
 
 /** A piece the player tapped: which side, which slot. */
 export interface Picked {
@@ -68,16 +69,7 @@ export function fightPegSpot(snapshot: FightSnapshot): PegSpot | null {
 /** The same, from the engine's request itself. */
 export function combatPegSpot(request: FightSnapshot['request']): PegSpot | null {
   if (request.kind !== 'play') return null;
-  const played = request.pegging.events.flatMap((e) => (e.type === 'play' ? [e.card] : []));
-  // This hand's cut: the timeline's latest.
-  const cut = request.view.timeline.findLast((b) => b.kind === 'cut');
-  const starter = cut?.kind === 'cut' ? cut.starter : undefined;
-  return {
-    legal: request.context.legalCards,
-    count: request.context.count,
-    sequence: request.context.sequence,
-    known: [...request.pegging.hand, ...played, ...(starter ? [starter] : [])],
-    opponentCards: request.pegging.opponentCardsLeft,
-    ...(request.context.limit ? { limit: request.context.limit } : {}),
-  };
+  // The engine's own reading of the request (ai.ts pegTableOf): what the
+  // player sees, a revealed opponent hand included (session 72: one AI).
+  return pegTableOf(request.context);
 }

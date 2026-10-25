@@ -1024,11 +1024,11 @@ export function* combatGenerator(
         if (winner !== null) return finish(winner);
       }
       if (!advanced.decision) break;
-      const { player, legalCards, count, sequence } = advanced.decision;
+      const { player, legalCards, count, sequence, hand, played: playedSoFar, opponentCards } = advanced.decision;
       const card = (yield {
         kind: 'play',
         side: player,
-        context: { legalCards, count, sequence, ...(countLimit !== COUNT_LIMIT ? { limit: countLimit } : {}), knownCrib: combatState.sides[player].knownCrib, knownOpponentHand: combatState.sides[player].knownOpponentHand, rng: aiRng },
+        context: { legalCards, count, sequence, seen: [...hand, ...playedSoFar, starter], opponentCards, ...(countLimit !== COUNT_LIMIT ? { limit: countLimit } : {}), knownCrib: combatState.sides[player].knownCrib, knownOpponentHand: combatState.sides[player].knownOpponentHand, rng: aiRng },
         view: view(i, dealer),
         pegging: { hand: pegging.hands[player].slice(), opponentCardsLeft: pegging.hands[(1 - player) as PlayerIndex].length, events: pegging.events },
       }) as Card;

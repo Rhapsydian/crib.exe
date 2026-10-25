@@ -236,21 +236,23 @@ export function discardSkillStrategy(skill: number): DiscardStrategy {
 }
 
 /**
- * Tunable-skill pegging AI (checkpoint B). Three factors per candidate
- * legal card, kept small per decision 2: immediate score (reuses
- * pegging.ts's own scoring rules via scoreCardPlay); defensive risk (a
- * flat penalty for leaving the running count at 5 or 21 -- the
- * classic Cribbage risk, since the four 10-value ranks make either
- * count exploitable regardless of what the opponent actually holds);
- * setup value (a small bonus for candidates that keep same-rank/
- * adjacent-rank potential alive among the caster's *other* currently-
- * legal cards). All weights TBD/playtesting, same placeholder
- * convention as everywhere else in this project.
+ * The pegging AI -- the game's one pegging judgement (session 72, the
+ * user: "there should only be one AI ever for the game"). The coach
+ * (ui/coach.ts) words this same judgement; it never decides on its own.
+ * Until session 72 the two had drifted into separate algorithms (this
+ * module's flat "5 or 21 is risky" penalty and an adjacent-rank bonus,
+ * the coach's expected reply), and the coach's won 57% head to head.
+ *
+ * A play is worth the points it scores now, less the opponent's
+ * expected best reply: over every card the player can't see, the chance
+ * the opponent holds one that scores at least t, summed over t. When the
+ * opponent's hand is known (a reveal), their best reply is exact.
+ * Skill blends the two terms' weights from novice (points only, and
+ * fewer of them) to expert (both at full weight: the coach's choice).
  */
 export interface PegWeights {
   immediateScore: number;
   defensiveRisk: number;
-  setupValue: number;
 }
 
 // Session 26: immediateScore used to be fixed at 1 for both ends, same
@@ -258,32 +260,96 @@ export interface PegWeights {
 // that constant's comment for the full reasoning (race-to-121
 // cross-matrix finding). TBD/playtesting, retuned in the checkpoint E
 // recalibration sweep.
-const PEG_NOVICE_WEIGHTS: PegWeights = { immediateScore: 0.4, defensiveRisk: 0, setupValue: 0 };
-const PEG_EXPERT_WEIGHTS: PegWeights = { immediateScore: 1, defensiveRisk: 1, setupValue: 0.5 };
+const PEG_NOVICE_WEIGHTS: PegWeights = { immediateScore: 0.4, defensiveRisk: 0 };
+const PEG_EXPERT_WEIGHTS: PegWeights = { immediateScore: 1, defensiveRisk: 1 };
 
-const RISKY_COUNTS = new Set([5, 21]);
-const DEFENSIVE_RISK_PENALTY = 3; // TBD/playtesting
+/** A pegging decision as the judgement reads it: what the player can
+ * see, and how many cards the opponent still holds. */
+export interface PegTable {
+  legal: Card[];
+  count: number;
+  sequence: Card[];
+  /** Every card the player can see: their hand, the cut, the cards
+   * played this hand. The opponent's cards are among the rest. */
+  known: Card[];
+  /** How many cards the opponent still holds. */
+  opponentCards: number;
+  /** The count's limit when it isn't 31 (Short Count, session 72). */
+  limit?: number;
+  /** The opponent's cards still in hand, when a reveal shows them. */
+  opponentHand?: Card[];
+}
 
-/** Precise defensive read when the opponent's kept hand is actually
- * known (session 40 continued -- closing a real gap: revealOpponentKeptHand
- * (resolve.ts), firesAt: 'onPlayPhaseStart', has populated PlayContext.
- * knownOpponentHand end-to-end since session 24, but scorePegCandidate
- * never read it -- RISKY_COUNTS' blanket "5 or 21 is risky" guess ran
- * unconditionally even when the real answer was sitting right there).
- * Two concrete threats a known hand actually resolves, not just
- * estimates: does the opponent hold a card that completes 15 or 31 at
- * this exact resulting count, and does the opponent hold a card of the
- * same rank just played (an immediate pair). Deliberately not attempting
- * run detection here -- setupValue's own adjacent-rank heuristic already
- * covers that space approximately, and a precise run check needs the
- * live sequence, not just the opponent's hand in isolation. */
-function knownOpponentThreatensThisPlay(card: Card, newCount: number, knownOpponentHand: Card[], limit = COUNT_LIMIT): boolean {
-  const completes15Or31 = knownOpponentHand.some((c) => {
-    const value = cardValue(c);
-    return newCount + value === 15 || newCount + value === limit;
-  });
-  const canPair = knownOpponentHand.some((c) => c.rank === card.rank);
-  return completes15Or31 || canPair;
+/** C(n - m, k) / C(n, k): the chance k random cards from n miss all m
+ * particular ones. */
+function missAll(n: number, m: number, k: number): number {
+  let p = 1;
+  for (let i = 0; i < k; i++) p *= Math.max(0, n - m - i) / (n - i);
+  return p;
+}
+
+/** Points, the opponent's expected best reply, and the net, for playing
+ * `card` at `table`. */
+export function pegNet(card: Card, table: PegTable): { pts: number; risk: number; net: number } {
+  const limit = table.limit ?? COUNT_LIMIT;
+  const after = table.count + cardValue(card);
+  const pts = scoreCardPlay([...table.sequence, card], after, limit).total;
+  const count = after === limit ? 0 : after;
+  const sequence = after === limit ? [] : [...table.sequence, card];
+  const reply = (u: Card) => (count + cardValue(u) <= limit ? scoreCardPlay([...sequence, u], count + cardValue(u), limit).total : 0);
+  if (table.opponentHand) {
+    const risk = Math.max(0, ...table.opponentHand.map(reply));
+    return { pts, risk, net: pts - risk };
+  }
+  const unseen = unseenCards([...table.known, card]);
+  const replies = unseen.map(reply);
+  const k = Math.min(table.opponentCards, unseen.length);
+  // E[best reply] = sum over t of P(they hold a reply worth at least t).
+  let risk = 0;
+  for (let t = 1; t <= 12; t++) {
+    const m = replies.filter((r) => r >= t).length;
+    if (m) risk += 1 - missAll(unseen.length, m, k);
+  }
+  return { pts, risk, net: pts - risk };
+}
+
+/** Plays within this much net of the best are a tie: the safer one
+ * (lower expected reply) wins, then the lower card. */
+const PEG_TIE = 0.05;
+
+/** The best of `cards` by `scores`, ties broken as PEG_TIE says. */
+function pickPeg(cards: Card[], scores: number[], risks: number[]): Card {
+  const top = Math.max(...scores);
+  let best = -1;
+  for (let i = 0; i < cards.length; i++) {
+    if (scores[i] < top - PEG_TIE) continue;
+    if (best < 0 || risks[i] < risks[best] - 1e-9 || (Math.abs(risks[i] - risks[best]) <= 1e-9 && cards[i].rank < cards[best].rank)) best = i;
+  }
+  return cards[best];
+}
+
+/** The full-strength choice: what the coach recommends and the AI at
+ * skill 1 plays. */
+export function bestPeg(table: PegTable): Card {
+  const judged = table.legal.map((c) => pegNet(c, table));
+  return pickPeg(table.legal, judged.map((j) => j.net), judged.map((j) => j.risk));
+}
+
+/** A PlayContext as the judgement reads it. Contexts from older callers
+ * that don't say what's seen fall back to the legal cards and the pile,
+ * and a full opponent hand. */
+export function pegTableOf(ctx: PlayContext): PegTable {
+  const known = ctx.seen ?? [...ctx.legalCards, ...ctx.sequence];
+  const opponentHand = ctx.knownOpponentHand?.filter((c) => !known.some((k) => cardsEqual(k, c)));
+  return {
+    legal: ctx.legalCards,
+    count: ctx.count,
+    sequence: ctx.sequence,
+    known,
+    opponentCards: ctx.opponentCards ?? 4,
+    ...(ctx.limit ? { limit: ctx.limit } : {}),
+    ...(opponentHand ? { opponentHand } : {}),
+  };
 }
 
 /** Session 26: real mistake-injection for pegging -- see softmaxPick's
@@ -351,55 +417,31 @@ export function interpolatePegWeights(skill: number): PegWeights {
   return {
     immediateScore: lerp(PEG_NOVICE_WEIGHTS.immediateScore, PEG_EXPERT_WEIGHTS.immediateScore, t),
     defensiveRisk: lerp(PEG_NOVICE_WEIGHTS.defensiveRisk, PEG_EXPERT_WEIGHTS.defensiveRisk, t),
-    setupValue: lerp(PEG_NOVICE_WEIGHTS.setupValue, PEG_EXPERT_WEIGHTS.setupValue, t),
   };
 }
 
-/** Weighted score for playing `card` from `ctx` -- exported so both the
- * factory below and tests can evaluate a single candidate directly.
- * `knownOpponentHand` (session 40 continued) upgrades defensiveRisk from
- * RISKY_COUNTS' blanket guess to a real, resolved read whenever it's
- * populated -- see knownOpponentThreatensThisPlay's own doc comment. */
-export function scorePegCandidate(card: Card, ctx: Pick<PlayContext, 'legalCards' | 'count' | 'sequence' | 'knownOpponentHand' | 'limit'>, weights: PegWeights): number {
-  // Short Count (session 72): the limit is 21, so 11 is the count a
-  // ten-card turns into a limit hit, as 21 is under 31.
-  const limit = ctx.limit ?? COUNT_LIMIT;
-  const newCount = ctx.count + cardValue(card);
-  const immediateScore = scoreCardPlay([...ctx.sequence, card], newCount, limit).total;
-  const defensiveRisk = ctx.knownOpponentHand
-    ? knownOpponentThreatensThisPlay(card, newCount, ctx.knownOpponentHand, limit)
-      ? DEFENSIVE_RISK_PENALTY
-      : 0
-    : (limit === COUNT_LIMIT ? RISKY_COUNTS.has(newCount) : newCount === 5 || newCount === limit - 10)
-      ? DEFENSIVE_RISK_PENALTY
-      : 0;
-  const setupValue = ctx.legalCards.filter((c) => !cardsEqual(c, card) && Math.abs(c.rank - card.rank) <= 1).length;
-  return weights.immediateScore * immediateScore - weights.defensiveRisk * defensiveRisk + weights.setupValue * setupValue;
+/** Weighted score for playing `card` from `ctx`: the judgement's points
+ * and expected reply at `weights`. At expert weights it's the net. */
+export function scorePegCandidate(card: Card, ctx: PlayContext, weights: PegWeights): number {
+  const { pts, risk } = pegNet(card, pegTableOf(ctx));
+  return weights.immediateScore * pts - weights.defensiveRisk * risk;
 }
 
 /** Factory: builds a PlayStrategy that picks a legal card at the given
- * skill level (0-1), enumerating every legal candidate each turn. When
- * `ctx.rng` is supplied (session 26), samples via softmaxPick at a
- * skill-interpolated temperature -- real mistake-injection, not just
- * weight dilution. Without `ctx.rng` (every caller before session 26,
- * and any caller that still doesn't opt in), falls back to the exact
- * argmax this function has always used. */
+ * skill level (0-1). At skill 1 it's bestPeg, the coach's choice. Below,
+ * the weights blend toward novice and, when `ctx.rng` is supplied
+ * (session 26), choices are sampled via softmaxPick at a
+ * skill-interpolated temperature -- real mistake-injection. */
 export function pegSkillStrategy(skill: number): PlayStrategy {
   const weights = interpolatePegWeights(skill);
   const temperature = temperatureForSkill(PEG_MAX_TEMPERATURE, skill);
   return (ctx) => {
-    const scores = ctx.legalCards.map((card) => scorePegCandidate(card, ctx, weights));
+    const table = pegTableOf(ctx);
+    const judged = ctx.legalCards.map((card) => pegNet(card, table));
+    const scores = judged.map((j) => weights.immediateScore * j.pts - weights.defensiveRisk * j.risk);
     if (ctx.rng && temperature > TEMPERATURE_EPSILON) {
       return softmaxPick(ctx.legalCards, scores, temperature, ctx.rng);
     }
-    let best = ctx.legalCards[0];
-    let bestScore = -Infinity;
-    for (let i = 0; i < ctx.legalCards.length; i++) {
-      if (scores[i] > bestScore) {
-        bestScore = scores[i];
-        best = ctx.legalCards[i];
-      }
-    }
-    return best;
+    return pickPeg(ctx.legalCards, scores, judged.map((j) => j.risk));
   };
 }

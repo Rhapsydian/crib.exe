@@ -10,6 +10,9 @@ import {
   interpolatePegWeights,
   scorePegCandidate,
   pegSkillStrategy,
+  pegNet,
+  pegTableOf,
+  bestPeg,
   interpolateDiscardWeights,
   predictBestDiscard,
   discardSkillStrategy,
@@ -119,8 +122,8 @@ describe('interpolatePegWeights', () => {
     // primary-value term is now diluted at low skill too, not just the
     // secondary refinement terms, closing the "novice is basically as
     // good as expert" gap the race-to-121 cross-matrix found.
-    expect(interpolatePegWeights(0)).toEqual({ immediateScore: 0.4, defensiveRisk: 0, setupValue: 0 });
-    expect(interpolatePegWeights(1)).toEqual({ immediateScore: 1, defensiveRisk: 1, setupValue: 0.5 });
+    expect(interpolatePegWeights(0)).toEqual({ immediateScore: 0.4, defensiveRisk: 0 });
+    expect(interpolatePegWeights(1)).toEqual({ immediateScore: 1, defensiveRisk: 1 });
   });
 
   it('clamps out-of-range skill to [0, 1]', () => {
@@ -146,10 +149,42 @@ describe('scorePegCandidate / pegSkillStrategy', () => {
     expect(chosen).toEqual(riskyPair);
   });
 
-  it('at skill=1 (expert), picks the safe play over the risky score', () => {
-    const strategy = pegSkillStrategy(1);
-    const chosen = strategy({ legalCards: [riskyPair, safe], count: 11, sequence });
-    expect(chosen).toEqual(safe);
+  // Session 72 (one AI): the expert judges a play by its points less the
+  // opponent's expected best reply. Here the pair's 2 points now outweigh
+  // what 21 hands over (a ten-card for 31, a third 10), so it plays the
+  // pair; the old flat "21 is risky" penalty used to refuse it.
+  it('at skill=1 (expert), plays the pair when its points outweigh the expected reply', () => {
+    const table = { legal: [riskyPair, safe], count: 11, sequence, known: [riskyPair, safe, ...sequence], opponentCards: 3 };
+    expect(pegNet(riskyPair, table).net).toBeGreaterThan(pegNet(safe, table).net);
+    const chosen = pegSkillStrategy(1)({ legalCards: [riskyPair, safe], count: 11, sequence, seen: table.known, opponentCards: 3 });
+    expect(chosen).toEqual(riskyPair);
+  });
+
+  it('at skill=1 (expert), leads a 4 rather than a 5 (any ten-card makes fifteen off a 5)', () => {
+    const five = card(5, 0);
+    const four = card(4, 1);
+    const hand = [five, four, card(9, 2), card(13, 3)];
+    const chosen = pegSkillStrategy(1)({ legalCards: hand, count: 0, sequence: [], seen: hand, opponentCards: 4 });
+    expect(chosen).not.toEqual(five);
+    expect(pegNet(four, { legal: hand, count: 0, sequence: [], known: hand, opponentCards: 4 }).risk).toBeLessThan(pegNet(five, { legal: hand, count: 0, sequence: [], known: hand, opponentCards: 4 }).risk);
+  });
+
+  // The rule (the user, session 72): one AI. Whatever the table, the AI at
+  // full strength plays exactly the coach's pick (bestPeg).
+  it('at skill=1, always plays bestPeg, the coach\'s pick', () => {
+    const rng = createRng(7);
+    const deck = Array.from({ length: 52 }, (_, i) => card(((i % 13) + 1) as never, Math.floor(i / 13) as never));
+    for (let n = 0; n < 200; n++) {
+      const shuffled = [...deck].sort(() => rng.next() - 0.5);
+      const hand = shuffled.slice(0, 4);
+      const pile = shuffled.slice(4, 4 + (n % 3));
+      const count = pile.reduce((t, c) => t + Math.min(10, c.rank), 0);
+      const legal = hand.filter((c) => count + Math.min(10, c.rank) <= 31);
+      if (!legal.length) continue;
+      const seen = [...hand, ...pile, shuffled[10]];
+      const table = { legal, count, sequence: pile, known: seen, opponentCards: 4 - pile.length };
+      expect(pegSkillStrategy(1)({ legalCards: legal, count, sequence: pile, seen, opponentCards: table.opponentCards, rng })).toEqual(bestPeg(table));
+    }
   });
 
   it('scorePegCandidate: the risky pair scores higher than the safe card under novice weights', () => {
@@ -158,18 +193,10 @@ describe('scorePegCandidate / pegSkillStrategy', () => {
     expect(scorePegCandidate(riskyPair, ctx, novice)).toBeGreaterThan(scorePegCandidate(safe, ctx, novice));
   });
 
-  it('scorePegCandidate: the safe card scores higher than the risky pair under expert weights', () => {
+  it('scorePegCandidate: under expert weights it is the net (points less the expected reply)', () => {
     const expert = interpolatePegWeights(1);
     const ctx = { legalCards: [riskyPair, safe], count: 11, sequence };
-    expect(scorePegCandidate(safe, ctx, expert)).toBeGreaterThan(scorePegCandidate(riskyPair, ctx, expert));
-  });
-
-  it('setupValue rewards a candidate with an adjacent-rank companion among the other legal cards', () => {
-    const weights = { immediateScore: 0, defensiveRisk: 0, setupValue: 1 };
-    const withNeighbor = card(5, 0);
-    const noNeighbor = card(9, 0);
-    const ctx = { legalCards: [withNeighbor, card(6, 1), noNeighbor], count: 0, sequence: [] };
-    expect(scorePegCandidate(withNeighbor, ctx, weights)).toBeGreaterThan(scorePegCandidate(noNeighbor, ctx, weights));
+    for (const c of [riskyPair, safe]) expect(scorePegCandidate(c, ctx, expert)).toBeCloseTo(pegNet(c, pegTableOf(ctx)).net, 9);
   });
 
   it('pegSkillStrategy always returns one of the actual legal cards', () => {
@@ -241,7 +268,7 @@ describe('scorePegCandidate / pegSkillStrategy', () => {
       const rng = createRng(1);
       for (let i = 0; i < 50; i++) {
         const chosen = strategy({ legalCards: [riskyPair, safe], count: 11, sequence, rng });
-        expect(chosen).toEqual(safe); // same as the bare argmax test above, every time
+        expect(chosen).toEqual(riskyPair); // same as the bare argmax test above, every time
       }
     });
   });

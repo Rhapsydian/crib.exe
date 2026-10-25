@@ -247,11 +247,11 @@ export function* cribbageGame(options: CribbageGameOptions): Generator<CribbageR
       const advanced = advancePegging(pegging);
       for (const event of advanced.events) if (scoreEvent(event)) return finish(event.player, handIndex + 1);
       if (!advanced.decision) break;
-      const { player, legalCards, count, sequence } = advanced.decision;
+      const { player, legalCards, count, sequence, hand, played: playedSoFar, opponentCards } = advanced.decision;
       const card = (yield {
         kind: 'play',
         side: player,
-        context: { legalCards, count, sequence, rng: aiRng },
+        context: { legalCards, count, sequence, seen: [...hand, ...playedSoFar, starter], opponentCards, rng: aiRng },
         view: view(starter),
         pegging: { hand: pegging.hands[player].slice(), opponentCardsLeft: pegging.hands[(1 - player) as PlayerIndex].length, events: pegging.events },
       }) as Card;
