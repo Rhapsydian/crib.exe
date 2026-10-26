@@ -97,7 +97,14 @@ settings. Sources, licenses checked per file when chosen:
 - **Freesound.org** for anything specific (CC0 or CC-BY: credit needed).
 - Recommended: Kenney cards + ZzFX synth. Decide which moments get a sound.
 
-## 5. About and credits (after sound)
+## 5. About and credits (done, session 72)
+
+Built: `src/ui/About.svelte` from the main menu's About (beside Settings):
+the version; "Made by Rhapsydian (Justin Stephens)" (the user's words); the
+Claude Code note and the repository link; credits (Tabler Icons, Svelte:
+both MIT, so the license text is shown); the Discord once there is a link
+(`DISCORD` in About.svelte).
+
 
 Version, credits (Tabler Icons' MIT notice for the map icons; any sound
 credits from step 4), the user's name, and a feedback / bug link: the
@@ -112,7 +119,14 @@ sounds; ZzFX was dropped for the browser's own audio engine).
 The user creates the server (Claude can't create accounts); the invite
 link goes in About, on the itch.io page and in the patch notes.
 
-## 5b. In-game patch notes (decided: the card and the page)
+## 5b. In-game patch notes (done, session 72)
+
+Built: `src/ui/version-notes.ts` (each version's short notes; add an entry
+at each release), the What's new card on the main menu (a new player skips
+it; the version seen is a preference), and the Patch notes page in About.
+The full write-ups moved to `public/patch-notes/`, so cribexe.com serves
+them; a version's `full` links to its page.
+
 
 The user chose the recommendation: a dismissable "What's new" card on the main menu the first
 time a newer version is opened (the profile remembers the last version
@@ -120,7 +134,7 @@ seen; three to six short bullets; it shares a component with step 2's
 dropped-save notice), and a "Patch notes" page from About listing every
 version's short notes. Short notes live in a small file shipped in the
 game (version, date, bullets), so they work offline and match the
-build; the full write-ups (`PATCH_NOTES.md`, `docs/patch-notes/`) stay
+build; the full write-ups (`PATCH_NOTES.md`, `public/patch-notes/`) stay
 for itch.io devlogs and the web, and the card links to them.
 
 ## 6. Records and stats (decision session)

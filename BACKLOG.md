@@ -26,7 +26,7 @@ playtesting) is under way. 946 tests, `npm run check` clean.
 
 **The content pass and its tuning pass are done, and live on `playable`**
 (merged in session 70, a fast-forward; save version 2, so old saves don't
-resume; patch notes in `docs/patch-notes/`): Burners and Events, Mods, subroutines, the enemy pool, then
+resume; patch notes in `public/patch-notes/`): Burners and Events, Mods, subroutines, the enemy pool, then
 Heat, Mod supply and class tuning (`docs/tuning-design.md`). Run victory
 ~26% (target 24-30%), classes 23.7-28.3%, Heat ending ~12% of runs, about
 65-71% of each layer explorable, ~12 Mods by a winning run's end.
@@ -46,7 +46,7 @@ Levels 1 / 5 / 10 at ~84 / ~26 / ~2% fully upgraded.
 session 72's close-out, a fast-forward from `daily-runs`, which was then
 deleted with the other merged branches; new work branches from `playable`;
 save version 3,
-so older saves don't resume; patch notes `docs/patch-notes/2026-10-25.html`;
+so older saves don't resume; patch notes `public/patch-notes/2026-10-25.html`;
 `docs/daily-runs-design.md`
 DR1-DR10): the date's salted seed, a random class, a Directive dealt from
 a 13-day deck plus two or three Glitches, Advisories or Bulletins (34
@@ -71,14 +71,15 @@ Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
 4. Sound effects (done): eighteen synth sounds of the game's own (the
    user passed on recorded card sounds); volume and mute in Settings; no
    music at launch.
-5. About and credits (after sound): version, Tabler Icons' MIT notice,
+5. About and credits (done; the Discord link waits on the server):
+   version, Tabler Icons' MIT notice,
    a feedback link (the Discord), and a note that the game
    was developed with agentic development (Claude Code), linking the
    repository (https://github.com/Rhapsydian/crib.exe).
    5a. A Discord server (the user creates it; the link goes in About,
    itch.io and the patch notes).
-   5b. In-game patch notes (decided): a "What's new" card after an
-   update, and a Patch notes page; short notes shipped in the game.
+   5b. In-game patch notes (done): a "What's new" card after an update,
+   and a Patch notes page; short notes in `src/ui/version-notes.ts`.
 6. A records and stats page (decision session).
 7. Mobile: a web-app manifest and icons, a phone-width pass.
 8. A release candidate: full test, playtest build, freeze.

@@ -68,7 +68,7 @@ README's old session-by-session narrative is archived in
   of Concept, Lure Template), and the review coach: a Cribbage rating on
   each fight's result card and the run's end card, with a drawer of the
   fight's costliest mistakes. `content-pass` merged into `playable`;
-  patch notes for testers in `docs/patch-notes/`.
+  patch notes for testers in `public/patch-notes/`.
 - **Session 71:** meta-progression, on the `meta-progression` branch (not
   yet merged into `playable`): Rep earned by depth; classes unlocking in a
   chain (Blackhat first) with a Rep fallback; the Message Board (upgrades,
@@ -83,7 +83,7 @@ README's old session-by-session narrative is archived in
   playtest notes: new map icons, Safehouse renamed Quiet Host and Merge
   renamed Refactor, fight-gauge fixes, a menu button in runs. Merged into
   `playable` and `master` with meta-progression; patch notes in
-  `docs/patch-notes/`. The demo moved to cribexe.com; merged feature
+  `public/patch-notes/`. The demo moved to cribexe.com; merged feature
   branches were deleted, leaving `playable` and `master`. Then **one AI**:
   the coach's pegging judgement became the AI's (they had been separate
   algorithms), and the Cribbage rating became points given up per hand,
@@ -102,7 +102,7 @@ What exists, all headless and test-covered:
 | Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
 | Run progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge (everything at once, at a Safehouse), a Shop that buys and sells, Burners, the trace evasion |
 | Meta-progression (between runs) | **undesigned** — a priority after the content pass |
-| Content | **authored** — 52 player subroutines, 20 enemy-only; 49 enemies (21 regulars, 12 elites, 16 gatekeepers, elites and gatekeepers each with a Mod) plus the tutorial's Firewall Beta; 57 Mods (rule-benders, 6 double-edged and 6 class upgrades from Events; Static Shield set aside), 24 Burners (4 Event-only contraband) and 24 Events with story. Patch notes for testers: `PATCH_NOTES.md`, `docs/patch-notes/` |
+| Content | **authored** — 52 player subroutines, 20 enemy-only; 49 enemies (21 regulars, 12 elites, 16 gatekeepers, elites and gatekeepers each with a Mod) plus the tutorial's Firewall Beta; 57 Mods (rule-benders, 6 double-edged and 6 class upgrades from Events; Static Shield set aside), 24 Burners (4 Event-only contraband) and 24 Events with story. Patch notes for testers: `PATCH_NOTES.md`, `public/patch-notes/` |
 | Balance | testers new to Cribbage find it too hard, so rising win rates are welcome (session 64); players beat elites 82–84% and gatekeepers 86 / 82 / 76 / 74% by layer; victory ~26% (target 24–30%), classes 23.7–28.3%, Heat ending ~12% of runs (session 69's tuning pass) |
 | UI | a whole run and plain Cribbage with a coach and lessons, on desktop and phones, saved after every choice; a guided tutorial, first-time tips, the Heat bar |
 | Art | the current terminal look is the intended style; no sprite pass planned (at most, refined map icons) |

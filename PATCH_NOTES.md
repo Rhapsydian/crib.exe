@@ -3,7 +3,7 @@
 **Play it at cribexe.com.**
 
 What's new since the AI and rating update (now in
-`docs/patch-notes/2026-10-25-ai-rating.html`): the Cribbage rating in
+`public/patch-notes/2026-10-25-ai-rating.html`): the Cribbage rating in
 stars, a reward for flawless play, a rebuilt review screen, and clearer
 choices when you start a run.
 

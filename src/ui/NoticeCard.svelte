@@ -1,14 +1,23 @@
 <script lang="ts">
   // A dismissable notice at the top of a screen (go-live step 2): a save an
-  // update cleared, and (step 5b) what's new in a version. Stays until
-  // dismissed.
-  let { title, lines, ondismiss }: { title: string; lines: string[]; ondismiss: () => void } = $props();
+  // update cleared (`warn`), and (step 5b) what's new in a version (`news`),
+  // with an optional link. Stays until dismissed.
+  let {
+    title,
+    lines,
+    ondismiss,
+    tone = 'warn',
+    action,
+  }: { title: string; lines: string[]; ondismiss: () => void; tone?: 'warn' | 'news'; action?: { label: string; onclick: () => void } } = $props();
 </script>
 
-<div class="notice" role="status">
+<div class="notice" class:news={tone === 'news'} role="status">
   <div class="head"><span class="title">{title}</span><button class="x" onclick={ondismiss} aria-label="dismiss">✕</button></div>
-  {#each lines as line (line)}<div class="line">{line}</div>{/each}
-  <button class="ok" onclick={ondismiss}>got it</button>
+  {#each lines as line (line)}<div class="line">{tone === 'news' ? '· ' : ''}{line}</div>{/each}
+  <div class="buttons">
+    <button class="ok" onclick={ondismiss}>got it</button>
+    {#if action}<button class="link" onclick={action.onclick}>{action.label}</button>{/if}
+  </div>
 </div>
 
 <style>
@@ -22,6 +31,26 @@
     border-radius: var(--radius);
     background: var(--bg-raised);
     font-size: 12px;
+  }
+  .notice.news {
+    border-color: var(--accent);
+  }
+  .notice.news .title {
+    color: var(--accent);
+  }
+  .buttons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .link {
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--accent);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
   }
   .head {
     display: flex;
@@ -44,7 +73,6 @@
     line-height: 1.4;
   }
   .ok {
-    align-self: flex-start;
     margin-top: 2px;
     padding: 3px 10px;
     border: 1px solid var(--line);

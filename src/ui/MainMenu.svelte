@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { VersionNotes } from './version-notes';
   import NoticeCard from './NoticeCard.svelte';
   import { profile } from './profile.svelte';
   import { DAILY_MODS, rollDaily } from '../engine/daily';
@@ -29,6 +30,10 @@
     ontutorial,
     onboard,
     onsettings,
+    onabout,
+    news = [],
+    ondismissnews,
+    onnotes,
     ondaily,
     today,
     dailyInProgress = null,
@@ -46,6 +51,12 @@
     onboard: () => void;
     /** Settings (go-live step 3). */
     onsettings: () => void;
+    /** About and patch notes (go-live step 5). */
+    onabout: () => void;
+    /** What's new since the last version seen (step 5b). */
+    news?: VersionNotes[];
+    ondismissnews?: () => void;
+    onnotes?: () => void;
     ondaily: () => void;
     today: string;
     dailyInProgress?: { date: string; practice: boolean } | null;
@@ -93,6 +104,15 @@
   </div>
   <div class="sub">A hacking roguelite where every fight is a game of Cribbage</div>
 
+  {#if news.length}
+    <NoticeCard
+      tone="news"
+      title={`WHAT'S NEW IN v${news[0].version}`}
+      lines={news.flatMap((v) => v.notes)}
+      ondismiss={() => ondismissnews?.()}
+      action={onnotes ? { label: 'all patch notes ▸', onclick: onnotes } : undefined}
+    />
+  {/if}
   {#if droppedGame}
     <NoticeCard title="SAVED GAME CLEARED" lines={["Your saved Cribbage game was from an earlier version of the game, so it couldn't continue, and it has been cleared."]} ondismiss={() => ondismissdropped?.()} />
   {/if}
@@ -171,13 +191,19 @@
     </div>
   </section>
 
-  <!-- Settings (go-live step 3): turn speed, tips (show tips again moved
-       there from here), progress. -->
+  <!-- Settings (go-live step 3) and About (step 5), side by side. -->
+  <div class="foot">
   <button class="settings-link" onclick={onsettings}>
     <!-- Tabler Icons' "settings" (MIT), as the map icons. -->
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>
     <b>Settings</b>
   </button>
+  <button class="settings-link" onclick={onabout}>
+    <!-- Tabler Icons' "info-circle" (MIT). -->
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /><path d="M12 9h.01" /><path d="M11 12h1v4h1" /></svg>
+    <b>About</b>
+  </button>
+  </div>
   <!-- The version, for bug reports (go-live step 1). -->
   <div class="version">v{__APP_VERSION__}</div>
 </div>
@@ -189,10 +215,14 @@
     color: var(--text-dim);
     opacity: 0.6;
   }
-  /* As the menu's entries, smaller and centred (the user's ask). */
-  .settings-link {
+  .foot {
     align-self: center;
     margin-top: 10px;
+    display: flex;
+    gap: 10px;
+  }
+  /* As the menu's entries, smaller and centred (the user's ask). */
+  .settings-link {
     display: flex;
     align-items: center;
     gap: 8px;

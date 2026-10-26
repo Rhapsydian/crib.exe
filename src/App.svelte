@@ -8,6 +8,8 @@
   import MainMenu from './ui/MainMenu.svelte';
   import MessageBoard from './ui/MessageBoard.svelte';
   import Settings from './ui/Settings.svelte';
+  import About from './ui/About.svelte';
+  import { markVersionSeen, whatsNew } from './ui/version-notes';
   import DailyBrief from './ui/DailyBrief.svelte';
   import { dailyDate, dailyRunStart, dailyScore, rollDaily } from './engine/daily';
   import { rateSkill } from './ui/skill-review';
@@ -108,7 +110,7 @@
 
   // The front door (milestone 4, V5): the main menu, then a mode. A run
   // keeps its class screen; a Cribbage game saves itself like a run.
-  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson' | 'tutorial' | 'board' | 'daily' | 'settings'>('menu');
+  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson' | 'tutorial' | 'board' | 'daily' | 'settings' | 'about' | 'notes'>('menu');
   // Today's daily (session 72): the local date as YYYY-MM-DD.
   const today = () => dailyDate(new Date());
   function beginDaily() {
@@ -135,6 +137,13 @@
     }
   };
   let firstVisit = $state(!readVisited());
+  // What's new since the version this player last saw (go-live step 5b): a
+  // new player has nothing to catch up on.
+  let news = $state.raw(whatsNew(__APP_VERSION__, !readVisited()));
+  function dismissNews() {
+    markVersionSeen(__APP_VERSION__);
+    news = [];
+  }
   function markVisited() {
     firstVisit = false;
     try {
@@ -232,6 +241,10 @@
       }}
       onboard={() => (screen = 'board')}
       onsettings={() => (screen = 'settings')}
+      onabout={() => (screen = 'about')}
+      {news}
+      ondismissnews={dismissNews}
+      onnotes={() => (dismissNews(), (screen = 'notes'))}
       ondaily={() => (screen = 'daily')}
       today={today()}
       dailyInProgress={savedDaily ? { date: savedDaily.setup.daily?.date ?? '', practice: savedDaily.setup.daily?.practice ?? false } : null}
@@ -244,6 +257,8 @@
     <MessageBoard onmenu={toMenu} />
   {:else if screen === 'settings'}
     <Settings onmenu={toMenu} />
+  {:else if screen === 'about' || screen === 'notes'}
+    <About onmenu={toMenu} notes={screen === 'notes'} />
   {:else if screen === 'tutorial'}
     <TutorialStart
       resumable={Boolean(saved?.tutorial)}
