@@ -73,8 +73,8 @@ Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
    sound credits, a feedback link (the Discord).
    5a. A Discord server (the user creates it; the link goes in About,
    itch.io and the patch notes).
-   5b. In-game patch notes (decision pending): a "What's new" card after
-   an update, and a Patch notes page.
+   5b. In-game patch notes (decided): a "What's new" card after an
+   update, and a Patch notes page; short notes shipped in the game.
 6. A records and stats page (decision session).
 7. Mobile: a web-app manifest and icons, a phone-width pass.
 8. A release candidate: full test, playtest build, freeze.

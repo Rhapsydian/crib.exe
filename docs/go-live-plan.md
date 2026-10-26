@@ -70,9 +70,9 @@ Discord server (step 5a).
 The user creates the server (Claude can't create accounts); the invite
 link goes in About, on the itch.io page and in the patch notes.
 
-## 5b. In-game patch notes (decision pending)
+## 5b. In-game patch notes (decided: the card and the page)
 
-Recommended: a dismissable "What's new" card on the main menu the first
+The user chose the recommendation: a dismissable "What's new" card on the main menu the first
 time a newer version is opened (the profile remembers the last version
 seen; three to six short bullets; it shares a component with step 2's
 dropped-save notice), and a "Patch notes" page from About listing every
@@ -80,7 +80,6 @@ version's short notes. Short notes live in a small file shipped in the
 game (version, date, bullets), so they work offline and match the
 build; the full write-ups (`PATCH_NOTES.md`, `docs/patch-notes/`) stay
 for itch.io devlogs and the web, and the card links to them.
-Alternative: a menu link to the web page only.
 
 ## 6. Records and stats (decision session)
 
