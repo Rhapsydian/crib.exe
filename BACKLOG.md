@@ -103,11 +103,14 @@ most, refine some of the map icons.
   simulated player, which uses Burners and rests sparingly, so watch
   their value in playtesting; Security Level 5 sits at ~26% fully
   upgraded (target ~20%, left there).
-- **!!! REMOVE BEFORE RELEASE: testing URL switches** (session 71, the
-  user: not around forever). `?resetprofile` wipes the meta-progression
-  profile; `?unlockall` opens every class and the library. Both live in
-  `src/ui/testing-flags.ts`.
-
+- **Testing URL switches** (session 71): `?resetprofile` wipes the
+  profile; `?unlockall` opens every class and the library
+  (`src/ui/testing-flags.ts`). Development only since go-live step 1: the
+  release build drops them, with the #test harness and the mockups
+  (`src/DevRoutes.svelte`, loaded only in development).
+- **Balance, as of session 72** (the old session 64-66 figures pruned):
+  ~25% victory for the simulated player (skill 0.85), classes 22-35% at
+  100 runs each (within noise); a Flawless fight's -1 Heat adds ~3.
 - **Review coach** (sessions 70, 72): the rating is points given up per
   hand against the AI at full strength, as stars (engine/skill.ts:
   Flawless 0.4 or less, Expert 1.2, Sharp 2.5, Steady 4.0). Measured: skill
@@ -128,9 +131,6 @@ Balance and content:
   try at a lost gatekeeper; only ~1.7% of runs find one through the
   contraband Event grants. A dedicated Event to chase it is an option for
   the next Events batch.
-- **Class spread widening** (session 66): Breacher 50.7%, Warden 47.7%,
-  Operator 43.0% against Wraith 32.7% and Blackhat 33.0% (system strain
-  and diluted Exploit/Overclock pools); for the win-rate pass.
 - **System strain** (S12): its first step (~1.5 Heat at layer 1, doubling)
   is a dial for the Heat pass; the user is keeping an eye on it.
 - **Heat** (session 69): allowances now grow by layer (56/63/72/80), about
@@ -138,17 +138,9 @@ Balance and content:
   it comes up again: layer 1 to ~52, and flatter fight Heat at layers 3-4.
 - **Classes** (session 69): 23.7-28.3%, Operator at the top edge (28.3%):
   Backdoor Maintenance at Suppress 1.25 would centre it if needed.
-- **Heat rarely ends a simulated run** (1-3% heat-maxed or caught), so
-  Ghost Credentials (-26 Heat a run) and Black Market Ties (+19) measure
-  ~0 victory (session 65). Revisit both with Heat tuning.
 - **Mirror Hand** (0.33 of the uncommon average) and **Persistent
   Payload** (a fixture floor) are unmeasured in builds that suit them; the
   six-commons duel fixture reads build-dependent Mods low.
-- **Elites barely threaten a 6-subroutine loadout** (97.7% player wins at
-  layer 2, session 64's Burner check) and regular/elite losses are rare
-  (the user: rarely contained outside gatekeepers). Look at regular and
-  elite difficulty in the enemy pass; **Skeleton Key**'s fate follows (a
-  closed node only comes from such a loss).
 - **Blackhat vs Firewall Prime: 36%** at layer 1 (its bursts hit No Way
   In's cap), against 59.7% overall for the class.
 - **The Concierge vs Warden** (a tester's run, session 64): contained at
@@ -157,15 +149,6 @@ Balance and content:
   5 hands at ~10 Containment a turn: the worst case for a slow-ramping
   class. Warden beats it 77% (vs 100% against Firewall Prime). Consider a
   trim for onboarding (its scale, or Reception Protocol once per fight).
-- **Win rates** (session 66, before the enemy and tuning passes): average 38.0% (Breacher 42.0% to
-  Eidolon 34.0%, session 65); the reworked Burners added ~6 points, the
-  Mods ~11 (most from the rule-benders raising the pool's uncommon and
-  rare share at the same supply: the user's call is content first, then
-  tune supply). The user (session
-  64): testers new to Cribbage find it too hard, so higher is welcome;
-  report shifts, don't chase the old 15-20% band. Warden gains from Burners
-  as much as the rest once they're saved for elites and gatekeepers; it's
-  strongest of all at layer 1 (89%) and falls off deeper.
 - **Mods:** ~12 at the layer-4 gatekeeper (Shop 4.6, elites 4.1,
   gatekeepers 3.0) against the user's ~10 by a run's end. Trims left: Mod
   rewards from gatekeepers, Event Mods.

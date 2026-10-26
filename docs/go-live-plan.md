@@ -11,7 +11,12 @@ balance work (the session 64-66 balance notes were stale; today's
 measurements are on target: ~25% victory for the simulated player, classes
 within noise of each other).
 
-## 1. Release cleanup
+## 1. Release cleanup (done, session 72)
+
+Done: the switches, #test and the mockups are development-only (the user:
+keep the test harnesses, never in the release build; `src/DevRoutes.svelte`
+loads only in development); version 0.9.0 on the main menu; the CI actions
+on their Node 24 majors; the stale balance notes pruned.
 
 - Remove the testing switches `?unlockall` and `?resetprofile`
   (`src/ui/testing-flags.ts`) and the run-start "test a single fight

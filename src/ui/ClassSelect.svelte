@@ -28,7 +28,7 @@
     resumeFailed = false,
   }: {
     onstart: (classId: ClassId, picks: { starter?: string; burner?: BurnerId; securityLevel?: number; plain?: boolean }) => void;
-    ontest: () => void;
+    ontest?: () => void;
     onmenu?: () => void;
     saved?: { className: string; layer: number; savedAt: number } | null;
     onresume?: () => void;
@@ -161,7 +161,8 @@
     </div>
   {/if}
   <button class="start" onclick={start}>▶ jack in as {CLASS_DEFINITIONS[chosen].name}</button>
-  <button class="test" onclick={ontest}>test a single fight instead</button>
+  <!-- Development only (go-live step 1): App passes ontest only there. -->
+  {#if import.meta.env.DEV && ontest}<button class="test" onclick={ontest}>test a single fight instead</button>{/if}
 </div>
 
 {#if picking === 'starter'}

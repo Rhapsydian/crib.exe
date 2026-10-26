@@ -1,10 +1,9 @@
 /**
- * !!! REMOVE BEFORE RELEASE !!!
- *
  * Testing-only URL switches (session 71, docs/meta-progression-design.md
- * MP5 and MP12). The user wants these gone before release; BACKLOG
- * carries the same warning. They exist so playtesting never waits on
- * progress:
+ * MP5 and MP12), for development only (go-live step 1, the user: out of
+ * the release build, kept for development). They read false in a release
+ * build, where the build tool drops them. They exist so testing never
+ * waits on progress:
  * - `?resetprofile` wipes the meta-progression profile (Rep, unlocks,
  *   upgrades) on load;
  * - `?unlockall` opens every class and the whole library (checkpoint 2).
@@ -17,5 +16,5 @@ function flag(name: string): boolean {
   }
 }
 
-export const RESET_PROFILE_FLAG = flag('resetprofile');
-export const UNLOCK_ALL_FLAG = flag('unlockall');
+export const RESET_PROFILE_FLAG = import.meta.env.DEV && flag('resetprofile');
+export const UNLOCK_ALL_FLAG = import.meta.env.DEV && flag('unlockall');

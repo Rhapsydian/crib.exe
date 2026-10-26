@@ -167,9 +167,17 @@
   <!-- First-time tips (session 63, T6): shown once each; this brings them
        back, e.g. for a new tester on the same machine. -->
   <button class="tips-reset" onclick={() => { tips.reset(); tipsReset = true; }} disabled={tipsReset}>{tipsReset ? 'tips will show again' : 'show tips again'}</button>
+  <!-- The version, for bug reports (go-live step 1). -->
+  <div class="version">v{__APP_VERSION__}</div>
 </div>
 
 <style>
+  .version {
+    align-self: center;
+    font-size: 10px;
+    color: var(--text-dim);
+    opacity: 0.6;
+  }
   .tips-reset {
     align-self: center;
     margin-top: 8px;

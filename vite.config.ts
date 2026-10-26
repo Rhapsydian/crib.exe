@@ -1,9 +1,13 @@
 import { defineConfig } from 'vitest/config'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
+import pkg from './package.json'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [svelte()],
+  // The game's version, from package.json, for the main menu and bug
+  // reports (go-live step 1: 0.9.0 now, 1.0.0 at release).
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   // Relative asset paths, so the built game runs from any address: the
   // demo at https://cribexe.com (GitHub Pages; once under /crib.exe/), and
   // itch.io later.
