@@ -117,10 +117,9 @@
         <button class="step" aria-label="lower" disabled={securityLevel <= 0} onclick={() => (securityLevel = Math.max(0, securityLevel - 1))}>◀</button>
         <span class="level" aria-live="polite">{securityLevel}</span>
         <button class="step" aria-label="higher" disabled={securityLevel >= profile.securityOpen} onclick={() => (securityLevel = Math.min(profile.securityOpen, securityLevel + 1))}>▶</button>
-        {#if securityLevel === 0}<span class="dim">Standard network</span>{/if}
       </div>
       {#if securityLevel === 0}
-        <div class="dim">No changes.</div>
+        <div class="dim">Standard network</div>
       {:else}
         <ul class="effects">
           {#each securityEffects(securityLevel) as e (e.text)}<li class:new={e.isNew}>{e.text}{#if e.isNew}<span class="tag">new</span>{/if}</li>{/each}
