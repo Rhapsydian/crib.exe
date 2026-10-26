@@ -288,7 +288,7 @@ export function describeBeat(beat: CombatBeat): string {
     case 'points':
       return `${beat.phase === 'show' ? 'show: ' : ''}${scoreLabel(beat.occurrence, beat.phase)}`;
     case 'show':
-      return `// show: ${showTitle(beat.owner, beat.player)} · ${beat.cards.map(cardLabel).join(', ')} + ${cardLabel(beat.starter)} · ${beat.total === 0 ? 'no score' : `${beat.total} points`}`;
+      return `// show: ${showTitle(beat.owner, beat.player)} · ${beat.cards.map(cardLabel).join(' ')} + ${cardLabel(beat.starter)} · ${beat.total === 0 ? 'no score' : `${beat.total} points`}`;
     case 'burner':
       return `${beat.side === 0 ? 'you burn' : 'they burn'} ${burnerLabel(beat.burnerId)}`;
     case 'mod':
