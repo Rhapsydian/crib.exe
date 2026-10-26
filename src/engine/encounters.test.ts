@@ -14,7 +14,7 @@ import { REWARD_OPTIONS_COUNT } from './rewards';
 import { dataForTier } from './data';
 import { REROLL_COST, buyCheapestAffordable, type ShopRerollStrategy } from './shop';
 import { preferMergeWhenAvailable } from './merge';
-import { postedFightRisk } from './heat';
+import { fightBaselineHeat, flawlessHeatWaiver, postedFightRisk } from './heat';
 
 /**
  * Session 51 port: fixtures moved to the redesigned model. The win side
@@ -561,4 +561,34 @@ describe('heatSources (session 50) -- Heat attribution', () => {
     }
     expect(seen).toBeGreaterThan(0);
   }, 90_000);
+});
+
+// Session 72 (the user's idea): clean work leaves fewer traces. A player at
+// full strength plays exactly the coach's choices, so every fight it plays
+// is Flawless, and every one waives a little Heat (FLAWLESS_HEAT).
+describe('a Flawless Cribbage rating waives a little Heat', () => {
+  it('at full strength, every fight is Flawless and its baseline is cut', () => {
+    let fights = 0;
+    for (let seed = 0; seed < 6; seed++) {
+      const result = playRun({ seed, classId: 'exploit-daemon', playerSkill: 1 });
+      for (const e of result.log) {
+        if (e.type !== 'encounter' || !e.outcome.fight) continue;
+        const { tier } = e.outcome.fight;
+        if (tier === 'gatekeeper' && e.outcome.quarantined) continue;
+        expect(e.outcome.fight.flawlessWaived).toBe(flawlessHeatWaiver(tier, e.layerIndex));
+        // A loss books its Heat as the loss, not a baseline.
+        if (e.outcome.newState === 'inert') expect(e.outcome.heatSources.baseline).toBeCloseTo(fightBaselineHeat(tier, e.layerIndex) - flawlessHeatWaiver(tier, e.layerIndex), 9);
+        expect(totalHeatSources(e.outcome.heatSources)).toBeCloseTo(e.outcome.heatDelta, 9);
+        fights++;
+      }
+    }
+    expect(fights).toBeGreaterThan(10);
+  }, 120_000);
+
+  it('a careless player is never Flawless, and pays the baseline', () => {
+    const result = playRun({ seed: 3, classId: 'exploit-daemon', playerSkill: 0.2 });
+    const fights = result.log.filter((e) => e.type === 'encounter' && e.outcome.fight && e.outcome.newState === 'inert');
+    expect(fights.length).toBeGreaterThan(0);
+    for (const e of fights) if (e.type === 'encounter') expect(e.outcome.fight!.flawlessWaived).toBeUndefined();
+  }, 120_000);
 });

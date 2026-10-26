@@ -652,6 +652,7 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
   it("the fight screen's Heat outlook charges a win or a loss exactly as the run does (session 63)", () => {
     let checked = 0;
     let losses = 0;
+    let flawless = 0;
     // Weaker play too, so regular and elite losses turn up.
     // A feeble loadout, so regular and elite losses turn up (session 66:
     // weak play alone stopped producing one -- elites are too easy, BACKLOG).
@@ -673,15 +674,20 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
           enemyFill: e.outcome.fight.finalFillFraction[1],
           refund: -e.outcome.heatSources.refund,
           multiplier: e.outcome.heatSources.mod > 0 ? GHOST_CREDENTIALS_FIGHT_HEAT : 1,
+          // A Flawless Cribbage rating waives the baseline (session 72).
+          flawless: e.outcome.fight.flawlessWaived !== undefined,
         });
         // Before any map Burner's cut (booked as `burner` Heat, session 64).
         expect(won ? o.winGain : o.loseGain!).toBeCloseTo(e.outcome.heatDelta - e.outcome.heatSources.burner, 6);
         if (!won) losses++;
+        if (e.outcome.fight.flawlessWaived !== undefined) flawless++;
         checked++;
       }
     }
     expect(checked).toBeGreaterThan(50);
     expect(losses).toBeGreaterThan(0);
+    // Flawless fights turn up, so the waiver is checked too.
+    expect(flawless).toBeGreaterThan(0);
   }, 150_000);
 
   it('trace evasion (session 63): a maxed toll after a gatekeeper win plays an evasion; escape goes on, a loss is caught', () => {

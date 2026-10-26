@@ -5,6 +5,10 @@
  * review coach (ui/skill-review.ts), the Daily Run score (daily.ts) and
  * the Flawless Heat waiver all read these, so the levels live here once.
  */
+import type { Card } from './cards';
+import { judgePegs, predictBestDiscard, scoreDiscard, type PegTable } from './ai';
+import { cardsEqual } from './cards';
+
 export type Stars = 1 | 2 | 3 | 4 | 5;
 
 /** Best first: the most points given up per hand that still earns the
@@ -31,4 +35,36 @@ export const starText = (stars: Stars): string => '★'.repeat(stars) + '☆'.re
 export function nextStar(stars: Stars): { label: string; maxLostPerHand: number } | null {
   const next = SKILL_STARS.find((s) => s.stars === stars + 1);
   return next ? { label: next.label, maxLostPerHand: next.maxLostPerHand } : null;
+}
+
+/** What a discard gave up: the AI's best keep less yours, in expected
+ * points over every cut and the crib. (The review coach's yardstick,
+ * session 70; here since session 72 so a fight can rate itself.) */
+export function discardLoss(hand: Card[], thrown: [Card, Card], ownCrib: boolean, starter?: Card): number {
+  const best = predictBestDiscard(hand, ownCrib, starter);
+  return Math.max(0, scoreDiscard(hand, best, ownCrib, undefined, undefined, starter) - scoreDiscard(hand, thrown, ownCrib, undefined, undefined, starter));
+}
+
+/** What a pegging play gave up: the best play's net less yours (points
+ * now, less the opponent's expected reply). Null when the choice didn't
+ * matter: one card to play, or every card as good as another. */
+export function pegLoss(table: PegTable, played: Card): number | null {
+  const { judged, best } = judgePegs(table);
+  const nets = judged.map((j) => j.net);
+  if (Math.max(...nets) - Math.min(...nets) <= 0.05) return null;
+  const net = (c: Card) => nets[table.legal.findIndex((l) => cardsEqual(l, c))];
+  return Math.max(0, net(best) - net(played));
+}
+
+/** A fight's choices, tallied as they're made (combat.ts): the points
+ * given up, the hands with a choice in them, and the choices that counted. */
+export interface SkillTally {
+  lost: number;
+  hands: number;
+  counted: number;
+}
+
+/** A tally's stars; null with nothing that counted. */
+export function tallyStars(tally: SkillTally): Stars | null {
+  return tally.counted ? starsFor(tally.lost / tally.hands) : null;
 }

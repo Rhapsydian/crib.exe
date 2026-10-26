@@ -14,6 +14,8 @@ import type { ModId } from './mod-types';
 import type { BurnerId, BurnerTiming } from './burner-types';
 import { BURNER_DEFINITIONS } from './burners';
 import { OVERCLOCKED_KERNEL_BAR } from './mods';
+import { discardLoss, pegLoss, type SkillTally } from './skill';
+import { pegTableOf } from './ai';
 import { FAST_PATH_MULTIPLIER, HOUSE_EDGE_MULTIPLIER, THROTTLED_LINK_BAR } from './gatekeeper-mods';
 import {
   occurrencesFromPeggingEvent,
@@ -203,6 +205,9 @@ export interface CombatResult {
    * the player (side 0) during this fight -- surfaced so encounters.ts can
    * add it to run Heat, win or lose. Heat is player-only (session 43). */
   heatGenerated: number;
+  /** The player's Cribbage this fight (session 72; skill.ts): unset on a
+   * synthesised result. */
+  skill?: SkillTally;
   /** How the match actually ended (session 27, checkpoint E): 'threshold'
    * -- a side genuinely crossed its own win-gauge threshold, the normal
    * way. 'attrition' -- neither side had, by HARD_RESOLUTION_HAND, so
@@ -643,6 +648,17 @@ export function* combatGenerator(
   // Checkpoint C populates this from the real activation call site --
   // always empty until burnerActivationStrategies is actually wired up.
   const burnersUsedThisCombat: BurnerId[] = [];
+  // The player's Cribbage, rated as the review coach rates it (session 72:
+  // a Flawless fight waives its baseline Heat). A hand counts once it holds
+  // a choice; a choice that didn't matter (null) adds nothing else.
+  const skill: SkillTally = { lost: 0, hands: 0, counted: 0 };
+  let skillHand = -1;
+  const tallySkill = (handIndex: number, lost: number | null) => {
+    if (handIndex !== skillHand) (skillHand = handIndex), skill.hands++;
+    if (lost === null) return;
+    skill.lost += lost;
+    skill.counted++;
+  };
 
   const finish = (winner: PlayerIndex, resolvedBy: 'threshold' | 'attrition' = 'threshold'): CombatResult => (flushMods(), timeline.push({ kind: 'end', firesBefore: log.length, gauges: readGauges(combatState) }), {
     winner,
@@ -657,6 +673,7 @@ export function* combatGenerator(
     heatGenerated: combatState.sides[0].heat,
     resolvedBy,
     burnersUsedThisCombat,
+    skill: { ...skill },
   });
 
   /** Applies one step's result, tracks each side's running win-gauge
@@ -940,6 +957,9 @@ export function* combatGenerator(
       const context: DiscardContext = { hand: dealtHands[side], isOwnCrib: dealer === side, ...(earlyStarter ? { starter: earlyStarter } : {}), knownOpponentHand: combatState.sides[side].knownOpponentHand, knownCribCards, rng: aiRng };
       const forced = combatState.sides[side].forcedDiscardPair;
       const chosen = forced ?? ((yield { kind: 'discard', side, context, view: view(i, dealer) }) as [Card, Card]);
+      // The player's choice, rated as the review rates it (session 72):
+      // a full six-card hand's discard, not one the engine forced.
+      if (side === 0 && !forced && context.hand.length === 6) tallySkill(i, discardLoss(context.hand, chosen, context.isOwnCrib, context.starter));
       // "Now" Burners commit with your decision (BE2): offered right after
       // it, applied before it resolves.
       if (!forced) yield* offerBurner(side, 'now', i, dealer);
@@ -1025,13 +1045,15 @@ export function* combatGenerator(
       }
       if (!advanced.decision) break;
       const { player, legalCards, count, sequence, hand, played: playedSoFar, opponentCards } = advanced.decision;
+      const playContext: PlayContext = { legalCards, count, sequence, seen: [...hand, ...playedSoFar, starter], opponentCards, ...(countLimit !== COUNT_LIMIT ? { limit: countLimit } : {}), knownCrib: combatState.sides[player].knownCrib, knownOpponentHand: combatState.sides[player].knownOpponentHand, rng: aiRng };
       const card = (yield {
         kind: 'play',
         side: player,
-        context: { legalCards, count, sequence, seen: [...hand, ...playedSoFar, starter], opponentCards, ...(countLimit !== COUNT_LIMIT ? { limit: countLimit } : {}), knownCrib: combatState.sides[player].knownCrib, knownOpponentHand: combatState.sides[player].knownOpponentHand, rng: aiRng },
+        context: playContext,
         view: view(i, dealer),
         pegging: { hand: pegging.hands[player].slice(), opponentCardsLeft: pegging.hands[(1 - player) as PlayerIndex].length, events: pegging.events },
       }) as Card;
+      if (player === 0) tallySkill(i, pegLoss(pegTableOf(playContext), card));
       // "Now" Burners commit with your card (BE2), before it resolves.
       winner = yield* offerBurner(player, 'now', i, dealer);
       if (winner !== null) return finish(winner);

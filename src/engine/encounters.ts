@@ -1,4 +1,5 @@
 import type { MapNode, NodeState } from './map-types';
+import { tallyStars } from './skill';
 import type { Rng } from './rng';
 import { scaledProcess, type SubroutineDefinition } from './subroutine-types';
 import type { RunPlayerState } from './run';
@@ -10,7 +11,7 @@ import { ask, driveWithFallbacks, type RunRequest, type ShopAction, type ShopSla
 import { discardSkillStrategy, pegSkillStrategy } from './ai';
 import { discardLowestTwo, type DiscardStrategy } from './deal';
 import { playLowestLegal, type PlayStrategy } from './pegging';
-import { SYSTEM_STRAIN_LOSSES, currentHeatCeiling, eventHeat, fightBaselineHeat, fightPerformanceHeat, heatFromLoss } from './heat';
+import { SYSTEM_STRAIN_LOSSES, currentHeatCeiling, eventHeat, fightBaselineHeat, fightPerformanceHeat, flawlessHeatWaiver, heatFromLoss } from './heat';
 import { drawCacheRewardOptions, drawRewardOptions, drawUpgradedRewardOptions, rewardPoolForClass, rarityOf, type RewardTier } from './rewards';
 import { dataForTier } from './data';
 import { MERGE_RANK_CAP, pickMergeTarget, preferMergeWhenAvailable, type MergeTargetStrategy, type SafehouseStrategy } from './merge';
@@ -338,6 +339,9 @@ export interface EncounterOutcome {
     finalFillFraction: [number, number];
     /** Hands actually played, for the same reason. */
     hands: number;
+    /** A Flawless Cribbage rating (session 72): the Heat this fight
+     * waived (heat.ts FLAWLESS_HEAT). */
+    flawlessWaived?: number;
   };
   quarantined: boolean;
   rewardTier: RewardTier;
@@ -684,6 +688,11 @@ function* resolveFight(
     result = { ...retry, burnersUsedThisCombat: [...spent, ...retry.burnersUsedThisCombat] };
     yield* ask({ kind: 'fightEnd', enemy, tier: kind, result, fallback: () => null });
   }
+  // Clean work leaves fewer traces (session 72, the user's idea): a
+  // Flawless Cribbage rating takes FLAWLESS_HEAT off the fight's baseline,
+  // win or lose. A lost gatekeeper is Quarantine, with no Heat to waive.
+  const waived = result.skill && tallyStars(result.skill) === 5 && !(kind === 'gatekeeper' && result.winner !== 0) ? flawlessHeatWaiver(kind, layer0) : 0;
+  const fightInfo = { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, finalFillFraction: result.finalFillFraction, hands: result.hands.length, ...(waived ? { flawlessWaived: waived } : {}) };
   if (result.winner === 0) {
     const rewardTier: RewardTier = kind === 'regular' ? 'standard' : 'better';
     // Additive Mod-choice reward on elite/gatekeeper wins only (session
@@ -715,9 +724,9 @@ function* resolveFight(
     const alarm = result.heatGenerated;
     return {
       newState: 'inert',
-      heatDelta: baseline + alarm + performance - modified.heatRefund, // Heat Sink (session 44); addHeat already floors at 0
-      heatSources: { ...NO_HEAT_SOURCES, baseline, alarm, performance, refund: -modified.heatRefund },
-      fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, finalFillFraction: result.finalFillFraction, hands: result.hands.length },
+      heatDelta: baseline - waived + alarm + performance - modified.heatRefund, // Heat Sink (session 44); addHeat already floors at 0
+      heatSources: { ...NO_HEAT_SOURCES, baseline: baseline - waived, alarm, performance, refund: -modified.heatRefund },
+      fight: fightInfo,
       quarantined: false,
       rewardTier,
       dataAwarded: modified.dataAwarded,
@@ -747,7 +756,7 @@ function* resolveFight(
       heatDelta: 0,
       // A gatekeeper loss bypasses Heat entirely (heat.ts) -- nothing to attribute.
       heatSources: NO_HEAT_SOURCES,
-      fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, finalFillFraction: result.finalFillFraction, hands: result.hands.length },
+      fight: fightInfo,
       quarantined: true,
       rewardTier: 'none',
       dataAwarded: 0,
@@ -767,7 +776,7 @@ function* resolveFight(
   }
   // R7: a loss pays the baseline plus LOSS_MULTIPLIER x the performance
   // weight, plus whatever the enemy's alarms raised.
-  const lossHeat = heatFromLoss(kind, layer0);
+  const lossHeat = heatFromLoss(kind, layer0) - waived;
   const alarm = result.heatGenerated;
   return {
     newState: 'closed',
@@ -782,7 +791,7 @@ function* resolveFight(
       attritionLoss: result.resolvedBy === 'threshold' ? 0 : lossHeat,
       alarm,
     },
-    fight: { enemyId: enemy.id, tier: kind, resolvedBy: result.resolvedBy, peakFillFraction: result.peakFillFraction, finalFillFraction: result.finalFillFraction, hands: result.hands.length },
+    fight: fightInfo,
     quarantined: false,
     rewardTier: 'none',
     dataAwarded: 0,

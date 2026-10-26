@@ -5,7 +5,8 @@
   import { readGauges } from '../engine/resolve';
   import { untrack } from 'svelte';
   import { mergeSteps, pointsSummary, stepGauges } from './timeline';
-  import { fightHeatOutlook } from '../engine/heat';
+  import { fightHeatOutlook, flawlessHeatWaiver } from '../engine/heat';
+  import { tallyStars } from '../engine/skill';
   import { rateSkill } from './skill-review';
   import StarRating from './StarRating.svelte';
   import SkillReview from './SkillReview.svelte';
@@ -66,10 +67,20 @@
   // user's ask, session 63) -- a win's baseline, alarms and performance
   // term; a loss's price and alarms. A lost gatekeeper is Quarantine, not
   // Heat, so it shows none.
+  // The Heat a Flawless rating waived (session 72), as the engine works it
+  // out (encounters.ts): null when it didn't apply. A lost gatekeeper
+  // charges no Heat, so there's nothing to waive.
+  const flawless = $derived.by(() => {
+    const r = fight.result;
+    if (!r?.skill || !fight.heat || tallyStars(r.skill) !== 5) return null;
+    if (r.winner !== 0 && fight.heat.tier === 'gatekeeper') return null;
+    return flawlessHeatWaiver(fight.heat.tier, fight.heat.layerIndex);
+  });
   const heatGained = $derived.by(() => {
     const r = fight.result;
     if (!r || !fight.heat) return null;
-    const o = fightHeatOutlook({ ...fight.heat, alarm: r.heatGenerated, enemyFill: r.finalFillFraction[1] });
+    // A Flawless Cribbage rating waives a little Heat (session 72).
+    const o = fightHeatOutlook({ ...fight.heat, alarm: r.heatGenerated, enemyFill: r.finalFillFraction[1], flawless: flawless !== null });
     if (r.winner === 0) return { gain: o.winGain, after: o.ifWin, allowance: o.allowance, maxed: o.caughtIfWin };
     if (o.loseGain === undefined || o.ifLose === undefined) return null;
     return { gain: o.loseGain, after: o.ifLose, allowance: o.allowance, maxed: o.caughtIfLose };
@@ -106,6 +117,7 @@
       <div class="line heat" class:maxed={heatGained.maxed}>
         Heat {heatGained.gain < 0 ? '−' : '+'}{fmtHeat(Math.abs(heatGained.gain))} → {fmtHeat(heatGained.after)}/{fmtHeat(heatGained.allowance)}{heatGained.maxed ? ' · maxed' : ''}
       </div>
+      {#if flawless !== null}<div class="line flawless">Flawless Cribbage: clean work, {fmtHeat(flawless)} Heat avoided.</div>{/if}
     {/if}
     {#if rating}
       <button class="rating" onclick={() => (coachOpen = true)}>Cribbage: <StarRating stars={rating.stars} /> {rating.label} <span class="review">review ▸</span></button>
@@ -178,6 +190,9 @@
   }
   .heat {
     color: var(--warn);
+  }
+  .flawless {
+    color: var(--accent);
   }
   .heat.maxed {
     color: var(--danger);

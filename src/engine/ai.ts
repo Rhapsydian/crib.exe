@@ -124,11 +124,29 @@ export function scoreDiscard(
   /** Early Cut's starter, already turned: the kept hand scores exactly. */
   starter?: Card,
 ): number {
+  const [handEV, cribEV] = discardValues(fullHand, discardPair, knownOtherCribCards, starter);
+  return weights.handValue * handEV + (isOwnCrib ? weights.cribValue : -weights.cribValue) * cribEV;
+}
+
+/** A keep's expected hand and crib values, remembered for the hands being
+ * decided now (session 72): a fight rates the player's discard against the
+ * best one (skill.ts discardLoss), which needs the same fifteen pairs the
+ * discard AI just scored. Small and cleared when full: it only has to span
+ * one decision. */
+const discardMemo = new Map<string, [number, number]>();
+const DISCARD_MEMO_MAX = 4096;
+const cardKey = (c: Card) => `${c.rank}.${c.suit}`;
+function discardValues(fullHand: Card[], discardPair: [Card, Card], knownOtherCribCards?: [Card, Card], starter?: Card): [number, number] {
   const keptHand = fullHand.filter((card) => !discardPair.some((discarded) => cardsEqual(discarded, card)));
+  const key = [keptHand.map(cardKey).sort().join(','), discardPair.map(cardKey).sort().join(','), starter ? cardKey(starter) : '', knownOtherCribCards ? knownOtherCribCards.map(cardKey).sort().join(',') : ''].join('|');
+  const memo = discardMemo.get(key);
+  if (memo) return memo;
   const unseen = unseenCards(starter ? [...fullHand, starter] : fullHand);
   const handEV = starter ? countHand(keptHand, starter).total : handExpectedValue(keptHand, unseen);
   const cribEV = cribExpectedValue(discardPair, unseen, knownOtherCribCards);
-  return weights.handValue * handEV + (isOwnCrib ? weights.cribValue : -weights.cribValue) * cribEV;
+  if (discardMemo.size >= DISCARD_MEMO_MAX) discardMemo.clear();
+  discardMemo.set(key, [handEV, cribEV]);
+  return [handEV, cribEV];
 }
 
 /**
@@ -331,8 +349,13 @@ function pickPeg(cards: Card[], scores: number[], risks: number[]): Card {
 /** The full-strength choice: what the coach recommends and the AI at
  * skill 1 plays. */
 export function bestPeg(table: PegTable): Card {
+  return judgePegs(table).best;
+}
+
+/** Every legal card judged once, and the full-strength pick among them. */
+export function judgePegs(table: PegTable): { judged: { pts: number; risk: number; net: number }[]; best: Card } {
   const judged = table.legal.map((c) => pegNet(c, table));
-  return pickPeg(table.legal, judged.map((j) => j.net), judged.map((j) => j.risk));
+  return { judged, best: pickPeg(table.legal, judged.map((j) => j.net), judged.map((j) => j.risk)) };
 }
 
 /** A PlayContext as the judgement reads it. Contexts from older callers

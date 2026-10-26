@@ -14,6 +14,7 @@ import {
 } from '../engine/enemies';
 import { CLASS_DEFINITIONS, type ClassId } from '../engine/classes';
 import { LiveFight } from './live-fight.svelte';
+import { decisionFor, rateSkill, type SkillDecision } from './skill-review';
 
 // The UI driver must be a faithful driver: a live fight answered the way
 // the simulation would answer it ends exactly as playCombat does.
@@ -61,4 +62,32 @@ describe('LiveFight', () => {
       expect(live.result.finalFillFraction).toEqual(sim.finalFillFraction);
     });
   }
+});
+
+// Session 72: a fight rates its own Cribbage (it waives Heat on Flawless),
+// and the review rates the same choices for the player. They must agree.
+describe("a fight's own rating", () => {
+  it('matches the review coach, choice for choice', () => {
+    for (const [classId, enemyId, skill] of [['exploit-overclock', 'pentest-script', 0.85], ['daemon-honeypot', 'threat-intel-feed', 0.4], ['overclock-honeypot', 'quarantine-ward', 1]] as const) {
+      for (const seed of [1, 2, 3]) {
+        const live = new LiveFight({ classId, enemy: ENEMY_ROSTER.find((e) => e.id === enemyId)!, seed });
+        const discard = discardSkillStrategy(skill);
+        const peg = pegSkillStrategy(skill);
+        const decisions: SkillDecision[] = [];
+        while (!live.result) {
+          const r = live.frame!.request;
+          const answer = r.kind === 'discard' ? discard(r.context) : r.kind === 'play' ? peg(r.context) : null;
+          const d = decisionFor(r, answer as never);
+          if (d) decisions.push(d);
+          live.answer(answer as never);
+        }
+        const review = rateSkill(decisions, false)!;
+        const tally = live.result.skill!;
+        expect(tally.hands).toBe(review.hands);
+        expect(tally.counted).toBe(review.decisions);
+        expect(tally.lost / tally.hands).toBeCloseTo(review.lostPerHand, 9);
+        if (skill === 1) expect(review.stars).toBe(5);
+      }
+    }
+  }, 120_000);
 });

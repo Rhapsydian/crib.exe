@@ -318,18 +318,6 @@ export function showSummary(timeline: readonly CribbageBeat[]): string[] {
   });
 }
 
-/** What a discard gave up (the review coach, session 70): the coach's
- * keep less yours, in expected points over every cut and the crib. */
-export function discardLoss(hand: Card[], thrown: [Card, Card], ownCrib: boolean, starter?: Card): number {
-  const best = predictBestDiscard(hand, ownCrib, starter);
-  return Math.max(0, scoreDiscard(hand, best, ownCrib, undefined, undefined, starter) - scoreDiscard(hand, thrown, ownCrib, undefined, undefined, starter));
-}
-
-/** What a pegging play gave up: the coach's play's net less yours (points
- * now, less the opponent's expected reply). Null when the choice didn't
- * matter: one card to play, or every card as good as another. */
-export function pegLoss(spot: PegSpot, played: Card): number | null {
-  const nets = spot.legal.map((c) => pegNet(c, spot).net);
-  if (Math.max(...nets) - Math.min(...nets) <= 0.05) return null;
-  return Math.max(0, pegNet(bestPlay(spot), spot).net - pegNet(played, spot).net);
-}
+/** What a choice gave up (the review coach's yardstick): the engine's
+ * (skill.ts), so a fight's own rating and the review agree. */
+export { discardLoss, pegLoss } from '../engine/skill';

@@ -204,6 +204,18 @@ export interface FightHeatOutlook {
  * TBD/measured. */
 export const SYSTEM_STRAIN_LOSSES = 0.1;
 
+/** Clean work leaves fewer traces (session 72, the user's idea): a
+ * Flawless Cribbage rating takes this much off a fight's baseline Heat,
+ * win or lose. Measured (100 runs a class, the simulated player): -1 lifts
+ * victory ~25% -> ~28%; -2 ~32%; the whole baseline ~36%. */
+export const FLAWLESS_HEAT = 1;
+
+/** The Heat a Flawless fight waives: FLAWLESS_HEAT, never more than its
+ * baseline. */
+export function flawlessHeatWaiver(tier: FightTier, layerIndex: number): number {
+  return Math.min(FLAWLESS_HEAT, fightBaselineHeat(tier, layerIndex));
+}
+
 export function fightHeatOutlook(o: {
   heat: number;
   allowance: number;
@@ -218,11 +230,14 @@ export function fightHeatOutlook(o: {
   refund?: number;
   /** Ghost Credentials' multiple on the fight's Heat (session 65), if any. */
   multiplier?: number;
+  /** A Flawless Cribbage rating this fight: FLAWLESS_HEAT is waived. */
+  flawless?: boolean;
 }): FightHeatOutlook {
   const now = Math.min(o.allowance, o.heat + o.alarm);
   const scaled = (gain: number) => (gain > 0 ? gain * (o.multiplier ?? 1) : gain);
-  const ifWin = Math.max(0, o.heat + scaled(fightBaselineHeat(o.tier, o.layerIndex) + o.alarm + fightPerformanceHeat(o.tier, o.layerIndex, o.enemyFill) - (o.refund ?? 0)));
-  const ifLose = o.tier === 'gatekeeper' ? undefined : o.heat + scaled(heatFromLoss(o.tier, o.layerIndex) + o.alarm);
+  const waived = o.flawless ? flawlessHeatWaiver(o.tier, o.layerIndex) : 0;
+  const ifWin = Math.max(0, o.heat + scaled(fightBaselineHeat(o.tier, o.layerIndex) - waived + o.alarm + fightPerformanceHeat(o.tier, o.layerIndex, o.enemyFill) - (o.refund ?? 0)));
+  const ifLose = o.tier === 'gatekeeper' ? undefined : o.heat + scaled(heatFromLoss(o.tier, o.layerIndex) - waived + o.alarm);
   return {
     now,
     ifWin: Math.min(o.allowance, ifWin),
