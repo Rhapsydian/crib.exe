@@ -47,8 +47,8 @@ export function pickFile(files: readonly string[], last: string | undefined, ran
 }
 
 /** About one card in eight is a double tap: a second, different key
- * 110-170 ms later (the user: two distinct keystrokes), a touch quieter. */
-const CARD_DOUBLE = { chance: 1 / 8, gapMs: [110, 170] as [number, number], gain: 0.8 };
+ * 160-200 ms later (the user: two distinct keystrokes), a touch quieter. */
+const CARD_DOUBLE = { chance: 1 / 8, gapMs: [160, 200] as [number, number], gain: 0.8 };
 
 /** The keys a card plays: one, or now and then two different ones (a
  * double tap), never starting on `last`. */
