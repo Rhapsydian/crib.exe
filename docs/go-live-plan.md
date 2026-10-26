@@ -91,7 +91,11 @@ settings. Sources, licenses checked per file when chosen:
 
 Version, credits (Tabler Icons' MIT notice for the map icons; any sound
 credits from step 4), the user's name, and a feedback / bug link: the
-Discord server (step 5a).
+Discord server (step 5a). The user: a note that the game was developed
+with agentic development (Claude Code), and a link to the repository,
+https://github.com/Rhapsydian/crib.exe. Sound credits: Kenney's Casino
+Audio (CC0, credited as a courtesy); the synth sounds are the game's own
+(no third-party code: ZzFX was dropped for the browser's audio engine).
 
 ## 5a. A Discord server (the user)
 

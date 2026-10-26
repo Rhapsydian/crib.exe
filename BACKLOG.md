@@ -70,7 +70,9 @@ Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
 4. Sound effects (decision session): Kenney card sounds + ZzFX synth; no
    music at launch.
 5. About and credits (after sound): version, Tabler Icons' MIT notice,
-   sound credits, a feedback link (the Discord).
+   sound credits, a feedback link (the Discord), and a note that the game
+   was developed with agentic development (Claude Code), linking the
+   repository (https://github.com/Rhapsydian/crib.exe).
    5a. A Discord server (the user creates it; the link goes in About,
    itch.io and the patch notes).
    5b. In-game patch notes (decided): a "What's new" card after an
