@@ -23,7 +23,9 @@
     border-radius: 6px;
     line-height: 15px;
     font-size: 11px;
-    vertical-align: 1px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
     white-space: nowrap;
     /* A little air between chips in a row (the user: they read crowded). */
     margin: 0 2px;
