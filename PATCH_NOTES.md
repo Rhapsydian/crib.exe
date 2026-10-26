@@ -1,70 +1,86 @@
-# crib.exe patch notes: one AI and a clearer Cribbage rating
+# crib.exe patch notes: star ratings and a clearer Cribbage review
 
 **Play it at cribexe.com.**
 
-A small update since the progression and Daily Runs notes (now in
-`docs/patch-notes/2026-10-25.html`). It brings the Cribbage coach and
-the computer's play together, a rating you can check yourself, and a
-handful of fixes from playtest reports.
+What's new since the AI and rating update (now in
+`docs/patch-notes/2026-10-25-ai-rating.html`): the Cribbage rating in
+stars, a reward for flawless play, a rebuilt review screen, and clearer
+choices when you start a run.
 
 ## Highlights
 
-- **One Cribbage AI.** The coach and the computer opponent now think the
-  same way. What the coach recommends is exactly what the opponent plays
-  at full strength.
-- **A simpler Cribbage rating.** Your rating is now plain arithmetic:
-  100, less 10 for each point you gave up per hand.
-- **Flawless Form** now needs a Flawless rating (96% or better).
+- **Star ratings.** Your Cribbage rating is now 1 to 5 stars, from
+  Learning to Flawless.
+- **Clean work pays.** A Flawless fight avoids 1 Heat.
+- **A clearer review.** Your choice and the coach's side by side, in
+  numbers, with cards shown as small colored chips.
+- **Play Cribbage** ends with a star rating too, and picks up where you
+  left off when you resume.
+- **Starting a run:** pick your auxiliary subroutine and Burner from
+  lists with their full rules, and step through Security Levels with
+  their effects listed.
 
-## One AI
+## Star ratings
 
-The coach and the opponent used to judge pegging differently: the coach
-weighed what the other player might be holding, while the opponent
-followed a few rules of thumb. Head to head, the coach's way won 57% of
-games. Now there's one way, the coach's, everywhere:
+The rating is still based on the points you give up per hand compared
+with the coach, now shown as stars:
 
-- In fights, trace evasion, and Play Cribbage, the opponent pegs the way
-  the coach would, more or less carefully by its skill.
-- Hard in Play Cribbage plays exactly what the coach recommends.
-- When a Mod shows you the opponent's hand, the coach takes it into
-  account too.
+| Stars | Rating | Points given up per hand |
+|---|---|---|
+| ★☆☆☆☆ | Learning | more than 4.0 |
+| ★★☆☆☆ | Steady | 4.0 or less |
+| ★★★☆☆ | Sharp | 2.5 or less |
+| ★★★★☆ | Expert | 1.2 or less |
+| ★★★★★ | Flawless | 0.4 or less |
 
-Expect opponents to peg a little more sharply: they now avoid leaving
-counts you can score off, based on what you could actually be holding.
+The review tells you how far you are from the next star: *"You gave up an
+average of 1.6 points a hand. Expert is 1.2 or less."*
 
-## The Cribbage rating
+## Flawless Cribbage
 
-Each discard and pegging play is compared with what the coach would have
-done, in points. Your rating adds up the points you gave up, divides by
-the hands played, and takes 10 off 100 for each point:
+A fight with a Flawless rating avoids 1 Heat, win or lose. The fight's
+end card says so: *"Flawless Cribbage: clean work, 1 Heat avoided."*
 
-- Gave up 2.0 points a hand: **80**.
-- Gave up 0.5 points a hand: **95**.
+## The review
 
-The review now says it in words: *"You gave up 3.7 points a hand to the
-coach's choices, over 11 hands."* It lists only mistakes that cost a whole
-point or more. Most players will see their ratings go up: small slips now
-cost only what they're worth.
+- **Cards as chips.** Every card in the review, the coach and the log
+  is a small badge with its suit icon and rank, outlined in the suit's
+  color.
+- **Your choice beside the coach's, in numbers.** For a discard: what you
+  kept and threw, its points in hand, what the cut adds on average, and
+  what the crib is worth (negative when it's theirs), then the coach's
+  keep, then the difference. For pegging: the table, your card's points
+  and the opponent's expected reply, then the coach's card. A short line
+  under each says why. The numbers add up to the difference shown.
+- **The three costliest choices**, whatever they cost.
+- **The coach** uses the same layout when it looks back at your last
+  discard or play, in fights and in Play Cribbage.
 
-The labels are unchanged: Learning, Steady (60+), Sharp (75+), Expert
-(88+) and Flawless (96+). A run's rating counts every hand from every
-fight.
+## Play Cribbage
+
+- A game ends with its star rating and the same review.
+- Resuming a saved game opens where you left off, instead of replaying
+  every hand.
+
+## Starting a run
+
+- **Auxiliary subroutine** (it was the "4th starting subroutine"): tap
+  *Select auxiliary subroutine* for a list of everything you've unlocked,
+  grouped by archetype, with full rules. Your class's own subroutines
+  can't be picked.
+- **Starting Burner:** the same, with each Burner's rules.
+- Your picks show their full rules on the screen, with *change* and
+  *clear*.
+- **Security Level:** step through levels with ◀ ▶; the effects at that
+  level are listed, with the new ones marked.
 
 ## Daily Runs
 
-- The score's Cribbage line uses the new rating (5 points per rating
-  point, doubled on Card Sharp days).
-- **Flawless Form:** a Flawless rating (96% or better) scores +1,000. It
-  used to be 90%, which the new rating made too easy to reach.
+- The Cribbage line pays by stars: 100 / 200 / 350 / 500 / 700 (doubled
+  on Card Sharp days).
+- **Flawless Form** pays at 5 stars.
+- The share line shows your stars: `Cribbage ★★★★☆`.
 
 ## Fixes
 
-- The INIT bar no longer replays its fill when pegging ends.
-- The tutorial's cards stay on their own screen: the reward explanation no
-  longer pops up at the start of the next fight.
-- The Quiet Host's Refactor preview shows suit icons instead of
-  `[[suit:0]]`.
-- The elite tip waits until an elite is one move away, not the start of
-  the run.
-- In the loadout, a long subroutine name keeps its rank beside it, and
-  "+1 banked" stays on one line.
+- On iPhone, a quick double tap no longer zooms the page.

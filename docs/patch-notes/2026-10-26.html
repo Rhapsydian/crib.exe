@@ -1,0 +1,124 @@
+<title>crib.exe Patch Notes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: the game's own terminal look (one dark theme, on purpose, as the game has): a mono masthead, a sticky section rail, a readable sans body. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0f14; --raised: #121a23; --line: #22303d;
+  --text: #d6e2ee; --strong: #eef5fb; --dim: #7d8fa1; --accent: #39ff9c; --warn: #ffb347;
+  --exploit: #ff3d8b; --daemon: #3ddc84; --overclock: #29d3ff; --honeypot: #ffc23d; --mod: #c49bff; --heat: #ff8a3d;
+  --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; }
+.prompt { font-family: var(--mono); font-size: 13px; color: var(--dim); letter-spacing: .04em; }
+.prompt b { color: var(--accent); font-weight: 400; }
+h1 { font-family: var(--mono); font-weight: 800; font-size: clamp(28px, 6vw, 44px); line-height: 1.1; margin: 0; text-wrap: balance; color: var(--strong); }
+h1 .cursor { color: var(--accent); }
+.suits { display: flex; gap: 6px; }
+.suits span { width: 28px; height: 4px; border-radius: 2px; }
+.lede { color: var(--dim); max-width: 62ch; margin: 0; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; gap: 4px 16px; flex-wrap: wrap; padding-block: 12px; border-block: 1px solid var(--line); font-family: var(--mono); font-size: 12px; }
+nav a { color: var(--dim); text-decoration: none; }
+nav a:hover, nav a:focus-visible { color: var(--accent); outline: none; text-decoration: underline; }
+section { padding-top: 32px; scroll-margin-top: 72px; }
+h2 { font-family: var(--mono); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; text-wrap: balance; }
+h2::before { content: "// "; color: var(--dim); }
+h3 { font-family: var(--mono); font-size: 14px; font-weight: 700; margin: 22px 0 6px; color: var(--strong); }
+.h3-note { font-weight: 400; color: var(--dim); font-size: 12px; }
+p { margin: 0 0 12px; max-width: 68ch; }
+ul { margin: 0 0 12px; padding-left: 20px; max-width: 68ch; }
+li { margin: 4px 0; }
+li::marker { color: var(--dim); }
+ul ul { margin: 4px 0 6px; }
+b { font-weight: 600; color: var(--strong); }
+i { color: var(--dim); }
+code { font-family: var(--mono); font-size: .9em; }
+.notice { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--warn); border-radius: 6px; background: var(--raised); font-size: 15px; }
+.notice b { color: var(--warn); }
+li.suit { list-style: none; margin-left: -20px; padding-left: 12px; border-left: 3px solid var(--c); }
+li.suit b { color: var(--c); font-family: var(--mono); font-size: 14px; }
+.suit-exploit { --c: var(--exploit); } .suit-daemon { --c: var(--daemon); } .suit-overclock { --c: var(--overclock); } .suit-honeypot { --c: var(--honeypot); }
+#new-mods h3 { color: var(--mod); }
+#new-burners h3 { color: var(--heat); }
+#what-we-d-like-you-to-watch-for { margin-top: 32px; padding: 20px 18px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--raised); }
+.table-wrap { overflow-x: auto; margin: 0 0 12px; }
+table { border-collapse: collapse; font-size: 15px; min-width: 100%; }
+th, td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 12px; color: var(--dim); font-weight: 400; }
+footer { margin-top: 40px; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+<div class="wrap">
+<header>
+  <div class="prompt"><b>&gt;</b> ./crib.exe --changelog</div>
+  <h1>Patch notes<span class="cursor">_</span></h1>
+  <div class="suits" aria-hidden="true"><span style="background:var(--exploit)"></span><span style="background:var(--daemon)"></span><span style="background:var(--overclock)"></span><span style="background:var(--honeypot)"></span></div>
+  <p class="lede">Progression and Daily Runs: what's new for testers since the content update.</p>
+</header>
+<nav aria-label="Sections"><a href="#highlights">Highlights</a><a href="#star-ratings">Star ratings</a><a href="#flawless-cribbage">Flawless Cribbage</a><a href="#the-review">The review</a><a href="#play-cribbage">Play Cribbage</a><a href="#starting-a-run">Starting a run</a><a href="#daily-runs">Daily Runs</a><a href="#fixes">Fixes</a></nav>
+<section><h3>Play it at cribexe.com.</h3>
+<p>What's new since the AI and rating update (now in <code>docs/patch-notes/2026-10-25-ai-rating.html</code>): the Cribbage rating in stars, a reward for flawless play, a rebuilt review screen, and clearer choices when you start a run.</p>
+<section id="highlights"><h2>Highlights</h2>
+<ul>
+<li><b>Star ratings.</b> Your Cribbage rating is now 1 to 5 stars, from Learning to Flawless.
+</li>
+<li><b>Clean work pays.</b> A Flawless fight avoids 1 Heat.
+</li>
+<li><b>A clearer review.</b> Your choice and the coach's side by side, in numbers, with cards shown as small colored chips.
+</li>
+<li><b>Play Cribbage</b> ends with a star rating too, and picks up where you left off when you resume.
+</li>
+<li><b>Starting a run:</b> pick your auxiliary subroutine and Burner from lists with their full rules, and step through Security Levels with their effects listed.
+</li></ul>
+</section><section id="star-ratings"><h2>Star ratings</h2>
+<p>The rating is still based on the points you give up per hand compared with the coach, now shown as stars:</p>
+<div class="table-wrap"><table><thead><tr><th>Stars</th><th>Rating</th><th>Points given up per hand</th></tr></thead><tbody><tr><td>★☆☆☆☆</td><td>Learning</td><td>more than 4.0</td></tr><tr><td>★★☆☆☆</td><td>Steady</td><td>4.0 or less</td></tr><tr><td>★★★☆☆</td><td>Sharp</td><td>2.5 or less</td></tr><tr><td>★★★★☆</td><td>Expert</td><td>1.2 or less</td></tr><tr><td>★★★★★</td><td>Flawless</td><td>0.4 or less</td></tr></tbody></table></div>
+<p>The review tells you how far you are from the next star: <i>"You gave up an average of 1.6 points a hand. Expert is 1.2 or less."</i></p>
+</section><section id="flawless-cribbage"><h2>Flawless Cribbage</h2>
+<p>A fight with a Flawless rating avoids 1 Heat, win or lose. The fight's end card says so: <i>"Flawless Cribbage: clean work, 1 Heat avoided."</i></p>
+</section><section id="the-review"><h2>The review</h2>
+<ul>
+<li><b>Cards as chips.</b> Every card in the review, the coach and the log is a small badge with its suit icon and rank, outlined in the suit's color.
+</li>
+<li><b>Your choice beside the coach's, in numbers.</b> For a discard: what you kept and threw, its points in hand, what the cut adds on average, and what the crib is worth (negative when it's theirs), then the coach's keep, then the difference. For pegging: the table, your card's points and the opponent's expected reply, then the coach's card. A short line under each says why. The numbers add up to the difference shown.
+</li>
+<li><b>The three costliest choices</b>, whatever they cost.
+</li>
+<li><b>The coach</b> uses the same layout when it looks back at your last discard or play, in fights and in Play Cribbage.
+</li></ul>
+</section><section id="play-cribbage"><h2>Play Cribbage</h2>
+<ul>
+<li>A game ends with its star rating and the same review.
+</li>
+<li>Resuming a saved game opens where you left off, instead of replaying every hand.
+</li></ul>
+</section><section id="starting-a-run"><h2>Starting a run</h2>
+<ul>
+<li><b>Auxiliary subroutine</b> (it was the "4th starting subroutine"): tap <i>Select auxiliary subroutine</i> for a list of everything you've unlocked, grouped by archetype, with full rules. Your class's own subroutines can't be picked.
+</li>
+<li><b>Starting Burner:</b> the same, with each Burner's rules.
+</li>
+<li>Your picks show their full rules on the screen, with <i>change</i> and <i>clear</i>.
+</li>
+<li><b>Security Level:</b> step through levels with ◀ ▶; the effects at that level are listed, with the new ones marked.
+</li></ul>
+</section><section id="daily-runs"><h2>Daily Runs</h2>
+<ul>
+<li>The Cribbage line pays by stars: 100 / 200 / 350 / 500 / 700 (doubled on Card Sharp days).
+</li>
+<li><b>Flawless Form</b> pays at 5 stars.
+</li>
+<li>The share line shows your stars: <code>Cribbage ★★★★☆</code>.
+</li></ul>
+</section><section id="fixes"><h2>Fixes</h2>
+<ul>
+<li>On iPhone, a quick double tap no longer zooms the page.
+</li></ul></section>
+<footer>crib.exe · star ratings and the Cribbage review (session 72)</footer>
+</div>
