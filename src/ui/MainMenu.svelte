@@ -31,6 +31,7 @@
     onboard,
     onsettings,
     onabout,
+    onrecords,
     news = [],
     ondismissnews,
     onnotes,
@@ -53,6 +54,8 @@
     onsettings: () => void;
     /** About and patch notes (go-live step 5). */
     onabout: () => void;
+    /** Records (go-live step 6). */
+    onrecords: () => void;
     /** What's new since the last version seen (step 5b). */
     news?: VersionNotes[];
     ondismissnews?: () => void;
@@ -197,6 +200,11 @@
     <!-- Tabler Icons' "settings" (MIT), as the map icons. -->
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>
     <b>Settings</b>
+  </button>
+  <button class="settings-link" onclick={onrecords}>
+    <!-- Tabler Icons' "trophy" (MIT). -->
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21l8 0" /><path d="M12 17l0 4" /><path d="M7 4l10 0" /><path d="M17 4v8a5 5 0 0 1 -10 0v-8" /><path d="M5 9m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M19 9m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /></svg>
+    <b>Records</b>
   </button>
   <button class="settings-link" onclick={onabout}>
     <!-- Tabler Icons' "info-circle" (MIT). -->

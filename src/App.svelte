@@ -10,6 +10,8 @@
   import Settings from './ui/Settings.svelte';
   import About from './ui/About.svelte';
   import { markVersionSeen, whatsNew } from './ui/version-notes';
+  import { runTally, skillTotals } from './ui/records';
+  import Records from './ui/Records.svelte';
   import DailyBrief from './ui/DailyBrief.svelte';
   import { dailyDate, dailyRunStart, dailyScore, rollDaily } from './engine/daily';
   import { rateSkill } from './ui/skill-review';
@@ -69,12 +71,12 @@
           const { date, practice } = next.setup.daily;
           const stars = rateSkill(next.skill, false)?.stars ?? null;
           const score = dailyScore(result, rollDaily(date).mods[0].id, stars);
-          profile.finishDaily(next.id, date, practice ?? false, score.lines, stars, repForRun(result).lines);
+          profile.finishDaily(next.id, date, practice ?? false, score.lines, stars, repForRun(result).lines, runTally(result, next.classId, true, next.skill));
         } else {
           const result = next.pause.result;
           // The class milestone (MP2): the first gatekeeper beaten opens the next class.
           const securityLevel = next.setup.securityLevel ?? 0;
-          profile.awardRun(next.id, repForRun(result, securityLevel).lines, firstGatekeeperBeaten(result) ? nextClass(next.classId) : null, { classId: next.classId, securityLevel, won: result.outcome === 'victory' });
+          profile.awardRun(next.id, repForRun(result, securityLevel).lines, firstGatekeeperBeaten(result) ? nextClass(next.classId) : null, { classId: next.classId, securityLevel, won: result.outcome === 'victory' }, runTally(result, next.classId, false, next.skill));
         }
         clearSave(slotOf(next));
       } else writeSave(next.save, slotOf(next));
@@ -110,7 +112,7 @@
 
   // The front door (milestone 4, V5): the main menu, then a mode. A run
   // keeps its class screen; a Cribbage game saves itself like a run.
-  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson' | 'tutorial' | 'board' | 'daily' | 'settings' | 'about' | 'notes'>('menu');
+  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson' | 'tutorial' | 'board' | 'daily' | 'settings' | 'about' | 'notes' | 'records'>('menu');
   // Today's daily (session 72): the local date as YYYY-MM-DD.
   const today = () => dailyDate(new Date());
   function beginDaily() {
@@ -154,9 +156,14 @@
   }
   function beginCribbage(next: LiveCribbage) {
     markVisited();
+    let recorded = false;
     next.onsave = () => {
-      if (next.result) clearCribbageSave();
-      else writeCribbageSave(next.save);
+      if (next.result) {
+        // Records (go-live step 6): the game, once.
+        if (!recorded) profile.recordCribbage(next.difficulty, next.result.winner === 0, skillTotals(next.skill));
+        recorded = true;
+        clearCribbageSave();
+      } else writeCribbageSave(next.save);
     };
     writeCribbageSave(next.save);
     cribbage = next;
@@ -242,6 +249,7 @@
       onboard={() => (screen = 'board')}
       onsettings={() => (screen = 'settings')}
       onabout={() => (screen = 'about')}
+      onrecords={() => (screen = 'records')}
       {news}
       ondismissnews={dismissNews}
       onnotes={() => (dismissNews(), (screen = 'notes'))}
@@ -257,6 +265,8 @@
     <MessageBoard onmenu={toMenu} />
   {:else if screen === 'settings'}
     <Settings onmenu={toMenu} />
+  {:else if screen === 'records'}
+    <Records onmenu={toMenu} today={today()} />
   {:else if screen === 'about' || screen === 'notes'}
     <About onmenu={toMenu} notes={screen === 'notes'} />
   {:else if screen === 'tutorial'}

@@ -1,3 +1,4 @@
+import { addCribbage, addRun, freshStats, type RunTally, type Stats } from './records';
 import type { Stars } from '../engine/skill';
 import type { ClassId } from '../engine/classes';
 import { CLASS_FALLBACK_REP, CLASS_ORDER, SECURITY_MAX, LIBRARY_PRICE, STARTING_BURNER_PRICE, STARTING_BURNERS, TUTORIAL_REP, libraryOffers, upgradeLevel, upgradePrice, type RepLine, type UpgradeId } from '../engine/meta';
@@ -58,6 +59,8 @@ export interface Profile {
    * (`started` once it begins, so later runs are practice even if it's
    * abandoned) and the best practice score. */
   daily: Record<string, DailyRecord>;
+  /** Records (go-live step 6): counted from v0.9.0 on. */
+  stats: Stats;
 }
 
 export interface DailyRecord {
@@ -71,13 +74,15 @@ export const PROFILE_KEY = 'cribexe.profile';
 const KEY = PROFILE_KEY;
 
 export function freshProfile(): Profile {
-  return { version: PROFILE_VERSION, rep: 0, repEarned: 0, runsFinished: 0, tutorialGranted: false, classes: ['exploit-overclock'], upgrades: {}, lastRunId: null, library: [], burners: [], boardIntroduced: false, starter: null, burner: null, victories: 0, securityOpen: 0, securityBest: {}, securityPick: 0, plainPick: false, daily: {} };
+  return { version: PROFILE_VERSION, rep: 0, repEarned: 0, runsFinished: 0, tutorialGranted: false, classes: ['exploit-overclock'], upgrades: {}, lastRunId: null, library: [], burners: [], boardIntroduced: false, starter: null, burner: null, victories: 0, securityOpen: 0, securityBest: {}, securityPick: 0, plainPick: false, daily: {}, stats: freshStats() };
 }
 
 /** An older profile brought up to this version, keeping what it has: each
  * future version adds a step here. Missing fields take fresh values. */
 export function migrate(raw: Partial<Profile>): Profile {
-  return { ...freshProfile(), ...raw, version: PROFILE_VERSION };
+  // Stats (go-live step 6) came later: an older profile's start empty, and
+  // a newer stat a profile lacks starts at nothing.
+  return { ...freshProfile(), ...raw, stats: { ...freshStats(), ...(raw.stats ?? {}) }, version: PROFILE_VERSION };
 }
 
 function load(): Profile {
@@ -181,7 +186,7 @@ class ProfileStore {
 
   /** A finished run's Rep, once per run, and the class its milestone
    * unlocks (MP2), if any and not already open. */
-  awardRun(runId: string, lines: readonly RepLine[], unlock: ClassId | null = null, run?: { classId: ClassId; securityLevel: number; won: boolean }): void {
+  awardRun(runId: string, lines: readonly RepLine[], unlock: ClassId | null = null, run?: { classId: ClassId; securityLevel: number; won: boolean }, tally?: RunTally): void {
     if (this.data.lastRunId === runId) return;
     const total = lines.reduce((s, l) => s + l.rep, 0);
     const unlocked = unlock && !this.data.classes.includes(unlock) ? unlock : undefined;
@@ -197,7 +202,8 @@ class ProfileStore {
     if (!securityOpen && victories > 0 && CLASS_ORDER.every((id) => classes.includes(id))) securityOpen = 1;
     const securityOpened = securityOpen > this.data.securityOpen ? securityOpen : undefined;
     this.lastAward = { runId, lines: [...lines], unlocked, securityOpened };
-    this.data = { ...this.data, rep: this.data.rep + total, repEarned: this.data.repEarned + total, runsFinished: this.data.runsFinished + 1, lastRunId: runId, classes, victories, securityOpen, securityBest };
+    const stats = tally ? addRun(this.data.stats, tally) : this.data.stats;
+    this.data = { ...this.data, rep: this.data.rep + total, repEarned: this.data.repEarned + total, runsFinished: this.data.runsFinished + 1, lastRunId: runId, classes, victories, securityOpen, securityBest, stats };
     this.#save();
   }
 
@@ -227,7 +233,7 @@ class ProfileStore {
   /** A daily run's end (DR1, DR6): the scored attempt's score and Rep (no
    * class unlocks or Security Levels: those belong to normal runs); a
    * practice run's best, and no Rep. */
-  finishDaily(runId: string, date: string, practice: boolean, scoreLines: ScoreLine[], stars: Stars | null, lines: readonly RepLine[]): void {
+  finishDaily(runId: string, date: string, practice: boolean, scoreLines: ScoreLine[], stars: Stars | null, lines: readonly RepLine[], tally?: RunTally): void {
     if (this.data.lastRunId === runId) return;
     const score = scoreLines.reduce((s, l) => s + l.points, 0);
     this.lastDaily = { runId, date, practice, lines: scoreLines, total: score, stars };
@@ -235,7 +241,8 @@ class ProfileStore {
     const next: DailyRecord = practice ? { ...record, best: Math.max(record.best ?? 0, score) } : { ...record, started: true, scored: score };
     const total = practice ? 0 : lines.reduce((s, l) => s + l.rep, 0);
     this.lastAward = { runId, lines: practice ? [] : [...lines] };
-    this.data = { ...this.data, daily: { ...this.data.daily, [date]: next }, rep: this.data.rep + total, repEarned: this.data.repEarned + total, runsFinished: this.data.runsFinished + 1, lastRunId: runId };
+    const stats = tally ? addRun(this.data.stats, tally) : this.data.stats;
+    this.data = { ...this.data, daily: { ...this.data.daily, [date]: next }, rep: this.data.rep + total, repEarned: this.data.repEarned + total, runsFinished: this.data.runsFinished + 1, lastRunId: runId, stats };
     this.#save();
   }
 
@@ -262,6 +269,12 @@ class ProfileStore {
   }
 
   /** The tutorial's one-time grant (it still counts as a finished run). */
+  /** A Play Cribbage game's end (go-live step 6). */
+  recordCribbage(difficulty: string, won: boolean, skill: { lost: number; hands: number }): void {
+    this.data = { ...this.data, stats: addCribbage(this.data.stats, difficulty, won, skill) };
+    this.#save();
+  }
+
   finishTutorial(runId: string): void {
     if (this.data.lastRunId === runId) return;
     const grant = this.data.tutorialGranted ? 0 : TUTORIAL_REP;

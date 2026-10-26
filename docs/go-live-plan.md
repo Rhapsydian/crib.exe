@@ -137,7 +137,15 @@ game (version, date, bullets), so they work offline and match the
 build; the full write-ups (`PATCH_NOTES.md`, `public/patch-notes/`) stay
 for itch.io devlogs and the web, and the card links to them.
 
-## 6. Records and stats (decision session)
+## 6. Records and stats (done, session 72)
+
+Built (the user's set): `src/ui/Records.svelte` from the main menu's
+Records (beside Settings and About): runs, by class, fights, the career
+Cribbage rating and Play Cribbage, Daily Runs. The profile's `stats`
+(`records.ts`) count from v0.9.0, filled as a run, Daily or game ends;
+older counters (runs finished, victories, Security Levels, the Daily
+history) predate it.
+
 
 A page of the player's history. Candidates: runs and victories per class;
 best Security Level per class; the Daily streak and best scores; a career

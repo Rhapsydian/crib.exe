@@ -80,7 +80,8 @@ Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
    itch.io and the patch notes).
    5b. In-game patch notes (done): a "What's new" card after an update,
    and a Patch notes page; short notes in `src/ui/version-notes.ts`.
-6. A records and stats page (decision session).
+6. A records and stats page (done): runs, by class, fights, the career
+   Cribbage rating, Play Cribbage, Daily Runs.
 7. Mobile: a web-app manifest and icons, a phone-width pass.
 8. A release candidate: full test, playtest build, freeze.
 9. itch.io: page text, screenshots, a GIF, the cover, the butler upload.
