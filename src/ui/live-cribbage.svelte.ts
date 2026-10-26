@@ -93,6 +93,9 @@ export class LiveCribbage {
    * Cribbage rating at the end (session 72, the user: stars in vanilla
    * games too). Rebuilt on resume, as the answers replay. */
   readonly skill: SkillDecision[] = [];
+  /** Rebuilt from a save: the screen opens at the present, not replaying
+   * the game from the first deal (session 72, the user; fights do the same). */
+  resumed = false;
   onsave: (() => void) | null = null;
   readonly #game: Generator<CribbageRequest, CribbageGameResult, CribbageAnswer>;
   readonly #discard;
@@ -119,6 +122,7 @@ export class LiveCribbage {
       if (answer === undefined) return null;
       game.answer(answer as CribbageAnswer);
     }
+    game.resumed = true;
     return game;
   }
 

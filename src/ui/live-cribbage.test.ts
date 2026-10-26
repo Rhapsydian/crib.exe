@@ -73,5 +73,8 @@ describe("a vanilla game's Cribbage rating", () => {
     expect(rating.mistakes).toEqual([]);
     const resumed = LiveCribbage.resume(game.save)!;
     expect(resumed.skill).toEqual(game.skill);
+    // Marked, so the screen opens at the present (session 72).
+    expect(resumed.resumed).toBe(true);
+    expect(game.resumed).toBe(false);
   });
 });

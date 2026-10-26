@@ -41,10 +41,17 @@
   // Learn to play remembers its own speed, starting slow (session 61).
   // (Each game mounts its own screen, so reading the difficulty once is right.)
   const replay = untrack(() => game.difficulty) === 'learn' ? new Replay('cribexe.turnSpeed.learn', 'slow') : new Replay();
+  // A game resumed from a save opens at its present (session 72): its steps
+  // so far were already seen before the reload.
+  let caughtUp = false;
   $effect(() => {
     const steps = game.result ? game.finalSteps : (game.frame?.steps ?? []);
     const scores = game.result?.finalScores ?? game.frame?.request.view.scores ?? [0, 0];
-    untrack(() => replay.sync(steps, scoreReadings(scores)));
+    untrack(() => {
+      replay.sync(steps, scoreReadings(scores));
+      if (!caughtUp && 'resumed' in game && game.resumed) replay.skip();
+      caughtUp = true;
+    });
   });
   $effect(() => () => replay.reset());
 
