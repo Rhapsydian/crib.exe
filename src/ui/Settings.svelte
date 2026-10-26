@@ -3,6 +3,7 @@
   import { tips } from './tips.svelte';
   import { decodeProgress, encodeProgress, progressSummary, type ProgressPayload } from './progress-code';
   import { currentProgress, eraseProgress, importProgress } from './progress-store';
+  import { sound } from './sound';
 
   // Settings (go-live step 3; the user's decisions are in
   // docs/go-live-plan.md): turn speed, tips, and progress -- a code to
@@ -16,6 +17,9 @@
     setTurnSpeed(s);
   }
   let tipsReset = $state(false);
+  // Sound (go-live step 4): a preference, kept when progress is erased.
+  let volume = $state(sound.volume);
+  let muted = $state(sound.muted);
 
   // One progress panel open at a time.
   let panel = $state<'none' | 'export' | 'import' | 'erase'>('none');
@@ -55,6 +59,14 @@
 <div class="settings">
   <button class="back" onclick={onmenu}>◂ menu</button>
   <h1>Settings</h1>
+
+  <div class="caption">SOUND</div>
+  <div class="row">
+    <span>Volume</span>
+    <input type="range" min="0" max="1" step="0.05" bind:value={volume} disabled={muted} oninput={() => sound.setVolume(volume)} onchange={() => sound.play('peg', { force: true })} aria-label="volume" />
+    <span class="dim">{Math.round(volume * 100)}%</span>
+    <label class="mute"><input type="checkbox" bind:checked={muted} onchange={() => sound.setMuted(muted)} /> mute</label>
+  </div>
 
   <div class="caption">GAMEPLAY</div>
   <div class="row">
@@ -161,6 +173,15 @@
     color: var(--text-dim);
     font-size: 11px;
     line-height: 1.4;
+  }
+  .mute {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  input[type='range'] {
+    width: 160px;
+    accent-color: var(--accent);
   }
   .seg {
     display: inline-flex;

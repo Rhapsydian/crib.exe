@@ -75,7 +75,17 @@ A settings screen from the main menu:
 - profile export/import (MP12: an opaque code with a checksum), so
   progress can move between devices or survive cleared browser data.
 
-## 4. Sound (decision session)
+## 4. Sound (done, session 72)
+
+Built: eighteen synth sounds (`src/ui/sound.ts`), no files and no
+third-party code; the user picked the card sounds from three variants each
+(hand start, your card, their card, the cut, the table clearing). Fights
+and Play Cribbage sound each replay step (`sound-steps.ts`); a run sounds
+moves, Caches and rewards; the result stings and a Flawless chime. Volume
+and mute in Settings (a preference). `#sounds` auditions them in
+development.
+
+Originally planned:
 
 No music at launch (the user; a quiet ambient loop, off by default, can
 come later if testers ask). Sound effects, with volume and mute in
@@ -93,9 +103,9 @@ Version, credits (Tabler Icons' MIT notice for the map icons; any sound
 credits from step 4), the user's name, and a feedback / bug link: the
 Discord server (step 5a). The user: a note that the game was developed
 with agentic development (Claude Code), and a link to the repository,
-https://github.com/Rhapsydian/crib.exe. Sound credits: Kenney's Casino
-Audio (CC0, credited as a courtesy); the synth sounds are the game's own
-(no third-party code: ZzFX was dropped for the browser's audio engine).
+https://github.com/Rhapsydian/crib.exe. No sound credits are needed: every
+sound is the game's own synth (the user passed on Kenney's recorded card
+sounds; ZzFX was dropped for the browser's own audio engine).
 
 ## 5a. A Discord server (the user)
 

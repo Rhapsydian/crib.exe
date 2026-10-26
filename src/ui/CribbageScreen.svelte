@@ -18,6 +18,8 @@
   import { discardHint, pegHint, phaseIntro, showSummary } from './coach';
   import { rateSkill } from './skill-review';
   import StarRating from './StarRating.svelte';
+  import { sound } from './sound';
+  import { stepSounder } from './sound-steps';
   import SkillReview from './SkillReview.svelte';
 
   // A game of vanilla Cribbage (milestone 4 checkpoint 3): the fight
@@ -120,6 +122,21 @@
 
   const level = $derived(DIFFICULTIES[game.difficulty]);
   const over = $derived(game.result && !replay.playing ? game.result : null);
+  // Sound (go-live step 4): each step as the replay plays it; the end's
+  // sting, and a Flawless chime after it in a vanilla game.
+  const sounder = stepSounder();
+  $effect(() => {
+    const shown = replay.shown;
+    untrack(() => sounder(replay.steps, shown));
+  });
+  $effect(() => {
+    const o = over;
+    if (!o) return;
+    untrack(() => {
+      sound.play(o.winner === 0 ? 'breached' : 'contained');
+      if (rating?.stars === 5) setTimeout(() => sound.play('flawless'), 650);
+    });
+  });
   const pts = $derived(over ? pointsSummary(cribbageBeats(over.timeline)) : null);
   // The evasion's score as it plays: the gatekeeper's never shows below
   // its head start (no scoring beat carries it until it first scores).

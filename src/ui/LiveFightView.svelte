@@ -9,6 +9,8 @@
   import { tallyStars } from '../engine/skill';
   import { rateSkill } from './skill-review';
   import StarRating from './StarRating.svelte';
+  import { sound } from './sound';
+  import { stepSounder } from './sound-steps';
   import SkillReview from './SkillReview.svelte';
 
   // A live fight on the chosen screen, and its result panel at the end.
@@ -55,6 +57,21 @@
     }
     const t = setTimeout(() => (cardUp = true), ENDING_MS);
     return () => clearTimeout(t);
+  });
+  // Sound (go-live step 4): each step as the replay plays it; the result
+  // card's sting, and a Flawless chime after it.
+  const sounder = stepSounder();
+  $effect(() => {
+    const shown = replay.shown;
+    untrack(() => sounder(replay.steps, shown));
+  });
+  $effect(() => {
+    const r = fight.result;
+    if (!cardUp || !r) return;
+    untrack(() => {
+      sound.play(r.winner === 0 ? 'breached' : 'contained');
+      if (rating?.stars === 5) setTimeout(() => sound.play('flawless'), 650);
+    });
   });
   const ending = $derived(done && !cardUp && fight.result ? fight.result.winner : null);
   // Reading the log after the fight (session 69, a tester's note): the

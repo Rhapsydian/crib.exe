@@ -10,6 +10,7 @@
   import MapMockup from './ui/mockups/map/MapMockup.svelte';
   import PegboardMockup from './ui/mockups/pegboard/PegboardMockup.svelte';
   import { LiveFight } from './ui/live-fight.svelte';
+  import SoundAudition from './ui/SoundAudition.svelte';
   import type { ClassId } from './engine/classes';
   import type { EnemyDefinition } from './engine/enemies';
 
@@ -19,7 +20,7 @@
 
   let snapshot = $state.raw<ReturnType<typeof mockSnapshot> | null>(null);
   $effect(() => {
-    if (route !== 'test' && !snapshot) snapshot = mockSnapshot();
+    if (route !== 'test' && route !== 'sounds' && !snapshot) snapshot = mockSnapshot();
   });
 
   let fight = $state.raw<LiveFight | null>(null);
@@ -31,7 +32,9 @@
   }
 </script>
 
-{#if route === 'test'}
+{#if route === 'sounds'}
+  <SoundAudition />
+{:else if route === 'test'}
   {#if fight}
     <LiveFightView
       {fight}

@@ -6,5 +6,6 @@
  * App can read the list without importing DevRoutes.svelte, which it
  * loads only in development. */
 export const MOCKS = ['mock', 'tabs', 'drawers', 'compact', 'map', 'pegboard'] as const;
-export const DEV_ROUTES = ['test', ...MOCKS] as const;
+/** #sounds: the sound audition page (go-live step 4). */
+export const DEV_ROUTES = ['test', 'sounds', ...MOCKS] as const;
 export type DevRoute = (typeof DEV_ROUTES)[number];

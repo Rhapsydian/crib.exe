@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
+  import { sound } from './sound';
   import type { LiveRun } from './live-run.svelte';
   import RunMap from './RunMap.svelte';
   import RunEnd from './RunEnd.svelte';
@@ -26,6 +28,11 @@
     const pause = run.pause;
     if (pause?.kind === 'event') tips.offer('event');
     if (pause?.kind === 'notice' && pause.request.kind === 'cacheOpened') tips.offer('cache');
+  });
+  // Sound (go-live step 4): a Cache opening.
+  $effect(() => {
+    const pause = run.pause;
+    if (pause?.kind === 'notice' && pause.request.kind === 'cacheOpened') untrack(() => sound.play('cache'));
   });
 
   // The tutorial coach (session 63): on for the guided run, which also
@@ -93,7 +100,7 @@
     request={run.pause.request}
     className={run.className}
     notes={run.notes}
-    onmove={(id) => run.answer(id)}
+    onmove={(id) => (sound.play('move'), run.answer(id))}
     onarrange={(installed, bench) => run.answer({ arrange: { installed, bench } })}
     onburner={(burnerId, targetNodeId) => run.answer({ useBurner: { burnerId, targetNodeId } })}
     tutorial={run.tutorial}
@@ -101,7 +108,7 @@
     {onmenu}
   />
 {:else if run.pause?.kind === 'reward'}
-  <RewardScreen request={run.pause.request} gained={run.pause.gained} onpick={(choice) => run.answer(choice)} />
+  <RewardScreen request={run.pause.request} gained={run.pause.gained} onpick={(choice) => (choice !== null && sound.play('reward'), run.answer(choice))} />
 {:else if run.pause?.kind === 'drop'}
   <DropScreen request={run.pause.request} ondrop={(id) => run.answer(id)} />
 {:else if run.pause?.kind === 'burnerSwap'}
