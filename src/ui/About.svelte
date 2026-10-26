@@ -29,7 +29,7 @@
     <div class="caption">CREDITS</div>
     <div>Map and menu icons: <a href="https://tabler.io/icons" target="_blank" rel="noopener">Tabler Icons</a>, © 2020-2024 Paweł Kuna (MIT License).</div>
     <div>Built with <a href="https://svelte.dev" target="_blank" rel="noopener">Svelte</a>, © 2016-2025 Svelte Contributors (MIT License).</div>
-    <div class="dim">The sounds are the game's own.</div>
+    <div>Card sounds: <a href="https://opengameart.org/content/keyboard-soundpack-1-typing-and-single-keystrokes" target="_blank" rel="noopener">Keyboard soundpack 1</a> by unicaegames (CC0). The other sounds are the game's own.</div>
 
     <div class="caption">MIT LICENSE</div>
     <div class="license">{MIT}</div>

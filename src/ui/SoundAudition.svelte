@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { sound, type SoundId } from './sound';
+  import { KEY_FILES, sound, type SoundId } from './sound';
 
   // The sound audition page (#sounds, development only; go-live step 4):
   // every sound by moment, to hear and tune them.
@@ -29,6 +29,8 @@
       <div class="row"><button onclick={() => sound.play(id, { force: true })}>▶ {LABELS[id]}</button></div>
     {/each}
   {/each}
+  <div class="caption">THE CARD SOUNDS' KEYS (unicaegames, CC0)</div>
+  <div class="keys">{#each KEY_FILES as f, i (f)}<button onclick={() => sound.playSample({ files: [f], gain: 0.8 })}>{i + 1}</button>{/each}</div>
 </div>
 
 <style>
@@ -50,6 +52,11 @@
     font-size: 10px;
     letter-spacing: 0.08em;
     color: var(--text-dim);
+  }
+  .keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
   }
   .row {
     display: flex;

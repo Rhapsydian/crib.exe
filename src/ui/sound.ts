@@ -1,9 +1,10 @@
 /**
  * Sound (go-live step 4; the user's choices are in docs/go-live-plan.md).
- * About eighteen short effects for moments that mean something, all synth,
+ * About eighteen short effects for moments that mean something. The cards
+ * are recorded key presses (the user's pick: unicaegames' "Keyboard
+ * soundpack 1", CC0), so playing a card is a keystroke; the rest are synth,
  * made here with the browser's own audio engine (oscillators, envelopes,
- * pitch slides, noise: no third-party code, no sound files). The user
- * passed on recorded card sounds for synth ones. No music.
+ * pitch slides, noise; no third-party code). No music.
  *
  * Nothing plays until the player's first tap (browsers require it), while
  * muted, or while a replay is being skipped. The same sound can't stack
@@ -25,6 +26,26 @@ export interface Synth {
   then?: Synth;
 }
 
+/** A recorded sound: one of `files` picked at random each time, its pitch
+ * `rate` and loudness nudged by up to `jitter`, so no two are alike. Sounds
+ * sharing a `group` never play the same file twice in a row. */
+export interface Sample {
+  files: string[];
+  gain: number;
+  rate?: number;
+  jitter?: number;
+  group?: string;
+}
+
+/** One of `files` at random, never `last` (when there's another). */
+export function pickFile(files: readonly string[], last: string | undefined, random = Math.random): string {
+  const choices = files.length > 1 ? files.filter((f) => f !== last) : files;
+  return choices[Math.floor(random() * choices.length)];
+}
+
+/** The card sounds' key presses (the user's pick: the pack's first ten). */
+export const KEY_FILES = Array.from({ length: 10 }, (_, i) => `sounds/keys/keypress-${String(i + 1).padStart(3, '0')}.wav`);
+
 export type SoundId =
   | 'handStart' | 'cardYou' | 'cardThem' | 'cut' | 'clear'
   | 'peg' | 'show'
@@ -32,13 +53,15 @@ export type SoundId =
   | 'move' | 'cache' | 'reward' | 'flawless';
 
 /** Every sound, by moment. */
-export const SOUNDS: Record<SoundId, Synth> = {
+export const SOUNDS: Record<SoundId, Synth | Sample> = {
   // Cards (the user's picks from three variants each). A hand starts (the
   // cards appear at once, so not a deal): two soft rising tones.
   handStart: { wave: 'sine', from: 440, to: 440, ms: 70, gain: 0.14, then: { wave: 'sine', from: 660, to: 660, ms: 110, gain: 0.12 } },
-  // Your card rises, theirs falls, so the ear knows whose it was.
-  cardYou: { wave: 'triangle', from: 900, to: 1300, ms: 45, gain: 0.16 },
-  cardThem: { wave: 'triangle', from: 700, to: 480, ms: 50, gain: 0.14 },
+  // A card is a keystroke (the user's pick): one of ten recorded keys at
+  // random, never the same twice in a row, slightly varied; theirs a little
+  // lower, so the ear knows whose it was.
+  cardYou: { files: KEY_FILES, gain: 0.8, rate: 1, jitter: 0.04, group: 'cards' },
+  cardThem: { files: KEY_FILES, gain: 0.75, rate: 0.86, jitter: 0.04, group: 'cards' },
   // The cut: two quick notes, low then high.
   cut: { wave: 'triangle', from: 600, to: 600, ms: 40, gain: 0.14, then: { wave: 'triangle', from: 1200, to: 1200, ms: 70, gain: 0.12 } },
   // The table clears (31, or a go): a soft hiss.
@@ -83,6 +106,9 @@ class SoundEngine {
   #ctx: AudioContext | null = null;
   #master: GainNode | null = null;
   #last = new Map<SoundId, number>();
+  #buffers = new Map<string, Promise<AudioBuffer | null>>();
+  /** The file each group played last (Sample.group). */
+  #lastFile = new Map<string, string>();
   /** Off while a replay is skipped or a save is checked. */
   quiet = false;
 
@@ -127,7 +153,41 @@ class SoundEngine {
     const now = performance.now();
     if (now - (this.#last.get(id) ?? -Infinity) < STACK_MS) return;
     this.#last.set(id, now);
-    this.playSynth(SOUNDS[id]);
+    const s = SOUNDS[id];
+    if ('files' in s) this.playSample(s);
+    else this.playSynth(s);
+  }
+
+  /** A recorded sound as given (the audition page's keys). */
+  playSample(s: Sample): void {
+    const ctx = this.#context();
+    if (!ctx || !this.#master) return;
+    const url = pickFile(s.files, s.group ? this.#lastFile.get(s.group) : undefined);
+    if (s.group) this.#lastFile.set(s.group, url);
+    const j = s.jitter ?? 0;
+    const r = () => 1 + (Math.random() * 2 - 1) * j;
+    void this.#buffer(ctx, url).then((buffer) => {
+      if (!buffer || !this.#master) return;
+      const src = ctx.createBufferSource();
+      const g = ctx.createGain();
+      g.gain.value = s.gain * r();
+      src.buffer = buffer;
+      src.playbackRate.value = (s.rate ?? 1) * r();
+      src.connect(g).connect(this.#master);
+      src.start();
+    });
+  }
+
+  #buffer(ctx: AudioContext, url: string): Promise<AudioBuffer | null> {
+    let b = this.#buffers.get(url);
+    if (!b) {
+      b = fetch(url)
+        .then((res) => res.arrayBuffer())
+        .then((a) => ctx.decodeAudioData(a))
+        .catch(() => null);
+      this.#buffers.set(url, b);
+    }
+    return b;
   }
 
   /** A synth sound as given (the audition page's variants). */

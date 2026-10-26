@@ -110,9 +110,11 @@ Version, credits (Tabler Icons' MIT notice for the map icons; any sound
 credits from step 4), the user's name, and a feedback / bug link: the
 Discord server (step 5a). The user: a note that the game was developed
 with agentic development (Claude Code), and a link to the repository,
-https://github.com/Rhapsydian/crib.exe. No sound credits are needed: every
-sound is the game's own synth (the user passed on Kenney's recorded card
-sounds; ZzFX was dropped for the browser's own audio engine).
+https://github.com/Rhapsydian/crib.exe. Sound credits: the card sounds are
+recorded key presses from unicaegames' "Keyboard soundpack 1" (CC0,
+credited as a courtesy); every other sound is the game's own synth (the
+user passed on Kenney's card sounds; ZzFX was dropped for the browser's
+own audio engine).
 
 ## 5a. A Discord server (the user)
 

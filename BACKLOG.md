@@ -68,9 +68,10 @@ Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
    startup, with a card on their screen (no save-model change).
 3. A settings menu (done): sound, turn speed, show tips again, progress
    export/import (a copy-and-paste code) and erase; coach defaults cut.
-4. Sound effects (done): eighteen synth sounds of the game's own (the
-   user passed on recorded card sounds); volume and mute in Settings; no
-   music at launch.
+4. Sound effects (done): the cards are recorded keystrokes (the first ten
+   of unicaegames' CC0 keyboard pack, random, never the same twice in a
+   row); everything else is the game's own synth; volume and mute in
+   Settings; no music at launch.
 5. About and credits (done; the Discord link waits on the server):
    version, Tabler Icons' MIT notice,
    a feedback link (the Discord), and a note that the game
