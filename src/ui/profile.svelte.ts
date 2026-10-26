@@ -67,7 +67,8 @@ export interface DailyRecord {
 }
 
 export const PROFILE_VERSION = 1;
-const KEY = 'cribexe.profile';
+export const PROFILE_KEY = 'cribexe.profile';
+const KEY = PROFILE_KEY;
 
 export function freshProfile(): Profile {
   return { version: PROFILE_VERSION, rep: 0, repEarned: 0, runsFinished: 0, tutorialGranted: false, classes: ['exploit-overclock'], upgrades: {}, lastRunId: null, library: [], burners: [], boardIntroduced: false, starter: null, burner: null, victories: 0, securityOpen: 0, securityBest: {}, securityPick: 0, plainPick: false, daily: {} };

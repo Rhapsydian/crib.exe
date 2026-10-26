@@ -29,7 +29,7 @@ export const TIP_TEXT: Record<TipId, string> = {
   enemyEffects: 'This enemy can work against your build: Wipe takes counts from your Hooks, Strip takes your Ward, Trace gives you Heat.',
 };
 
-const SEEN_KEY = 'cribexe.tipsSeen';
+export const SEEN_KEY = 'cribexe.tipsSeen';
 
 function loadSeen(): Set<TipId> {
   try {

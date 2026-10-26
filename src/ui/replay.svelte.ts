@@ -143,6 +143,19 @@ export class Replay {
   }
 }
 
+/** The turn speed fights and Play Cribbage start at (go-live step 3: the
+ * Settings screen sets the same value the in-game "»" button does). */
+export function turnSpeed(): Speed {
+  return loadSpeed(SPEED_KEY, 'normal');
+}
+export function setTurnSpeed(speed: Speed): void {
+  try {
+    localStorage.setItem(SPEED_KEY, speed);
+  } catch {
+    // Storage blocked: the choice lasts the session.
+  }
+}
+
 function loadSpeed(key: string, fallback: Speed): Speed {
   try {
     const saved = localStorage.getItem(key);

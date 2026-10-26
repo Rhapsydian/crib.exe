@@ -150,7 +150,8 @@ export function handTotal(cards: Card[], starter: Card): number {
   return countHand(cards, starter).total;
 }
 
-const KEY = 'cribexe.lessons';
+export const LESSONS_KEY = 'cribexe.lessons';
+const KEY = LESSONS_KEY;
 export function loadProgress(): Set<string> {
   try {
     return new Set(JSON.parse(localStorage.getItem(KEY) ?? '[]') as string[]);

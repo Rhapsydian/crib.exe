@@ -1,13 +1,11 @@
 <script lang="ts">
   import NoticeCard from './NoticeCard.svelte';
-  import { tips } from './tips.svelte';
   import { profile } from './profile.svelte';
   import { DAILY_MODS, rollDaily } from '../engine/daily';
   import { CLASS_DEFINITIONS } from '../engine/classes';
   import CardView from './CardView.svelte';
   import { suitInfo } from './suits';
   import type { Card } from '../engine/cards';
-  let tipsReset = $state(false);
   const HEADER_CARDS: Card[] = [
     { rank: 4, suit: 0 },
     { rank: 5, suit: 1 },
@@ -30,6 +28,7 @@
     onrun,
     ontutorial,
     onboard,
+    onsettings,
     ondaily,
     today,
     dailyInProgress = null,
@@ -45,6 +44,8 @@
     onrun: () => void;
     ontutorial: () => void;
     onboard: () => void;
+    /** Settings (go-live step 3). */
+    onsettings: () => void;
     ondaily: () => void;
     today: string;
     dailyInProgress?: { date: string; practice: boolean } | null;
@@ -170,9 +171,9 @@
     </div>
   </section>
 
-  <!-- First-time tips (session 63, T6): shown once each; this brings them
-       back, e.g. for a new tester on the same machine. -->
-  <button class="tips-reset" onclick={() => { tips.reset(); tipsReset = true; }} disabled={tipsReset}>{tipsReset ? 'tips will show again' : 'show tips again'}</button>
+  <!-- Settings (go-live step 3): turn speed, tips (show tips again moved
+       there from here), progress. -->
+  <button class="settings-link" onclick={onsettings}>⚙ settings</button>
   <!-- The version, for bug reports (go-live step 1). -->
   <div class="version">v{__APP_VERSION__}</div>
 </div>
@@ -184,7 +185,7 @@
     color: var(--text-dim);
     opacity: 0.6;
   }
-  .tips-reset {
+  .settings-link {
     align-self: center;
     margin-top: 8px;
     padding: 4px 10px;

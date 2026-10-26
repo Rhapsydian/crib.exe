@@ -7,6 +7,7 @@
   import { firstGatekeeperBeaten, nextClass, repForRun } from './engine/meta';
   import MainMenu from './ui/MainMenu.svelte';
   import MessageBoard from './ui/MessageBoard.svelte';
+  import Settings from './ui/Settings.svelte';
   import DailyBrief from './ui/DailyBrief.svelte';
   import { dailyDate, dailyRunStart, dailyScore, rollDaily } from './engine/daily';
   import { rateSkill } from './ui/skill-review';
@@ -20,6 +21,7 @@
   import type { Difficulty } from './engine/basic-cribbage';
   import { DEV_ROUTES, type DevRoute } from './dev-routes';
   import { checkSaves } from './ui/save-check';
+  import { VISITED_KEY } from './ui/progress-store';
   import LearnHub from './ui/LearnHub.svelte';
   import LessonScreen from './ui/LessonScreen.svelte';
   import { LESSONS, loadProgress, markDone } from './ui/lessons';
@@ -106,7 +108,7 @@
 
   // The front door (milestone 4, V5): the main menu, then a mode. A run
   // keeps its class screen; a Cribbage game saves itself like a run.
-  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson' | 'tutorial' | 'board' | 'daily'>('menu');
+  let screen = $state<'menu' | 'classes' | 'cribbage' | 'learn' | 'lesson' | 'tutorial' | 'board' | 'daily' | 'settings'>('menu');
   // Today's daily (session 72): the local date as YYYY-MM-DD.
   const today = () => dailyDate(new Date());
   function beginDaily() {
@@ -124,7 +126,7 @@
   }
   let cribbage = $state.raw<LiveCribbage | null>(null);
   let cribbageSaved = $state.raw(loadCribbageSave());
-  const VISITED_KEY = 'cribexe.visited';
+  // VISITED_KEY lives in progress-store.ts, with the rest of progress.
   const readVisited = () => {
     try {
       return localStorage.getItem(VISITED_KEY) === '1';
@@ -229,6 +231,7 @@
         screen = 'tutorial';
       }}
       onboard={() => (screen = 'board')}
+      onsettings={() => (screen = 'settings')}
       ondaily={() => (screen = 'daily')}
       today={today()}
       dailyInProgress={savedDaily ? { date: savedDaily.setup.daily?.date ?? '', practice: savedDaily.setup.daily?.practice ?? false } : null}
@@ -239,6 +242,8 @@
     <DailyBrief date={today()} saved={savedDaily ? { date: savedDaily.setup.daily?.date ?? '', layer: savedDaily.summary.layer, practice: savedDaily.setup.daily?.practice ?? false } : null} onresume={resumeDaily} onstart={beginDaily} onmenu={toMenu} dropped={dropped.daily} released={dailyReleased} ondismissdropped={() => (dropped.daily = false)} />
   {:else if screen === 'board'}
     <MessageBoard onmenu={toMenu} />
+  {:else if screen === 'settings'}
+    <Settings onmenu={toMenu} />
   {:else if screen === 'tutorial'}
     <TutorialStart
       resumable={Boolean(saved?.tutorial)}

@@ -44,7 +44,28 @@ version and has been cleared"), and the save is removed. This replaces the
 current inline "couldn't be loaded" line. Same for a saved Daily Run and a
 saved Play Cribbage game.
 
-## 3. Settings menu (decision session)
+## 3. Settings menu (done, session 72)
+
+Built: `src/ui/Settings.svelte` (from the main menu's "⚙ settings"),
+`progress-code.ts` (the code), `progress-store.ts` (what export, import and
+erase touch). Import and erase reload the game. Sound joins in step 4.
+
+Decided with the user (session 72):
+- **Contents:** Sound (volume, mute; filled in by step 4), Gameplay (turn
+  speed, the same value as the in-game "»" button; Learn to play keeps its
+  own), Tips (show tips again, moved from the main menu), Progress (export,
+  import, erase). The coach defaults are cut: the coach is chosen per mode
+  already. Settings opens from the main menu.
+- **Erase all progress:** the profile, every save, lesson progress, seen
+  tips and the first-visit flag; preferences (turn speed, sound) are kept.
+  A confirmation offers export first; then the game opens as a new player's.
+- **Export / import:** a copy-and-paste code (`CRIBEXE1-`, compressed, with
+  a checksum) carrying the profile and lesson progress, not saves or
+  preferences. Import checks it, previews what it holds, and asks before
+  replacing; older codes migrate forward. A file download/upload can come
+  later if players ask.
+
+Originally listed:
 
 A settings screen from the main menu:
 - default replay speed;
