@@ -64,14 +64,15 @@ Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
 
 1. Release cleanup (done: testing switches, the test-fight button, a version
    number, CI actions off Node 20, stale balance notes pruned).
-2. A dropped-save notice on Start a Run (no save-model change).
-3. A settings menu (decision session): replay speed, coach defaults,
-   sound, reset progress, profile export/import.
+2. A dropped-save notice (done): saves an update broke are cleared at
+   startup, with a card on their screen (no save-model change).
+3. A settings menu (done): sound, turn speed, show tips again, progress
+   export/import (a copy-and-paste code) and erase; coach defaults cut.
 4. Sound effects (done): eighteen synth sounds of the game's own (the
    user passed on recorded card sounds); volume and mute in Settings; no
    music at launch.
 5. About and credits (after sound): version, Tabler Icons' MIT notice,
-   sound credits, a feedback link (the Discord), and a note that the game
+   a feedback link (the Discord), and a note that the game
    was developed with agentic development (Claude Code), linking the
    repository (https://github.com/Rhapsydian/crib.exe).
    5a. A Discord server (the user creates it; the link goes in About,
