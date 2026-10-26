@@ -5,6 +5,7 @@ import type { CombatRequest } from '../engine/combat';
 import { cribbageBeats } from './cribbage-steps';
 import { mergeSteps, type Step } from './timeline';
 import { decodeCombat, encodeCombat, type SavedAnswer } from './run-save';
+import type { SkillDecision } from './skill-review';
 import type { PegSpot } from './coach';
 
 /** A pegging request as the coach reads it (coach.ts's PegSpot). */
@@ -88,6 +89,10 @@ export class LiveCribbage {
   /** The player's latest pegging card, with the table as it stood. */
   lastPlay = $state.raw<{ handIndex: number; spot: PegSpot; played: Card } | null>(null);
   readonly answers: SavedAnswer[] = [];
+  /** Every discard and pegging card the player chose, for the game's
+   * Cribbage rating at the end (session 72, the user: stars in vanilla
+   * games too). Rebuilt on resume, as the answers replay. */
+  readonly skill: SkillDecision[] = [];
   onsave: (() => void) | null = null;
   readonly #game: Generator<CribbageRequest, CribbageGameResult, CribbageAnswer>;
   readonly #discard;
@@ -127,8 +132,14 @@ export class LiveCribbage {
     const request = this.frame?.request;
     if (!request) return;
     this.answers.push(encodeCombat(request as unknown as CombatRequest, answer));
-    if (request.kind === 'play') this.lastPlay = { handIndex: request.view.handIndex, spot: pegSpot(request), played: answer as Card };
-    if (request.kind === 'discard') this.lastDiscard = { handIndex: request.view.handIndex, hand: request.context.hand, thrown: answer as [Card, Card], ownCrib: request.view.dealer === 0 };
+    if (request.kind === 'play') {
+      this.lastPlay = { handIndex: request.view.handIndex, spot: pegSpot(request), played: answer as Card };
+      this.skill.push({ kind: 'play', handIndex: request.view.handIndex, spot: this.lastPlay.spot, played: answer as Card, hand: request.pegging.hand, ...(request.view.starter ? { starter: request.view.starter } : {}) });
+    }
+    if (request.kind === 'discard') {
+      this.lastDiscard = { handIndex: request.view.handIndex, hand: request.context.hand, thrown: answer as [Card, Card], ownCrib: request.view.dealer === 0 };
+      if (request.context.hand.length === 6) this.skill.push({ kind: 'discard', ...this.lastDiscard });
+    }
     this.#advance(this.#game.next(answer));
     this.onsave?.();
   }

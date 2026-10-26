@@ -15,7 +15,10 @@
   import ShowPanel from './ShowPanel.svelte';
   import ScoreBars from './ScoreBars.svelte';
   import CoachPanel, { type CoachSection } from './CoachPanel.svelte';
-  import { discardHint, discardReview, pegHint, pegReview, phaseIntro, showSummary } from './coach';
+  import { discardHint, pegHint, phaseIntro, showSummary } from './coach';
+  import { rateSkill } from './skill-review';
+  import StarRating from './StarRating.svelte';
+  import SkillReview from './SkillReview.svelte';
 
   // A game of vanilla Cribbage (milestone 4 checkpoint 3): the fight
   // screen's table, hand, show panel, callouts and step-through, with the
@@ -30,6 +33,10 @@
   // score that shows the gap, no coach, and its own result.
   let { game, onagain, onmenu }: { game: LiveCribbage | RunEvasion; onagain: () => void; onmenu?: () => void } = $props();
   const evasion = $derived(game instanceof RunEvasion ? game : null);
+  // A vanilla game's Cribbage rating at the end (session 72, the user), as
+  // fights rate theirs, with the same review drawer.
+  const rating = $derived(!evasion && game.result && 'skill' in game ? rateSkill(game.skill) : null);
+  let reviewOpen = $state(false);
 
   // Learn to play remembers its own speed, starting slow (session 61).
   // (Each game mounts its own screen, so reading the difficulty once is right.)
@@ -96,9 +103,9 @@
     } else {
       sections.push({ title: 'NOW', lines: [game.hints ? pegHint(pegSpot(r)) : phaseIntro('peg', ownCrib, false)] });
       const p = game.lastPlay;
-      if (p && p.handIndex === r.view.handIndex) sections.push({ title: 'YOUR LAST PLAY', lines: [pegReview(p.spot, p.played).text] });
+      if (p && p.handIndex === r.view.handIndex) sections.push({ title: 'YOUR LAST PLAY', lines: [], choice: { kind: 'play', spot: p.spot, played: p.played } });
       const d = game.lastDiscard;
-      if (d && d.handIndex === r.view.handIndex) sections.push({ title: 'YOUR DISCARD', lines: [discardReview(d.hand, d.thrown, d.ownCrib).text] });
+      if (d && d.handIndex === r.view.handIndex) sections.push({ title: 'YOUR DISCARD', lines: [], choice: { kind: 'discard', hand: d.hand, thrown: d.thrown, ownCrib: d.ownCrib } });
       if (first) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('peg', ownCrib, true)] });
     }
     return sections;
@@ -245,11 +252,15 @@
         <tr class="total"><td>total (first to {WIN_SCORE})</td><td class="you">{over.finalScores[0]}</td><td class="them">{over.finalScores[1]}</td></tr>
       </tbody>
     </table>
+    {#if rating}
+      <button class="rating" onclick={() => (reviewOpen = true)}>Cribbage: <StarRating stars={rating.stars} /> {rating.label} <span class="review">review ▸</span></button>
+    {/if}
     <div class="buttons">
       <button onclick={onagain}>play again</button>
       <button onclick={onmenu}>menu</button>
     </div>
   </div>
+  {#if reviewOpen && rating}<SkillReview {rating} onclose={() => (reviewOpen = false)} />{/if}
 {/if}
 
 <style>
@@ -580,5 +591,24 @@
     border-color: var(--line);
     color: var(--text-dim);
     font-weight: 400;
+  }
+  .rating {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--bg-raised);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+  }
+  .rating .review {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--accent);
   }
 </style>

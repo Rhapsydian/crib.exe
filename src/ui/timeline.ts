@@ -4,8 +4,7 @@ import type { CombatBeat } from '../engine/combat';
 import type { PlayerIndex } from '../engine/game';
 import type { FireEvent, GaugeReading } from '../engine/resolve';
 import { occurrencePoints, type ScoringOccurrence } from '../engine/triggers';
-import { rankLabel } from './suits';
-import { suitToken } from './RichText.svelte';
+import { cardToken } from './RichText.svelte';
 import { describeFire } from './describe';
 import { BURNER_DEFINITIONS } from '../engine/burners';
 import type { ModTrigger } from '../engine/resolve';
@@ -202,10 +201,11 @@ export function tableAt(steps: readonly Step[], upto: number): TableState {
   return table;
 }
 
-/** A card in a log line: its rank, then its suit as a token that renders
- * as the suit icon and name (RichText; the user's ask). */
+/** A card in a log line: a card token, which renders as a CardChip (the
+ * suit's icon and the rank in the suit's colour; session 72, the user's
+ * design; it was the rank and the suit's name). */
 export function cardLabel(card: Card): string {
-  return `${rankLabel(card.rank)} ${suitToken(card.suit)}`;
+  return cardToken(card);
 }
 
 /** "fifteen for 2", "pair royal for 6", "his heels for 2". At the show

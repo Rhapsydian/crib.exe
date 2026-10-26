@@ -1,6 +1,6 @@
 import { cardsEqual, cardValue, type Card } from '../engine/cards';
 import { countHand } from '../engine/scoring';
-import { bestPeg, cribTableValue, handExpectedValue, pegNet, predictBestDiscard, scoreDiscard, unseenCards, type PegTable } from '../engine/ai';
+import { bestPeg, cribExpectedValue, cribTableValue, handExpectedValue, pegNet, predictBestDiscard, scoreDiscard, unseenCards, type PegTable } from '../engine/ai';
 import type { CribbageBeat } from '../engine/basic-cribbage';
 import { rankLabel, suitInfo } from './suits';
 import { suitToken } from './RichText.svelte';
@@ -282,6 +282,78 @@ export function pegReview(spot: PegSpot, played: Card): { same: boolean; text: s
   else if (risky(theirs)) why = `I would have played ${label(coach)} instead: it gives them less to score off overall, though ${theirs.threat}.`;
   else why = `I would have played ${label(coach)} instead: it gives them almost nothing to score off.`;
   return { same, text: `${you} ${why}` };
+}
+
+/** A choice the coach can lay out beside its own (session 72, the user's
+ * design): a discard (the six dealt, the two thrown) or a pegging card. A
+ * review's recorded decision fits as it is. */
+export type CoachChoice =
+  | { kind: 'discard'; hand: Card[]; thrown: [Card, Card]; ownCrib: boolean; starter?: Card }
+  | { kind: 'play'; spot: PegSpot; played: Card };
+
+/** A keep in numbers: what it scores in hand, what the cut adds on
+ * average, and the crib's expected points (negative when it's theirs).
+ * They add up to the engine's own value for the keep (ai.ts scoreDiscard),
+ * so two keeps' totals differ by exactly what the review charges. */
+export interface KeepLine {
+  kept: Card[];
+  crib: [Card, Card];
+  inHand: number;
+  fromCut: number;
+  fromCrib: number;
+  total: number;
+  /** The cut is known (Early Cut): the hand's count is exact. */
+  exact: boolean;
+  /** What the hand scores, in words: "2 fifteens for 4, a pair of 5s for 2". */
+  why: string;
+}
+
+function keepLineOf(hand: Card[], pair: [Card, Card], ownCrib: boolean, starter?: Card): KeepLine {
+  const kept = hand.filter((c) => !pair.some((p) => cardsEqual(p, c)));
+  const unseen = unseenCards(starter ? [...hand, starter] : hand);
+  const { pts, parts } = keepScore(kept);
+  const handTotal = starter ? countHand(kept, starter).total : handExpectedValue(kept, unseen);
+  const crib = cribExpectedValue(pair, unseen);
+  const fromCrib = ownCrib ? crib : -crib;
+  return { kept, crib: pair, inHand: pts, fromCut: handTotal - pts, fromCrib, total: handTotal + fromCrib, exact: !!starter, why: parts.length ? parts.join(', ') : 'nothing in hand yet' };
+}
+
+/** Your discard and the coach's, in numbers, and what yours gave up. */
+export function discardComparison(hand: Card[], thrown: [Card, Card], ownCrib: boolean, starter?: Card): { yours: KeepLine; suggested: KeepLine; difference: number; same: boolean } {
+  const best = predictBestDiscard(hand, ownCrib, starter);
+  const yours = keepLineOf(hand, thrown, ownCrib, starter);
+  const suggested = keepLineOf(hand, best, ownCrib, starter);
+  const difference = Math.max(0, suggested.total - yours.total);
+  // As discardReview: the coach's keep, or within a whisker of it.
+  return { yours, suggested, difference, same: best.every((c) => thrown.some((t) => cardsEqual(t, c))) || difference <= 0.3 };
+}
+
+/** A pegging card in numbers: points now, and what their best reply is
+ * expected to take back (negative); they add up to the card's value. */
+export interface PlayLine {
+  card: Card;
+  pts: number;
+  reply: number;
+  net: number;
+  /** What it scores and what it risks, in words. */
+  why: string;
+}
+
+function playLineOf(spot: PegSpot, card: Card): PlayLine {
+  const j = judgePlay(card, spot);
+  const scored = j.pts ? j.what.join(' and ') : 'no score';
+  const risk = j.risk >= 0.5 && j.threat ? `; ${j.threat}` : j.scorers ? '; little for them to score off' : '; nothing scores off it right away';
+  return { card, pts: j.pts, reply: -j.risk, net: j.net, why: `${scored}${risk}` };
+}
+
+/** Your pegging card and the coach's, in numbers, and what yours gave up. */
+export function playComparison(spot: PegSpot, played: Card): { yours: PlayLine; suggested: PlayLine; difference: number; same: boolean } {
+  const coach = bestPlay(spot);
+  const yours = playLineOf(spot, played);
+  const suggested = playLineOf(spot, coach);
+  const difference = Math.max(0, suggested.net - yours.net);
+  // As pegReview: the coach's card, or within a whisker of it.
+  return { yours, suggested, difference, same: cardsEqual(coach, played) || difference <= 0.2 };
 }
 
 /** Last hand's count, walked through: one line per hand counted. */

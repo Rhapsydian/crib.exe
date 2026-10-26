@@ -1,7 +1,5 @@
 <script lang="ts">
-  import RichText from './RichText.svelte';
-  import CardView from './CardView.svelte';
-  import { cardsEqual } from '../engine/cards';
+  import ChoiceReview from './ChoiceReview.svelte';
   import type { SkillRating } from './skill-review';
   import { nextStar } from '../engine/skill';
   import StarRating from './StarRating.svelte';
@@ -31,44 +29,14 @@
     {#each rating.mistakes as m, i (i)}
       {@const d = m.decision}
       <div class="mistake">
-        <div class="where">Hand {m.hand} · {m.kind === 'discard' ? 'discard' : 'pegging'} · cost about {pts(m.lost)}</div>
-        <!-- The cards as they were (the user, session 70): a discard's whole
-             hand and whose crib; pegging's table. -->
-        {#if d.kind === 'discard'}
-          <div class="table">
-            <div class="row">
-              <span class="tag">dealt · {d.ownCrib ? 'your crib' : 'their crib'}</span>
-              <span class="cards">{#each d.hand as card, i (i)}<span class="slot" class:thrown={d.thrown.some((t) => cardsEqual(t, card))}><CardView {card} small /></span>{/each}</span>
-            </div>
-            <div class="note">The two raised are the ones you threw into {d.ownCrib ? 'your' : 'their'} crib.</div>
-          </div>
-        {:else}
-          <div class="table">
-            <div class="row">
-              <span class="tag">table · count {d.spot.count}</span>
-              <span class="cards">
-                {#each d.spot.sequence as card, i (i)}<CardView {card} small />{/each}
-                {#if !d.spot.sequence.length}<span class="empty">nothing played yet</span>{/if}
-              </span>
-            </div>
-            <div class="row">
-              <span class="tag">your hand</span>
-              <span class="cards">{#each d.hand as card, i (i)}<span class="slot" class:thrown={cardsEqual(card, d.played)}><CardView {card} small dimmed={!d.spot.legal.some((l) => cardsEqual(l, card))} /></span>{/each}</span>
-            </div>
-            {#if d.starter}
-              <div class="row">
-                <span class="tag">cut</span>
-                <span class="cards"><CardView card={d.starter} small /></span>
-              </div>
-            {/if}
-            <div class="note">They hold {d.spot.opponentCards} card{d.spot.opponentCards === 1 ? '' : 's'}. The raised card is the one you played; dimmed cards couldn't be played.</div>
-          </div>
-        {/if}
-        <div class="text"><RichText text={m.text} /></div>
+        <div class="where">Hand {m.hand} · {d.kind === 'discard' ? `discard · ${d.ownCrib ? 'your crib' : 'their crib'}` : 'pegging'}</div>
+        <!-- Your choice beside the coach's (session 72, the user's design;
+             it was the cards drawn large and a paragraph of prose). -->
+        <ChoiceReview choice={d} />
       </div>
     {/each}
   {:else}
-    <div class="clean">No costly mistakes: every choice came within half a point of the coach's.</div>
+    <div class="clean">No mistakes: every choice matched the coach's.</div>
   {/if}
   <button class="close" onclick={onclose}>close</button>
 </div>
@@ -144,40 +112,6 @@
   .where {
     font-size: 11px;
     color: var(--warn);
-  }
-  .text {
-    line-height: 1.4;
-  }
-  .table {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 4px 0 2px;
-  }
-  .row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .tag {
-    font-size: 10px;
-    color: var(--text-dim);
-    min-width: 70px;
-  }
-  .cards {
-    display: flex;
-    gap: 3px;
-    align-items: flex-end;
-    min-height: 46px;
-  }
-  .slot.thrown {
-    transform: translateY(-6px);
-  }
-  .empty,
-  .note {
-    font-size: 11px;
-    color: var(--text-dim);
   }
   .close {
     margin-top: 4px;

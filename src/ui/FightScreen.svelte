@@ -24,7 +24,7 @@
   import { guide } from './guide.svelte';
   import GuideBanner from './GuideBanner.svelte';
   import CoachPanel, { type CoachSection } from './CoachPanel.svelte';
-  import { discardHint, discardReview, pegHint, pegReview, phaseIntro, type PegSpot } from './coach';
+  import { discardHint, pegHint, phaseIntro, type PegSpot } from './coach';
   import { fightPegSpot } from './fight';
   import HeatBar from './HeatBar.svelte';
   import { fightHeatOutlook } from '../engine/heat';
@@ -267,8 +267,8 @@
     } else if (f.phase === 'play') {
       const spot = fightPegSpot(snapshot);
       sections.push({ title: 'NOW', lines: [guide.cribbageHints && spot ? pegHint(spot) : phaseIntro('peg', ownCrib, false)] });
-      if (lastPlay && lastPlay.handIndex === f.view.handIndex) sections.push({ title: 'YOUR LAST PLAY', lines: [pegReview(lastPlay.spot, lastPlay.played).text] });
-      if (lastDiscard && lastDiscard.handIndex === f.view.handIndex) sections.push({ title: 'YOUR DISCARD', lines: [discardReview(lastDiscard.hand, lastDiscard.thrown, lastDiscard.ownCrib, lastDiscard.starter).text] });
+      if (lastPlay && lastPlay.handIndex === f.view.handIndex) sections.push({ title: 'YOUR LAST PLAY', lines: [], choice: { kind: 'play', spot: lastPlay.spot, played: lastPlay.played } });
+      if (lastDiscard && lastDiscard.handIndex === f.view.handIndex) sections.push({ title: 'YOUR DISCARD', lines: [], choice: { kind: 'discard', hand: lastDiscard.hand, thrown: lastDiscard.thrown, ownCrib: lastDiscard.ownCrib, starter: lastDiscard.starter } });
       if (first) sections.push({ title: 'HOW IT WORKS', lines: [phaseIntro('peg', ownCrib, true)] });
     }
     return sections;

@@ -31,7 +31,6 @@ describe('the review coach', () => {
     expect(r.mistakes).toHaveLength(1);
     expect(r.mistakes[0]).toMatchObject({ kind: 'discard', hand: 3 });
     expect(r.mistakes[0].lost).toBeGreaterThan(1);
-    expect(r.mistakes[0].text).toContain('I would have kept');
   });
 
   it("skips a play that didn't matter, and has nothing to rate with nothing asked", () => {
@@ -40,11 +39,13 @@ describe('the review coach', () => {
     expect(rateSkill([])).toBeNull();
   });
 
-  it('keeps a slot for the worst pegging play, even when discards cost more', () => {
+  // Session 72 (the user): the three costliest, whatever they cost; no
+  // slot kept for pegging.
+  it('lists the three costliest choices, most first, with no slot kept for pegging', () => {
     const spot = { legal: [c(5), c(4, 1)], count: 0, sequence: [], known: [c(5), c(4, 1), c(9, 2), c(9, 3)], opponentCards: 4 };
     const bigDiscards = [0, 1, 3].map((h) => ({ ...discard([c(5), c(5, 1)]), handIndex: h }));
     const r = rateSkill([...bigDiscards, { kind: 'play', handIndex: 4, spot, played: c(5), hand: [c(5), c(4, 1)] }])!;
-    expect(r.mistakes.map((m) => m.kind)).toEqual(['discard', 'discard', 'play']);
+    expect(r.mistakes.map((m) => m.kind)).toEqual(['discard', 'discard', 'discard']);
   });
 
   // Session 72 (the user): plain arithmetic, 100 less 10 for each point
@@ -60,12 +61,12 @@ describe('the review coach', () => {
     expect(r.stars).toBe(starsFor(r.lostPerHand));
   });
 
-  it("doesn't list a choice that gave up less than a whole point", () => {
+  it('lists a choice that gave up less than a whole point, too', () => {
     const small = pairs.find((p) => lossOf(p) > 0 && lossOf(p) < 1)!;
     expect(small).toBeDefined();
     const r = rateSkill([discard(small)])!;
-    expect(r.lostPerHand).toBeGreaterThan(0);
-    expect(r.mistakes).toEqual([]);
+    expect(r.mistakes).toHaveLength(1);
+    expect(r.mistakes[0].lost).toBeLessThan(1);
   });
 
   it("counts a run's hands across fights (each fight starts again at hand 1)", () => {

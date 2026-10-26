@@ -1,12 +1,16 @@
 <script lang="ts" module>
+  import type { CoachChoice } from './coach';
   export interface CoachSection {
     title: 'NOW' | 'YOUR DISCARD' | 'YOUR LAST PLAY' | "LAST HAND'S COUNT" | 'HOW IT WORKS';
     lines: string[];
+    /** Your choice beside the coach's (session 72), under the lines. */
+    choice?: CoachChoice;
   }
 </script>
 
 <script lang="ts">
   import RichText from './RichText.svelte';
+  import ChoiceReview from './ChoiceReview.svelte';
   // The coach's panel (milestone 4 checkpoint 4): in the log ticker's
   // place while the coach is on. Titled sections, so advice for now is
   // never mistaken for a look back (the user's catch): NOW first, then
@@ -28,6 +32,7 @@
       <div class="section" class:now={section.title === 'NOW'}>
         <div class="title">{section.title}</div>
         {#each section.lines as line, i (i)}<div class="line"><RichText text={line} /></div>{/each}
+        {#if section.choice}<div class="line"><ChoiceReview choice={section.choice} /></div>{/if}
       </div>
     {:else}
       <div class="line">Watching the play…</div>

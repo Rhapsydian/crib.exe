@@ -5,6 +5,7 @@ import { WIN_SCORE } from '../engine/basic-cribbage';
 import { LiveCribbage } from './live-cribbage.svelte';
 import { pegsAfter } from './cribbage-steps';
 import { tableAt } from './timeline';
+import { rateSkill } from './skill-review';
 
 // Milestone 4 checkpoint 3: a game of vanilla Cribbage through the UI driver.
 /** Plays the player's side with an AI on its own generator (the request's
@@ -52,5 +53,25 @@ describe('LiveCribbage', () => {
     expect(resumed.frame!.steps.length).toBe(game.frame!.steps.length);
     const stale = { ...game.save, answers: [{ k: 'play', a: { rank: 99, suit: 0 } }] };
     expect(LiveCribbage.resume(stale)).toBeNull();
+  });
+});
+
+// Session 72 (the user): a vanilla game ends with a Cribbage rating, as a
+// fight does.
+describe("a vanilla game's Cribbage rating", () => {
+  it('records every choice, survives a resume, and rates a full-strength player Flawless', () => {
+    const game = new LiveCribbage('normal', false, 4);
+    let i = 0;
+    while (game.frame && i < 2000) {
+      const r = game.frame.request;
+      game.answer(r.kind === 'discard' ? discardSkillStrategy(1)(r.context) : pegSkillStrategy(1)(r.context));
+      i++;
+    }
+    const rating = rateSkill(game.skill)!;
+    expect(rating.hands).toBe(game.result!.hands);
+    expect(rating.stars).toBe(5);
+    expect(rating.mistakes).toEqual([]);
+    const resumed = LiveCribbage.resume(game.save)!;
+    expect(resumed.skill).toEqual(game.skill);
   });
 });

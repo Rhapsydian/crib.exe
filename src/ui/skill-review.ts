@@ -1,6 +1,6 @@
 import type { Card } from '../engine/cards';
 import type { CombatAnswer, CombatRequest } from '../engine/combat';
-import { discardLoss, discardReview, pegLoss, pegReview, type PegSpot } from './coach';
+import { discardLoss, pegLoss, type PegSpot } from './coach';
 import { combatPegSpot } from './fight';
 import { starLabel, starsFor, type Stars } from '../engine/skill';
 
@@ -47,9 +47,8 @@ export function decisionFor(request: CombatRequest, answer: CombatAnswer): Skill
   return null;
 }
 
-/** A mistake worth showing gave up at least a whole point (the user,
- * session 72). */
-const MISTAKE_MIN = 1;
+/** The costliest choices shown, whatever they cost (the user, session 72:
+ * no floor, and no slot kept for pegging). */
 const MISTAKES_SHOWN = 3;
 
 
@@ -59,8 +58,7 @@ export interface SkillMistake {
   hand: number;
   /** Points given up. */
   lost: number;
-  text: string;
-  /** The choice itself, for the drawer to lay out the cards. */
+  /** The choice itself, for the drawer to lay out beside the coach's. */
   decision: SkillDecision;
 }
 
@@ -78,8 +76,7 @@ export interface SkillRating {
 }
 
 /** The rating over `decisions` (a fight's, or a whole run's); null with
- * nothing to rate. Mistakes are named only when asked (they cost the
- * most to write). */
+ * nothing to rate. Mistakes are listed only when asked. */
 export function rateSkill(decisions: readonly SkillDecision[], withMistakes = true): SkillRating | null {
   let total = 0;
   let counted = 0;
@@ -95,27 +92,13 @@ export function rateSkill(decisions: readonly SkillDecision[], withMistakes = tr
     if (lost === null) continue;
     total += lost;
     counted++;
-    if (lost >= MISTAKE_MIN) costly.push({ d, lost });
+    if (lost > 0) costly.push({ d, lost });
   }
   if (!counted) return null;
   const lostPerHand = total / hands;
   const stars = starsFor(lostPerHand);
-  // The costliest, with one slot kept for the worst pegging play if there
-  // is one (the user, session 70): discards usually cost more, and the
-  // drawer should teach both halves.
+  // The three costliest, most first.
   costly.sort((a, b) => b.lost - a.lost);
-  const shown = costly.slice(0, MISTAKES_SHOWN);
-  const worstPlay = costly.find((c) => c.d.kind === 'play');
-  if (worstPlay && !shown.includes(worstPlay) && shown.length === MISTAKES_SHOWN) shown[MISTAKES_SHOWN - 1] = worstPlay;
-  const mistakes = withMistakes
-    ? shown
-        .map(({ d, lost }) => ({
-          kind: d.kind,
-          hand: d.handIndex + 1,
-          decision: d,
-          lost,
-          text: d.kind === 'discard' ? discardReview(d.hand, d.thrown, d.ownCrib, d.starter).text : pegReview(d.spot, d.played).text,
-        }))
-    : [];
+  const mistakes = withMistakes ? costly.slice(0, MISTAKES_SHOWN).map(({ d, lost }) => ({ kind: d.kind, hand: d.handIndex + 1, decision: d, lost })) : [];
   return { stars, label: starLabel(stars), decisions: counted, hands, lostPerHand, mistakes };
 }
