@@ -8,6 +8,9 @@
   import { ALL_SUBROUTINES } from '../engine/subroutines';
   import { BURNER_DEFINITIONS } from '../engine/burners';
   import type { BurnerId } from '../engine/burner-types';
+  import StartPickSheet from './StartPickSheet.svelte';
+  import RichText from './RichText.svelte';
+  import { burnerText, burnerWhere, pieceLines, rarityOf } from './reward-text';
 
   // Run setup (milestone 3 checkpoint 2): pick a class and jack in. Each
   // card shows its two suits, its class Mod (the bridge between them) and
@@ -38,6 +41,18 @@
   const library = $derived(profile.library.map((id) => ALL_SUBROUTINES.find((p) => p.id === id)).filter((p) => p !== undefined));
   let starter = $state<string>(profile.library.includes(profile.data.starter ?? '') ? (profile.data.starter ?? '') : '');
   let burner = $state<string>(profile.burners.includes(profile.data.burner as BurnerId) ? (profile.data.burner ?? '') : '');
+  // The pickers (session 72, the user: the drop-downs' names weren't
+  // enough): a sheet with every choice's full rules. A subroutine already
+  // in the class's loadout can't be the auxiliary, and a pick that becomes
+  // one when the class changes clears itself.
+  let picking = $state<'starter' | 'burner' | null>(null);
+  const classPieces = $derived(new Set(CLASS_DEFINITIONS[chosen].startingLoadout.map((p) => p.id)));
+  const inClass = $derived(new Map([...classPieces].map((id) => [id, `in ${CLASS_DEFINITIONS[chosen].name}'s loadout`])));
+  $effect(() => {
+    if (starter && classPieces.has(starter)) starter = '';
+  });
+  const starterPiece = $derived(library.find((p) => p.id === starter));
+  const burnerDef = $derived(burner ? BURNER_DEFINITIONS[burner as BurnerId] : undefined);
   // Security Level (MP13): once open, any level up to the highest.
   let securityLevel = $state(Math.min(profile.data.securityPick, profile.securityOpen));
   // Without the Message Board (the user, session 71): no upgrades and no
@@ -114,28 +129,38 @@
     <div class="caption">STARTING PICKS</div>
     <div class="picks">
       {#if library.length}
-        <label>
-          <span class="dim">4th starting subroutine</span>
-          <select bind:value={starter} id="starter-pick">
-            <option value="">none</option>
-            {#each library as p (p.id)}<option value={p.id}>{p.name} ({p.archetype})</option>{/each}
-          </select>
-        </label>
+        <div class="pick">
+          <div class="pick-head"><span class="dim">AUXILIARY SUBROUTINE</span>{#if starterPiece}<button class="link" onclick={() => (picking = 'starter')}>change</button><button class="link" onclick={() => (starter = '')}>✕ clear</button>{/if}</div>
+          {#if starterPiece}
+            <div class="pick-name"><SuitIcon archetype={starterPiece.archetype} size={14} /> <b>{starterPiece.name}</b> <span class="dim">· {rarityOf(starterPiece.id)}</span></div>
+            {#each pieceLines(starterPiece) as line (line)}<div class="pick-text"><RichText text={line} /></div>{/each}
+          {:else}
+            <button class="choose" onclick={() => (picking = 'starter')}>Select auxiliary subroutine</button>
+          {/if}
+        </div>
       {/if}
       {#if profile.burners.length}
-        <label>
-          <span class="dim">Starting Burner</span>
-          <select bind:value={burner} id="burner-pick">
-            <option value="">none</option>
-            {#each profile.burners as id (id)}<option value={id}>{BURNER_DEFINITIONS[id].name}</option>{/each}
-          </select>
-        </label>
+        <div class="pick">
+          <div class="pick-head"><span class="dim">STARTING BURNER</span>{#if burnerDef}<button class="link" onclick={() => (picking = 'burner')}>change</button><button class="link" onclick={() => (burner = '')}>✕ clear</button>{/if}</div>
+          {#if burnerDef}
+            <div class="pick-name"><b>⏏︎ {burnerDef.name}</b> <span class="dim">· {burnerWhere(burnerDef)}</span></div>
+            <div class="pick-text"><RichText text={burnerText(burnerDef)} /></div>
+          {:else}
+            <button class="choose" onclick={() => (picking = 'burner')}>Select starting Burner</button>
+          {/if}
+        </div>
       {/if}
     </div>
   {/if}
   <button class="start" onclick={start}>▶ jack in as {CLASS_DEFINITIONS[chosen].name}</button>
   <button class="test" onclick={ontest}>test a single fight instead</button>
 </div>
+
+{#if picking === 'starter'}
+  <StartPickSheet title="SELECT AUXILIARY SUBROUTINE" subroutines={library} disabled={inClass} chosen={starter} onpick={(id) => ((starter = id), (picking = null))} onclose={() => (picking = null)} />
+{:else if picking === 'burner'}
+  <StartPickSheet title="SELECT STARTING BURNER" burners={profile.burners.map((id) => BURNER_DEFINITIONS[id])} chosen={burner} onpick={(id) => ((burner = id), (picking = null))} onclose={() => (picking = null)} />
+{/if}
 
 <style>
   .setup {
@@ -210,22 +235,57 @@
   }
   .picks {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px 16px;
+    flex-direction: column;
+    gap: 6px;
     font-size: 12px;
   }
-  .picks label {
+  .pick {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-  }
-  .picks select {
-    padding: 4px 6px;
+    gap: 3px;
+    padding: 6px 8px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: var(--bg-raised);
-    color: var(--text);
+  }
+  .pick-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+  .pick-head .link:first-of-type {
+    margin-left: auto;
+  }
+  .link {
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--accent);
     font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .pick-name {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .pick-text {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+  .choose {
+    align-self: flex-start;
+    padding: 5px 10px;
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius);
+    background: var(--bg-sunken);
+    color: var(--accent);
+    font: inherit;
+    cursor: pointer;
   }
   .cls.locked {
     opacity: 0.75;

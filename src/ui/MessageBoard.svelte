@@ -81,7 +81,7 @@
     </div>
   {:else if tab === 'library'}
     <div class="dim small">
-      Unlocked subroutines can start a run as a 4th starter, from any archetype. One per archetype is on offer at a time; every common comes before any uncommon, and every uncommon before the rares.
+      Unlocked subroutines can start a run as your auxiliary subroutine, from any archetype. One per archetype is on offer at a time; every common comes before any uncommon, and every uncommon before the rares.
     </div>
     {#if tierOf}
       <div class="caption">{tierOf.toUpperCase()}S · {unlockedOf(tierOf)} of {poolSize(tierOf)} unlocked</div>
