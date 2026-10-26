@@ -57,31 +57,28 @@ Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
 
 ---
 
-## Priorities (the user, session 63)
+## Priorities: go-live (the user, end of session 72)
 
-In this order:
+**The game is feature-complete; next is release.** The plan, in order, is
+`docs/go-live-plan.md`:
 
-1. **More content**, all of it: subroutines, Mods, Burners, Events, and
-   enemies of all three tiers. Player side first, then enemies.
-   **Burners and the first ten new Events are done** (session 64), **Mods
-   and their six Events** (session 65), **subroutines** (session 66),
-   **elites** (session 67), **gatekeepers and regulars** (session 68): the
-   content pass is done, and its tuning pass (session 69). Next: Event
-   mini-games, then meta-progression and Daily Runs. The user's notes:
-   - **Burners:** the economy ones (Data, Shop discounts) are the only
-     ones worth carrying; tune up the combat and map Burners.
-   - **Events** can be a source of rare, high-value Burners.
-   - **Curses / negative-effect Mods** were bundled with a future Events
-     design session.
-   - Enemy-only effects (Trace, Wipe, Strip) stay off the player pool; a
-     player-side Suspend ("your bottom subroutine skips a turn") was
-     floated in session 60.
-2. **Meta-progression.** **Built in session 71** (Security Levels are its
-   ascension); live on `playable` since session 72's close-out.
-3. **Daily Runs.** **Built in session 72** on branch `daily-runs` (Phase 1:
-   no server); live on `playable` with meta-progression. Deferred:
-   a server leaderboard (unless the game gets popular, the user), and
-   playing a chosen seed.
+1. Release cleanup (testing switches, the test-fight button, a version
+   number, CI actions off Node 20, stale balance notes pruned).
+2. A dropped-save notice on Start a Run (no save-model change).
+3. A settings menu (decision session): replay speed, coach defaults,
+   sound, reset progress, profile export/import.
+4. Sound effects (decision session): Kenney card sounds + ZzFX synth; no
+   music at launch.
+5. About and credits (after sound): version, Tabler Icons' MIT notice,
+   sound credits, a feedback link.
+6. A records and stats page (decision session).
+7. Mobile: a web-app manifest and icons, a phone-width pass.
+8. A release candidate: full test, playtest build, freeze.
+9. itch.io: page text, screenshots, a GIF, the cover, the butler upload.
+
+Out of scope for release: **Event mini-games** (the user: none), music,
+and balance work. The earlier priorities (session 63: the content pass,
+meta-progression, Daily Runs) are all done.
 
 **Art:** the user is happy with the current look; no sprite pass. At
 most, refine some of the map icons.
