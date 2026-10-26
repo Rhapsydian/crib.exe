@@ -31,6 +31,11 @@
 
 * {
   box-sizing: border-box;
+  /* Taps are taps (session 72, testers on iPhone: a quick double tap
+     zoomed the page). Turns off double-tap zoom; panning and pinch zoom
+     still work. On every element, since touch-action isn't inherited and
+     scrolling panels would cut a rule on html short. */
+  touch-action: manipulation;
 }
 
 html,
