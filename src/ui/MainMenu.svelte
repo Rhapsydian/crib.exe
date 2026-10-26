@@ -173,7 +173,11 @@
 
   <!-- Settings (go-live step 3): turn speed, tips (show tips again moved
        there from here), progress. -->
-  <button class="settings-link" onclick={onsettings}>⚙ settings</button>
+  <button class="settings-link" onclick={onsettings}>
+    <!-- Tabler Icons' "settings" (MIT), as the map icons. -->
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>
+    <b>Settings</b>
+  </button>
   <!-- The version, for bug reports (go-live step 1). -->
   <div class="version">v{__APP_VERSION__}</div>
 </div>
@@ -185,16 +189,27 @@
     color: var(--text-dim);
     opacity: 0.6;
   }
+  /* As the menu's entries, smaller and centred (the user's ask). */
   .settings-link {
     align-self: center;
-    margin-top: 8px;
-    padding: 4px 10px;
-    border: none;
-    background: none;
-    color: var(--text-dim);
-    font-size: 11px;
-    text-decoration: underline;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--bg-raised);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
     cursor: pointer;
+  }
+  .settings-link svg {
+    color: var(--accent);
+  }
+  .settings-link:hover {
+    border-color: var(--accent);
   }
   .menu {
     max-width: 520px;
