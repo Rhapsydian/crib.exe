@@ -62,11 +62,20 @@ describe('the review coach', () => {
   });
 
   it('lists a choice that gave up less than a whole point, too', () => {
-    const small = pairs.find((p) => lossOf(p) > 0 && lossOf(p) < 1)!;
+    const small = pairs.find((p) => lossOf(p) > 0.3 && lossOf(p) < 1)!;
     expect(small).toBeDefined();
     const r = rateSkill([discard(small)])!;
     expect(r.mistakes).toHaveLength(1);
     expect(r.mistakes[0].lost).toBeLessThan(1);
+  });
+
+  // The user's catch: a choice the coach calls its own ("The coach's play
+  // too") isn't a mistake, so the costliest list leaves it out.
+  it("leaves out a choice within a whisker of the coach's", () => {
+    const close = pairs.find((p) => lossOf(p) > 0 && lossOf(p) <= 0.3);
+    if (close) expect(rateSkill([discard(close)])!.mistakes).toEqual([]);
+    const spot = { legal: [c(5), c(4, 1)], count: 0, sequence: [], known: [c(5), c(4, 1), c(9, 2), c(9, 3)], opponentCards: 4 };
+    expect(rateSkill([{ kind: 'play', handIndex: 1, spot, played: c(4, 1), hand: [c(5), c(4, 1)] }])!.mistakes).toEqual([]);
   });
 
   it("counts a run's hands across fights (each fight starts again at hand 1)", () => {

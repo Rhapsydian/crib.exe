@@ -22,6 +22,13 @@ import { suitToken } from './RichText.svelte';
  */
 
 const label = (c: Card) => rankLabel(c.rank);
+
+/** How close counts as the coach's own choice: a discard within this many
+ * points of its keep, a pegging card within this of its card. One place,
+ * so the review's costliest list and the "coach's choice too" verdict
+ * agree (session 72, the user's catch). */
+export const DISCARD_MATCH = 0.3;
+export const PLAY_MATCH = 0.2;
 /** "a" or "an" for a word as it's said: an 8, an A, an 11, an Overclock
  * (the user's catch); a 7, a Daemon. */
 export const article = (word: string) => (/^(8|11|18|A|[AEIOUaeiou])/.test(word) ? 'an' : 'a');
@@ -124,7 +131,7 @@ export function discardReview(hand: Card[], thrown: [Card, Card], ownCrib: boole
   const yours = { kept: keep(thrown), score: scoreDiscard(hand, thrown, ownCrib, undefined, undefined, starter) };
   const coach = { kept: keep(best), score: scoreDiscard(hand, best, ownCrib, undefined, undefined, starter) };
   // Good if it's the coach's discard, or within a whisker of it.
-  const same = best.every((c) => thrown.some((t) => cardsEqual(t, c))) || yours.score >= coach.score - 0.3;
+  const same = best.every((c) => thrown.some((t) => cardsEqual(t, c))) || yours.score >= coach.score - DISCARD_MATCH;
   const y = keepLine(yours.kept, unseen, starter);
   const c = keepLine(coach.kept, unseen, starter);
   const text = same
@@ -267,7 +274,7 @@ export function pegReview(spot: PegSpot, played: Card): { same: boolean; text: s
   const scored = (j: ReturnType<typeof judgePlay>) => (j.pts ? j.what.join(' and ') : 'no score');
   const risky = (j: ReturnType<typeof judgePlay>) => j.risk >= 0.5 && j.threat;
   // Good if it's the coach's play, or within a whisker of it.
-  const same = cardsEqual(coach, played) || yours.net >= theirs.net - 0.2;
+  const same = cardsEqual(coach, played) || yours.net >= theirs.net - PLAY_MATCH;
   if (same) {
     // A good play can still leave them something: say it was the least.
     const note = risky(yours) && spot.legal.length > 1 ? `; it still leaves ${yours.threatWho} ${yours.threatWhat}, but your other cards gave them more` : risky(yours) ? `; then ${yours.threat}` : '';
@@ -325,7 +332,7 @@ export function discardComparison(hand: Card[], thrown: [Card, Card], ownCrib: b
   const suggested = keepLineOf(hand, best, ownCrib, starter);
   const difference = Math.max(0, suggested.total - yours.total);
   // As discardReview: the coach's keep, or within a whisker of it.
-  return { yours, suggested, difference, same: best.every((c) => thrown.some((t) => cardsEqual(t, c))) || difference <= 0.3 };
+  return { yours, suggested, difference, same: best.every((c) => thrown.some((t) => cardsEqual(t, c))) || difference <= DISCARD_MATCH };
 }
 
 /** A pegging card in numbers: points now, and what their best reply is
@@ -353,7 +360,7 @@ export function playComparison(spot: PegSpot, played: Card): { yours: PlayLine; 
   const suggested = playLineOf(spot, coach);
   const difference = Math.max(0, suggested.net - yours.net);
   // As pegReview: the coach's card, or within a whisker of it.
-  return { yours, suggested, difference, same: cardsEqual(coach, played) || difference <= 0.2 };
+  return { yours, suggested, difference, same: cardsEqual(coach, played) || difference <= PLAY_MATCH };
 }
 
 /** Last hand's count, walked through: one line per hand counted. */

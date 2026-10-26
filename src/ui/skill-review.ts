@@ -1,6 +1,6 @@
 import type { Card } from '../engine/cards';
 import type { CombatAnswer, CombatRequest } from '../engine/combat';
-import { discardLoss, pegLoss, type PegSpot } from './coach';
+import { DISCARD_MATCH, PLAY_MATCH, discardLoss, pegLoss, type PegSpot } from './coach';
 import { combatPegSpot } from './fight';
 import { starLabel, starsFor, type Stars } from '../engine/skill';
 
@@ -47,8 +47,9 @@ export function decisionFor(request: CombatRequest, answer: CombatAnswer): Skill
   return null;
 }
 
-/** The costliest choices shown, whatever they cost (the user, session 72:
- * no floor, and no slot kept for pegging). */
+/** The costliest choices shown (the user, session 72: no 1-point floor,
+ * and no slot kept for pegging). A choice the coach counts as its own
+ * (within DISCARD_MATCH / PLAY_MATCH) isn't a mistake, so isn't listed. */
 const MISTAKES_SHOWN = 3;
 
 
@@ -92,7 +93,7 @@ export function rateSkill(decisions: readonly SkillDecision[], withMistakes = tr
     if (lost === null) continue;
     total += lost;
     counted++;
-    if (lost > 0) costly.push({ d, lost });
+    if (lost > (d.kind === 'discard' ? DISCARD_MATCH : PLAY_MATCH)) costly.push({ d, lost });
   }
   if (!counted) return null;
   const lostPerHand = total / hands;
