@@ -27,7 +27,14 @@ on their Node 24 majors; the stale balance notes pruned.
 - Prune the stale balance notes from `BACKLOG.md` (session 64-66 elite and
   class figures superseded by sessions 67-69 and 72).
 
-## 2. Dropped-save notice
+## 2. Dropped-save notice (done, session 72)
+
+Done: every save slot is checked at startup by resuming it off screen; one
+that won't load (an old version, unreadable, or a replay that fails) is
+cleared, and its screen shows a dismissable card (NoticeCard, shared with
+step 5b): Start a Run, the Daily screen, the main menu (Play Cribbage). A
+dropped Daily that was the day's scored attempt is released to play again.
+Tips no longer fire while a save replays.
 
 A run is saved as a replay of the player's answers, so a rules or content
 update can break one in progress (profiles are versioned and survive). The

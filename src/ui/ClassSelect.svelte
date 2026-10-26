@@ -9,6 +9,7 @@
   import { BURNER_DEFINITIONS } from '../engine/burners';
   import type { BurnerId } from '../engine/burner-types';
   import StartPickSheet from './StartPickSheet.svelte';
+  import NoticeCard from './NoticeCard.svelte';
   import RichText from './RichText.svelte';
   import { burnerText, burnerWhere, pieceLines, rarityOf } from './reward-text';
 
@@ -25,14 +26,17 @@
     onmenu,
     saved = null,
     onresume,
-    resumeFailed = false,
+    dropped = false,
+    ondismissdropped,
   }: {
     onstart: (classId: ClassId, picks: { starter?: string; burner?: BurnerId; securityLevel?: number; plain?: boolean }) => void;
     ontest?: () => void;
     onmenu?: () => void;
     saved?: { className: string; layer: number; savedAt: number } | null;
     onresume?: () => void;
-    resumeFailed?: boolean;
+    /** A saved run an update cleared (go-live step 2). */
+    dropped?: boolean;
+    ondismissdropped?: () => void;
   } = $props();
   const classes = CLASS_ORDER.map((id) => CLASS_DEFINITIONS[id]);
   let chosen = $state<ClassId>(CLASS_ORDER.findLast((id) => profile.hasClass(id)) ?? CLASS_ORDER[0]);
@@ -75,8 +79,8 @@
     <button class="resume" onclick={() => onresume?.()}>▶ resume run · {saved.className} · layer {saved.layer}</button>
     <div class="small dim">Starting a new run below replaces it.</div>
   {/if}
-  {#if resumeFailed}
-    <div class="small warn">That save is from an older version of the game and couldn't be loaded. Start a new run below.</div>
+  {#if dropped}
+    <NoticeCard title="SAVED RUN CLEARED" lines={["Your saved run was from an earlier version of the game. An update changed the rules it was played under, so it couldn't continue, and it has been cleared."]} ondismiss={() => ondismissdropped?.()} />
   {/if}
   <div class="caption">CHOOSE A CLASS{#if profile.data.repEarned > 0}<span class="rep">◆ {profile.data.rep} rep</span>{/if}</div>
   <div class="classes">
@@ -411,9 +415,6 @@
   }
   .small {
     font-size: 11px;
-  }
-  .warn {
-    color: var(--warn);
   }
   .back {
     align-self: flex-start;

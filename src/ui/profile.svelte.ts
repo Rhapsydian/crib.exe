@@ -203,6 +203,16 @@ class ProfileStore {
   /** The latest daily's score, itemized, for its end card (not saved). */
   lastDaily = $state.raw<{ runId: string; date: string; practice: boolean; lines: ScoreLine[]; total: number; stars: Stars | null } | null>(null);
 
+  /** A scored attempt an update cleared before it finished (go-live step
+   * 2): the day's scored attempt is open again. */
+  releaseDaily(date: string): boolean {
+    const record = this.data.daily[date];
+    if (!record?.started || record.scored !== undefined) return false;
+    this.data = { ...this.data, daily: { ...this.data.daily, [date]: { ...record, started: false } } };
+    this.#save();
+    return true;
+  }
+
   /** A daily's attempt begins: the first one of a date is the scored
    * attempt; it returns whether this one is practice. */
   startDaily(date: string): boolean {

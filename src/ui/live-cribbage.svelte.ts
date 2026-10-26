@@ -44,7 +44,8 @@ export interface CribbageSave {
 }
 
 export const CRIBBAGE_SAVE_VERSION = 1;
-const KEY = 'cribexe.cribbage';
+export const CRIBBAGE_SAVE_KEY = 'cribexe.cribbage';
+const KEY = CRIBBAGE_SAVE_KEY;
 
 export function loadCribbageSave(): CribbageSave | null {
   try {

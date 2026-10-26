@@ -26,7 +26,8 @@ export const SAVE_VERSION = 3;
 /** Save slots (session 72): a normal run and a Daily Run each keep their
  * own, so starting one never wipes the other. */
 export type SaveSlot = 'run' | 'daily';
-const KEYS: Record<SaveSlot, string> = { run: 'cribexe.run', daily: 'cribexe.daily' };
+export const SAVE_KEYS: Record<SaveSlot, string> = { run: 'cribexe.run', daily: 'cribexe.daily' };
+const KEYS = SAVE_KEYS;
 
 /** One answer: the pause it answered, and the answer in plain data. */
 export interface SavedAnswer {

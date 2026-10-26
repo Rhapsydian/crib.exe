@@ -6,6 +6,7 @@
   import { CATEGORY_NAME, dailyModName, dailyModText } from './daily-text';
   import SuitIcon from './SuitIcon.svelte';
   import RichText from './RichText.svelte';
+  import NoticeCard from './NoticeCard.svelte';
 
   // The daily briefing (session 72, docs/daily-runs-design.md DR9): the
   // day's class and every Mod in full, whether this is the scored attempt
@@ -20,7 +21,21 @@
     onresume,
     onstart,
     onmenu,
-  }: { date: string; saved?: { date: string; layer: number; practice: boolean } | null; onresume: () => void; onstart: () => void; onmenu: () => void } = $props();
+    dropped = false,
+    released = false,
+    ondismissdropped,
+  }: {
+    date: string;
+    saved?: { date: string; layer: number; practice: boolean } | null;
+    onresume: () => void;
+    onstart: () => void;
+    onmenu: () => void;
+    /** A Daily Run save an update cleared, and whether its scored attempt
+     * was released (go-live step 2). */
+    dropped?: boolean;
+    released?: boolean;
+    ondismissdropped?: () => void;
+  } = $props();
   const todayInProgress = $derived(saved?.date === date);
   const plan = $derived(rollDaily(date));
   const cls = $derived(CLASS_DEFINITIONS[plan.classId]);
@@ -35,6 +50,16 @@
   <button class="back" onclick={onmenu}>◂ menu</button>
   <div class="kicker">DAILY RUN</div>
   <h1>{date}</h1>
+  {#if dropped}
+    <NoticeCard
+      title="SAVED DAILY CLEARED"
+      lines={[
+        "Your Daily Run in progress was from an earlier version of the game, so it couldn't continue, and it has been cleared.",
+        ...(released ? ["Its scored attempt didn't count: you can start today's scored attempt again."] : []),
+      ]}
+      ondismiss={() => ondismissdropped?.()}
+    />
+  {/if}
 
   <div class="card cls">
     <div class="head"><span class="icons">{#each cls.archetypes as a (a)}<SuitIcon archetype={a} size={15} />{/each}</span><b>{cls.name}</b><span class="dim">today's class</span></div>

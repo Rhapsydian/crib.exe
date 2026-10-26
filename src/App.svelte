@@ -19,6 +19,7 @@
   import { LiveCribbage, clearCribbageSave, loadCribbageSave, writeCribbageSave } from './ui/live-cribbage.svelte';
   import type { Difficulty } from './engine/basic-cribbage';
   import { DEV_ROUTES, type DevRoute } from './dev-routes';
+  import { checkSaves } from './ui/save-check';
   import LearnHub from './ui/LearnHub.svelte';
   import LessonScreen from './ui/LessonScreen.svelte';
   import { LESSONS, loadProgress, markDone } from './ui/lessons';
@@ -42,11 +43,16 @@
   // Saves (milestone 3 checkpoint 5): a run writes itself after every
   // answer and clears its save when it ends; the class screen offers to
   // resume one.
+  // Saves an update left behind are cleared before anything reads them,
+  // and their screens say so (go-live step 2). A Daily Run's dropped scored
+  // attempt is released, so today's can be played again.
+  const checked = checkSaves();
+  const dailyReleased = checked.daily?.scored ? profile.releaseDaily(checked.daily.date) : false;
+  let dropped = $state({ run: checked.run, daily: checked.daily !== null, cribbage: checked.cribbage });
   let saved = $state.raw(loadSave());
   // A Daily Run's save has its own slot (session 72).
   let savedDaily = $state.raw(loadSave('daily'));
   const slotOf = (r: LiveRun) => (r.setup.daily ? 'daily' : 'run');
-  let resumeFailed = $state(false);
   function begin(next: LiveRun) {
     next.onsave = () => {
       if (next.pause?.kind === 'over') {
@@ -77,7 +83,7 @@
     const next = save && LiveRun.resume(save);
     if (next) begin(next);
     else {
-      resumeFailed = true;
+      dropped.run = true;
       clearSave();
       saved = null;
     }
@@ -94,8 +100,7 @@
     else {
       clearSave('daily');
       savedDaily = null;
-      menuWarning = "That saved daily is from an older version of the game and couldn't be loaded.";
-      screen = 'menu';
+      dropped.daily = true;
     }
   }
 
@@ -119,7 +124,6 @@
   }
   let cribbage = $state.raw<LiveCribbage | null>(null);
   let cribbageSaved = $state.raw(loadCribbageSave());
-  let menuWarning = $state<string | null>(null);
   const VISITED_KEY = 'cribexe.visited';
   const readVisited = () => {
     try {
@@ -152,7 +156,7 @@
     const next = save && LiveCribbage.resume(save);
     if (next) beginCribbage(next);
     else {
-      menuWarning = "That saved game is from an older version of the game and couldn't be loaded.";
+      dropped.cribbage = true;
       clearCribbageSave();
       cribbageSaved = null;
     }
@@ -228,10 +232,11 @@
       ondaily={() => (screen = 'daily')}
       today={today()}
       dailyInProgress={savedDaily ? { date: savedDaily.setup.daily?.date ?? '', practice: savedDaily.setup.daily?.practice ?? false } : null}
-      resumeFailed={menuWarning}
+      droppedGame={dropped.cribbage}
+      ondismissdropped={() => (dropped.cribbage = false)}
     />
   {:else if screen === 'daily'}
-    <DailyBrief date={today()} saved={savedDaily ? { date: savedDaily.setup.daily?.date ?? '', layer: savedDaily.summary.layer, practice: savedDaily.setup.daily?.practice ?? false } : null} onresume={resumeDaily} onstart={beginDaily} onmenu={toMenu} />
+    <DailyBrief date={today()} saved={savedDaily ? { date: savedDaily.setup.daily?.date ?? '', layer: savedDaily.summary.layer, practice: savedDaily.setup.daily?.practice ?? false } : null} onresume={resumeDaily} onstart={beginDaily} onmenu={toMenu} dropped={dropped.daily} released={dailyReleased} ondismissdropped={() => (dropped.daily = false)} />
   {:else if screen === 'board'}
     <MessageBoard onmenu={toMenu} />
   {:else if screen === 'tutorial'}
@@ -248,7 +253,8 @@
       ontest={import.meta.env.DEV ? () => (location.hash = '#test') : undefined}
       saved={saved?.summary ?? null}
       onresume={resume}
-      {resumeFailed}
+      dropped={dropped.run}
+      ondismissdropped={() => (dropped.run = false)}
     />
   {/if}
 {:else if import.meta.env.DEV}

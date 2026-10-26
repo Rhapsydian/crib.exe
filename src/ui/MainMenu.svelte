@@ -1,4 +1,5 @@
 <script lang="ts">
+  import NoticeCard from './NoticeCard.svelte';
   import { tips } from './tips.svelte';
   import { profile } from './profile.svelte';
   import { DAILY_MODS, rollDaily } from '../engine/daily';
@@ -32,7 +33,8 @@
     ondaily,
     today,
     dailyInProgress = null,
-    resumeFailed = null,
+    droppedGame = false,
+    ondismissdropped,
   }: {
     runSave: { className: string; layer: number } | null;
     cribbageSave: { difficulty: Difficulty; scores: [number, number] } | null;
@@ -46,7 +48,9 @@
     ondaily: () => void;
     today: string;
     dailyInProgress?: { date: string; practice: boolean } | null;
-    resumeFailed?: string | null;
+    /** A saved Cribbage game an update cleared (go-live step 2). */
+    droppedGame?: boolean;
+    ondismissdropped?: () => void;
   } = $props();
 
   const plan = $derived(rollDaily(today));
@@ -88,7 +92,9 @@
   </div>
   <div class="sub">A hacking roguelite where every fight is a game of Cribbage</div>
 
-  {#if resumeFailed}<div class="warn">{resumeFailed}</div>{/if}
+  {#if droppedGame}
+    <NoticeCard title="SAVED GAME CLEARED" lines={["Your saved Cribbage game was from an earlier version of the game, so it couldn't continue, and it has been cleared."]} ondismiss={() => ondismissdropped?.()} />
+  {/if}
 
   <!-- Two sections (the user's call): the roguelite -- a run for now;
        meta-progression and its tutorial join it later -- and vanilla
@@ -274,10 +280,6 @@
     color: var(--text-dim);
     font-size: 12px;
     margin-bottom: 8px;
-  }
-  .warn {
-    color: var(--warn);
-    font-size: 11.5px;
   }
   section {
     display: flex;

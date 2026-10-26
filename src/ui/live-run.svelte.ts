@@ -357,7 +357,9 @@ export class LiveRun {
           this.fight.daily = this.daily ?? undefined;
           this.fight.resumed = this.#replaying;
           // Bigger gauges deep (session 68, E9): their first time on layers 3 and 4.
-          if (r.tier !== 'regular' && r.layer >= 3) tips.offer(r.layer === 3 ? 'gauges3' : 'gauges4');
+          // Not while a save replays (go-live step 2: the startup save check
+          // replays runs off screen).
+          if (r.tier !== 'regular' && r.layer >= 3 && !this.#replaying) tips.offer(r.layer === 3 ? 'gauges3' : 'gauges4');
           step = this.#run.next(null);
           continue;
         case 'combat': {
