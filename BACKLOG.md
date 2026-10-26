@@ -95,8 +95,9 @@ most, refine some of the map icons.
   tests; they show only on days that roll them); Turncoat Crib's large
   run-level penalty was never fully explained (it's scrapped, but the
   note stands if a crib rule comes back); Memory Leak is the hardest day
-  (−16 alone); Flawless Form needs a Flawless (96+) Cribbage rating
-  (session 72; it was 90%+ before the rating changed).
+  (−16 alone); Flawless Form needs a Flawless (5-star) Cribbage rating
+  (session 72; it was 90%+ before the rating changed). The Cribbage line
+  pays 100 / 200 / 350 / 500 / 700 by stars.
 - **Meta-progression follow-ups** (session 71): profile export/import
   waits for a settings menu (an opaque code with a checksum, MP12); a mark
   for winning a Security Level without upgrades was floated (MP17); track
@@ -110,12 +111,17 @@ most, refine some of the map icons.
   profile; `?unlockall` opens every class and the library. Both live in
   `src/ui/testing-flags.ts`.
 
-- **Review coach** (sessions 70, 72): the rating is 100 less 10 for each
-  point given up per hand, against the AI at full strength (players found
-  the old curve low and arcane). Measured: skill 0.25 rates 59, 0.5 70,
-  0.65 80, the simulated player 94, full strength 100. Watch whether the
-  bands feel fair now; the run-end rating wasn't checked in the browser.
-  Trace evasion hands aren't rated.
+- **Review coach** (sessions 70, 72): the rating is points given up per
+  hand against the AI at full strength, as stars (engine/skill.ts:
+  Flawless 0.4 or less, Expert 1.2, Sharp 2.5, Steady 4.0). Measured: skill
+  0.25 gives up ~4.1 a hand (Learning/Steady edge), 0.5 ~3.0, 0.65 ~2.0,
+  the simulated player ~0.6 (Expert), full strength 0. A Flawless fight
+  avoids 1 Heat (victory ~25% -> ~28% for the simulated player). The
+  costliest list leaves out choices within the coach's match tolerance
+  (coach.ts DISCARD_MATCH / PLAY_MATCH). Watch whether the bands feel
+  fair; the run-end rating wasn't checked in the browser. Trace evasion
+  hands aren't rated. Learn to play lessons still use the old prose
+  review (offered, not done).
 - **Stolen Coupon "didn't prompt"** (a playtest note, session 70): not
   reproduced (likely bought in the same Shop, or the Shop already
   visited); a Shop note now says when it's offered.

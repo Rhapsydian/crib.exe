@@ -86,8 +86,12 @@ README's old session-by-session narrative is archived in
   `docs/patch-notes/`. The demo moved to cribexe.com; merged feature
   branches were deleted, leaving `playable` and `master`. Then **one AI**:
   the coach's pegging judgement became the AI's (they had been separate
-  algorithms), and the Cribbage rating became 100 less 10 for each point
-  given up per hand.
+  algorithms), and the Cribbage rating became points given up per hand,
+  shown as 1-5 stars (a Flawless fight avoids 1 Heat; Play Cribbage ends
+  with stars too). The review lays your choice beside the coach's in
+  numbers, with cards as colored chips (the log uses them too); the run
+  start picks the auxiliary subroutine and Burner from sheets with full
+  rules and steps through Security Levels with their effects listed.
 
 What exists, all headless and test-covered:
 
