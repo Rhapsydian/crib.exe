@@ -647,7 +647,7 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
       // The breached layer counts.
       expect(result.layersCompleted).toBe(result.log.filter((e) => e.type === 'layerCleared').length);
     }
-  }, 75_000); // 150 full runs
+  }, 150_000); // 150 full runs
 
   it("the fight screen's Heat outlook charges a win or a loss exactly as the run does (session 63)", () => {
     let checked = 0;
@@ -709,7 +709,7 @@ describe('per-layer Heat economy (session 52: D4, D5, R8)', () => {
     }
     expect(escaped).toBeGreaterThan(0);
     expect(traced).toBeGreaterThan(0);
-  }, 150_000);
+  }, 300_000); // ~52s locally
 });
 
 describe('a lost fight ejects the player (session 67)', () => {

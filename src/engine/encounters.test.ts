@@ -493,7 +493,7 @@ describe('heatSources (session 50) -- Heat attribution', () => {
     // trivially and prove nothing.
     expect(checked).toBeGreaterThan(200);
     expect(sawNonZero).toBeGreaterThan(25);
-  }, 60_000);
+  }, 180_000); // ~30s locally; CI runs 2x+ slower
 
   it('splits a lost fight by whether the enemy actually filled Containment', () => {
     // Counts, not summed Heat. heatFromLoss is BASE * (1 - peakFill), so
@@ -544,7 +544,7 @@ describe('heatSources (session 50) -- Heat attribution', () => {
       }
     }
     expect(containmentLosses + attritionLosses).toBeGreaterThan(5);
-  }, 30_000);
+  }, 90_000);
 
   it('never charges Heat for a gatekeeper loss', () => {
     // Gatekeeper losses bypass Heat entirely and go to Quarantine
@@ -560,5 +560,5 @@ describe('heatSources (session 50) -- Heat attribution', () => {
       }
     }
     expect(seen).toBeGreaterThan(0);
-  }, 30_000);
+  }, 90_000);
 });

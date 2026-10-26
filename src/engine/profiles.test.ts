@@ -125,7 +125,7 @@ describe('SYNERGY_AWARE_PROFILE -- loadout preservation (session 46 regression)'
     // raised rather than the work reduced; cutting seeds would weaken an
     // end-to-end guard that exists precisely because the unit tests
     // could not see the bug it catches.
-  }, 30_000);
+  }, 60_000);
 });
 
 describe('summarizeRunLoadout (session 46)', () => {
