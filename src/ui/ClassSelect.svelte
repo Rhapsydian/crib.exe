@@ -3,8 +3,8 @@
   import SuitIcon from './SuitIcon.svelte';
   import { classModFor } from './kit';
   import { profile } from './profile.svelte';
-  import { CLASS_FALLBACK_REP, CLASS_ORDER, SECURITY_REP_STEP } from '../engine/meta';
-  import { SECURITY_LEVEL_TEXT } from './security-text';
+  import { CLASS_FALLBACK_REP, CLASS_ORDER } from '../engine/meta';
+  import { securityEffects } from './security-text';
   import { ALL_SUBROUTINES } from '../engine/subroutines';
   import { BURNER_DEFINITIONS } from '../engine/burners';
   import type { BurnerId } from '../engine/burner-types';
@@ -109,14 +109,23 @@
     {/each}
   </div>
   {#if profile.securityOpen > 0}
-    <div class="caption">SECURITY LEVEL</div>
     <div class="sec">
-      <select bind:value={securityLevel} id="security-pick">
-        {#each Array.from({ length: profile.securityOpen + 1 }, (_, i) => i) as level (level)}
-          <option value={level}>{level === 0 ? 'Standard network' : `Security Level ${level}`}</option>
-        {/each}
-      </select>
-      <span class="dim">{securityLevel ? `+${Math.round(securityLevel * SECURITY_REP_STEP * 100)}% Rep · ${SECURITY_LEVEL_TEXT[securityLevel]}` : 'No changes.'}</span>
+      <!-- A stepper and the level's effects as a list (session 72, the
+           user's ask; it was a drop-down and a sentence). -->
+      <div class="stepper">
+        <span>Security Level:</span>
+        <button class="step" aria-label="lower" disabled={securityLevel <= 0} onclick={() => (securityLevel = Math.max(0, securityLevel - 1))}>◀</button>
+        <span class="level" aria-live="polite">{securityLevel}</span>
+        <button class="step" aria-label="higher" disabled={securityLevel >= profile.securityOpen} onclick={() => (securityLevel = Math.min(profile.securityOpen, securityLevel + 1))}>▶</button>
+        {#if securityLevel === 0}<span class="dim">Standard network</span>{/if}
+      </div>
+      {#if securityLevel === 0}
+        <div class="dim">No changes.</div>
+      {:else}
+        <ul class="effects">
+          {#each securityEffects(securityLevel) as e (e.text)}<li class:new={e.isNew}>{e.text}{#if e.isNew}<span class="tag">new</span>{/if}</li>{/each}
+        </ul>
+      {/if}
     </div>
   {/if}
   {#if hasBoard}
@@ -224,14 +233,54 @@
     gap: 4px;
     font-size: 11.5px;
   }
-  .sec select {
-    align-self: flex-start;
-    padding: 4px 6px;
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .step {
+    width: 26px;
+    height: 24px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: var(--bg-raised);
-    color: var(--text);
+    color: var(--accent);
     font: inherit;
+    font-size: 10px;
+    cursor: pointer;
+  }
+  .step:disabled {
+    color: var(--text-dim);
+    opacity: 0.5;
+    cursor: default;
+  }
+  .level {
+    min-width: 28px;
+    padding: 2px 0;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    text-align: center;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .effects {
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    color: var(--text-dim);
+  }
+  .effects li.new {
+    color: var(--text);
+  }
+  .effects .tag {
+    margin-left: 6px;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    text-transform: uppercase;
   }
   .picks {
     display: flex;
