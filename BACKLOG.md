@@ -62,12 +62,13 @@ Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
 **The game is feature-complete; next is release.** The plan, in order, is
 `docs/go-live-plan.md`:
 
-1. Release cleanup (testing switches, the test-fight button, a version
+1. Release cleanup (done: testing switches, the test-fight button, a version
    number, CI actions off Node 20, stale balance notes pruned).
 2. A dropped-save notice on Start a Run (no save-model change).
 3. A settings menu (decision session): replay speed, coach defaults,
    sound, reset progress, profile export/import.
-4. Sound effects (decision session): Kenney card sounds + ZzFX synth; no
+4. Sound effects (done): eighteen synth sounds of the game's own (the
+   user passed on recorded card sounds); volume and mute in Settings; no
    music at launch.
 5. About and credits (after sound): version, Tabler Icons' MIT notice,
    sound credits, a feedback link (the Discord), and a note that the game
