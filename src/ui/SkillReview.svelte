@@ -24,7 +24,7 @@
     <!-- The sum in words (session 72, the user: the rating should be
          transparent; stars, not a percentage): the points given up per
          hand, and what the next star asks. -->
-    <div class="about">You gave up {pts(rating.lostPerHand)} a hand to the coach's choices, over {rating.hands} {rating.hands === 1 ? 'hand' : 'hands'}.{next ? ` ${next.label} is ${next.maxLostPerHand.toFixed(1)} or less.` : ''}</div>
+    <div class="about">You gave up an average of {pts(rating.lostPerHand)} a hand to the coach's choices, over {rating.hands} {rating.hands === 1 ? 'hand' : 'hands'}.{next ? ` ${next.label} is ${next.maxLostPerHand.toFixed(1)} or less.` : ''}</div>
   </div>
   {#if rating.mistakes.length}
     <div class="caption">COSTLIEST {rating.mistakes.length === 1 ? 'MISTAKE' : 'MISTAKES'}</div>
