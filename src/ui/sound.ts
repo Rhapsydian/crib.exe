@@ -35,12 +35,26 @@ export interface Sample {
   rate?: number;
   jitter?: number;
   group?: string;
+  /** Now and then a second, different file follows quickly, a little
+   * quieter (the user: a quick double tap, as in real typing). */
+  double?: { chance: number; gapMs: [number, number]; gain: number };
 }
 
 /** One of `files` at random, never `last` (when there's another). */
 export function pickFile(files: readonly string[], last: string | undefined, random = Math.random): string {
   const choices = files.length > 1 ? files.filter((f) => f !== last) : files;
   return choices[Math.floor(random() * choices.length)];
+}
+
+/** About one card in eight is a quick double tap: a second, different key
+ * 45-90 ms later, a touch quieter. */
+const CARD_DOUBLE = { chance: 1 / 8, gapMs: [45, 90] as [number, number], gain: 0.8 };
+
+/** The keys a card plays: one, or now and then two different ones (a
+ * double tap), never starting on `last`. */
+export function pickKeys(files: readonly string[], last: string | undefined, double: Sample['double'], random = Math.random): string[] {
+  const first = pickFile(files, last, random);
+  return double && files.length > 1 && random() < double.chance ? [first, pickFile(files, first, random)] : [first];
 }
 
 /** The card sounds' key presses (the user's pick: the pack's first ten). */
@@ -60,8 +74,8 @@ export const SOUNDS: Record<SoundId, Synth | Sample> = {
   // A card is a keystroke (the user's pick): one of ten recorded keys at
   // random, never the same twice in a row, slightly varied; theirs a little
   // lower, so the ear knows whose it was.
-  cardYou: { files: KEY_FILES, gain: 0.8, rate: 1, jitter: 0.04, group: 'cards' },
-  cardThem: { files: KEY_FILES, gain: 0.75, rate: 0.86, jitter: 0.04, group: 'cards' },
+  cardYou: { files: KEY_FILES, gain: 0.8, rate: 1, jitter: 0.04, group: 'cards', double: CARD_DOUBLE },
+  cardThem: { files: KEY_FILES, gain: 0.75, rate: 0.86, jitter: 0.04, group: 'cards', double: CARD_DOUBLE },
   // The cut: two quick notes, low then high.
   cut: { wave: 'triangle', from: 600, to: 600, ms: 40, gain: 0.14, then: { wave: 'triangle', from: 1200, to: 1200, ms: 70, gain: 0.12 } },
   // The table clears (31, or a go): a soft hiss.
@@ -162,19 +176,22 @@ class SoundEngine {
   playSample(s: Sample): void {
     const ctx = this.#context();
     if (!ctx || !this.#master) return;
-    const url = pickFile(s.files, s.group ? this.#lastFile.get(s.group) : undefined);
-    if (s.group) this.#lastFile.set(s.group, url);
+    const urls = pickKeys(s.files, s.group ? this.#lastFile.get(s.group) : undefined, s.double);
+    if (s.group) this.#lastFile.set(s.group, urls[urls.length - 1]);
     const j = s.jitter ?? 0;
     const r = () => 1 + (Math.random() * 2 - 1) * j;
-    void this.#buffer(ctx, url).then((buffer) => {
-      if (!buffer || !this.#master) return;
-      const src = ctx.createBufferSource();
-      const g = ctx.createGain();
-      g.gain.value = s.gain * r();
-      src.buffer = buffer;
-      src.playbackRate.value = (s.rate ?? 1) * r();
-      src.connect(g).connect(this.#master);
-      src.start();
+    const second = s.double ? (s.double.gapMs[0] + Math.random() * (s.double.gapMs[1] - s.double.gapMs[0])) / 1000 : 0;
+    urls.forEach((url, i) => {
+      void this.#buffer(ctx, url).then((buffer) => {
+        if (!buffer || !this.#master) return;
+        const src = ctx.createBufferSource();
+        const g = ctx.createGain();
+        g.gain.value = s.gain * r() * (i ? (s.double?.gain ?? 1) : 1);
+        src.buffer = buffer;
+        src.playbackRate.value = (s.rate ?? 1) * r();
+        src.connect(g).connect(this.#master);
+        src.start(i ? ctx.currentTime + second : 0);
+      });
     });
   }
 

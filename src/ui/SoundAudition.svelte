@@ -31,6 +31,7 @@
   {/each}
   <div class="caption">THE CARD SOUNDS' KEYS (unicaegames, CC0)</div>
   <div class="keys">{#each KEY_FILES as f, i (f)}<button onclick={() => sound.playSample({ files: [f], gain: 0.8 })}>{i + 1}</button>{/each}</div>
+  <div class="row"><button onclick={() => { for (let i = 0; i < 16; i++) setTimeout(() => sound.play(i % 2 ? 'cardThem' : 'cardYou', { force: true }), i * 420); }}>▶ sixteen cards, you and them (listen for double taps)</button></div>
 </div>
 
 <style>
