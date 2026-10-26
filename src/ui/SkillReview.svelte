@@ -3,6 +3,8 @@
   import CardView from './CardView.svelte';
   import { cardsEqual } from '../engine/cards';
   import type { SkillRating } from './skill-review';
+  import { nextStar } from '../engine/skill';
+  import StarRating from './StarRating.svelte';
 
   // The review coach's drawer (session 70): a fight's Cribbage rating and
   // its costliest mistakes, each the coach's own review of that choice.
@@ -10,16 +12,19 @@
   // DetailSheet).
   let { rating, onclose }: { rating: SkillRating; onclose: () => void } = $props();
   const pts = (n: number) => `${n.toFixed(1)} point${n.toFixed(1) === '1.0' ? '' : 's'}`;
+  // What the next star asks (session 72, stars): "Expert is 1.2 or less."
+  const next = $derived(nextStar(rating.stars));
 </script>
 
 <div class="scrim" onclick={onclose} role="presentation"></div>
 <div class="sheet" role="dialog" aria-label="Cribbage review">
   <div class="head">
     <div class="kicker">CRIBBAGE REVIEW</div>
-    <div class="score">{rating.rating}% <span class="label">{rating.label}</span></div>
+    <div class="score"><StarRating stars={rating.stars} /> <span class="label">{rating.label}</span></div>
     <!-- The sum in words (session 72, the user: the rating should be
-         transparent): 100 less 10 for each point given up per hand. -->
-    <div class="about">You gave up {pts(rating.lostPerHand)} a hand to the coach's choices, over {rating.hands} {rating.hands === 1 ? 'hand' : 'hands'}. Each point a hand costs 10.</div>
+         transparent; stars, not a percentage): the points given up per
+         hand, and what the next star asks. -->
+    <div class="about">You gave up {pts(rating.lostPerHand)} a hand to the coach's choices, over {rating.hands} {rating.hands === 1 ? 'hand' : 'hands'}.{next ? ` ${next.label} is ${next.maxLostPerHand.toFixed(1)} or less.` : ''}</div>
   </div>
   {#if rating.mistakes.length}
     <div class="caption">COSTLIEST {rating.mistakes.length === 1 ? 'MISTAKE' : 'MISTAKES'}</div>

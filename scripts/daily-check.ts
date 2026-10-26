@@ -6,7 +6,7 @@
  * Plays each day as a daily starts (the day's class and seed, no
  * upgrades). The Cribbage rating can't be worked out here (the review
  * coach lives in the UI), so it's taken as the simulated player's measured
- * ~94 (session 72's rating: 100 less 10 a point given up per hand).
+ * 4 stars (Expert: ~0.6 points given up a hand).
  * Daily Mods other than the Directive aren't applied until they're
  * built.
  *
@@ -27,7 +27,7 @@ import { DAILY_MODS, dailyDate, dailyRunStart, dailyScore, rollDaily, type Daily
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')));
 const days = Number(args.days ?? 120);
-const RATING = 94;
+const RATING = 4;
 const directives = (Object.keys(DAILY_MODS) as DailyModId[]).filter((id) => DAILY_MODS[id].category === 'directive');
 
 if (args.part === 'mods') {
@@ -79,7 +79,7 @@ for (let i = 0; i < days; i++) {
   total += baseTotal;
   for (const d of directives) bonus[d] += dailyScore(result, d, RATING).total - baseTotal;
 }
-console.log(`\nDAILY SCORE -- ${days} days, skill 0.85, Cribbage rating taken as ${RATING}.\n`);
+console.log(`\nDAILY SCORE -- ${days} days, skill 0.85, Cribbage rating taken as ${RATING} stars.\n`);
 console.log(`average base score ${(total / days).toFixed(0)}`);
 for (const [k, v] of Object.entries(parts)) console.log(`  ${k.padEnd(9)} ${(v / days).toFixed(0).padStart(5)}  (${((100 * v) / total).toFixed(0)}%)`);
 console.log('\naverage a Directive adds:');

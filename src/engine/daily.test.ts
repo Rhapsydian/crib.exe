@@ -95,21 +95,23 @@ describe('the daily score (DR2)', () => {
   });
 
   it('itemizes depth, elites, Caches, Data and the Cribbage rating', () => {
-    const s = dailyScore(run, 'clean-sweep', 80);
+    const s = dailyScore(run, 'clean-sweep', 3);
     const layers = run.log.filter((e) => e.type === 'layerCleared').length;
-    expect(s.lines.find((l) => l.label.startsWith('Cribbage'))?.points).toBe(400);
-    expect(s.total).toBeGreaterThanOrEqual(layers * 750 + 400);
+    // Fixed amounts by stars (session 72): 100 / 200 / 350 / 500 / 700.
+    expect(s.lines.find((l) => l.label.startsWith('Cribbage'))).toMatchObject({ label: 'Cribbage: Sharp (3 stars)', points: 350 });
+    expect(dailyScore(run, 'clean-sweep', 5).lines.find((l) => l.label.startsWith('Cribbage'))?.points).toBe(700);
+    expect(s.total).toBeGreaterThanOrEqual(layers * 750 + 350);
     expect(s.total).toBe(s.lines.reduce((a, l) => a + l.points, 0));
   });
 
   it('each Directive changes the score its own way', () => {
-    const base = dailyScore(run, 'clean-sweep', 80);
+    const base = dailyScore(run, 'clean-sweep', 3);
     const without = base.total - (base.lines.find((l) => l.directive)?.points ?? 0);
-    expect(dailyScore(run, 'card-sharp', 80).total).toBe(without + 400);
-    expect(dailyScore(run, 'payday', 80).total).toBe(without + (run.tally!.dataEarned));
-    expect(dailyScore(run, 'flawless-form', 96).lines.at(-1)?.points).toBe(1000);
-    expect(dailyScore(run, 'flawless-form', 95).lines.some((l) => l.directive)).toBe(false);
-    expect(dailyScore(run, 'shopping-spree', 80).total).toBe(without + run.tally!.dataSpent);
+    expect(dailyScore(run, 'card-sharp', 3).total).toBe(without + 350);
+    expect(dailyScore(run, 'payday', 3).total).toBe(without + (run.tally!.dataEarned));
+    expect(dailyScore(run, 'flawless-form', 5).lines.at(-1)?.points).toBe(1000);
+    expect(dailyScore(run, 'flawless-form', 4).lines.some((l) => l.directive)).toBe(false);
+    expect(dailyScore(run, 'shopping-spree', 3).total).toBe(without + run.tally!.dataSpent);
   });
 });
 

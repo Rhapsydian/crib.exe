@@ -2,6 +2,7 @@ import { DAILY_MODS, type DailyCategory, type DailyMod } from '../engine/daily';
 import { BURNER_DEFINITIONS } from '../engine/burners';
 import { ALL_SUBROUTINES } from '../engine/subroutines';
 import { archetypeInfo } from './suits';
+import { starText, type Stars } from '../engine/skill';
 
 /**
  * A day's Mods in words (session 72, docs/daily-runs-design.md DR9): the
@@ -32,7 +33,7 @@ export function dailyModText(mod: DailyMod): string {
   return text;
 }
 
-/** The share line (DR9): "crib.exe daily 2026-10-25 · 3,410 · L3 · Breacher · Cribbage 82%". */
-export function shareLine(date: string, score: number, layers: number, className: string, rating: number | null, practice: boolean): string {
-  return [`crib.exe daily ${date}${practice ? ' (practice)' : ''}`, score.toLocaleString('en-US'), `L${layers}`, className, ...(rating !== null ? [`Cribbage ${rating}%`] : [])].join(' · ');
+/** The share line (DR9): "crib.exe daily 2026-10-26 · 3,410 · L3 · Breacher · Cribbage ★★★★☆". */
+export function shareLine(date: string, score: number, layers: number, className: string, stars: Stars | null, practice: boolean): string {
+  return [`crib.exe daily ${date}${practice ? ' (practice)' : ''}`, score.toLocaleString('en-US'), `L${layers}`, className, ...(stars !== null ? [`Cribbage ${starText(stars)}`] : [])].join(' · ');
 }

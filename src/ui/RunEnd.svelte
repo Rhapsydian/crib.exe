@@ -8,6 +8,7 @@
   import { rateSkill, type SkillDecision } from './skill-review';
   import { profile } from './profile.svelte';
   import { shareLine } from './daily-text';
+  import StarRating from './StarRating.svelte';
   import { CLASS_DEFINITIONS } from '../engine/classes';
   import { MOD_DEFINITIONS } from '../engine/mods';
   import { BURNER_DEFINITIONS } from '../engine/burners';
@@ -38,7 +39,7 @@
   // A Daily Run's score (session 72, DR2, DR9), itemized, with the share
   // line and a copy button.
   const daily = $derived(runId && profile.lastDaily?.runId === runId ? profile.lastDaily : null);
-  const share = $derived(daily ? shareLine(daily.date, daily.total, result.layersCompleted, className, daily.rating, daily.practice) : '');
+  const share = $derived(daily ? shareLine(daily.date, daily.total, result.layersCompleted, className, daily.stars, daily.practice) : '');
   let copied = $state<'idle' | 'done' | 'select'>('idle');
   let shareEl = $state<HTMLInputElement | null>(null);
   async function copyShare() {
@@ -90,7 +91,7 @@
     <div><b>{fightsWon}</b> fight{fightsWon === 1 ? '' : 's'} won</div>
     <div><b>{player.data}</b> Data left</div>
     <!-- Heat resets on a breach, so it only tells a story on a loss. -->
-    {#if rating}<div>Cribbage <b>{rating.rating}%</b> ({rating.label})</div>{/if}
+    {#if rating}<div>Cribbage <StarRating stars={rating.stars} /> {rating.label}</div>{/if}
     {#if result.outcome !== 'victory'}<div>Heat <b>{Math.round(summary.finalHeat)}</b>/{summary.allowance} at the end</div>{/if}
   </div>
 

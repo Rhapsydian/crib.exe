@@ -7,6 +7,7 @@
   import { mergeSteps, pointsSummary, stepGauges } from './timeline';
   import { fightHeatOutlook } from '../engine/heat';
   import { rateSkill } from './skill-review';
+  import StarRating from './StarRating.svelte';
   import SkillReview from './SkillReview.svelte';
 
   // A live fight on the chosen screen, and its result panel at the end.
@@ -107,7 +108,7 @@
       </div>
     {/if}
     {#if rating}
-      <button class="rating" onclick={() => (coachOpen = true)}>Cribbage: <b>{rating.rating}%</b> ({rating.label}) <span class="review">review ▸</span></button>
+      <button class="rating" onclick={() => (coachOpen = true)}>Cribbage: <StarRating stars={rating.stars} /> {rating.label} <span class="review">review ▸</span></button>
     {/if}
     <table class="points">
       <thead><tr><th>points scored</th><th class="you">you</th><th class="them">them</th></tr></thead>
@@ -197,9 +198,6 @@
     font: inherit;
     font-size: 13px;
     text-align: left;
-  }
-  .rating b {
-    color: var(--accent);
   }
   .rating .review {
     margin-left: auto;

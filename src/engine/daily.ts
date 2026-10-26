@@ -1,3 +1,4 @@
+import { starLabel, type Stars } from './skill';
 import { createRng, type Rng } from './rng';
 import type { ClassId } from './classes';
 import type { BurnerId } from './burner-types';
@@ -130,7 +131,7 @@ export const DAILY_MODS: Record<DailyModId, DailyModDefinition> = Object.fromEnt
   def('merge-master', 'Refactor Master', 'directive', 'Each Refactor scores 150.'),
   def('burn-rate', 'Burn Rate', 'directive', 'Each Burner you use scores 100.'),
   def('clean-breach', 'Clean Breach', 'directive', 'Each gatekeeper beaten before it reaches half its Containment scores +300.'),
-  def('flawless-form', 'Flawless Form', 'directive', 'A Flawless Cribbage rating (96% or better) scores +1,000.'),
+  def('flawless-form', 'Flawless Form', 'directive', 'A Flawless Cribbage rating (5 stars) scores +1,000.'),
 ]) as Record<DailyModId, DailyModDefinition>;
 
 /** Pairs that never appear on the same day (DR10). */
@@ -257,11 +258,6 @@ export function dailyRunStart(date: string, practice = false): { classId: ClassI
   return { classId: plan.classId, seed: plan.seed, setup: { plain: true, daily: { date, ...(practice ? { practice: true } : {}) } } };
 }
 
-/** Where a Cribbage rating turns Flawless: the review ladder's top step
- * (ui/skill-review.ts) and Flawless Form's bar, one number (session 72,
- * the user: tie them together). 96 is at most 0.4 points given up a hand. */
-export const FLAWLESS_RATING = 96;
-
 /** The daily score's parts (DR2; tuned later by simulation). */
 export const DAILY_SCORE = {
   layer: 1000,
@@ -270,7 +266,9 @@ export const DAILY_SCORE = {
   elite: 150,
   cache: 100,
   perData: 1,
-  perRatingPoint: 5,
+  /** The Cribbage rating's points by stars, 1 to 5 (session 72, the
+   * user: fixed amounts per rating; steeper at the top). */
+  byStars: [0, 100, 200, 350, 500, 700],
 } as const;
 
 export interface ScoreLine {
@@ -282,10 +280,10 @@ export interface ScoreLine {
 
 /**
  * A daily run's score, itemized for the end card (DR2), with the day's
- * Directive applied. `rating` is the run's Cribbage rating (0-100; the
- * review coach works it out in the UI), or null with none.
+ * Directive applied. `stars` is the run's Cribbage rating (skill.ts), or
+ * null with none.
  */
-export function dailyScore(result: RunResult, directive: DailyModId, rating: number | null): { lines: ScoreLine[]; total: number } {
+export function dailyScore(result: RunResult, directive: DailyModId, stars: Stars | null): { lines: ScoreLine[]; total: number } {
   const S = DAILY_SCORE;
   const lines: ScoreLine[] = [];
   const encounters = result.log.filter((e): e is Extract<RunEvent, { type: 'encounter' }> => e.type === 'encounter');
@@ -304,7 +302,7 @@ export function dailyScore(result: RunResult, directive: DailyModId, rating: num
   if (caches) lines.push({ label: `${caches} Cache${caches === 1 ? '' : 's'} opened${directive === 'treasure-map' ? ' (500 each)' : ''}`, points: caches * (directive === 'treasure-map' ? 500 : S.cache), directive: directive === 'treasure-map' || undefined });
   const earned = result.tally?.dataEarned ?? 0;
   if (earned) lines.push({ label: `${earned} Data earned${directive === 'payday' ? ' (×2)' : ''}`, points: Math.round(earned * S.perData * (directive === 'payday' ? 2 : 1)), directive: directive === 'payday' || undefined });
-  if (rating !== null) lines.push({ label: `Cribbage ${rating}%${directive === 'card-sharp' ? ' (×2)' : ''}`, points: rating * S.perRatingPoint * (directive === 'card-sharp' ? 2 : 1), directive: directive === 'card-sharp' || undefined });
+  if (stars !== null) lines.push({ label: `Cribbage: ${starLabel(stars)} (${stars} star${stars === 1 ? '' : 's'})${directive === 'card-sharp' ? ' (×2)' : ''}`, points: S.byStars[stars] * (directive === 'card-sharp' ? 2 : 1), directive: directive === 'card-sharp' || undefined });
   // The Directives that add a line of their own.
   const add = (label: string, points: number) => points > 0 && lines.push({ label, points, directive: true });
   if (directive === 'clean-sweep') {
@@ -326,7 +324,7 @@ export function dailyScore(result: RunResult, directive: DailyModId, rating: num
     const clean = encounters.filter((e) => e.nodeType === 'gatekeeperFight' && won(e) && (e.outcome.fight?.finalFillFraction[1] ?? 1) < 0.5).length;
     add(`${clean} gatekeeper${clean === 1 ? '' : 's'} beaten before half Containment`, clean * 300);
   }
-  if (directive === 'flawless-form' && rating !== null && rating >= FLAWLESS_RATING) add(`Flawless Form: Cribbage ${FLAWLESS_RATING}%+`, 1000);
+  if (directive === 'flawless-form' && stars === 5) add('Flawless Form: a Flawless Cribbage rating', 1000);
   return { lines, total: lines.reduce((s, l) => s + l.points, 0) };
 }
 

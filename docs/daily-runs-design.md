@@ -26,7 +26,7 @@ stretch goal.
   | Each elite beaten | +150 |
   | Each Cache opened (the user) | +100 |
   | Data earned over the run (the user; not Data left, which rewards hoarding) | +1 per Data |
-  | Cribbage rating | +5 per point |
+  | Cribbage rating | by stars: 100 / 200 / 350 / 500 / 700 (session 72; was +5 per point of a 0-100 rating) |
 
   Regular fights score nothing of their own (they pay Data); time taken
   doesn't count (it would rush Cribbage).
@@ -116,7 +116,7 @@ stretch goal.
   | Merge Master | Each Merge scores 150. |
   | Burn Rate (the user's pick) | Each Burner you use scores 100. |
   | Clean Breach | Each gatekeeper beaten before it reaches half its Containment scores +300. |
-  | Flawless Form | A Flawless Cribbage rating (96% or better) scores +1,000. |
+  | Flawless Form | A Flawless Cribbage rating (5 stars) scores +1,000. |
 
   **Short Count: 21 is the 31** (the user): the count's limit moves,
   and everything tied to 31 follows it: pegging to exactly 21 scores 2
@@ -159,7 +159,7 @@ by design, excepted); each Directive adding a few hundred points.
   Expanded Memory +22 (rare); Flawless Form pays nothing to the 87%
   simulated player but the full-strength AI clears 90% every run.
   (Session 72, after the rating became 100 less 10 a point given up per
-  hand: the bar moved to a Flawless rating, 96+, the same number as the
+  hand: the bar moved to a Flawless rating (now 5 stars), the same as the
   review ladder's top step; the simulated player now rates ~94.)
 - Directives now add +280 (Treasure Map) to +765 (Deep Dive); the base
   score's depth share stays ~57%.

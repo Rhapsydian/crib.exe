@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, Rank, Suit } from '../engine/cards';
 import { predictBestDiscard } from '../engine/ai';
-import { rateSkill, skillLabel, type SkillDecision } from './skill-review';
+import { rateSkill, type SkillDecision } from './skill-review';
+import { starsFor, starLabel, starText } from '../engine/skill';
 import { discardLoss } from './coach';
 
 const c = (rank: number, suit = 0): Card => ({ rank: rank as Rank, suit: suit as Suit });
@@ -11,19 +12,22 @@ describe('the review coach', () => {
   const hand = [c(5), c(5, 1), c(11, 2), c(12, 3), c(13), c(2, 2)];
   const discard = (thrown: [Card, Card]): SkillDecision => ({ kind: 'discard', handIndex: 2, hand, thrown, ownCrib: false });
 
-  it('labels the ladder at its edges', () => {
-    expect([0, 59, 60, 74, 75, 87, 88, 95, 96, 100].map(skillLabel)).toEqual(['Learning', 'Learning', 'Steady', 'Steady', 'Sharp', 'Sharp', 'Expert', 'Expert', 'Flawless', 'Flawless']);
+  // Stars (session 72): the most points given up per hand each allows.
+  it('gives stars by points given up per hand, at the edges', () => {
+    expect([0, 0.4, 0.41, 1.2, 1.21, 2.5, 2.51, 4.0, 4.01, 9].map(starsFor)).toEqual([5, 5, 4, 4, 3, 3, 2, 2, 1, 1]);
+    expect([1, 2, 3, 4, 5].map((s) => starLabel(s as 1))).toEqual(['Learning', 'Steady', 'Sharp', 'Expert', 'Flawless']);
+    expect(starText(4)).toBe('★★★★☆');
   });
 
-  it("rates the coach's own discard 100, with no mistakes", () => {
+  it("rates the coach's own discard 5 stars, with no mistakes", () => {
     const best = predictBestDiscard(hand, false);
-    expect(rateSkill([discard(best)])).toMatchObject({ rating: 100, label: 'Flawless', decisions: 1, mistakes: [] });
+    expect(rateSkill([discard(best)])).toMatchObject({ stars: 5, label: 'Flawless', decisions: 1, mistakes: [] });
   });
 
   it('names a costly discard, with its hand and the points it gave up', () => {
     // Throwing both fives away is a big loss.
     const r = rateSkill([discard([c(5), c(5, 1)])])!;
-    expect(r.rating).toBeLessThan(50);
+    expect(r.stars).toBeLessThanOrEqual(2);
     expect(r.mistakes).toHaveLength(1);
     expect(r.mistakes[0]).toMatchObject({ kind: 'discard', hand: 3 });
     expect(r.mistakes[0].lost).toBeGreaterThan(1);
@@ -48,19 +52,19 @@ describe('the review coach', () => {
   const pairs = hand.flatMap((a, i) => hand.slice(i + 1).map((b) => [a, b] as [Card, Card]));
   const lossOf = (p: [Card, Card]) => discardLoss(hand, p, false);
 
-  it('rates 100 less 10 for each point given up per hand', () => {
+  it('rates by the points given up per hand', () => {
     const [x, y] = [pairs[0], pairs[5]];
     const r = rateSkill([discard(x), { ...discard(y), handIndex: 3 }])!;
     expect(r.hands).toBe(2);
     expect(r.lostPerHand).toBeCloseTo((lossOf(x) + lossOf(y)) / 2, 9);
-    expect(r.rating).toBe(Math.max(0, Math.round(100 - 10 * r.lostPerHand)));
+    expect(r.stars).toBe(starsFor(r.lostPerHand));
   });
 
   it("doesn't list a choice that gave up less than a whole point", () => {
     const small = pairs.find((p) => lossOf(p) > 0 && lossOf(p) < 1)!;
     expect(small).toBeDefined();
     const r = rateSkill([discard(small)])!;
-    expect(r.rating).toBeLessThan(100);
+    expect(r.lostPerHand).toBeGreaterThan(0);
     expect(r.mistakes).toEqual([]);
   });
 
@@ -76,8 +80,8 @@ describe('the review coach', () => {
     const spot = { legal: [c(5), c(4, 1)], count: 0, sequence: [], known: [c(5), c(4, 1), c(9, 2), c(9, 3)], opponentCards: 4 };
     const bad = rateSkill([{ kind: 'play', handIndex: 1, spot, played: c(5), hand: [c(5), c(4, 1)] }])!;
     const good = rateSkill([{ kind: 'play', handIndex: 1, spot, played: c(4, 1), hand: [c(5), c(4, 1)] }])!;
-    expect(good.rating).toBe(100);
-    expect(bad.rating).toBeLessThan(good.rating);
+    expect(good.stars).toBe(5);
+    expect(bad.lostPerHand).toBeGreaterThan(good.lostPerHand);
     expect(bad.mistakes[0]?.kind).toBe('play');
   });
 });

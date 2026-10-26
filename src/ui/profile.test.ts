@@ -64,10 +64,10 @@ describe('the profile', () => {
     profile.data = { ...profile.data, rep: 0, daily: {} };
     expect(profile.startDaily('2026-10-24')).toBe(false); // the scored attempt
     expect(profile.startDaily('2026-10-24')).toBe(true); // already started: practice
-    profile.finishDaily('d-1', '2026-10-24', false, [{ label: 'Layer 1 breached', points: 1000 }], 80, [{ label: 'Layer 1 breached', rep: 10 }]);
+    profile.finishDaily('d-1', '2026-10-24', false, [{ label: 'Layer 1 breached', points: 1000 }], 3, [{ label: 'Layer 1 breached', rep: 10 }]);
     expect(profile.data.daily['2026-10-24'].scored).toBe(1000);
     expect(profile.data.rep).toBe(10);
-    profile.finishDaily('d-2', '2026-10-24', true, [{ label: 'Layers', points: 2500 }], 80, [{ label: 'x', rep: 25 }]);
+    profile.finishDaily('d-2', '2026-10-24', true, [{ label: 'Layers', points: 2500 }], 3, [{ label: 'x', rep: 25 }]);
     expect(profile.data.daily['2026-10-24']).toMatchObject({ scored: 1000, best: 2500 });
     expect(profile.data.rep).toBe(10); // practice pays none
     expect(profile.lastDaily).toMatchObject({ practice: true, total: 2500 });

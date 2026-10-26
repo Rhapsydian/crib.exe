@@ -2,7 +2,7 @@ import type { Card } from '../engine/cards';
 import type { CombatAnswer, CombatRequest } from '../engine/combat';
 import { discardLoss, discardReview, pegLoss, pegReview, type PegSpot } from './coach';
 import { combatPegSpot } from './fight';
-import { FLAWLESS_RATING } from '../engine/daily';
+import { starLabel, starsFor, type Stars } from '../engine/skill';
 
 /**
  * The review coach (session 70, the user's playtest idea): a Cribbage
@@ -15,9 +15,9 @@ import { FLAWLESS_RATING } from '../engine/daily';
  * its best, a play by its points less the opponent's expected reply.
  *
  * The rating (session 72, the user: the old curve was arcane and read
- * low) is plain arithmetic: 100 less 10 for every point given up per
- * hand. "You gave up 2.0 points a hand: 80." A run's pools every fight's
- * choices and hands.
+ * low; then stars, not a synthetic percentage) is the points given up per
+ * hand, as 1 to 5 stars (engine/skill.ts). "You gave up 0.9 points a hand:
+ * ★★★★☆ Expert." A run's pools every fight's choices and hands.
  */
 export type SkillDecision =
   | { kind: 'discard'; handIndex: number; hand: Card[]; thrown: [Card, Card]; ownCrib: boolean; starter?: Card }
@@ -47,27 +47,11 @@ export function decisionFor(request: CombatRequest, answer: CombatAnswer): Skill
   return null;
 }
 
-/** Rating points lost for each point given up per hand. Measured
- * (session 72, 25 fights a skill, the unified AI): skill 0.25 gives up
- * 4.1 a hand and rates 59 (Learning), 0.5 70 (Steady), 0.65 80 (Sharp),
- * the simulated player (0.85) 94 (Expert), full strength 0 and 100. */
-export const RATING_PER_POINT = 10;
 /** A mistake worth showing gave up at least a whole point (the user,
  * session 72). */
 const MISTAKE_MIN = 1;
 const MISTAKES_SHOWN = 3;
 
-/** The ladder (the user's, session 70), lowest first: the rating it
- * starts at. */
-export const SKILL_LABELS: readonly { min: number; label: string }[] = [
-  { min: 0, label: 'Learning' },
-  { min: 60, label: 'Steady' },
-  { min: 75, label: 'Sharp' },
-  { min: 88, label: 'Expert' },
-  // Also Flawless Form's bar (engine/daily.ts), one number.
-  { min: FLAWLESS_RATING, label: 'Flawless' },
-];
-export const skillLabel = (rating: number) => SKILL_LABELS.findLast((l) => rating >= l.min)!.label;
 
 export interface SkillMistake {
   kind: 'discard' | 'play';
@@ -81,8 +65,8 @@ export interface SkillMistake {
 }
 
 export interface SkillRating {
-  /** 0-100, whole: 100 - RATING_PER_POINT x lostPerHand. */
-  rating: number;
+  /** 1-5 (engine/skill.ts), from lostPerHand. */
+  stars: Stars;
   label: string;
   /** Choices counted. */
   decisions: number;
@@ -115,7 +99,7 @@ export function rateSkill(decisions: readonly SkillDecision[], withMistakes = tr
   }
   if (!counted) return null;
   const lostPerHand = total / hands;
-  const rating = Math.max(0, Math.min(100, Math.round(100 - RATING_PER_POINT * lostPerHand)));
+  const stars = starsFor(lostPerHand);
   // The costliest, with one slot kept for the worst pegging play if there
   // is one (the user, session 70): discards usually cost more, and the
   // drawer should teach both halves.
@@ -133,5 +117,5 @@ export function rateSkill(decisions: readonly SkillDecision[], withMistakes = tr
           text: d.kind === 'discard' ? discardReview(d.hand, d.thrown, d.ownCrib, d.starter).text : pegReview(d.spot, d.played).text,
         }))
     : [];
-  return { rating, label: skillLabel(rating), decisions: counted, hands, lostPerHand, mistakes };
+  return { stars, label: starLabel(stars), decisions: counted, hands, lostPerHand, mistakes };
 }

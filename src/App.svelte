@@ -80,9 +80,9 @@
           // scored attempt only.
           const result = next.pause.result;
           const { date, practice } = next.setup.daily;
-          const rating = rateSkill(next.skill, false)?.rating ?? null;
-          const score = dailyScore(result, rollDaily(date).mods[0].id, rating);
-          profile.finishDaily(next.id, date, practice ?? false, score.lines, rating, repForRun(result).lines);
+          const stars = rateSkill(next.skill, false)?.stars ?? null;
+          const score = dailyScore(result, rollDaily(date).mods[0].id, stars);
+          profile.finishDaily(next.id, date, practice ?? false, score.lines, stars, repForRun(result).lines);
         } else {
           const result = next.pause.result;
           // The class milestone (MP2): the first gatekeeper beaten opens the next class.

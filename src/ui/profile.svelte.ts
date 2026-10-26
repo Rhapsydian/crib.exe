@@ -1,3 +1,4 @@
+import type { Stars } from '../engine/skill';
 import type { ClassId } from '../engine/classes';
 import { CLASS_FALLBACK_REP, CLASS_ORDER, SECURITY_MAX, LIBRARY_PRICE, STARTING_BURNER_PRICE, STARTING_BURNERS, TUTORIAL_REP, libraryOffers, upgradeLevel, upgradePrice, type RepLine, type UpgradeId } from '../engine/meta';
 import type { BurnerId } from '../engine/burner-types';
@@ -200,7 +201,7 @@ class ProfileStore {
   }
 
   /** The latest daily's score, itemized, for its end card (not saved). */
-  lastDaily = $state.raw<{ runId: string; date: string; practice: boolean; lines: ScoreLine[]; total: number; rating: number | null } | null>(null);
+  lastDaily = $state.raw<{ runId: string; date: string; practice: boolean; lines: ScoreLine[]; total: number; stars: Stars | null } | null>(null);
 
   /** A daily's attempt begins: the first one of a date is the scored
    * attempt; it returns whether this one is practice. */
@@ -215,10 +216,10 @@ class ProfileStore {
   /** A daily run's end (DR1, DR6): the scored attempt's score and Rep (no
    * class unlocks or Security Levels: those belong to normal runs); a
    * practice run's best, and no Rep. */
-  finishDaily(runId: string, date: string, practice: boolean, scoreLines: ScoreLine[], rating: number | null, lines: readonly RepLine[]): void {
+  finishDaily(runId: string, date: string, practice: boolean, scoreLines: ScoreLine[], stars: Stars | null, lines: readonly RepLine[]): void {
     if (this.data.lastRunId === runId) return;
     const score = scoreLines.reduce((s, l) => s + l.points, 0);
-    this.lastDaily = { runId, date, practice, lines: scoreLines, total: score, rating };
+    this.lastDaily = { runId, date, practice, lines: scoreLines, total: score, stars };
     const record = this.data.daily[date] ?? {};
     const next: DailyRecord = practice ? { ...record, best: Math.max(record.best ?? 0, score) } : { ...record, started: true, scored: score };
     const total = practice ? 0 : lines.reduce((s, l) => s + l.rep, 0);
