@@ -25,6 +25,8 @@
     font-size: 11px;
     vertical-align: 1px;
     white-space: nowrap;
+    /* A little air between chips in a row (the user: they read crowded). */
+    margin: 0 2px;
   }
   b {
     color: var(--text);
