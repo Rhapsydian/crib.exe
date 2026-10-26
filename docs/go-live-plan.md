@@ -151,7 +151,16 @@ A page of the player's history. Candidates: runs and victories per class;
 best Security Level per class; the Daily streak and best scores; a career
 Cribbage rating; Flawless fights. Some of this is already in the profile.
 
-## 7. Mobile
+## 7. Mobile (done, session 72)
+
+Done: the game's own icon (the user's pick, a card with the terminal
+prompt; `public/icon.svg`, PNGs at 192 / 512 / maskable 512 / Apple 180,
+rendered with headless Edge), replacing Vite's template logo; a web-app
+manifest (standalone, the game's colours) and the tags for installing to a
+home screen; a phone-width pass (375 and 320) over the main menu, Settings,
+Records, About, Start a Run and the pick sheet: no overflow, the menu's
+button row wraps on the narrowest phones.
+
 
 A web-app manifest and icons (add to home screen, full screen), and a pass
 over the newer screens (the review drawer, the pick sheets, the Security

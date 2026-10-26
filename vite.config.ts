@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
-import pkg from './package.json'
+import pkg from './package.json' with { type: 'json' }
 
 // https://vite.dev/config/
 export default defineConfig({

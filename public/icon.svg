@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- crib.exe's icon (go-live step 7, the user's pick): a card with the
+       terminal prompt on it, cards and hacking in one. -->
+  <rect width="64" height="64" rx="14" fill="#0b0f14"/>
+  <g transform="rotate(-8 32 31)">
+    <rect x="17" y="9" width="30" height="44" rx="5" fill="#0b0f14" stroke="#39ff9c" stroke-width="3"/>
+    <path d="M24 24l7 7l-7 7" fill="none" stroke="#39ff9c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="33" y="35" width="10" height="4" rx="1" fill="#39ff9c"/>
+  </g>
+</svg>

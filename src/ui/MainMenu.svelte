@@ -227,6 +227,8 @@
     align-self: center;
     margin-top: 10px;
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 10px;
   }
   /* As the menu's entries, smaller and centred (the user's ask). */
