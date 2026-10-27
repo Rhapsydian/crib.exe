@@ -61,7 +61,7 @@ export function pickKeys(files: readonly string[], last: string | undefined, dou
 export const KEY_FILES = Array.from({ length: 10 }, (_, i) => `sounds/keys/keypress-${String(i + 1).padStart(3, '0')}.wav`);
 
 export type SoundId =
-  | 'handStart' | 'cardYou' | 'cardThem' | 'cut' | 'clear'
+  | 'handStart' | 'cardYou' | 'cardThem' | 'cardLift' | 'cardDrop' | 'cribSend' | 'cut' | 'clear'
   | 'peg' | 'show'
   | 'turnYou' | 'turnThem' | 'fire' | 'mod' | 'alarm' | 'breached' | 'contained'
   | 'move' | 'cache' | 'reward' | 'flawless';
@@ -76,6 +76,12 @@ export const SOUNDS: Record<SoundId, Synth | Sample> = {
   // lower, so the ear knows whose it was.
   cardYou: { files: KEY_FILES, gain: 0.8, rate: 1, jitter: 0.04, group: 'cards', double: CARD_DOUBLE },
   cardThem: { files: KEY_FILES, gain: 0.75, rate: 0.86, jitter: 0.04, group: 'cards', double: CARD_DOUBLE },
+  // Handling your cards is typing too (the user's ask): lifting one a
+  // light key, dropping it back a touch lower, and sending two to the crib
+  // always a double tap, one key per card.
+  cardLift: { files: KEY_FILES, gain: 0.55, rate: 1.05, jitter: 0.04, group: 'cards' },
+  cardDrop: { files: KEY_FILES, gain: 0.5, rate: 0.93, jitter: 0.04, group: 'cards' },
+  cribSend: { files: KEY_FILES, gain: 0.8, rate: 1, jitter: 0.04, group: 'cards', double: { ...CARD_DOUBLE, chance: 1 } },
   // The cut: two quick notes, low then high.
   cut: { wave: 'triangle', from: 600, to: 600, ms: 40, gain: 0.14, then: { wave: 'triangle', from: 1200, to: 1200, ms: 70, gain: 0.12 } },
   // The table clears (31, or a go): a soft hiss.

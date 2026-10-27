@@ -4,14 +4,14 @@
   // The sound audition page (#sounds, development only; go-live step 4):
   // every sound by moment, to hear and tune them.
   const GROUPS: { name: string; ids: SoundId[] }[] = [
-    { name: 'CARDS', ids: ['handStart', 'cardYou', 'cardThem', 'cut', 'clear'] },
+    { name: 'CARDS', ids: ['handStart', 'cardYou', 'cardThem', 'cardLift', 'cardDrop', 'cribSend', 'cut', 'clear'] },
     { name: 'CRIBBAGE SCORING', ids: ['peg', 'show'] },
     { name: 'A FIGHT', ids: ['turnYou', 'turnThem', 'fire', 'mod', 'alarm', 'breached', 'contained'] },
     { name: 'A RUN', ids: ['move', 'cache', 'reward'] },
     { name: 'THE RATING', ids: ['flawless'] },
   ];
   const LABELS: Record<SoundId, string> = {
-    handStart: 'A hand starts', cardYou: 'Your card played', cardThem: 'Their card played', cut: 'The cut', clear: 'The table clears',
+    handStart: 'A hand starts', cardYou: 'Your card played', cardThem: 'Their card played', cardLift: 'Lifting a card', cardDrop: 'Dropping a card back', cribSend: 'Sending two to the crib', cut: 'The cut', clear: 'The table clears',
     peg: 'Pegging points', show: 'A show count',
     turnYou: 'Your turn starts', turnThem: 'Their turn starts', fire: 'A subroutine fires', mod: 'A Mod or Burner acts', alarm: 'An alarm raises Heat', breached: 'Breached (win)', contained: 'Contained (loss)',
     move: 'Moving on the map', cache: 'Opening a Cache', reward: 'Taking a reward',

@@ -2,6 +2,7 @@
   import { cardValue, cardsEqual, type Card } from '../engine/cards';
   import { scoreCardPlay } from '../engine/pegging';
   import CardView from './CardView.svelte';
+  import { sound } from './sound';
 
   // The player's hand (P5), tap to lift then confirm.
   // - Discard: lift two cards, then "Send to crib". Tapping a lifted card
@@ -86,12 +87,21 @@
     // playing out: nothing to tap.
     if (inactive || sent.length > 0 || !isLegal(card)) return;
     if (phase === 'discard') {
-      if (isLifted(card)) lifted = lifted.filter((l) => !cardsEqual(l, card));
-      else if (lifted.length < 2) lifted = [...lifted, card];
+      if (isLifted(card)) {
+        lifted = lifted.filter((l) => !cardsEqual(l, card));
+        sound.play('cardDrop');
+      } else if (lifted.length < 2) {
+        lifted = [...lifted, card];
+        sound.play('cardLift');
+      }
       return;
     }
+    // Playing it sounds as the card lands (the replay's cardYou).
     if (isLifted(card)) play();
-    else lifted = [card];
+    else {
+      lifted = [card];
+      sound.play('cardLift');
+    }
   }
   function play() {
     const card = lifted[0];
@@ -107,6 +117,7 @@
     if (lifted.length !== 2 || inactive) return;
     const cards: [Card, Card] = [lifted[0], lifted[1]];
     lifted = [];
+    sound.play('cribSend');
     if (ondiscard) {
       sent = cards;
       ondiscard(cards);
