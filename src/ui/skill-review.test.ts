@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, Rank, Suit } from '../engine/cards';
-import { predictBestDiscard } from '../engine/ai';
+import { predictBestDiscard, scoreDiscard } from '../engine/ai';
+import { createDeck, shuffle } from '../engine/deck';
+import { createRng } from '../engine/rng';
 import { rateSkill, type SkillDecision } from './skill-review';
-import { starsFor, starLabel, starText } from '../engine/skill';
+import { DISCARD_MATCH, starsFor, starLabel, starText } from '../engine/skill';
 import { discardLoss } from './coach';
 
 const c = (rank: number, suit = 0): Card => ({ rank: rank as Rank, suit: suit as Suit });
@@ -11,6 +13,27 @@ const c = (rank: number, suit = 0): Card => ({ rank: rank as Rank, suit: suit as
 describe('the review coach', () => {
   const hand = [c(5), c(5, 1), c(11, 2), c(12, 3), c(13), c(2, 2)];
   const discard = (thrown: [Card, Card]): SkillDecision => ({ kind: 'discard', handIndex: 2, hand, thrown, ownCrib: false });
+
+  // v0.9.0 (a tester's report): a discard the coach calls its own gives
+  // up nothing in the rating; beyond the whisker, all of it counts.
+  it("counts a discard within a whisker of the coach's as nothing given up", () => {
+    const rng = createRng(7);
+    let near = 0;
+    for (let deal = 0; deal < 12; deal++) {
+      const six = shuffle(createDeck(), rng).slice(0, 6);
+      const best = scoreDiscard(six, predictBestDiscard(six, true), true);
+      for (let i = 0; i < 6; i++)
+        for (let j = i + 1; j < 6; j++) {
+          const thrown: [Card, Card] = [six[i], six[j]];
+          const raw = best - scoreDiscard(six, thrown, true);
+          const lost = discardLoss(six, thrown, true);
+          if (raw > DISCARD_MATCH) expect(lost).toBeCloseTo(raw, 9);
+          else expect(lost).toBe(0);
+          if (raw > 1e-9 && raw <= DISCARD_MATCH) near++;
+        }
+    }
+    expect(near).toBeGreaterThan(0);
+  });
 
   // Stars (session 72): the most points given up per hand each allows.
   it('gives stars by points given up per hand, at the edges', () => {

@@ -22,12 +22,10 @@ import { suitToken } from './RichText.svelte';
 
 const label = (c: Card) => rankLabel(c.rank);
 
-/** How close counts as the coach's own choice: a discard within this many
- * points of its keep, a pegging card within this of its card. One place,
- * so the review's costliest list and the "coach's choice too" verdict
- * agree (session 72, the user's catch). */
-export const DISCARD_MATCH = 0.3;
-export const PLAY_MATCH = 0.2;
+// How close counts as the coach's own choice: engine/skill.ts, where the
+// rating also reads it.
+import { DISCARD_MATCH, PLAY_MATCH } from '../engine/skill';
+export { DISCARD_MATCH, PLAY_MATCH };
 /** "a" or "an" for a word as it's said: an 8, an A, an 11, an Overclock
  * (the user's catch); a 7, a Daemon. */
 export const article = (word: string) => (/^(8|11|18|A|[AEIOUaeiou])/.test(word) ? 'an' : 'a');
