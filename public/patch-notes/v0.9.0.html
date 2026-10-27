@@ -1,0 +1,132 @@
+<title>crib.exe Patch Notes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: the game's own terminal look (one dark theme, on purpose, as the game has): a mono masthead, a sticky section rail, a readable sans body. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0f14; --raised: #121a23; --line: #22303d;
+  --text: #d6e2ee; --strong: #eef5fb; --dim: #7d8fa1; --accent: #39ff9c; --warn: #ffb347;
+  --exploit: #ff3d8b; --daemon: #3ddc84; --overclock: #29d3ff; --honeypot: #ffc23d; --mod: #c49bff; --heat: #ff8a3d;
+  --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; }
+.prompt { font-family: var(--mono); font-size: 13px; color: var(--dim); letter-spacing: .04em; }
+.prompt b { color: var(--accent); font-weight: 400; }
+h1 { font-family: var(--mono); font-weight: 800; font-size: clamp(28px, 6vw, 44px); line-height: 1.1; margin: 0; text-wrap: balance; color: var(--strong); }
+h1 .cursor { color: var(--accent); }
+.suits { display: flex; gap: 6px; }
+.suits span { width: 28px; height: 4px; border-radius: 2px; }
+.lede { color: var(--dim); max-width: 62ch; margin: 0; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; gap: 4px 16px; flex-wrap: wrap; padding-block: 12px; border-block: 1px solid var(--line); font-family: var(--mono); font-size: 12px; }
+nav a { color: var(--dim); text-decoration: none; }
+nav a:hover, nav a:focus-visible { color: var(--accent); outline: none; text-decoration: underline; }
+section { padding-top: 32px; scroll-margin-top: 72px; }
+h2 { font-family: var(--mono); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; text-wrap: balance; }
+h2::before { content: "// "; color: var(--dim); }
+h3 { font-family: var(--mono); font-size: 14px; font-weight: 700; margin: 22px 0 6px; color: var(--strong); }
+.h3-note { font-weight: 400; color: var(--dim); font-size: 12px; }
+p { margin: 0 0 12px; max-width: 68ch; }
+ul { margin: 0 0 12px; padding-left: 20px; max-width: 68ch; }
+li { margin: 4px 0; }
+li::marker { color: var(--dim); }
+ul ul { margin: 4px 0 6px; }
+b { font-weight: 600; color: var(--strong); }
+i { color: var(--dim); }
+code { font-family: var(--mono); font-size: .9em; }
+.notice { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--warn); border-radius: 6px; background: var(--raised); font-size: 15px; }
+.notice b { color: var(--warn); }
+li.suit { list-style: none; margin-left: -20px; padding-left: 12px; border-left: 3px solid var(--c); }
+li.suit b { color: var(--c); font-family: var(--mono); font-size: 14px; }
+.suit-exploit { --c: var(--exploit); } .suit-daemon { --c: var(--daemon); } .suit-overclock { --c: var(--overclock); } .suit-honeypot { --c: var(--honeypot); }
+#new-mods h3 { color: var(--mod); }
+#new-burners h3 { color: var(--heat); }
+#what-we-d-like-you-to-watch-for { margin-top: 32px; padding: 20px 18px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--raised); }
+.table-wrap { overflow-x: auto; margin: 0 0 12px; }
+table { border-collapse: collapse; font-size: 15px; min-width: 100%; }
+th, td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 12px; color: var(--dim); font-weight: 400; }
+footer { margin-top: 40px; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+  section a, .lede a { color: var(--accent); }
+</style>
+<div class="wrap">
+<header>
+  <div class="prompt"><b>&gt;</b> ./crib.exe --changelog</div>
+  <h1>Patch notes<span class="cursor">_</span></h1>
+  <div class="suits" aria-hidden="true"><span style="background:var(--exploit)"></span><span style="background:var(--daemon)"></span><span style="background:var(--overclock)"></span><span style="background:var(--honeypot)"></span></div>
+  <p class="lede">v0.9.0, the release candidate: what's new since the star ratings update.</p>
+</header>
+<nav aria-label="Sections"><a href="#highlights">Highlights</a><a href="#sound">Sound</a><a href="#settings">Settings</a><a href="#records">Records</a><a href="#about-patch-notes-and-the-discord">About, patch notes and the Discord</a><a href="#saved-games-and-updates">Saved games and updates</a><a href="#learn-to-play">Learn to play</a><a href="#fixes">Fixes</a></nav>
+<section><p><b>Play it at <a href="https://cribexe.com">cribexe.com</a>.</b> Join the <a href="https://discord.gg/HxCry3uRpa">crib.exe Discord</a>.</p>
+<p>This is the release candidate: everything planned for launch is in, and from here it's fixes from your reports. What's new since the star ratings update (<a href="2026-10-26.html">the previous notes</a>):</p>
+<aside class="notice"><b>Heads up for testers:</b> the testing switches (<code>?unlockall</code> and <code>?resetprofile</code>) are gone from the live game. To start over, use Settings → Erase all progress (export your progress first if you want it back).</aside>
+<section id="highlights"><h2>Highlights</h2>
+<ul>
+<li><b>Sound.</b> Every card is a keystroke, and the rest of the game has its own short sound effects. Volume and mute are in Settings.
+</li>
+<li><b>Settings, Records and About.</b> Three new screens from the main menu.
+</li>
+<li><b>Your progress as a code.</b> Export it, carry it to another device or browser, import it back.
+</li>
+<li><b>A Discord</b> for bug reports, ideas and Daily scores.
+</li>
+<li><b>An icon, and an app.</b> crib.exe has its own icon, and you can add it to your phone's home screen to play full screen.
+</li>
+<li><b>Version numbers,</b> starting at v0.9.0 (bottom of the main menu).
+</li></ul>
+</section><section id="sound"><h2>Sound</h2>
+<ul>
+<li><b>Cards are keystrokes.</b> Each card plays one of ten recorded key presses at random, never the same twice in a row, so a hand sounds like typing. Now and then a card is a quick double tap. Your cards sound a little higher than theirs.
+</li>
+<li><b>The rest is the game's own synth:</b> a hand starting, the cut, the table clearing, peg points and show counts, turns, subroutines firing, Mods and Burners, alarms raising Heat, Breached and Contained, map moves, Caches, rewards, and a chime for a Flawless rating.
+</li>
+<li><b>Volume and mute</b> in Settings. No music.
+</li></ul>
+</section><section id="settings"><h2>Settings</h2>
+<ul>
+<li><b>Sound:</b> volume and mute.
+</li>
+<li><b>Turn speed:</b> slow, normal or fast (the same as the » button in a game).
+</li>
+<li><b>Show tips again</b> (moved here from the main menu).
+</li>
+<li><b>Progress:</b> export it as a code to copy, import a code (it shows what the code holds before replacing anything), or erase everything and start over. Your sound and speed settings are kept.
+</li></ul>
+</section><section id="records"><h2>Records</h2>
+<p>Your history in one place: runs and victories, runs and wins by class with your best Security Level and deepest layer, fights won (elites, gatekeepers, Flawless fights), a <b>career Cribbage rating</b> across every hand you've played, Play Cribbage results by difficulty, and your Daily streak, best streak and best score. Class, fight and Cribbage records count from this version on.</p>
+</section><section id="about-patch-notes-and-the-discord"><h2>About, patch notes and the Discord</h2>
+<ul>
+<li><b>About:</b> credits, how the game was made (agentic development, using Claude Code), and the source on GitHub.
+</li>
+<li><b>What's new:</b> after an update, the main menu tells you what changed, once. Every version's notes are on the Patch notes page in About.
+</li>
+<li><b>Discord:</b> the button is on the main menu. Report bugs in #bug-reports, share ideas in #feedback, post Daily scores in #daily-runs.
+</li></ul>
+</section><section id="saved-games-and-updates"><h2>Saved games and updates</h2>
+<p>If an update changes the rules a saved run, Daily Run or Cribbage game was played under, it's cleared and the game tells you, instead of failing when you try to resume. If it was that day's scored Daily attempt, you get the attempt back.</p>
+</section><section id="learn-to-play"><h2>Learn to play</h2>
+<ul>
+<li>The discard lesson shows your keep and the coach's side by side, in numbers, like the coach in a game.
+</li>
+<li>The lesson text is tidied up.
+</li></ul>
+</section><section id="fixes"><h2>Fixes</h2>
+<ul>
+<li>The review's costliest mistakes no longer list a choice the coach counts as its own.
+</li>
+<li>Cards in the log are spaced evenly.
+</li>
+<li>Tips no longer pop up while a saved game catches up.
+</li>
+<li>Play Cribbage resumes where you left off.
+</li>
+<li>On iPhone, a double tap no longer zooms the page.
+</li></ul></section>
+<footer>crib.exe v0.9.0 · the release candidate</footer>
+</div>

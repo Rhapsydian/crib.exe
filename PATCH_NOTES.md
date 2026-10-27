@@ -1,86 +1,87 @@
-# crib.exe patch notes: star ratings and a clearer Cribbage review
+# crib.exe patch notes: v0.9.0, the release candidate
 
-**Play it at cribexe.com.**
+**Play it at [cribexe.com](https://cribexe.com).** Join the [crib.exe Discord](https://discord.gg/HxCry3uRpa).
 
-What's new since the AI and rating update (now in
-`public/patch-notes/2026-10-25-ai-rating.html`): the Cribbage rating in
-stars, a reward for flawless play, a rebuilt review screen, and clearer
-choices when you start a run.
+This is the release candidate: everything planned for launch is in, and
+from here it's fixes from your reports. What's new since the star
+ratings update ([the previous notes](2026-10-26.html)):
+
+> **Heads up for testers:** the testing switches (`?unlockall` and
+> `?resetprofile`) are gone from the live game. To start over, use
+> Settings → Erase all progress (export your progress first if you want
+> it back).
 
 ## Highlights
 
-- **Star ratings.** Your Cribbage rating is now 1 to 5 stars, from
-  Learning to Flawless.
-- **Clean work pays.** A Flawless fight avoids 1 Heat.
-- **A clearer review.** Your choice and the coach's side by side, in
-  numbers, with cards shown as small colored chips.
-- **Play Cribbage** ends with a star rating too, and picks up where you
-  left off when you resume.
-- **Starting a run:** pick your auxiliary subroutine and Burner from
-  lists with their full rules, and step through Security Levels with
-  their effects listed.
+- **Sound.** Every card is a keystroke, and the rest of the game has its
+  own short sound effects. Volume and mute are in Settings.
+- **Settings, Records and About.** Three new screens from the main menu.
+- **Your progress as a code.** Export it, carry it to another device or
+  browser, import it back.
+- **A Discord** for bug reports, ideas and Daily scores.
+- **An icon, and an app.** crib.exe has its own icon, and you can add it
+  to your phone's home screen to play full screen.
+- **Version numbers,** starting at v0.9.0 (bottom of the main menu).
 
-## Star ratings
+## Sound
 
-The rating is still based on the points you give up per hand compared
-with the coach, now shown as stars:
+- **Cards are keystrokes.** Each card plays one of ten recorded key
+  presses at random, never the same twice in a row, so a hand sounds
+  like typing. Now and then a card is a quick double tap. Your cards
+  sound a little higher than theirs.
+- **The rest is the game's own synth:** a hand starting, the cut, the
+  table clearing, peg points and show counts, turns, subroutines firing,
+  Mods and Burners, alarms raising Heat, Breached and Contained, map
+  moves, Caches, rewards, and a chime for a Flawless rating.
+- **Volume and mute** in Settings. No music.
 
-| Stars | Rating | Points given up per hand |
-|---|---|---|
-| ★☆☆☆☆ | Learning | more than 4.0 |
-| ★★☆☆☆ | Steady | 4.0 or less |
-| ★★★☆☆ | Sharp | 2.5 or less |
-| ★★★★☆ | Expert | 1.2 or less |
-| ★★★★★ | Flawless | 0.4 or less |
+## Settings
 
-The review tells you how far you are from the next star: *"You gave up an
-average of 1.6 points a hand. Expert is 1.2 or less."*
+- **Sound:** volume and mute.
+- **Turn speed:** slow, normal or fast (the same as the » button in a
+  game).
+- **Show tips again** (moved here from the main menu).
+- **Progress:** export it as a code to copy, import a code (it shows
+  what the code holds before replacing anything), or erase everything
+  and start over. Your sound and speed settings are kept.
 
-## Flawless Cribbage
+## Records
 
-A fight with a Flawless rating avoids 1 Heat, win or lose. The fight's
-end card says so: *"Flawless Cribbage: clean work, 1 Heat avoided."*
+Your history in one place: runs and victories, runs and wins by class
+with your best Security Level and deepest layer, fights won (elites,
+gatekeepers, Flawless fights), a **career Cribbage rating** across every
+hand you've played, Play Cribbage results by difficulty, and your Daily
+streak, best streak and best score. Class, fight and Cribbage records
+count from this version on.
 
-## The review
+## About, patch notes and the Discord
 
-- **Cards as chips.** Every card in the review, the coach and the log
-  is a small badge with its suit icon and rank, outlined in the suit's
-  color.
-- **Your choice beside the coach's, in numbers.** For a discard: what you
-  kept and threw, its points in hand, what the cut adds on average, and
-  what the crib is worth (negative when it's theirs), then the coach's
-  keep, then the difference. For pegging: the table, your card's points
-  and the opponent's expected reply, then the coach's card. A short line
-  under each says why. The numbers add up to the difference shown.
-- **The three costliest choices**, whatever they cost.
-- **The coach** uses the same layout when it looks back at your last
-  discard or play, in fights and in Play Cribbage.
+- **About:** credits, how the game was made (agentic development, using
+  Claude Code), and the source on GitHub.
+- **What's new:** after an update, the main menu tells you what changed,
+  once. Every version's notes are on the Patch notes page in About.
+- **Discord:** the button is on the main menu. Report bugs in
+  #bug-reports, share ideas in #feedback, post Daily scores in
+  #daily-runs.
 
-## Play Cribbage
+## Saved games and updates
 
-- A game ends with its star rating and the same review.
-- Resuming a saved game opens where you left off, instead of replaying
-  every hand.
+If an update changes the rules a saved run, Daily Run or Cribbage game
+was played under, it's cleared and the game tells you, instead of
+failing when you try to resume. If it was that day's scored Daily
+attempt, you get the attempt back.
 
-## Starting a run
+## Learn to play
 
-- **Auxiliary subroutine** (it was the "4th starting subroutine"): tap
-  *Select auxiliary subroutine* for a list of everything you've unlocked,
-  grouped by archetype, with full rules. Your class's own subroutines
-  can't be picked.
-- **Starting Burner:** the same, with each Burner's rules.
-- Your picks show their full rules on the screen, with *change* and
-  *clear*.
-- **Security Level:** step through levels with ◀ ▶; the effects at that
-  level are listed, with the new ones marked.
-
-## Daily Runs
-
-- The Cribbage line pays by stars: 100 / 200 / 350 / 500 / 700 (doubled
-  on Card Sharp days).
-- **Flawless Form** pays at 5 stars.
-- The share line shows your stars: `Cribbage ★★★★☆`.
+- The discard lesson shows your keep and the coach's side by side, in
+  numbers, like the coach in a game.
+- The lesson text is tidied up.
 
 ## Fixes
 
-- On iPhone, a quick double tap no longer zooms the page.
+- The review's costliest mistakes no longer list a choice the coach
+  counts as its own.
+- Cards in the log are spaced evenly.
+- Tips no longer pop up while a saved game catches up.
+- Play Cribbage resumes where you left off.
+- On iPhone, a double tap no longer zooms the page.

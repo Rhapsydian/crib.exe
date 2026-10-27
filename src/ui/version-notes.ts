@@ -28,6 +28,7 @@ export const VERSION_NOTES: readonly VersionNotes[] = [
       'A crib.exe Discord for bug reports, ideas, and Daily scores: the link is on the About page.',
       'Version numbers, starting here.',
     ],
+    full: 'v0.9.0.html',
   },
 ];
 
