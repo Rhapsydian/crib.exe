@@ -1,4 +1,6 @@
 <script lang="ts">
+  import WithKit from './WithKit.svelte';
+  import type { DailyPlan } from '../engine/daily';
   import RichText from './RichText.svelte';
   import type { RunRequest, ShopAction, ShopSlate } from '../engine/run-requests';
   import { BENCH_CAP, slotCapOf } from '../engine/loadout';
@@ -20,7 +22,7 @@
   // 61): benched subroutines (+25% a Merge rank), banked copies and
   // carried Burners, for half their price (Cold Wallet: its own), the
   // Data available at once.
-  let { request, onact }: { request: Extract<RunRequest, { kind: 'shop' }>; onact: (action: ShopAction) => void } = $props();
+  let { request, onact, daily }: { request: Extract<RunRequest, { kind: 'shop' }>; onact: (action: ShopAction) => void; daily?: { plan: DailyPlan; practice: boolean } | null } = $props();
 
   const shop = $derived(request.shop);
   const player = $derived(request.playerState);
@@ -47,9 +49,15 @@
       const used = installed.filter((p) => !player.grantedByMod[p.id]).length;
       (used < slotCapOf(player) ? installed : bench).push(piece);
     }
-    return { ...player, installedLoadout: installed, bench, material };
+    // Mods and Burners too, for the kit drawer (v0.9.0): bought ones
+    // join, sold Burners (one of each sale) leave.
+    const ownedModIds = [...player.ownedModIds, ...shop.bought.mod.flatMap((i) => shop.slates.mod[i]?.mod.id ?? [])];
+    const carriedBurnerIds = [...player.carriedBurnerIds];
+    for (const id of shop.sold.burner) carriedBurnerIds.splice(carriedBurnerIds.indexOf(id), 1);
+    for (const i of shop.bought.burner) if (shop.slates.burner[i]) carriedBurnerIds.push(shop.slates.burner[i].burner.id);
+    return { ...player, installedLoadout: installed, bench, material, ownedModIds, carriedBurnerIds };
   });
-  const burnersAfterBuys = $derived(player.carriedBurnerIds.length - shop.sold.burner.length + shop.bought.burner.length);
+  const burnersAfterBuys = $derived(afterBuys.carriedBurnerIds.length);
   type Item = { slate: ShopSlate; index: number; name: string; tag: string; lines: string[]; note?: string; icon?: Archetype; glyph?: string; cost: number };
   const sections = $derived.by((): { slate: ShopSlate; title: string; items: Item[] }[] => [
     {
@@ -143,10 +151,13 @@
   });
 </script>
 
+<WithKit player={afterBuys} {daily}>
+{#snippet children(kitButton)}
 <div class="shop">
   <div class="head">
     <span class="title">SHOP</span>
     <span class="data">◫ {shop.data} Data</span>
+    {@render kitButton()}
   </div>
   <div class="blurb">Buy anything you can afford. Each slate can be rerolled once{shop.rerollCost ? ` for ${shop.rerollCost} Data` : ', free this visit'}.</div>
 
@@ -206,6 +217,8 @@
 
   <button class="leave" onclick={() => onact({ kind: 'leave' })}>leave the Shop ▸</button>
 </div>
+{/snippet}
+</WithKit>
 
 <style>
   .shop {

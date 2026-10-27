@@ -108,7 +108,7 @@
     {onmenu}
   />
 {:else if run.pause?.kind === 'reward'}
-  <RewardScreen request={run.pause.request} gained={run.pause.gained} onpick={(choice) => (choice !== null && sound.play('reward'), run.answer(choice))} />
+  <RewardScreen request={run.pause.request} gained={run.pause.gained} daily={run.daily} onpick={(choice) => (choice !== null && sound.play('reward'), run.answer(choice))} />
 {:else if run.pause?.kind === 'drop'}
   <DropScreen request={run.pause.request} ondrop={(id) => run.answer(id)} />
 {:else if run.pause?.kind === 'burnerSwap'}
@@ -116,9 +116,9 @@
 {:else if run.pause?.kind === 'safehouse'}
   <SafehouseScreen request={run.pause.request} onchoose={(action, target) => run.chooseSafehouse(action, target)} />
 {:else if run.pause?.kind === 'shopBurner'}
-  <ShopBurnerScreen request={run.pause.request} onpick={(id) => run.answer(id)} />
+  <ShopBurnerScreen request={run.pause.request} daily={run.daily} onpick={(id) => run.answer(id)} />
 {:else if run.pause?.kind === 'shop'}
-  <ShopScreen request={run.pause.request} onact={(action) => run.answer(action)} />
+  <ShopScreen request={run.pause.request} daily={run.daily} onact={(action) => run.answer(action)} />
 {:else if run.pause?.kind === 'event'}
   <EventScreen request={run.pause.request} onchoose={(choice) => run.answer(choice)} />
 {:else if run.pause?.kind === 'notice'}

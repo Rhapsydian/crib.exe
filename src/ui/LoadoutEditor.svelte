@@ -15,7 +15,9 @@
   // pain -- so a swap is now always this explicit step.)
   // Every change goes to the engine at once (`onarrange`), which checks it
   // and hands back the new state.
-  let { player, onarrange }: { player: RunPlayerState; onarrange: (installed: string[], bench: string[]) => void } = $props();
+  // Without `onarrange` it is read-only (the reward and Shop screens): tap
+  // a subroutine to read it, no moving it.
+  let { player, onarrange }: { player: RunPlayerState; onarrange?: (installed: string[], bench: string[]) => void } = $props();
 
   type Zone = 'loadout' | 'bench';
   let selected = $state<{ zone: Zone; id: string } | null>(null);
@@ -37,7 +39,7 @@
   });
 
   function send(nextInstalled: string[], nextBench: string[]) {
-    onarrange(nextInstalled, nextBench);
+    onarrange?.(nextInstalled, nextBench);
   }
 
   function tap(zone: Zone, id: string) {
@@ -113,7 +115,7 @@
     <div class="detail">
       <div class="name"><SuitIcon archetype={piece.archetype} size={15} /> <b>{piece.name}</b> <span class="dim">· {rarityOf(piece.id)}{piece.rank ? ` · rank ${rankMark(piece.rank)}` : ''}{player.material[piece.id] ? ` · ${player.material[piece.id]} banked` : ''}</span></div>
       {#each pieceLines(piece) as line (line)}<div class="line"><RichText text={line} /></div>{/each}
-      <div class="actions">
+      {#if onarrange}<div class="actions">
         {#if selected.zone === 'loadout'}
           <button onclick={() => shift(-1)} disabled={installed.indexOf(selected.id) === 0}>▲ up</button>
           <button onclick={() => shift(1)} disabled={installed.indexOf(selected.id) === installed.length - 1}>▼ down</button>
@@ -122,7 +124,7 @@
           <button onclick={install} disabled={swapping}>{capped >= slotCap ? 'swap in' : 'install'}</button>
         {/if}
         {#if swapping}<button onclick={() => (swapping = false)}>cancel</button>{/if}
-      </div>
+      </div>{/if}
       <div class="hint">
         {#if swapping}
           <span class="ask">{selected.zone === 'bench' ? 'Your loadout is full: tap the loadout subroutine to swap out.' : 'Your bench is full: tap the bench subroutine to swap in.'}</span>

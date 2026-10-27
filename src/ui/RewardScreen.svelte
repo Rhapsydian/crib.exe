@@ -1,4 +1,6 @@
 <script lang="ts">
+  import WithKit from './WithKit.svelte';
+  import type { DailyPlan } from '../engine/daily';
   import RichText from './RichText.svelte';
   import type { RunRequest } from '../engine/run-requests';
   import type { SubroutineDefinition } from '../engine/subroutine-types';
@@ -18,7 +20,8 @@
     request,
     gained = 0,
     onpick,
-  }: { request: Extract<RunRequest, { kind: 'reward' }>; gained?: number; onpick: (choice: unknown) => void } = $props();
+    daily,
+  }: { request: Extract<RunRequest, { kind: 'reward' }>; gained?: number; onpick: (choice: unknown) => void; daily?: { plan: DailyPlan; practice: boolean } | null } = $props();
 
   type Option = { key: string; kind: 'subroutine' | 'mod' | 'burner'; name: string; tag: string; lines: string[]; note?: string; icon?: SubroutineDefinition['archetype']; value: unknown };
   const player = $derived(request.playerState);
@@ -63,10 +66,13 @@
   const chosen = $derived(options.find((o) => o.key === selected));
 </script>
 
+<WithKit player={player} {daily}>
+{#snippet children(kitButton)}
 <div class="reward">
   <div class="head">
     <span class="title">{TITLE[request.reward]}</span>
     {#if gained > 0}<span class="data">+{gained} Data · {player.data} total</span>{/if}
+    {@render kitButton()}
   </div>
   <div class="blurb">{BLURB[request.reward]}</div>
   <div class="options">
@@ -90,6 +96,8 @@
     <button class="take" disabled={!chosen} onclick={() => chosen && onpick(chosen.value)}>{chosen ? `take ${chosen.name}` : 'tap one to choose'}</button>
   </div>
 </div>
+{/snippet}
+</WithKit>
 
 <style>
   .section {
