@@ -208,6 +208,8 @@
     left: 50%;
     top: 30%;
     transform: translateX(-50%);
+    /* Above the phone layout's 7th and 8th cards (z-index 1). */
+    z-index: 2;
     white-space: nowrap;
     padding: 3px 10px;
     border-radius: 999px;
