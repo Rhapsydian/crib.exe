@@ -19,7 +19,7 @@
   <button class="back" onclick={() => (view === 'notes' && !notes ? (view = 'about') : onmenu())}>◂ {view === 'notes' && !notes ? 'about' : 'menu'}</button>
 
   {#if view === 'about'}
-    <h1>crib.exe <span class="ver">v{__APP_VERSION__}</span></h1>
+    <h1>crib.exe <span class="ver">v{__APP_VERSION__} · build {__APP_BUILD__}</span></h1>
     <div>A hacking roguelite where every fight is a game of Cribbage.</div>
     <div>Made by <b>Rhapsydian</b> (Justin Stephens).</div>
     <div class="dim">Developed with agentic development, using Claude Code. The source is on GitHub: <a href={REPO} target="_blank" rel="noopener">{REPO.replace('https://', '')}</a></div>
