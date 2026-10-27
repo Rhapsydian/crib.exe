@@ -1,5 +1,5 @@
 /**
- * An Event roll's animation (v0.9.0, the user's design): a bar split into
+ * An Event roll's animation (v0.9.1, the user's design): a bar split into
  * one segment per outcome, and a marker that sweeps back and forth, each
  * pass shorter and slower, before settling inside the segment that was
  * rolled. The roll itself is the engine's, already made; this only plays

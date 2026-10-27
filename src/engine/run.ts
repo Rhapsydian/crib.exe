@@ -259,7 +259,7 @@ function removeOneCarriedBurner(playerState: RunPlayerState, burnerId: BurnerId)
  * to credit it -- "rep for how deep you got" -- below a full continue.
  */
 /** The Burners a run used: fired in a fight, on the map or at a Shop,
- * and sell-only ones sold (v0.9.0, the user's call: selling a Cold Wallet
+ * and sell-only ones sold (v0.9.1, the user's call: selling a Cold Wallet
  * is its use, so it counts for Burn Rate). Other Burners sold don't. */
 export function burnersUsedIn(log: readonly RunEvent[]): number {
   let used = 0;

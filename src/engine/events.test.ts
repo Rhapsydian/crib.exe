@@ -544,7 +544,7 @@ describe('Event story and contraband', () => {
 
 });
 
-// v0.9.0 (the roll animation): the result names which outcome was rolled.
+// v0.9.1 (the roll animation): the result names which outcome was rolled.
 describe('An Event result', () => {
   it('names the outcome that was rolled', async () => {
     const { resolveEncounterRequests } = await import('./encounters');

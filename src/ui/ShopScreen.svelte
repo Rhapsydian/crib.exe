@@ -49,7 +49,7 @@
       const used = installed.filter((p) => !player.grantedByMod[p.id]).length;
       (used < slotCapOf(player) ? installed : bench).push(piece);
     }
-    // Mods and Burners too, for the kit drawer (v0.9.0): bought ones
+    // Mods and Burners too, for the kit drawer (v0.9.1): bought ones
     // join, sold Burners (one of each sale) leave.
     const ownedModIds = [...player.ownedModIds, ...shop.bought.mod.flatMap((i) => shop.slates.mod[i]?.mod.id ?? [])];
     const carriedBurnerIds = [...player.carriedBurnerIds];

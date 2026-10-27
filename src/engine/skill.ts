@@ -44,7 +44,7 @@ export function nextStar(stars: Stars): { label: string; maxLostPerHand: number 
 /** How close counts as the coach's own choice: a discard within this many
  * points of its keep, a pegging card within this of its card. One place,
  * so the review's costliest list, the "coach's choice too" verdict and the
- * rating agree (session 72, the user's catch; since v0.9.0, a choice the
+ * rating agree (session 72, the user's catch; since v0.9.1, a choice the
  * coach calls its own gives up nothing, after a tester with no mistakes
  * listed still lost 0.1 a hand). */
 export const DISCARD_MATCH = 0.3;

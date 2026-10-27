@@ -14,7 +14,7 @@ describe('the review coach', () => {
   const hand = [c(5), c(5, 1), c(11, 2), c(12, 3), c(13), c(2, 2)];
   const discard = (thrown: [Card, Card]): SkillDecision => ({ kind: 'discard', handIndex: 2, hand, thrown, ownCrib: false });
 
-  // v0.9.0 (a tester's report): a discard the coach calls its own gives
+  // v0.9.1 (a tester's report): a discard the coach calls its own gives
   // up nothing in the rating; beyond the whisker, all of it counts.
   it("counts a discard within a whisker of the coach's as nothing given up", () => {
     const rng = createRng(7);

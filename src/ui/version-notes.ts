@@ -18,6 +18,18 @@ export interface VersionNotes {
 
 export const VERSION_NOTES: readonly VersionNotes[] = [
   {
+    version: '0.9.1',
+    date: '2026-10-27',
+    notes: [
+      'See your loadout, Mods and Burners on the reward and Shop screens.',
+      'Event rolls play out: a bar of the odds and a marker that settles on what you rolled.',
+      "Fairer Cribbage ratings: a choice the coach calls its own costs nothing, and the stars match the number shown.",
+      'Burn Rate: selling a Cold Wallet counts as using a Burner.',
+      'Card sounds for lifting a card and sending two to the crib, and fixes for phones.',
+    ],
+    full: 'v0.9.1.html',
+  },
+  {
     version: '0.9.0',
     date: '2026-10-26',
     notes: [

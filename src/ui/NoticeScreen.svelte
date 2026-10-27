@@ -14,7 +14,7 @@
   }: { request: Extract<RunRequest, { kind: 'eventResult' | 'cacheOpened' | 'burnerSaved' }>; layer: number; oncontinue: () => void } = $props();
 
   // A choice with odds (risky or a gamble) plays its roll out first
-  // (v0.9.0); what came of it shows once the roll settles.
+  // (v0.9.1); what came of it shows once the roll settles.
   const roll = $derived(request.kind === 'eventResult' && request.choice.riskTier !== 'transparent' && request.choice.outcomes.length > 1 ? request : null);
   let rolled = $state(false);
 

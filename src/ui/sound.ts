@@ -101,7 +101,7 @@ export const SOUNDS: Record<SoundId, Synth | Sample> = {
   move: { wave: 'sine', from: 500, to: 700, ms: 50, gain: 0.12 },
   cache: { wave: 'triangle', from: 440, to: 880, ms: 120, gain: 0.2, then: { wave: 'triangle', from: 880, to: 1320, ms: 160, gain: 0.18 } },
   reward: { wave: 'triangle', from: 600, to: 900, ms: 80, gain: 0.2 },
-  // An Event's roll (v0.9.0): a tick as the marker crosses into another
+  // An Event's roll (v0.9.1): a tick as the marker crosses into another
   // segment, then a rising or falling settle for a good or bad result.
   rollTick: { wave: 'square', from: 1800, to: 1500, ms: 18, gain: 0.06 },
   rollGood: { wave: 'triangle', from: 523, to: 523, ms: 90, gain: 0.18, then: { wave: 'triangle', from: 784, to: 784, ms: 200, gain: 0.16 } },

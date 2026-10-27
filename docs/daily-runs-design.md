@@ -114,7 +114,7 @@ stretch goal.
   | Shopping Spree | Each Data you spend scores 1. |
   | Full Arsenal | Each Mod held at the end scores 100. |
   | Merge Master | Each Merge scores 150. |
-  | Burn Rate (the user's pick) | Each Burner you use scores 100. Selling a Cold Wallet counts (v0.9.0). |
+  | Burn Rate (the user's pick) | Each Burner you use scores 100. Selling a Cold Wallet counts (v0.9.1). |
   | Clean Breach | Each gatekeeper beaten before it reaches half its Containment scores +300. |
   | Flawless Form | A Flawless Cribbage rating (5 stars) scores +1,000. |
 

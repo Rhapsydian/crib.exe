@@ -21,7 +21,7 @@
     flawless: 'Flawless (5 stars)',
   };
   let volume = $state(sound.volume);
-  // The Event roll (v0.9.0), to watch and hear: a risky 60/25/15, or a
+  // The Event roll (v0.9.1), to watch and hear: a risky 60/25/15, or a
   // gamble of three, landing on a random outcome.
   let demo = $state<{ gamble: boolean; landed: number; fast: boolean; key: number } | null>(null);
   const rollDemo = (gamble: boolean, fast = false) => (demo = { gamble, landed: Math.floor(Math.random() * 3), fast, key: Date.now() });

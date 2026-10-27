@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { gambleWidths, rollMs, rollPath, rollPosition, rollTarget, segmentAt } from './roll';
 import { outcomeTone } from './visit-text';
 
-// v0.9.0: an Event roll's animation.
+// v0.9.1: an Event roll's animation.
 describe('the Event roll', () => {
   it('settles inside the segment that was rolled', () => {
     const widths = [0.6, 0.25, 0.15];

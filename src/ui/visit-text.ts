@@ -32,7 +32,7 @@ export function effectPhrases(effect: EventEffect, layer: number): string[] {
   return out.length ? out : ['nothing'];
 }
 
-/** How an outcome reads (v0.9.0, the roll animation's colours and settle
+/** How an outcome reads (v0.9.1, the roll animation's colours and settle
  * sound): good if it only gains (Data, a grant, cooler Heat), bad if it
  * only costs (Heat, Data, a fight) or does nothing, mixed if both. */
 export type OutcomeTone = 'good' | 'bad' | 'mixed';

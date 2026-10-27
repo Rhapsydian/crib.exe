@@ -4,7 +4,7 @@
   import type { RunPlayerState } from '../engine/run';
   import KitDrawer from './KitDrawer.svelte';
 
-  // A run screen with your kit beside it, read-only (v0.9.0, a tester's
+  // A run screen with your kit beside it, read-only (v0.9.1, a tester's
   // ask: the reward and Shop screens): a standing left panel on desktop,
   // and on phones a "◀ loadout" button that the screen puts in its own
   // header (`children` gets it as a snippet) to slide the drawer in.

@@ -10,7 +10,7 @@
   // Your kit: the loadout and bench, Mods, Burners and a Daily's Mods. A
   // slide-in drawer on phones, a standing left panel on desktop. The map
   // edits the loadout here (`onarrange`); the reward and Shop screens show
-  // it read-only (v0.9.0, a tester's ask), since the engine only takes a
+  // it read-only (v0.9.1, a tester's ask), since the engine only takes a
   // new arrangement on the map.
   let {
     player,

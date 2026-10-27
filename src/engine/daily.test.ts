@@ -114,7 +114,7 @@ describe('the daily score (DR2)', () => {
     expect(dailyScore(run, 'shopping-spree', 3).total).toBe(without + run.tally!.dataSpent);
   });
 
-  // v0.9.0 (the user's call): selling a Cold Wallet is its use, so it
+  // v0.9.1 (the user's call): selling a Cold Wallet is its use, so it
   // counts for Burn Rate; selling any other Burner doesn't.
   it('counts Burners fired, and a Cold Wallet sold, as Burners used', () => {
     const shop = (sold: string[], used: string | null = null) =>

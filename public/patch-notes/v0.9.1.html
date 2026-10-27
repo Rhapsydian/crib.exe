@@ -1,0 +1,118 @@
+<title>crib.exe Patch Notes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: the game's own terminal look (one dark theme, on purpose, as the game has): a mono masthead, a sticky section rail, a readable sans body. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0f14; --raised: #121a23; --line: #22303d;
+  --text: #d6e2ee; --strong: #eef5fb; --dim: #7d8fa1; --accent: #39ff9c; --warn: #ffb347;
+  --exploit: #ff3d8b; --daemon: #3ddc84; --overclock: #29d3ff; --honeypot: #ffc23d; --mod: #c49bff; --heat: #ff8a3d;
+  --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; }
+.prompt { font-family: var(--mono); font-size: 13px; color: var(--dim); letter-spacing: .04em; }
+.prompt b { color: var(--accent); font-weight: 400; }
+h1 { font-family: var(--mono); font-weight: 800; font-size: clamp(28px, 6vw, 44px); line-height: 1.1; margin: 0; text-wrap: balance; color: var(--strong); }
+h1 .cursor { color: var(--accent); }
+.suits { display: flex; gap: 6px; }
+.suits span { width: 28px; height: 4px; border-radius: 2px; }
+.lede { color: var(--dim); max-width: 62ch; margin: 0; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; gap: 4px 16px; flex-wrap: wrap; padding-block: 12px; border-block: 1px solid var(--line); font-family: var(--mono); font-size: 12px; }
+nav a { color: var(--dim); text-decoration: none; }
+nav a:hover, nav a:focus-visible { color: var(--accent); outline: none; text-decoration: underline; }
+section { padding-top: 32px; scroll-margin-top: 72px; }
+h2 { font-family: var(--mono); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; text-wrap: balance; }
+h2::before { content: "// "; color: var(--dim); }
+h3 { font-family: var(--mono); font-size: 14px; font-weight: 700; margin: 22px 0 6px; color: var(--strong); }
+.h3-note { font-weight: 400; color: var(--dim); font-size: 12px; }
+p { margin: 0 0 12px; max-width: 68ch; }
+ul { margin: 0 0 12px; padding-left: 20px; max-width: 68ch; }
+li { margin: 4px 0; }
+li::marker { color: var(--dim); }
+ul ul { margin: 4px 0 6px; }
+b { font-weight: 600; color: var(--strong); }
+i { color: var(--dim); }
+code { font-family: var(--mono); font-size: .9em; }
+.notice { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--warn); border-radius: 6px; background: var(--raised); font-size: 15px; }
+.notice b { color: var(--warn); }
+li.suit { list-style: none; margin-left: -20px; padding-left: 12px; border-left: 3px solid var(--c); }
+li.suit b { color: var(--c); font-family: var(--mono); font-size: 14px; }
+.suit-exploit { --c: var(--exploit); } .suit-daemon { --c: var(--daemon); } .suit-overclock { --c: var(--overclock); } .suit-honeypot { --c: var(--honeypot); }
+#new-mods h3 { color: var(--mod); }
+#new-burners h3 { color: var(--heat); }
+#what-we-d-like-you-to-watch-for { margin-top: 32px; padding: 20px 18px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--raised); }
+.table-wrap { overflow-x: auto; margin: 0 0 12px; }
+table { border-collapse: collapse; font-size: 15px; min-width: 100%; }
+th, td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 12px; color: var(--dim); font-weight: 400; }
+footer { margin-top: 40px; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+  section a, .lede a { color: var(--accent); }
+</style>
+<div class="wrap">
+<header>
+  <div class="prompt"><b>&gt;</b> ./crib.exe --changelog</div>
+  <h1>Patch notes<span class="cursor">_</span></h1>
+  <div class="suits" aria-hidden="true"><span style="background:var(--exploit)"></span><span style="background:var(--daemon)"></span><span style="background:var(--overclock)"></span><span style="background:var(--honeypot)"></span></div>
+  <p class="lede">v0.9.1, release candidate 2: what's new since v0.9.0.</p>
+</header>
+<nav aria-label="Sections"><a href="#highlights">Highlights</a><a href="#your-loadout-on-the-reward-and-shop-screens">Your loadout on the reward and Shop screens</a><a href="#event-rolls">Event rolls</a><a href="#cribbage-ratings">Cribbage ratings</a><a href="#daily-runs">Daily Runs</a><a href="#sound">Sound</a><a href="#fixes">Fixes</a></nav>
+<section><p><b>Play it at <a href="https://cribexe.com">cribexe.com</a>.</b> Join the <a href="https://discord.gg/HxCry3uRpa">crib.exe Discord</a>.</p>
+<p>Thanks for the reports on the release candidate. This update answers several of them, and adds two things testers asked for. What's new since v0.9.0 (<a href="v0.9.0.html">the previous notes</a>):</p>
+<aside class="notice"><b>Not seeing these changes?</b> An installed app can keep running the old version. Close it fully (swipe it out of your recent apps) and open it again. About now shows the build next to the version: tell us which one when you report a bug.</aside>
+<section id="highlights"><h2>Highlights</h2>
+<ul>
+<li><b>Your loadout, while you choose.</b> See your subroutines, bench, Mods and Burners on the reward and Shop screens.
+</li>
+<li><b>Event rolls play out.</b> A choice with odds rolls on screen before you see what came of it.
+</li>
+<li><b>Fairer Cribbage ratings.</b> Two fixes to how the stars are counted.
+</li></ul>
+</section><section id="your-loadout-on-the-reward-and-shop-screens"><h2>Your loadout on the reward and Shop screens</h2>
+<ul>
+<li>On a phone, tap <b>◀ loadout</b> at the top of a reward screen, the Shop, or the Shop's Burner choice. On a wider screen it stands open on the left, as on the map.
+</li>
+<li>Tap a subroutine to read it. You can still only rearrange your loadout on the map.
+</li>
+<li>In the Shop it shows what you'll leave with: anything you buy is added, anything you sell is gone.
+</li></ul>
+</section><section id="event-rolls"><h2>Event rolls</h2>
+<ul>
+<li>Pick a <b>risky</b> choice and a bar shows its odds, one segment per outcome, green for good and red for bad. A marker sweeps back and forth, ticking as it goes, and settles on what you rolled.
+</li>
+<li>A <b>gamble</b> keeps its secret: its segments say "?" and keep shifting size, and the one you land on fills the whole bar.
+</li>
+<li>Tap the bar to skip. The fast turn speed rolls twice as quickly.
+</li></ul>
+</section><section id="cribbage-ratings"><h2>Cribbage ratings</h2>
+<ul>
+<li><b>Close enough is the coach's own choice.</b> A discard or play the coach calls its own (within a few tenths of a point of its pick) no longer counts against you. A fight with no mistakes listed now rates 0.0 points given up a hand.
+</li>
+<li><b>The stars match the number you see.</b> A rating is judged on the one-decimal figure the review shows, so "0.4 a hand" is always Flawless.
+</li>
+<li>Ratings you've already earned don't change.
+</li></ul>
+</section><section id="daily-runs"><h2>Daily Runs</h2>
+<ul>
+<li><b>Burn Rate:</b> selling a Cold Wallet now counts as using a Burner. Selling it is its only use.
+</li></ul>
+</section><section id="sound"><h2>Sound</h2>
+<ul>
+<li>Lifting a card and putting it back now click like keys, and sending two cards to the crib is a quick double tap.
+</li></ul>
+</section><section id="fixes"><h2>Fixes</h2>
+<ul>
+<li>On phones, the score popup on the table no longer hides behind the 7th and 8th cards.
+</li>
+<li>The main menu's bottom buttons wrap two and two on narrow screens, never three and one.
+</li>
+<li>What's new now says the Discord link is on the main menu as well as About.
+</li></ul></section>
+<footer>crib.exe v0.9.0 · the release candidate</footer>
+</div>

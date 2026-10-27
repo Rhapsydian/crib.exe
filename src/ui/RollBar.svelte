@@ -4,7 +4,7 @@
   import { gambleWidths, rollMs, rollPath, rollPosition, rollTarget, segmentAt } from './roll';
   import type { OutcomeTone } from './visit-text';
 
-  // An Event roll played out (v0.9.0, the user's design; the path is
+  // An Event roll played out (v0.9.1, the user's design; the path is
   // roll.ts): a bar of the choice's outcomes and a marker that sweeps,
   // ticking as it crosses into each segment, and settles in the one rolled.
   // A risky choice's bar is its true odds, and the rolled segment lights

@@ -1,87 +1,69 @@
-# crib.exe patch notes: v0.9.0, the release candidate
+# crib.exe patch notes: v0.9.1, release candidate 2
 
 **Play it at [cribexe.com](https://cribexe.com).** Join the [crib.exe Discord](https://discord.gg/HxCry3uRpa).
 
-This is the release candidate: everything planned for launch is in, and
-from here it's fixes from your reports. What's new since the star
-ratings update ([the previous notes](2026-10-26.html)):
+Thanks for the reports on the release candidate. This update answers
+several of them, and adds two things testers asked for. What's new since
+v0.9.0 ([the previous notes](v0.9.0.html)):
 
-> **Heads up for testers:** the testing switches (`?unlockall` and
-> `?resetprofile`) are gone from the live game. To start over, use
-> Settings → Erase all progress (export your progress first if you want
-> it back).
+> **Not seeing these changes?** An installed app can keep running the old
+> version. Close it fully (swipe it out of your recent apps) and open it
+> again. About now shows the build next to the version: tell us which
+> one when you report a bug.
 
 ## Highlights
 
-- **Sound.** Every card is a keystroke, and the rest of the game has its
-  own short sound effects. Volume and mute are in Settings.
-- **Settings, Records and About.** Three new screens from the main menu.
-- **Your progress as a code.** Export it, carry it to another device or
-  browser, import it back.
-- **A Discord** for bug reports, ideas and Daily scores.
-- **An icon, and an app.** crib.exe has its own icon, and you can add it
-  to your phone's home screen to play full screen.
-- **Version numbers,** starting at v0.9.0 (bottom of the main menu).
+- **Your loadout, while you choose.** See your subroutines, bench, Mods
+  and Burners on the reward and Shop screens.
+- **Event rolls play out.** A choice with odds rolls on screen before
+  you see what came of it.
+- **Fairer Cribbage ratings.** Two fixes to how the stars are counted.
+
+## Your loadout on the reward and Shop screens
+
+- On a phone, tap **◀ loadout** at the top of a reward screen, the Shop,
+  or the Shop's Burner choice. On a wider screen it stands open on the
+  left, as on the map.
+- Tap a subroutine to read it. You can still only rearrange your loadout
+  on the map.
+- In the Shop it shows what you'll leave with: anything you buy is
+  added, anything you sell is gone.
+
+## Event rolls
+
+- Pick a **risky** choice and a bar shows its odds, one segment per
+  outcome, green for good and red for bad. A marker sweeps back and
+  forth, ticking as it goes, and settles on what you rolled.
+- A **gamble** keeps its secret: its segments say "?" and keep shifting
+  size, and the one you land on fills the whole bar.
+- Tap the bar to skip. The fast turn speed rolls twice as quickly.
+
+## Cribbage ratings
+
+- **Close enough is the coach's own choice.** A discard or play the
+  coach calls its own (within a few tenths of a point of its pick) no
+  longer counts against you. A fight with no mistakes listed now rates
+  0.0 points given up a hand.
+- **The stars match the number you see.** A rating is judged on the
+  one-decimal figure the review shows, so "0.4 a hand" is always
+  Flawless.
+- Ratings you've already earned don't change.
+
+## Daily Runs
+
+- **Burn Rate:** selling a Cold Wallet now counts as using a Burner.
+  Selling it is its only use.
 
 ## Sound
 
-- **Cards are keystrokes.** Each card plays one of ten recorded key
-  presses at random, never the same twice in a row, so a hand sounds
-  like typing. Now and then a card is a quick double tap. Your cards
-  sound a little higher than theirs.
-- **The rest is the game's own synth:** a hand starting, the cut, the
-  table clearing, peg points and show counts, turns, subroutines firing,
-  Mods and Burners, alarms raising Heat, Breached and Contained, map
-  moves, Caches, rewards, and a chime for a Flawless rating.
-- **Volume and mute** in Settings. No music.
-
-## Settings
-
-- **Sound:** volume and mute.
-- **Turn speed:** slow, normal or fast (the same as the » button in a
-  game).
-- **Show tips again** (moved here from the main menu).
-- **Progress:** export it as a code to copy, import a code (it shows
-  what the code holds before replacing anything), or erase everything
-  and start over. Your sound and speed settings are kept.
-
-## Records
-
-Your history in one place: runs and victories, runs and wins by class
-with your best Security Level and deepest layer, fights won (elites,
-gatekeepers, Flawless fights), a **career Cribbage rating** across every
-hand you've played, Play Cribbage results by difficulty, and your Daily
-streak, best streak and best score. Class, fight and Cribbage records
-count from this version on.
-
-## About, patch notes and the Discord
-
-- **About:** credits, how the game was made (agentic development, using
-  Claude Code), and the source on GitHub.
-- **What's new:** after an update, the main menu tells you what changed,
-  once. Every version's notes are on the Patch notes page in About.
-- **Discord:** the button is on the main menu. Report bugs in
-  #bug-reports, share ideas in #feedback, post Daily scores in
-  #daily-runs.
-
-## Saved games and updates
-
-If an update changes the rules a saved run, Daily Run or Cribbage game
-was played under, it's cleared and the game tells you, instead of
-failing when you try to resume. If it was that day's scored Daily
-attempt, you get the attempt back.
-
-## Learn to play
-
-- The discard lesson shows your keep and the coach's side by side, in
-  numbers, like the coach in a game.
-- The lesson text is tidied up.
+- Lifting a card and putting it back now click like keys, and sending
+  two cards to the crib is a quick double tap.
 
 ## Fixes
 
-- The review's costliest mistakes no longer list a choice the coach
-  counts as its own.
-- Cards in the log are spaced evenly.
-- Tips no longer pop up while a saved game catches up.
-- Play Cribbage resumes where you left off.
-- On iPhone, a double tap no longer zooms the page.
+- On phones, the score popup on the table no longer hides behind the
+  7th and 8th cards.
+- The main menu's bottom buttons wrap two and two on narrow screens,
+  never three and one.
+- What's new now says the Discord link is on the main menu as well as
+  About.
