@@ -51,7 +51,7 @@
       found = [...found, hit];
       selected = [];
       const left = targets.length - found.length;
-      feedback = { ok: true, text: left ? `Yes -- ${targets[hit].points} points. ${left} more to find.` : `All found. ${step.explain}` };
+      feedback = { ok: true, text: left ? `Yes: ${targets[hit].points} points. ${left} more to find.` : `All found. ${step.explain}` };
       if (!left) done = true;
       return;
     }
@@ -67,7 +67,7 @@
           ? `Those add to ${sum}, not 15. Try again.`
           : step.category === 'pair'
             ? 'A pair is two cards of the same rank. Try again.'
-            : 'A run is three or more cards in a row -- all of them. Try again.',
+            : 'A run is three or more cards in a row, all of them. Try again.',
     };
   }
 
@@ -92,7 +92,7 @@
       selected = [card];
       feedback = { ok: true, text: step.explain };
     } else {
-      feedback = { ok: false, text: step.goal === 'safeLead' ? `${article(String(cardValue(card))) === 'an' ? 'An' : 'A'} ${cardValue(card)} lets them make 15 off it. Try again.` : `That makes the count ${pegCount + cardValue(card)} -- no score. Try again.` };
+      feedback = { ok: false, text: step.goal === 'safeLead' ? `${article(String(cardValue(card))) === 'an' ? 'An' : 'A'} ${cardValue(card)} lets them make 15 off it. Try again.` : `That makes the count ${pegCount + cardValue(card)}: no score. Try again.` };
     }
   }
 

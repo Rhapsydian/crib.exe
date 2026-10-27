@@ -26,7 +26,7 @@
   <button class="back" onclick={onmenu}>◂ menu</button>
   <h1>Learn to play</h1>
   <div class="sub">
-    {nextIndex === 0 ? 'Five short lessons -- a few minutes each -- then a game with the coach beside you.' : nextIndex === -1 ? 'All five lessons done. Replay any of them, or play a coached game.' : `${done.size} of ${LESSONS.length} lessons done.`}
+    {nextIndex === 0 ? 'Five short lessons, a few minutes each, then a game with the coach beside you.' : nextIndex === -1 ? 'All five lessons done. Replay any of them, or play a coached game.' : `${done.size} of ${LESSONS.length} lessons done.`}
   </div>
 
   {#each LESSONS as lesson, i (lesson.id)}
