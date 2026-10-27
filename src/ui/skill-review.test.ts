@@ -14,7 +14,9 @@ describe('the review coach', () => {
 
   // Stars (session 72): the most points given up per hand each allows.
   it('gives stars by points given up per hand, at the edges', () => {
-    expect([0, 0.4, 0.41, 1.2, 1.21, 2.5, 2.51, 4.0, 4.01, 9].map(starsFor)).toEqual([5, 5, 4, 4, 3, 3, 2, 2, 1, 1]);
+    expect([0, 0.4, 0.46, 1.2, 1.26, 2.5, 2.56, 4.0, 4.06, 9].map(starsFor)).toEqual([5, 5, 4, 4, 3, 3, 2, 2, 1, 1]);
+    // Rated on the one-decimal figure shown: 0.425 reads 0.4, so Flawless.
+    expect([0.425, 0.46, 1.24, 1.26, 2.54, 2.56, 4.04, 4.06].map(starsFor)).toEqual([5, 4, 4, 3, 3, 2, 2, 1]);
     expect([1, 2, 3, 4, 5].map((s) => starLabel(s as 1))).toEqual(['Learning', 'Steady', 'Sharp', 'Expert', 'Flawless']);
     expect(starText(4)).toBe('★★★★☆');
   });

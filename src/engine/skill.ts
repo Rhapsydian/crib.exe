@@ -21,9 +21,13 @@ export const SKILL_STARS: readonly { stars: Stars; label: string; maxLostPerHand
   { stars: 1, label: 'Learning', maxLostPerHand: Infinity },
 ];
 
-/** The stars for `lostPerHand` points given up per hand. */
+/** The stars for `lostPerHand` points given up per hand, rated on the
+ * figure the player is shown: rounded to one decimal, as the review and
+ * Records print it (the user's call, after a tester's 0.425 read "0.4"
+ * beside "Flawless is 0.4 or less" yet earned 4 stars). */
 export function starsFor(lostPerHand: number): Stars {
-  return SKILL_STARS.find((s) => lostPerHand <= s.maxLostPerHand + 1e-9)!.stars;
+  const shown = Number(lostPerHand.toFixed(1));
+  return SKILL_STARS.find((s) => shown <= s.maxLostPerHand + 1e-9)!.stars;
 }
 
 export const starLabel = (stars: Stars): string => SKILL_STARS.find((s) => s.stars === stars)!.label;
