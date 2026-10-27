@@ -69,7 +69,7 @@ import {
   type ModAcquisitionStrategy,
 } from './mods';
 import type { BurnerDefinition, BurnerId } from './burner-types';
-import { BURNER_DEFINITIONS, alwaysAcquireFirstBurner, burnerCapOf, type BurnerAcquisitionStrategy } from './burners';
+import { BURNER_DEFINITIONS, alwaysAcquireFirstBurner, isSellOnly, burnerCapOf, type BurnerAcquisitionStrategy } from './burners';
 import type { BurnerActivationStrategy } from './combat';
 
 /**
@@ -258,6 +258,21 @@ function removeOneCarriedBurner(playerState: RunPlayerState, burnerId: BurnerId)
  * (layersCompleted includes that layer). Future meta-progression is meant
  * to credit it -- "rep for how deep you got" -- below a full continue.
  */
+/** The Burners a run used: fired in a fight, on the map or at a Shop,
+ * and sell-only ones sold (v0.9.0, the user's call: selling a Cold Wallet
+ * is its use, so it counts for Burn Rate). Other Burners sold don't. */
+export function burnersUsedIn(log: readonly RunEvent[]): number {
+  let used = 0;
+  for (const e of log) {
+    if (e.type === 'mapBurnerActivated') used++;
+    if (e.type === 'encounter') {
+      used += e.outcome.burnersUsedThisCombat.length + (e.outcome.shopBurnerUsed ? 1 : 0);
+      used += e.outcome.shopSales?.burner.filter((id) => isSellOnly(BURNER_DEFINITIONS[id])).length ?? 0;
+    }
+  }
+  return used;
+}
+
 export type RunOutcome = 'heatMaxed' | 'quarantined' | 'noRouteRemains' | 'breachedThenCaught' | 'victory';
 
 export type RunEvent =
@@ -857,10 +872,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
   };
   const finish = (outcome: RunOutcome): RunResult => {
     settle();
-    for (const e of log) {
-      if (e.type === 'mapBurnerActivated') tally.burnersUsed++;
-      if (e.type === 'encounter') tally.burnersUsed += e.outcome.burnersUsedThisCombat.length + (e.outcome.shopBurnerUsed ? 1 : 0);
-    }
+    tally.burnersUsed = burnersUsedIn(log);
     return { outcome, layersCompleted, finalHeat: heat, log, playerState, tally };
   };
 

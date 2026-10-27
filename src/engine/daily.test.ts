@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyDailyStart, dailyScore, type DailyMod, type DailyPlan, DAILY_BLOCKED_PAIRS, DAILY_MAX_BURNERS, DAILY_MAX_SUBROUTINES, DAILY_MODS, dailyDate, dailyRunStart, dailySeed, rollDaily } from './daily';
 import { ALL_SUBROUTINES } from './subroutines';
 import { BURNER_DEFINITIONS } from './burners';
-import { createInitialPlayerState, playRun, opportunisticTraversal } from './run';
+import { burnersUsedIn, createInitialPlayerState, playRun, opportunisticTraversal, type RunEvent } from './run';
 import { burnerCapOf } from './burners';
 import { slotCapOf } from './loadout';
 import { ENEMY_ROSTER } from './enemies';
@@ -112,6 +112,19 @@ describe('the daily score (DR2)', () => {
     expect(dailyScore(run, 'flawless-form', 5).lines.at(-1)?.points).toBe(1000);
     expect(dailyScore(run, 'flawless-form', 4).lines.some((l) => l.directive)).toBe(false);
     expect(dailyScore(run, 'shopping-spree', 3).total).toBe(without + run.tally!.dataSpent);
+  });
+
+  // v0.9.0 (the user's call): selling a Cold Wallet is its use, so it
+  // counts for Burn Rate; selling any other Burner doesn't.
+  it('counts Burners fired, and a Cold Wallet sold, as Burners used', () => {
+    const shop = (sold: string[], used: string | null = null) =>
+      ({ type: 'encounter', layerIndex: 0, nodeId: 'n', nodeType: 'shop', heatAfter: 0, outcome: { burnersUsedThisCombat: [], shopBurnerUsed: used, shopSales: { subroutine: [], copy: [], burner: sold } } }) as unknown as RunEvent;
+    const fight = { type: 'encounter', layerIndex: 0, nodeId: 'f', nodeType: 'fight', heatAfter: 0, outcome: { burnersUsedThisCombat: ['flash-drive', 'emp-charge'], shopBurnerUsed: null } } as unknown as RunEvent;
+    const map: RunEvent = { type: 'mapBurnerActivated', layerIndex: 0, burnerId: 'ghost-protocol' };
+    expect(burnersUsedIn([fight])).toBe(2);
+    expect(burnersUsedIn([shop(['cold-wallet', 'cold-wallet'])])).toBe(2);
+    expect(burnersUsedIn([shop(['flash-drive'])])).toBe(0);
+    expect(burnersUsedIn([fight, map, shop(['cold-wallet', 'flash-drive'], 'stolen-coupon')])).toBe(5);
   });
 });
 

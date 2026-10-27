@@ -129,7 +129,7 @@ export const DAILY_MODS: Record<DailyModId, DailyModDefinition> = Object.fromEnt
   def('shopping-spree', 'Shopping Spree', 'directive', 'Each Data you spend scores 1.'),
   def('full-arsenal', 'Full Arsenal', 'directive', 'Each Mod you hold at the end scores 100.'),
   def('merge-master', 'Refactor Master', 'directive', 'Each Refactor scores 150.'),
-  def('burn-rate', 'Burn Rate', 'directive', 'Each Burner you use scores 100.'),
+  def('burn-rate', 'Burn Rate', 'directive', 'Each Burner you use scores 100. Selling a Cold Wallet counts.'),
   def('clean-breach', 'Clean Breach', 'directive', 'Each gatekeeper beaten before it reaches half its Containment scores +300.'),
   def('flawless-form', 'Flawless Form', 'directive', 'A Flawless Cribbage rating (5 stars) scores +1,000.'),
 ]) as Record<DailyModId, DailyModDefinition>;

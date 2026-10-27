@@ -290,6 +290,12 @@ export function generalBurnerPool(): BurnerDefinition[] {
   return Object.values(BURNER_DEFINITIONS).filter((burner) => !BURNERS_SET_ASIDE.has(burner.id) && !burner.contraband);
 }
 
+/** A Burner with no use but its sale price (Cold Wallet): no context to
+ * activate it in, and not one that works by itself. */
+export function isSellOnly(burner: BurnerDefinition): boolean {
+  return burner.contexts.length === 0 && !burner.passive;
+}
+
 /** Shop-context Burner activation's effect on this visit's slate
  * generation/reroll cost (checkpoint E) -- mirrors mods.ts's
  * shopModifiersForOwnedMods, but for a single one-shot activated Burner

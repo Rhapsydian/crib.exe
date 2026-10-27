@@ -57,7 +57,7 @@ import {
 import type { ModDefinition, ModId } from './mod-types';
 import { drawModRewardOptions, applyOnWinEncounterResolvedMods, shopModifiersForOwnedMods, modPoolForClass, BLACK_MARKET_VISIT_HEAT } from './mods';
 import type { BurnerId, BurnerDefinition } from './burner-types';
-import { burnerCapOf, BURNER_DEFINITIONS, shopModifiersForActivatedBurner, drawBurnerRewardOptions, generalBurnerPool } from './burners';
+import { burnerCapOf, BURNER_DEFINITIONS, shopModifiersForActivatedBurner, drawBurnerRewardOptions, generalBurnerPool, isSellOnly } from './burners';
 import type { ClassId } from './classes';
 import type { EventDefinition, EventChoice, EventGrant, EventRiskTier, Grant } from './event-types';
 import { EVENT_ROSTER, choiceUnavailable, eventStillOffers } from './events';
@@ -1425,7 +1425,7 @@ function spendFreelyAction(visit: ShopVisit, playerState: RunPlayerState, s: Sho
     const unusable = !stillOwned.has(id) || (playerState.rank[id] ?? 0) >= MERGE_RANK_CAP;
     if (unusable && n > visit.sold.copy.filter((c) => c === id).length) return { action: { kind: 'sell', item: 'copy', id }, phase: SPEND };
   }
-  const wallets = left(playerState.carriedBurnerIds, visit.sold.burner).filter((id) => BURNER_DEFINITIONS[id].contexts.length === 0 && !BURNER_DEFINITIONS[id].passive);
+  const wallets = left(playerState.carriedBurnerIds, visit.sold.burner).filter((id) => isSellOnly(BURNER_DEFINITIONS[id]));
   if (wallets.length) return { action: { kind: 'sell', item: 'burner', id: wallets[0] }, phase: SPEND };
   // Buy: whatever each slate's strategy wants among what's still for sale
   // -- Mods first (what a person spends on: the user's 22-Mod run), then
