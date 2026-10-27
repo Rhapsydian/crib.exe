@@ -25,7 +25,7 @@ export const VERSION_NOTES: readonly VersionNotes[] = [
       'Settings: turn speed, and your progress as a code to export, import, or erase.',
       'If an update breaks a saved game, it is cleared and you are told (a Daily Run gets its scored attempt back).',
       'An About page with credits, and these patch notes.',
-      'A crib.exe Discord for bug reports, ideas, and Daily scores: the link is on the About page.',
+      'A crib.exe Discord for bug reports, ideas, and Daily scores: the link is on the main menu and the About page.',
       'Version numbers, starting here.',
     ],
     full: 'v0.9.0.html',
