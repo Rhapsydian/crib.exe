@@ -46,7 +46,7 @@ export type RunRequest =
   /** Notices (milestone 3 checkpoint 4): what an Event's choice came to
    * (before any bonus fight it starts), and what a Cache held. Nothing to
    * decide; the fallback is a no-op. */
-  | Ask<'eventResult', { event: EventDefinition; choice: EventChoice; effect: EventEffect; text?: string; grant: EventGrant; heat: number }, null>
+  | Ask<'eventResult', { event: EventDefinition; choice: EventChoice; /** Which of the choice's outcomes was rolled (the roll animation). */ outcomeIndex: number; effect: EventEffect; text?: string; grant: EventGrant; heat: number }, null>
   | Ask<'burnerSaved', { burnerId: BurnerId; enemy: EnemyDefinition }, null>
   | Ask<'cacheOpened', { contents: 'subroutine' | 'bundle' | 'mod'; data: number; burners: BurnerDefinition[] }, null>
   /** A trace evasion (session 63, docs/trace-evasion-design.md): its

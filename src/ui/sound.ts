@@ -64,7 +64,7 @@ export type SoundId =
   | 'handStart' | 'cardYou' | 'cardThem' | 'cardLift' | 'cardDrop' | 'cribSend' | 'cut' | 'clear'
   | 'peg' | 'show'
   | 'turnYou' | 'turnThem' | 'fire' | 'mod' | 'alarm' | 'breached' | 'contained'
-  | 'move' | 'cache' | 'reward' | 'flawless';
+  | 'move' | 'cache' | 'reward' | 'rollTick' | 'rollGood' | 'rollBad' | 'flawless';
 
 /** Every sound, by moment. */
 export const SOUNDS: Record<SoundId, Synth | Sample> = {
@@ -101,6 +101,11 @@ export const SOUNDS: Record<SoundId, Synth | Sample> = {
   move: { wave: 'sine', from: 500, to: 700, ms: 50, gain: 0.12 },
   cache: { wave: 'triangle', from: 440, to: 880, ms: 120, gain: 0.2, then: { wave: 'triangle', from: 880, to: 1320, ms: 160, gain: 0.18 } },
   reward: { wave: 'triangle', from: 600, to: 900, ms: 80, gain: 0.2 },
+  // An Event's roll (v0.9.0): a tick as the marker crosses into another
+  // segment, then a rising or falling settle for a good or bad result.
+  rollTick: { wave: 'square', from: 1800, to: 1500, ms: 18, gain: 0.06 },
+  rollGood: { wave: 'triangle', from: 523, to: 523, ms: 90, gain: 0.18, then: { wave: 'triangle', from: 784, to: 784, ms: 200, gain: 0.16 } },
+  rollBad: { wave: 'triangle', from: 392, to: 392, ms: 90, gain: 0.18, then: { wave: 'triangle', from: 262, to: 247, ms: 260, gain: 0.16 } },
   // The rating.
   flawless: { wave: 'sine', from: 1046, to: 1046, ms: 120, gain: 0.18, then: { wave: 'sine', from: 1318, to: 1318, ms: 120, gain: 0.16, then: { wave: 'sine', from: 1568, to: 1568, ms: 260, gain: 0.15 } } },
 };

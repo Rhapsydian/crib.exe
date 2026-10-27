@@ -32,6 +32,16 @@ export function effectPhrases(effect: EventEffect, layer: number): string[] {
   return out.length ? out : ['nothing'];
 }
 
+/** How an outcome reads (v0.9.0, the roll animation's colours and settle
+ * sound): good if it only gains (Data, a grant, cooler Heat), bad if it
+ * only costs (Heat, Data, a fight) or does nothing, mixed if both. */
+export type OutcomeTone = 'good' | 'bad' | 'mixed';
+export function outcomeTone(effect: EventEffect): OutcomeTone {
+  const gains = (effect.dataDelta ?? 0) > 0 || (effect.heatLosses ?? 0) < 0 || Boolean(effect.subroutineGrant || effect.modGrant || effect.burnerGrant || effect.classModUpgrade);
+  const costs = (effect.dataDelta ?? 0) < 0 || (effect.heatLosses ?? 0) > 0 || Boolean(effect.bonusFight);
+  return gains && costs ? 'mixed' : gains ? 'good' : 'bad';
+}
+
 /** What a choice can lead to, as far as the player is told: a sure
  * outcome in full, visible odds with each chance, a gamble as unknown. */
 export function choiceOutcomes(choice: EventChoice, layer: number): string[] {

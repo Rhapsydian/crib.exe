@@ -544,6 +544,36 @@ describe('Event story and contraband', () => {
 
 });
 
+// v0.9.0 (the roll animation): the result names which outcome was rolled.
+describe('An Event result', () => {
+  it('names the outcome that was rolled', async () => {
+    const { resolveEncounterRequests } = await import('./encounters');
+    const { createNode } = await import('./map-types');
+    const { createRng } = await import('./rng');
+    const { createInitialPlayerState } = await import('./run');
+    const seen = new Set<number>();
+    for (let seed = 0; seed < 200; seed++) {
+      const visit = resolveEncounterRequests(createNode('e', 'event'), createRng(seed), createInitialPlayerState('exploit-overclock'));
+      let step = visit.next();
+      while (!step.done) {
+        const r = step.value;
+        if (r.kind === 'event') {
+          const risky = r.event.choices.find((c) => c.outcomes.length > 1 && !c.requiresData);
+          step = visit.next(risky ?? r.fallback());
+          continue;
+        }
+        if (r.kind === 'eventResult') {
+          expect(r.choice.outcomes[r.outcomeIndex].effect).toEqual(r.effect);
+          if (r.choice.outcomes.length > 1) seen.add(r.outcomeIndex);
+        }
+        step = visit.next(r.fallback());
+      }
+    }
+    // Rolled across more than one outcome.
+    expect(seen.size).toBeGreaterThan(1);
+  });
+});
+
 describe('Event choices that cost Data (session 64)', () => {
   it("can't be taken without the Data: the run takes an affordable choice instead", async () => {
     const { resolveEncounterRequests } = await import('./encounters');

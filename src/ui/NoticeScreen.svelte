@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { RunRequest } from '../engine/run-requests';
-  import { effectPhrases } from './visit-text';
+  import { effectPhrases, outcomeTone } from './visit-text';
+  import RollBar from './RollBar.svelte';
+  import { turnSpeed } from './replay.svelte';
 
   // What just happened, before the run carries on (milestone 3 checkpoint
   // 4): an Event choice's outcome, or what a Cache held. Anything you
@@ -10,6 +12,11 @@
     layer,
     oncontinue,
   }: { request: Extract<RunRequest, { kind: 'eventResult' | 'cacheOpened' | 'burnerSaved' }>; layer: number; oncontinue: () => void } = $props();
+
+  // A choice with odds (risky or a gamble) plays its roll out first
+  // (v0.9.0); what came of it shows once the roll settles.
+  const roll = $derived(request.kind === 'eventResult' && request.choice.riskTier !== 'transparent' && request.choice.outcomes.length > 1 ? request : null);
+  let rolled = $state(false);
 
   const view = $derived.by(() => {
     // Restore Point (session 68): a lost gatekeeper fight starts over, once.
@@ -39,9 +46,24 @@
 <div class="notice">
   <div class="kicker">{view.kicker}</div>
   <div class="title">{view.title}</div>
-  {#if 'story' in view && view.story}<p class="story">{view.story}</p>{/if}
-  {#each view.lines as line, i (i)}<div class="line">· {line}</div>{/each}
-  <button class="continue" onclick={oncontinue}>continue ▸</button>
+  {#if roll}
+    <RollBar
+      odds={roll.choice.outcomes.map((o) => o.probability)}
+      tones={roll.choice.outcomes.map((o) => outcomeTone(o.effect))}
+      landed={roll.outcomeIndex}
+      gamble={roll.choice.riskTier === 'gamble'}
+      result={effectPhrases(roll.effect, layer).join(', ')}
+      fast={turnSpeed() === 'fast'}
+      onsettled={() => (rolled = true)}
+    />
+  {/if}
+  {#if !roll || rolled}
+    <div class="after">
+      {#if 'story' in view && view.story}<p class="story">{view.story}</p>{/if}
+      {#each view.lines as line, i (i)}<div class="line">· {line}</div>{/each}
+      <button class="continue" onclick={oncontinue}>continue ▸</button>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -64,6 +86,18 @@
     font-weight: 700;
     font-size: 15px;
     margin-bottom: 6px;
+  }
+  .after {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    animation: after 0.3s ease-out;
+  }
+  @keyframes after {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
   }
   .line {
     font-size: 13px;

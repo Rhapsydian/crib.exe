@@ -903,13 +903,13 @@ export function synergyAwareEventChoice(config: EventRiskConfig): EventChoiceStr
  * tier. Same cumulative-roll-with-fallback shape as rewards.ts's/
  * mods.ts's/burners.ts's own weighted-sampling helpers, guarding against
  * a probability sum that lands a hair under 1 by floating-point error. */
-function rollWeightedOutcome(outcomes: EventChoice['outcomes'], rng: Rng): EventChoice['outcomes'][number] {
+function rollWeightedOutcome(outcomes: EventChoice['outcomes'], rng: Rng): EventChoice['outcomes'][number] & { index: number } {
   let roll = rng.next();
-  for (const outcome of outcomes) {
-    roll -= outcome.probability;
-    if (roll <= 0) return outcome;
+  for (let index = 0; index < outcomes.length; index++) {
+    roll -= outcomes[index].probability;
+    if (roll <= 0) return { ...outcomes[index], index };
   }
-  return outcomes[outcomes.length - 1];
+  return { ...outcomes[outcomes.length - 1], index: outcomes.length - 1 };
 }
 
 /** Resolves a subroutineGrant -- a named piece outright, or a uniform
@@ -1257,14 +1257,14 @@ export function* resolveEncounterRequests(
       const offered: EventDefinition = { ...eventDef, choices: eventDef.choices.filter(affordable) };
       const asked = yield* ask({ kind: 'event', event: eventDef, playerState, heat: currentHeat, layer: layerIndex, fallback: () => eventChoiceStrategy(offered, playerState, currentHeat) });
       const choice = affordable(asked) ? asked : eventChoiceStrategy(offered, playerState, currentHeat);
-      const { effect, text: outcomeText } = rollWeightedOutcome(choice.outcomes, rng);
+      const { effect, text: outcomeText, index: outcomeIndex } = rollWeightedOutcome(choice.outcomes, rng);
 
       const eventGrant: EventGrant = {};
       if (effect.classModUpgrade) eventGrant.classModUpgrade = true;
       if (effect.subroutineGrant) eventGrant.subroutine = resolveSubroutineGrant(effect.subroutineGrant, playerState.classId, rng);
       if (effect.modGrant) eventGrant.mod = resolveModGrant(effect.modGrant, playerState.classId, playerState.ownedModIds, rng);
       if (effect.burnerGrant) eventGrant.burner = resolveBurnerGrant(effect.burnerGrant, rng);
-      yield* ask({ kind: 'eventResult', event: eventDef, choice, effect, text: outcomeText, grant: eventGrant, heat: eventHeat(effect.heatLosses ?? 0, layerIndex - 1), fallback: () => null });
+      yield* ask({ kind: 'eventResult', event: eventDef, choice, outcomeIndex, effect, text: outcomeText, grant: eventGrant, heat: eventHeat(effect.heatLosses ?? 0, layerIndex - 1), fallback: () => null });
 
       // Bonus fight (checkpoint I) -- a classic gamble-tier beat, reusing
       // resolveFight's existing machinery directly (same module, no

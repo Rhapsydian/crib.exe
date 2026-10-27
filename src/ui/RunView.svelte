@@ -122,7 +122,9 @@
 {:else if run.pause?.kind === 'event'}
   <EventScreen request={run.pause.request} onchoose={(choice) => run.answer(choice)} />
 {:else if run.pause?.kind === 'notice'}
-  <NoticeScreen request={run.pause.request} layer={run.pause.layer} oncontinue={() => run.answer(null)} />
+  {#key run.pause.request}
+    <NoticeScreen request={run.pause.request} layer={run.pause.layer} oncontinue={() => run.answer(null)} />
+  {/key}
 {:else if run.pause?.kind === 'fight' && run.fight}
   {#key run.fights}
     <LiveFightView fight={run.fight} actions={[{ label: 'continue ▸', onclick: () => run.answer(null) }]} />
