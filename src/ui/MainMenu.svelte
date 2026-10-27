@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { VersionNotes } from './version-notes';
+  import { DISCORD_URL } from './links';
   import NoticeCard from './NoticeCard.svelte';
   import { profile } from './profile.svelte';
   import { DAILY_MODS, rollDaily } from '../engine/daily';
@@ -211,6 +212,12 @@
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /><path d="M12 9h.01" /><path d="M11 12h1v4h1" /></svg>
     <b>About</b>
   </button>
+  <!-- The crib.exe Discord (go-live step 5a): a link, styled as the rest. -->
+  <a class="settings-link" href={DISCORD_URL} target="_blank" rel="noopener">
+    <!-- Tabler Icons' "brand-discord" (MIT). -->
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M14 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M15.5 17c0 1 1.5 3 2 3c1.5 0 2.833 -1.667 3.5 -3c.667 -1.667 .5 -5.833 -1.5 -11.5c-1.457 -1.015 -3 -1.34 -4.5 -1.5l-.972 1.923a11.913 11.913 0 0 0 -4.053 0l-.975 -1.923c-1.5 .16 -3.043 .485 -4.5 1.5c-2 5.667 -2.167 9.833 -1.5 11.5c.667 1.333 2 3 3.5 3c.5 0 2 -2 2 -3" /><path d="M7 16.5c3.5 1 6.5 1 10 0" /></svg>
+    <b>Discord</b>
+  </a>
   </div>
   <!-- The version, for bug reports (go-live step 1). -->
   <div class="version">v{__APP_VERSION__}</div>
@@ -244,6 +251,9 @@
     font: inherit;
     font-size: 13px;
     cursor: pointer;
+  }
+  a.settings-link {
+    text-decoration: none;
   }
   .settings-link svg {
     color: var(--accent);
