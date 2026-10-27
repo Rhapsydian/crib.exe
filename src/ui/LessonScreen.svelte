@@ -1,7 +1,8 @@
 <script lang="ts">
   import { cardsEqual, cardValue, type Card } from '../engine/cards';
   import { findTargets, matchesTarget, pegGoalMet, type Lesson, type LessonStep } from './lessons';
-  import { article, discardReview } from './coach';
+  import { article, discardComparison, type CoachChoice } from './coach';
+  import ChoiceReview from './ChoiceReview.svelte';
   import CardView from './CardView.svelte';
   import RichText from './RichText.svelte';
 
@@ -23,7 +24,7 @@
   // Per-step working state, reset when the step changes.
   let selected = $state<Card[]>([]);
   let found = $state<number[]>([]);
-  let feedback = $state<{ ok: boolean; text: string } | null>(null);
+  let feedback = $state<{ ok: boolean; text: string; choice?: CoachChoice } | null>(null);
   let done = $state(false);
   let wrong = $state<number[]>([]);
   $effect(() => {
@@ -99,10 +100,13 @@
   // discard
   function throwPair() {
     if (step.kind !== 'discard' || selected.length !== 2) return;
-    const review = discardReview(step.hand, [selected[0], selected[1]], step.ownCrib);
-    feedback = { ok: review.same, text: review.same ? review.text : `${review.text} Try another, or continue.` };
+    // Your discard beside the coach's, as the coach shows it in a game
+    // (session 72: the same layout everywhere).
+    const thrown: [Card, Card] = [selected[0], selected[1]];
+    const same = discardComparison(step.hand, thrown, step.ownCrib).same;
+    feedback = { ok: same, text: same ? 'Good discard.' : 'Try another, or continue.', choice: { kind: 'discard', hand: step.hand, thrown, ownCrib: step.ownCrib } };
     done = true;
-    if (!review.same) selected = [];
+    if (!same) selected = [];
   }
 
   function next() {
@@ -168,7 +172,7 @@
       <button class="act" disabled={selected.length !== 2} onclick={throwPair}>throw {selected.length}/2 into {step.ownCrib ? 'your' : 'their'} crib</button>
     {/if}
 
-    {#if feedback}<div class="feedback" class:ok={feedback.ok}><RichText text={feedback.text} /></div>{/if}
+    {#if feedback}<div class="feedback" class:ok={feedback.ok}><RichText text={feedback.text} />{#if feedback.choice}<div class="choice"><ChoiceReview choice={feedback.choice} /></div>{/if}</div>{/if}
   </div>
 
   <div class="nav">
@@ -372,5 +376,11 @@
     border-color: var(--line);
     color: var(--text-dim);
     font-weight: 400;
+  }
+  .choice {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
 </style>

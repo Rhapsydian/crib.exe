@@ -1,6 +1,6 @@
 import { cardsEqual, cardValue, type Card } from '../engine/cards';
 import { countHand } from '../engine/scoring';
-import { bestPeg, cribExpectedValue, cribTableValue, handExpectedValue, pegNet, predictBestDiscard, scoreDiscard, unseenCards, type PegTable } from '../engine/ai';
+import { bestPeg, cribExpectedValue, cribTableValue, handExpectedValue, pegNet, predictBestDiscard, unseenCards, type PegTable } from '../engine/ai';
 import type { CribbageBeat } from '../engine/basic-cribbage';
 import { rankLabel, suitInfo } from './suits';
 import { suitToken } from './RichText.svelte';
@@ -11,10 +11,9 @@ import { suitToken } from './RichText.svelte';
  * decides when to show them:
  * - phaseIntro: what this part of the hand is about (fuller the first
  *   time in a game, a short reminder after);
- * - discardHint / discardReview: the keep the coach suggests, and yours
- *   beside it afterwards, each with its average points over every
- *   possible cut, and what each keeps;
- * - pegHint / pegReview: the best pegging play now, and your last one
+ * - discardHint / discardComparison: the keep the coach suggests, and
+ *   yours beside it afterwards in numbers (ChoiceReview shows them);
+ * - pegHint / playComparison: the best pegging play now, and your last one
  *   beside it -- each play judged by what it scores less the opponent's
  *   expected reply over the cards they could hold;
  * - showSummary: last hand's count, walked through.
@@ -115,29 +114,6 @@ function keepLine(kept: Card[], unseen: Card[], starter?: Card): { text: string;
 function throwLine(pair: [Card, Card], ownCrib: boolean): string {
   const v = cribTableValue(pair).toFixed(1);
   return ownCrib ? `${list(pair)} into your crib, worth about ${v} to you there on average` : `${list(pair)} into their crib, worth about ${v} to them on average`;
-}
-
-export interface DiscardReview {
-  same: boolean;
-  text: string;
-}
-
-/** Your discard beside the coach's: `hand` is the six dealt, `thrown`
- * the two you put in the crib. */
-export function discardReview(hand: Card[], thrown: [Card, Card], ownCrib: boolean, starter?: Card): DiscardReview {
-  const best = predictBestDiscard(hand, ownCrib, starter);
-  const keep = (pair: Card[]) => hand.filter((c) => !pair.some((p) => cardsEqual(p, c)));
-  const unseen = unseenCards(hand);
-  const yours = { kept: keep(thrown), score: scoreDiscard(hand, thrown, ownCrib, undefined, undefined, starter) };
-  const coach = { kept: keep(best), score: scoreDiscard(hand, best, ownCrib, undefined, undefined, starter) };
-  // Good if it's the coach's discard, or within a whisker of it.
-  const same = best.every((c) => thrown.some((t) => cardsEqual(t, c))) || yours.score >= coach.score - DISCARD_MATCH;
-  const y = keepLine(yours.kept, unseen, starter);
-  const c = keepLine(coach.kept, unseen, starter);
-  const text = same
-    ? `Good discard. You kept ${list(yours.kept)}: ${y.text}; and threw ${throwLine(thrown, ownCrib)}.`
-    : `You kept ${list(yours.kept)}: ${y.text}; and threw ${throwLine(thrown, ownCrib)}. I would have kept ${list(coach.kept)}: ${c.text}; and thrown ${throwLine(best, ownCrib)}.`;
-  return { same, text };
 }
 
 /** The discard the coach suggests, before you choose: what to keep and
@@ -266,31 +242,6 @@ export function pegHint(spot: PegSpot): string {
   return `Play ${label(best)}. ${why}.${compare}${avoid}`;
 }
 
-/** Your last pegging card beside the coach's choice, in the past tense. */
-export function pegReview(spot: PegSpot, played: Card): { same: boolean; text: string } {
-  const coach = bestPlay(spot);
-  const yours = judgePlay(played, spot);
-  const theirs = judgePlay(coach, spot);
-  const scored = (j: ReturnType<typeof judgePlay>) => (j.pts ? j.what.join(' and ') : 'no score');
-  const risky = (j: ReturnType<typeof judgePlay>) => j.risk >= 0.5 && j.threat;
-  // Good if it's the coach's play, or within a whisker of it.
-  const same = cardsEqual(coach, played) || yours.net >= theirs.net - PLAY_MATCH;
-  if (same) {
-    // A good play can still leave them something: say it was the least.
-    const note = risky(yours) && spot.legal.length > 1 ? `; it still leaves ${yours.threatWho} ${yours.threatWhat}, but your other cards gave them more` : risky(yours) ? `; then ${yours.threat}` : '';
-    return { same, text: `Good play: ${label(played)} (${scored(yours)}${note}).` };
-  }
-  const you = `You played ${label(played)} (${scored(yours)}${risky(yours) ? `; then ${yours.threat}` : ''}).`;
-  // Why the coach's card instead: more points, or less handed over --
-  // and when it still risks something, that it's the smaller risk.
-  let why: string;
-  if (theirs.pts > yours.pts) why = `I would have played ${label(coach)}: ${scored(theirs)}${risky(theirs) ? `, even though ${theirs.threat}` : ''}.`;
-  else if (risky(theirs) && risky(yours)) why = `I would have played ${label(coach)} instead: it gives them less to score off: its main danger is ${theirs.threatWho} making ${theirs.threatWhat}, against ${yours.threatWho} making ${yours.threatWhat} off yours.`;
-  else if (risky(theirs)) why = `I would have played ${label(coach)} instead: it gives them less to score off overall, though ${theirs.threat}.`;
-  else why = `I would have played ${label(coach)} instead: it gives them almost nothing to score off.`;
-  return { same, text: `${you} ${why}` };
-}
-
 /** A choice the coach can lay out beside its own (session 72, the user's
  * design): a discard (the six dealt, the two thrown) or a pegging card. A
  * review's recorded decision fits as it is. */
@@ -331,7 +282,7 @@ export function discardComparison(hand: Card[], thrown: [Card, Card], ownCrib: b
   const yours = keepLineOf(hand, thrown, ownCrib, starter);
   const suggested = keepLineOf(hand, best, ownCrib, starter);
   const difference = Math.max(0, suggested.total - yours.total);
-  // As discardReview: the coach's keep, or within a whisker of it.
+  // The coach's keep, or within a whisker of it.
   return { yours, suggested, difference, same: best.every((c) => thrown.some((t) => cardsEqual(t, c))) || difference <= DISCARD_MATCH };
 }
 
@@ -359,7 +310,7 @@ export function playComparison(spot: PegSpot, played: Card): { yours: PlayLine; 
   const yours = playLineOf(spot, played);
   const suggested = playLineOf(spot, coach);
   const difference = Math.max(0, suggested.net - yours.net);
-  // As pegReview: the coach's card, or within a whisker of it.
+  // The coach's card, or within a whisker of it.
   return { yours, suggested, difference, same: cardsEqual(coach, played) || difference <= PLAY_MATCH };
 }
 
