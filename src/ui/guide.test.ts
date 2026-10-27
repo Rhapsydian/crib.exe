@@ -61,6 +61,8 @@ describe('the tutorial coach', () => {
   it('has text for every step, and points out both Quiet Host options (the user\'s ask)', () => {
     for (const text of Object.values(GUIDE_TEXT)) expect(text.length).toBeGreaterThan(20);
     expect(GUIDE_TEXT.safehouse).toMatch(/Rest to lower your Heat/);
+    // v0.9.1 (the Tutorial smoke test): Flash Drive's amount is the Burner's own.
+    expect(GUIDE_TEXT.burner).toContain('Flash Drive Credits 10 at once.');
     expect(GUIDE_TEXT.safehouse).toMatch(/Refactor/);
   });
 

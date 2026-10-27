@@ -1,4 +1,10 @@
 import { RATE_LIMIT_THRESHOLD } from '../engine/gatekeeper-mods';
+import { BURNER_DEFINITIONS } from '../engine/burners';
+
+// Flash Drive's Credit, read from the Burner itself (v0.9.1: the tip
+// said 5 after the Burner became 10).
+const flash = BURNER_DEFINITIONS['flash-drive'].combat?.effect;
+const FLASH_CREDIT = flash?.kind === 'effect' ? flash.effect.amount : 0;
 /**
  * The tutorial coach (session 63, docs/tutorial-design.md T1, T4-T5): in
  * the guided run only, it explains each new thing the first time it shows
@@ -45,11 +51,11 @@ export const GUIDE_TEXT: Record<GuideStep, string> = {
   order:
     "Order matters: your loadout fires top to bottom, and some subroutines help the one below (Cache Hit Empowers the next one). Tap a subroutine in your loadout to move it up or down.",
   burner:
-    "You're carrying a Burner: a one-use item. Arm it with its button under your gauges, and it's used at the start of your next turn. Flash Drive Credits 5 at once.",
+    `You're carrying a Burner: a one-use item. Arm it with its button under your gauges, and it's used at the start of your next turn. Flash Drive Credits ${FLASH_CREDIT} at once.`,
   burnerFired: 'Your Burner fired at the start of the turn, then it was spent.',
   shop: 'The Shop: spend Data on subroutines, Mods (permanent effects for the run) and Burners. Tap one to read it, then buy. You can also sell subroutines you no longer use.',
   safehouse:
-    "A Quiet Host gives you one choice. Rest to lower your Heat, or Refactor: spend your banked spare copies to rank subroutines up, each rank making a Hook stronger. You have a spare Port Scan banked.",
+    "A Quiet Host gives you one choice. Rest to lower your Heat, or Refactor: spend your banked spare copies to rank subroutines up, each rank making a Hook stronger. You have spare Port Scan copies banked.",
   gatekeeperNear:
     "The gatekeeper is next. Beat it to breach the layer; lose and you're quarantined, which ends the run. Winning also costs Heat: a toll that grows the closer it came to containing you, shown on the Heat bar during the fight. If the toll maxes out your Heat, you must outscore it over 3 hands of Cribbage to escape.",
   gatekeeper:
