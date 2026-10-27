@@ -116,7 +116,15 @@ credited as a courtesy); every other sound is the game's own synth (the
 user passed on Kenney's card sounds; ZzFX was dropped for the browser's
 own audio engine).
 
-## 5a. A Discord server (the user)
+## 5a. A Discord server (done, session 72)
+
+The user built it, walked through live: channels (#announcements and
+#rules read-only; #general, #daily-runs text; #bug-reports and #feedback
+forums with tags and post guidelines), Community on, AutoMod against spam
+and mention spam, a pinned rules post. The never-expiring invite,
+https://discord.gg/HxCry3uRpa, is on the About page and in the 0.9.0 notes;
+it goes on the itch.io page too.
+
 
 The user creates the server (Claude can't create accounts); the invite
 link goes in About, on the itch.io page and in the patch notes.

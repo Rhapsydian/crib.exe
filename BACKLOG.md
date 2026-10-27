@@ -72,13 +72,13 @@ Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
    of unicaegames' CC0 keyboard pack, random, never the same twice in a
    row); everything else is the game's own synth; volume and mute in
    Settings; no music at launch.
-5. About and credits (done; the Discord link waits on the server):
+5. About and credits (done):
    version, Tabler Icons' MIT notice,
    a feedback link (the Discord), and a note that the game
    was developed with agentic development (Claude Code), linking the
    repository (https://github.com/Rhapsydian/crib.exe).
-   5a. A Discord server (the user creates it; the link goes in About,
-   itch.io and the patch notes).
+   5a. A Discord server (done): https://discord.gg/HxCry3uRpa, on the
+   About page; it goes on itch.io too.
    5b. In-game patch notes (done): a "What's new" card after an update,
    and a Patch notes page; short notes in `src/ui/version-notes.ts`.
 6. A records and stats page (done): runs, by class, fights, the career
