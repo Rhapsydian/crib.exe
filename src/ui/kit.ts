@@ -65,7 +65,7 @@ import {
   type ModRef,
   type ModTrigger,
 } from '../engine/resolve';
-import { describeEffect, describeHook, describeProcess, forEnemy } from './describe';
+import { describeEffect, describeHook, hookLabel, describeProcess, forEnemy } from './describe';
 
 /**
  * Mods and Burners for the screen: what each side has, in words, and
@@ -122,7 +122,7 @@ const reactiveText = (id: ModId) => {
 /** "Adds the Daemon subroutine Auxiliary Process to your loadout. Process: ...". */
 const grantedText = (id: ModId) => {
   const piece = grantedPiece(id);
-  const hook = piece.beta ? ` Hook: ${describeHook(piece)}.` : '';
+  const hook = piece.beta ? ` ${hookLabel(piece)}: ${describeHook(piece)}.` : '';
   return `Adds the ${cap(piece.archetype)} subroutine ${piece.name} to your loadout. Process: ${describeProcess(piece.alpha)}.${hook} It doesn't count toward your loadout limit and can't be removed.`;
 };
 

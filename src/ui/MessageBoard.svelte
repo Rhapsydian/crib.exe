@@ -13,7 +13,7 @@
   import { ALL_SUBROUTINES, ARCHETYPE_POOLS } from '../engine/subroutines';
   import { BURNER_DEFINITIONS } from '../engine/burners';
   import { rarityOf } from '../engine/rewards';
-  import { describeHook, describeProcess } from './describe';
+  import { describeHook, hookLabel, describeProcess } from './describe';
   import { archetypeInfo } from './suits';
   import SuitIcon from './SuitIcon.svelte';
   import RichText from './RichText.svelte';
@@ -92,7 +92,7 @@
             <div class="info">
               <div class="name" style="--suit: {info.color}"><SuitIcon archetype={o.piece.archetype} size={14} /> <b>{o.piece.name}</b> <span class="dim">{info.name} · {o.rarity}</span></div>
               <div class="rules"><RichText text={`Process: ${describeProcess(o.piece.alpha)}`} /></div>
-              {#if o.piece.beta}<div class="rules"><RichText text={`Hook: ${describeHook(o.piece)}`} /></div>{/if}
+              {#if o.piece.beta}<div class="rules"><RichText text={`${hookLabel(o.piece)}: ${describeHook(o.piece)}`} /></div>{/if}
             </div>
             <button class="buy" disabled={profile.data.rep < o.price} onclick={() => profile.buyLibrary(o.piece.id)}>◆ {o.price}</button>
           </div>

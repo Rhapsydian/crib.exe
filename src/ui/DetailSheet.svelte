@@ -4,7 +4,7 @@
   import { rarityOf } from '../engine/rewards';
   import SuitIcon from './SuitIcon.svelte';
   import { archetypeInfo } from './suits';
-  import { describeAlarm, describeFire, describeHook, describeProcess, describeState, forEnemy, glossaryFor, type Thresholds } from './describe';
+  import { describeAlarm, describeFire, describeHook, hookLabel, describeProcess, describeState, forEnemy, glossaryFor, type Thresholds } from './describe';
   import RichText from './RichText.svelte';
   import { rankMark } from './visit-text';
   import type { KitItem } from './kit';
@@ -42,13 +42,13 @@
       <button class="close" onclick={onclose} aria-label="close">✕</button>
     </div>
     <div class="field"><span class="key">Process</span>{voice(process)}</div>
-    {#if def.beta}<div class="field"><span class="key">Hook</span><RichText text={voice(hook)} /></div>{/if}
+    {#if def.beta}<div class="field"><span class="key">{hookLabel(def)}</span><RichText text={voice(hook)} /></div>{/if}
     {#if describeAlarm(def)}<div class="field"><span class="key">Alarm</span>{describeAlarm(def)}</div>{/if}
     {#if describeState(def, entry.state).length}
       <div class="state">{describeState(def, entry.state).join(' · ')}</div>
     {/if}
     {#if lastFire}<div class="last">last: {describeFire(lastFire, def.name)}</div>{/if}
-    {@render glossary([process, hook])}
+    {@render glossary([process, def.beta ? `${hookLabel(def)}: ${hook}` : ''])}
   </div>
 {:else if kit}
   <div class="sheet" role="dialog" aria-label={kit.name}>
@@ -136,7 +136,9 @@
   }
   .key {
     display: inline-block;
-    width: 64px;
+    /* Wide enough for "Hook · Instant" (v0.9.1). */
+    min-width: 64px;
+    padding-right: 8px;
     color: var(--text-dim);
   }
   .glossary {

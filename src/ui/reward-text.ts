@@ -2,7 +2,7 @@ import type { BurnerDefinition } from '../engine/burner-types';
 import { rarityOf } from '../engine/rewards';
 import type { RunPlayerState } from '../engine/run';
 import type { SubroutineDefinition } from '../engine/subroutine-types';
-import { describeHook, describeProcess } from './describe';
+import { describeHook, hookLabel, describeProcess } from './describe';
 import { rankMark } from './visit-text';
 import { MERGE_RANK_CAP } from '../engine/merge';
 
@@ -26,7 +26,7 @@ export function burnerWhere(def: BurnerDefinition): string {
 
 /** A subroutine's Process and Hook, as lines. */
 export function pieceLines(piece: SubroutineDefinition): string[] {
-  return [`Process: ${describeProcess(piece.alpha)}`, ...(piece.beta ? [`Hook: ${describeHook(piece)}`] : [])];
+  return [`Process: ${describeProcess(piece.alpha)}`, ...(piece.beta ? [`${hookLabel(piece)}: ${describeHook(piece)}`] : [])];
 }
 
 /** What taking `piece` would do: Merge material for an owned piece, else

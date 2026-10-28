@@ -1113,7 +1113,12 @@ export function resolveEffect(
             : effect.target === 'self'
               ? index === loadoutIndex
               : loadoutIndex !== undefined && index === loadoutIndex + 1;
-        return hit ? addCharges(entry.state, entry.definition, effect.amount) : entry.state;
+        // Not an Instant Hook (v0.9.1, the user's call): Charged every
+        // turn, an instant tempo Hook took a turn sooner every turn, which
+        // brought the Charge round again (Branch Predictor with Elevated
+        // Session: 2.8 turns a hand, 12 in a row). Charge feeds the Hooks
+        // that pay off on a turn.
+        return hit && entry.definition.beta?.shape !== 'immediate' ? addCharges(entry.state, entry.definition, effect.amount) : entry.state;
       });
     }
     // The enemy-only effects (CP1), each on the caster's opponent.

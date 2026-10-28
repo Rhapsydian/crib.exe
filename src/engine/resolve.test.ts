@@ -153,6 +153,16 @@ describe('resolveEffect -- Disrupt and Charge', () => {
     expect(charge('next', 2)).toEqual([0, 0, 0]);
     expect(charge('all', 1)).toEqual([2, 0, 2]);
   });
+
+  // v0.9.1 (the user's call): Charge doesn't feed an Instant Hook. Fed
+  // every turn, Elevated Session's took Branch Predictor's owner from about
+  // 1.4 turns a hand to 2.8, up to 12 in a row.
+  it("Charge doesn't feed an Instant Hook", () => {
+    const instant: Beta = { source: 'cards', category: 'go', shape: 'immediate', at: 2, effect: { verb: 'tempo', target: 'own', mode: 'gauge', amount: 0.75 } };
+    const graded: Beta = { source: 'cards', category: 'go', shape: 'graded', cap: 9, effect: { verb: 'enhance', amount: 1 } };
+    const loadout = [piece('charger', { verb: 'charge', amount: 1, target: 'all' }), piece('instant', { verb: 'credit', amount: 1 }, instant), piece('graded', { verb: 'credit', amount: 1 }, graded)];
+    expect(resolveEffect({ verb: 'charge', amount: 1, target: 'all' }, fight(loadout), 0, 0).sides[0].loadout.map((e) => e.state.charges)).toEqual([0, 0, 1]);
+  });
 });
 
 describe('fireTurn -- alphas', () => {

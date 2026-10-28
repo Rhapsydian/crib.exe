@@ -4,7 +4,7 @@ import { cardValue } from './cards';
 import type { PlayerIndex } from './game';
 import type { Alpha, Beta, SubroutineDefinition } from './subroutine-types';
 import { playCombat, combatGenerator, escalationFloorFor, escalationShrinkPerHandFor, type CombatAnswer } from './combat';
-import { CLASS_STARTING_LOADOUTS } from './subroutines';
+import { ALL_SUBROUTINES, CLASS_STARTING_LOADOUTS } from './subroutines';
 import { GAUGE_THRESHOLD, BREACH_THRESHOLD } from './encounters';
 import { createRng } from './rng';
 import { createDeck, shuffle } from './deck';
@@ -486,5 +486,28 @@ describe('turn beats (the turn toast)', () => {
       const firstTurnFire = result.log.slice(b.firesBefore).find((f) => !f.immediate);
       if (firstTurnFire) expect(firstTurnFire.side).toBe(b.side);
     }
+  });
+});
+
+// v0.9.1 (a playtest report, the user's call): Branch Predictor's Charge
+// fed Elevated Session's Instant tempo Hook every turn, nearly tripling
+// its owner's turns. Charge doesn't feed Instant Hooks now, so the pair
+// takes no more turns than Elevated Session alone.
+describe('Branch Predictor with Elevated Session', () => {
+  it('takes no more turns than Elevated Session alone', () => {
+    const sub = (id: string) => ALL_SUBROUTINES.find((x) => x.id === id)!;
+    const enemy = [sub('port-scan'), sub('buffer-overflow')];
+    const turnsPerHand = (ids: string[]) => {
+      let turns = 0, hands = 0;
+      for (let seed = 1; seed <= 40; seed++) {
+        const r = playCombat([ids.map(sub), enemy], { seed, gaugeThreshold: [GAUGE_THRESHOLD, GAUGE_THRESHOLD], winThreshold: [100000, 100000] });
+        hands += r.hands.length;
+        turns += r.log.filter((e) => e.side === 0 && e.subroutineId === 'fuzzer').length;
+      }
+      return turns / hands;
+    };
+    const alone = turnsPerHand(['fuzzer', 'cache-hit', 'elevated-session']);
+    const both = turnsPerHand(['fuzzer', 'branch-predictor', 'elevated-session']);
+    expect(both).toBeLessThanOrEqual(alone + 1e-9);
   });
 });

@@ -3,7 +3,7 @@
   import SuitIcon from './SuitIcon.svelte';
   import { tip } from './tip';
   import { rankMark } from './visit-text';
-  import { describeAlarm, describeHook, describeProcess, forEnemy, plainText } from './describe';
+  import { describeAlarm, describeHook, hookLabel, describeProcess, forEnemy, plainText } from './describe';
 
   // A loadout, top to bottom = firing order. Each piece shows its suit,
   // name, banked charges and whether its Hook is primed; tap to inspect
@@ -22,7 +22,7 @@
   const tipText = (e: LoadoutEntry) => {
     const voice = (t: string) => plainText(enemy ? forEnemy(t) : t);
     const d = e.definition;
-    return [`${d.name}${d.rank ? ` ${rankMark(d.rank)}` : ''}`, `Process: ${voice(describeProcess(d.alpha))}`, d.beta ? `Hook: ${voice(describeHook(d))}` : null, describeAlarm(d) ? `Alarm: ${describeAlarm(d)}` : null].filter(Boolean).join('\n');
+    return [`${d.name}${d.rank ? ` ${rankMark(d.rank)}` : ''}`, `Process: ${voice(describeProcess(d.alpha))}`, d.beta ? `${hookLabel(d)}: ${voice(describeHook(d))}` : null, describeAlarm(d) ? `Alarm: ${describeAlarm(d)}` : null].filter(Boolean).join('\n');
   };
 
   const initials = (name: string) =>

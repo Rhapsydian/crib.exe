@@ -103,7 +103,8 @@ export function describeEffect(effect: Effect, thresholds: Thresholds = USUAL): 
     case 'charge': {
       const counts = effect.amount === 1 ? 'one extra count' : `${fmt(effect.amount)} extra counts`;
       const whose = effect.target === 'self' ? 'its own Hook' : effect.target === 'next' ? "the next subroutine's Hook" : "every other subroutine's Hook";
-      return `give ${whose} ${counts}${feed}`;
+      // Not an Instant Hook's (v0.9.1): the engine skips those.
+      return `give ${whose} ${counts}${effect.target === 'self' ? '' : ' (not Instant Hooks)'}${feed}`;
     }
     // The enemy-only effects (CP1) always land on the other side, so they
     // read as what happens to it ("they gain 1 Heat"); forEnemy turns
@@ -242,6 +243,13 @@ function thirdPerson(text: string): string {
   return text.replace(/^(\w+)/, (verb) => (/(s|sh|ch|x)$/.test(verb) ? `${verb}es` : `${verb}s`));
 }
 
+/** A Hook's label: "Hook", or "Hook · Instant" for one that goes off the
+ * moment its event happens instead of on a turn (v0.9.1, the user's ask:
+ * say so up front). */
+export function hookLabel(piece: SubroutineDefinition): string {
+  return piece.beta?.shape === 'immediate' ? 'Hook · Instant' : 'Hook';
+}
+
 /** A Hook in a sentence -- what sets it off, and what it does. */
 export function describeHook(piece: SubroutineDefinition, thresholds: Thresholds = USUAL): string {
   const beta = piece.beta;
@@ -263,8 +271,9 @@ export function describeHook(piece: SubroutineDefinition, thresholds: Thresholds
         ? 'it fires an extra time right away'
         : `it fires an extra time right away and ${moreText(piece.alpha, effect.amount)}`
       : `${describeEffect(effect, thresholds)} right away`;
-    const when = beta.source === 'state' ? `the moment ${stateText(beta).moment}` : `every time ${counted(beta, piece.archetype).clause(beta.at ?? 1)}`;
-    return `Instant: ${when}, ${now}${noise}`;
+    // "Instant" is in the label (hookLabel), not the sentence (v0.9.1).
+    const when = beta.source === 'state' ? `The moment ${stateText(beta).moment}` : `Every time ${counted(beta, piece.archetype).clause(beta.at ?? 1)}`;
+    return `${when}, ${now}${noise}`;
   }
 
   if (beta.source === 'state') return `While ${stateText(beta).while}, ${enhance ? 'it ' : ''}${does}${noise}`;
@@ -393,11 +402,11 @@ const GLOSSARY: { term: string; test: RegExp; text: string }[] = [
   {
     term: 'Extra count',
     test: /extra counts?\b|Hook count|loses \d+ counts?/,
-    text: "one more count toward a Hook, as if its event happened once more. A Hook that goes off on a single event goes off; one waiting for 3 gets one closer; Hooks that check a condition ('while…') ignore it.",
+    text: "one more count toward a Hook, as if its event happened once more. A Hook that goes off on a single event goes off; one waiting for 3 gets one closer; Hooks that check a condition ('while…') ignore it, and a subroutine's extra counts don't reach Instant Hooks.",
   },
   { term: 'Initiative', test: /initiative/, text: `fills as the fight goes on; each time it reaches its threshold (usually ${GAUGE_THRESHOLD}) that side takes a turn, and every one of its subroutines fires.` },
   { term: 'Heat', test: /\bHeat\b/, text: "the layer's alarm level: map moves, fights and some enemies add to it. Reach the layer's limit and you're caught; clearing the layer resets it." },
-  { term: 'Instant', test: /^Instant:/m, text: 'goes off the moment it happens, even in the middle of a hand, without waiting for a turn.' },
+  { term: 'Instant', test: /\bInstant\b/, text: 'goes off the moment it happens, even in the middle of a hand, without waiting for a turn.' },
 ];
 
 /** The glossary lines for the terms `texts` use. */

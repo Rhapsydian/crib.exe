@@ -28,7 +28,7 @@ import { DISCARD_MATCH, PLAY_MATCH } from '../engine/skill';
 export { DISCARD_MATCH, PLAY_MATCH };
 /** "a" or "an" for a word as it's said: an 8, an A, an 11, an Overclock
  * (the user's catch); a 7, a Daemon. */
-export const article = (word: string) => (/^(8|11|18|A|[AEIOUaeiou])/.test(word) ? 'an' : 'a');
+export const article = (word: string) => (/^(8|11|18|A\b|[AEIOUaeiou])/.test(word) ? 'an' : 'a');
 const list = (cards: Card[]) => cards.map(label).join(' ');
 const plural = (n: number, word: string) => `${n === 1 ? 'a' : n} ${word}${n === 1 ? '' : 's'}`;
 

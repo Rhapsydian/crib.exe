@@ -751,7 +751,10 @@ describe('caught by a fight’s Heat (session 69, a tester’s note)', () => {
         else if (sinceWin) sinceWin.push(req.kind);
         step = run.next(req.fallback());
       }
-      if (step.value.outcome !== 'heatMaxed' || !sinceWin) continue;
+      // Caught by the fight itself: nothing happened after it but the end.
+      // (A run that moved on after the win was caught by the move's Heat,
+      // and rightly had its reward; v0.9.1 found a seed doing that.)
+      if (step.value.outcome !== 'heatMaxed' || !sinceWin || sinceWin.includes('move')) continue;
       expect(sinceWin).not.toContain('reward');
       checked++;
     }
