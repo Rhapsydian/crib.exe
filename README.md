@@ -13,12 +13,15 @@ playable in the browser** (`npm run dev`), on desktop and phones: a whole
 roguelite run (class choice, the map, fights, rewards, Safehouses, Shops,
 Events and Caches, with saves), and vanilla Cribbage at four difficulty
 levels, with a coach and five Learn-to-play lessons. New players get a
-guided tutorial run and first-time tips. Polish and playtesting are under
-way; next is more content, then meta-progression and Daily Runs
-(`BACKLOG.md` → Priorities).
+guided tutorial run and first-time tips, plus meta-progression, Daily
+Runs, sound, Settings, Records and in-game patch notes. **Release
+candidate v0.9.1**, in testing before 1.0 (`docs/go-live-plan.md`,
+`BACKLOG.md` → Priorities).
 
-**Play the demo:** <https://cribexe.com> — the
-`playable` branch, rebuilt on every push (`.github/workflows/deploy-demo.yml`).
+**Play it:** <https://cribexe.com> (the `playable` branch, rebuilt on
+every push, `.github/workflows/deploy-demo.yml`) or
+<https://rhapsydian.itch.io/cribexe> (pushed by hand with butler,
+`docs/itch/page.md`).
 
 How it got here, in arcs (each session's detail is in `docs/session-logs/`;
 README's old session-by-session narrative is archived in
@@ -92,6 +95,13 @@ README's old session-by-session narrative is archived in
   numbers, with cards as colored chips (the log uses them too); the run
   start picks the auxiliary subroutine and Burner from sheets with full
   rules and steps through Security Levels with their effects listed.
+- **Session 73:** go-live (`docs/go-live-plan.md`): Settings, sound
+  (recorded keystrokes for cards, synth for the rest), About and credits,
+  a Discord, in-game patch notes, Records, mobile and an icon; release
+  candidates v0.9.0 and v0.9.1 from testers' reports (the loadout beside
+  rewards and the Shop, Event rolls played out, fairer ratings, Charge no
+  longer feeding Instant Hooks, Branch Predictor reworked); and an itch.io
+  page, public as "In development": <https://rhapsydian.itch.io/cribexe>.
 
 What exists, all headless and test-covered:
 

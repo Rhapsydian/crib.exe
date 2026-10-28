@@ -15,7 +15,15 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 72)
+## Current state (end of session 73)
+
+**Release candidate v0.9.1 is out for testing** (session 73): on
+<https://cribexe.com> and on itch.io, public as "In development"
+(<https://rhapsydian.itch.io/cribexe>, devlog posted). 1.0 is held for
+more testing (the user). Since v0.9.1, live but not yet in a version's
+notes: Charge no longer feeds Instant Hooks ("Hook · Instant"), Branch
+Predictor reworked (Credit 1; on a pair every other Hook gets a count),
+and small fixes (`docs/next-notes.md`). 987 tests, `npm run check` clean.
 
 The game is playable in the browser on desktop and phones
 (<https://cribexe.com>, branch `playable`; the old GitHub Pages address
@@ -85,8 +93,13 @@ Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
    Cribbage rating, Play Cribbage, Daily Runs.
 7. Mobile (done): the game's icon, a web-app manifest, a phone-width
    pass.
-8. A release candidate: full test, playtest build, freeze.
-9. itch.io: page text, screenshots, a GIF, the cover, the butler upload.
+8. A release candidate (under way): full test done; v0.9.0 then v0.9.1 out
+   to testers; fixes only from here. **Next:** testers' reports, then 1.0
+   when they go quiet (the user decides): a 1.0.0 bump, notes from
+   `docs/next-notes.md`, and the "At 1.0" checklist in `docs/itch/page.md`.
+9. itch.io (done for the release candidate): page, screenshots, GIF, cover,
+   butler upload, public "In development", devlog. Reddit posts
+   (r/roguelikes, r/cribbage): the user, later.
 
 Out of scope for release: **Event mini-games** (the user: none), music,
 and balance work. The earlier priorities (session 63: the content pass,
@@ -107,8 +120,7 @@ most, refine some of the map icons.
   (−16 alone); Flawless Form needs a Flawless (5-star) Cribbage rating
   (session 72; it was 90%+ before the rating changed). The Cribbage line
   pays 100 / 200 / 350 / 500 / 700 by stars.
-- **Meta-progression follow-ups** (session 71): profile export/import
-  waits for a settings menu (an opaque code with a checksum, MP12); a mark
+- **Meta-progression follow-ups** (session 71): a mark
   for winning a Security Level without upgrades was floated (MP17); track
   names are placeholders to revisit (Low Profile, Exploit Research, Clean
   Exits, ...); Burner Rig and Safehouse Upgrades measure ~0 for the

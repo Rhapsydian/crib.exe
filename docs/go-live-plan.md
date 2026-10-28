@@ -176,11 +176,26 @@ A web-app manifest and icons (add to home screen, full screen), and a pass
 over the newer screens (the review drawer, the pick sheets, the Security
 Level stepper) at phone width.
 
-## 8. Release candidate
+## 8. Release candidate (under way, session 73)
 
 A full test run, a playtest build for testers, then a freeze: fixes only.
 
-## 9. itch.io
+Done: the smoke tests (the live site, the Tutorial, a desktop fight);
+v0.9.0 then v0.9.1 (release candidate 2) out to testers, with notes and
+Discord posts. Testers' reports since: fixes and balance only, live
+without a version bump and held in `docs/next-notes.md`. **1.0 when the
+reports go quiet** (the user: more testing first): bump to 1.0.0, notes
+from `docs/next-notes.md`, then the "At 1.0" checklist in
+`docs/itch/page.md`.
+
+## 9. itch.io (done for the release candidate, session 73)
 
 The page text, screenshots and a gameplay GIF (captured from the browser
 pane), the cover image, and the upload with butler (as Pixelyph does).
+
+Done: <https://rhapsydian.itch.io/cribexe>, public as "In development",
+free with donations; everything for the page in `docs/itch/` (settings
+and description in `page.md`, a paste page `description.html`, the
+screenshots, `gameplay.gif`, `cover.png`, the devlog `devlog-rc.*`).
+Builds go up with `butler push dist rhapsydian/cribexe:html5`. At 1.0:
+the checklist in `page.md`.
