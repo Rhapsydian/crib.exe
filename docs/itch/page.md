@@ -44,6 +44,7 @@ butler push dist rhapsydian/cribexe:html5 --userversion 0.9.1
 - Remove the release-candidate note from the description (both copies).
 - Release status: Released.
 - Devlog post, type "Major Update or Launch", with the 1.0 notes.
+- Point the description's patch notes link at the 1.0.0 notes.
 - Check the description's numbers (classes, subroutines, Burners, Events,
   enemies) against the game.
 
@@ -99,9 +100,10 @@ play.
 Tap or click. Plays on desktop and on phones (portrait). Sound and turn
 speed are in Settings.
 
-### Saves
+### Saves and privacy
 
-Your progress is saved in your browser. It's separate from the copy at
+No account, no ads, no tracking: your progress stays in your browser.
+It's saved there automatically. It's separate from the copy at
 cribexe.com: to move it across, use **Settings → Export progress**, then
 **Import** on the other.
 
@@ -110,6 +112,7 @@ cribexe.com: to move it across, use **Settings → Export progress**, then
 - Play it on the web: https://cribexe.com
 - Discord (bug reports, ideas, Daily scores): https://discord.gg/HxCry3uRpa
 - Source: https://github.com/Rhapsydian/crib.exe
+- Patch notes: https://cribexe.com/patch-notes/v0.9.1.html
 
 Made by **Rhapsydian** (Justin Stephens), developed with Claude Code.
 Card sounds: Keyboard soundpack 1 by unicaegames (CC0). Icons: Tabler
