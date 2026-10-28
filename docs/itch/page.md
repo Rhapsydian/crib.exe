@@ -22,7 +22,7 @@ settings. Draft: settle wording with the user before it goes up.
 | Tags | roguelite, roguelike, cribbage, card-game, cyberpunk, hacking, turn-based, strategy, singleplayer, mobile |
 | AI disclosure | Yes: developed with Claude Code (as About says) |
 | Links | cribexe.com, the Discord, the GitHub source |
-| Community | Comments on, pointing bug reports to the Discord |
+| Community | Comments on (the release-candidate note asks for reports there or on the Discord) |
 | Visibility | Draft, then Restricted for a check inside itch's frame, Public at 1.0 |
 
 Upload, as Pixelyph does (`C:\Users\husbando\tools\butler\butler.exe`,
@@ -34,6 +34,12 @@ butler push dist rhapsydian/cribexe:html5 --userversion 0.9.1
 ```
 
 ## Description
+
+> **Release candidate.** crib.exe is in final testing before 1.0: everything
+> planned for launch is in, and what's left is fixes from your reports.
+> Your progress carries over to 1.0. Found a bug or have an idea? Tell us
+> on the [Discord](https://discord.gg/HxCry3uRpa) (#bug-reports, #feedback)
+> or in the comments below.
 
 > **Break into a network, four layers deep. Every fight is a game of
 > Cribbage.**
