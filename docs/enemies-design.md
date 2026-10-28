@@ -1,6 +1,6 @@
 # Enemies (session 67)
 
-**Status: built (sessions 67-68): elites, gatekeepers, regulars, calibration, Wraith, Skeleton Key.** The last piece of the content pass (`BACKLOG.md` →
+**Status: built (sessions 67-68): elites, gatekeepers, regulars, calibration, Wraith, and Skeleton Key reworked as Restore Point.** The last piece of the content pass (`BACKLOG.md` →
 Priorities): more enemies of all three tiers, and elites with teeth.
 Decided live, one question at a time.
 
@@ -168,7 +168,7 @@ player strength), plus `run-outcomes.ts`.
   the player's power outgrows a fixed Breach gauge, so layer 3-4 elites
   and gatekeepers end in 2.4-4.2 hands, under E5's 5. Firewall Prime runs
   12.1 hands (No Way In's cap). Regulars: players win ~100% everywhere.
-- **Checkpoint 3, elite calibration (in progress).**
+- **Checkpoint 3, elite calibration.**
   `scripts/fight-calibrate.ts` captures the player at every elite fight
   of full runs and replays those fights under trial settings.
   `ELITE_LAYER_TUNING` (enemies.ts): elite strength 1.55/1.6/1.8/2.2 on
@@ -222,7 +222,7 @@ player strength), plus `run-outcomes.ts`.
   the log when it acts (checked in the browser over five fights each).
   Fast Path never announced itself: now it does. The bigger-gauge card
   waits for the gatekeeper pass (E9). Batch 1 done.
-- **Checkpoint 6, gatekeeper calibration (in progress).**
+- **Checkpoint 6, gatekeeper calibration.**
   `GATEKEEPER_LAYER_GAUGES` 1.15 / 1.1 / 2.2 / 2.6 (enemies.ts); each
   gatekeeper's own scale by replay (`fight-calibrate.ts --tier=gatekeeper`);
   No Way In's cap 6 → 9 (Firewall Prime ran 12 hands), so the tutorial's

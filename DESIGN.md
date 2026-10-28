@@ -5,11 +5,19 @@ node-map run structure, permadeath, meta-progression between runs — where
 combat is resolved by playing real Cribbage instead of the usual
 attack/skill/power card battles.
 
-Status: playable in the browser. A full four-layer run, six classes, a
-tutorial (`docs/tutorial-design.md`), first-time tips, plain Cribbage
-with a coach and lessons, and saves are built (`docs/playable-design.md`
-milestones 1–4); milestone 5, polish, is under way. Meta-progression
-*between* runs is not designed yet.
+Status: release candidate (v0.9.1), live at <https://cribexe.com> and
+on itch.io, with 1.0 held for more testing. A full four-layer run, six
+classes that unlock in a chain, a guided tutorial, first-time tips, plain
+Cribbage with a coach and lessons, progression between runs (Rep,
+upgrades, a library, Security Levels), a Daily Run, and saves are all
+built.
+
+**Names in the game and in the code.** A few things were renamed for
+players after the code was written: a **Quiet Host** is a `safehouse` in
+the code, **Refactor** is `merge`, a subroutine's **Process** and
+**Hook** are `alpha` and `beta`, a **class Mod** is a `bridge`, and a
+**Security Level** is an `ascension` level. This doc uses the players'
+names, with the code's where it helps.
 
 This doc is the settled design as it stands now, with the reasoning
 behind it. Superseded models, session-by-session backstory and old
@@ -63,7 +71,7 @@ recalibration R5–R8, `docs/archive/recalibration-design.md`):
   the Spotlight Mod, and the enemy-only Trace effect);
 - an **Event's Heat** is a multiple of the layer's elite-loss charge
   (`eventHeat`), so Events scale with depth like every posted price;
-- every layer has at least one Safehouse, where Rest lowers Heat;
+- every layer has at least one Quiet Host, where Rest lowers Heat;
 - clearing a gatekeeper **resets Heat to 0** — after the gatekeeper's
   toll, charged *after* that fight, has been survived (R8), or a **trace
   evasion** won if it wasn't (see Map & Run Structure → How a run ends).
@@ -161,9 +169,10 @@ win (patched more than once), and triggers that gated whether a piece
 acted at all let rarity silently decide *existence*. The old model is
 archived.
 
-The content is authored: **36 player subroutines**, 9 per archetype
-(`src/engine/content/`), plus 20 enemy-only pieces
-(`content/enemy-subroutines.ts`).
+The content is authored: **52 player subroutines**, 13 per archetype
+(`src/engine/content/`; `docs/subroutines-design.md`), plus 12 shared
+enemy-only subroutines (`content/enemy-subroutines.ts`) and the
+gatekeepers' bespoke ones (`content/enemies.ts`).
 
 ### Anatomy of a subroutine: alpha and beta
 
@@ -309,8 +318,9 @@ pays about twice as much.
 | **Warden** | Daemon + Honeypot (`daemon-honeypot`) | Hardened Perimeter — Suppress and bank Ward | pairs |
 | **Wraith** | Overclock + Honeypot (`overclock-honeypot`) | Phase Shift — Ward and haste, on hands you deal | fifteens |
 
-Exact amounts live in `resolve.ts` (`BRIDGE_*`). All six are selectable
-from the start; unlock order waits on meta-progression. Cutting to fewer
+Exact amounts live in `resolve.ts` (`BRIDGE_*`). Classes unlock in a
+chain (see Meta-Progression): Blackhat, the tutorial's class, first, then
+Breacher, Operator, Warden, Eidolon and Wraith. Cutting to fewer
 classes was considered and rejected: most measured class spread turned
 out to be gatekeeper matchup, not the classes (see Enemy Design).
 
@@ -431,7 +441,7 @@ meta-progression.
 two nodes on neighbouring hexes), linked only to near neighbours with no
 crossings, the gatekeeper 3–6 moves from the entry and never behind
 anything. Node types are **dealt** per layer from a set mix under
-placement rules: no elite next to the entry, a Safehouse within two moves
+placement rules: no elite next to the entry, a Quiet Host within two moves
 of the gatekeeper, no matching specials adjacent, no dead-end relays.
 
 **Movement is free-roam within a layer, one-way between layers** —
@@ -454,9 +464,9 @@ worse than the middle.
 - **Regular fight** and **elite fight** — see Enemy Design and Rewards.
 - **Gatekeeper** — the layer's one exit, its identity fixed when the
   layer is generated.
-- **Safehouse** — one either/or choice, StS-campfire-style: **Rest**
-  (lower Heat) or **Merge** (spend banked copies to rank pieces up; a
-  git/version-control pun). The Rest-vs-Merge trade-off is the point.
+- **Quiet Host** (`safehouse`) — one either/or choice, StS-campfire-style:
+  **Rest** (lower Heat) or **Refactor** (`merge`: spend banked copies to
+  rank subroutines up). The Rest-vs-Refactor trade-off is the point.
 - **Shop** — spend Data (see Subroutine acquisition).
 - **Event** — a narrative vignette with choices (see Events).
 - **Cache** — sometimes hangs as a remote dead end holding a free reward;
@@ -465,7 +475,7 @@ worse than the middle.
   as a zero-risk-but-not-zero-cost choice.
 
 A node becomes **inert** after its first resolved encounter, whatever its
-type. That is what preserves the Rest-vs-Merge trade-off on a map that
+type. That is what preserves the Rest-vs-Refactor trade-off on a map that
 allows backtracking: the node is spent, not unreachable. Inert nodes stay
 passable.
 
@@ -474,14 +484,15 @@ fight means the duel resolved to Containment: that route into the node is
 gone. The player is ejected and the node is **closed** for the rest of
 the run — genuinely **impassable terrain**, not merely reward-free (or
 the player could always loop back through it). Map generation keeps the
-gatekeeper reachable as nodes close, checked by generate-then-verify. A
-Skeleton Key Burner can reopen a closed node, which returns it to
-unresolved (it must be won again): recoverable, not automatic.
+gatekeeper reachable as nodes close, checked by generate-then-verify.
+A closed node stays closed; routing around it is the player's problem.
 
 **Losing a gatekeeper fight, in any layer, ends the run** — **Quarantine**,
 the player's whole presence purged from the network. A gatekeeper is the
 sole passage forward, so treating its loss as instant permadeath is just
-being direct about a run that is already lost.
+being direct about a run that is already lost. The one way out is the
+contraband Restore Point Burner, which restarts a lost gatekeeper fight
+once.
 
 ### How a run ends
 
@@ -500,26 +511,47 @@ Five outcomes (`run.ts` `RunOutcome`):
    the gatekeeper, which starts a point ahead per 10% of its final
    Containment; you deal the 1st and 3rd hands; finish strictly ahead to
    escape (ties go to the network). Escaping resets Heat and the run goes
-   on, or is won on layer 4. A loss still counts the layer as breached:
-   meta-progression is meant to credit it ("rep for how deep you got"),
-   below a full continue (R8).
+   on, or is won on layer 4. A loss still counts the layer as breached,
+   and earns that layer's Rep at 75% (see Meta-Progression).
 
 ## Meta-Progression
 
-**In-run progression is built**: subroutine acquisition and Merge, Mods,
-Burners, Events, Shops and Caches (below). **Progression between runs is
-not designed yet**, and is a priority. What it is expected to cover:
+**In-run progression**: subroutine acquisition and Refactor, Mods,
+Burners, Events, Shops and Caches (below).
 
-- New subroutines unlocking into the available pool over time.
-- Class unlock order (all six are selectable today).
-- The installed-loadout slot cap growing via a persistent unlock.
-- New contract types.
-- Ascension-style unlockable harder difficulties. Undesigned; its first
-  concrete modifier is banked as run-economy D6 (higher ascension resets
-  less Heat between layers).
-- Crediting **breached, then caught** below a full continue (R8).
+**Between runs** (`meta.ts`; the full record is
+`docs/meta-progression-design.md`):
 
-Daily Runs are a banked idea (`BACKLOG.md`).
+- **Rep** is the currency, earned by depth: 10 / 15 / 20 / 25 for each
+  layer breached, 75% of that for breached-then-caught, +2 an elite, +20
+  for a victory. Regular fights and the Cribbage rating earn none, so
+  padding a run doesn't pay.
+- **Classes unlock in a chain:** beating the first gatekeeper with one
+  class unlocks the next, with a steep Rep price as a fallback so no one
+  is walled out.
+- **Upgrades** bought with Rep, in tracks: enemy Containment, your
+  Breach, fight Heat, Rest, Shop prices, each archetype's power, Burner
+  slots and one subroutine slot. The balance targets describe a fresh
+  player with none; a fully upgraded player wins most runs at Security
+  Level 0, having earned it.
+- **The library:** subroutines bought with Rep can start a run as a 4th
+  starter, and the common Burners as a starting Burner. Unlocks never
+  change a run's reward pool (the balance targets assume the full pool).
+- **Security Levels** 1-10 (`ascension` in the code) open once every
+  class is unlocked and a run is won. Each level makes enemies stronger
+  and adds or escalates a rule, for +15% Rep a level.
+
+### Daily Runs
+
+One fixed run a day for everyone (`daily.ts`; `docs/daily-runs-design.md`):
+the date seeds the class (from all six, unlocked or not), the map and a
+set of daily Mods: one **Directive** (the day's scoring twist) plus two
+or three **Glitches** (Cribbage and fight rules), **Advisories** (the
+map, Heat and economy) and **Bulletins** (the starting kit). No upgrades
+apply and the Security Level is 0. The first attempt each day is scored,
+itemized by layers, elites, Caches, Data earned and the Cribbage rating;
+later attempts are practice. There is no server: players share a score
+line.
 
 ### Subroutine acquisition
 
@@ -550,8 +582,8 @@ echoing Cribbage's dealt hand), and six ordered slots is the build puzzle
 itself. The bench holds 3 (`BENCH_CAP`).
 
 **Duplicate subroutines**: a copy of a piece you already own does not
-take a slot; it becomes a **banked copy**, spent at a Safehouse's
-**Merge** to rank the piece up. Merge spends every banked copy at once,
+take a slot; it becomes a **banked copy**, spent at a Quiet Host's
+**Refactor** to rank the piece up. Refactor spends every banked copy at once,
 up to `MERGE_RANK_CAP` (3). A rank strengthens the piece's Hook, never
 its Process's verb or its Hook's source, since those are its identity
 (`merge.ts`).
@@ -560,13 +592,15 @@ its Process's verb or its Hook's source, since those are its identity
 pool: subroutines (any rarity, priced steeply by rarity), a 3-item Mod
 slate, and Burners (always at least one), each separately rerollable.
 Shops also **buy** benched subroutines, banked copies and Burners, at
-half their buying price by rarity plus a premium per Merge rank.
+half their buying price by rarity plus a premium per rank.
 
 ### Mods
 
 crib.exe's answer to StS relics: permanent, always-on effects
-(`mods.ts`, `mod-types.ts`). 37 exist: 6 class Mods and 31 general
-(common, uncommon, rare). Static Shield is set aside (defined but never
+(`mods.ts`, `mod-types.ts`; `docs/mods-design.md`). 57 exist: 6 class
+Mods, 6 double-edged Mods (a strong upside with a real cost), and 45
+general (14 common, 19 uncommon, 12 rare), most of the newer ones
+rule-benders that change how the Cribbage or the loadout works. Static Shield is set aside (defined but never
 offered).
 
 **Ownership**: uncapped, no install/bench split, no ordering. Every owned
@@ -599,21 +633,24 @@ regulars carry none. No enemy carries a class Mod.
 ### Burners
 
 crib.exe's answer to StS Potions: single-use, **player-activated** items
-(`burners.ts`), the one thing the otherwise automatic (subroutines) or
+(`burners.ts`; `docs/burners-events-design.md`), the one thing the otherwise automatic (subroutines) or
 passive (Mods) systems lack. Named for a burner phone: used once and
 discarded to avoid being traced.
 
 **Three contexts, one pool**: each Burner is tagged with where it can be
 used.
 
-- **Combat** — a single verb effect, on the player's own turn (Flash
-  Drive, EMP Charge).
-- **Map** — a reveal, a free move, or reopening a closed node (Recon
-  Ping, Ghost Protocol, Skeleton Key).
-- **Shop** — a coupon: a discount, a free reroll, or a rarity floor
+- **Combat** (13) — an effect on the player's own turn (Flash Drive, EMP
+  Charge, Logic Bomb).
+- **Map** (6) — free moves, lower Heat, no gatekeeper toll (Ghost
+  Protocol, Log Wiper, Spoofed Credentials).
+- **Shop** (3) — a coupon: a discount, a free reroll, or a rarity floor
   (Stolen Coupon, Loyalty Token, Insider Tip).
 
-Cold Wallet is sell-only. 9 Burners in all.
+Cold Wallet is sell-only. Five are **contraband**, rule-bending and
+found through Events (Denial of Service, Botnet, Golden Ticket,
+Kill Switch, and Restore Point, which works by itself when it saves you).
+24 Burners in all.
 
 **Inventory**: a hard cap (`BURNER_CAP`, 3), no bench or
 owned-but-not-carried state — a real "which am I carrying" choice.
@@ -627,7 +664,8 @@ collected far more than they used.
 ### Events
 
 A narrative vignette with 2–4 choices, resolved instantly with no
-Cribbage played (`events.ts`, `event-types.ts`). 8 exist.
+Cribbage played (`events.ts`, `event-types.ts`). 24 exist. A risky
+choice's odds play out on screen as a roll.
 
 **Risk model**: each *choice* carries a tier: **transparent** (exact
 cost and reward stated), **visibleOdds** (odds and range shown) or
@@ -636,9 +674,9 @@ options. Gamble is the one deliberate, contained exception to the
 design's full-transparency rule, confined to Events and never touching
 combat's or Heat's own legibility.
 
-**Risk tier gates reward ceiling**: only gamble-tier choices can reach
-the pool's most powerful outcomes (a rare grant, a large Data windfall,
-reopening a closed node).
+**Risk tier gates reward ceiling**: the pool's most powerful outcomes (a
+rare grant, a large Data windfall) sit behind gambles, and contraband
+Burners mostly do, the rest at a steep posted price.
 
 **Effect pool**: reuses existing resources and mechanisms wholesale —
 Heat (a multiple of the layer's elite-loss charge), Data, a subroutine,
@@ -659,23 +697,29 @@ decision a run asks: acquisition by a lexicographic priority ladder
 weights, swap-out when the loadout is full, reordering for chains, Merge
 targets, Shop buys and rerolls, Event choices capped by risk tier and a
 Heat safety margin, and Burner activation per effect kind. Traversal and
-Safehouse choice are a separate, combinable profile
+Quiet Host choice are a separate, combinable profile
 (`opportunisticTraversal`). Every engine default stays a deliberately
 "legal-not-good" fallback. The session 45 design is archived.
 
 ### Balance target
 
-**15–20% victory per class**, aiming at about 16% (the average stood at
-19.8% at session 62, `BACKLOG.md`), adopted from Slay the Spire's
-ascension-0 rate. The gatekeeper pass-rate curve is **73.5 / 67 / 61 /
-55%** by layer, monotonically harder. Skill retention stays ≥ 0.5
-(Pricing rule 5).
+**24–30% victory** for the simulated player (skill 0.85) with no
+upgrades and Security Level 0, every class within about ±3 points of the
+average. The measured state: about 26% (classes 23.7–28.3%), Heat ending
+about 12% of runs, about 65–71% of each layer explorable, and about 12
+Mods by a winning run's end (`docs/tuning-design.md`). Gatekeepers get
+harder by layer (about 86 / 82 / 76 / 74% passed). Skill retention stays
+≥ 0.5 (Pricing rule 5).
+
+The target was first 15–20%, from Slay the Spire's ascension-0 rate. It
+was raised once the content pass made runs longer and meta-progression
+gave a fresh player somewhere to grow from.
 
 ## Enemy Design
 
 **Tone: every enemy is the target network's own defenses**, even the
 offense-flavoured kits (its security team or automated countermeasures
-hacking back), never a separate criminal group. External-actor flavour
+hacking back), never a separate criminal group (`docs/enemies-design.md`). External-actor flavour
 for a specific contract remains future idea space.
 
 Enemies are a real roster with identity, structurally close to player
@@ -694,7 +738,7 @@ memorable set pieces.
   enemy-only ones, no Mod. Eligible from a minimum layer onward.
 - **Elite**: 3 pieces and a smaller rule-bending Mod; meant to be a
   genuine challenge. Eligible from a minimum layer onward.
-- **Gatekeeper**: fully bespoke, two per layer, each with at least one
+- **Gatekeeper**: fully bespoke, four per layer, each with at least one
   bespoke, thematic piece and one bespoke Mod, and meant to be very
   challenging for the layer it's presented at.
 
@@ -705,7 +749,7 @@ Alarm, Total Compromise) add Heat directly instead of mainly trying to
 contain you.
 
 **Selection** differs by tier. **Gatekeepers are fixed when the layer is
-generated**, one of that layer's two, stable for the run. **Regulars and elites are drawn at encounter time** from the
+generated**, one of that layer's four, stable for the run. **Regulars and elites are drawn at encounter time** from the
 eligible pool, since re-rolled variety across a run is desirable.
 
 **Opening fights**: the first 1-3 combats of the run, full stop
@@ -723,22 +767,22 @@ the bigger lever.** Session 49 found that which gatekeeper you drew
 mattered more than which layer you were on (up to 57 points apart in one
 layer, against 44 across the whole curve), and that roughly two thirds of
 apparent class imbalance was gatekeeper matchup. Payload magnitude is not
-what makes a fight hard. Each layer's two gatekeepers are tuned to its
+what makes a fight hard. Each layer's gatekeepers are tuned to its
 pass-rate target, close to each other.
 
 ### The Roster
 
-27 enemies (`src/engine/content/enemies.ts`), by tier and the first layer
+49 enemies (`src/engine/content/enemies.ts`), by tier and the first layer
 each appears at, plus a tutorial-only gatekeeper.
 
 | Layer | Regular | Elite (Mod) | Gatekeeper (Mod) |
 |---|---|---|---|
-| 1 | Pentest Script, Quarantine Daemon, Relay Node, Patch Runner, Session Monitor | Threat Intel Feed (Reverse Engineering), Incident Response (Rollback) | The Concierge (Reception Protocol), Firewall Prime (No Way In) |
-| 2 | Legacy Firewall, Tripwire, Wireless IDS, Log Shipper | Blackout Cell (Power Siphon), Intrusion Alarm (Escalation) | Quarantine Ward (Containment), Zero-Sum (Zero-Sum) |
-| 3 | Honeyfarm, EDR Sensor | Threat Hunter (Evidence Chain) | Adaptive Threat (Adaptation), Total Compromise (Spotlight) |
-| 4 | Integrity Monitor, Firewall Cluster | Hypervisor (Resource Quota) | Null Session (Null Session), Root Authority (Root Access) |
+| 1 | Pentest Script, Quarantine Daemon, Relay Node, Patch Runner, Session Monitor, Port Knocker, Scheduler Bot | Threat Intel Feed (Reverse Engineering), Incident Response (Rollback), Jamming Array (Interference) | The Concierge (Reception Protocol), Firewall Prime (Stateful Inspection), The House (House Edge), Bandwidth Cap (Throttled Link) |
+| 2 | Legacy Firewall, Tripwire, Wireless IDS, Log Shipper, Spam Filter, Packet Logger | Blackout Cell (Power Siphon), Intrusion Alarm (Escalation), Memory Governor (Hard Limit) | Quarantine Ward (Containment), Zero-Sum (Zero-Sum), Signature Lock (Hardened), Sandbox (Behavior Analysis) |
+| 3 | Honeyfarm, EDR Sensor, Credential Harvester, Load Shedder | Threat Hunter (Evidence Chain), Lockdown Service (Lockout), Fast Path Router (Fast Path) | Adaptive Threat (Adaptation), Total Compromise (Spotlight), Watchtower (Pattern Match), Mirror Fabric (Reflection) |
+| 4 | Integrity Monitor, Firewall Cluster, Decoy Grid, Rootkit Scanner | Purge Daemon (Purge), Reaper Process (Collection), Hypervisor (Resource Quota) | Null Session (Null Session), Root Authority (Root Access), Black Ice (Counter-Trace), System Architect (Rewrite) |
 
-13 regulars, 6 elites, 8 gatekeepers. **Firewall Beta**
+21 regulars, 12 elites, 16 gatekeepers. **Firewall Beta**
 (`TUTORIAL_GATEKEEPER`, `enemies.ts`) is Firewall Prime at reduced
 strength carrying Rate Limit, used only by the tutorial.
 
@@ -822,20 +866,15 @@ session 51 and are easy to revisit.
 
 ## Name
 
-**crib.exe** (stylized) — domain `cribexe.com`, confirmed available.
+**crib.exe** (stylized), at <https://cribexe.com>.
 
 ## Open Questions
 
 See `BACKLOG.md` for the working list.
 
-- **Meta-progression between runs** — undesigned, and a priority: unlocks,
-  class unlock order, slot-cap growth, and crediting "breached, then
-  caught" below a full continue (R8).
-- **Ascension-style difficulty** — undesigned; D6 (less Heat reset
-  between layers) is its first banked modifier.
-- **Daily Runs** — a banked idea.
-- **The player-side content pass** — growing and retuning the player
-  pool, and bringing the average win rate from 19.8% toward ~16%.
-- **Tuning numbers** — Heat allowances, fight baselines, the performance
-  weight, the loss multiplier and economy prices are first-pass
-  placeholders (`heat.ts`, `shop.ts`, `encounters.ts`).
+- **Playtesting before 1.0:** balance and clarity from testers' reports.
+- **Tuning numbers:** constants marked `TBD/playtesting` in the code
+  (Heat per move, the loss multiplier, the slot and Burner caps and
+  similar) are measured but not yet confirmed by players.
+- **Later ideas:** new contract types, an external rival hacker, and a
+  Daily Run leaderboard (which would need a server).

@@ -1,6 +1,6 @@
 # Making crib.exe playable — working decision record
 
-> **Status: active.** Milestones 1-4 are done (sessions 57-59); milestone 5, polish and playtesting, is under way. Its "Backlog items" tutorial was built in session 63 (`docs/tutorial-design.md`).
+> **Status: finished, kept as a record.** Milestones 1-4 were built in sessions 57-59. Milestone 5, polish and playtesting, became the content pass, the tuning pass and go-live (`docs/go-live-plan.md`); its tutorial is `docs/tutorial-design.md`.
 
 The first UI over the headless engine. Started session 57
 (`/decision-session`, 2026-10-16), after the archetype redesign and the
@@ -813,7 +813,7 @@ run-end Heat deaths, far from the choice. The user's replacement:
 - Tools: `trace-price.ts` retired; `scripts/run-outcomes.ts` is the
   full-run outcome report.
 
-## Milestone 4 — vanilla Cribbage and learning to play (planned session 58)
+## Milestone 4 — vanilla Cribbage and learning to play (session 58)
 
 Plain 2-player Cribbage to 121 at several difficulties, with a "Learn to
 play" mode, built before the roguelite polish so testers learn the card

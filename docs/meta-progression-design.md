@@ -1,6 +1,6 @@
 # Meta-progression (session 71)
 
-**Status: approved; building on branch `meta-progression`.** Progression
+**Status: built (session 71), live since v0.9.0.** Progression
 between runs: Rep, class unlocks, upgrades, the subroutine and Burner
 library, and ascension. Decided live, one question at a time.
 

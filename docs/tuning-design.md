@@ -1,6 +1,6 @@
 # Tuning pass (session 69)
 
-**Status: designing.** After the content pass (Burners, Events, Mods,
+**Status: done (session 69).** After the content pass (Burners, Events, Mods,
 subroutines, enemies): Heat, win rates by class, and Mod supply. Decided
 live, one question at a time.
 

@@ -17,51 +17,23 @@ is a thin interface onto the engine.
 
 ## Current state (end of session 73)
 
-**Release candidate v0.9.1 is out for testing** (session 73): on
-<https://cribexe.com> and on itch.io, public as "In development"
-(<https://rhapsydian.itch.io/cribexe>, devlog posted). 1.0 is held for
-more testing (the user). Since v0.9.1, live but not yet in a version's
-notes: Charge no longer feeds Instant Hooks ("Hook · Instant"), Branch
-Predictor reworked (Credit 1; on a pair every other Hook gets a count),
-and small fixes (`docs/next-notes.md`). 987 tests, `npm run check` clean.
+**Release candidate v0.9.1 is out for testing** on
+<https://cribexe.com> (branch `playable`) and on itch.io, public as "In
+development" (<https://rhapsydian.itch.io/cribexe>, devlog posted). 1.0
+is held for more testing (the user). Changes since v0.9.1 wait in
+`docs/next-notes.md`. 987 tests, `npm run check` clean.
 
-The game is playable in the browser on desktop and phones
-(<https://cribexe.com>, branch `playable`; the old GitHub Pages address
-redirects there): a full
-four-layer run with six classes, a guided tutorial, first-time tips, plain
-Cribbage with a coach and lessons, and saves. Milestone 5 (polish and
-playtesting) is under way. 946 tests, `npm run check` clean.
-
-**The content pass and its tuning pass are done, and live on `playable`**
-(merged in session 70, a fast-forward; save version 2, so old saves don't
-resume; patch notes in `public/patch-notes/`): Burners and Events, Mods, subroutines, the enemy pool, then
-Heat, Mod supply and class tuning (`docs/tuning-design.md`). Run victory
-~26% (target 24-30%), classes 23.7-28.3%, Heat ending ~12% of runs, about
-65-71% of each layer explorable, ~12 Mods by a winning run's end.
-Session 70 added the playtest fixes, Proof of Concept and Lure Template,
-and the review coach (a Cribbage rating per fight and run, and a drawer of
-mistakes; `src/ui/skill-review.ts`).
-
-**Meta-progression is built** (session 71, live on `playable` since
-session 72's close-out; save version 3;
-`docs/meta-progression-design.md` MP1-MP17): Rep by depth, a class unlock
-chain, the Message Board (11 upgrade tracks, the 52-subroutine library,
-starting Burners), a play-without-upgrades toggle, and ten Security
-Levels. Fresh victory unchanged (~25%); fully upgraded ~90%; Security
-Levels 1 / 5 / 10 at ~84 / ~26 / ~2% fully upgraded.
-
-**Meta-progression and Daily Runs are live on `playable`** (merged at
-session 72's close-out, a fast-forward from `daily-runs`, which was then
-deleted with the other merged branches; new work branches from `playable`;
-save version 3,
-so older saves don't resume; patch notes `public/patch-notes/2026-10-25.html`;
-`docs/daily-runs-design.md`
-DR1-DR10): the date's salted seed, a random class, a Directive dealt from
-a 13-day deck plus two or three Glitches, Advisories or Bulletins (34
-Mods); one scored attempt a day, practice after, an itemized score, a
-share line, a streak and history; normal Rep for the scored attempt.
-Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
-+22).
+The game is feature-complete: a four-layer run with six classes, a
+guided tutorial and first-time tips, plain Cribbage with a coach and
+lessons, a review coach that rates Cribbage play (`src/ui/skill-review.ts`),
+progression between runs (Rep, a class unlock chain, the Message Board's
+upgrade tracks and library, ten Security Levels;
+`docs/meta-progression-design.md`), and Daily Runs
+(`docs/daily-runs-design.md`). Balance for the simulated player (skill
+0.85): run victory ~26% (target 24-30%), classes 23.7-28.3%, Heat ending
+~12% of runs, about 65-71% of each layer explorable, ~12 Mods by a
+winning run's end; fully upgraded ~90%; Security Levels 1 / 5 / 10 at
+~84 / ~26 / ~2% fully upgraded.
 
 ---
 
@@ -98,8 +70,8 @@ Each Mod alone within about ±15 points of victory (Expanded Memory, rare,
    when they go quiet (the user decides): a 1.0.0 bump, notes from
    `docs/next-notes.md`, and the "At 1.0" checklist in `docs/itch/page.md`.
 9. itch.io (done for the release candidate): page, screenshots, GIF, cover,
-   butler upload, public "In development", devlog. Reddit posts
-   (r/roguelikes, r/cribbage): the user, later.
+   butler upload, public "In development", devlog. Reddit posts are
+   drafted (`docs/itch/reddit.md`); the user posts them.
 
 Out of scope for release: **Event mini-games** (the user: none), music,
 and balance work. The earlier priorities (session 63: the content pass,
@@ -132,9 +104,8 @@ most, refine some of the map icons.
   (`src/ui/testing-flags.ts`). Development only since go-live step 1: the
   release build drops them, with the #test harness and the mockups
   (`src/DevRoutes.svelte`, loaded only in development).
-- **Balance, as of session 72** (the old session 64-66 figures pruned):
-  ~25% victory for the simulated player (skill 0.85), classes 22-35% at
-  100 runs each (within noise); a Flawless fight's -1 Heat adds ~3.
+- **A Flawless fight's -1 Heat** adds ~3 points of victory for the
+  simulated player.
 - **Review coach** (sessions 70, 72): the rating is points given up per
   hand against the AI at full strength, as stars (engine/skill.ts:
   Flawless 0.4 or less, Expert 1.2, Sharp 2.5, Steady 4.0). Measured: skill
@@ -203,11 +174,9 @@ Not yet seen in the browser (tests cover the engine side):
 - the Shop's Sell section, the Safehouse's "merge everything", rank marks
   and "+N banked";
 - the leftover-pegging-card fix (made from the code; confirm in play);
-- Skeleton Key's reopen, on a phone;
 - the tutorial's "Burner fired" coach step in the seed-21 run.
 
 UI and text:
-- **Lesson texts** (`src/ui/lessons.ts`) still use double dashes.
 - **Breached, then caught** at layer 4 shows "4/4 layers breached" under
   a losing title (the rules' count); revisit if testers find it odd.
 - **One AI** (session 72, the user's rule): the coach and every opponent
@@ -228,10 +197,6 @@ Platform:
 - **Saves don't survive a game update** that changes rules or content
   (they are a replay of answers); a snapshot save would, at the cost of
   making the run engine resumable from state.
-- **CI:** the deploy workflow's actions target Node 20 (deprecated);
-  bump `actions/checkout` and `actions/setup-node`.
-- **Hosting:** the custom domain is live (cribexe.com, session 72; the
-  old GitHub Pages address redirects); itch.io still to come.
 - **Drag and drop** as an alternative card input.
 
 Code and tools:
@@ -261,7 +226,7 @@ Code and tools:
   discarded cards rather than one. Content, not a new engine capability.
 - **A "support" subroutine category** (session 22): pieces whose job is
   to buff or enable other subroutines. Worth weighing in the content pass.
-- **Enemy-piece acquisition** (session 28): the 20 enemy-only subroutines
+- **Enemy-piece acquisition** (session 28): the enemy-only subroutines
   are unreachable by design; whether some should reach rewards or the
   Shop was never revisited.
 - **Rename the `Go` occurrence category to `Last-Card`** (session 22):
@@ -277,8 +242,9 @@ Code and tools:
 | 1 — Core Cribbage engine | ✅ complete (session 16) |
 | 2 — Combat wrapper | ✅ complete (session 18) |
 | 3 — Network map / run structure | ✅ complete (session 20) |
-| 4 — Meta-progression systems (classes, Mods, Merge, Burners) | ✅ complete (session 22); between-run progression still undesigned |
-| 5 — Content, balance & polish | 🔄 archetype redesign and authored content done (sessions 51–56); playable in the browser (sessions 57–63, milestones 1–4); polish, the content pass and retuning under way |
+| 4 — Meta-progression systems (classes, Mods, Merge, Burners) | ✅ complete (session 22); between-run progression built (session 71) |
+| 5 — Content, balance & polish | ✅ archetype redesign and authored content (sessions 51–56); playable in the browser (sessions 57–63); content and tuning passes (64–70); Daily Runs (72) |
+| 6 — Release | 🔄 release candidate public (session 73); 1.0 after testing |
 
 Detail for every completed phase is in `docs/archive/roadmap-history.md`; the
 playable-game milestones are in `docs/playable-design.md`.

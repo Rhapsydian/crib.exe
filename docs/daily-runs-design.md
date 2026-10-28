@@ -1,10 +1,8 @@
 # Daily Runs (session 72)
 
-**Status: approved; building on branch `daily-runs`.** The last
+**Status: built (session 72), live since v0.9.0.** The last
 major content piece: a run of the day, the same for everyone, with its
-own score and twists. Decided live, one question at a time. Built on
-branch `daily-runs` (from `meta-progression`, whose run setup and
-play-without mode it uses).
+own score and twists. Decided live, one question at a time.
 
 From BACKLOG (the user, session 62): the date hashed into a seed, a random
 class, daily-only Mods that bend the rules; a server leaderboard as a
