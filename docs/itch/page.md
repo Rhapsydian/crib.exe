@@ -17,7 +17,7 @@ settings. Draft: settle wording with the user before it goes up.
 | Uploads | The `html5` channel, pushed with butler (see below); "This file will be played in the browser" |
 | Embed size | 1280 × 800 (wide enough for the desktop layout, 900px and up) |
 | Mobile friendly | Yes, orientation: portrait |
-| Frame options | Fullscreen button: on. Scrollbars: on (the Shop and reward screens scroll). Auto-start: off (click to launch, so sound can start) |
+| Frame options | Fullscreen button: on. Scrollbars: on (the Shop and reward screens scroll). Automatically start on page load: on (the game makes no sound until a click, so sound isn't blocked) |
 | Genre | Card Game |
 | Tags | roguelite, roguelike, cribbage, card-game, cyberpunk, hacking, turn-based, strategy, singleplayer, mobile |
 | AI disclosure | Yes: developed with Claude Code (as About says) |
