@@ -1,5 +1,10 @@
 # Sessions 1–28 — retrospective
 
+> **Note (2026-10-28):** individual logs for sessions 1-21 were backfilled
+> after this was written (`session-01` to `session-21`), so the real gap
+> is sessions 22-28: this document is their only record. The text below
+> is as written.
+
 This project's `session-logs/` convention started at session 29
 (2026-08-27). Sessions 1–28 predate it, so there's no per-session log for
 them — but `BACKLOG.md` has recorded a detailed, dated-by-session-number

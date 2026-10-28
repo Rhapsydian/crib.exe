@@ -4986,4 +4986,107 @@ evasion** (`docs/design/trace-evasion.md`), three hands of plain Cribbage
 against the gatekeeper, which starts a point ahead per 10% of its
 Containment; outscore it to slip away.
 
+## README's project history, to session 73
+
+Moved here verbatim on 2026-10-28, when `README.md` was rewritten as the
+project's front page.
+
+How it got here, in arcs (each session's detail is in `docs/session-logs/`;
+README's old session-by-session narrative is archived in
+`docs/archive/roadmap-history.md`):
+
+- **Sessions 1–50:** the Cribbage engine, the combat wrapper, the map
+  and run, classes / Mods / Merge / Burners, and a long run of balance
+  work (`docs/archive/roadmap-history.md`).
+- **Sessions 51–56:** the archetypes and subroutine model redesigned
+  from scratch (`docs/archive/archetype-redesign.md`), recalibrated
+  (`docs/archive/recalibration-design.md`), all content authored
+  (`docs/archive/authoring-design.md`) and class-balanced
+  (`docs/archive/balance-design.md`).
+- **Sessions 57–59:** made playable (`docs/archive/playable-design.md`): a
+  pausable engine, one fight, a whole run, then plain Cribbage with a
+  coach and lessons.
+- **Sessions 60–63:** polish and playtesting: a text audit, the class
+  Mods and enemy roster reworked, selling and Merge-everything, the
+  economy, a guided tutorial and tips, Heat shown up front, and the trace
+  evasion (`docs/design/tutorial.md`, `docs/design/trace-evasion.md`).
+- **Session 64:** the content pass began, on the `content-pass` branch
+  (merged into `playable` in session 70): 24 reworked Burners (lumps,
+  rule-benders, temporary subroutines, Heat tools, Event-only contraband)
+  and 18 Events, each with story (`docs/design/burners-events.md`).
+- **Session 65:** Mods, on `content-pass`: 12 rule-benders, 6 double-edged
+  Mods and 6 class Mod upgrades, offered by 6 new Events (24 in all); a
+  pair royal counts as three pairs (`docs/design/mods.md`).
+- **Session 66:** subroutines, on `content-pass`: 16 new (52 in all),
+  every run in a double run counting, Merge rank III boosting the Process,
+  owned subroutines likelier in rewards, and system strain for long turn
+  chains (`docs/design/subroutines.md`).
+- **Session 67:** the enemy pool, batch 1, on `content-pass`: six new
+  elites aimed at kinds of builds, elites calibrated to 80-85% player wins
+  by layer with bigger gauges deep, enemy Cribbage skill raised, and a lost
+  fight now ejects the player instead of ending the run
+  (`docs/design/enemies.md`).
+- **Session 68:** the enemy pool, batch 2: eight new gatekeepers (four per
+  layer, named on the map, harder by layer) and eight regulars; Firewall
+  Prime and Wraith's class Mod reworked; Restore Point, a contraband second
+  try at a lost gatekeeper.
+- **Session 69:** the tuning pass, on `content-pass`: Heat allowances grow
+  by layer so each layer is about equally explorable, and the class Mods
+  tuned so every class sits within 3 points of a ~26% average
+  (`docs/archive/tuning-design.md`).
+- **Session 70:** playtest fixes (no rewards when a fight's Heat catches
+  you, Shop over-buy warnings, the log after a fight), two new Mods (Proof
+  of Concept, Lure Template), and the review coach: a Cribbage rating on
+  each fight's result card and the run's end card, with a drawer of the
+  fight's costliest mistakes. `content-pass` merged into `playable`;
+  patch notes for testers in `public/patch-notes/`.
+- **Session 71:** meta-progression, on the `meta-progression` branch (not
+  yet merged into `playable`): Rep earned by depth; classes unlocking in a
+  chain (Blackhat first) with a Rep fallback; the Message Board (upgrades,
+  a subroutine library, starting Burners); ten Security Levels for players
+  who've unlocked everything and won (`docs/design/meta-progression.md`).
+- **Session 72:** Daily Runs, on the `daily-runs` branch (built on
+  `meta-progression`): a run of the day
+  from the date's salted hash, a random class, and daily Mods in four
+  kinds (Glitches, Advisories, Bulletins, Directives); one scored attempt a
+  day with an itemized score and a share line, practice runs after, a
+  streak and history (`docs/design/daily-runs.md`). Then the user's
+  playtest notes: new map icons, Safehouse renamed Quiet Host and Merge
+  renamed Refactor, fight-gauge fixes, a menu button in runs. Merged into
+  `playable` and `master` with meta-progression; patch notes in
+  `public/patch-notes/`. The demo moved to cribexe.com; merged feature
+  branches were deleted, leaving `playable` and `master`. Then **one AI**:
+  the coach's pegging judgement became the AI's (they had been separate
+  algorithms), and the Cribbage rating became points given up per hand,
+  shown as 1-5 stars (a Flawless fight avoids 1 Heat; Play Cribbage ends
+  with stars too). The review lays your choice beside the coach's in
+  numbers, with cards as colored chips (the log uses them too); the run
+  start picks the auxiliary subroutine and Burner from sheets with full
+  rules and steps through Security Levels with their effects listed.
+- **Session 73:** go-live (`docs/release/go-live-plan.md`): Settings, sound
+  (recorded keystrokes for cards, synth for the rest), About and credits,
+  a Discord, in-game patch notes, Records, mobile and an icon; release
+  candidates v0.9.0 and v0.9.1 from testers' reports (the loadout beside
+  rewards and the Shop, Event rolls played out, fairer ratings, Charge no
+  longer feeding Instant Hooks, Branch Predictor reworked); and an itch.io
+  page, public as "In development": <https://rhapsydian.itch.io/cribexe>.
+
+What exists, all headless and test-covered:
+
+| area | state |
+|---|---|
+| Cribbage rules engine | complete, rules-correct, 2-player |
+| Combat wrapper | complete — subroutines with a Process and a Hook (alpha / beta in code), seven verbs plus three enemy-only (Trace, Wipe, Strip), initiative, Breach/Containment |
+| Run & map layer | complete — free-roam movement, per-layer Heat with posted fight prices, real duels at fight nodes |
+| Run progression | complete — 6 classes, each with a class Mod on fifteens or pairs; acquisition, Merge (everything at once, at a Safehouse), a Shop that buys and sells, Burners, the trace evasion |
+| Meta-progression (between runs) | **undesigned** — a priority after the content pass |
+| Content | **authored** — 52 player subroutines, 20 enemy-only; 49 enemies (21 regulars, 12 elites, 16 gatekeepers, elites and gatekeepers each with a Mod) plus the tutorial's Firewall Beta; 57 Mods (rule-benders, 6 double-edged and 6 class upgrades from Events; Static Shield set aside), 24 Burners (4 Event-only contraband) and 24 Events with story. Patch notes for testers: `PATCH_NOTES.md`, `public/patch-notes/` |
+| Balance | testers new to Cribbage find it too hard, so rising win rates are welcome (session 64); players beat elites 82–84% and gatekeepers 86 / 82 / 76 / 74% by layer; victory ~26% (target 24–30%), classes 23.7–28.3%, Heat ending ~12% of runs (session 69's tuning pass) |
+| UI | a whole run and plain Cribbage with a coach and lessons, on desktop and phones, saved after every choice; a guided tutorial, first-time tips, the Heat bar |
+| Art | the current terminal look is the intended style; no sprite pass planned (at most, refined map icons) |
+
+The playable-game plan (`docs/archive/playable-design.md`): milestones 1–4 (a
+pausable engine, one playable fight, a playable run, plain Cribbage) are
+done; milestone 5, polish and playtesting, is under way.
+
 *Paths updated 2026-10-28 when docs/ was reorganized; the content is as written.*
