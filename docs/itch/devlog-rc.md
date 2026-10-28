@@ -2,7 +2,7 @@
 
 Title: **crib.exe release candidate: help test before 1.0**
 
-Type: Release (itch's devlog "type" field). Attach `gameplay.gif` as the post's image.
+Post type: **Major Update or Launch** ("a newly available project"; later patch posts: General Update or Announcement). Attach `gameplay.gif` as the post's image.
 
 ---
 
