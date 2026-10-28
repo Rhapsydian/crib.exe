@@ -1,7 +1,9 @@
-# Mods (session 65)
+# Mods
 
-**Status: built (session 65, checkpoints 1-6).** The second piece of the player-side content pass
-(`BACKLOG.md` → Priorities; `docs/design/burners-events.md` BE9): more
+> **Status:** built in [session 65](../session-logs/session-65-2026-10-23.md), live since v0.9.0. **Decisions:** M1-M14. **Summary:** [DESIGN.md → Mods](../../DESIGN.md#mods).
+
+The second piece of the player-side content pass
+([`BACKLOG.md`](../../BACKLOG.md) → Priorities; [`docs/design/burners-events.md`](burners-events.md) BE9): more
 Mods, double-edged Mods, upgrades for the six class Mods, and the Events
 that offer them. Decided live, one question at a time.
 
@@ -21,7 +23,7 @@ the three that add a subroutine, and Threshold Exploit.
   downside a real cost, about half the upside's value. Mostly from Events
   (behind a risky choice or as a bargain), perhaps occasionally a
   gatekeeper's Mod reward; never the Shop. **Permanent**: a Mod, once
-  gained, can never be removed (the user: no purge option, now or later). Illustrations, not the list: Overclocked Kernel (first turn
+  gained, can never be removed (the designer: no purge option, now or later). Illustrations, not the list: Overclocked Kernel (first turn
   fires twice / a longer initiative bar), Ghost Credentials (free moves /
   fights' Heat +50%), Black Market Ties (Shop -30% / +4 Heat a visit),
   Glass Cannon (Credit +2 / the enemy starts at 10 Containment).
@@ -47,7 +49,7 @@ the three that add a subroutine, and Threshold Exploit.
   - Uncommon: **Nobs Exploit** (His Nobs also Credits 4); **Run Splicer**
     (each run also counts as a pair, for your Hooks and class Mod); **Last
     Word** (each go point you score, the last card or 31, gives you 2
-    additional initiative: the user's wording); **Lucky Cut** (a cut card
+    additional initiative: the designer's wording); **Lucky Cut** (a cut card
     of one of your class's suits: Credit 3); **Ward Converter** (at the end
     of each hand, a third of your remaining Ward becomes Credit); **Mirror
     Hand** (the enemy's first pair each hand also counts toward your pair
@@ -69,7 +71,7 @@ the three that add a subroutine, and Threshold Exploit.
   inside a pair royal or double pair royal is repriced (a royal's 6 and
   a double royal's 12 become 3 and 6 under Fifteen Fold, 15 and 30 under
   Pair Fold). **Both apply to pegging as well as the show.** Measured
-  (1,000 games at skill 0.85, `scripts/occurrence-frequency.ts`, each
+  (1,000 games at skill 0.85, [`scripts/occurrence-frequency.ts`](../../scripts/occurrence-frequency.ts), each
   pair inside a royal counted): per side per hand, 2.68 fifteens and 1.62
   pairs. Fifteen Fold: +2.68 / -1.62 points. Pair Fold at 4: +3.23 /
   -2.68, too close to even, so **Pair Fold's pairs are worth 5** (+4.85 /
@@ -83,7 +85,7 @@ the three that add a subroutine, and Threshold Exploit.
     86% of your turns: roughly even over a fight, strongest in short ones.
     If it measures weak, strengthen the opening, not the bar.)
   - **Ghost Credentials:** "Moving on the map adds no Heat, but each fight
-    adds 25% more Heat." (Measured, `scripts/heat-sources.ts`: per run
+    adds 25% more Heat." (Measured, [`scripts/heat-sources.ts`](../../scripts/heat-sources.ts): per run
     about 49 Heat from moves and 81 from fights. At +50% it netted only
     about -8; at +25% about -29.)
   - **Black Market Ties:** "Shop prices are 30% lower and each Shop sells a
@@ -159,13 +161,15 @@ the three that add a subroutine, and Threshold Exploit.
   - An Event offering a Mod you already hold greys that choice out (as
     unaffordable choices are).
 
-## Checkpoint plan
+## Build history
+
+### Checkpoint plan
 
 Each checkpoint: engine, text, tests, `npm run check`, then a pause for
-sign-off. Measurement uses a new `scripts/mod-check.ts` (each Mod with and
+sign-off. Measurement uses a new [`scripts/mod-check.ts`](../../scripts/mod-check.ts) (each Mod with and
 without it, like `burner-check.ts`: Containment prevented against a
 layer's elites for combat Mods, Heat or Data for map and Shop Mods, as a
-multiple of a reference Mod) and `scripts/run-outcomes.ts` for class
+multiple of a reference Mod) and [`scripts/run-outcomes.ts`](../../scripts/run-outcomes.ts) for class
 victory rates. Win-rate shifts are reported, not chased (session 64).
 
 1. **Scoring foundations.** M8: a pair royal reaches Hooks and class Mods
@@ -175,7 +179,7 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
    M8's class shift on its own first, since it moves Blackhat, Breacher
    and Warden before any new Mod exists.
 2. **The 12 rule-benders (M6).** Engine hooks, authored text, into the
-   general pool by rarity. `scripts/mod-check.ts` built here; tune
+   general pool by rarity. [`scripts/mod-check.ts`](../../scripts/mod-check.ts) built here; tune
    uncommons and rares against today's Mods of the same rarity.
 3. **The 6 double-edged Mods (M7, M9).** A `doubleEdged` flag keeps them
    out of the reward and Shop pools. Combat ones (the Folds, Overclocked
@@ -208,17 +212,17 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
    └────────────────────────────────────────────┘
    ```
 
-- **M13. Content first, supply later (the user, after checkpoint 2's
+- **M13. Content first, supply later (the designer, after checkpoint 2's
   jump to 36.1%).** Finish the Mods content; tune Mod supply (draw
   weights, how many) afterwards.
 - **M14. The Folds exclude each other, and an Event comes up once a run
-  (the user, checkpoint 5).** Holding either Fold greys out the other;
+  (the designer, checkpoint 5).** Holding either Fold greys out the other;
   the run remembers the Events met and never draws one again.
-- **M12. Raw Cribbage stays raw (the user).** No Folds in the trace
+- **M12. Raw Cribbage stays raw (the designer).** No Folds in the trace
   evasion; the evasion, and any Cribbage-skill check added later, is plain
   Cribbage skill, untouched by Mods.
 
-## Built
+### Built
 
 - **Checkpoint 1, scoring foundations.** `triggers.ts`: `pairsIn`,
   `occurrenceCount` (a royal is 3 pairs, a double royal 6; Hooks, class
@@ -235,7 +239,7 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
   run-to-run noise at this sample.
 - **Checkpoint 2, the rule-benders.** All twelve built (`mods.ts`,
   `resolve.ts`, `combat.ts`; combat gets the bench for Hot Standby) with a
-  test each (`rule-benders.test.ts`). `scripts/mod-check.ts`: each combat
+  test each (`rule-benders.test.ts`). [`scripts/mod-check.ts`](../../scripts/mod-check.ts): each combat
   Mod with and without it, six class loadouts of six commons against the
   layer-2 elites, as a multiple of the existing Mods' average fill cut at
   its rarity (uncommon 7.81 points, rare 8.32). Tuned in two rounds (the
@@ -275,7 +279,7 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
   - **Glass Cannon**: +2 Credit and a flat 10 measured +19.7 (10 is about
     a fifth of a typical Containment limit); now "Each Credit you score
     is 2 higher, but each enemy starts the fight with 25% of its
-    Containment filled.": +12.5 (the user's pick; +1 and 15% measured
+    Containment filled.": +12.5 (the designer's pick; +1 and 15% measured
     +11.2; the head start is the sensitive knob: +1 and a fifth +2.2).
   - **Ghost Credentials** -25.6 Heat a run, **Black Market Ties** +19.1
     Heat a run (with 30% off and contraband stock); both about 0 victory,
@@ -290,10 +294,10 @@ victory rates. Win-rate shifts are reported, not chased (session 64).
   +0.7, Breacher +7.3, Warden +11.3, Wraith +20.0. Tuned:
   - **Lateral Movement II**: a pair royal is too rare, so "Your second
     pair each hand gives you a turn at once (a pair royal counts as three
-    pairs).": +7.3 (the user approved; a side scores two or more pairs in
+    pairs).": +7.3 (the designer approved; a side scores two or more pairs in
     about 43% of hands, pegging and show together).
   - **Invocation II**: three fires' growth, not one: +4.7 (the caps
-    stopped it); with the user's addition, "Your Daemon subroutines start
+    stopped it); with the designer's addition, "Your Daemon subroutines start
     each fight with 3 fires' growth already in them, and can grow 3 fires
     further than usual.": +8.0.
   - **Phase Shift II**: 1 initiative, not 2: +8.7.

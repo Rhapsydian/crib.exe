@@ -21,12 +21,12 @@ names, with the code's where it helps.
 
 This doc is the settled design as it stands now, with the reasoning
 behind it. Superseded models, session-by-session backstory and old
-catalogs are archived verbatim in `docs/archive/design-history.md`;
-decision records live in `docs/archive/` (`archetype-redesign.md`,
+catalogs are archived verbatim in [`docs/archive/design-history.md`](docs/archive/design-history.md);
+decision records live in [`docs/archive/`](docs/archive) (`archetype-redesign.md`,
 `recalibration-design.md`, `authoring-design.md`, `balance-design.md`
-and others) and `docs/` (`docs/archive/playable-design.md`, `docs/design/trace-evasion.md`,
-`docs/design/tutorial.md`). See `BACKLOG.md` for open work and
-`docs/session-logs/` for the session history.
+and others) and `docs/` ([`docs/archive/playable-design.md`](docs/archive/playable-design.md), [`docs/design/trace-evasion.md`](docs/design/trace-evasion.md),
+[`docs/design/tutorial.md`](docs/design/tutorial.md)). See [`BACKLOG.md`](BACKLOG.md) for open work and
+[`docs/session-logs/`](docs/session-logs) for the session history.
 
 ## Concept
 
@@ -49,12 +49,12 @@ not a depleting health bar, and player-only (enemies don't persist across
 fights). It is what gives the run its StS-HP-equivalent friction — rest
 vs. push forward, risk vs. reward on the map. It is a **per-layer
 budget** (`heat.ts`; the decisions are run-economy D1–D7 and
-recalibration R5–R8, `docs/archive/recalibration-design.md`):
+recalibration R5–R8, [`docs/archive/recalibration-design.md`](docs/archive/recalibration-design.md)):
 
 - each layer has its own **allowance**, growing with depth so each layer
   leaves about the same room to explore (`LAYER_HEAT_ALLOWANCE`, 56 / 63 /
   72 / 80, plus Backup Generator's bonus; session 69,
-  `docs/archive/tuning-design.md` T2: shrinking ones left layer 1 slack and layer 4
+  [`docs/archive/tuning-design.md`](docs/archive/tuning-design.md) T2: shrinking ones left layer 1 slack and layer 4
   a straight route); **reaching it ends the run** (caught);
 - **every move costs Heat** (`HEAT_PER_MOVE`), in any direction, onto any
   node, resolved or not — see Map & Run Structure;
@@ -84,7 +84,7 @@ placeholders.
 
 **Trace** was once a player-side, in-fight Heat accumulator; session 58
 removed it (its cost landed as run-end Heat deaths, far from the choice
-that caused it). A noisy piece now pays in **feed** instead, progress
+that caused it). A noisy subroutine now pays in **feed** instead, progress
 handed to the opponent's gauge inside the fight. "Trace" survives only as
 an enemy-only effect that gives you Heat. The original model is archived.
 
@@ -162,15 +162,15 @@ Glossary: a subroutine's two effects are its **Process** and its **Hook**
 in the game; `alpha` and `beta` in code and in the decision records.
 
 The model was rebuilt from scratch in session 51 (decisions A1–A12,
-`docs/archive/archetype-redesign.md`), on session 50's per-turn model
-(`docs/archive/run-economy-design.md` D11–D15). Two lessons drove it:
+[`docs/archive/archetype-redesign.md`](docs/archive/archetype-redesign.md)), on session 50's per-turn model
+([`docs/archive/run-economy-design.md`](docs/archive/run-economy-design.md) D11–D15). Two lessons drove it:
 archetypes defined by role and flavour first had ended up with no way to
-win (patched more than once), and triggers that gated whether a piece
+win (patched more than once), and triggers that gated whether a subroutine
 acted at all let rarity silently decide *existence*. The old model is
 archived.
 
 The content is authored: **52 player subroutines**, 13 per archetype
-(`src/engine/content/`; `docs/design/subroutines.md`), plus 12 shared
+([`src/engine/content/`](src/engine/content); [`docs/design/subroutines.md`](docs/design/subroutines.md)), plus 12 shared
 enemy-only subroutines (`content/enemy-subroutines.ts`) and the
 gatekeepers' bespoke ones (`content/enemies.ts`).
 
@@ -192,7 +192,7 @@ Every subroutine has two effects:
     turn gate entirely.
 
 A Hook is **one bundle** (D12): it may raise magnitude *and* add a
-mechanic, but a piece never stacks several Hooks. One Process and one
+mechanic, but a subroutine never stacks several Hooks. One Process and one
 Hook are each independently measurable, which is what keeps pricing
 tractable.
 
@@ -203,7 +203,7 @@ richer.
 ### Verbs (what an effect does)
 
 Seven verbs, shared by every archetype (A4, A5). Archetype identity lives
-in which verbs a piece uses and in its Hook, not in archetype-exclusive
+in which verbs a subroutine uses and in its Hook, not in archetype-exclusive
 effect kinds.
 
 | Verb | Does | Primary user |
@@ -214,7 +214,7 @@ effect kinds.
 | **Empower** | boosts other subroutines' output, for the turn it fires in | Empowerment (Overclock) |
 | **Tempo** | speeds the caster's initiative or slows the opponent's | Tempo (Overclock), Control (Exploit) |
 | **Disrupt** | acts on the Cribbage layer: recon, forced discard | Control (Exploit) |
-| **Charge** | adds charges to this piece's or another piece's Hook | anyone; feeds Hooks |
+| **Charge** | adds charges to this subroutine's or another subroutine's Hook | anyone; feeds Hooks |
 
 Three more effects are **enemy-only**: **Trace** (gives you Heat),
 **Wipe** (your Hooks lose banked counts) and **Strip** (you lose Ward).
@@ -234,9 +234,9 @@ A Hook's criteria are a **source** (what it watches) combined with a
 | Source | Examples | Archetype affinity |
 |---|---|---|
 | **Cards** | a scoring category (fifteen, pair, run, flush, nobs, thirty-one, go); the archetype's own suit tally. Optional: whose scoring to watch, minimum magnitude | Exploit |
-| **Progress** | own points scored, this piece's fire count, defense absorbed | Daemon, Honeypot |
+| **Progress** | own points scored, this subroutine's fire count, defense absorbed | Daemon, Honeypot |
 | **State** | dealer / non-dealer, own Ward size, either side's gauge level, points scored this hand (`handPointsAtLeast`) | Honeypot, Overclock |
-| **Sequence** | what fired before this piece in the loadout (below) | Overclock |
+| **Sequence** | what fired before this subroutine in the loadout (below) | Overclock |
 
 | Shape | Behaviour |
 |---|---|
@@ -254,11 +254,11 @@ Order is a real decision (D13). Pieces fire top to bottom each turn, and
 **Sequence** Hooks come in two strengths:
 
 - **Adjacent** — the slot directly above *or* below holds a matching
-  piece (by id, archetype or verb). Positional, either side, and fixed by
+  subroutine (by id, archetype or verb). Positional, either side, and fixed by
   the arrangement — known before the turn starts, regardless of what
   fires (A12). A graded adjacent Hook counts both neighbours, rewarding
   being flanked. Hard to satisfy, so the larger Hook.
-- **Any-prior** — a matching piece fired *elevated* earlier this turn.
+- **Any-prior** — a matching subroutine fired *elevated* earlier this turn.
   Firing order, not position. Easier, so the smaller Hook.
 
 The two strengths differ in kind, not just size: adjacent is a placement
@@ -301,7 +301,7 @@ never converts. Pricing rule 3d is the guard.
 ### Classes
 
 Six classes, one per archetype pair (A8; named and authored in step 3,
-`docs/archive/authoring-design.md` C1–C4; `classes.ts`). Each carries a
+[`docs/archive/authoring-design.md`](docs/archive/authoring-design.md) C1–C4; `classes.ts`). Each carries a
 **class Mod** (code: bridge) granted at run start, never offered in the
 general pool, that makes one of its archetypes feed the other. Since
 session 60 every class Mod triggers on the owner's own **fifteens or
@@ -326,46 +326,46 @@ out to be gatekeeper matchup, not the classes (see Enemy Design).
 
 Each class specializes in its 2 archetypes for acquisition (see
 Subroutine acquisition): rewards draw primarily from them, with
-occasional off-class pieces from the other two.
+occasional off-class subroutines from the other two.
 
 ### Starting loadouts
 
 Three **commons** in loadout order (A9; `content/starting-loadouts.ts`):
-an **offense** piece with a credit path (the credit rule holds from turn
-one), a **utility** piece from the other archetype, and a piece that
+an **offense** subroutine with a credit path (the credit rule holds from turn
+one), a **utility** subroutine from the other archetype, and a subroutine that
 shows off the class Mod. That leaves 3 of 6 slots for acquisition.
 Exploit classes start with the noisy Fuzzer; Honeypot classes carry
-plain-Credit partner pieces (rule 3d), since conversion pays off only
+plain-Credit partner subroutines (rule 3d), since conversion pays off only
 after defense is banked.
 
-### Pricing (step 2, sessions 52–53)
+### Pricing
 
-Every piece is priced in **Credit per turn**, the currency (R1). The
+Every subroutine is priced in **Credit per turn**, the currency (R1). The
 full record, with every measurement behind these rules, is
-`docs/archive/recalibration-design.md`; raw output is in `docs/calibration/`.
+[`docs/archive/recalibration-design.md`](docs/archive/recalibration-design.md); raw output is in [`docs/calibration/`](docs/calibration).
 The instruments are:
 
-- `src/engine/pricing.ts` with `scripts/price-check.ts`: seat-swapped
-  mirror duels, a host plus the piece being priced against a host plus
+- [`src/engine/pricing.ts`](src/engine/pricing.ts) with [`scripts/price-check.ts`](scripts/price-check.ts): seat-swapped
+  mirror duels, a host plus the subroutine being priced against a host plus
   Credit Δ, solving for the Δ that ties.
-- `src/engine/beta-pricing.ts`: the formula.
-- `scripts/beta-validate.ts`: checks the formula against duels.
-- `scripts/feed-price.ts`: prices a noisy piece's feed against its band.
-- `scripts/skill-check.ts`: skill retention.
+- [`src/engine/beta-pricing.ts`](src/engine/beta-pricing.ts): the formula.
+- [`scripts/beta-validate.ts`](scripts/beta-validate.ts): checks the formula against duels.
+- [`scripts/feed-price.ts`](scripts/feed-price.ts): prices a noisy subroutine's feed against its band.
+- [`scripts/skill-check.ts`](scripts/skill-check.ts): skill retention.
 
 **Authoring rules:**
 
 1. **Verb prices** at a Credit-2 host, per point of the effect's amount:
    - **Flat across hosts:** Credit 1; Suppress ~0.96; Ward ~0.97;
      credit taken from the opponent ~1.85 (the strongest verb per
-     point); Empower ~1 per point per boosted piece.
+     point); Empower ~1 per point per boosted subroutine.
    - **Scaling with what they act on:** Haste ¼ turn ≈ ⅓ × own output,
      halved by the points cooldown; Slow and forced discard ≈ 0.27 ×
      the opponent's output; credit spent from your own Ward is worth only
      the Ward that would otherwise go unused. Price these in context.
    - **Disrupt:** reveal-hand and reveal-crib are cheap (~0.1–0.2).
      Forced discard halves against a weaker opponent.
-   - **Prices add:** two effects on one piece cost the sum of their parts.
+   - **Prices add:** two effects on one subroutine cost the sum of their parts.
 2. **Piece price = Process + expected Hook uses per turn × one use**
    (`piecePrice`). It holds within ~3% for card, progress and
    dealer/non-dealer sources. It returns null rather than guess for
@@ -380,36 +380,36 @@ The instruments are:
    **A Charge partner needs cap to spare when the charge arrives**
    (step 3, checkpoint 1). A charge into a Hook that is already full is
    wasted.
-3b. **Growth is priced in a mid-length fight** (step 3, S9). A piece
+3b. **Growth is priced in a mid-length fight** (step 3, S9). A subroutine
    whose Process grows is priced against a Credit-4 host (~8 hands) rather
    than the standard Credit-2 host (~10), with its host-2 and host-8
    (~5 hands) prices reported as its range. Ramp is meant to be strongest
    in long fights.
-3c. **Price positional pieces in position** (step 3, checkpoint 3).
-   Empower and sequence pieces are priced where they're designed to sit
+3c. **Price positional subroutines in position** (step 3, checkpoint 3).
+   Empower and sequence subroutines are priced where they're designed to sit
    (`priceAddition`'s numeric placement), with a neutral spacer between
-   them and any other adjacency piece, so the price measures this piece
+   them and any other adjacency subroutine, so the price measures this subroutine
    and not the bonus its presence gives a neighbour. Flat haste is worth
-   little; tempo pieces work better as large, occasional hastes.
+   little; tempo subroutines work better as large, occasional hastes.
 3d. **Conversion must scale with your own turns** (step 3, S11). Ward
    absorbed is powered by the opponent's attacks, so conversion fuelled
    by it inverts skill at volume. A Honeypot kit whose offense was mostly
    that kind of conversion measured retention as low as −1.0. Main
    conversion spends your own banked Ward; absorbed-fuelled conversion
-   stays small (cap 1–2); and Honeypot pieces carry some plain Credit.
-   Honeypot classes also carry their partner's credit piece.
-3e. **A noisy piece earns a Credit premium above its rarity band, paid
-   for by its feed** (session 56, B5; the user's principle). Fuzzer and
+   stays small (cap 1–2); and Honeypot subroutines carry some plain Credit.
+   Honeypot classes also carry their partner's credit subroutine.
+3e. **A noisy subroutine earns a Credit premium above its rarity band, paid
+   for by its feed** (session 56, B5; the designer's principle). Fuzzer and
    Jackpot carry +1 Credit a turn (Process 1 → 2); their feed is sized so
-   the piece, premium and feed together, prices back at its band
-   (`scripts/feed-price.ts`). Feed resolves inside the fight, so the duel
+   the subroutine, premium and feed together, prices back at its band
+   ([`scripts/feed-price.ts`](scripts/feed-price.ts)). Feed resolves inside the fight, so the duel
    prices it — no run-level measurement needed.
 4. *(Retired with Trace in session 58; archived.)*
 5. **Skill retention ≥ 0.5.** Cribbage skill must keep deciding fights.
    - **The measure:** a loadout mirror's skill edge (the better player's
      win rate − 0.5) over plain Cribbage's, at the same skills.
      `skill-retention.test.ts` guards the starting loadouts;
-     `scripts/skill-check.ts` measures any loadout, **late-run builds
+     [`scripts/skill-check.ts`](scripts/skill-check.ts) measures any loadout, **late-run builds
      included**, where retention runs lowest.
    - **What sets it:** skill reaches a fight as turn count (points fill
      the initiative gauge). Per-turn scoring is skill-flat, so which
@@ -436,7 +436,7 @@ can be reskinned as different named contract targets, a natural hook for
 meta-progression.
 
 **One layer at a time.** The map shows only the current layer
-(`docs/archive/playable-design.md` M1–M9; `map-gen.ts`). Layers are **10 / 12 /
+([`docs/archive/playable-design.md`](docs/archive/playable-design.md) M1–M9; `map-gen.ts`). Layers are **10 / 12 /
 12 / 14** nodes, laid out as a scattered network on a hex backdrop (no
 two nodes on neighbouring hexes), linked only to near neighbours with no
 crossings, the gatekeeper 3–6 moves from the entry and never behind
@@ -506,7 +506,7 @@ Five outcomes (`run.ts` `RunOutcome`):
    forward; a soft lock distinct from both of the above.
 5. **Breached, then caught** (`breachedThenCaught`) — the gatekeeper is
    beaten but its toll (charged after the fight) maxes Heat, and the
-   **trace evasion** that follows is lost (`docs/design/trace-evasion.md`,
+   **trace evasion** that follows is lost ([`docs/design/trace-evasion.md`](docs/design/trace-evasion.md),
    `evasion.ts`). The evasion is three hands of plain Cribbage against
    the gatekeeper, which starts a point ahead per 10% of its final
    Containment; you deal the 1st and 3rd hands; finish strictly ahead to
@@ -520,7 +520,7 @@ Five outcomes (`run.ts` `RunOutcome`):
 Burners, Events, Shops and Caches (below).
 
 **Between runs** (`meta.ts`; the full record is
-`docs/design/meta-progression.md`):
+[`docs/design/meta-progression.md`](docs/design/meta-progression.md)):
 
 - **Rep** is the currency, earned by depth: 10 / 15 / 20 / 25 for each
   layer breached, 75% of that for breached-then-caught, +2 an elite, +20
@@ -543,7 +543,7 @@ Burners, Events, Shops and Caches (below).
 
 ### Daily Runs
 
-One fixed run a day for everyone (`daily.ts`; `docs/design/daily-runs.md`):
+One fixed run a day for everyone (`daily.ts`; [`docs/design/daily-runs.md`](docs/design/daily-runs.md)):
 the date seeds the class (from all six, unlocked or not), the map and a
 set of daily Mods: one **Directive** (the day's scoring twist) plus two
 or three **Glitches** (Cribbage and fight rules), **Advisories** (the
@@ -581,10 +581,10 @@ uncapped loadout would bloat; the cap is 6 (`INSTALLED_SLOT_CAP`,
 echoing Cribbage's dealt hand), and six ordered slots is the build puzzle
 itself. The bench holds 3 (`BENCH_CAP`).
 
-**Duplicate subroutines**: a copy of a piece you already own does not
+**Duplicate subroutines**: a copy of a subroutine you already own does not
 take a slot; it becomes a **banked copy**, spent at a Quiet Host's
-**Refactor** to rank the piece up. Refactor spends every banked copy at once,
-up to `MERGE_RANK_CAP` (3). A rank strengthens the piece's Hook, never
+**Refactor** to rank the subroutine up. Refactor spends every banked copy at once,
+up to `MERGE_RANK_CAP` (3). A rank strengthens the subroutine's Hook, never
 its Process's verb or its Hook's source, since those are its identity
 (`merge.ts`).
 
@@ -597,7 +597,7 @@ half their buying price by rarity plus a premium per rank.
 ### Mods
 
 crib.exe's answer to StS relics: permanent, always-on effects
-(`mods.ts`, `mod-types.ts`; `docs/design/mods.md`). 57 exist: 6 class
+(`mods.ts`, `mod-types.ts`; [`docs/design/mods.md`](docs/design/mods.md)). 57 exist: 6 class
 Mods, 6 double-edged Mods (a strong upside with a real cost), and 45
 general (14 common, 19 uncommon, 12 rare), most of the newer ones
 rule-benders that change how the Cribbage or the loadout works. Static Shield is set aside (defined but never
@@ -612,7 +612,7 @@ owned only once; an owned Mod drops out of the pool.
 
 - **Hook Mods** fire at named hook points in combat (on a fire, at fight
   start, on incoming progress) or the run (on a move, on an encounter
-  resolved, on a Shop slate, on acquiring a piece or a Mod), each folding
+  resolved, on a Shop slate, on acquiring a subroutine or a Mod), each folding
   a value through and returning it. They cover archetype amplifiers,
   Hook boosts, Heat and Data economy, and Shop discounts.
 - **Subroutine Mods** carry a real subroutine: either a *reactive* one
@@ -633,7 +633,7 @@ regulars carry none. No enemy carries a class Mod.
 ### Burners
 
 crib.exe's answer to StS Potions: single-use, **player-activated** items
-(`burners.ts`; `docs/design/burners-events.md`), the one thing the otherwise automatic (subroutines) or
+(`burners.ts`; [`docs/design/burners-events.md`](docs/design/burners-events.md)), the one thing the otherwise automatic (subroutines) or
 passive (Mods) systems lack. Named for a burner phone: used once and
 discarded to avoid being traced.
 
@@ -689,9 +689,9 @@ move.
 
 ### Gameplay Simulation Heuristics
 
-The engine runs headless runs for balance (`scripts/sweep.ts`,
-`scripts/layer-funnel.ts`). The simulated player is a named profile
-(`src/engine/profiles.ts`) bundling "synergy-aware" strategies for every
+The engine runs headless runs for balance ([`scripts/sweep.ts`](scripts/sweep.ts),
+[`scripts/layer-funnel.ts`](scripts/layer-funnel.ts)). The simulated player is a named profile
+([`src/engine/profiles.ts`](src/engine/profiles.ts)) bundling "synergy-aware" strategies for every
 decision a run asks: acquisition by a lexicographic priority ladder
 (credit gap, then archetype match, then rarity) rather than tuned
 weights, swap-out when the loadout is full, reordering for chains, Merge
@@ -707,7 +707,7 @@ Quiet Host choice are a separate, combinable profile
 upgrades and Security Level 0, every class within about ±3 points of the
 average. The measured state: about 26% (classes 23.7–28.3%), Heat ending
 about 12% of runs, about 65–71% of each layer explorable, and about 12
-Mods by a winning run's end (`docs/archive/tuning-design.md`). Gatekeepers get
+Mods by a winning run's end ([`docs/archive/tuning-design.md`](docs/archive/tuning-design.md)). Gatekeepers get
 harder by layer (about 86 / 82 / 76 / 74% passed). Skill retention stays
 ≥ 0.5 (Pricing rule 5).
 
@@ -719,7 +719,7 @@ gave a fresh player somewhere to grow from.
 
 **Tone: every enemy is the target network's own defenses**, even the
 offense-flavoured kits (its security team or automated countermeasures
-hacking back), never a separate criminal group (`docs/design/enemies.md`). External-actor flavour
+hacking back), never a separate criminal group ([`docs/design/enemies.md`](docs/design/enemies.md)). External-actor flavour
 for a specific contract remains future idea space.
 
 Enemies are a real roster with identity, structurally close to player
@@ -727,19 +727,19 @@ classes: each is authored data, an archetype set (a pair by default, one
 or three when the identity calls for it), a loadout of real subroutines,
 and for elites and gatekeepers a Mod. They use the same four archetypes,
 seven verbs and source × shape criteria as the player, plus the
-enemy-only Trace, Wipe and Strip, and can carry noisy pieces (their feed
-hands you Breach). Decisions E1–E7 are in `docs/archive/authoring-design.md`.
+enemy-only Trace, Wipe and Strip, and can carry noisy subroutines (their feed
+hands you Breach). Decisions E1–E7 are in [`docs/archive/authoring-design.md`](docs/archive/authoring-design.md).
 
 **Authoring investment scales down by tier**, deliberately: regular and
 elite fights recur many times across a run; gatekeepers are the
 memorable set pieces.
 
-- **Regular**: 2–3 pieces, built from the player's own pool or a few
+- **Regular**: 2–3 subroutines, built from the player's own pool or a few
   enemy-only ones, no Mod. Eligible from a minimum layer onward.
-- **Elite**: 3 pieces and a smaller rule-bending Mod; meant to be a
+- **Elite**: 3 subroutines and a smaller rule-bending Mod; meant to be a
   genuine challenge. Eligible from a minimum layer onward.
 - **Gatekeeper**: fully bespoke, four per layer, each with at least one
-  bespoke, thematic piece and one bespoke Mod, and meant to be very
+  bespoke, thematic subroutine and one bespoke Mod, and meant to be very
   challenging for the layer it's presented at.
 
 Regular and elite magnitude follows the player's measured power by layer
@@ -772,7 +772,7 @@ pass-rate target, close to each other.
 
 ### The Roster
 
-49 enemies (`src/engine/content/enemies.ts`), by tier and the first layer
+49 enemies ([`src/engine/content/enemies.ts`](src/engine/content/enemies.ts)), by tier and the first layer
 each appears at, plus a tutorial-only gatekeeper.
 
 | Layer | Regular | Elite (Mod) | Gatekeeper (Mod) |
@@ -791,9 +791,8 @@ strength carrying Rate Limit, used only by the tutorial.
 Svelte + Vite, rendering everything (cards, loadout, the network map) as
 SVG/DOM — no canvas game engine (Phaser/PixiJS). This is a UI/turn-driven
 game, not real-time action, so an engine would be overhead without
-payoff. Svelte was chosen for toolchain/pattern familiarity from
-glyphrogue/glyphkeep — not for any code reuse; glyphrogue's engine itself
-is built for ASCII dungeon-crawling and doesn't fit this genre.
+payoff. Svelte 5 and TypeScript, tested with Vitest; Svelte was chosen
+for familiarity with its toolchain from earlier projects.
 
 ## Architecture
 
@@ -814,8 +813,8 @@ AI needs it regardless; and it makes AI-vs-AI simulation for balance a
 free by-product.
 
 **Structure**: a single Vite app. The engine is plain TypeScript in
-`src/engine/` (content in `src/engine/content/`), tested in plain Node
-with no browser context; the UI is Svelte 5 in `src/ui/`. One standalone
+[`src/engine/`](src/engine) (content in [`src/engine/content/`](src/engine/content)), tested in plain Node
+with no browser context; the UI is Svelte 5 in [`src/ui/`](src/ui). One standalone
 game with no downstream consumer needs no workspace split: the folder
 convention plus browser-free engine tests enforce the separation.
 
@@ -847,7 +846,7 @@ remaining design work is each suit's visual identity, the same
 relationship a real suit symbol (♠) has to its name (Spade).
 
 Session 51 redesigned the archetypes and therefore the suits (A1, A7;
-the session 13 table is archived in `docs/archive/design-history.md`):
+the session 13 table is archived in [`docs/archive/design-history.md`](docs/archive/design-history.md)):
 
 | Suit / Archetype | Icon | Color |
 |---|---|---|
@@ -870,7 +869,7 @@ session 51 and are easy to revisit.
 
 ## Open Questions
 
-See `BACKLOG.md` for the working list.
+See [`BACKLOG.md`](BACKLOG.md) for the working list.
 
 - **Playtesting before 1.0:** balance and clarity from testers' reports.
 - **Tuning numbers:** constants marked `TBD/playtesting` in the code

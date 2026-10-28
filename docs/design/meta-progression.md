@@ -1,8 +1,10 @@
-# Meta-progression (session 71)
+# Meta-progression
 
-**Status: built (session 71), live since v0.9.0.** Progression
+> **Status:** built in [session 71](../session-logs/session-71-2026-10-24.md), live since v0.9.0. **Decisions:** MP1-MP17. **Summary:** [DESIGN.md → Meta-Progression](../../DESIGN.md#meta-progression).
+
+Progression
 between runs: Rep, class unlocks, upgrades, the subroutine and Burner
-library, and ascension. Decided live, one question at a time.
+library, and Security Levels (`ascension` in the code). Decided live, one question at a time.
 
 Where things stood: all six classes selectable from the start; nothing
 carries between runs; run saves break on any game update. Balance (the
@@ -13,7 +15,7 @@ run's depth be credited, *breached, then caught* below a full continue
 
 ## Decisions
 
-- **MP1. What it's for (the user):** onboarding (classes unlock as you
+- **MP1. What it's for (the designer):** onboarding (classes unlock as you
   learn), long-term goals (the library), and incremental power (upgrades
   you feel run to run). **The balance targets describe a fresh player
   with no upgrades;** upgrades make runs easier on top of them.
@@ -36,7 +38,7 @@ run's depth be credited, *breached, then caught* below a full continue
   (Ward, then Suppress and fifteens, then combinations), the fiddliest
   last.
 - **MP5. A testing switch, `?unlockall`,** opens every class and the
-  whole library. **REMOVE BEFORE RELEASE** (the user: not around
+  whole library. **REMOVE BEFORE RELEASE** (the designer: not around
   forever); flagged in BACKLOG and in the code.
 - **MP6. A steep Rep fallback:** the next locked class can be bought for
   about 3-4 first-gatekeeper runs' worth of Rep, so no one is walled out.
@@ -46,19 +48,19 @@ run's depth be credited, *breached, then caught* below a full continue
   |---|---|---|---|
   | Enemy Containment bigger | 5 | +3% | +15% |
   | Your Breach smaller | 5 | −3% | −15% |
-  | Fight Heat (the user's addition) | 5 | −4% | −20% |
+  | Fight Heat (the designer's addition) | 5 | −4% | −20% |
   | Safehouse rest Heat (now 12) | 4 | +3 | 24 |
   | Shop prices (multiplies with other discounts) | 5 | −4% | −20% |
-  | Exploit / Daemon / Overclock / Honeypot power (the user's addition) | 5 each | +4% to that archetype's Process | +20% |
+  | Exploit / Daemon / Overclock / Honeypot power (the designer's addition) | 5 each | +4% to that archetype's Process | +20% |
   | Burner slots (now 3) | 2 | +1 | 5 |
   | Subroutine slot (now 6) | 1 | +1 | 7 |
 
-  Movement Heat gets no track (already small, the user). **Sizes kept
+  Movement Heat gets no track (already small, the designer). **Sizes kept
   after measuring (checkpoint 5):** fresh victory 25%, every track bought
   out plus a 4th starter 90% (subroutine slot +18, Breach +14, fight Heat
-  +11, Containment +9 on their own). The user: a maxed player may stomp
+  +11, Containment +9 on their own). The designer: a maxed player may stomp
   Security Level 0, having earned it; the Security Levels claw it back.
-- **MP8. The library (the user's design):** unlocked subroutines can
+- **MP8. The library (the designer's design):** unlocked subroutines can
   start a run as a **4th starter** (added, not swapped: six slots fill
   fast). The store shows **one subroutine per archetype**, its next in a
   fixed order (simplest first); **all 20 commons** across every archetype
@@ -69,7 +71,7 @@ run's depth be credited, *breached, then caught* below a full continue
 - **MP9. Starting Burner:** the 6 common Burners (Flash Drive, Patch
   Tuesday, Packet Storm, Honeynet Shim, Log Wiper, Stolen Coupon) can be
   unlocked; choose one to carry into a run.
-- **MP10. The profile:** Rep, unlocks, upgrades, ascension progress and
+- **MP10. The profile:** Rep, unlocks, upgrades, Security Level progress and
   records, stored apart from run saves, with its own version and forward
   migrations, so a game update never wipes it. Browser-local, like saves.
 - **MP11. Pacing:** the tutorial grant buys a first upgrade; something
@@ -78,7 +80,7 @@ run's depth be credited, *breached, then caught* below a full continue
   **the whole library ~100 runs**; prices rise level by level. Set by
   measurement (a progression script), tuned for a player a little below
   the simulated one. **Set in checkpoint 5** (`scripts/meta-pacing.ts
-  --part=career`, skill 0.75, 6 careers). The user found victory nearing
+  --part=career`, skill 0.75, 6 careers). The designer found victory nearing
   90% by run 20 too quick, and chose **option A**: the four strongest
   tracks climb steeply. Targets: victory ~50% by run 20, an upgrades-first
   player maxed out ~run 50-60. Prices: Low Profile, Exploit Research and
@@ -95,7 +97,7 @@ run's depth be credited, *breached, then caught* below a full continue
   **profile export/import** waits for one (BACKLOG; an opaque code with a
   checksum, since a profile only cheats yourself and a Daily Runs
   leaderboard would verify by replay, not by profile).
-- **MP13. Ascension, named Security Level (the user):** players see
+- **MP13. Ascension, named Security Level (the designer):** players see
   "Security Level 7", badged "SEC 7" (the network hardening against you;
   "ascension" stays the code's word). It unlocks once **all six classes are
   unlocked and a full run is won**. **10 levels**, unlocked **globally**
@@ -118,13 +120,13 @@ run's depth be credited, *breached, then caught* below a full continue
   | 9 | Safehouse rest sheds half the Heat | allowance −20% |
   | 10 | The final gatekeeper takes three Mods | elites a third Mod |
 
-  Two more pressures (the user): **every level adds +5% to all Heat
+  Two more pressures (the designer): **every level adds +5% to all Heat
   gained** (fights, moves, alarms, tolls; +50% at 10), and **at levels 2,
   5 and 8 enemy Containment −5% and your Breach +5%**, so by level 8 the
   gauge upgrades are fully offset.
 
   Targets (a fully upgraded simulated player): victory ~90% at 0 (measured),
-  ~20% at 5, **~3-5% at 10** (the user: very hard, bragging rights).
+  ~20% at 5, **~3-5% at 10** (the designer: very hard, bragging rights).
 
   **Tuned in checkpoint 6** (`scripts/meta-pacing.ts --part=security`):
   the first ladder fell off a cliff at level 2 (a fresh player 17% → 1%)
@@ -135,13 +137,13 @@ run's depth be credited, *breached, then caught* below a full continue
   at −10% and its rest sheds 85% (were −20% and half); the final
   gatekeeper takes three Mods in all (a bug gave it four). Measured, fully
   upgraded / fresh: level 1 84% / 19%, 2 67% / 5%, 3 56% / 2%, 4 49%, 5
-  30%, 6 17%, 7 6%, 8 6%, 9 3%, 10 2%. The user: level 10 all but
+  30%, 6 17%, 7 6%, 8 6%, 9 3%, 10 2%. The designer: level 10 all but
   impossible is fine (the cap of bragging rights), and fresh players at
   Security Levels aren't a worry. **Level 5 eased toward 20%:** the
   bigger Heat carry-over (25%) moved from level 6 to 5, taking it to
   ~26% (moving the allowance cut or the Shop price escalation instead
   measured ~no change, so they stay at 6 and 7).
-- **MP17. Play without the Message Board (the user):** a class-select
+- **MP17. Play without the Message Board (the designer):** a class-select
   toggle switches off every upgrade and the starting picks for a run
   (recorded in its setup as `plain`); off by default, the last choice
   remembered, like the picks (which default to none). Rep, class
@@ -150,29 +152,31 @@ run's depth be credited, *breached, then caught* below a full continue
   and each class's highest level beaten on the class select (unlocks stay
   global).
 - **MP16. The screens:** the store is a **main-menu screen, the Message
-  Board** (the user's name), not listed until the first finished run
+  Board** (the designer's name), not listed until the first finished run
   (the tutorial counts), then introduced once by a card saying what it
   is; its menu line carries a description ("spend Rep on upgrades,
   subroutines and Burners"). Tabs: Upgrades, Library, Burners. The class
   select shows locked classes with their requirement and fallback price,
-  the starting subroutine and Burner picks, and the ascension picker; the
+  the starting subroutine and Burner picks, and the Security Level picker; the
   end-of-run card itemizes Rep earned and announces unlocks.
 
 ## Technical notes
 
 - **A run's save must pin what shaped it:** the upgrades, starting picks
-  and ascension level at the run's start are recorded in the save (save
+  and Security Level at the run's start are recorded in the save (save
   version 3), so a replay rebuilds the same run even after later
   purchases.
 - **Upgrades enter the engine as run options** (gauge multipliers, Heat
   factors, price factor, archetype Process factors, slot and Burner caps,
   starting extras), so the simulation measures them like any other
   option.
-- **Ascension rules are run options too:** an enemy strength factor,
+- **Security Level rules are run options too:** an enemy strength factor,
   extra Mods by tier, Heat reset and allowance factors, price factor,
   skill offset, reward count, rest factor.
 
-## Checkpoint plan
+## Build history
+
+### Checkpoint plan
 
 1. **The profile and Rep:** profile storage (versioned, migrating),
    `?resetprofile`; Rep from a finished run (MP3) and the tutorial grant;
@@ -185,6 +189,6 @@ run's depth be credited, *breached, then caught* below a full continue
    tabs (MP8's library order), buying; the class select's starting picks.
 5. **Pacing and prices:** a progression script (the simulated player
    buying as it earns); the fully upgraded win rate; prices set to MP11.
-6. **Ascension:** the rules and strength factor, its unlock, the picker,
+6. **Security Levels:** the rules and strength factor, its unlock, the picker,
    the badge and per-class records; measured and tuned to MP14's
    targets.

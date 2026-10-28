@@ -1,23 +1,25 @@
-# Burners and Events (session 64)
+# Burners and Events
 
-**Status: built in session 64 (checkpoints 1-5).** The first
-half of the player-side content pass (`BACKLOG.md` → Priorities). Decided
+> **Status:** built in [session 64](../session-logs/session-64-2026-10-23.md), live since v0.9.0. **Decisions:** BE1-BE10. **Summary:** [DESIGN.md → Burners](../../DESIGN.md#burners), [Events](../../DESIGN.md#events).
+
+The first
+half of the player-side content pass ([`BACKLOG.md`](../../BACKLOG.md) → Priorities). Decided
 live, one question at a time.
 
 ## Burners
 
-The problem (the user, session 63): the economy Burners (Data, Shop
+The problem (the designer, session 63): the economy Burners (Data, Shop
 discounts) are the only ones worth carrying. A combat Burner was a lump at
 the start of a turn (Flash Drive: Credit 5, a tenth of a fight).
 
 - **BE1. Three kinds of combat Burner.** Lumps, resized to be worth a slot
   (about a fifth of a fight); rule-benders that bend a rule for a turn or
   a hand, most new ones, scaled by rarity; and **temporary subroutines**
-  (the user's category, BE3).
+  (the designer's category, BE3).
 - **BE2. Each Burner says when it acts.** Its text leads with its timing.
   **"Now:"** takes effect as soon as it's armed and can be toggled off
   again until your next decision in the fight (a discard or a card),
-  which commits it and spends it (the user's refinement). **"Next turn:"**
+  which commits it and spends it (the designer's refinement). **"Next turn:"**
   fires at the start of your next turn, as before. One armed at a time,
   the same toggle under your gauges.
 - **BE3. Temporary subroutines.** A Burner slots a subroutine in at the
@@ -28,21 +30,21 @@ the start of a turn (Flash Drive: Credit 5, a tenth of a fight).
   Hook like any subroutine; no ranks or Merge; "the next subroutine" and
   adjacency effects treat it like any slot. One at a time (a second
   replaces the first). Its name carries the ⏏ prefix, and a plain
-  **"Burner · N left" tag sits where a rank would go** (the user's call:
+  **"Burner · N left" tag sits where a rank would go** (the designer's call:
   the icon once, on the name).
 - **BE4. Map Burners are Heat tools.** Ghost Protocol buffed (next 3
   moves free); new: lower your Heat now, the next fight's Heat halved, the
   next gatekeeper's Heat toll halved, and **Tunnel**, pass through a Shop
-  or Safehouse without visiting it (the user's addition: reach what's
+  or Safehouse without visiting it (the designer's addition: reach what's
   behind it without spending it). Recon Ping retired (no fog of war).
-  **Skeleton Key** stays, flagged: the user is rarely contained outside
+  **Skeleton Key** stays, flagged: the designer is rarely contained outside
   gatekeepers, so a closed node is rare; that is a symptom to check in
   the enemy pass (regular / elite difficulty), and the key's fate follows.
 - **BE5. Events and Burners.** Three or four **contraband** Burners are
   offered only by Events, usually behind the riskier choice; Events can
-  also grant Burners from the general pool (the user).
+  also grant Burners from the general pool (the designer).
 - **BE6. Pool and carry.** 24 Burners; the carry limit stays 3.
-  More Burner slots is a meta-progression idea (`BACKLOG.md`).
+  More Burner slots is a meta-progression idea ([`BACKLOG.md`](../../BACKLOG.md)).
 - **BE7. The slate** (numbers are starting points, tuned by measurement):
 
 | Burner | Rarity | Kind | Text |
@@ -69,16 +71,16 @@ the start of a turn (Flash Drive: Credit 5, a tenth of a fight).
 | Golden Ticket | contraband | map | The next gatekeeper has no Heat toll. |
 | Kill Switch | contraband | lump | Now: the enemy's Containment drops by half. |
 
-Player-text rule (the user): "your" only for what the player has (Heat,
+Player-text rule (the designer): "your" only for what the player has (Heat,
 moves, loadout, Hooks); the network's things are "the next gatekeeper",
 "the next fight", never "your next gatekeeper".
 
 ## Events
 
-- **BE8. A library of about 30**, growing across sessions (the user:
+- **BE8. A library of about 30**, growing across sessions (the designer:
   Events are the game's story moments; Slay the Spire-like variety). Kinds:
   pitfalls; steep bargains (a powerful reward at a high price); gambles;
-  **games** (Event mini-games); **double-edged pieces** (a Mod that helps
+  **games** (Event mini-games); **double-edged Mods** (a Mod that helps
   and hurts); **class Mod upgrades** (gamble to upgrade your starting
   Mod). Some gated by layer, so deeper Events carry bigger stakes.
 - **BE9. Phased.** This session: the Burner rework, Event scene text,
@@ -87,7 +89,7 @@ moves, loadout, Hooks); the network's things are "the next gatekeeper",
   Mods and class Mod upgrades with the Mods session, their Events with
   them; then Event mini-games.
 - **BE10. Every Event has story.** A scene that sets up the choice, and a
-  line for what happened after it (the user: never a bare choice). The
+  line for what happened after it (the designer: never a bare choice). The
   existing eight get theirs written too.
 
 ## Screens
@@ -127,7 +129,7 @@ An Event (story first, then the choices, each with its risk shown):
 After choosing, a line of what happened ("The payload fizzles. In the
 wreckage you find…") above the result, as the notice screen shows now.
 
-## Checkpoints (session 64)
+## Build history
 
 1. **Burner engine.** BE2's timing (Now / Next turn, commit on your next
    decision), turn- and hand-long rule-bends, temporary subroutines
@@ -136,7 +138,7 @@ wreckage you find…") above the result, as the notice screen shows now.
    (Event-only), Recon Ping retired. The simulated player uses them.
    Tests.
 2. **The slate, measured.** BE7 in content; each Burner's effect measured
-   (with and without, the user's rule) and tuned to its rarity; Burner
+   (with and without, the designer's rule) and tuned to its rarity; Burner
    supply rechecked; full-run balance re-measured.
 3. **Burner screens.** The arm row with timing; the temporary subroutine
    with its ⏏ Burner tag and countdown; Tunnel on the map; the reward,
@@ -146,5 +148,5 @@ wreckage you find…") above the result, as the notice screen shows now.
    contraband) as outcomes; the "Pass -- keep moving" double dash fixed.
 5. **The first batch of Events.** About 10 new ones (pitfalls, bargains,
    gambles; contraband behind risky choices; some layer-gated), drafted
-   as a slate with their story for the user's review before they're
+   as a slate with their story for the designer's review before they're
    built, then measured.

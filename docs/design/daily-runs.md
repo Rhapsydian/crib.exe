@@ -1,16 +1,18 @@
-# Daily Runs (session 72)
+# Daily Runs
 
-**Status: built (session 72), live since v0.9.0.** The last
+> **Status:** built in [session 72](../session-logs/session-72-2026-10-25.md), live since v0.9.0. **Decisions:** DR1-DR10. **Summary:** [DESIGN.md → Daily Runs](../../DESIGN.md#daily-runs).
+
+The last
 major content piece: a run of the day, the same for everyone, with its
 own score and twists. Decided live, one question at a time.
 
-From BACKLOG (the user, session 62): the date hashed into a seed, a random
+From BACKLOG (the designer, session 62): the date hashed into a seed, a random
 class, daily-only Mods that bend the rules; a server leaderboard as a
 stretch goal.
 
 ## Decisions
 
-- **DR1. Shape (the user):** a fixed, fair run; **the first attempt each
+- **DR1. Shape (the designer):** a fixed, fair run; **the first attempt each
   day counts**, later attempts are tracked as practice with the best kept
   "for fun". **Phase 1 only:** no server or leaderboard; bragging by
   screenshot and a share line.
@@ -22,23 +24,23 @@ stretch goal.
   | Each layer breached | 1000 (breached, then caught: 750) |
   | Victory | +1000 |
   | Each elite beaten | +150 |
-  | Each Cache opened (the user) | +100 |
-  | Data earned over the run (the user; not Data left, which rewards hoarding) | +1 per Data |
+  | Each Cache opened (the designer) | +100 |
+  | Data earned over the run (the designer; not Data left, which rewards hoarding) | +1 per Data |
   | Cribbage rating | by stars: 100 / 200 / 350 / 500 / 700 (session 72; was +5 per point of a 0-100 rating) |
 
   Regular fights score nothing of their own (they pay Data); time taken
   doesn't count (it would rush Cribbage).
-- **DR3. Daily Mods in four categories (the user):**
+- **DR3. Daily Mods in four categories (the designer):**
   - **Glitch:** Cribbage and fight rules (how you play);
   - **Advisory:** the network: map, Heat, economy (how you route);
   - **Bulletin:** your starting kit (what you start with);
   - **Directive:** the day's scoring twist (what you chase).
 - **DR4. A day's makeup:** **one Directive, plus two or three from
-  Glitch, Advisory and Bulletin** (the user), drawn by the day's seed;
+  Glitch, Advisory and Bulletin** (the designer), drawn by the day's seed;
   some pairs never appear together. **The Directive is dealt from a
   shuffled deck**, one a day (checkpoint 1: random draws repeated within
   a week), so none repeats within its 13-day cycle.
-- **DR5. The fixed setup (the user):** the date as `YYYY-MM-DD` with a salt
+- **DR5. The fixed setup (the designer):** the date as `YYYY-MM-DD` with a salt
   is hashed into the day's seed, which rolls the class and the Mods; the
   class is random from all six (unlocked or not; a taste of locked ones,
   unlocking nothing); **no upgrades**; extra starting subroutines or
@@ -48,15 +50,15 @@ stretch goal.
 - **DR6. Rep:** the scored attempt earns normal Rep (no Security Level
   bonus); practice earns none; a daily counts as a finished run but not
   toward class unlocks or Security Levels.
-- **DR7. Bulletin caps (the user):** at most **one** extra starting
+- **DR7. Bulletin caps (the designer):** at most **one** extra starting
   subroutine and at most **two** starting Burners per day, however many
   Bulletins roll; slot Bulletins don't stack (at most one extra
   subroutine slot and one extra Burner slot). Random parts (which Burner,
   which subroutine) are rolled by the day's seed and named in the
   briefing.
-- **DR8. Extra slots as Bulletins (the user):** a Burner slot, and a
+- **DR8. Extra slots as Bulletins (the designer):** a Burner slot, and a
   subroutine slot rolled more rarely (the strongest upgrade measured).
-- **DR9. Screens (the user):** a main-menu Daily Run entry (the date, the
+- **DR9. Screens (the designer):** a main-menu Daily Run entry (the date, the
   class, the day's Mods in brief, today's score); a briefing before the
   run (class and every Mod in full; "this is your scored attempt"); the
   end card's itemized score and a copyable share line ("crib.exe daily
@@ -71,7 +73,7 @@ stretch goal.
   | Lucky Sevens | Each 7 you play while pegging Credits 3. |
   | Suit Surge | The day's suit is drawn; each card of it you peg adds 1 initiative. |
   | Fifteen Flood | Fifteens score 1 more, for both sides. |
-  | Running Wild (the user's name) | Runs score double; pairs score 1 less (never below 1). |
+  | Running Wild (the designer's name) | Runs score double; pairs score 1 less (never below 1). |
   | Nobs and Heels | His Nobs and His Heels are worth 4. |
   | ● Early Cut | The cut card is turned before the discard: you discard knowing the starter. |
   | ● Short Count | The pegging count resets at 21, not 31. |
@@ -95,11 +97,11 @@ stretch goal.
   | Field Kit | An uncommon subroutine (rolled) as a 4th starter. |
   | Veteran Loadout | Every starting subroutine begins at rank II. |
   | Seed Money | Start with 150 Data. |
-  | New Hardware (the user's direction) | Your class Mod starts as its II version. |
+  | New Hardware (the designer's direction) | Your class Mod starts as its II version. |
   | Burner Rig | Carry 4 Burners. |
   | Expanded Memory (rare) | Install 7 subroutines. |
 
-  **Directive** (deepened to 13 so a repeat takes ~2 weeks, the user)
+  **Directive** (deepened to 13 so a repeat takes ~2 weeks, the designer)
   | Name | Effect |
   |---|---|
   | Bounty Hunt | Elites score double (300 each). |
@@ -112,20 +114,20 @@ stretch goal.
   | Shopping Spree | Each Data you spend scores 1. |
   | Full Arsenal | Each Mod held at the end scores 100. |
   | Merge Master | Each Merge scores 150. |
-  | Burn Rate (the user's pick) | Each Burner you use scores 100. Selling a Cold Wallet counts (v0.9.1). |
+  | Burn Rate (the designer's pick) | Each Burner you use scores 100. Selling a Cold Wallet counts (v0.9.1). |
   | Clean Breach | Each gatekeeper beaten before it reaches half its Containment scores +300. |
   | Flawless Form | A Flawless Cribbage rating (5 stars) scores +1,000. |
 
-  **Short Count: 21 is the 31** (the user): the count's limit moves,
+  **Short Count: 21 is the 31** (the designer): the count's limit moves,
   and everything tied to 31 follows it: pegging to exactly 21 scores 2
   and resets; Thirty-One, Last Word and Backdoor Maintenance II fire on
   21; the AI and the review coach plan around 21. Its text: "The count
   stops at 21, not 31. Anything that happens on 31 happens on 21."
 
-  **Turncoat Crib scrapped (the user, checkpoint 4):** too subtle to read
+  **Turncoat Crib scrapped (the designer, checkpoint 4):** too subtle to read
   as a Glitch (only whose crib changed) and the harshest Mod measured
   (−25 points of victory, mostly by evening out a skilled player's crib
-  edge); replaced by **Early Cut** (the user's pick over Open Book, since
+  edge); replaced by **Early Cut** (the designer's pick over Open Book, since
   there's no recon in the game; −8 measured). The AI, the coach and the
   review coach score a kept hand exactly when the starter is known.
 
@@ -134,9 +136,9 @@ stretch goal.
 - **Deferred:** playing a chosen seed (BACKLOG; the daily is a seed of
   the day, so it can follow cheaply later); a server leaderboard.
 
-## Tuning (checkpoint 6)
+## Tuning
 
-Measured with `scripts/daily-check.ts` (skill 0.85; `--part=mods` forces
+Measured with [`scripts/daily-check.ts`](../../scripts/daily-check.ts) (skill 0.85; `--part=mods` forces
 one Mod at a time on the same seeds). Aims: each Glitch, Advisory and
 Bulletin alone within about ±15 points of victory (Expanded Memory, rare
 by design, excepted); each Directive adding a few hundred points.
@@ -174,7 +176,9 @@ by design, excepted); each Directive adding a few hundred points.
 - **Records** (scored score, best practice, streak, history) live in the
   profile, which survives updates.
 
-## Checkpoint plan
+## Build history
+
+### Checkpoint plan
 
 1. **The day:** date → salted seed; the class and Mod rolls (makeup,
    blocked pairs, caps, the rare slot); Bulletin item rolls; the daily in

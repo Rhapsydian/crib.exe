@@ -1,14 +1,15 @@
-# Trace evasion (session 63)
+# Trace Evasion
 
-**Status: built in session 63** (checkpoints 1-4). The user's idea, decided
-live in session 63. `scripts/evasion-check.ts` holds the measurements below.
+> **Status:** built in [session 63](../session-logs/session-63-2026-10-21.md), live since the first test builds. **Decisions:** TE1-TE8. **Summary:** [DESIGN.md → How a run ends](../../DESIGN.md#how-a-run-ends).
+
+The designer's idea, decided live. [`scripts/evasion-check.ts`](../../scripts/evasion-check.ts) holds the measurements below.
 
 ## The problem
 
 *Breached, then caught* (recalibration R8) ends a run in the moment of
 winning its hardest fight: you beat the gatekeeper, its Heat toll (charged
 after the fight, bigger the closer it came to containing you) takes you
-past the layer's limit, and the run is over. The user, after being caught
+past the layer's limit, and the run is over. The designer, after being caught
 this way: "a bit unsatisfying." Session 63 made the toll visible (posted on
 the map card; the fight's Heat bar shows what a win now would cost). This
 note turns the ending itself into a last chance.
@@ -23,7 +24,7 @@ Mods, Burners or initiative.
 - **TE1. Head start, from the fight:** the gatekeeper starts **1 point
   ahead for every 10% of Containment it had** when you beat it, rounded
   down. For example, 52% gives a 5-point lead. You won, so its Containment
-  was under 100% and the lead is 0-9. (The user's call over a lead equal to
+  was under 100% and the lead is 0-9. (The designer's call over a lead equal to
   the Heat overage, which could be unbounded and turn the evasion into "a
   painful lost cause".) It follows the toll: a closer fight means a bigger
   toll, a likelier evasion and a bigger lead.
@@ -38,7 +39,7 @@ Mods, Burners or initiative.
   gatekeeper wins the run.
 - **TE5. Fail:** the run ends as *breached, then caught*, as now, but
   only after you lost the evasion.
-- **TE6. Every time it triggers,** with no once-per-run limit (the user's
+- **TE6. Every time it triggers,** with no once-per-run limit (the designer's
   call). The head start already scales with how close the fight was.
 - **TE7. The gatekeeper plays at its own Cribbage skill** (enemySkill for
   its tier and layer), so evading Root Authority is harder than evading
@@ -47,7 +48,9 @@ Mods, Burners or initiative.
   the evasion is a real test of your Cribbage. (Firewall Beta's toll is
   small enough that the tutorial should rarely trigger one.)
 
-## The numbers (`scripts/evasion-check.ts`, session 63)
+## The numbers
+
+Measured with [`scripts/evasion-check.ts`](../../scripts/evasion-check.ts).
 
 Escape odds by head start against a layer-2 gatekeeper's skill (0.78),
 2,000 games per row:
@@ -86,7 +89,7 @@ average 19.8% (was 19.0%).
   and the coach's gatekeeper-next text say the same. The end screen's layer
   row shows the evasion and its score.
 
-## Build plan (checkpoints)
+## Build history
 
 1. **The engine.** `cribbageGame` (basic-cribbage.ts, permanent engine
    code) gains a hand limit and starting scores. `evasionGame`: the

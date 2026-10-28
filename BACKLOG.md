@@ -1,15 +1,15 @@
 # crib.exe — Backlog
 
-What is still to do. Completed work lives in `docs/archive/roadmap-history.md`
-and `docs/session-logs/`.
+What is still to do. Completed work lives in [`docs/archive/roadmap-history.md`](docs/archive/roadmap-history.md)
+and [`docs/session-logs/`](docs/session-logs).
 
 **Convention for this file** (session 48): it stays forward-looking.
-When an item is finished, it moves to `docs/archive/roadmap-history.md` or is
+When an item is finished, it moves to [`docs/archive/roadmap-history.md`](docs/archive/roadmap-history.md) or is
 summarised in a session log; it does not accumulate here. **Do not stack
 session updates in this file**: "Current state" is rewritten each
 session, and the open-items list is pruned, not appended to.
 
-**Standing principle** (session 14, `DESIGN.md` → Architecture): game
+**Standing principle** (session 14, [`DESIGN.md`](DESIGN.md) → Architecture): game
 logic stays fully separate from the UI and simulable headlessly; the UI
 is a thin interface onto the engine.
 
@@ -20,16 +20,16 @@ is a thin interface onto the engine.
 **Release candidate v0.9.1 is out for testing** on
 <https://cribexe.com> (branch `playable`) and on itch.io, public as "In
 development" (<https://rhapsydian.itch.io/cribexe>, devlog posted). 1.0
-is held for more testing (the user). Changes since v0.9.1 wait in
-`PATCH_NOTES.md` (Unreleased). 987 tests, `npm run check` clean.
+is held for more testing (the designer). Changes since v0.9.1 wait in
+[`PATCH_NOTES.md`](PATCH_NOTES.md) (Unreleased). 987 tests, `npm run check` clean.
 
 The game is feature-complete: a four-layer run with six classes, a
 guided tutorial and first-time tips, plain Cribbage with a coach and
-lessons, a review coach that rates Cribbage play (`src/ui/skill-review.ts`),
+lessons, a review coach that rates Cribbage play ([`src/ui/skill-review.ts`](src/ui/skill-review.ts)),
 progression between runs (Rep, a class unlock chain, the Message Board's
 upgrade tracks and library, ten Security Levels;
-`docs/design/meta-progression.md`), and Daily Runs
-(`docs/design/daily-runs.md`). Balance for the simulated player (skill
+[`docs/design/meta-progression.md`](docs/design/meta-progression.md)), and Daily Runs
+([`docs/design/daily-runs.md`](docs/design/daily-runs.md)). Balance for the simulated player (skill
 0.85): run victory ~26% (target 24-30%), classes 23.7-28.3%, Heat ending
 ~12% of runs, about 65-71% of each layer explorable, ~12 Mods by a
 winning run's end; fully upgraded ~90%; Security Levels 1 / 5 / 10 at
@@ -37,10 +37,10 @@ winning run's end; fully upgraded ~90%; Security Levels 1 / 5 / 10 at
 
 ---
 
-## Priorities: go-live (the user, end of session 72)
+## Priorities: go-live (the designer, end of session 72)
 
 **The game is feature-complete; next is release.** The plan, in order, is
-`docs/release/go-live-plan.md`:
+[`docs/release/go-live-plan.md`](docs/release/go-live-plan.md):
 
 1. Release cleanup (done: testing switches, the test-fight button, a version
    number, CI actions off Node 20, stale balance notes pruned).
@@ -60,24 +60,24 @@ winning run's end; fully upgraded ~90%; Security Levels 1 / 5 / 10 at
    5a. A Discord server (done): https://discord.gg/HxCry3uRpa, on the
    About page; it goes on itch.io too.
    5b. In-game patch notes (done): a "What's new" card after an update,
-   and a Patch notes page; short notes in `src/ui/version-notes.ts`.
+   and a Patch notes page; short notes in [`src/ui/version-notes.ts`](src/ui/version-notes.ts).
 6. A records and stats page (done): runs, by class, fights, the career
    Cribbage rating, Play Cribbage, Daily Runs.
 7. Mobile (done): the game's icon, a web-app manifest, a phone-width
    pass.
 8. A release candidate (under way): full test done; v0.9.0 then v0.9.1 out
    to testers; fixes only from here. **Next:** testers' reports, then 1.0
-   when they go quiet (the user decides): a 1.0.0 bump, notes from
-   `PATCH_NOTES.md` (Unreleased), and the "At 1.0" checklist in `docs/itch/page.md`.
+   when they go quiet (the designer decides): a 1.0.0 bump, notes from
+   [`PATCH_NOTES.md`](PATCH_NOTES.md) (Unreleased), and the "At 1.0" checklist in [`docs/itch/page.md`](docs/itch/page.md).
 9. itch.io (done for the release candidate): page, screenshots, GIF, cover,
    butler upload, public "In development", devlog. Reddit posts are
-   drafted (`docs/itch/reddit.md`); the user posts them.
+   drafted ([`docs/itch/reddit.md`](docs/itch/reddit.md)); the designer posts them.
 
-Out of scope for release: **Event mini-games** (the user: none), music,
+Out of scope for release: **Event mini-games** (the designer: none), music,
 and balance work. The earlier priorities (session 63: the content pass,
 meta-progression, Daily Runs) are all done.
 
-**Art:** the user is happy with the current look; no sprite pass. At
+**Art:** the designer is happy with the current look; no sprite pass. At
 most, refine some of the map icons.
 
 ---
@@ -101,9 +101,9 @@ most, refine some of the map icons.
   upgraded (target ~20%, left there).
 - **Testing URL switches** (session 71): `?resetprofile` wipes the
   profile; `?unlockall` opens every class and the library
-  (`src/ui/testing-flags.ts`). Development only since go-live step 1: the
+  ([`src/ui/testing-flags.ts`](src/ui/testing-flags.ts)). Development only since go-live step 1: the
   release build drops them, with the #test harness and the mockups
-  (`src/DevRoutes.svelte`, loaded only in development).
+  ([`src/DevRoutes.svelte`](src/DevRoutes.svelte), loaded only in development).
 - **A Flawless fight's -1 Heat** adds ~3 points of victory for the
   simulated player.
 - **Review coach** (sessions 70, 72): the rating is points given up per
@@ -127,7 +127,7 @@ Balance and content:
   contraband Event grants. A dedicated Event to chase it is an option for
   the next Events batch.
 - **System strain** (S12): its first step (~1.5 Heat at layer 1, doubling)
-  is a dial for the Heat pass; the user is keeping an eye on it.
+  is a dial for the Heat pass; the designer is keeping an eye on it.
 - **Heat** (session 69): allowances now grow by layer (56/63/72/80), about
   65-71% of each layer explorable, Heat ending ~12% of runs. Two dials if
   it comes up again: layer 1 to ~52, and flatter fight Heat at layers 3-4.
@@ -145,7 +145,7 @@ Balance and content:
   class. Warden beats it 77% (vs 100% against Firewall Prime). Consider a
   trim for onboarding (its scale, or Reception Protocol once per fight).
 - **Mods:** ~12 at the layer-4 gatekeeper (Shop 4.6, elites 4.1,
-  gatekeepers 3.0) against the user's ~10 by a run's end. Trims left: Mod
+  gatekeepers 3.0) against the designer's ~10 by a run's end. Trims left: Mod
   rewards from gatekeepers, Event Mods.
 - **Data left over:** the simulated player reaches layer 4 with ~90-140
   Data unspent; the Shop runs out of wanted things first.
@@ -157,7 +157,7 @@ Balance and content:
 - **Set aside, to revisit:** Static Shield (overtuned) and Recon Ping
   (returns if the map gets fog of war).
 - **Mod findings** from writing their rules text: Black Budget redraws
-  the piece choice rare-weighted, not a tier up as its comment says;
+  the subroutine choice rare-weighted, not a tier up as its comment says;
   Surge Protector is spent even when another effect already zeroed that
   Credit.
 - **Watch in playtesting:** Threat Hunter is the loudest elite (by
@@ -166,7 +166,7 @@ Balance and content:
   doesn't optimise.
 - **Pricing tools:** kit power (roster-check) can't see effects aimed at
   the player's Hooks or Ward, or Mods like Resource Quota; enemies
-  carrying those are priced by parity (`scripts/enemy-parity.ts`).
+  carrying those are priced by parity ([`scripts/enemy-parity.ts`](scripts/enemy-parity.ts)).
 
 Not yet seen in the browser (tests cover the engine side):
 - the trace evasion's escape result (SLIPPED THE TRACE);
@@ -179,12 +179,12 @@ Not yet seen in the browser (tests cover the engine side):
 UI and text:
 - **Breached, then caught** at layer 4 shows "4/4 layers breached" under
   a losing title (the rules' count); revisit if testers find it odd.
-- **One AI** (session 72, the user's rule): the coach and every opponent
-  share one judgement (`src/engine/ai.ts`); never add a second. It is still
+- **One AI** (session 72, the designer's rule): the coach and every opponent
+  share one judgement ([`src/engine/ai.ts`](src/engine/ai.ts)); never add a second. It is still
   a first model: pegging plays are judged one reply deep, against random
   opponent cards; the crib table takes the other two crib cards as random.
   Unified enemies peg better against real players (the simulated player
-  improved alongside them, so victory held at ~25%); the user judged the
+  improved alongside them, so victory held at ~25%); the designer judged the
   enemy strength fine without measuring it.
 - **Difficulty levels:** Easy (0.6) may still be hard for a true beginner;
   moving it is one number.
@@ -224,9 +224,9 @@ Code and tools:
 - **Self-counting and muggins** for plain Cribbage: a long-term maybe.
 - **Higher tiers of Root's `forceDiscardCard`** (session 24): force both
   discarded cards rather than one. Content, not a new engine capability.
-- **A "support" subroutine category** (session 22): pieces whose job is
+- **A "support" subroutine category** (session 22): subroutines whose job is
   to buff or enable other subroutines. Worth weighing in the content pass.
-- **Enemy-piece acquisition** (session 28): the enemy-only subroutines
+- **Enemy-subroutine acquisition** (session 28): the enemy-only subroutines
   are unreachable by design; whether some should reach rewards or the
   Shop was never revisited.
 - **Rename the `Go` occurrence category to `Last-Card`** (session 22):
@@ -246,5 +246,5 @@ Code and tools:
 | 5 — Content, balance & polish | ✅ archetype redesign and authored content (sessions 51–56); playable in the browser (sessions 57–63); content and tuning passes (64–70); Daily Runs (72) |
 | 6 — Release | 🔄 release candidate public (session 73); 1.0 after testing |
 
-Detail for every completed phase is in `docs/archive/roadmap-history.md`; the
-playable-game milestones are in `docs/archive/playable-design.md`.
+Detail for every completed phase is in [`docs/archive/roadmap-history.md`](docs/archive/roadmap-history.md); the
+playable-game milestones are in [`docs/archive/playable-design.md`](docs/archive/playable-design.md).

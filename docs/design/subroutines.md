@@ -1,7 +1,9 @@
-# Subroutines (session 66)
+# Subroutines
 
-**Status: built (session 66, checkpoints 1-4).** The third piece of the player-side content pass
-(`BACKLOG.md` → Priorities): more subroutines, more variety in what they
+> **Status:** built in [session 66](../session-logs/session-66-2026-10-24.md), live since v0.9.0. **Decisions:** S1-S13. **Summary:** [DESIGN.md → Archetypes & Subroutines](../../DESIGN.md#archetypes--subroutines).
+
+The third piece of the player-side content pass
+([`BACKLOG.md`](../../BACKLOG.md) → Priorities): more subroutines, more variety in what they
 do, and a look at Merge. Decided live, one question at a time.
 
 Where subroutines stood: 36, 9 per archetype (4 common, 3 uncommon, 2
@@ -14,14 +16,14 @@ Hooks wait for several events (stepped).
 ## Decisions
 
 - **S1. How many: +16, to 52.** Four per archetype: 1 common, 2 uncommon,
-  1 rare (each archetype 13: 5/5/3). The user: enough depth without
+  1 rare (each archetype 13: 5/5/3). The designer: enough depth without
   diluting the pool, since Merging needs copies to turn up.
-- **S2. Runs get Hooks; flushes, His Nobs and 31s don't** (the user: runs
+- **S2. Runs get Hooks; flushes, His Nobs and 31s don't** (the designer: runs
   are the third most frequent score; the others are too rare to build a
   Hook on).
-- **S3. Processes need more variety** (the user agrees): fewer plain
+- **S3. Processes need more variety** (the designer agrees): fewer plain
   Credits among the new sixteen.
-- **S4. Merge rank III also buffs the Process** (the user's idea, the
+- **S4. Merge rank III also buffs the Process** (the designer's idea, the
   feedback being that ranks don't feel impactful): ranks I-III keep the
   Hook bump; rank III adds a percentage of the Process's base amount,
   authored per subroutine within 50-150%: weaker or situational Processes
@@ -31,7 +33,7 @@ Hooks wait for several events (stepped).
   get one; measured against Merged subroutines without it.
 - **S5. Existing tools plus one new mechanic, Suspend** ("the enemy's
   bottom subroutine skips its next turn"; Resource Quota's rule, player
-  side), **only as a Hook's effect, never a Process** (the user). The rest
+  side), **only as a Hook's effect, never a Process** (the designer). The rest
   from what the engine already has: Credit variants (steal, from Ward,
   piercing), Tempo, Empower, Charge, Disrupt, Suppress, Ward, growth; Hooks
   on scoring (runs included), the enemy's scoring, points, fires, Ward
@@ -56,7 +58,7 @@ Hooks wait for several events (stepped).
   - **Circuit Breaker** (drafted as Kill Switch) (rare, build-definer): Process: Credit 2. Hook: Once
     you've scored 3 fifteens since its Hook last went off, their bottom
     subroutine skips its next turn (Suspend). Rank III 100%.
-- **S8. Each run counts** (the M8 treatment for runs, the user's ask): a
+- **S8. Each run counts** (the M8 treatment for runs, the designer's ask): a
   show run group is recorded with how many runs it holds (4-4-5-6: two;
   4-4-4-5-6: three; 4-4-5-5-6: four), and everything that counts runs
   counts each (Run Hooks, Run Splicer, any run bonus). Points unchanged.
@@ -95,7 +97,7 @@ Hooks wait for several events (stepped).
     you've scored 2 runs, add ½ a turn (6 initiative) to your initiative
     gauge right away. Rank III 150%.
 - **S11. The Honeypot slate** (Anomaly Detector, drafted as Tripwire, stays on
-  the opponent's runs, the user's call):
+  the opponent's runs, the designer's call):
   - **Anomaly Detector** (drafted as Tripwire) (common, Run Hook): Process: Ward 2. Hook: For each run
     the opponent has scored since it last fired, also Credit 2 that ignores
     their Ward (at most 4). Rank III 100%.
@@ -109,10 +111,12 @@ Hooks wait for several events (stepped).
     of their Credit your Ward has absorbed since it last fired, Credit 2
     that ignores their Ward (at most 6). Rank III 75%.
 
-## Checkpoint plan
+## Build history
+
+### Checkpoint plan
 
 Each checkpoint: engine, text, tests, `npm run check`, then a pause for
-sign-off. Measurement: a new `scripts/subroutine-check.ts` (each new
+sign-off. Measurement: a new [`scripts/subroutine-check.ts`](../../scripts/subroutine-check.ts) (each new
 subroutine swapped into the six class loadouts against the layer-2
 elites, with and without, as a multiple of its rarity's existing average),
 then full runs (`run-outcomes.ts`). Shifts reported, not chased.
@@ -133,7 +137,7 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
    the text; the Merge screen's rank III before/after; the new
    subroutines in rewards, Shop and the loadout. Browser check on desktop
    and phone width.
-- **S12. System strain** (the user's playtest note: Priority Override and
+- **S12. System strain** (the designer's playtest note: Priority Override and
   Elevated Session snowball): from the player's fourth consecutive turn on
   (turns with no enemy turn between, across hands; every source of turns
   counts), each extra turn adds Heat, starting near the small Event amount
@@ -141,11 +145,11 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
   Player only. Shown on the fight's Heat gauge, as a log line ("System
   strain: +4 Heat (4 turns in a row)") and with a first-time tip card.
   Built in checkpoint 1; measured. **Starts at the fourth turn, not the
-  third** (the user, after measuring): a third turn in a row came in 47%
+  third** (the designer, after measuring): a third turn in a row came in 47%
   of ordinary fights (7% of player turns) and took full-run victory from
   38.7% to 23.3%; a fourth is 0.5% of player turns. To keep an eye on.
 
-## Built
+### Built
 
 - **Checkpoint 1, foundations.** S8 (`runs` on show run groups and
   occurrences; `occurrenceCount`), S5 (`suspend`, `HOOK_ONLY_VERBS`; a
@@ -166,26 +170,26 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
     34.0, Eidolon 30.0, Breacher 44.3, Warden 43.0, Wraith 28.3; average
     35.5% (38.7 without strain); heat-maxed 2-6%. The Overclock classes
     pay most (Wraith -7.7).
-  - **Strain re-shaped (the user): a small first step, doubling.** About
+  - **Strain re-shaped (the designer): a small first step, doubling.** About
     1.5 Heat on the fourth turn in a row at layer 1 (2.4 at layer 4), then
     3, 6, 12. Blackhat's starting loadout: 0.2 strain Heat a fight; the
     Overclock snowball 1.6 (was 4.0 on the linear ramp). Full runs:
     Blackhat 35.3, Operator 38.3, Eidolon 33.7, Breacher 46.0, Warden 43.7,
     Wraith 35.3; average 38.7% (the same as without strain), heat-maxed
-    2-3%. The user's aim: a balance between haste and not drawing too much
+    2-3%. The designer's aim: a balance between haste and not drawing too much
     attention, discouraging leaning too hard into haste. The size of the
     first step is a dial for the Heat tuning pass.
 - **Checkpoint 2, names.** Four drafted names clashed with existing ones
-  and were renamed (for the user's review): Kill Switch (a contraband
+  and were renamed (for the designer's review): Kill Switch (a contraband
   Burner) → Circuit Breaker; Throttle and Canary Token (enemy subroutines)
-  → Backpressure and Bait File; Tripwire (a regular enemy) → Anomaly Detector (the user: Motion Sensor read too physical).
-- **Checkpoint 2, measured** (`scripts/subroutine-check.ts`: each
+  → Backpressure and Bait File; Tripwire (a regular enemy) → Anomaly Detector (the designer: Motion Sensor read too physical).
+- **Checkpoint 2, measured** ([`scripts/subroutine-check.ts`](../../scripts/subroutine-check.ts): each
   subroutine in the top slot of six-subroutine class loadouts, against a
   Credit 1 placeholder, vs the layer-2 elites, 30 seeds; as a multiple of
   its archetype's existing average at its rarity). The first two fixtures
   were wrong (swapping against a different common per class; the last
   slot, which leaves Charge-next and Empower-the-rest nothing below). One
-  tuning round (the user approved): Mantrap takes 2; Thread Pool waits for
+  tuning round (the designer approved): Mantrap takes 2; Thread Pool waits for
   3 pairs; Packet Sniffer's Hook takes 1 more; Anomaly Detector Credits 1
   a run; Pipeline Flush ⅙ of a turn; Reflector every 4 absorbed; Bait
   File's Hook Wards 3; **Branch Predictor reworked** to Charge every
@@ -202,17 +206,17 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
   Warden 46.0, Wraith 36.0; average 38.8% (38.7 before them): no class
   jumps, so the duel check's high readings (Suppress, stealing) don't
   carry into runs; Blackhat -4.0 is the largest move (noise about ±2.7).
-  `scripts/merge-frequency.ts`: installed subroutines by rank at a run's
+  [`scripts/merge-frequency.ts`](../../scripts/merge-frequency.ts): installed subroutines by rank at a run's
   end, per run, 4.50 / 1.18 / 0.34 / 0.13; **10.7% of runs end with a
   rank III** (9.3% with 36 subroutines); 1.57 copies left banked a run.
 - **S13. Owned subroutines are three times as likely in reward draws**
-  (the user, after checkpoint 3's 10.7%): fight rewards, Caches and Black
+  (the designer, after checkpoint 3's 10.7%): fight rewards, Caches and Black
   Budget's redraw weight a subroutine you own (installed or benched) x3,
   so Merge copies turn up; the Shop is unchanged. Aim: a quarter to a
   third of runs reach rank III. Measured (`merge-frequency.ts`, 50 seeds a
   class), x1 / x2 / x3: runs reaching rank III 10.7 / 14.7 / 27.7%; rank
   II or III per run 0.47 / 0.75 / 0.90; different subroutines offered per
-  run 25.2 / 22.9 / 21.0; owned at the end 8.1 / 7.8 / 7.7. The user chose
+  run 25.2 / 22.9 / 21.0; owned at the end 8.1 / 7.8 / 7.7. The designer chose
   x3 after weighing the variety cost (doubling was the first call).
   Full runs at x3 (300 a class): Blackhat 33.0, Operator 43.0, Eidolon
   35.3, Breacher 50.7, Warden 47.7, Wraith 32.7; average 40.4% (38.8).
@@ -226,7 +230,7 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
   stack (one pending skip at most). Checked in the browser at phone width
   (a reward of three new subroutines, the Safehouse Merge preview).
 - **v0.9.1, Charge and Instant Hooks; Branch Predictor reworked** (a
-  playtest report; the user's calls). Branch Predictor's every-turn
+  playtest report; the designer's calls). Branch Predictor's every-turn
   Charge fed Elevated Session's Instant tempo Hook, and each extra turn
   brought the Charge round again: 2.8 turns a hand against 1.4, up to 12
   in a row, strain Heat into a trace evasion. **Charge no longer feeds

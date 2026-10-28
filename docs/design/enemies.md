@@ -1,6 +1,8 @@
-# Enemies (session 67)
+# Enemies
 
-**Status: built (sessions 67-68): elites, gatekeepers, regulars, calibration, Wraith, and Skeleton Key reworked as Restore Point.** The last piece of the content pass (`BACKLOG.md` →
+> **Status:** built in [session 67](../session-logs/session-67-2026-10-24.md) and [session 68](../session-logs/session-68-2026-10-24.md), live since v0.9.0: elites, gatekeepers, regulars, calibration, Wraith, and Skeleton Key reworked as Restore Point. **Decisions:** E1-E18. **Summary:** [DESIGN.md → Enemy Design](../../DESIGN.md#enemy-design).
+
+The last piece of the content pass ([`BACKLOG.md`](../../BACKLOG.md) →
 Priorities): more enemies of all three tiers, and elites with teeth.
 Decided live, one question at a time.
 
@@ -13,7 +15,7 @@ Players beat elites about 98% of the time; gatekeepers about 73% (session
 
 ## Decisions
 
-- **E1. What each tier is for, and its target (the user; player win
+- **E1. What each tier is for, and its target (the designer; player win
   rates):**
   - **Regulars** stay loot piñatas that cost Heat: their difficulty is
     fine, they need more variety.
@@ -27,7 +29,7 @@ Players beat elites about 98% of the time; gatekeepers about 73% (session
   (2 per layer: 4 per layer, each with its own Mod). Batch 1: the six
   elites and retuning all twelve to 80-85% per layer. Batch 2:
   gatekeepers (70-75% per layer) and regulars (variety, difficulty as is).
-- **E3. Where elites' teeth come from (the user):** a little more
+- **E3. Where elites' teeth come from (the designer):** a little more
   Cribbage skill, the rest from Mods and size.
   - **Enemy Cribbage skill** (0-1; the simulated player plays at 0.85):
     elites from 0.50 to **0.60 at layer 1** (+0.03 a layer: 0.69 at layer
@@ -47,7 +49,7 @@ Players beat elites about 98% of the time; gatekeepers about 73% (session
   - Layer 1, **Jamming Array** (Exploit, Overclock). **Interference:**
     each time one of your Instant Hooks goes off, your Breach loses 2.
     (Redrafted: a rule that only delayed Instant Hooks would barely move a
-    result, the user noted; a cost per Hook scales with reliance.)
+    result, the designer noted; a cost per Hook scales with reliance.)
   - Layer 2, **Memory Governor** (Daemon, Honeypot). **Hard Limit:** your
     Ward can't go above 6.
   - Layer 3, **Lockdown Service** (Exploit, Daemon). **Lockout:** every
@@ -59,7 +61,7 @@ Players beat elites about 98% of the time; gatekeepers about 73% (session
   - Layer 4, **Reaper Process** (Exploit, Honeypot). **Collection:** at the
     end of each hand, your growing subroutines lose half their growth.
 
-- **E10. Batch 2's order (session 68, the user):** design and build the
+- **E10. Batch 2's order (session 68, the designer):** design and build the
   eight new gatekeepers, then calibrate all sixteen together (as elites
   were: a gatekeeper gauge curve by layer for 5+ hands, each gatekeeper's
   own strength for 70-75%, by replay; Firewall Prime's 12-hand fights
@@ -91,10 +93,10 @@ Players beat elites about 98% of the time; gatekeepers about 73% (session
   - Layer 4, **System Architect** (Daemon, Overclock, Honeypot).
     **Rewrite:** at the start of each hand, it swaps your top and bottom
     subroutines. (Drafted as The Architect.)
-- **E12. The map names the layer's gatekeeper (the user):** its name
+- **E12. The map names the layer's gatekeeper (the designer):** its name
   above the gatekeeper node, so the run can shape itself around it.
 
-- **E15. Wraith before the final retune (the user).** Wraith is weak from
+- **E15. Wraith before the final retune (the designer).** Wraith is weak from
   its first fight (players win 58% of layer-1 elite fights with it, ~88%
   with the others; 55-59% against layer-2 gatekeepers, ~89%), in 8-10-hand
   fights: too little damage to finish. Because calibration averaged the
@@ -103,7 +105,7 @@ Players beat elites about 98% of the time; gatekeepers about 73% (session
   retune elites and gatekeepers.
 
 - **E16. The eight new regulars** (no Mods; variety from loadouts, six
-  using session 66's subroutines, four with one enemy-only piece; at
+  using session 66's subroutines, four with one enemy-only subroutine; at
   today's regular difficulty): layer 1 **Port Knocker** (Sequence Attack,
   Pipeline Flush), **Scheduler Bot** (Rolling Update, Cache Hit); layer 2
   **Spam Filter** (Bait File, Buffer Overflow, Session Reset), **Packet
@@ -113,7 +115,31 @@ Players beat elites about 98% of the time; gatekeepers about 73% (session
   Countermeasure), **Rootkit Scanner** (Replay Attack, Rolling Update,
   Audit Log). No Suspend on regulars.
 
-## Checkpoint plan (batch 2: gatekeepers, regulars)
+## Build history
+
+### Checkpoint plan, batch 1: elites
+
+Each checkpoint: engine, text, tests, `npm run check`, then a pause for
+sign-off. Measurement: a new [`scripts/enemy-rates.ts`](../../scripts/enemy-rates.ts) (player win rate by
+tier and layer, from full runs' fight logs: elites and gatekeepers at real
+player strength), plus `run-outcomes.ts`.
+
+1. **Cribbage skill and a baseline.** Regulars 0.25, elites 0.60, opener
+   0.15 (E3); `enemy-rates.ts`; the per-layer win rates before any elite
+   change (and gatekeepers per layer, for batch 2).
+2. **The six elite Mods and elites** (E4): engine rules, loadouts, text,
+   tests.
+3. **Calibration:** a separate elite layer curve so each layer's elites
+   average 80-85% player wins, then each elite's own scale into about
+   75-90%. Full-run class rates reported.
+4. **Screens:** the new Mods in the fight kit and the enemy's details;
+   browser check at desktop and phone width.
+- **E5. Fight length (the designer):** elite and gatekeeper fights should
+  average at least 5 hands; faster is too fast, whichever side wins.
+  Breach and Containment gauge sizes may be adjusted per fight to tune
+  rate and length together. `enemy-rates.ts` reports mean hands a fight.
+
+### Checkpoint plan, batch 2: gatekeepers and regulars
 
 Each checkpoint: engine, text, tests, `npm run check`, then a pause for
 sign-off.
@@ -130,32 +156,10 @@ sign-off.
    (E12); the bigger-gauge card (E9, wording settled then); the Skeleton
    Key rework (E8); browser check at desktop and phone width.
 
-## Checkpoint plan (batch 1: elites)
-
-Each checkpoint: engine, text, tests, `npm run check`, then a pause for
-sign-off. Measurement: a new `scripts/enemy-rates.ts` (player win rate by
-tier and layer, from full runs' fight logs: elites and gatekeepers at real
-player strength), plus `run-outcomes.ts`.
-
-1. **Cribbage skill and a baseline.** Regulars 0.25, elites 0.60, opener
-   0.15 (E3); `enemy-rates.ts`; the per-layer win rates before any elite
-   change (and gatekeepers per layer, for batch 2).
-2. **The six elite Mods and elites** (E4): engine rules, loadouts, text,
-   tests.
-3. **Calibration:** a separate elite layer curve so each layer's elites
-   average 80-85% player wins, then each elite's own scale into about
-   75-90%. Full-run class rates reported.
-4. **Screens:** the new Mods in the fight kit and the enemy's details;
-   browser check at desktop and phone width.
-- **E5. Fight length (the user):** elite and gatekeeper fights should
-  average at least 5 hands; faster is too fast, whichever side wins.
-  Breach and Containment gauge sizes may be adjusted per fight to tune
-  rate and length together. `enemy-rates.ts` reports mean hands a fight.
-
-## Built
+### Built
 
 - **Checkpoint 1, Cribbage skill and a baseline.** Skill per E3
-  (`enemies.ts`); `scripts/enemy-rates.ts`. Player win rates and mean
+  (`enemies.ts`); [`scripts/enemy-rates.ts`](../../scripts/enemy-rates.ts). Player win rates and mean
   hands a fight (100 seeds a class):
 
   | | Layer 1 | Layer 2 | Layer 3 | Layer 4 |
@@ -169,7 +173,7 @@ player strength), plus `run-outcomes.ts`.
   and gatekeepers end in 2.4-4.2 hands, under E5's 5. Firewall Prime runs
   12.1 hands (No Way In's cap). Regulars: players win ~100% everywhere.
 - **Checkpoint 3, elite calibration.**
-  `scripts/fight-calibrate.ts` captures the player at every elite fight
+  [`scripts/fight-calibrate.ts`](../../scripts/fight-calibrate.ts) captures the player at every elite fight
   of full runs and replays those fights under trial settings.
   `ELITE_LAYER_TUNING` (enemies.ts): elite strength 1.55/1.6/1.8/2.2 on
   top of the shared layer curve; both win gauges 1/1/1.4/2.2 by layer.
@@ -183,28 +187,28 @@ player strength), plus `run-outcomes.ts`.
   lost elite closes its node (DESIGN.md: impassable) and closures can cut
   the gatekeeper off; 0.38 elite losses a run. Open: what losing a
   regular or elite should do to the map.
-- **E6. Full-run victory 24-30% (the user), and closures stay.** A drop
+- **E6. Full-run victory 24-30% (the designer), and closures stay.** A drop
   from ~40% was wanted anyway. Losing a regular or elite still closes its
   node: runs should occasionally end with no route forward, but far less
   than a third of them; map generation is the lever.
-- **E7. No new map rule (the user: re-measure first).** The third of runs
+- **E7. No new map rule (the designer: re-measure first).** The third of runs
   ending with no route was a bug: a lost regular or elite closed its node
   but left the player standing on it, so the route check found no way
   out. Ejecting the player back where they came from (as DESIGN.md says)
-  fixed it. Measured (`scripts/run-endings.ts`, 50 seeds a class): with an
+  fixed it. Measured ([`scripts/run-endings.ts`](../../scripts/run-endings.ts), 50 seeds a class): with an
   elite-free-route rule, victory 28.0%, no route 0%; without it, victory
   24.3%, no route 0.3% ("on occasion"). The rule was dropped. Heat now
   ends ~13% of runs (lost elites cost Heat; 0.49 lost a run), for the Heat
   pass.
-- **E8. Skeleton Key set aside (the user).** With no route left in ~0.3%
+- **E8. Skeleton Key set aside (the designer).** With no route left in ~0.3%
   of runs, reopening a closed node is too rare to carry a Burner for. Its
   rework (perhaps a contraband "lose a gatekeeper, try once more") is
   flagged for the gatekeeper pass.
-- **E9. A warning card for bigger gauges (the user):** a first-time card
+- **E9. A warning card for bigger gauges (the designer):** a first-time card
   at layer 3 and again at layer 4 saying the Breach and Containment gauges
   are bigger there. Elites have them now; gatekeepers will in batch 2,
   regulars won't. **The card is built after the gatekeeper tuning, with
-  its wording settled then** (the user), so it covers both tiers.
+  its wording settled then** (the designer), so it covers both tiers.
 - **Checkpoint 3, elite calibration (done).** After the ejection fix, two
   nudge rounds: `ELITE_LAYER_TUNING` strength 1.55 / 1.6 / 1.75 / 2.3,
   gauges 1 / 1 / 1.4 / 2.2; scales Threat Hunter 2.3, Purge Daemon 1.8,
@@ -234,17 +238,17 @@ player strength), plus `run-outcomes.ts`.
   By class: Breacher 27.5, Blackhat 22.5, Eidolon 22.0, Warden 18.0,
   Operator 17.0, Wraith 8.0%. Open: E1's gatekeeper rate against E6's
   victory.
-- **E13. Gatekeepers get harder by layer (the user's pick of four):**
+- **E13. Gatekeepers get harder by layer (the designer's pick of four):**
   players win about **85 / 80 / 75 / 72%** by layer (replacing E1's flat
   70-75%): four gatekeepers at a flat 72.5% leave only ~28% of runs
   through all four (0.725^4) before Heat, so E6's 24-30% victory needs a
   ramp; ~37% through all four, ~26-28% victory after Heat. Gentle for
   newcomers at layer 1, a wall at layer 4.
-- **E14. Firewall Prime reworked (the user): Stateful Inspection**
+- **E14. Firewall Prime reworked (the designer): Stateful Inspection**
   replaces No Way In: "Credit you gain past 6 in one turn is halved." (a
   hard cap made its fights grind, and hit burst builds hardest). The
   tutorial's Rate Limit is the same rule past 9. Its loadout swaps
-  Watchdog Timer for Port Scan: two Suppress pieces had walled the
+  Watchdog Timer for Port Scan: two Suppress subroutines had walled the
   player's Breach for 11 hands whatever its strength.
 - **Checkpoint 6, gatekeeper calibration (done).** `GATEKEEPER_LAYER_GAUGES`
   1.15 / 1.1 / 2.2 / 2.6 and `GATEKEEPER_LAYER_STRENGTH` 0.85 / 0.92 /
@@ -262,7 +266,7 @@ player strength), plus `run-outcomes.ts`.
   eight's fights match their layer's (5.7-5.9 hands from layer 1, 4.9-5.2
   from layer 2, 4.0 from layer 3, 2.9-3.0 at layer 4). 21 regulars,
   7/13/17/21 eligible by layer.
-- **E17. Wraith's Phase Shift reworked (the user, after measuring both
+- **E17. Wraith's Phase Shift reworked (the designer, after measuring both
   options):** "Each fifteen you score: Ward 1. While your Ward is over 4,
   each fifteen also Credits 1." (was the first fifteen on hands Wraith
   deals: Ward 0.5 and 1 initiative, paying at most every other hand, the
@@ -280,14 +284,14 @@ player strength), plus `run-outcomes.ts`.
   6-7 hands. Run endings (100 seeds): **victory 25.5%**, quarantined
   55.0%, Heat 17.2%, no route 2.3%. By class (200 seeds): Breacher 30.0,
   Wraith 25.0, Eidolon 24.0, Blackhat 23.0, Warden 22.0, Operator 20.0%.
-- **E9, the card's wording (the user):** layer 3 "The deeper you go, the
+- **E9, the card's wording (the designer):** layer 3 "The deeper you go, the
   bigger the systems: from layer 3, elite and gatekeeper Breach and
   Containment gauges are bigger, so those fights take longer to win, and
   to lose."; layer 4 "The core runs the biggest systems: elite and
   gatekeeper Breach and Containment gauges are bigger still." ("Digging in"
   read as a battlefield, not a network.) First-time tips at the first
   elite or gatekeeper fight on each layer.
-- **E18. Skeleton Key reworked (the user):** contraband (Event-only):
+- **E18. Skeleton Key reworked (the designer):** contraband (Event-only):
   "If you lose a gatekeeper fight, you aren't quarantined: the fight
   starts over, once. Used up when it saves you." The lost attempt costs no
   Heat; the toll is still due on the win; the retry is a new deal. Marked
@@ -300,7 +304,7 @@ player strength), plus `run-outcomes.ts`.
   above its map node (E12, checked at phone width with the longest name);
   the bigger-gauge card (E9); the Skeleton Key (E18) with its notice.
   Batch 2 done.
-- **E18, renamed Restore Point (the user):** "Skeleton Key" fit opening a
+- **E18, renamed Restore Point (the designer):** "Skeleton Key" fit opening a
   locked node; coming back from a failed fight is a restore. The old
   Key's leftovers went with it: tapping closed nodes to reopen them on the
   map, and the simulated player's map strategy for it (four tests

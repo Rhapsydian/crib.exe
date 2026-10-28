@@ -1,15 +1,15 @@
-# Tutorial design (session 63)
+# Tutorial
 
-> **Status: built in session 63** (checkpoints 1-5), plus a gentler tutorial-only gatekeeper, Firewall Beta. The checkpoint plan below is the record of how it was built.
+> **Status:** built in [session 63](../session-logs/session-63-2026-10-21.md), live since the first test builds, with a gentler tutorial-only gatekeeper, Firewall Beta. **Decisions:** T1-T6.
 
-The user wants testers to be able to pick the game up: the Cribbage side
+The designer wants testers to be able to pick the game up: the Cribbage side
 already teaches itself (five Learn-to-play lessons and a coached game,
-session 59), but the roguelite layer -- Breach and Containment, points
+session 59), but the roguelite layer (Breach and Containment, points
 buying turns, subroutines (Process, Hook, firing order), the map and
-Heat, rewards, Shops, Safehouses, Mods and Burners -- has no teaching at
+Heat, rewards, Shops, Quiet Hosts, Mods and Burners) has no teaching at
 all.
 
-## Decisions (user, live)
+## Decisions
 
 - **T1. Shape: a guided first run, plus first-time tips.** A short,
   fixed run that is real play (one small layer, a scripted map, gentle
@@ -31,7 +31,7 @@ all.
   Bringing the coach into the fight screen is new work (the logic
   exists).
 
-- **T4. The guided run's outline** -- one small layer, ~15-20 minutes,
+- **T4. The guided run's outline:** one small layer, ~15-20 minutes,
   a fixed map:
   1. Class pre-set to **Blackhat** (its Hooks fire often and visibly);
      its class Mod in one line.
@@ -41,7 +41,7 @@ all.
   4. **Reward:** pick a subroutine; firing order matters.
   5. **Second fight:** an armed **Burner** fires; Hooks build and go off.
   6. **Shop:** buy; selling and Mods mentioned.
-  7. **Safehouse:** the user's emphasis -- point out both options
+  7. **Quiet Host:** the designer's emphasis: point out both options
      explicitly: **Rest to lower Heat, or Merge banked copies** (a
      banked copy placed beforehand so Merge is real).
   8. **Gatekeeper** (easy): its rule-bending Mod pointed out; the win
@@ -49,8 +49,8 @@ all.
   Left to first-time tips: elites, Events, Caches.
 
 - **T5. A fixed seed with a reacting coach.** The guided run always uses
-  one seed -- chosen so the first fight gives an early fifteen and pair
-  -- so every tester gets the same deals; the coach watches for events
+  one seed, chosen so the first fight gives an early fifteen and pair,
+  so every tester gets the same deals; the coach watches for events
   ("the first time a Hook went off") rather than following a script, so
   a tester playing their own way still gets each explanation when its
   moment comes. Saves and resumes like a normal run. Chosen over fully
@@ -77,12 +77,12 @@ Calls made without a fork (stated here, not asked):
   same screens), marked as the tutorial so it uses its fixed layer, class,
   seed and coach.
 
-## Plan (checkpoints)
+## Build history
 
 1. **First-time tips:** the banner, its memory and reset, and the nine
    tips wired to their triggers.
 2. **The guided run's frame:** the menu entry and Cribbage question; a
-   tutorial run -- Blackhat, the fixed seed, one hand-made layer (fight,
+   tutorial run: Blackhat, the fixed seed, one hand-made layer (fight,
    reward, fight, Shop, Safehouse, gatekeeper), a gentle enemy, a carried
    Burner and a banked copy placed for the Safehouse, an easy gatekeeper;
    its end screen pointing to a real run.
