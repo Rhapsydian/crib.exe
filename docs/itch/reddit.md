@@ -38,7 +38,7 @@ I'm most interested in balance (builds that feel too strong or useless) and anyt
 
 ---
 
-Note: r/roguelikes leans toward traditional roguelikes. If a top-level post isn't welcome, use their weekly self-promotion or "Sharing Saturday" thread instead.
+Note: r/roguelikes leans toward traditional roguelikes; check its rules on roguelites and self-promotion first. For a lower-key start, use r/roguelikedev's weekly Sharing Saturday thread (below).
 
 ## r/cribbage
 
@@ -62,3 +62,27 @@ It plays in the browser on desktop and phones, with no account and no ads:
 - https://rhapsydian.itch.io/cribexe
 
 I'd especially like to hear if the coach ever rates a play in a way you disagree with, or if the scoring or counting is ever off. Reports are welcome here or on the Discord: https://discord.gg/HxCry3uRpa.
+
+## r/roguelikedev: Sharing Saturday
+
+A comment in the weekly "Sharing Saturday" thread, not a post of its own.
+It's a dev log: what changed this week, a GIF or screenshot, a link at the
+end. New accounts are fine there. Attach `docs/itch/gameplay.gif` or a
+screenshot (upload to imgur or Reddit, then link it).
+
+---
+
+**crib.exe** ([itch.io](https://rhapsydian.itch.io/cribexe) | [web](https://cribexe.com))
+
+A hacking roguelite where every fight is a game of Cribbage: your pegging, hand and crib points fill your initiative, and when it fills, your loadout of subroutines fires top to bottom to breach the enemy.
+
+This week was go-live. The release candidate is out on itch.io, and most of the week went to testers' reports:
+
+- **A runaway combo.** Branch Predictor (Charge every Hook) plus Elevated Session (an Instant Hook that grants a bonus turn) chained up to 12 turns in a row. Charge no longer feeds Instant Hooks, which now say "Hook · Instant" on the card. Across 200 seeded fights, the pair went from 2.81 turns a hand back to 1.43, the same as Elevated Session alone.
+- **Reworking Branch Predictor.** Without that combo it was weak, so I measured a handful of replacements against the uncommon average (the fill it adds when cut into real loadouts). Counts only came in at 0.62x, and "Empower the rest" at 2.48x. I picked Credit 1 plus "on a pair, every other Hook gets a count" at 1.02x.
+- **Event rolls on screen.** Risky Event choices show a bar of the odds and a sweeping marker. A gamble's segments shift and hide behind "?" until it lands.
+- **Fairer Cribbage ratings.** Stars are judged on the figure the review shows, and a play within a hair of the coach's own costs nothing.
+
+Next: more testing before 1.0. If you try it, I'd like to hear which builds feel too strong or useless.
+
+[GIF]
