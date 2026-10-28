@@ -1,7 +1,7 @@
 # crib.exe on itch.io: the page
 
 Go-live step 9. The text for the itch.io page, and how to fill in its
-settings. Draft: settle wording with the user before it goes up.
+settings.
 
 ## Settings
 
@@ -13,17 +13,22 @@ settings. Draft: settle wording with the user before it goes up.
 | Classification | Games |
 | Kind of project | HTML (played in the browser) |
 | Release status | In development until 1.0, then Released |
-| Pricing | No minimum: "$0 or donate" (pay what you want, free to play) |
+| Pricing | No payments required, donations on: "$0 or donate" (pay what you want). Suggested donation: optional ($2-3 is usual for a free browser game) |
 | Uploads | The `html5` channel, pushed with butler (see below); "This file will be played in the browser" |
 | Embed size | 1280 × 800 (wide enough for the desktop layout, 900px and up) |
 | Mobile friendly | Yes, orientation: portrait |
 | Frame options | Fullscreen button: on. Scrollbars: on (the Shop and reward screens scroll). Automatically start on page load: on (the game makes no sound until a click, so sound isn't blocked) |
 | Genre | Card Game |
-| Tags | roguelite, roguelike, cribbage, card-game, cyberpunk, hacking, turn-based, strategy, singleplayer, mobile |
-| AI disclosure | Yes: developed with Claude Code (as About says) |
+| Tags | roguelite, roguelike, cribbage, card-game, hacking, cyberpunk, turn-based, strategy, singleplayer, tactical (not deckbuilding: it's a loadout, not a deck) |
+| AI disclosure | Yes, for code and text: developed with Claude Code (as About says). Not for graphics (Tabler Icons) or sound (CC0 key recordings, a synth) |
+| Inputs | Mouse, Touchscreen |
+| Accessibility | Interactive tutorial; Color-blind friendly (every suit has its own icon shape, not only a colour) |
+| Average session | About a half-hour (a run is longer, but saves let you stop anywhere; a Daily is shorter) |
+| Languages | English |
 | Links | cribexe.com, the Discord, the GitHub source |
 | Community | Comments on (the release-candidate note asks for reports there or on the Discord) |
-| Visibility | Draft, then Restricted for a check inside itch's frame, Public at 1.0 |
+| Visibility | Public as "In development" for the release candidate (the user's call, to find testers); Released at 1.0 |
+| Theme (Edit theme) | Background `#0b0f14`, text `#d6e2ee`, links and buttons `#39ff9c`, panels `#121a23`; a monospace font if offered |
 
 Upload, as Pixelyph does (`C:\Users\husbando\tools\butler\butler.exe`,
 already logged in):
@@ -32,6 +37,15 @@ already logged in):
 npm run build
 butler push dist rhapsydian/cribexe:html5 --userversion 0.9.1
 ```
+
+## At 1.0
+
+- Push the 1.0.0 build with butler (`--userversion 1.0.0`).
+- Remove the release-candidate note from the description (both copies).
+- Release status: Released.
+- Devlog post, type "Major Update or Launch", with the 1.0 notes.
+- Check the description's numbers (classes, subroutines, Burners, Events,
+  enemies) against the game.
 
 ## Description
 
