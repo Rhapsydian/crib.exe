@@ -4,7 +4,7 @@ import { BURNER_DEFINITIONS } from '../engine/burners';
 // Flash Drive's Credit, read from the Burner itself (v0.9.1: the tip
 // said 5 after the Burner became 10).
 const flash = BURNER_DEFINITIONS['flash-drive'].combat?.effect;
-const FLASH_CREDIT = flash?.kind === 'effect' ? flash.effect.amount : 0;
+const FLASH_CREDIT = flash?.kind === 'effect' && 'amount' in flash.effect ? flash.effect.amount : 0;
 /**
  * The tutorial coach (session 63, docs/tutorial-design.md T1, T4-T5): in
  * the guided run only, it explains each new thing the first time it shows
