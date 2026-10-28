@@ -156,7 +156,7 @@
     <div class="top">
       <div class="who">
         {#if evasion}
-          <span class="tag evade">TRACE EVASION</span> <span class="level">{evasion.enemyName}</span>
+          <span class="tag evade">TRACE EVASION</span>
           <button class="pill" onclick={() => replay.cycleSpeed()} title="speed">» {replay.speed}</button>
         {:else}
           <span class="tag">CRIBBAGE</span> <span class="level">{level.name}</span>
@@ -166,7 +166,7 @@
         {/if}
       </div>
       {#if evasion}
-        <EvasionScore scores={evasionScores} name={evasion.enemyName} hand={Math.min(evasion.hands, table.handIndex + 1)} hands={evasion.hands} headStart={evasion.headStart} />
+        <EvasionScore scores={evasionScores} name={evasion.enemyName} hand={Math.min(evasion.hands, table.handIndex + 1)} hands={evasion.hands} />
       {:else}
         <ScoreBars {pegs} />
       {/if}
