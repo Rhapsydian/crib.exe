@@ -175,7 +175,7 @@ export const MOD_TEXT: Record<GeneralModId, string> = {
   'backdoor-access': grantedText('backdoor-access'),
   'session-hijack-relay': `${reactiveText('session-hijack-relay')}${onlyFor('session-hijack-relay')}`,
 
-  // --- Rule-benders (session 65, docs/mods-design.md M6) ---
+  // --- Rule-benders (session 65, docs/design/mods.md M6) ---
   'nobs-exploit': `Each Jack in your hand or crib at the show Credits ${NOBS_EXPLOIT_CREDIT}.`,
   'run-splicer': `Each run you score also counts as ${RUN_SPLICER_PAIRS === 2 ? 'two pairs' : `${RUN_SPLICER_PAIRS} pairs`}, for your Hooks and your class Mod.`,
   'last-word': `Each go point you score (the last card, or 31) gives you ${LAST_WORD_INITIATIVE} additional initiative.`,
@@ -189,7 +189,7 @@ export const MOD_TEXT: Record<GeneralModId, string> = {
   'root-cause': `Each of your Hooks that goes off gives the subroutine below it ${ROOT_CAUSE_COUNTS === 1 ? '1 count' : `${ROOT_CAUSE_COUNTS} counts`} toward its own Hook.`,
   'persistent-payload': `Your Burners' timed effects (temporary subroutines, effects that last turns or hands) last ${PERSISTENT_PAYLOAD_MULTIPLIER === 2 ? 'twice' : `${PERSISTENT_PAYLOAD_MULTIPLIER} times`} as long.`,
 
-  // --- Double-edged, Event-only (session 65, docs/mods-design.md M7, M9) ---
+  // --- Double-edged, Event-only (session 65, docs/design/mods.md M7, M9) ---
   'fifteen-fold': `Your fifteens are worth ${FIFTEEN_FOLD_RULE.fifteen} points instead of 2, but your pairs are worth only ${FIFTEEN_FOLD_RULE.pair}.`,
   'pair-fold': `Your pairs are worth ${PAIR_FOLD_RULE.pair} points instead of 2, but your fifteens are worth only ${PAIR_FOLD_RULE.fifteen}.`,
   'overclocked-kernel': `Your first ${OVERCLOCKED_KERNEL_TURNS === 2 ? 'two turns' : `${OVERCLOCKED_KERNEL_TURNS} turns`} each fight fire your loadout twice, but your initiative bar is ${OVERCLOCKED_KERNEL_BAR} longer.`,
@@ -287,7 +287,7 @@ export function classModFor(classId: ClassId, upgraded = false): { name: string;
   return upgraded ? { name: `${name} II`, text: `${BRIDGE_TEXT[classId]} ${BRIDGE_II_TEXT[classId]}` } : { name, text: BRIDGE_TEXT[classId] };
 }
 
-/** The "II" upgrades' added clauses (session 65, docs/mods-design.md M10),
+/** The "II" upgrades' added clauses (session 65, docs/design/mods.md M10),
  * after the class Mod's own text. */
 export const BRIDGE_II_TEXT: Record<ClassId, string> = {
   'exploit-overclock': `Your ${BRIDGE_II_BLACKHAT_PAIRS === 2 ? 'second' : `${BRIDGE_II_BLACKHAT_PAIRS}th`} pair each hand gives you a turn at once (a pair royal counts as three pairs).`,

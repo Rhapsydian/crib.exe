@@ -45,7 +45,7 @@ export interface EventEffect {
    * payout (checkpoint I resolves it via resolveFight's own machinery). */
   bonusFight?: { tier: 'regular' | 'elite' };
   /** Upgrades the class Mod to its "II" version (session 65,
-   * docs/mods-design.md M10-M11). */
+   * docs/design/mods.md M10-M11). */
   classModUpgrade?: true;
 }
 

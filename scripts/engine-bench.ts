@@ -1,5 +1,5 @@
 /**
- * Engine speed benchmark (milestone 1, `docs/playable-design.md` P1).
+ * Engine speed benchmark (milestone 1, `docs/archive/playable-design.md` P1).
  *
  * The pausable-engine refactor must not slow simulation down: balance
  * sweeps play hundreds of thousands of fights. This times a fixed batch of

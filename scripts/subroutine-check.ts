@@ -1,5 +1,5 @@
 /**
- * Subroutine check (session 66, docs/subroutines-design.md checkpoint 2):
+ * Subroutine check (session 66, docs/design/subroutines.md checkpoint 2):
  * what each pool subroutine is worth in a loadout, measured the user's way
  * (with and without), against its own archetype and rarity.
  *

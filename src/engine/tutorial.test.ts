@@ -5,7 +5,7 @@ import { TUTORIAL_LAYER, TUTORIAL_OPTIONS } from './tutorial';
 import { isReachable } from './map-types';
 import { ENEMY_ROSTER, enemyById } from './enemies';
 
-// Session 63, docs/tutorial-design.md T4-T5: the guided run's frame.
+// Session 63, docs/design/tutorial.md T4-T5: the guided run's frame.
 describe('the guided first run', () => {
   const run = () => playRun({ ...SYNERGY_AWARE_PROFILE, ...TUTORIAL_OPTIONS, traversalStrategy: opportunisticTraversal, playerSkill: 0.85 });
 

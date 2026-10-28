@@ -3,7 +3,7 @@ import { freshProfile, migrate, profile, PROFILE_VERSION } from './profile.svelt
 import { CLASS_FALLBACK_REP, CLASS_ORDER, TUTORIAL_REP, libraryOffers } from '../engine/meta';
 import { ARCHETYPE_POOLS } from '../engine/subroutines';
 
-// Session 71 (docs/meta-progression-design.md MP10): the profile.
+// Session 71 (docs/design/meta-progression.md MP10): the profile.
 describe('the profile', () => {
   it('starts with Blackhat and no Rep', () => {
     expect(freshProfile()).toMatchObject({ rep: 0, classes: ['exploit-overclock'], runsFinished: 0 });

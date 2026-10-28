@@ -1,5 +1,5 @@
 /**
- * Burner check (session 64, docs/burners-events-design.md checkpoint 2):
+ * Burner check (session 64, docs/design/burners-events.md checkpoint 2):
  * what each Burner is worth, measured with and without it (the user's rule).
  *
  * --part=combat: duels of six 6-subroutine class loadouts (as

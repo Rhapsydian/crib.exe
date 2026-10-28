@@ -102,7 +102,7 @@ export function playBasicCribbageGame(options: BasicCribbageOptions): BasicCribb
 }
 
 // ---------------------------------------------------------------------
-// The playable game (milestone 4, `docs/playable-design.md` V1-V6)
+// The playable game (milestone 4, `docs/archive/playable-design.md` V1-V6)
 // ---------------------------------------------------------------------
 //
 // playBasicCribbageGame above scores each hand atomically, a documented

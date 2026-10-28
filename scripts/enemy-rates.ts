@@ -1,5 +1,5 @@
 /**
- * Enemy rates (session 67, docs/enemies-design.md): the player's win rate
+ * Enemy rates (session 67, docs/design/enemies.md): the player's win rate
  * against each tier at each layer, from full runs' fight logs -- so each
  * fight is judged at the player's real strength at that point in a run.
  * Keyed on the enemy's own tier, not the node's (an opener-window fight at

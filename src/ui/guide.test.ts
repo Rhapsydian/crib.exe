@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { guide, GUIDE_TEXT } from './guide.svelte';
 import { tips } from './tips.svelte';
 
-// Session 63 (docs/tutorial-design.md T1, T5): the tutorial coach.
+// Session 63 (docs/design/tutorial.md T1, T5): the tutorial coach.
 describe('the tutorial coach', () => {
   beforeEach(() => guide.stop());
 

@@ -1,5 +1,5 @@
 /**
- * Layer exploration (session 69, docs/tuning-design.md T2): per layer, how
+ * Layer exploration (session 69, docs/archive/tuning-design.md T2): per layer, how
  * much of the map the simulated player visits, its non-gatekeeper fights,
  * and its highest Heat as a share of the layer's allowance; plus how runs
  * end. Target: about 60-65% of each layer's nodes, Heat peaking near 70%,

@@ -335,7 +335,7 @@ describe('handPointsAtLeast (checkpoint 6b)', () => {
   });
 });
 
-describe('pair counts and scoring rules (docs/mods-design.md M7, M8)', () => {
+describe('pair counts and scoring rules (docs/design/mods.md M7, M8)', () => {
   const occ = (category: ScoringOccurrence['category'], magnitude = 2): ScoringOccurrence => ({ category, player: 0, magnitude });
 
   it('counts the pairs inside a pair royal and a double pair royal', () => {

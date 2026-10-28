@@ -5,7 +5,7 @@ import { archetypeInfo } from './suits';
 import { starText, type Stars } from '../engine/skill';
 
 /**
- * A day's Mods in words (session 72, docs/daily-runs-design.md DR9): the
+ * A day's Mods in words (session 72, docs/design/daily-runs.md DR9): the
  * name, and what it rolled for the day (Go Bag's Burners, Field Kit's
  * subroutine, Suit Surge's suit), so the briefing names it all.
  */

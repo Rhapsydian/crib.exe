@@ -1251,7 +1251,7 @@ Two deliberately separate resources, not one shared health stat:
   - clearing a gatekeeper **resets Heat to 0** (D4) — after the
     gatekeeper's toll, charged *after* that fight, has been survived (R8),
     or a **trace evasion** won if it wasn't (session 63,
-    `docs/trace-evasion-design.md`);
+    `docs/design/trace-evasion.md`);
   - every fight's Heat is a **posted baseline** (tier × layer, knowable
     before committing) plus a **performance term** read off the enemy's
     *final* Containment fill on a win (R6) — a scrappy win is louder than
@@ -1512,7 +1512,7 @@ currency.
 
 ## Map & Run Structure
 
-> **Milestone 3 update (session 58, `docs/playable-design.md` M1–M9).**
+> **Milestone 3 update (session 58, `docs/archive/playable-design.md` M1–M9).**
 > The map shows **only the current layer** (a passed gatekeeper is
 > one-way), replacing the "one continuous, growing diagram" below. Layers
 > are **10 / 12 / 12 / 14** nodes, laid out as a scattered network on a
@@ -1642,7 +1642,7 @@ the layer hard can beat the gatekeeper and still be caught by its toll.
 The run ends, but the layer counts as breached — the meta-progression
 design is meant to credit it ("rep for how deep you got"), below a full
 continue. **Since session 63 it comes only after a lost trace evasion**
-(`docs/trace-evasion-design.md`): a beaten gatekeeper whose toll maxes
+(`docs/design/trace-evasion.md`): a beaten gatekeeper whose toll maxes
 Heat plays three hands of plain Cribbage against you, ahead a point per
 10% of its Containment; finish strictly ahead and the run goes on (or is
 won, on layer 4).
@@ -2681,3 +2681,5 @@ Shop nodes, Phase 2's representative subroutine set).
   retired with Trace in session 58.
 - **Meta-progression** — undesigned; must credit "breached, then caught"
   below a full continue (R8).
+
+*Paths updated 2026-10-28 when docs/ was reorganized; the content is as written.*

@@ -1,5 +1,5 @@
 /**
- * Fight calibration (session 67, docs/enemies-design.md checkpoint 3):
+ * Fight calibration (session 67, docs/design/enemies.md checkpoint 3):
  * plays full runs once, captures the player exactly as they stood at every
  * fight of one tier, then replays only those fights under trial settings
  * -- each layer's Breach gauge, Containment gauge and enemy strength as

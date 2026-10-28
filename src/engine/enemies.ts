@@ -33,7 +33,7 @@ export type EnemyId =
   | 'edr-sensor'
   | 'integrity-monitor'
   | 'firewall-cluster'
-  // Regular, session 68 (docs/enemies-design.md E16)
+  // Regular, session 68 (docs/design/enemies.md E16)
   | 'port-knocker'
   | 'scheduler-bot'
   | 'spam-filter'
@@ -49,7 +49,7 @@ export type EnemyId =
   | 'intrusion-alarm'
   | 'threat-hunter'
   | 'hypervisor'
-  // Elite, session 67 (docs/enemies-design.md E4)
+  // Elite, session 67 (docs/design/enemies.md E4)
   | 'jamming-array'
   | 'memory-governor'
   | 'lockdown-service'
@@ -301,7 +301,7 @@ export function gatekeeperEnemyForNode(node: MapNode): EnemyDefinition {
 // Skill-dial formula (DESIGN.md: "tier is the primary axis, layer is a
 // secondary modifier" -- resolves the session 26 banked fight-kind-vs-
 // layer question). All TBD/playtesting.
-// Session 67 (docs/enemies-design.md E3, the user): regulars 0.15 -> 0.25
+// Session 67 (docs/design/enemies.md E3, the user): regulars 0.15 -> 0.25
 // (really poor plays felt frustrating), elites 0.5 -> 0.6; the opener 0 ->
 // 0.15 (it made plays that looked random).
 const TIER_SKILL_BASE: Record<EnemyTier, number> = { regular: 0.25, elite: 0.6, gatekeeper: 0.75 };
@@ -333,7 +333,7 @@ export function enemySkill(tier: EnemyTier, layerIndex: number, fightsResolved: 
 const OPENER_MAGNITUDE_SCALER = 1; // the opener window pins this to no scaling too, same as skill
 
 /**
- * Elites by layer (session 67, docs/enemies-design.md E3, E5): their
+ * Elites by layer (session 67, docs/design/enemies.md E3, E5): their
  * strength on top of the shared layer curve, and both win gauges (the
  * player's Breach and their Containment) as multiples of the usual 50 --
  * calibrated with scripts/fight-calibrate.ts against the player as they

@@ -1,5 +1,5 @@
 /**
- * Merge frequency (session 66, docs/subroutines-design.md checkpoint 3):
+ * Merge frequency (session 66, docs/design/subroutines.md checkpoint 3):
  * how far the simulated player Merges -- installed subroutines by rank at
  * a run's end, and how many runs end with a rank III -- since S1 needs
  * Merging to still happen with a bigger pool.

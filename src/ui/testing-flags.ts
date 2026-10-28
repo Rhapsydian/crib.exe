@@ -1,5 +1,5 @@
 /**
- * Testing-only URL switches (session 71, docs/meta-progression-design.md
+ * Testing-only URL switches (session 71, docs/design/meta-progression.md
  * MP5 and MP12), for development only (go-live step 1, the user: out of
  * the release build, kept for development). They read false in a release
  * build, where the build tool drops them. They exist so testing never

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { tips, TIP_TEXT } from './tips.svelte';
 
-// Session 63 (docs/tutorial-design.md T6): first-time tips, once each.
+// Session 63 (docs/design/tutorial.md T6): first-time tips, once each.
 describe('first-time tips', () => {
   beforeEach(() => tips.reset());
 

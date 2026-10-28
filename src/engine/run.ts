@@ -119,7 +119,7 @@ export interface RunPlayerState {
   heat?: number;
   modRunState: Record<string, number>;
   /** The class Mod is upgraded to its "II" version (session 65,
-   * docs/mods-design.md M10): its rule plus a second clause. Set by an
+   * docs/design/mods.md M10): its rule plus a second clause. Set by an
    * Event; permanent. */
   classModUpgraded?: boolean;
   /** Events met this run (session 65, the user's rule): an Event never
@@ -1122,7 +1122,7 @@ export function* runRequests(options: RunOptions): Generator<RunRequest, RunResu
       if (outcome.shopBurnerUsed) {
         playerState = removeOneCarriedBurner(playerState, outcome.shopBurnerUsed);
       }
-      // Trace evasion (session 63, docs/trace-evasion-design.md): a beaten
+      // Trace evasion (session 63, docs/design/trace-evasion.md): a beaten
       // gatekeeper whose toll maxed your Heat tries to trace you. Played
       // before any rewards, which only follow an escape.
       let evaded = false;

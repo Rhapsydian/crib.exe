@@ -78,7 +78,7 @@ export interface ScoringOccurrence {
    * Names the score and gates `minMagnitude`. */
   magnitude: number;
   /** The points this side actually scores, when a scoring rule (the
-   * Folds, docs/mods-design.md M7) reprices them; `magnitude` otherwise. */
+   * Folds, docs/design/mods.md M7) reprices them; `magnitude` otherwise. */
   points?: number;
   /** A show run group's runs (session 66, S8); absent means one. Kept
    * apart from magnitude: pegging's run of 6 scores 6 and is one run. */
@@ -93,7 +93,7 @@ export const occurrencePoints = (occurrence: ScoringOccurrence): number => occur
 
 /** How many pairs a pair occurrence holds: n cards of a rank score
  * n(n-1) and make n(n-1)/2 pairs, so a pair royal is 3 and a double pair
- * royal 6 (docs/mods-design.md M8). */
+ * royal 6 (docs/design/mods.md M8). */
 export const pairsIn = (occurrence: ScoringOccurrence): number => (occurrence.category === 'pair' ? occurrence.magnitude / 2 : 0);
 
 /** How many times an occurrence counts for whatever watches its category

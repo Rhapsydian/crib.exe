@@ -84,7 +84,7 @@ export const CACHE_PREFETCH_CHARGES = 1;
 export const HEAT_SINK_HEAT_REFUND = 10;
 
 // ---------------------------------------------------------------------
-// Rule-benders (session 65, docs/mods-design.md M6): Mods that change how
+// Rule-benders (session 65, docs/design/mods.md M6): Mods that change how
 // the Cribbage or the loadout works. Rules in resolve.ts and combat.ts.
 // TBD/measured (scripts/mod-check.ts).
 // ---------------------------------------------------------------------
@@ -110,7 +110,7 @@ export const DEEP_CACHE_CAP_MULTIPLIER = 2;
 /** Root Cause: counts a Hook going off gives the subroutine below it. */
 export const ROOT_CAUSE_COUNTS = 1;
 // ---------------------------------------------------------------------
-// Double-edged Mods (session 65, docs/mods-design.md M2, M7, M9): the
+// Double-edged Mods (session 65, docs/design/mods.md M2, M7, M9): the
 // upside clearly better than a rare, the downside about half of it.
 // Event-only. TBD/measured.
 // ---------------------------------------------------------------------

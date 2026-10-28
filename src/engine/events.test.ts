@@ -503,7 +503,7 @@ describe('eventChoiceStrategy heat threading (checkpoint I)', () => {
   });
 });
 
-// Session 64 (docs/burners-events-design.md BE5, BE10).
+// Session 64 (docs/design/burners-events.md BE5, BE10).
 describe('Event story and contraband', () => {
   it('every Event has a scene, and every outcome a line of what happened', async () => {
     const { EVENT_ROSTER } = await import('./events');
@@ -603,7 +603,7 @@ describe('Event choices that cost Data (session 64)', () => {
   });
 });
 
-describe("session 65's Mod Events (docs/mods-design.md M11)", () => {
+describe("session 65's Mod Events (docs/design/mods.md M11)", () => {
   const event = (id: string) => EVENT_ROSTER.find((e) => e.id === id)!;
   const choice = (eventId: string, choiceId: string) => event(eventId).choices.find((c) => c.id === choiceId)!;
   const player = (patch: Partial<{ data: number; ownedModIds: ModId[]; classModUpgraded: boolean }> = {}) => ({ data: 100, ownedModIds: [] as ModId[], ...patch });

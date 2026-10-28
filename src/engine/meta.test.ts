@@ -3,7 +3,7 @@ import { repForRun, LAYER_REP, ELITE_REP, VICTORY_REP, CLASS_ORDER, firstGatekee
 import { CLASS_DEFINITIONS } from './classes';
 import type { RunEvent, RunResult } from './run';
 
-// Session 71 (docs/meta-progression-design.md MP3): what a run earns.
+// Session 71 (docs/design/meta-progression.md MP3): what a run earns.
 const result = (outcome: RunResult['outcome'], log: RunEvent[]): RunResult => ({ outcome, layersCompleted: 0, finalHeat: 0, log, playerState: {} as RunResult['playerState'] });
 const cleared = (layerIndex: number): RunEvent => ({ type: 'layerCleared', layerIndex });
 const elite = (won: boolean): RunEvent => ({ type: 'encounter', layerIndex: 0, nodeId: 'e', nodeType: 'eliteFight', outcome: { newState: won ? 'inert' : 'closed' } as never, heatAfter: 0 });

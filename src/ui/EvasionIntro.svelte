@@ -2,7 +2,7 @@
   import type { RunRequest } from '../engine/run-requests';
   import { EVASION_HANDS } from '../engine/evasion';
 
-  // A trace evasion's intro (session 63, docs/trace-evasion-design.md):
+  // A trace evasion's intro (session 63, docs/design/trace-evasion.md):
   // you beat the gatekeeper, but its toll maxed your Heat. Before the
   // Cribbage, the stakes: three hands, its head start and where that came
   // from, that you deal twice, and that only finishing ahead escapes.

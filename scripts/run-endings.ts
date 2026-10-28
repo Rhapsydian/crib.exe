@@ -1,5 +1,5 @@
 /**
- * Run endings (session 67, docs/enemies-design.md E6-E7): how simulated
+ * Run endings (session 67, docs/design/enemies.md E6-E7): how simulated
  * runs end -- victory, a lost gatekeeper, no route left, Heat -- and lost
  * regular and elite fights a run. Targets: victory 24-30%; no route left
  * occasional.

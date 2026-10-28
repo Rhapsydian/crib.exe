@@ -228,7 +228,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
       },
     ],
   },
-  // --- Session 64's first batch (docs/burners-events-design.md BE8-BE10):
+  // --- Session 64's first batch (docs/design/burners-events.md BE8-BE10):
   // pitfalls, bargains, gambles; contraband mostly behind a gamble; some
   // only on deeper layers. Heat in multiples of the layer's elite-loss
   // charge (about 15 at layer 1): small 0.27, medium 0.53, large 0.93.
@@ -520,7 +520,7 @@ export const EVENT_ROSTER: EventDefinition[] = [
       },
     ],
   },
-  // --- Session 65's Mod Events (docs/mods-design.md M11): the class Mod
+  // --- Session 65's Mod Events (docs/design/mods.md M11): the class Mod
   // upgrades and the double-edged Mods, each with its story. A choice
   // whose Mod you already hold is greyed (choiceUnavailable).
   {

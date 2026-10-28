@@ -9,7 +9,7 @@ import type { SubroutineDefinition } from './subroutine-types';
 import type { Rarity } from './rewards';
 
 /**
- * Meta-progression (session 71, docs/meta-progression-design.md): what
+ * Meta-progression (session 71, docs/design/meta-progression.md): what
  * carries between runs. This module is the pure part -- what a finished
  * run earns -- so tests and scripts can use it; the profile that stores
  * it lives in the UI (src/ui/profile.svelte.ts).

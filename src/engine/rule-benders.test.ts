@@ -7,7 +7,7 @@ import { BURNER_DEFINITIONS } from './burners';
 import { applyCombatBurner, applyCutMods, applyHandEndMods, applyModOnCombatStartPassives, applyOccurrence, applyShowMods, armThirtyOne, createCombatState, fireTurn, type CombatState } from './resolve';
 import { WARD_CONVERTER_SHARE, DEEP_CACHE_CAP_MULTIPLIER, LAST_WORD_INITIATIVE, LUCKY_CUT_CREDIT, NOBS_EXPLOIT_CREDIT, PERSISTENT_PAYLOAD_MULTIPLIER } from './mods';
 
-// The twelve rule-benders (session 65, docs/mods-design.md M6).
+// The twelve rule-benders (session 65, docs/design/mods.md M6).
 
 const piece = (id: string, alpha: Alpha, beta?: Beta, archetype: Archetype = 'exploit'): SubroutineDefinition => ({ id, name: id, archetype, alpha, beta });
 const credit = (id: string, amount: number, beta?: Beta) => piece(id, { verb: 'credit', amount }, beta);

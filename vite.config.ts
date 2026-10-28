@@ -25,7 +25,7 @@ export default defineConfig({
   // itch.io later.
   base: './',
   // Reachable from other devices on the local network, so the UI can be
-  // tested on a phone during development (docs/playable-design.md P3).
+  // tested on a phone during development (docs/archive/playable-design.md P3).
   server: { host: true },
   test: {
     environment: 'node',

@@ -3,7 +3,7 @@ import { playRun, opportunisticTraversal, type MapBurnerStrategy, type RunResult
 import { TUTORIAL_OPTIONS } from './tutorial';
 import type { BurnerId } from './burner-types';
 
-// Session 64 (docs/burners-events-design.md BE4): map Burners as Heat tools,
+// Session 64 (docs/design/burners-events.md BE4): map Burners as Heat tools,
 // on the tutorial's short layer (relay, two fights, Shop, Safehouse,
 // gatekeeper, in a line).
 

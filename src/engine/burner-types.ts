@@ -9,7 +9,7 @@ import type { Rarity } from './rewards';
  * this file otherwise mirrors closely.
  *
  * One id per Burner, authored in burners.ts. Session 64 reworked the pool
- * (docs/burners-events-design.md BE1-BE7): lumps, rule-benders,
+ * (docs/design/burners-events.md BE1-BE7): lumps, rule-benders,
  * temporary subroutines, Heat tools on the map, and Event-only contraband.
  */
 export type BurnerId =

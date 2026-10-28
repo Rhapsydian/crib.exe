@@ -24,8 +24,8 @@ behind it. Superseded models, session-by-session backstory and old
 catalogs are archived verbatim in `docs/archive/design-history.md`;
 decision records live in `docs/archive/` (`archetype-redesign.md`,
 `recalibration-design.md`, `authoring-design.md`, `balance-design.md`
-and others) and `docs/` (`playable-design.md`, `trace-evasion-design.md`,
-`tutorial-design.md`). See `BACKLOG.md` for open work and
+and others) and `docs/` (`docs/archive/playable-design.md`, `docs/design/trace-evasion.md`,
+`docs/design/tutorial.md`). See `BACKLOG.md` for open work and
 `docs/session-logs/` for the session history.
 
 ## Concept
@@ -54,7 +54,7 @@ recalibration R5–R8, `docs/archive/recalibration-design.md`):
 - each layer has its own **allowance**, growing with depth so each layer
   leaves about the same room to explore (`LAYER_HEAT_ALLOWANCE`, 56 / 63 /
   72 / 80, plus Backup Generator's bonus; session 69,
-  `docs/tuning-design.md` T2: shrinking ones left layer 1 slack and layer 4
+  `docs/archive/tuning-design.md` T2: shrinking ones left layer 1 slack and layer 4
   a straight route); **reaching it ends the run** (caught);
 - **every move costs Heat** (`HEAT_PER_MOVE`), in any direction, onto any
   node, resolved or not — see Map & Run Structure;
@@ -170,7 +170,7 @@ acted at all let rarity silently decide *existence*. The old model is
 archived.
 
 The content is authored: **52 player subroutines**, 13 per archetype
-(`src/engine/content/`; `docs/subroutines-design.md`), plus 12 shared
+(`src/engine/content/`; `docs/design/subroutines.md`), plus 12 shared
 enemy-only subroutines (`content/enemy-subroutines.ts`) and the
 gatekeepers' bespoke ones (`content/enemies.ts`).
 
@@ -436,7 +436,7 @@ can be reskinned as different named contract targets, a natural hook for
 meta-progression.
 
 **One layer at a time.** The map shows only the current layer
-(`docs/playable-design.md` M1–M9; `map-gen.ts`). Layers are **10 / 12 /
+(`docs/archive/playable-design.md` M1–M9; `map-gen.ts`). Layers are **10 / 12 /
 12 / 14** nodes, laid out as a scattered network on a hex backdrop (no
 two nodes on neighbouring hexes), linked only to near neighbours with no
 crossings, the gatekeeper 3–6 moves from the entry and never behind
@@ -506,7 +506,7 @@ Five outcomes (`run.ts` `RunOutcome`):
    forward; a soft lock distinct from both of the above.
 5. **Breached, then caught** (`breachedThenCaught`) — the gatekeeper is
    beaten but its toll (charged after the fight) maxes Heat, and the
-   **trace evasion** that follows is lost (`docs/trace-evasion-design.md`,
+   **trace evasion** that follows is lost (`docs/design/trace-evasion.md`,
    `evasion.ts`). The evasion is three hands of plain Cribbage against
    the gatekeeper, which starts a point ahead per 10% of its final
    Containment; you deal the 1st and 3rd hands; finish strictly ahead to
@@ -520,7 +520,7 @@ Five outcomes (`run.ts` `RunOutcome`):
 Burners, Events, Shops and Caches (below).
 
 **Between runs** (`meta.ts`; the full record is
-`docs/meta-progression-design.md`):
+`docs/design/meta-progression.md`):
 
 - **Rep** is the currency, earned by depth: 10 / 15 / 20 / 25 for each
   layer breached, 75% of that for breached-then-caught, +2 an elite, +20
@@ -543,7 +543,7 @@ Burners, Events, Shops and Caches (below).
 
 ### Daily Runs
 
-One fixed run a day for everyone (`daily.ts`; `docs/daily-runs-design.md`):
+One fixed run a day for everyone (`daily.ts`; `docs/design/daily-runs.md`):
 the date seeds the class (from all six, unlocked or not), the map and a
 set of daily Mods: one **Directive** (the day's scoring twist) plus two
 or three **Glitches** (Cribbage and fight rules), **Advisories** (the
@@ -597,7 +597,7 @@ half their buying price by rarity plus a premium per rank.
 ### Mods
 
 crib.exe's answer to StS relics: permanent, always-on effects
-(`mods.ts`, `mod-types.ts`; `docs/mods-design.md`). 57 exist: 6 class
+(`mods.ts`, `mod-types.ts`; `docs/design/mods.md`). 57 exist: 6 class
 Mods, 6 double-edged Mods (a strong upside with a real cost), and 45
 general (14 common, 19 uncommon, 12 rare), most of the newer ones
 rule-benders that change how the Cribbage or the loadout works. Static Shield is set aside (defined but never
@@ -633,7 +633,7 @@ regulars carry none. No enemy carries a class Mod.
 ### Burners
 
 crib.exe's answer to StS Potions: single-use, **player-activated** items
-(`burners.ts`; `docs/burners-events-design.md`), the one thing the otherwise automatic (subroutines) or
+(`burners.ts`; `docs/design/burners-events.md`), the one thing the otherwise automatic (subroutines) or
 passive (Mods) systems lack. Named for a burner phone: used once and
 discarded to avoid being traced.
 
@@ -707,7 +707,7 @@ Quiet Host choice are a separate, combinable profile
 upgrades and Security Level 0, every class within about ±3 points of the
 average. The measured state: about 26% (classes 23.7–28.3%), Heat ending
 about 12% of runs, about 65–71% of each layer explorable, and about 12
-Mods by a winning run's end (`docs/tuning-design.md`). Gatekeepers get
+Mods by a winning run's end (`docs/archive/tuning-design.md`). Gatekeepers get
 harder by layer (about 86 / 82 / 76 / 74% passed). Skill retention stays
 ≥ 0.5 (Pricing rule 5).
 
@@ -719,7 +719,7 @@ gave a fresh player somewhere to grow from.
 
 **Tone: every enemy is the target network's own defenses**, even the
 offense-flavoured kits (its security team or automated countermeasures
-hacking back), never a separate criminal group (`docs/enemies-design.md`). External-actor flavour
+hacking back), never a separate criminal group (`docs/design/enemies.md`). External-actor flavour
 for a specific contract remains future idea space.
 
 Enemies are a real roster with identity, structurally close to player

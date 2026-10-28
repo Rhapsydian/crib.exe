@@ -1,5 +1,5 @@
 /**
- * Mod check (session 65, docs/mods-design.md checkpoint 2): what each
+ * Mod check (session 65, docs/design/mods.md checkpoint 2): what each
  * combat Mod is worth, measured with and without it (the user's rule, as
  * burner-check.ts does for Burners).
  *

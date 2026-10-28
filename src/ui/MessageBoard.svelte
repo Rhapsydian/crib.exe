@@ -18,7 +18,7 @@
   import SuitIcon from './SuitIcon.svelte';
   import RichText from './RichText.svelte';
 
-  // The Message Board (session 71, docs/meta-progression-design.md MP16):
+  // The Message Board (session 71, docs/design/meta-progression.md MP16):
   // where Rep is spent between runs. Upgrades (MP7), the library (MP8:
   // one subroutine per archetype, every common before any uncommon), and
   // starting Burners (MP9). Its first visit opens on an introduction.

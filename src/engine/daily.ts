@@ -13,7 +13,7 @@ import type { FightGlitches, ScoringRule } from './triggers';
 import { layerHeatAllowance } from './heat';
 
 /**
- * Daily Runs (session 72, docs/daily-runs-design.md): the run of the day.
+ * Daily Runs (session 72, docs/design/daily-runs.md): the run of the day.
  * The date, as YYYY-MM-DD with a salt, is hashed into the day's seed
  * (DR5); the seed rolls the class and the day's Mods (DR4) and drives the
  * run itself, so everyone playing that date plays the same run.

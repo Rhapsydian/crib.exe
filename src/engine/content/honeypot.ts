@@ -125,7 +125,7 @@ const AIR_GAPPED_VAULT: SubroutineDefinition = {
   beta: { source: 'state', condition: { kind: 'wardAbove', amount: 8 }, shape: 'whileTrue', effect: { verb: 'enhance', amount: 3 } },
 };
 
-// --- Session 66 (docs/subroutines-design.md S6-S11): a Run Hook, a
+// --- Session 66 (docs/design/subroutines.md S6-S11): a Run Hook, a
 // stepped pair Hook, a new Process and a rare build-definer. TBD/measured.
 
 /** Run Hook: the opponent's runs, punished (the user's call). */

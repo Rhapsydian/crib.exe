@@ -1,5 +1,5 @@
 /**
- * Daily Runs check (session 72, docs/daily-runs-design.md DR2): how big
+ * Daily Runs check (session 72, docs/design/daily-runs.md DR2): how big
  * each part of the daily score runs over many days, so none swamps depth,
  * and what each Directive adds on average.
  *

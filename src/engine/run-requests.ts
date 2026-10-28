@@ -49,7 +49,7 @@ export type RunRequest =
   | Ask<'eventResult', { event: EventDefinition; choice: EventChoice; /** Which of the choice's outcomes was rolled (the roll animation). */ outcomeIndex: number; effect: EventEffect; text?: string; grant: EventGrant; heat: number }, null>
   | Ask<'burnerSaved', { burnerId: BurnerId; enemy: EnemyDefinition }, null>
   | Ask<'cacheOpened', { contents: 'subroutine' | 'bundle' | 'mod'; data: number; burners: BurnerDefinition[] }, null>
-  /** A trace evasion (session 63, docs/trace-evasion-design.md): its
+  /** A trace evasion (session 63, docs/design/trace-evasion.md): its
    * start and end are notices; in between, the player's own decisions in
    * its plain Cribbage. The simulated player plays at its skill. */
   | Ask<'evasionStart', { enemy: EnemyDefinition; layer: number; enemyFill: number; headStart: number }, null>

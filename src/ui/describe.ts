@@ -8,7 +8,7 @@ import { suitInfo } from './suits';
 /**
  * Plain-language text for subroutines and fires (milestone 2). Players
  * see "Process" (the alpha, every turn) and "Hook" (the beta, when its
- * condition is met) -- P7 of docs/playable-design.md. Display only: the
+ * condition is met) -- P7 of docs/archive/playable-design.md. Display only: the
  * engine keeps alpha/beta.
  *
  * Written to the rules in docs/archive/text-audit.md (session 60): "subroutine",

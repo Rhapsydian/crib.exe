@@ -61,7 +61,7 @@ export type ModId =
   | 'heat-sink'
   | 'backdoor-access'
   | 'session-hijack-relay'
-  // Rule-benders, uncommon (session 65, docs/mods-design.md M6)
+  // Rule-benders, uncommon (session 65, docs/design/mods.md M6)
   | 'nobs-exploit'
   | 'run-splicer'
   | 'last-word'
@@ -78,7 +78,7 @@ export type ModId =
   // The free first Merge for the other two archetypes (session 69)
   | 'proof-of-concept'
   | 'lure-template'
-  // Double-edged, Event-only (session 65, docs/mods-design.md M2, M7, M9)
+  // Double-edged, Event-only (session 65, docs/design/mods.md M2, M7, M9)
   | 'fifteen-fold'
   | 'pair-fold'
   | 'overclocked-kernel'

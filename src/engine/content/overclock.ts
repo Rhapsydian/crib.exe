@@ -124,7 +124,7 @@ const TURBO_MODE: SubroutineDefinition = {
   pointsCooldown: HASTE_POINTS_COOLDOWN,
 };
 
-// --- Session 66 (docs/subroutines-design.md S6-S11): a Run Hook, a
+// --- Session 66 (docs/design/subroutines.md S6-S11): a Run Hook, a
 // stepped pair Hook, a new Process and a rare build-definer. TBD/measured.
 
 /** Run Hook: each run is speed, mid-hand. */

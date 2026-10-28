@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { EVASION_HANDS, evasionGame, evasionHeadStart, playEvasion } from './evasion';
 import { playCribbageGame } from './basic-cribbage';
 
-// Session 63, docs/trace-evasion-design.md.
+// Session 63, docs/design/trace-evasion.md.
 describe('trace evasion', () => {
   it('TE1: the head start is a point per 10% of the Containment it had, 0-9', () => {
     expect(evasionHeadStart(0)).toBe(0);

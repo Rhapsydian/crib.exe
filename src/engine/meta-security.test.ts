@@ -4,7 +4,7 @@ import { createInitialPlayerState, playRun, type RunEvent, type RunResult } from
 import { BREACH_THRESHOLD, securityMods, totalHeatSources } from './encounters';
 import { ENEMY_ROSTER } from './enemies';
 
-// Session 71 (docs/meta-progression-design.md MP13-MP14): Security Levels.
+// Session 71 (docs/design/meta-progression.md MP13-MP14): Security Levels.
 describe('Security Levels', () => {
   it('level 0 changes nothing; levels stack and clamp to 10', () => {
     const fresh = createInitialPlayerState('exploit-overclock');

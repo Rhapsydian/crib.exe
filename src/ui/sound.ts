@@ -1,5 +1,5 @@
 /**
- * Sound (go-live step 4; the user's choices are in docs/go-live-plan.md).
+ * Sound (go-live step 4; the user's choices are in docs/release/go-live-plan.md).
  * About eighteen short effects for moments that mean something. The cards
  * are recorded key presses (the user's pick: unicaegames' "Keyboard
  * soundpack 1", CC0), so playing a card is a keystroke; the rest are synth,

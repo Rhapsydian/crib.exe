@@ -135,7 +135,7 @@ export function scoreCardPlay(cardsSinceReset: Card[], count: number, limit = CO
 }
 
 /**
- * Step-by-step pegging (milestone 1, `docs/playable-design.md` P1/P8):
+ * Step-by-step pegging (milestone 1, `docs/archive/playable-design.md` P1/P8):
  * the same rules as playPegging, split at the one point a player decides
  * something -- which card to play -- so a caller can pause there (for a
  * human, or to resolve combat live after each play). playPegging below is

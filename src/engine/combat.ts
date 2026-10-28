@@ -426,7 +426,7 @@ function resolveHardTiebreak(): PlayerIndex {
 
 /**
  * A decision the combat generator needs answered (milestone 1,
- * `docs/playable-design.md` P1): which two cards to discard, which card to
+ * `docs/archive/playable-design.md` P1): which two cards to discard, which card to
  * peg, or which Burner (if any) to activate before a turn. The generator
  * yields one and is resumed with the answer -- `[Card, Card]`, a `Card`,
  * or a `BurnerId | null` respectively. Requests are yielded for BOTH

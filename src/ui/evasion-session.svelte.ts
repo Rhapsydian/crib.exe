@@ -6,7 +6,7 @@ import { cribbageBeats } from './cribbage-steps';
 import { mergeSteps, type Step } from './timeline';
 
 /**
- * A trace evasion inside a run (session 63, docs/trace-evasion-design.md),
+ * A trace evasion inside a run (session 63, docs/design/trace-evasion.md),
  * as the Cribbage screen reads it: the run's engine plays it (the
  * gatekeeper's decisions answered there), and each of your decisions
  * arrives here as a frame. Your answers go back to the run, which saves

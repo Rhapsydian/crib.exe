@@ -156,7 +156,7 @@ export interface CombatSideState {
    * deal -- for `handPointsAtLeast` state betas. */
   handPoints: number;
   /** This side's fifteens and pairs repriced (the Folds,
-   * docs/mods-design.md M7); Cribbage's own 2 when absent. */
+   * docs/design/mods.md M7); Cribbage's own 2 when absent. */
   scoringRule?: ScoringRule;
   /** Temporary threshold changes on this side's initiative gauge. */
   timedTempo: TimedTempo[];
@@ -199,7 +199,7 @@ export interface CombatState {
    * snapshot; used ones are surfaced via CombatResult, not removed here. */
   carriedBurnerIds: BurnerId[];
   /** Each side's class Mod is its "II" version (session 65,
-   * docs/mods-design.md M10). Side 1's exists only for pricing duels. */
+   * docs/design/mods.md M10). Side 1's exists only for pricing duels. */
   bridgeUpgraded?: [boolean, boolean];
   /** Side 0's benched subroutines, for Hot Standby (session 65): their
    * Processes fire after the loadout at half strength. */
@@ -616,7 +616,7 @@ export const BRIDGE_DAEMON_HONEYPOT_WARD = 1.5;
  * gauge (1/12: one point at the usual threshold of 12). Limited per hand
  * rather than shrunk to tiny amounts, the user's call: small fractions
  * read badly. */
-// The "II" clauses (session 65, docs/mods-design.md M10). TBD/measured.
+// The "II" clauses (session 65, docs/design/mods.md M10). TBD/measured.
 /** Lateral Movement II: the pair each hand that gives a turn at once (was
  * a pair royal: measured +0.7 victory). */
 export const BRIDGE_II_BLACKHAT_PAIRS = 2;
@@ -632,7 +632,7 @@ export const BRIDGE_II_BREACHER_SHARE = 1 / 3;
 /** Phase Shift II: initiative when Ward fully blocks a hit. */
 export const BRIDGE_II_WRAITH_INITIATIVE = 1;
 
-/** Phase Shift (session 68, docs/enemies-design.md E17; was "the first
+/** Phase Shift (session 68, docs/design/enemies.md E17; was "the first
  * fifteen each hand you deal: Ward 0.5 and 1 initiative", the weakest
  * class Mod by far): each fifteen its owner scores Wards this much, and
  * while the owner's Ward is over BRIDGE_OVERCLOCK_HONEYPOT_ABOVE it also
@@ -882,7 +882,7 @@ export function bridgeUpgradedFor(combatState: CombatState, side: PlayerIndex, c
   return combatState.bridges[side] === classId && isBridgeUpgraded(combatState, side);
 }
 
-// Rule-benders (session 65, docs/mods-design.md M6): the player's own.
+// Rule-benders (session 65, docs/design/mods.md M6): the player's own.
 /** Thirty-One: the turn it gives sets off every Hook. */
 const THIRTY_ONE_HOOKS = 'thirty-one:hooks';
 /** Overclocked Kernel: doubled turns taken this fight. */
@@ -1633,7 +1633,7 @@ export function forceOpponentDiscard(combatState: CombatState, caster: PlayerInd
 }
 
 // ---------------------------------------------------------------------
-// Burners in a fight (session 64, docs/burners-events-design.md BE1-BE3)
+// Burners in a fight (session 64, docs/design/burners-events.md BE1-BE3)
 // ---------------------------------------------------------------------
 
 /** Applies one combat Burner's effect for `side` (the player). */

@@ -7,7 +7,7 @@ import { playLowestLegal } from './pegging';
 import { cribbageGame, playCribbageGame, type CribbageAnswer, type CribbageBeat, type CribbageRequest } from './basic-cribbage';
 
 /**
- * Trace evasion (session 63, docs/trace-evasion-design.md TE1-TE8): when
+ * Trace evasion (session 63, docs/design/trace-evasion.md TE1-TE8): when
  * you beat a gatekeeper but its Heat toll maxes your Heat, a short game
  * of plain Cribbage decides whether you slip away. The gatekeeper starts
  * ahead by a point per 10% of the Containment it had (TE1); three hands,

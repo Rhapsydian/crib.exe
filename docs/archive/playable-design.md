@@ -1,6 +1,6 @@
 # Making crib.exe playable — working decision record
 
-> **Status: finished, kept as a record.** Milestones 1-4 were built in sessions 57-59. Milestone 5, polish and playtesting, became the content pass, the tuning pass and go-live (`docs/go-live-plan.md`); its tutorial is `docs/tutorial-design.md`.
+> **Status: finished, kept as a record.** Milestones 1-4 were built in sessions 57-59. Milestone 5, polish and playtesting, became the content pass, the tuning pass and go-live (`docs/release/go-live-plan.md`); its tutorial is `docs/design/tutorial.md`.
 
 The first UI over the headless engine. Started session 57
 (`/decision-session`, 2026-10-16), after the archetype redesign and the
@@ -1015,7 +1015,7 @@ game the combat rests on (the user's call). Decisions, live:
 ## Backlog items raised here
 
 - ~~An optional **tutorial run**~~: built in session 63
-  (`docs/tutorial-design.md`).
+  (`docs/design/tutorial.md`).
 - The **style / chrome guide** (milestone 5; deferred in session 60).
 - Drag and drop as an alternative card input, if playtesting wants it.
 - Hosting: a custom domain pointed at the GitHub-hosted site, and itch.io.
@@ -1025,3 +1025,5 @@ game the combat rests on (the user's call). Decisions, live:
 Milestones 1-4 are done (sessions 57-59). Milestone 5, polish and
 playtesting, is under way; what is left of it lives in `BACKLOG.md`
 (Priorities and Open items).
+
+*Paths updated 2026-10-28 when docs/ was reorganized; the content is as written.*

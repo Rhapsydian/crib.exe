@@ -2,7 +2,7 @@ import { SECURITY_REP_STEP, securityRules, type SecurityRules } from '../engine/
 
 /**
  * A Security Level's effects as a list, for the class select (session 71,
- * docs/meta-progression-design.md MP14; a list since session 72, the
+ * docs/design/meta-progression.md MP14; a list since session 72, the
  * user's ask). Worked out from the engine's own rules (meta.ts
  * securityRules), so the list is always what the level applies. Levels
  * stack: each line is the total at this level, and `isNew` marks a rule

@@ -1,5 +1,5 @@
 /**
- * Mod supply (session 69, docs/tuning-design.md T1): how many Mods a run
+ * Mod supply (session 69, docs/archive/tuning-design.md T1): how many Mods a run
  * ends with (besides the class Mod), in all runs and in winning ones, and
  * where they came from. Target: about 10 by a winning run's end.
  *

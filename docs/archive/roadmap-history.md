@@ -4808,7 +4808,7 @@ their write-ups are archived in `docs/archive/roadmap-history.md`).
   against vitest's 5s default and failed whenever the machine was loaded.
   Given an explicit 30s budget in session 49; the assertion is unchanged.
 
-## Making the game playable (session 57, `docs/playable-design.md`)
+## Making the game playable (session 57, `docs/archive/playable-design.md`)
 
 Planned as P1–P7. Desktop and mobile from the start (portrait-first on
 phones); local browser for testing; eventually a custom domain on the
@@ -4835,9 +4835,9 @@ GitHub-hosted site and itch.io.
    management, Safehouse / Shop (bought freely) / Event / Cache screens,
    map Burners, save and resume, a 320px phone pass. Trace removed along
    the way (fights post Heat; Fuzzer and Jackpot feed the enemy's gauge;
-   alarms add Heat). Detail: `docs/playable-design.md` → Milestone 3.
+   alarms add Heat). Detail: `docs/archive/playable-design.md` → Milestone 3.
 4. ✅ **Vanilla Cribbage, with a learn-to-play mode** (session 59, five
-   checkpoints; decisions V1-V7 in `docs/playable-design.md` → Milestone 4):
+   checkpoints; decisions V1-V7 in `docs/archive/playable-design.md` → Milestone 4):
    the game engine to 121, pegboard mockups (minimal bars chosen), the
    menu / game / end / saves, the coach, five lessons. Planned as: (the user, session 58;
    next, before polish -- testers who know the card game the combat is
@@ -4903,7 +4903,7 @@ class at 13–19% full-run victory, inside the 10–20% target (was 11–31%).
 It did so with a Credit premium on the noisy Exploit pieces, a lower
 gatekeeper pass-rate curve, and small bridge trims.
 
-Session 57 started **making the game playable** (`docs/playable-design.md`,
+Session 57 started **making the game playable** (`docs/archive/playable-design.md`,
 P1–P8). The engine now pauses at each player decision (generators) and
 resolves combat live during pegging. On top of it, **one real fight is
 playable**: pick a class and an enemy, then discard, peg, and watch every
@@ -4982,6 +4982,8 @@ the main menu's title reads as a command with a hand flying off it.
 Heat is now shown up front: each fight's posted Heat on its map card, and
 a **Heat bar** in every run fight (alarms as they land, what a win would
 cost). And *breached, then caught* became a last chance: a **trace
-evasion** (`docs/trace-evasion-design.md`), three hands of plain Cribbage
+evasion** (`docs/design/trace-evasion.md`), three hands of plain Cribbage
 against the gatekeeper, which starts a point ahead per 10% of its
 Containment; outscore it to slip away.
+
+*Paths updated 2026-10-28 when docs/ was reorganized; the content is as written.*

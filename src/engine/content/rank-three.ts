@@ -1,5 +1,5 @@
 /**
- * Merge rank III's Process bonus (session 66, docs/subroutines-design.md
+ * Merge rank III's Process bonus (session 66, docs/design/subroutines.md
  * S4): rank III adds this share of the Process's base amount (a growing
  * Process with no base: of its growth cap), on top of the Hook bump every
  * rank gives. Authored per subroutine within 50-150%: weaker or

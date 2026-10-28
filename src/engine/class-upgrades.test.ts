@@ -18,7 +18,7 @@ import {
 } from './resolve';
 import { classModFor } from '../ui/kit';
 
-// The class Mod upgrades (session 65, docs/mods-design.md M10).
+// The class Mod upgrades (session 65, docs/design/mods.md M10).
 
 const credit = (id: string, amount: number, archetype: Archetype = 'exploit', extra: Partial<SubroutineDefinition['alpha']> = {}): SubroutineDefinition => ({
   id, name: id, archetype, alpha: { verb: 'credit', amount, ...extra } as SubroutineDefinition['alpha'],

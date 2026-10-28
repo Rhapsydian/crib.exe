@@ -5,7 +5,7 @@ import { BURNER_DEFINITIONS, generalBurnerPool } from './burners';
 import type { BurnerId } from './burner-types';
 import type { ScoringOccurrence } from './triggers';
 
-// Session 64 (docs/burners-events-design.md BE1-BE7): the reworked combat
+// Session 64 (docs/design/burners-events.md BE1-BE7): the reworked combat
 // Burners, on a bare fight. Side 0 is the player.
 
 function piece(id: string, alpha: Alpha, beta?: Beta): SubroutineDefinition {

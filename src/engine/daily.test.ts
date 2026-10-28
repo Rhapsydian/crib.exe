@@ -11,7 +11,7 @@ import { generateLayer } from './map-gen';
 import { createRng } from './rng';
 import { SYNERGY_AWARE_PROFILE } from './profiles';
 
-// Session 72 (docs/daily-runs-design.md DR4-DR8): the day.
+// Session 72 (docs/design/daily-runs.md DR4-DR8): the day.
 const dates = Array.from({ length: 400 }, (_, i) => dailyDate(new Date(2026, 0, 1 + i)));
 
 describe('the daily', () => {

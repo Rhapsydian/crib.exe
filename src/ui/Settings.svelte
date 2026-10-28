@@ -6,7 +6,7 @@
   import { sound } from './sound';
 
   // Settings (go-live step 3; the user's decisions are in
-  // docs/go-live-plan.md): turn speed, tips, and progress -- a code to
+  // docs/release/go-live-plan.md): turn speed, tips, and progress -- a code to
   // export and import, and an erase. Import and erase reload the game, so
   // every screen starts from the new progress. Sound joins in step 4.
   let { onmenu }: { onmenu: () => void } = $props();

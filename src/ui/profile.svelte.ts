@@ -8,7 +8,7 @@ import { ALL_SUBROUTINES } from '../engine/subroutines';
 import { RESET_PROFILE_FLAG, UNLOCK_ALL_FLAG } from './testing-flags';
 
 /**
- * The meta-progression profile (session 71, docs/meta-progression-design.md
+ * The meta-progression profile (session 71, docs/design/meta-progression.md
  * MP10): Rep and everything bought or unlocked with it, kept apart from
  * run saves. A save breaks whenever the game changes; the profile must
  * not, so it carries its own version and `migrate` brings an older one

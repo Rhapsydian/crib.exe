@@ -1,5 +1,5 @@
 /**
- * Meta-progression pacing (session 71, docs/meta-progression-design.md
+ * Meta-progression pacing (session 71, docs/design/meta-progression.md
  * MP11): what upgrades do to runs, and how fast Rep buys them.
  *
  * --part=maxed: victory and layers breached by class, fresh against

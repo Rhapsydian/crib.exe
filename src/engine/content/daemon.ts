@@ -101,7 +101,7 @@ const FORK_BOMB: SubroutineDefinition = {
   beta: { source: 'progress', metric: 'fires', per: 4, shape: 'stepped', at: 1, effect: { verb: 'credit', amount: 3 } },
 };
 
-// --- Session 66 (docs/subroutines-design.md S6-S11): a Run Hook, a
+// --- Session 66 (docs/design/subroutines.md S6-S11): a Run Hook, a
 // stepped pair Hook, a new Process and a rare build-definer. TBD/measured.
 
 /** Run Hook: runs answered with Suppress while it grows. */

@@ -8,7 +8,7 @@
   import RichText from './RichText.svelte';
   import NoticeCard from './NoticeCard.svelte';
 
-  // The daily briefing (session 72, docs/daily-runs-design.md DR9): the
+  // The daily briefing (session 72, docs/design/daily-runs.md DR9): the
   // day's class and every Mod in full, whether this is the scored attempt
   // or practice, the streak and the last 14 days.
   // `saved` is a daily in progress in its own save slot (session 72): today's

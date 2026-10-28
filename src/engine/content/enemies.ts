@@ -94,7 +94,7 @@ export const AUTHORED_REGULARS: AuthoredEnemy[] = [
   { id: 'integrity-monitor', name: 'Integrity Monitor', tier: 'regular', archetypes: ['overclock', 'daemon'], minLayer: 4, loadout: [p('burst-clock'), CONTEXT_SWITCH, GARBAGE_COLLECTOR], scale: 1.6 },
   // Slows you, and strips Ward as you get close.
   { id: 'firewall-cluster', name: 'Firewall Cluster', tier: 'regular', archetypes: ['exploit', 'overclock'], minLayer: 4, loadout: [PRIVILEGE_DROP, THROTTLE, p('port-scan')], scale: 1.52 },
-  // Session 68 (docs/enemies-design.md E16): eight regulars for variety,
+  // Session 68 (docs/design/enemies.md E16): eight regulars for variety,
   // two per layer, at today's regular difficulty; scales measured.
   { id: 'port-knocker', name: 'Port Knocker', tier: 'regular', archetypes: ['exploit', 'overclock'], minLayer: 1, loadout: [p('sequence-attack'), p('pipeline-flush')], scale: 1.3 },
   { id: 'scheduler-bot', name: 'Scheduler Bot', tier: 'regular', archetypes: ['daemon', 'overclock'], minLayer: 1, loadout: [p('rolling-update'), p('cache-hit')], scale: 1.2 },
@@ -133,7 +133,7 @@ export const AUTHORED_ELITES: AuthoredEnemy[] = [
   { id: 'threat-hunter', name: 'Threat Hunter', tier: 'elite', archetypes: ['exploit', 'honeypot'], minLayer: 3, mods: ['evidence-chain'], loadout: [AUDIT_LOG, HONEYNET, p('fail2ban')], scale: 2.3 },
   // Rations your CPU: your bottom subroutine never fires (Resource Quota).
   // Context Switch sits beside Priority Override so its Hook can apply.
-  // Session 67 (docs/enemies-design.md E4): six elites, each aimed at a
+  // Session 67 (docs/design/enemies.md E4): six elites, each aimed at a
   // kind of build. Scales calibrated in checkpoint 3.
   { id: 'jamming-array', name: 'Jamming Array', tier: 'elite', archetypes: ['exploit', 'overclock'], minLayer: 1, mods: ['interference'], loadout: [p('buffer-overflow'), p('ping'), p('doorknob-rattle')], scale: 1.2 },
   { id: 'memory-governor', name: 'Memory Governor', tier: 'elite', archetypes: ['daemon', 'honeypot'], minLayer: 2, mods: ['hard-limit'], loadout: [p('patch'), p('basic-auth'), p('steady-drip')], scale: 1.5 },
@@ -167,7 +167,7 @@ const BALANCE_SHEET: SubroutineDefinition = {
   alpha: { verb: 'credit', amount: 1 },
   beta: { source: 'state', condition: { kind: 'opponentGaugeAbove', fraction: 0.5 }, shape: 'whileTrue', effect: { verb: 'credit', amount: 1, from: 'opponent' } },
 };
-// Session 68's gatekeepers' signatures (docs/enemies-design.md E11).
+// Session 68's gatekeepers' signatures (docs/design/enemies.md E11).
 const HOUSE_DEALER: SubroutineDefinition = {
   id: 'house-dealer', name: 'House Dealer', archetype: 'exploit',
   alpha: { verb: 'credit', amount: 2 },

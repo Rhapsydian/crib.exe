@@ -21,15 +21,15 @@ is a thin interface onto the engine.
 <https://cribexe.com> (branch `playable`) and on itch.io, public as "In
 development" (<https://rhapsydian.itch.io/cribexe>, devlog posted). 1.0
 is held for more testing (the user). Changes since v0.9.1 wait in
-`docs/next-notes.md`. 987 tests, `npm run check` clean.
+`PATCH_NOTES.md` (Unreleased). 987 tests, `npm run check` clean.
 
 The game is feature-complete: a four-layer run with six classes, a
 guided tutorial and first-time tips, plain Cribbage with a coach and
 lessons, a review coach that rates Cribbage play (`src/ui/skill-review.ts`),
 progression between runs (Rep, a class unlock chain, the Message Board's
 upgrade tracks and library, ten Security Levels;
-`docs/meta-progression-design.md`), and Daily Runs
-(`docs/daily-runs-design.md`). Balance for the simulated player (skill
+`docs/design/meta-progression.md`), and Daily Runs
+(`docs/design/daily-runs.md`). Balance for the simulated player (skill
 0.85): run victory ~26% (target 24-30%), classes 23.7-28.3%, Heat ending
 ~12% of runs, about 65-71% of each layer explorable, ~12 Mods by a
 winning run's end; fully upgraded ~90%; Security Levels 1 / 5 / 10 at
@@ -40,7 +40,7 @@ winning run's end; fully upgraded ~90%; Security Levels 1 / 5 / 10 at
 ## Priorities: go-live (the user, end of session 72)
 
 **The game is feature-complete; next is release.** The plan, in order, is
-`docs/go-live-plan.md`:
+`docs/release/go-live-plan.md`:
 
 1. Release cleanup (done: testing switches, the test-fight button, a version
    number, CI actions off Node 20, stale balance notes pruned).
@@ -68,7 +68,7 @@ winning run's end; fully upgraded ~90%; Security Levels 1 / 5 / 10 at
 8. A release candidate (under way): full test done; v0.9.0 then v0.9.1 out
    to testers; fixes only from here. **Next:** testers' reports, then 1.0
    when they go quiet (the user decides): a 1.0.0 bump, notes from
-   `docs/next-notes.md`, and the "At 1.0" checklist in `docs/itch/page.md`.
+   `PATCH_NOTES.md` (Unreleased), and the "At 1.0" checklist in `docs/itch/page.md`.
 9. itch.io (done for the release candidate): page, screenshots, GIF, cover,
    butler upload, public "In development", devlog. Reddit posts are
    drafted (`docs/itch/reddit.md`); the user posts them.
@@ -247,4 +247,4 @@ Code and tools:
 | 6 — Release | 🔄 release candidate public (session 73); 1.0 after testing |
 
 Detail for every completed phase is in `docs/archive/roadmap-history.md`; the
-playable-game milestones are in `docs/playable-design.md`.
+playable-game milestones are in `docs/archive/playable-design.md`.

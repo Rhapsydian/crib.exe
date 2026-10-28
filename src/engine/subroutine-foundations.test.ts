@@ -12,7 +12,7 @@ import { ENEMY_SUBROUTINES } from './content/enemy-subroutines';
 import { RANK_THREE_PROCESS_SHARE } from './content/rank-three';
 import { describeHook } from '../ui/describe';
 
-// Session 66's foundations (docs/subroutines-design.md S4, S5, S8, S12).
+// Session 66's foundations (docs/design/subroutines.md S4, S5, S8, S12).
 
 const card = (rank: number, suit = 0): Card => ({ rank, suit } as Card);
 const piece = (id: string, alpha: Alpha, beta?: Beta): SubroutineDefinition => ({ id, name: id, archetype: 'exploit', alpha, beta });

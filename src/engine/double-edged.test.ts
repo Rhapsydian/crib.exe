@@ -16,7 +16,7 @@ import {
   PAIR_FOLD_RULE,
 } from './mods';
 
-// The six double-edged Mods (session 65, docs/mods-design.md M2, M7, M9).
+// The six double-edged Mods (session 65, docs/design/mods.md M2, M7, M9).
 
 const credit = (id: string, amount: number): SubroutineDefinition => ({ id, name: id, archetype: 'exploit', alpha: { verb: 'credit', amount } });
 const fight = (mods: ModId[]): CombatState => applyModOnCombatStartPassives(createCombatState([credit('a', 1)], [credit('enemy', 1)], [12, 12], undefined, [100, 100], [], mods));

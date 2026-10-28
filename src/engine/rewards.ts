@@ -85,7 +85,7 @@ export function offClassPoolForClass(classId: ClassId): SubroutineDefinition[] {
 }
 
 /** How much likelier a subroutine the player already owns is to be
- * offered (session 66, docs/subroutines-design.md S13): copies are what
+ * offered (session 66, docs/design/subroutines.md S13): copies are what
  * Merging needs, and a bigger pool made them rare. TBD/measured. */
 export const OWNED_REWARD_WEIGHT = 3;
 

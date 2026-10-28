@@ -183,9 +183,9 @@ A full test run, a playtest build for testers, then a freeze: fixes only.
 Done: the smoke tests (the live site, the Tutorial, a desktop fight);
 v0.9.0 then v0.9.1 (release candidate 2) out to testers, with notes and
 Discord posts. Testers' reports since: fixes and balance only, live
-without a version bump and held in `docs/next-notes.md`. **1.0 when the
+without a version bump and held in `PATCH_NOTES.md` (Unreleased). **1.0 when the
 reports go quiet** (the user: more testing first): bump to 1.0.0, notes
-from `docs/next-notes.md`, then the "At 1.0" checklist in
+from `PATCH_NOTES.md` (Unreleased), then the "At 1.0" checklist in
 `docs/itch/page.md`.
 
 ## 9. itch.io (done for the release candidate, session 73)

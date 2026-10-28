@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The tutorial's front door (session 63, docs/tutorial-design.md T2):
+  // The tutorial's front door (session 63, docs/design/tutorial.md T2):
   // the guided run assumes the Cribbage basics, so it asks first. "New to
   // Cribbage" goes to the Learn-to-play lessons; "I know Cribbage" starts
   // the guided run.

@@ -8,7 +8,7 @@ import { scaledProcess } from './subroutine-types';
 import { ENEMY_ROSTER } from './enemies';
 import { ALL_SUBROUTINES, ARCHETYPE_POOLS } from './subroutines';
 
-// Session 71 (docs/meta-progression-design.md MP7-MP9): the upgrades
+// Session 71 (docs/design/meta-progression.md MP7-MP9): the upgrades
 // inside a run.
 const MAXED = Object.fromEntries(Object.entries(UPGRADE_TRACKS).map(([id, t]) => [id, t.levels]));
 

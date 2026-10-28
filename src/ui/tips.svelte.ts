@@ -1,5 +1,5 @@
 /**
- * First-time tips (session 63, docs/tutorial-design.md T6): a one-line
+ * First-time tips (session 63, docs/design/tutorial.md T6): a one-line
  * banner the first time a player meets each mechanic the guided run
  * doesn't cover. Shown once per mechanic, remembered per browser; the
  * main menu's "show tips again" resets them (a new tester on the same
@@ -22,7 +22,7 @@ export const TIP_TEXT: Record<TipId, string> = {
   mods: 'Your Mods are permanent effects for the run. Tap one to read it; some act in fights, others on the map or in Shops.',
   instant: "An Instant Hook just went off between turns: it doesn't wait for your turn to fire.",
   strain: 'System strain: taking four or more turns in a row pushes the system too hard. Each extra turn adds Heat, doubling every time.',
-  // Session 68 (docs/enemies-design.md E9, the user's wording): at the
+  // Session 68 (docs/design/enemies.md E9, the user's wording): at the
   // first elite or gatekeeper fight on layers 3 and 4.
   gauges3: 'The deeper you go, the bigger the systems: from layer 3, elite and gatekeeper Breach and Containment gauges are bigger, so those fights take longer to win, and to lose.',
   gauges4: 'The core runs the biggest systems: elite and gatekeeper Breach and Containment gauges are bigger still.',

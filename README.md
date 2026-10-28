@@ -15,7 +15,7 @@ Events and Caches, with saves), and vanilla Cribbage at four difficulty
 levels, with a coach and five Learn-to-play lessons. New players get a
 guided tutorial run and first-time tips, plus meta-progression, Daily
 Runs, sound, Settings, Records and in-game patch notes. **Release
-candidate v0.9.1**, in testing before 1.0 (`docs/go-live-plan.md`,
+candidate v0.9.1**, in testing before 1.0 (`docs/release/go-live-plan.md`,
 `BACKLOG.md` → Priorities).
 
 **Play it:** <https://cribexe.com> (the `playable` branch, rebuilt on
@@ -35,29 +35,29 @@ README's old session-by-session narrative is archived in
   (`docs/archive/recalibration-design.md`), all content authored
   (`docs/archive/authoring-design.md`) and class-balanced
   (`docs/archive/balance-design.md`).
-- **Sessions 57–59:** made playable (`docs/playable-design.md`): a
+- **Sessions 57–59:** made playable (`docs/archive/playable-design.md`): a
   pausable engine, one fight, a whole run, then plain Cribbage with a
   coach and lessons.
 - **Sessions 60–63:** polish and playtesting: a text audit, the class
   Mods and enemy roster reworked, selling and Merge-everything, the
   economy, a guided tutorial and tips, Heat shown up front, and the trace
-  evasion (`docs/tutorial-design.md`, `docs/trace-evasion-design.md`).
+  evasion (`docs/design/tutorial.md`, `docs/design/trace-evasion.md`).
 - **Session 64:** the content pass began, on the `content-pass` branch
   (merged into `playable` in session 70): 24 reworked Burners (lumps,
   rule-benders, temporary subroutines, Heat tools, Event-only contraband)
-  and 18 Events, each with story (`docs/burners-events-design.md`).
+  and 18 Events, each with story (`docs/design/burners-events.md`).
 - **Session 65:** Mods, on `content-pass`: 12 rule-benders, 6 double-edged
   Mods and 6 class Mod upgrades, offered by 6 new Events (24 in all); a
-  pair royal counts as three pairs (`docs/mods-design.md`).
+  pair royal counts as three pairs (`docs/design/mods.md`).
 - **Session 66:** subroutines, on `content-pass`: 16 new (52 in all),
   every run in a double run counting, Merge rank III boosting the Process,
   owned subroutines likelier in rewards, and system strain for long turn
-  chains (`docs/subroutines-design.md`).
+  chains (`docs/design/subroutines.md`).
 - **Session 67:** the enemy pool, batch 1, on `content-pass`: six new
   elites aimed at kinds of builds, elites calibrated to 80-85% player wins
   by layer with bigger gauges deep, enemy Cribbage skill raised, and a lost
   fight now ejects the player instead of ending the run
-  (`docs/enemies-design.md`).
+  (`docs/design/enemies.md`).
 - **Session 68:** the enemy pool, batch 2: eight new gatekeepers (four per
   layer, named on the map, harder by layer) and eight regulars; Firewall
   Prime and Wraith's class Mod reworked; Restore Point, a contraband second
@@ -65,7 +65,7 @@ README's old session-by-session narrative is archived in
 - **Session 69:** the tuning pass, on `content-pass`: Heat allowances grow
   by layer so each layer is about equally explorable, and the class Mods
   tuned so every class sits within 3 points of a ~26% average
-  (`docs/tuning-design.md`).
+  (`docs/archive/tuning-design.md`).
 - **Session 70:** playtest fixes (no rewards when a fight's Heat catches
   you, Shop over-buy warnings, the log after a fight), two new Mods (Proof
   of Concept, Lure Template), and the review coach: a Cribbage rating on
@@ -76,13 +76,13 @@ README's old session-by-session narrative is archived in
   yet merged into `playable`): Rep earned by depth; classes unlocking in a
   chain (Blackhat first) with a Rep fallback; the Message Board (upgrades,
   a subroutine library, starting Burners); ten Security Levels for players
-  who've unlocked everything and won (`docs/meta-progression-design.md`).
+  who've unlocked everything and won (`docs/design/meta-progression.md`).
 - **Session 72:** Daily Runs, on the `daily-runs` branch (built on
   `meta-progression`): a run of the day
   from the date's salted hash, a random class, and daily Mods in four
   kinds (Glitches, Advisories, Bulletins, Directives); one scored attempt a
   day with an itemized score and a share line, practice runs after, a
-  streak and history (`docs/daily-runs-design.md`). Then the user's
+  streak and history (`docs/design/daily-runs.md`). Then the user's
   playtest notes: new map icons, Safehouse renamed Quiet Host and Merge
   renamed Refactor, fight-gauge fixes, a menu button in runs. Merged into
   `playable` and `master` with meta-progression; patch notes in
@@ -95,7 +95,7 @@ README's old session-by-session narrative is archived in
   numbers, with cards as colored chips (the log uses them too); the run
   start picks the auxiliary subroutine and Burner from sheets with full
   rules and steps through Security Levels with their effects listed.
-- **Session 73:** go-live (`docs/go-live-plan.md`): Settings, sound
+- **Session 73:** go-live (`docs/release/go-live-plan.md`): Settings, sound
   (recorded keystrokes for cards, synth for the rest), About and credits,
   a Discord, in-game patch notes, Records, mobile and an icon; release
   candidates v0.9.0 and v0.9.1 from testers' reports (the loadout beside
@@ -117,7 +117,7 @@ What exists, all headless and test-covered:
 | UI | a whole run and plain Cribbage with a coach and lessons, on desktop and phones, saved after every choice; a guided tutorial, first-time tips, the Heat bar |
 | Art | the current terminal look is the intended style; no sprite pass planned (at most, refined map icons) |
 
-The playable-game plan (`docs/playable-design.md`): milestones 1–4 (a
+The playable-game plan (`docs/archive/playable-design.md`): milestones 1–4 (a
 pausable engine, one playable fight, a playable run, plain Cribbage) are
 done; milestone 5, polish and playtesting, is under way.
 
@@ -250,14 +250,14 @@ Current:
 |---|---|
 | `BACKLOG.md` | What is still to do: the current state, the priorities, open items |
 | `DESIGN.md` | The settled design: mechanics, archetypes, classes, enemies, resources, and the reasoning behind them |
-| `docs/playable-design.md` | The plan for making the game playable (milestones 1–4 done, 5 under way) |
-| `docs/tutorial-design.md` | The guided tutorial run and first-time tips (session 63) |
-| `docs/trace-evasion-design.md` | The trace evasion: rules TE1–TE8, measurements, screens (session 63) |
-| `docs/burners-events-design.md` | The Burner rework and Event story (BE1–BE10, session 64) |
-| `docs/mods-design.md` | Rule-benders, double-edged Mods, class Mod upgrades and their Events (M1–M14, session 65) |
-| `docs/subroutines-design.md` | Sixteen new subroutines, run counting, Merge rank III, Suspend, system strain (S1–S13, session 66) |
-| `docs/tuning-design.md` | The tuning pass: Heat by layer, Mod supply, class win rates (T1–T3, session 69) |
-| `docs/enemies-design.md` | Enemy roles and targets, new elites, gatekeepers and regulars, calibration, the ejection fix, Wraith, Restore Point (E1–E18, sessions 67–68) |
+| `docs/archive/playable-design.md` | The plan for making the game playable (milestones 1–4 done, 5 under way) |
+| `docs/design/tutorial.md` | The guided tutorial run and first-time tips (session 63) |
+| `docs/design/trace-evasion.md` | The trace evasion: rules TE1–TE8, measurements, screens (session 63) |
+| `docs/design/burners-events.md` | The Burner rework and Event story (BE1–BE10, session 64) |
+| `docs/design/mods.md` | Rule-benders, double-edged Mods, class Mod upgrades and their Events (M1–M14, session 65) |
+| `docs/design/subroutines.md` | Sixteen new subroutines, run counting, Merge rank III, Suspend, system strain (S1–S13, session 66) |
+| `docs/archive/tuning-design.md` | The tuning pass: Heat by layer, Mod supply, class win rates (T1–T3, session 69) |
+| `docs/design/enemies.md` | Enemy roles and targets, new elites, gatekeepers and regulars, calibration, the ejection fix, Wraith, Restore Point (E1–E18, sessions 67–68) |
 | `docs/session-logs/` | Per-session record of decisions and results |
 | `docs/calibration/` | Raw measurement output cited by the design records and the code |
 

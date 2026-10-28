@@ -4,7 +4,7 @@ import type { GatekeeperModId } from './gatekeeper-mods';
 import { COLLECTION_KEEP, HARD_LIMIT_WARD, INTERFERENCE_LOSS, PURGE_COUNTS } from './gatekeeper-mods';
 import { applyHandEndMods, applyOccurrence, clearHandKnowledge, createCombatState, fireImmediateBetas, fireTurn, resolveEffect, type CombatState } from './resolve';
 
-// Session 67's elite Mods (docs/enemies-design.md E4): side 1 carries the
+// Session 67's elite Mods (docs/design/enemies.md E4): side 1 carries the
 // Mod, side 0 (the player) feels it.
 
 const piece = (id: string, alpha: Alpha, beta?: Beta): SubroutineDefinition => ({ id, name: id, archetype: 'exploit', alpha, beta });

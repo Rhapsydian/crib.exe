@@ -1,5 +1,5 @@
 /**
- * The tutorial's seed (session 63, docs/tutorial-design.md T5,
+ * The tutorial's seed (session 63, docs/design/tutorial.md T5,
  * checkpoint 5): the guided run always plays one seed, so every tester
  * gets the same deals. A good one shows Blackhat working at once -- the
  * first hand's best keep holds a fifteen and a pair -- and is winnable

@@ -4,7 +4,7 @@ import type { BurnerId } from './burner-types';
 import type { RunOptions } from './run';
 
 /**
- * The guided first run (session 63, docs/tutorial-design.md T1-T5): one
+ * The guided first run (session 63, docs/design/tutorial.md T1-T5): one
  * small hand-made layer, always the same seed and class, taught by a
  * coach as each thing first appears. Underneath it is an ordinary run
  * (the same screens, saves and rules); these options are all that make

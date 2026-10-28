@@ -8,7 +8,7 @@ import { BREACH_THRESHOLD, GAUGE_THRESHOLD } from './encounters';
 import { dailyGlitches, type DailyMod } from './daily';
 import { discardSkillStrategy, pegSkillStrategy, scoreDiscard } from './ai';
 
-// Session 72 (docs/daily-runs-design.md DR10): the daily Glitches.
+// Session 72 (docs/design/daily-runs.md DR10): the daily Glitches.
 const c = (rank: number, suit = 0): Card => ({ rank: rank as Rank, suit: suit as Suit });
 const plan = (...mods: DailyMod[]) => ({ date: 't', seed: 1, classId: 'exploit-overclock' as const, mods });
 

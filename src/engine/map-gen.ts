@@ -2,7 +2,7 @@ import type { Rng } from './rng';
 import { createNode, isReachable, type LayerGraph, type MapEdge, type MapNode, type NodeType } from './map-types';
 
 /**
- * Layer generation, rebuilt in milestone 3 (docs/playable-design.md
+ * Layer generation, rebuilt in milestone 3 (docs/archive/playable-design.md
  * M1-M9). The old generator -- a random tree plus ~n/2 links between any
  * two nodes -- measured as a hairball: ~3 links a node, hubs of up to 9,
  * and the gatekeeper 1-2 moves from the entry (one move in 37-52% of

@@ -26,14 +26,14 @@ export type GatekeeperModId =
   | 'escalation'
   | 'evidence-chain'
   | 'resource-quota'
-  // Session 67's elites (docs/enemies-design.md E4)
+  // Session 67's elites (docs/design/enemies.md E4)
   | 'interference'
   | 'hard-limit'
   | 'lockout'
   | 'fast-path'
   | 'purge'
   | 'collection'
-  // Session 68's gatekeepers (docs/enemies-design.md E11)
+  // Session 68's gatekeepers (docs/design/enemies.md E11)
   | 'house-edge'
   | 'throttled-link'
   | 'hardened'
