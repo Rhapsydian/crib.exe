@@ -54,7 +54,7 @@ export const RANK_THREE_PROCESS_SHARE: Record<string, number> = {
   'deadlock': 0.75,
   'pipeline-flush': 1.5,
   'superscalar': 1.5,
-  'branch-predictor': 1,
+  'branch-predictor': 1.5, // credit 1 since v0.9.1 (was a Charge)
   'clock-skew': 1.5,
   'anomaly-detector': 1,
   'mantrap': 1.5,

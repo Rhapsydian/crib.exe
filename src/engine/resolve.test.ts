@@ -165,6 +165,26 @@ describe('resolveEffect -- Disrupt and Charge', () => {
   });
 });
 
+// v0.9.1 (the user's design): Branch Predictor Credits 1, and on a pair
+// its Hook gives every other Hook a count (an Instant Hook's excepted).
+describe('Branch Predictor', () => {
+  it('Credits 1, and after a pair gives every other turn Hook a count', async () => {
+    const { ALL_SUBROUTINES } = await import('./subroutines');
+    const sub = (id: string) => ALL_SUBROUTINES.find((x) => x.id === id)!;
+    // Port Scan (above, so it has fired before the count lands) builds
+    // on pairs; Elevated Session's Hook is Instant.
+    const turnWith = (pairs: number) => {
+      const state = fight([sub('port-scan'), sub('branch-predictor'), sub('elevated-session')]);
+      const loadout = state.sides[0].loadout.map((e, i) => (i === 1 ? { ...e, state: { ...e.state, charges: pairs } } : e));
+      const fired = fireTurn({ ...state, sides: [{ ...state.sides[0], loadout }, state.sides[1]] }, 0, { isDealer: false }).combatState;
+      return fired.sides[0].loadout.map((e) => e.state.charges);
+    };
+    expect(turnWith(0)).toEqual([0, 0, 0]);
+    expect(turnWith(1)).toEqual([1, 0, 0]);
+    expect(sub('branch-predictor').alpha).toEqual({ verb: 'credit', amount: 1 });
+  });
+});
+
 describe('fireTurn -- alphas', () => {
   it('fires every installed piece, top to bottom (D11)', () => {
     const fired = fireTurn(fight([piece('a', { verb: 'credit', amount: 2 }), piece('b', { verb: 'credit', amount: 3 })]), 0, { isDealer: false });

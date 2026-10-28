@@ -268,6 +268,11 @@ describe('opportunisticTraversal', () => {
 // instead, and resolve fast regardless of this timeout.)
 describe('playRun', { timeout: 30_000 }, () => {
   const TINY_LAYERS: [number, number, number, number] = [2, 2, 2, 2];
+  // The victory-shape tests' kit (v0.9.1): with 2-node layers a run gets
+  // almost no rewards, so the starting kit alone won 1 run in 500, and a
+  // balance change (Branch Predictor's rework) took it. These tests are
+  // about a victory's shape, not how often one happens.
+  const VICTORY_SETUP = { installedLoadoutOverride: OVERWHELMING_LOADOUT, classId: 'exploit-overclock' as const };
 
   it('reaches victory on at least one seed with minimal layers (gatekeeper-only fights)', () => {
     // Searched, not pinned (session 66): content changes move every
@@ -335,10 +340,10 @@ describe('playRun', { timeout: 30_000 }, () => {
     // victory now lands at seed 7. (Session 51: seed 6 on the skeleton
     // roster; a floor player still wins none of the first 50.)
     const victorySeed = Array.from({ length: 500 }, (_, seed) => seed).find(
-      (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper, playerSkill: 0.85 }).outcome === 'victory',
+      (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper, playerSkill: 0.85, ...VICTORY_SETUP }).outcome === 'victory',
     );
     expect(victorySeed).toBeDefined();
-    const result = playRun({ seed: victorySeed!, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper, playerSkill: 0.85 });
+    const result = playRun({ seed: victorySeed!, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper, playerSkill: 0.85, ...VICTORY_SETUP });
     expect(result.layersCompleted).toBe(4);
     expect(result.log.filter((e) => e.type === 'layerCleared')).toHaveLength(4);
     // 4 gatekeeper wins (checkpoint C) each award Data -- confirms it
@@ -370,7 +375,7 @@ describe('playRun', { timeout: 30_000 }, () => {
     // victory now lands at seed 7. (Session 51: seed 6 on the skeleton
     // roster; a floor player still wins none of the first 50.)
     const victorySeed = Array.from({ length: 500 }, (_, seed) => seed).find(
-      (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper, playerSkill: 0.85 }).outcome === 'victory',
+      (seed) => playRun({ seed, layerNodeCounts: TINY_LAYERS, traversalStrategy: beelineToGatekeeper, playerSkill: 0.85, ...VICTORY_SETUP }).outcome === 'victory',
     );
     expect(victorySeed).toBeDefined();
     const captures: GatekeeperFightContext[] = [];
@@ -379,6 +384,7 @@ describe('playRun', { timeout: 30_000 }, () => {
       layerNodeCounts: TINY_LAYERS,
       traversalStrategy: beelineToGatekeeper,
       playerSkill: 0.85,
+      ...VICTORY_SETUP,
       onBeforeGatekeeperFight: (ctx) => captures.push(ctx),
     });
     expect(result.outcome).toBe('victory');

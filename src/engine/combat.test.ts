@@ -491,8 +491,9 @@ describe('turn beats (the turn toast)', () => {
 
 // v0.9.1 (a playtest report, the user's call): Branch Predictor's Charge
 // fed Elevated Session's Instant tempo Hook every turn, nearly tripling
-// its owner's turns. Charge doesn't feed Instant Hooks now, so the pair
-// takes no more turns than Elevated Session alone.
+// its owner's turns. Charge doesn't feed Instant Hooks now (and Branch
+// Predictor charges only on a pair), so the pair takes no more turns than
+// Elevated Session alone.
 describe('Branch Predictor with Elevated Session', () => {
   it('takes no more turns than Elevated Session alone', () => {
     const sub = (id: string) => ALL_SUBROUTINES.find((x) => x.id === id)!;

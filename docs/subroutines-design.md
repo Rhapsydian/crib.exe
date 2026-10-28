@@ -87,6 +87,9 @@ Hooks wait for several events (stepped).
   - **Branch Predictor** (uncommon, new Process): Process: Give the next
     subroutine's Hook one extra count. Hook: Gives it 2 instead if you've
     scored a fifteen since it last fired. Rank III 100%.
+    *Reworked in v0.9.1 (below): Process: Credit 1. Hook: If you've scored
+    a pair since it last fired, also give every other subroutine's Hook
+    one extra count (not Instant Hooks). Rank III 150%.*
   - **Clock Skew** (rare, build-definer): Process: Remove ⅛ of a turn (1.5
     initiative) from their initiative gauge. Hook: Instant: every time
     you've scored 2 runs, add ½ a turn (6 initiative) to your initiative
@@ -222,3 +225,18 @@ then full runs (`run-outcomes.ts`). Shifts reported, not chased.
   changes on a Merge (the Process grows instead), and Suspends don't
   stack (one pending skip at most). Checked in the browser at phone width
   (a reward of three new subroutines, the Safehouse Merge preview).
+- **v0.9.1, Charge and Instant Hooks; Branch Predictor reworked** (a
+  playtest report; the user's calls). Branch Predictor's every-turn
+  Charge fed Elevated Session's Instant tempo Hook, and each extra turn
+  brought the Charge round again: 2.8 turns a hand against 1.4, up to 12
+  in a row, strain Heat into a trace evasion. **Charge no longer feeds
+  Instant Hooks** (closing it for Clock Skew and Pipeline Flush too), and
+  an Instant Hook's label reads "Hook · Instant". That left Branch
+  Predictor at 0.62x its rarity's average, so it was **reworked**: the
+  charging moved to the Hook and the Process became a Credit. Measured
+  (Overclock loadouts, layer-2 elites, 40 seeds): Process Credit 1 with
+  the Hook on fifteens 0.91x, runs 0.81x, **pairs 1.02x** (chosen:
+  fifteens echoed Zero-Day Chain, points Load Balancer); also tried,
+  Credit plus the old Process 1.10x (0.5) / 1.37x (1), firing the next
+  subroutine's Process 1.32x (looped with Turbo Mode), Empower 2 next
+  1.49x, Empower 1 rest 2.48x.

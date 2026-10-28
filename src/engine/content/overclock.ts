@@ -145,15 +145,18 @@ const SUPERSCALAR: SubroutineDefinition = {
   beta: { source: 'cards', category: 'pair', shape: 'stepped', at: 3, effect: { verb: 'empower', amount: 1, scope: 'rest' } },
 };
 
-/** New Process: pure Charge for every other Hook (charging only the next
- * one measured below zero: a Hook that reads a condition or a position
- * can't use counts). */
+/** Overclock's Hook-charger (reworked v0.9.1, the user's design): a plain
+ * Credit, and on a pair every other Hook gets a count. Its old Process
+ * charged every Hook every turn, which with Charge skipping Instant Hooks
+ * measured 0.62x its rarity's average; Credit 1 with the charge on the
+ * Hook, 1.02x on pairs (fifteens would echo Zero-Day Chain, points Load
+ * Balancer). */
 const BRANCH_PREDICTOR: SubroutineDefinition = {
   id: 'branch-predictor',
   name: 'Branch Predictor',
   archetype: 'overclock',
-  alpha: { verb: 'charge', amount: 1, target: 'all' },
-  beta: { source: 'cards', category: 'fifteen', shape: 'graded', cap: 1, effect: { verb: 'enhance', amount: 1 } },
+  alpha: { verb: 'credit', amount: 1 },
+  beta: { source: 'cards', category: 'pair', shape: 'graded', cap: 1, effect: { verb: 'charge', amount: 1, target: 'all' } },
 };
 
 /** Rare: slows them every turn, speeds you as runs pile in. */
