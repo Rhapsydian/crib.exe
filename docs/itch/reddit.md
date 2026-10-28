@@ -86,3 +86,26 @@ This week was go-live. The release candidate is out on itch.io, and most of the 
 Next: more testing before 1.0. If you try it, I'd like to hear which builds feel too strong or useless.
 
 [GIF]
+
+## r/playmygame
+
+A feedback request. Check the rules for the title format and flair (it
+usually wants the platform and a link in the post).
+
+Title: **[Browser] crib.exe: a hacking roguelite where every fight is a game of Cribbage. Looking for feedback before 1.0**
+
+---
+
+**Play:** https://rhapsydian.itch.io/cribexe (or https://cribexe.com). Free, desktop or phone, no account.
+
+**What it is:** you break into a network four layers deep. Fights are games of Cribbage against the system you're hacking: points from pegging, your hand and your crib fill your initiative, and when it fills, your loadout of subroutines fires top to bottom to fill your Breach before the enemy fills its Containment. Between fights you pick new subroutines, Mods and Burners, and every move on the map raises your Heat.
+
+**New to Cribbage?** Choose Learn to play: five short lessons, then a coached game. The tutorial run teaches the rest.
+
+**What I'd like feedback on:**
+
+- Did the first run make sense? Where did you get lost?
+- Any build or subroutine that felt far too strong, or useless
+- Bugs, especially on phones (the build number on the About page helps)
+
+A run takes a while, but it saves as you go, and the Daily Run is shorter. Reports are welcome here or on the Discord: https://discord.gg/HxCry3uRpa. Thanks for playing!
