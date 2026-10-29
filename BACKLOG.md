@@ -15,13 +15,16 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 73)
+## Current state (end of session 74)
 
 **Release candidate v0.9.1 is out for testing** on
 <https://cribexe.com> (branch `playable`) and on itch.io, public as "In
 development" (<https://rhapsydian.itch.io/cribexe>, devlog posted). 1.0
 is held for more testing (the designer). Changes since v0.9.1 wait in
 [`PATCH_NOTES.md`](PATCH_NOTES.md) (Unreleased). 987 tests, `npm run check` clean.
+Session 74 reviewed the documentation as a portfolio piece (`docs/`
+reorganized, the README a front page, a LICENSE: all rights reserved;
+[session log](docs/session-logs/session-74-2026-10-28.md)).
 
 The game is feature-complete: a four-layer run with six classes, a
 guided tutorial and first-time tips, plain Cribbage with a coach and

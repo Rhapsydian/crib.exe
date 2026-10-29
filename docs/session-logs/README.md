@@ -92,7 +92,7 @@ and its commits.
 | [62](session-62-2026-10-20.md) | 2026-10-20 | The economy: a simulated player that shops like a person |
 | [63](session-63-2026-10-21.md) | 2026-10-21 | Ready for testers: a guided tutorial, tips, the trace evasion |
 
-## Content and release (sessions 64-73)
+## Content and release (sessions 64-74)
 
 | Session | Date | What happened |
 |---|---|---|
@@ -106,3 +106,4 @@ and its commits.
 | [71](session-71-2026-10-24.md) | 2026-10-24 | Meta-progression |
 | [72](session-72-2026-10-25.md) | 2026-10-25 | Daily Runs, and one AI for every opponent and the coach |
 | [73](session-73-2026-10-27.md) | 2026-10-26 to 27 | Go-live: the release candidate, and itch.io |
+| [74](session-74-2026-10-28.md) | 2026-10-28 | Reddit drafts, and the documentation reviewed as a portfolio piece |
