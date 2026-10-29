@@ -1,5 +1,7 @@
 # crib.exe — Roadmap History
 
+> **Status: historical.** Finished roadmap work and handoff notes, kept verbatim. What is still to do is in [`BACKLOG.md`](../../BACKLOG.md).
+
 Archived from `BACKLOG.md` in session 48. **Nothing here was deleted —
 this file is the whole of what that file used to carry beyond its
 forward-looking items, moved verbatim.**

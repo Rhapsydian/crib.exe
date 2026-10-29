@@ -1,5 +1,7 @@
 # crib.exe — Design history
 
+> **Status: historical.** Superseded in session 51. The current design is in [`DESIGN.md`](../../DESIGN.md).
+
 Sections of `DESIGN.md` superseded by the session 51 archetype and
 subroutine redesign (`docs/archive/archetype-redesign.md`), moved here
 **verbatim** so their reasoning survives. Nothing below describes the

@@ -2,6 +2,14 @@
   "name": "cribexe",
   "private": true,
   "version": "0.9.1",
+  "description": "A hacking roguelite where every fight is a game of Cribbage.",
+  "license": "UNLICENSED",
+  "author": "Justin Stephens",
+  "homepage": "https://cribexe.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rhapsydian/crib.exe.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

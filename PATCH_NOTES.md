@@ -1,8 +1,8 @@
 # crib.exe patch notes
 
 The changes not yet in a release, then the latest release's notes. Every
-release's notes are in `public/patch-notes/` (on the web at
-<https://cribexe.com/patch-notes/v0.9.1.html> and earlier), and the game
+release's notes are in [`public/patch-notes/`](public/patch-notes/) (on the web at
+<https://cribexe.com/patch-notes/>), and the game
 shows them under **Patch notes**.
 
 ## Unreleased (since v0.9.1)
