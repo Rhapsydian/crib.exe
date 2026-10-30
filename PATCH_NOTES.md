@@ -36,6 +36,9 @@ new card (`src/ui/version-notes.ts`), and this section empties.
   Quiet Host tip says "spare Port Scan copies".
 - The main menu's tagline ends with a period.
 - About shows the build next to the version, for bug reports.
+- On a wide window, the loadout beside the reward and Shop screens sits
+  against the screen's left edge, with the screen still centred, instead
+  of at the far left of the window.
 
 ---
 

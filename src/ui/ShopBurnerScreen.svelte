@@ -12,7 +12,7 @@
   const ids = $derived([...new Set(request.burnerIds)]);
 </script>
 
-<WithKit player={request.playerState} {daily}>
+<WithKit player={request.playerState} {daily} width={480}>
 {#snippet children(kitButton)}
 <div class="sb">
   <div class="head"><span class="title">SHOP · USE A BURNER?</span>{@render kitButton()}</div>

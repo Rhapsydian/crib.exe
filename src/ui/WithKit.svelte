@@ -8,7 +8,8 @@
   // ask: the reward and Shop screens): a standing left panel on desktop,
   // and on phones a "◀ loadout" button that the screen puts in its own
   // header (`children` gets it as a snippet) to slide the drawer in.
-  let { player, daily, children }: { player: RunPlayerState; daily?: { plan: DailyPlan; practice: boolean } | null; children: Snippet<[Snippet]> } = $props();
+  // `width` is the screen's own max-width, so the kit meets its edge.
+  let { player, daily, width = 560, children }: { player: RunPlayerState; daily?: { plan: DailyPlan; practice: boolean } | null; width?: number; children: Snippet<[Snippet]> } = $props();
   let open = $state(false);
 </script>
 
@@ -18,7 +19,7 @@
 
 <div class="with-kit">
   <KitDrawer {player} {daily} bind:open />
-  <div class="screen">{@render children(button)}</div>
+  <div class="screen" style:flex-basis="{width}px">{@render children(button)}</div>
 </div>
 
 <style>
@@ -27,10 +28,13 @@
     display: flex;
     justify-content: center;
   }
-  /* The run screens are at most 560px wide; asking for that much makes
-     the right-hand spacer give way before the screen does. */
+  /* The screen asks for its own width (`width`, 560px for most); asking
+     for that much makes the right-hand spacer give way before the screen
+     does. It doesn't grow past that, so the kit stays against the
+     screen's left edge and the three columns centre together on a wide
+     window. */
   .screen {
-    flex: 1 1 560px;
+    flex: 0 1 560px;
     min-width: 0;
   }
   .kit-button {
