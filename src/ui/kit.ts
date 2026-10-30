@@ -150,7 +150,7 @@ export const MOD_TEXT: Record<GeneralModId, string> = {
   'first-contact': `The first time their Containment reaches half each fight, Suppress ${MOD_SMALL}.`,
   'petty-theft': `Every regular fight you win pays ${PETTY_THEFT_DATA_BONUS} extra Data.`,
   'boot-sector': reactiveText('boot-sector'),
-  'init-script': `The next Mod you gain also gives you ${INIT_SCRIPT_DATA_BONUS} Data.`,
+  'init-script': `Whenever you gain another Mod, gain ${INIT_SCRIPT_DATA_BONUS} Data.`,
 
   // --- Uncommon ---
   'firmware-patch': `Your Hooks do ${FIRMWARE_PATCH_BONUS} more: each Hook that Credits, Suppresses or Wards does ${FIRMWARE_PATCH_BONUS} more, and each Hook that makes its Process bigger makes it ${FIRMWARE_PATCH_BONUS} bigger still.`,

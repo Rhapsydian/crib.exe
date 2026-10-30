@@ -23,6 +23,9 @@ new card (`src/ui/version-notes.ts`), and this section empties.
   Hook one extra count (not Instant Hooks). It used to give every Hook a
   count every turn.
 
+- **Init Script pays on every Mod.** Whenever you gain another Mod, gain
+  10 Data. It used to give 5 Data once, for the next Mod only.
+
 ### Text
 
 - **Instant Hooks say so up front:** "Hook · Instant: every time…"

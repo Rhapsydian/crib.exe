@@ -429,16 +429,16 @@ describe('onModAcquired -- Backup Generator / Auxiliary Process', () => {
     expect(applyOnModAcquiredMods(state, 'static-shield')).toEqual(state);
   });
 
-  it('Init Script grants a one-time Data bonus the first time another Mod is acquired', () => {
+  it('Init Script grants Data each time another Mod is acquired (session 75)', () => {
     // ownedModIds already includes the newly-acquired mod by the time this hook fires (mirrors acquireMod's real call order).
     let state: RunPlayerState = { ...createInitialPlayerState('exploit-overclock'), ownedModIds: ['init-script', 'static-shield'] };
     state = applyOnModAcquiredMods(state, 'static-shield');
     expect(state.data).toBe(INIT_SCRIPT_DATA_BONUS);
 
-    // A second Mod acquisition doesn't grant a second bonus.
+    // And again for the next one.
     state = { ...state, ownedModIds: [...state.ownedModIds, 'light-footing'] };
     state = applyOnModAcquiredMods(state, 'light-footing');
-    expect(state.data).toBe(INIT_SCRIPT_DATA_BONUS);
+    expect(state.data).toBe(2 * INIT_SCRIPT_DATA_BONUS);
   });
 
   it("Init Script doesn't credit itself for its own acquisition", () => {

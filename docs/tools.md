@@ -46,6 +46,7 @@ header.
 | `layer-explore.ts` | Per layer: share of nodes visited, fights, peak Heat against the allowance |
 | `heat-sources.ts` | Where a run's Heat comes from |
 | `mod-supply.ts` | Mods by a run's end (all runs, winning runs), by source |
+| `init-script-check.ts` | Init Script's Data payout: runs with it picked naturally and owned from the start |
 | `merge-frequency.ts` | How far the simulated player Refactors: subroutines by rank at a run's end |
 | `evasion-check.ts` | Trace evasion escape odds by head start and skill, and the head starts real runs produce |
 | `noroute-tail.ts` | A debugging aid: the last moves of runs that end with no route left |

@@ -74,7 +74,7 @@ export const BLACK_BUDGET_UPGRADE_CHANCE = 0.25;
 export const QUIET_HOURS_MOVE_INTERVAL = 3;
 export const QUIET_HOURS_DATA_BONUS = 2;
 export const PETTY_THEFT_DATA_BONUS = 3;
-export const INIT_SCRIPT_DATA_BONUS = 5;
+export const INIT_SCRIPT_DATA_BONUS = 10;
 /** Threshold Exploit (re-pointed session 51): stepped betas need this
  * many fewer charges, never below 1. */
 export const THRESHOLD_EXPLOIT_REDUCTION = 1;
@@ -561,18 +561,10 @@ export function applyOnModAcquiredMods(playerState: RunPlayerState, acquiredModI
   if (acquiredModId === 'backup-generator') {
     state = { ...state, maxHeatBonus: state.maxHeatBonus + BACKUP_GENERATOR_HEAT_BONUS };
   }
-  // Init Script (session 44): a second onModAcquired example with a
-  // one-time-reward shape (vs. Backup Generator's permanent stat raise).
-  // "The first Mod acquired beyond the class-exclusive one" -- guarded by
-  // acquiredModId !== 'init-script' itself so owning Init Script and
-  // then acquiring it a second time is structurally impossible anyway
-  // (uniqueness, session 30), but kept explicit for clarity.
-  if (
-    state.ownedModIds.includes('init-script') &&
-    acquiredModId !== 'init-script' &&
-    (state.modRunState['init-script:used'] ?? 0) === 0
-  ) {
-    state = { ...state, data: state.data + INIT_SCRIPT_DATA_BONUS, modRunState: { ...state.modRunState, 'init-script:used': 1 } };
+  // Init Script (session 44; every Mod since session 75): Data for each
+  // Mod gained after it. Its own pickup doesn't count.
+  if (state.ownedModIds.includes('init-script') && acquiredModId !== 'init-script') {
+    state = { ...state, data: state.data + INIT_SCRIPT_DATA_BONUS };
   }
   return state;
 }
