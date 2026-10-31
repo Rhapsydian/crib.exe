@@ -89,19 +89,33 @@ Next: more testing before 1.0. If you try it, I'd like to hear which builds feel
 
 ## r/playmygame
 
-A feedback request (revised 2026-10-31 against the sub's rules: state
-your role, game link before socials, no false claims, one post a month).
-Flair: Browser (and Mobile, if offered).
+A feedback request (revised 2026-10-31 against the sub's rules and its
+required post template: state your role, game link before socials, no
+false claims, one post a month, a description of 100+ words). Add the
+Browser flair after posting (and Mobile, if offered). Screenshots:
+fight-desktop, map-desktop, fight-phone.
 
 Title: **[Browser] crib.exe: a hacking roguelite where every fight is a game of Cribbage**
 
 ---
 
-**Play free in your browser:** https://rhapsydian.itch.io/cribexe (desktop or phone, no account)
+**Game Title:** crib.exe
 
-I'm the solo developer. crib.exe is a roguelite where you break into a network four layers deep, and every fight is a game of Cribbage against the system you're hacking. Points from pegging, your hand and your crib fill your initiative; when it fills, your loadout of subroutines fires top to bottom to fill your Breach before the enemy fills its Containment. Between fights you pick new subroutines, Mods and Burners, and every move on the map raises your Heat.
+**Playable Link:** https://rhapsydian.itch.io/cribexe
 
-**New to Cribbage?** Choose Learn to play: five short lessons, then a coached game. The tutorial run teaches the rest. It takes about 12 minutes; a full run is longer, but it saves as you go, and the Daily Run is shorter. If it feels slow, the » button at the top right of a fight changes the speed.
+**Platform:** Browser (desktop or phone, no account or download)
+
+**Description:** crib.exe is a roguelite where you break into a network four layers deep, and every fight is a game of Cribbage against the system you're hacking. Points from pegging, your hand and your crib fill your initiative; when it fills, your loadout of subroutines fires top to bottom to fill your Breach before the enemy fills its Containment. Between fights you pick new subroutines, Mods and Burners, and every move on the map raises your Heat.
+
+New to Cribbage? Choose Learn to play: five short lessons, then a coached game. The tutorial run teaches the rest. It takes about 12 minutes; a full run is longer, but it saves as you go, and the Daily Run is shorter. If it feels slow, the » button at the top right of a fight changes the speed.
+
+**Free to Play Status:**
+
+- [x] Free to play
+- [ ] Demo/Key available
+- [ ] Paid
+
+**Involvement:** I'm the solo developer.
 
 **What I'd like feedback on:**
 
