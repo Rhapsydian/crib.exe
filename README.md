@@ -122,7 +122,7 @@ is in [docs/calibration/](docs/calibration/README.md).
 
 crib.exe was designed and directed by Justin Stephens and built with
 [Claude Code](https://claude.com/claude-code), Anthropic's agentic coding
-tool, over 74 working sessions from August to October 2026. Every design
+tool, over 75 working sessions from August to October 2026. Every design
 decision was made in conversation, one question at a time, and written
 down as it was settled. The decision records are in
 [docs/design/](docs/design/), the settled design in [DESIGN.md](DESIGN.md),
