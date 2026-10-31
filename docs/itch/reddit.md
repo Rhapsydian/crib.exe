@@ -101,7 +101,7 @@ Title: **[Browser] crib.exe: a hacking roguelite where every fight is a game of 
 
 I'm the solo developer. crib.exe is a roguelite where you break into a network four layers deep, and every fight is a game of Cribbage against the system you're hacking. Points from pegging, your hand and your crib fill your initiative; when it fills, your loadout of subroutines fires top to bottom to fill your Breach before the enemy fills its Containment. Between fights you pick new subroutines, Mods and Burners, and every move on the map raises your Heat.
 
-**New to Cribbage?** Choose Learn to play: five short lessons, then a coached game. The tutorial run teaches the rest. It takes about [N] minutes; a full run is longer, but it saves as you go, and the Daily Run is shorter.
+**New to Cribbage?** Choose Learn to play: five short lessons, then a coached game. The tutorial run teaches the rest. It takes about 12 minutes; a full run is longer, but it saves as you go, and the Daily Run is shorter. If it feels slow, the » button at the top right of a fight changes the speed.
 
 **What I'd like feedback on:**
 
