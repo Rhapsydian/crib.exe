@@ -97,9 +97,7 @@ Title: **[Browser] crib.exe: a hacking roguelite where every fight is a game of 
 
 ---
 
-**Play free in your browser:** https://cribexe.com (desktop or phone, no account)
-
-Also on itch.io: https://rhapsydian.itch.io/cribexe
+**Play free in your browser:** https://rhapsydian.itch.io/cribexe (desktop or phone, no account)
 
 I'm the solo developer. crib.exe is a roguelite where you break into a network four layers deep, and every fight is a game of Cribbage against the system you're hacking. Points from pegging, your hand and your crib fill your initiative; when it fills, your loadout of subroutines fires top to bottom to fill your Breach before the enemy fills its Containment. Between fights you pick new subroutines, Mods and Burners, and every move on the map raises your Heat.
 
