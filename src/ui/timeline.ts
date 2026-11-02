@@ -82,7 +82,7 @@ export function stepDaily(step: Step | null): string | null {
   return step?.type === 'beat' && step.beat.kind === 'daily' ? step.beat.id : null;
 }
 
-/** Milliseconds a step holds the screen at normal speed. Your own card is
+/** Milliseconds a step holds the screen at slow speed (a scale of 1). Your own card is
  * quick (you just chose it); the enemy's gets time to be seen; points
  * give the callout time to read. */
 export function stepDelay(step: Step): number {

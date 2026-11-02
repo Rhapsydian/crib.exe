@@ -32,7 +32,8 @@ describe('Replay (step-through)', () => {
   afterEach(() => vi.useRealTimers());
 
   it('plays a new batch a step at a time; each step holds its own beat', () => {
-    const replay = new Replay();
+    // Slow plays the beats unscaled (a scale of 1), so the timings below are stepDelay's own.
+    const replay = new Replay(undefined, 'slow');
     replay.sync([], pair(0, 0));
     expect(replay.playing).toBe(false);
 
@@ -74,7 +75,7 @@ describe('Replay (step-through)', () => {
   });
 
   it("a new pause mid-batch queues its steps after the old batch's unplayed ones (no skipping)", () => {
-    const replay = new Replay();
+    const replay = new Replay(undefined, 'slow');
     replay.sync([], pair(0, 0));
     const first = [fire(0, 'a', 1, 0), fire(0, 'b', 2, 0)];
     replay.sync(first, pair(2, 0));

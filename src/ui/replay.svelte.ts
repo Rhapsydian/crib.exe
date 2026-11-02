@@ -16,9 +16,11 @@ import { stepDelay, stepGauges, type Step } from './timeline';
 export type Speed = 'slow' | 'normal' | 'fast';
 export const SPEEDS: Speed[] = ['slow', 'normal', 'fast'];
 
-const SPEED_SCALE: Record<Speed, number> = { slow: 1.8, normal: 1, fast: 0.4 };
+// Session 76, from playtesting: slow is the old normal (1, was 1.8), and
+// normal sits halfway between that and fast.
+const SPEED_SCALE: Record<Speed, number> = { slow: 1, normal: 0.7, fast: 0.4 };
 const SPEED_KEY = 'cribexe.turnSpeed';
-/** The pause before a batch's first step, at normal speed. */
+/** The pause before a batch's first step, at slow speed (a scale of 1). */
 export const LEAD_IN_MS = 120;
 
 export class Replay {

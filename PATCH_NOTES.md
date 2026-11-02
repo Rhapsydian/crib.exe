@@ -26,6 +26,12 @@ new card (`src/ui/version-notes.ts`), and this section empties.
 - **Init Script pays on every Mod.** Whenever you gain another Mod, gain
   10 Data. It used to give 5 Data once, for the next Mod only.
 
+### Turn speed
+
+- **Quicker speeds.** Slow now plays at the old normal speed, and normal
+  sits halfway between that and fast. Fast is unchanged. (A playtest
+  report: slow was painfully slow.)
+
 ### Text
 
 - **Instant Hooks say so up front:** "Hook · Instant: every time…"
