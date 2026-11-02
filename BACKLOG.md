@@ -15,7 +15,7 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 76)
+## Current state (end of session 77)
 
 **Release candidate v0.9.1 is out for testing** on
 <https://cribexe.com> (branch `playable`) and on itch.io, public as "In
@@ -27,8 +27,9 @@ made Init Script pay 10 Data on every Mod, and saw the first Reddit
 posts (Sharing Saturday #647, r/playmygame; the next r/playmygame post
 on or after 2026-11-30). Session 76 made the turn speeds quicker and put
 the itch.io upload into every push that changes the game
-([`.claude/dev-session.md`](.claude/dev-session.md);
-[session log](docs/session-logs/session-76-2026-11-01.md)).
+([`.claude/dev-session.md`](.claude/dev-session.md)). Session 77 drafted
+a post for the r/roguelikes Discord
+([session log](docs/session-logs/session-77-2026-11-02.md)).
 
 The game is feature-complete: a four-layer run with six classes, a
 guided tutorial and first-time tips, plain Cribbage with a coach and
@@ -79,7 +80,8 @@ winning run's end; fully upgraded ~90%; Security Levels 1 / 5 / 10 at
 9. itch.io (done for the release candidate): page, screenshots, GIF, cover,
    butler upload, public "In development", devlog. Reddit posts are
    drafted ([`docs/itch/reddit.md`](docs/itch/reddit.md)); the designer posts them
-   (r/roguelikedev's Sharing Saturday and r/playmygame posted in session 75).
+   (r/roguelikedev's Sharing Saturday and r/playmygame posted in session 75;
+   an r/roguelikes Discord message drafted in session 77).
 
 Out of scope for release: **Event mini-games** (the designer: none), music,
 and balance work. The earlier priorities (session 63: the content pass,

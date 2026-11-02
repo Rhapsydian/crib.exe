@@ -92,7 +92,7 @@ and its commits.
 | [62](session-62-2026-10-20.md) | 2026-10-20 | The economy: a simulated player that shops like a person |
 | [63](session-63-2026-10-21.md) | 2026-10-21 | Ready for testers: a guided tutorial, tips, the trace evasion |
 
-## Content and release (sessions 64-76)
+## Content and release (sessions 64-77)
 
 | Session | Date | What happened |
 |---|---|---|
@@ -109,3 +109,4 @@ and its commits.
 | [74](session-74-2026-10-28.md) | 2026-10-28 | Reddit drafts, and the documentation reviewed as a portfolio piece |
 | [75](session-75-2026-10-31.md) | 2026-10-30 to 31 | The loadout's place, Init Script on every Mod, the first Reddit posts |
 | [76](session-76-2026-11-01.md) | 2026-10-31 to 11-01 | itch.io in every push, and quicker turn speeds |
+| [77](session-77-2026-11-02.md) | 2026-11-02 | A post for the r/roguelikes Discord |
