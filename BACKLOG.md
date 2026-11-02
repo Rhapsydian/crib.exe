@@ -15,7 +15,7 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 75)
+## Current state (end of session 76)
 
 **Release candidate v0.9.1 is out for testing** on
 <https://cribexe.com> (branch `playable`) and on itch.io, public as "In
@@ -25,8 +25,10 @@ is held for more testing (the designer). Changes since v0.9.1 wait in
 Session 75 put the loadout against the reward and Shop screens' edge,
 made Init Script pay 10 Data on every Mod, and saw the first Reddit
 posts (Sharing Saturday #647, r/playmygame; the next r/playmygame post
-on or after 2026-11-30;
-[session log](docs/session-logs/session-75-2026-10-31.md)).
+on or after 2026-11-30). Session 76 made the turn speeds quicker and put
+the itch.io upload into every push that changes the game
+([`.claude/dev-session.md`](.claude/dev-session.md);
+[session log](docs/session-logs/session-76-2026-11-01.md)).
 
 The game is feature-complete: a four-layer run with six classes, a
 guided tutorial and first-time tips, plain Cribbage with a coach and
