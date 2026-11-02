@@ -125,3 +125,24 @@ New to Cribbage? Choose Learn to play: five short lessons, then a coached game. 
 - Bugs, especially on phones (the build number on the About page helps)
 
 Reports are welcome here or on the Discord: https://discord.gg/HxCry3uRpa. Thanks for playing!
+
+## r/roguelikes Discord: #roguelite-development-general
+
+A chat message for the r/roguelikes server's dev channel (drafted
+2026-11-02). Shorter than the Reddit posts, aimed at developers, and no
+Discord invite (the designer's call). Check the server's rules first: if
+links belong in a showcase channel, post it there. Attach
+fight-desktop.png if images are allowed.
+
+---
+
+```
+Hi all! I'm the solo dev of **crib.exe**, a hacking roguelite where every fight is a game of Cribbage.
+
+Your pegging, hand and crib points charge an initiative gauge; when it fills, your loadout of subroutines fires top to bottom, racing to fill your Breach before the network's Containment fills. Between fights you draft subroutines, Mods and Burners, and every move on the map raises your Heat.
+
+Balance is done with a simulated player: it plays thousands of seeded runs against the same AI as the enemies and the in-game Cribbage coach, and I tune toward a 24-30% win rate. Things I'm still chewing on: making Cribbage readable for people who've never played it, and keeping runaway combos fun without breaking the run.
+
+It's free in the browser (desktop or phone, no account), release candidate: https://rhapsydian.itch.io/cribexe
+Happy to talk shop about any of it, and feedback is very welcome.
+```
