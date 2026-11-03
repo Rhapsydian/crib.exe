@@ -15,21 +15,22 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 77)
+## Current state (end of session 78)
 
 **Release candidate v0.9.1 is out for testing** on
 <https://cribexe.com> (branch `playable`) and on itch.io, public as "In
 development" (<https://rhapsydian.itch.io/cribexe>, devlog posted). 1.0
 is held for more testing (the designer). Changes since v0.9.1 wait in
-[`PATCH_NOTES.md`](PATCH_NOTES.md) (Unreleased). 987 tests, `npm run check` clean.
+[`PATCH_NOTES.md`](PATCH_NOTES.md) (Unreleased). 988 tests, `npm run check` clean.
 Session 75 put the loadout against the reward and Shop screens' edge,
 made Init Script pay 10 Data on every Mod, and saw the first Reddit
 posts (Sharing Saturday #647, r/playmygame; the next r/playmygame post
 on or after 2026-11-30). Session 76 made the turn speeds quicker and put
 the itch.io upload into every push that changes the game
 ([`.claude/dev-session.md`](.claude/dev-session.md)). Session 77 drafted
-a post for the r/roguelikes Discord
-([session log](docs/session-logs/session-77-2026-11-02.md)).
+a post for the r/roguelikes Discord; session 78 fixed Early Cut's
+starter staying face down (a tester's report;
+[session log](docs/session-logs/session-78-2026-11-03.md)).
 
 The game is feature-complete: a four-layer run with six classes, a
 guided tutorial and first-time tips, plain Cribbage with a coach and
