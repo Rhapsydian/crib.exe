@@ -14,7 +14,7 @@
   import Hand from './Hand.svelte';
   import Log from './Log.svelte';
   import DetailSheet from './DetailSheet.svelte';
-  import { burnerLabel, scoreLabel, stepLine, stepMods, tableAt, type Step, stepDaily } from './timeline';
+  import { burnerLabel, scoreLabel, stepLine, stepMods, tableAt, tableStarter, type Step, stepDaily } from './timeline';
   import { burnersOf, modKey, modName, modsOf, type KitItem } from './kit';
   import KitList from './KitList.svelte';
   import ShowPanel from './ShowPanel.svelte';
@@ -348,7 +348,7 @@
       {#if table?.show}
         <ShowPanel show={table.show} />
       {:else if table}
-        <Table sequence={[]} pile={table.pile} leaving={table.leaving} count={table.count} limit={f.countLimit} starter={table.starter} playerIsDealer={table.dealer === 0} opponentCardsLeft={table.cardsLeft[1]} {callout} />
+        <Table sequence={[]} pile={table.pile} leaving={table.leaving} count={table.count} limit={f.countLimit} starter={tableStarter(table, f.view.handIndex, f.phase === 'discard' ? f.starter : undefined)} playerIsDealer={table.dealer === 0} opponentCardsLeft={table.cardsLeft[1]} {callout} />
       {:else}
         <Table sequence={f.sequence} count={f.count} limit={f.countLimit} starter={f.starter} playerIsDealer={f.playerIsDealer} opponentCardsLeft={f.opponentCardsLeft} />
       {/if}

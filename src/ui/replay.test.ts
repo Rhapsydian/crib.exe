@@ -3,7 +3,7 @@ import type { CombatBeat } from '../engine/combat';
 import type { Card } from '../engine/cards';
 import type { FireEvent, GaugeReading } from '../engine/resolve';
 import { LEAD_IN_MS, Replay } from './replay.svelte';
-import { mergeSteps, tableAt, type Step, stepDelay } from './timeline';
+import { mergeSteps, tableAt, tableStarter, type Step, stepDelay } from './timeline';
 
 const reading = (win: number): GaugeReading => ({ win, winThreshold: 50, initiative: 0, initiativeThreshold: 12, ward: 0, heat: 0 });
 const pair = (a: number, b: number): [GaugeReading, GaugeReading] => [reading(a), reading(b)];
@@ -148,6 +148,23 @@ describe('timeline steps', () => {
     expect(after.leaving).toEqual([]);
     expect(after.pile.map((p) => p.card.rank)).toEqual([4]);
     expect(after.count).toBe(4);
+  });
+
+  it("Early Cut's starter shows during the discard, before its cut beat (session 78)", () => {
+    const early = card(7, 1);
+    const timeline: CombatBeat[] = [
+      { kind: 'hand', handIndex: 0, dealer: 0, firesBefore: 0 },
+      { kind: 'cut', starter: card(11), dealer: 0, firesBefore: 0 },
+      { kind: 'hand', handIndex: 1, dealer: 1, firesBefore: 0 },
+    ];
+    const steps = mergeSteps(timeline, []);
+    // The replay at hand 1, paused for its discard: the early starter shows.
+    expect(tableStarter(tableAt(steps, 3), 1, early)).toBe(early);
+    // Still on hand 0 (the replay behind the fight): hand 0's own starter.
+    expect(tableStarter(tableAt(steps, 2), 1, early)?.rank).toBe(11);
+    expect(tableStarter(tableAt(steps, 1), 1, early)).toBeUndefined();
+    // No Early Cut: face down until the cut.
+    expect(tableStarter(tableAt(steps, 3), 1, undefined)).toBeUndefined();
   });
 
   it('a reset at the end of the history sweeps without waiting for the next card', () => {

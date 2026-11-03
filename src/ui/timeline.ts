@@ -151,6 +151,15 @@ export interface ShowState {
   lit: Card[] | null;
 }
 
+/** The starter the table shows. Early Cut (a daily Glitch) turns it
+ * before the discard, but its cut beat still comes after, so until then
+ * the table takes it from the paused fight (`earlyStarter`), once the
+ * replay has reached that same hand (session 78, a tester's report: the
+ * starter stayed face down). */
+export function tableStarter(table: TableState, handIndex: number, earlyStarter: Card | undefined): Card | undefined {
+  return table.starter ?? (table.handIndex === handIndex ? earlyStarter : undefined);
+}
+
 export function tableAt(steps: readonly Step[], upto: number): TableState {
   const table: TableState = { handIndex: -1, dealer: 0, pile: [], leaving: [], count: 0, cardsLeft: [6, 6] };
   // Start from the latest hand beat at or before `upto`.

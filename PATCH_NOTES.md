@@ -45,6 +45,9 @@ new card (`src/ui/version-notes.ts`), and this section empties.
   Quiet Host tip says "spare Port Scan copies".
 - The main menu's tagline ends with a period.
 - About shows the build next to the version, for bug reports.
+- Daily Runs: Early Cut now shows the starter face up during the
+  discard. The table kept it face down until after the discard, though
+  the coach and the enemy already knew it (a tester's report).
 - On a wide window, the loadout beside the reward and Shop screens sits
   against the screen's left edge, with the screen still centred, instead
   of at the far left of the window.
