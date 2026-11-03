@@ -92,7 +92,7 @@ and its commits.
 | [62](session-62-2026-10-20.md) | 2026-10-20 | The economy: a simulated player that shops like a person |
 | [63](session-63-2026-10-21.md) | 2026-10-21 | Ready for testers: a guided tutorial, tips, the trace evasion |
 
-## Content and release (sessions 64-78)
+## Content and release (sessions 64-79)
 
 | Session | Date | What happened |
 |---|---|---|
@@ -111,3 +111,4 @@ and its commits.
 | [76](session-76-2026-11-01.md) | 2026-10-31 to 11-01 | itch.io in every push, and quicker turn speeds |
 | [77](session-77-2026-11-02.md) | 2026-11-02 | A post for the r/roguelikes Discord |
 | [78](session-78-2026-11-03.md) | 2026-11-03 | Early Cut shows its starter |
+| [79](session-79-2026-11-03.md) | 2026-11-03 | Fights list every Burner you carry |
