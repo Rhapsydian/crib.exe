@@ -21,4 +21,11 @@ describe('kit (Mods and Burners on screen)', () => {
     expect(items.map((b) => b.spent)).toEqual([true, false, false]);
     expect(items[2].text).toBe('Next turn: Suppress 12.');
   });
+
+  it('lists the Burners a fight cannot use after the rest, marked with where they are used (session 78)', () => {
+    const items = burnersOf(['flash-drive'], [], ['golden-ticket', 'cold-wallet']);
+    expect(items.map((b) => b.name)).toEqual(['Flash Drive', 'Golden Ticket', 'Cold Wallet']);
+    expect(items.map((b) => b.elsewhere)).toEqual([undefined, 'use on the map', 'sell at a Shop']);
+    expect(items[1].text).toBe('Now: your Heat drops to 0, and the next gatekeeper has no Heat toll.');
+  });
 });

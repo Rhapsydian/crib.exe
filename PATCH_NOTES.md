@@ -45,6 +45,10 @@ new card (`src/ui/version-notes.ts`), and this section empties.
   Quiet Host tip says "spare Port Scan copies".
 - The main menu's tagline ends with a period.
 - About shows the build next to the version, for bug reports.
+- A fight's Burners list now shows every Burner you carry. One that
+  can't be used in a fight (Golden Ticket, say) is dimmed with where
+  it's used: "use on the map". A daily's Golden Ticket looked missing in
+  fights (a tester's report).
 - Daily Runs: Early Cut now shows the starter face up during the
   discard. The table kept it face down until after the discard, though
   the coach and the enemy already knew it (a tester's report).

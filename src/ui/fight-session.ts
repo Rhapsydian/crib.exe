@@ -3,6 +3,7 @@ import type { FightSnapshot } from './snapshot';
 import type { FightTier } from '../engine/heat';
 import type { SkillDecision } from './skill-review';
 import type { DailyPlan } from '../engine/daily';
+import type { BurnerId } from '../engine/burner-types';
 
 /** The run's Heat as a fight starts, and how that fight charges it. */
 export interface FightHeatContext {
@@ -42,6 +43,9 @@ export interface FightSession {
   readonly resumed?: boolean;
   /** A Daily Run's Mods (session 72), shown beside the loadouts. */
   readonly daily?: { plan: DailyPlan; practice: boolean };
+  /** A run's fight only: the Burners carried that a fight can't use
+   * (map, Shop, sell-only), listed dimmed (session 78). */
+  readonly elsewhereBurners?: readonly BurnerId[];
 }
 
 /** A result-panel button. */

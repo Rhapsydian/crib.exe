@@ -10,6 +10,7 @@ import { GHOST_CREDENTIALS_FIGHT_HEAT, HEAT_SINK_HEAT_REFUND } from '../engine/m
 import { tips } from './tips.svelte';
 import type { RunRequest } from '../engine/run-requests';
 import { BURNER_DEFINITIONS } from '../engine/burners';
+import type { BurnerId } from '../engine/burner-types';
 import { acquireSubroutine } from '../engine/loadout';
 import { cloneKeepingPrototypes } from './live-fight.svelte';
 import type { FightHeatContext, FightSession } from './fight-session';
@@ -69,8 +70,10 @@ class RunFight implements FightSession {
   resumed = false;
 
   readonly heat: FightHeatContext;
+  readonly elsewhereBurners: readonly BurnerId[];
 
   constructor(enemy: EnemyDefinition, tier: 'regular' | 'elite' | 'gatekeeper', layer: number, player: RunPlayerState, answer: (a: CombatAnswer) => void) {
+    this.elsewhereBurners = player.carriedBurnerIds.filter((id) => !BURNER_DEFINITIONS[id].contexts.includes('combat'));
     this.heat = {
       heat: player.heat ?? 0,
       allowance: player.heatAllowance ?? currentHeatCeiling(player),

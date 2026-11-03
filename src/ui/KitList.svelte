@@ -10,10 +10,10 @@
 <ul class="kit">
   {#each items as item (item.key)}
     <li>
-      <button class="item {item.kind}" class:spent={item.spent} class:flash={flashing.has(item.key)} onclick={() => onpick(item)} use:tip={`${item.name} · ${item.tag}${item.spent ? ' · spent' : ''}\n${item.text}`}>
+      <button class="item {item.kind}" class:spent={item.spent} class:elsewhere={item.elsewhere} class:flash={flashing.has(item.key)} onclick={() => onpick(item)} use:tip={`${item.name} · ${item.tag}${item.spent ? ' · spent' : ''}${item.elsewhere ? ` · ${item.elsewhere}` : ''}\n${item.text}`}>
         <span class="icon">{item.kind === 'mod' ? '◆' : '⏏︎'}</span>
         <span class="name">{item.name}</span>
-        {#if item.spent}<span class="note">spent</span>{/if}
+        {#if item.spent}<span class="note">spent</span>{:else if item.elsewhere}<span class="note">{item.elsewhere}</span>{/if}
       </button>
     </li>
   {/each}
@@ -54,6 +54,10 @@
   .spent {
     opacity: 0.4;
     text-decoration: line-through;
+  }
+  /* Carried, but used outside fights (session 78). */
+  .elsewhere {
+    opacity: 0.5;
   }
   .note {
     margin-left: auto;

@@ -83,6 +83,9 @@ export interface KitItem {
   text: string;
   /** A Burner already spent this fight. */
   spent?: boolean;
+  /** A Burner carried but not usable in a fight, and where it is used
+   * ("use on the map"); shown dimmed (session 78). */
+  elsewhere?: string;
 }
 
 /** Initiative added to the owner's own gauge, in words ("add ⅙ of a
@@ -257,10 +260,22 @@ export function modsOf(combatState: CombatState, side: PlayerIndex): KitItem[] {
   return refs.map((r) => modItem(side, r, combatState.bridgeUpgraded?.[side] ?? false));
 }
 
-/** The player's Burners, each marked spent once used. */
-export function burnersOf(carried: readonly BurnerId[], spentSoFar: readonly BurnerId[]): KitItem[] {
+/** Where a Burner with no fight use is used, for the fight's list. */
+export function burnerElsewhere(id: BurnerId): string {
+  const contexts = BURNER_DEFINITIONS[id].contexts;
+  if (contexts.includes('map')) return 'use on the map';
+  if (contexts.includes('shop')) return 'use in a Shop';
+  return 'sell at a Shop';
+}
+
+/** The player's Burners, each marked spent once used. `elsewhere`: the
+ * Burners carried that a fight can't use (map, Shop, sell-only), listed
+ * after the rest, dimmed, so the list matches the kit (session 78, a
+ * tester's report: a daily's Golden Ticket seemed missing in fights). */
+export function burnersOf(carried: readonly BurnerId[], spentSoFar: readonly BurnerId[], elsewhere: readonly BurnerId[] = []): KitItem[] {
   const spent = [...spentSoFar];
-  return carried.map((id, i) => {
+  const tag = (id: BurnerId) => `Burner · ${BURNER_DEFINITIONS[id].contraband ? 'contraband' : BURNER_DEFINITIONS[id].rarity}`;
+  const inFight = carried.map((id, i): KitItem => {
     const def = BURNER_DEFINITIONS[id];
     const used = spent.indexOf(id);
     if (used !== -1) spent.splice(used, 1);
@@ -269,11 +284,21 @@ export function burnersOf(carried: readonly BurnerId[], spentSoFar: readonly Bur
       kind: 'burner',
       side: 0,
       name: def.name,
-      tag: `Burner · ${def.contraband ? 'contraband' : def.rarity}`,
+      tag: tag(id),
       text: def.combat || def.passive ? def.text : 'No effect in a fight.',
       spent: used !== -1,
     };
   });
+  const offFight = elsewhere.map((id, i): KitItem => ({
+    key: `burner:elsewhere:${i}`,
+    kind: 'burner',
+    side: 0,
+    name: BURNER_DEFINITIONS[id].name,
+    tag: tag(id),
+    text: BURNER_DEFINITIONS[id].text,
+    elsewhere: burnerElsewhere(id),
+  }));
+  return [...inFight, ...offFight];
 }
 
 /** "your Phase Shift", "their Null Session". */

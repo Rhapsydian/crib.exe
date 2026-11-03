@@ -54,6 +54,7 @@
     over = false,
     showLog = false,
     daily,
+    elsewhereBurners = [],
   }: {
     snapshot: FightSnapshot;
     onplay?: (card: Card) => void;
@@ -72,6 +73,9 @@
     showLog?: boolean;
     /** A Daily Run's Mods (session 72), in the loadouts panel. */
     daily?: { plan: DailyPlan; practice: boolean };
+    /** The Burners carried that a fight can't use, listed dimmed with the
+     * rest (session 78). */
+    elsewhereBurners?: readonly BurnerId[];
   } = $props();
   const f = $derived(fightParts(snapshot));
   let picked = $state<Picked | null>(null);
@@ -96,9 +100,12 @@
     burnersOf(
       f.view.combatState.carriedBurnerIds,
       steps.flatMap((s) => (s.type === 'beat' && s.beat.kind === 'burner' && s.beat.side === 0 ? [s.beat.burnerId] : [])),
+      elsewhereBurners,
     ),
   );
-  const burnersLeft = $derived(yourBurners.filter((b) => !b.spent).length);
+  // The badge counts what this fight can still use.
+  const fightBurners = $derived(yourBurners.filter((b) => !b.spent && !b.elsewhere));
+  const burnersLeft = $derived(fightBurners.length);
 
   // The tutorial coach (session 63) reacts to the fight as it plays out:
   // the first turn, Hook, enemy turn and Burner it sees. While a fight is
@@ -393,7 +400,7 @@
         mods={yourMods.length}
         modNames={yourMods.map((m) => m.name)}
         burners={burnersLeft}
-        burnerNames={yourBurners.filter((b) => !b.spent).map((b) => b.name)}
+        burnerNames={fightBurners.map((b) => b.name)}
         flashMods={flashSide(0)}
         onkit={() => (sheet = 'loadouts')}
       />

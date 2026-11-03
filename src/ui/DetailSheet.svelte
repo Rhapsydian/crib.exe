@@ -56,7 +56,7 @@
       <span class="glyph">{kit.kind === 'mod' ? '◆' : '⏏︎'}</span>
       <div>
         <div class="name">{kit.name}</div>
-        <div class="meta">{kit.side === 0 ? 'yours' : 'theirs'} · {kit.tag}{kit.spent ? ' · spent' : ''}</div>
+        <div class="meta">{kit.side === 0 ? 'yours' : 'theirs'} · {kit.tag}{kit.spent ? ' · spent' : ''}{kit.elsewhere ? ` · ${kit.elsewhere}` : ''}</div>
       </div>
       <button class="close" onclick={onclose} aria-label="close">✕</button>
     </div>
