@@ -146,3 +146,26 @@ Balance is done with a simulated player: it plays thousands of seeded runs again
 It's free in the browser (desktop or phone, no account), release candidate: https://rhapsydian.itch.io/cribexe
 Happy to talk shop about any of it, and feedback is very welcome.
 ```
+
+## r/cribbage: reply on "Every random cribbage hand, scored"
+
+A reply (drafted 2026-11-07) to a post charting every random 4-card
+hand plus a cut (average 4.77) and asking how much choosing the discard
+changes it. Attach [`screenshots/discard-value.png`](screenshots/discard-value.png),
+made by [`scripts/discard-value-chart.ts`](../../scripts/discard-value-chart.ts)
+and [`discard-chart.html`](discard-chart.html). The crib.exe line stays
+in (the designer's call).
+
+---
+
+```
+Great question, so I ran it. Same counting as your chart, but starting from every 6-card deal (all 20,358,520, exact rather than sampled) and letting a discard AI choose the keep, once with the crib yours and once with it theirs. As a check, the random baseline came out at your 4.77.
+
+Choosing the discard moves the average hand from **4.77 to 8.09**, about 3.3 points a hand. Even before the cut, the four cards you keep are already worth 5.51 on average, more than a random hand with its cut. Zero-point hands drop from 7.8% to 0.5%, and 8 becomes the most common score instead of 4.
+
+The crib is the other half of the choice. Thrown to your own crib, the discards average 5.11 more points (hand plus crib: 13.14). Thrown to theirs, you give away 4.16 (hand minus crib: 4.00). The AI keeps slightly less in hand as dealer (8.03 vs 8.16), trading hand points for crib points.
+
+Caveats: no pegging, and the crib values are averages over every way the rest of the crib and the cut could fall, so the bottom panel is "what this keep is worth", not a score you can actually get.
+
+(The discard AI is the one from crib.exe, a free browser roguelite I'm making where every fight is a game of Cribbage: https://rhapsydian.itch.io/cribexe)
+```
