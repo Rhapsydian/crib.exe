@@ -15,7 +15,7 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 79)
+## Current state (end of session 80)
 
 **Release candidate v0.9.1 is out for testing** on
 <https://cribexe.com> (branch `playable`) and on itch.io, public as "In
@@ -30,8 +30,9 @@ the itch.io upload into every push that changes the game
 ([`.claude/dev-session.md`](.claude/dev-session.md)). Session 77 drafted
 a post for the r/roguelikes Discord; session 78 fixed Early Cut's
 starter staying face down, and session 79 made fights list every Burner
-you carry (both testers' reports;
-[session log](docs/session-logs/session-79-2026-11-03.md)).
+you carry (both testers' reports). Session 80 measured what the discard
+AI's choice is worth over every 6-card deal, for an r/cribbage reply
+([session log](docs/session-logs/session-80-2026-11-07.md)).
 
 The game is feature-complete: a four-layer run with six classes, a
 guided tutorial and first-time tips, plain Cribbage with a coach and
@@ -83,7 +84,8 @@ winning run's end; fully upgraded ~90%; Security Levels 1 / 5 / 10 at
    butler upload, public "In development", devlog. Reddit posts are
    drafted ([`docs/itch/reddit.md`](docs/itch/reddit.md)); the designer posts them
    (r/roguelikedev's Sharing Saturday and r/playmygame posted in session 75;
-   an r/roguelikes Discord message drafted in session 77).
+   an r/roguelikes Discord message drafted in session 77; an r/cribbage
+   reply with a discard-value chart in session 80).
 
 Out of scope for release: **Event mini-games** (the designer: none), music,
 and balance work. The earlier priorities (session 63: the content pass,
