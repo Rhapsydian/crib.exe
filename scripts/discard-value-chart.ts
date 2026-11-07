@@ -29,7 +29,7 @@ import { writeFileSync } from 'node:fs';
 import { cpus } from 'node:os';
 import type { Card, Rank, Suit } from '../src/engine/cards';
 import { cardValue } from '../src/engine/cards';
-import { predictBestDiscard, handExpectedValue, cribTableValue, unseenCards } from '../src/engine/ai';
+import { predictBestDiscard, cribTableValue, unseenCards } from '../src/engine/ai';
 import { countHand } from '../src/engine/scoring';
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')));
