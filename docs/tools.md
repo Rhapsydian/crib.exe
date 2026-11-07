@@ -89,6 +89,7 @@ header.
 | `cribbage-skill-matrix.ts` | What a "player skill" value means, as a skill-against-skill win-rate grid |
 | `cribbage-difficulty.ts` | Plain Cribbage's difficulty levels against reference players and each other |
 | `crib-table.ts` | **A generator:** writes `src/engine/crib-table.ts`, the average crib each two-card throw makes |
+| `discard-value-chart.ts` | Every 6-card deal (exact), the discard AI's keep as dealer and non-dealer: kept points, with the cut, plus or minus the crib, against random hands. Writes the JSON behind [`docs/itch/discard-chart.html`](itch/discard-chart.html) |
 
 **Meta-progression, Daily Runs and the tutorial**
 
