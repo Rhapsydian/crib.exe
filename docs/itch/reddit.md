@@ -154,7 +154,8 @@ hand plus a cut (average 4.77) and asking how much choosing the discard
 changes it. Attach [`screenshots/discard-value.png`](screenshots/discard-value.png),
 made by [`scripts/discard-value-chart.ts`](../../scripts/discard-value-chart.ts)
 and [`discard-chart.html`](discard-chart.html). The crib.exe line stays
-in (the designer's call).
+in (the designer's call). Paste in the Markdown editor (the bold, and a
+Markdown link so the closing parenthesis stays out of the URL).
 
 ---
 
@@ -167,5 +168,5 @@ The crib is the other half of the choice. Thrown to your own crib, the discards 
 
 Caveats: no pegging, and the crib values are averages over every way the rest of the crib and the cut could fall, so the bottom panel is "what this keep is worth", not a score you can actually get.
 
-(The discard AI is the one from crib.exe, a free browser roguelite I'm making where every fight is a game of Cribbage: https://rhapsydian.itch.io/cribexe)
+(The discard AI is the one from crib.exe, a free browser roguelite I'm making where every fight is a game of Cribbage: [rhapsydian.itch.io/cribexe](https://rhapsydian.itch.io/cribexe))
 ```
