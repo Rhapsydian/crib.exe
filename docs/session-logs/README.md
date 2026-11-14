@@ -113,3 +113,4 @@ and its commits.
 | [78](session-78-2026-11-03.md) | 2026-11-03 | Early Cut shows its starter |
 | [79](session-79-2026-11-03.md) | 2026-11-03 | Fights list every Burner you carry |
 | [80](session-80-2026-11-07.md) | 2026-11-07 | What choosing your discard is worth: every 6-card deal, for an r/cribbage reply |
+| [81](session-81-2026-11-14.md) | 2026-11-14 | The coach stops weighing replies once the opponent is out of cards |

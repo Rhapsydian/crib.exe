@@ -15,13 +15,13 @@ is a thin interface onto the engine.
 
 ---
 
-## Current state (end of session 80)
+## Current state (end of session 81)
 
 **Release candidate v0.9.1 is out for testing** on
 <https://cribexe.com> (branch `playable`) and on itch.io, public as "In
 development" (<https://rhapsydian.itch.io/cribexe>, devlog posted). 1.0
 is held for more testing (the designer). Changes since v0.9.1 wait in
-[`PATCH_NOTES.md`](PATCH_NOTES.md) (Unreleased). 989 tests, `npm run check` clean.
+[`PATCH_NOTES.md`](PATCH_NOTES.md) (Unreleased). 991 tests, `npm run check` clean.
 Session 75 put the loadout against the reward and Shop screens' edge,
 made Init Script pay 10 Data on every Mod, and saw the first Reddit
 posts (Sharing Saturday #647, r/playmygame; the next r/playmygame post
@@ -31,8 +31,10 @@ the itch.io upload into every push that changes the game
 a post for the r/roguelikes Discord; session 78 fixed Early Cut's
 starter staying face down, and session 79 made fights list every Burner
 you carry (both testers' reports). Session 80 measured what the discard
-AI's choice is worth over every 6-card deal, for an r/cribbage reply
-([session log](docs/session-logs/session-80-2026-11-07.md)).
+AI's choice is worth over every 6-card deal, for an r/cribbage reply.
+Session 81 stopped the coach weighing replies once the opponent is out
+of cards (a tester's report) and found no need for pegging lookahead
+([session log](docs/session-logs/session-81-2026-11-14.md)).
 
 The game is feature-complete: a four-layer run with six classes, a
 guided tutorial and first-time tips, plain Cribbage with a coach and
