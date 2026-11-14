@@ -166,8 +166,11 @@ function judgePlay(
   const after = spot.count + cardValue(card);
   const count = after === limit ? 0 : after;
   const sequence = after === limit ? [] : [...spot.sequence, card];
-  const unseen = unseenCards([...spot.known, card]);
-  const replies = unseen.map((u) => (count + cardValue(u) <= limit ? { u, ...playScore(u, count, sequence, limit) } : { u, pts: 0, what: [] as string[] }));
+  // The cards a reply could come from -- the same ones the engine weighs
+  // (ai.ts pegNet): none once they're out of cards, their actual hand
+  // when a reveal shows it, otherwise every card the player can't see.
+  const pool = spot.opponentCards === 0 ? [] : (spot.opponentHand ?? unseenCards([...spot.known, card]));
+  const replies = pool.map((u) => (count + cardValue(u) <= limit ? { u, ...playScore(u, count, sequence, limit) } : { u, pts: 0, what: [] as string[] }));
   // The threat to name: the reply with the most at stake -- grouped by
   // what it scores, so every card that makes the same 15 counts together.
   const byWhat = new Map<string, { n: number; pts: number; ranks: Set<number> }>();
@@ -224,6 +227,9 @@ export function pegHint(spot: PegSpot): string {
   const best = bestPlay(spot);
   const j = judgePlay(best, spot);
   if (j.pts > 0) return `Play ${label(best)}: ${j.what.join(' and ')}.${j.risk >= 1 && j.threat ? ` (Then watch out: ${j.threat}.)` : ''}`;
+  // Nothing can come back once they're out of cards: say so, rather than
+  // weighing threats from cards they can't play.
+  if (spot.opponentCards === 0) return `Play ${label(best)}. They're out of cards, so nothing comes back.`;
   if (spot.count === 0 && cardValue(best) < 5) return `Lead ${label(best)}: they can't make 15 off a card under 5.`;
   // Why this card: how few cards left can score off it, beside the
   // runner-up (the user asked why a 10 beat a 7 or 8 -- the fives were
@@ -232,7 +238,10 @@ export function pegHint(spot: PegSpot): string {
   const alt = ranked[0];
   const a = alt ? judgePlay(alt, spot) : null;
   const plural = (n: number) => `${n} card${n === 1 ? '' : 's'}`;
-  const why = j.scorers ? `${plural(j.scorers)} left can score off it: ${j.scorerText}` : 'Nothing left can score off it right away';
+  // After a reveal the count is of their actual cards, not every card out.
+  const why = spot.opponentHand
+    ? j.scorers ? `${j.scorers} of their cards can score off it: ${j.scorerText}` : 'Nothing in their hand can score off it'
+    : j.scorers ? `${plural(j.scorers)} left can score off it: ${j.scorerText}` : 'Nothing left can score off it right away';
   const compare = a && alt && a.scorers > j.scorers ? ` ${article(label(alt)) === 'an' ? 'An' : 'A'} ${label(alt)} leaves ${a.scorers}: ${a.scorerText}.` : '';
   const worst = ranked[ranked.length - 1];
   const w = worst ? judgePlay(worst, spot) : null;
@@ -298,8 +307,8 @@ export interface PlayLine {
 function playLineOf(spot: PegSpot, card: Card): PlayLine {
   const j = judgePlay(card, spot);
   const scored = j.pts ? j.what.join(' and ') : 'no score';
-  const risk = j.risk >= 0.5 && j.threat ? `; ${j.threat}` : j.scorers ? '; little for them to score off' : '; nothing scores off it right away';
-  return { card, pts: j.pts, reply: -j.risk, net: j.net, why: `${scored}${risk}` };
+  const risk = spot.opponentCards === 0 ? "; they're out of cards" : j.risk >= 0.5 && j.threat ? `; ${j.threat}` : j.scorers ? '; little for them to score off' : '; nothing scores off it right away';
+  return { card, pts: j.pts, reply: 0 - j.risk, net: j.net, why: `${scored}${risk}` };
 }
 
 /** Your pegging card and the coach's, in numbers, and what yours gave up. */

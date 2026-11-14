@@ -50,6 +50,26 @@ describe('the coach', () => {
     );
   });
 
+  // A tester's report (session 81): with the opponent out of cards, the
+  // coach still named threats from cards nobody could play.
+  it("doesn't weigh replies once they're out of cards", () => {
+    const out = spot([c(10), c(5, 1)], 0, [], c(13, 3), 0);
+    expect(pegHint(out)).toBe("Play 5. They're out of cards, so nothing comes back.");
+    const line = playComparison(out, c(10));
+    expect(line.yours.why).toBe("no score; they're out of cards");
+    expect(line.yours.reply).toBe(0);
+    // A score is still named; no "watch out" follows it.
+    expect(pegHint(spot([c(5), c(9)], 10, [c(10)], c(13, 3), 0))).toBe('Play 5: fifteen for 2.');
+  });
+
+  it('after a reveal, counts threats from their actual hand', () => {
+    // They hold a 2 and a K. A 9 (count 19) leaves them nothing; a 3
+    // (count 13) lets the 2 make fifteen. Unseen fives would have been
+    // named as threats before.
+    const shown = { ...spot([c(3), c(9)], 10, [c(10)], c(13, 3), 2), opponentHand: [c(2, 2), c(13, 1)] };
+    expect(pegHint(shown)).toMatch(/^Play 9\. Nothing in their hand can score off it\./);
+  });
+
   it('walks through the last count, one line per hand counted', () => {
     const game = playCribbageGame({ seed: 3, skills: [0.75, 0.75] });
     const firstShowEnd = game.timeline.findIndex((b, i) => b.kind === 'hand' && i > 0);

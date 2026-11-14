@@ -49,6 +49,10 @@ new card (`src/ui/version-notes.ts`), and this section empties.
   can't be used in a fight (Golden Ticket, say) is dimmed with where
   it's used: "use on the map". A daily's Golden Ticket looked missing in
   fights (a tester's report).
+- The coach no longer weighs their replies once they're out of cards
+  (a tester's report). It says "They're out of cards, so nothing comes
+  back" instead of naming threats nobody can play. After a reveal, it
+  counts threats from their actual hand.
 - Daily Runs: Early Cut now shows the starter face up during the
   discard. The table kept it face down until after the discard, though
   the coach and the enemy already knew it (a tester's report).
