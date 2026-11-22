@@ -114,3 +114,4 @@ and its commits.
 | [79](session-79-2026-11-03.md) | 2026-11-03 | Fights list every Burner you carry |
 | [80](session-80-2026-11-07.md) | 2026-11-07 | What choosing your discard is worth: every 6-card deal, for an r/cribbage reply |
 | [81](session-81-2026-11-14.md) | 2026-11-14 | The coach stops weighing replies once the opponent is out of cards |
+| [82](session-82-2026-11-22.md) | 2026-11-22 | A detailed turn display: the panel, sparks to big totals, tap to continue |

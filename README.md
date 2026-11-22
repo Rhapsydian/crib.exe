@@ -62,6 +62,9 @@ means more turns.
   attempt a day
 - **A guided tutorial**, and a review coach that rates your Cribbage play
   in stars
+- **Detailed turns:** each turn opens a panel that lights every
+  subroutine as it fires, explains its Hooks and adds up what the turn
+  did; quick turns are a setting away
 - **Plain Cribbage** too: four difficulty levels, a coach, and five short
   lessons for new players
 
