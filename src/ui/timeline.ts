@@ -21,14 +21,41 @@ import { modName, triggerLabel } from './kit';
  * play's scoring and any turns it bought are done, just before the next
  * table beat.
  */
-export type Step = { type: 'beat'; beat: CombatBeat } | { type: 'fire'; fire: FireEvent } | { type: 'clear' };
+export type Step = { type: 'beat'; beat: CombatBeat } | { type: 'fire'; fire: FireEvent } | { type: 'clear' } | { type: 'turnEnd' };
 
-export function mergeSteps(timeline: readonly CombatBeat[], log: readonly FireEvent[]): Step[] {
+/** Beats that belong to the turn they follow (a Burner spent at its
+ * start, a Mod acting, system strain); any other beat ends the turn. */
+const IN_TURN: ReadonlySet<CombatBeat['kind']> = new Set(['burner', 'mod', 'strain']);
+
+/**
+ * `turnEnds` (session 82, the detailed turn display): a UI-only `turnEnd`
+ * step closes each turn after its last fire, so the turn panel can hold
+ * the turn's totals before the table carries on. A turn runs from its
+ * `turn` beat to the next beat that isn't part of it. A turn at the very
+ * end of what has happened so far closes once it has fired anything: the
+ * engine resolves a turn's fires all at once and pauses inside a turn
+ * only before them (the Burner offer), so the step stays at this same
+ * index once the next beat arrives.
+ */
+export function mergeSteps(timeline: readonly CombatBeat[], log: readonly FireEvent[], options: { turnEnds?: boolean } = {}): Step[] {
   const steps: Step[] = [];
   let fires = 0;
   let resetPending = false;
+  // In a turn, and whether it has fired anything yet.
+  let inTurn = false;
+  let turnFired = false;
+  const pushFire = (fire: FireEvent) => {
+    steps.push({ type: 'fire', fire });
+    if (inTurn) turnFired = true;
+  };
+  const closeTurn = () => {
+    if (inTurn && options.turnEnds) steps.push({ type: 'turnEnd' });
+    inTurn = false;
+    turnFired = false;
+  };
   for (const beat of timeline) {
-    while (fires < beat.firesBefore) steps.push({ type: 'fire', fire: log[fires++] });
+    while (fires < beat.firesBefore) pushFire(log[fires++]);
+    if (inTurn && !IN_TURN.has(beat.kind)) closeTurn();
     // The reset play's own points stay on the full pile; anything else
     // (the next card, the show, a new hand) comes after the sweep.
     if (resetPending && !(beat.kind === 'points' && beat.phase === 'peg')) {
@@ -36,9 +63,11 @@ export function mergeSteps(timeline: readonly CombatBeat[], log: readonly FireEv
       resetPending = false;
     }
     steps.push({ type: 'beat', beat });
+    if (beat.kind === 'turn') inTurn = true;
     if (beat.kind === 'peg' && (beat.event.type === 'go-point' || (beat.event.type === 'play' && beat.event.breakdown.thirtyOne > 0))) resetPending = true;
   }
-  while (fires < log.length) steps.push({ type: 'fire', fire: log[fires++] });
+  while (fires < log.length) pushFire(log[fires++]);
+  if (turnFired) closeTurn();
   // A reset at the end of what has happened so far (the enemy took the
   // go, now it's your card): sweep now rather than when your card comes.
   // The engine paused right after it, so the next beat brings no fires
@@ -49,7 +78,7 @@ export function mergeSteps(timeline: readonly CombatBeat[], log: readonly FireEv
 
 /** The meters a step leaves behind, if it records them. */
 export function stepGauges(step: Step): [GaugeReading, GaugeReading] | null {
-  if (step.type === 'clear') return null;
+  if (step.type === 'clear' || step.type === 'turnEnd') return null;
   if (step.type === 'fire') return step.fire.gauges;
   // Every beat carries the meters as it stands (session 72).
   return step.beat.gauges ?? null;
@@ -57,7 +86,7 @@ export function stepGauges(step: Step): [GaugeReading, GaugeReading] | null {
 
 /** Who a step belongs to, for pacing and colour. */
 export function stepSide(step: Step): PlayerIndex | null {
-  if (step.type === 'clear') return null;
+  if (step.type === 'clear' || step.type === 'turnEnd') return null;
   if (step.type === 'fire') return step.fire.side;
   const b = step.beat;
   if (b.kind === 'peg') return b.event.player;
@@ -72,7 +101,7 @@ export function stepSide(step: Step): PlayerIndex | null {
 
 /** The Mods acting at a step: a Mod beat's own, or a fire's. */
 export function stepMods(step: Step | null): ModTrigger[] {
-  if (!step || step.type === 'clear') return [];
+  if (!step || step.type === 'clear' || step.type === 'turnEnd') return [];
   if (step.type === 'fire') return step.fire.mods ?? [];
   return step.beat.kind === 'mod' ? [{ side: step.beat.side, mod: step.beat.mod }] : [];
 }
@@ -84,10 +113,12 @@ export function stepDaily(step: Step | null): string | null {
 
 /** Milliseconds a step holds the screen at slow speed (a scale of 1). Your own card is
  * quick (you just chose it); the enemy's gets time to be seen; points
- * give the callout time to read. */
-export function stepDelay(step: Step): number {
+ * give the callout time to read. `detailed` (the detailed turn display,
+ * session 82): fires hold twice as long, to be read in the turn panel. */
+export function stepDelay(step: Step, detailed = false): number {
   if (step.type === 'clear') return 450;
-  if (step.type === 'fire') return step.fire.side === 0 ? 330 : 200;
+  if (step.type === 'turnEnd') return TURN_END_MS;
+  if (step.type === 'fire') return (step.fire.side === 0 ? 330 : 200) * (detailed ? 2 : 1);
   const b = step.beat;
   switch (b.kind) {
     case 'hand':
@@ -113,6 +144,10 @@ export function stepDelay(step: Step): number {
       return 900;
   }
 }
+
+/** How long the turn panel holds a turn's totals, at slow speed (about a
+ * second at normal). */
+export const TURN_END_MS = 1400;
 
 /** A pile card, keyed by the step that played it (so new ones animate). */
 export interface PileCard {
@@ -356,7 +391,7 @@ export interface StepLine {
 }
 
 export function stepLine(step: Step, names: ReadonlyMap<string, string>): StepLine | null {
-  if (step.type === 'clear') return null;
+  if (step.type === 'clear' || step.type === 'turnEnd') return null;
   if (step.type === 'fire') {
     const f = step.fire;
     const mods = f.mods?.length ? ` · ◆ ${[...new Set(f.mods.map((m) => modName(m.mod)))].join(', ')}` : '';

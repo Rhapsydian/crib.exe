@@ -9,6 +9,7 @@ import { stepGauges, type Step } from './timeline';
  */
 export function stepSound(step: Step): SoundId | null {
   if (step.type === 'clear') return 'clear';
+  if (step.type === 'turnEnd') return null;
   if (step.type === 'fire') return 'fire';
   const b = step.beat;
   switch (b.kind) {

@@ -59,13 +59,18 @@ export class Replay {
   #previous: [GaugeReading, GaugeReading] | null = null;
   #timer: ReturnType<typeof setTimeout> | null = null;
   #speedKey: string;
+  /** The detailed turn display (session 82): fires hold longer, and the
+   * steps carry `turnEnd`s for the turn panel. Fixed for the replay's
+   * life; a fight reads the setting when it opens. */
+  readonly detailed: boolean;
 
   /** `speedKey` / `defaultSpeed`: where the speed choice is remembered
    * and what it starts at -- Learn to play keeps its own, starting slow
    * (session 61), so a learner's choice never changes normal play's. */
-  constructor(speedKey = SPEED_KEY, defaultSpeed: Speed = 'normal') {
+  constructor(speedKey = SPEED_KEY, defaultSpeed: Speed = 'normal', detailed = false) {
     this.#speedKey = speedKey;
     this.speed = loadSpeed(speedKey, defaultSpeed);
+    this.detailed = detailed;
   }
 
   /** A new engine pause: the fight's steps so far, and the live gauges. */
@@ -99,6 +104,22 @@ export class Replay {
     this.holding = false;
   }
 
+  /** Jumps ahead so `n` steps are on screen (the turn panel's tap: to a
+   * turn's totals, then past them), and plays on from there. Never goes
+   * back. Asked for where it already stands at the end, it lets the last
+   * step go. */
+  jumpTo(n: number): void {
+    const to = Math.max(this.shown, Math.min(n, this.steps.length));
+    this.#clear();
+    if (to === this.shown && to === this.steps.length) {
+      this.holding = false;
+      return;
+    }
+    this.shown = to;
+    this.holding = to === this.steps.length;
+    this.#schedule();
+  }
+
   cycleSpeed(): void {
     this.speed = SPEEDS[(SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length];
     try {
@@ -124,7 +145,7 @@ export class Replay {
     if (this.#timer) return;
     const scale = SPEED_SCALE[this.speed];
     if (this.shown < this.steps.length) {
-      const delay = this.shown === this.batchStart ? LEAD_IN_MS : stepDelay(this.steps[this.shown - 1]);
+      const delay = this.shown === this.batchStart ? LEAD_IN_MS : stepDelay(this.steps[this.shown - 1], this.detailed);
       this.#timer = setTimeout(() => {
         this.#timer = null;
         this.shown++;
@@ -135,7 +156,7 @@ export class Replay {
       this.#timer = setTimeout(() => {
         this.#timer = null;
         this.holding = false;
-      }, stepDelay(this.steps[this.shown - 1]) * scale);
+      }, stepDelay(this.steps[this.shown - 1], this.detailed) * scale);
     }
   }
 
@@ -153,6 +174,33 @@ export function turnSpeed(): Speed {
 export function setTurnSpeed(speed: Speed): void {
   try {
     localStorage.setItem(SPEED_KEY, speed);
+  } catch {
+    // Storage blocked: the choice lasts the session.
+  }
+}
+
+/**
+ * The turn display (session 82): 'detailed' opens the turn panel on every
+ * turn, either side's; 'quiet' is the fight screen as it was (the turn
+ * toast and the loadout strips). Detailed is the default for everyone,
+ * existing players included (the user's call).
+ */
+export type TurnDisplay = 'detailed' | 'quiet';
+export const TURN_DISPLAYS: TurnDisplay[] = ['detailed', 'quiet'];
+const TURN_DISPLAY_KEY = 'cribexe.turnDisplay';
+
+export function turnDisplay(): TurnDisplay {
+  try {
+    const saved = localStorage.getItem(TURN_DISPLAY_KEY);
+    if (saved && (TURN_DISPLAYS as string[]).includes(saved)) return saved as TurnDisplay;
+  } catch {
+    // See cycleSpeed.
+  }
+  return 'detailed';
+}
+export function setTurnDisplay(display: TurnDisplay): void {
+  try {
+    localStorage.setItem(TURN_DISPLAY_KEY, display);
   } catch {
     // Storage blocked: the choice lasts the session.
   }

@@ -20,7 +20,7 @@ import { suitInfo } from './suits';
 
 // Quarters exactly (0.75, 1.25: the design's own steps), anything else
 // -- scaled enemy values -- to one decimal.
-const fmt = (n: number) => {
+export const fmt = (n: number) => {
   if (Number.isInteger(n)) return String(n);
   const quarters = n * 4;
   if (Math.abs(quarters - Math.round(quarters)) < 1e-9) return String(Math.round(quarters) / 4);
