@@ -1,9 +1,8 @@
 import type { PlayerIndex } from '../engine/game';
 import type { BetaEffect, Effect, SubroutineDefinition, Verb } from '../engine/subroutine-types';
-import { BURNER_DEFINITIONS } from '../engine/burners';
 import { describeHook, fmt, forEnemy } from './describe';
 import { modName } from './kit';
-import type { Step } from './timeline';
+import { burnerLabel, type Step } from './timeline';
 
 /**
  * The detailed turn display (session 82): a panel over the middle of the fight screen that lists the turn-taker's
@@ -122,7 +121,8 @@ export function turnPanel(
       if (fire.beta) add(sums, fire.beta);
     } else if (s.type === 'beat') {
       const b = s.beat;
-      if (b.kind === 'burner') notes.push({ text: `Burner: ${BURNER_DEFINITIONS[b.burnerId].name}`, tone: 'burner' });
+      // A Burner isn't a fire, so it isn't in the tally: its line says what it does.
+      if (b.kind === 'burner') notes.push({ text: `Burner · ${burnerLabel(b.burnerId)}`, tone: 'burner' });
       else if (b.kind === 'mod') notes.push({ text: `${b.side === 0 ? 'Your' : 'Their'} Mod: ${modName(b.mod, bridgeUpgraded?.[b.side])}`, tone: 'mod' });
       else if (b.kind === 'strain') notes.push({ text: `System strain: +${fmt(b.heat)} Heat (${b.turns} turns in a row)`, tone: 'strain' });
     }

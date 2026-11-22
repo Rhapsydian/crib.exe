@@ -30,6 +30,9 @@
   import { fightHeatOutlook } from '../engine/heat';
   import { readGauges } from '../engine/resolve';
   import type { FightHeatContext } from './fight-session';
+  import TurnPanel from './TurnPanel.svelte';
+  import { shortEffect, turnPanel } from './turn-panel';
+  import { forEnemy } from './describe';
 
   // The chosen fight-screen layout (the user's picks from the P3 mockups):
   // COMPACT on phones -- everything on one screen, a three-line log
@@ -217,11 +220,19 @@
     if (b.kind === 'points' && b.phase === 'show') {
       return { text: `${b.occurrence.player === 0 ? '+' : '−'} ${scoreLabel(b.occurrence, 'show')}`, side: b.occurrence.player, key: replay!.shown, turn: false };
     }
-    if (b.kind === 'turn') return { text: `▶ ${b.side === 0 ? 'YOUR' : 'THEIR'} TURN`, side: b.side, key: replay!.shown, turn: true };
+    // The detailed display's panel says whose turn it is itself.
+    if (b.kind === 'turn' && !detailed) return { text: `▶ ${b.side === 0 ? 'YOUR' : 'THEIR'} TURN`, side: b.side, key: replay!.shown, turn: true };
     return null;
   });
   const slotCallout = $derived.by(() => {
     const step = replay?.current;
+    // An Instant Hook outside a turn (the detailed display, session 82):
+    // it doesn't open the panel, so it gets a callout of its own.
+    if (detailed && step?.type === 'fire' && step.fire.immediate && !turn) {
+      const fire = step.fire;
+      const line = `Instant Hook · ${names.get(fire.subroutineId) ?? fire.subroutineId}: ${shortEffect(fire.beta ?? fire.alpha)}`;
+      return { text: fire.side === 1 ? forEnemy(line) : line, side: fire.side, key: replay!.shown, tone: fire.side === 0 ? 'hook' : 'hook them' };
+    }
     if (step?.type !== 'beat') return null;
     const b = step.beat;
     if (b.kind === 'burner') return { text: `⏏︎ ${burnerLabel(b.burnerId)}`, side: b.side, key: replay!.shown, tone: 'burner' };
@@ -237,6 +248,29 @@
     return { title: `HAND ${step.beat.handIndex + 1}`, sub: step.beat.dealer === 0 ? 'you deal · your crib' : 'they deal · their crib', key: replay!.shown };
   });
   const handReady = $derived(!table || table.handIndex === f.view.handIndex);
+
+  // The detailed turn display (session 82): while the replay is inside a
+  // turn, the turn panel covers the table and the ticker. It stays up on
+  // its totals while they hold, and goes once the replay lets them go.
+  const detailed = $derived(replay?.detailed ?? false);
+  const turn = $derived(
+    replay && detailed
+      ? turnPanel(
+          replay.steps,
+          replay.shown,
+          [f.view.combatState.sides[0].loadout.map((e) => e.definition), f.view.combatState.sides[1].loadout.map((e) => e.definition)],
+          f.view.combatState.bridgeUpgraded,
+        )
+      : null,
+  );
+  const turnUp = $derived(!!turn && (!turn.ended || !!replay?.playing));
+  // The tap: to the turn's totals (its turnEnd on screen), then past them.
+  function skipTurn() {
+    if (!replay || !turn) return;
+    const end = replay.steps.findIndex((s, i) => i > turn.start && s.type === 'turnEnd');
+    if (end < 0) return;
+    replay.jumpTo(turn.ended ? end + 2 : end + 1);
+  }
 
   // The Heat bar (session 63): in a run's fights, your Heat now (alarms
   // included, as the replay reaches them) and what winning now would leave.
@@ -351,6 +385,8 @@
       <Gauges side={f.them} reading={replay?.gauges?.[1] ?? (over ? replay?.live?.[1] : undefined)} ending={ending === 1} isPlayer={false} compact mods={theirMods.length} modNames={theirMods.map((m) => m.name)} flashMods={flashSide(1)} onkit={() => (sheet = 'loadouts')} />
     </div>
 
+    <div class="middle">
+    {#if turnUp && turn}<TurnPanel panel={turn} onskip={skipTurn} />{/if}
     <div class="table-slot">
       {#if table?.show}
         <ShowPanel show={table.show} />
@@ -388,6 +424,7 @@
       <div class="more">tap for full log</div>
     </button>
     {/if}
+    </div>
 
     <div class="band you">
       <Loadout entries={f.you.loadout} dense firing={firingSlot(0)} onpick={(i) => (picked = { side: 0, index: i })} />
@@ -555,6 +592,18 @@
   .ticker .quiet {
     color: var(--text-dim);
   }
+  /* The table and the ticker (or coach) together: the turn panel covers
+     both (session 82). It takes the column's spare height, spread round
+     the two as the column's own gaps spread it before. */
+  .middle {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    gap: 6px;
+  }
   .table-slot {
     position: relative;
     height: 104px;
@@ -635,6 +684,14 @@
   .slot-callout.burner {
     border-color: var(--warn);
     color: var(--warn);
+  }
+  .slot-callout.hook {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .slot-callout.hook.them {
+    border-color: var(--danger);
+    color: var(--danger);
   }
   @keyframes slot-callout {
     0% {

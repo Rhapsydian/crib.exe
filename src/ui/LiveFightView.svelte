@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { FightSession, ResultAction } from './fight-session';
   import FightScreen from './FightScreen.svelte';
-  import { Replay } from './replay.svelte';
+  import { Replay, turnDisplay } from './replay.svelte';
   import { readGauges } from '../engine/resolve';
   import { untrack } from 'svelte';
   import { mergeSteps, pointsSummary, stepGauges } from './timeline';
@@ -19,7 +19,8 @@
   // until the final turn has played out.
   // `actions` are the result panel's buttons (fight again / continue).
   let { fight, actions }: { fight: FightSession; actions: ResultAction[] } = $props();
-  const replay = new Replay();
+  // The turn display is read once, as the fight opens (session 82).
+  const replay = new Replay(undefined, undefined, turnDisplay() === 'detailed');
   /** Whether a resumed fight has been brought up to the present. */
   let caughtUp = false;
   // Before the screen redraws (session 72, the user's report: INIT
@@ -30,7 +31,7 @@
     const { frame, result } = fight;
     const source = result ?? frame?.request.view;
     if (!source) return;
-    const steps = mergeSteps(source.timeline, source.log);
+    const steps = mergeSteps(source.timeline, source.log, { turnEnds: replay.detailed });
     const fromSteps = steps.map(stepGauges).findLast((g) => g !== null) ?? null;
     const live = result ? (fromSteps ?? readGauges(frame!.request.view.combatState)) : readGauges(frame!.request.view.combatState);
     // Only a new pause re-runs this, not the replay's own stepping.
