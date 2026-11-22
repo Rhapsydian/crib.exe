@@ -11,6 +11,24 @@ Live on cribexe.com and itch.io, waiting for the next version's notes.
 At the next release, these move into that version's notes and its What's
 new card (`src/ui/version-notes.ts`), and this section empties.
 
+### Turn display
+
+- **Detailed turns.** Each fight turn, yours and the enemy's, opens a
+  panel over the middle of the screen. It lists the subroutines in order
+  and lights each one as it fires, with what its Process did. When a
+  Hook goes off, the panel says what it did and why.
+- **Empower and Charge show where they land.** An Empower row says
+  whether it boosts the next subroutine or all of them below. The row it
+  boosts shows "+2 Empower", and an Empower spent by a Process that
+  couldn't use it shows as unused.
+- **Big totals.** The turn's Credit, Ward, Suppress and so on add up in
+  big numbers at the bottom. Sparks fly from each subroutine to the
+  number it adds to.
+- **Tap to skip.** A tap jumps to the turn's totals, and a second tap
+  closes the panel.
+- **On for everyone.** Settings → Turn display → quiet brings back the
+  old, quicker turns.
+
 ### Balance
 
 - **Charge doesn't feed Instant Hooks.** A subroutine that gives other

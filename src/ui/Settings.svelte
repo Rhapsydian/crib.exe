@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { SPEEDS, setTurnSpeed, turnSpeed, type Speed } from './replay.svelte';
+  import { SPEEDS, setTurnDisplay, setTurnSpeed, TURN_DISPLAYS, turnDisplay, turnSpeed, type Speed, type TurnDisplay } from './replay.svelte';
   import { tips } from './tips.svelte';
   import { decodeProgress, encodeProgress, progressSummary, type ProgressPayload } from './progress-code';
   import { currentProgress, eraseProgress, importProgress } from './progress-store';
@@ -15,6 +15,12 @@
   function pickSpeed(s: Speed) {
     speed = s;
     setTurnSpeed(s);
+  }
+  // The turn display (session 82): detailed for everyone by default.
+  let display = $state<TurnDisplay>(turnDisplay());
+  function pickDisplay(d: TurnDisplay) {
+    display = d;
+    setTurnDisplay(d);
   }
   let tipsReset = $state(false);
   // Sound (go-live step 4): a preference, kept when progress is erased.
@@ -76,6 +82,13 @@
     </span>
   </div>
   <div class="dim">How fast turns play out in fights and Play Cribbage; the » button in a game changes it too. Learn to play keeps its own, slower speed.</div>
+  <div class="row">
+    <span>Turn display</span>
+    <span class="seg" role="radiogroup" aria-label="turn display">
+      {#each TURN_DISPLAYS as d (d)}<button role="radio" aria-checked={display === d} class:on={display === d} onclick={() => pickDisplay(d)}>{d}</button>{/each}
+    </span>
+  </div>
+  <div class="dim">Detailed opens a panel on each fight turn: every subroutine as it fires, Hooks and the turn's totals (tap it to skip). Quiet plays turns on the fight screen as before. Takes effect from the next fight.</div>
 
   <div class="caption">TIPS</div>
   <div class="row">
