@@ -196,11 +196,16 @@ function burstsFor(fire: Fire, r: number, rowDefs: readonly SubroutineDefinition
 }
 
 /** How long a burst flies: most of the time a fire holds on screen at
- * this speed (so it lands before the next row lights), at most 0.4 s. */
+ * this speed, at most 0.4 s. The flight and the number's count-up after
+ * it (countMs) both fit inside the fire's hold, so the number has caught
+ * up before the next row lights (the user's report, session 82). */
 export function flightMs(side: PlayerIndex, speedScale: number): number {
   const hold = stepDelay({ type: 'fire', fire: { side } as Fire }, true) * speedScale;
-  return Math.round(Math.max(120, Math.min(400, hold * 0.8)));
+  return Math.round(Math.max(90, Math.min(400, hold * 0.5)));
 }
+
+/** How long a number counts up once a burst lands. */
+export const countMs = (flight: number) => Math.round(Math.min(260, flight * 0.7));
 
 /** The tally's order: the shared verbs, then the enemy-only ones. Empower
  * and Charge aren't in it (the user's call, session 82): they act on

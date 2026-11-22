@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import type { Verb } from '../engine/subroutine-types';
-  import { tallyText, type Burst, type TurnPanelState } from './turn-panel';
+  import { countMs, tallyText, type Burst, type TurnPanelState } from './turn-panel';
   import RichText from './RichText.svelte';
 
   // The detailed turn display (session 82): the turn-taker's subroutines
@@ -27,11 +27,16 @@
   let shown = $state<Partial<Record<Verb, number>>>({});
   /** Bumped to replay a number's pop. */
   let pops = $state<Partial<Record<Verb, number>>>({});
-  // Not reactive: which turn and step have played, and a count per verb so
-  // a stale count-up (overtaken by a skip) leaves the number alone.
+  // Not reactive: which turn and step have played; a count per verb, so a
+  // landing overtaken by a jump (`set`) leaves the number alone, and one
+  // per turn; and each verb's count-up in progress.
   let turnStart = -1;
   let playedAt = -1;
+  let epoch = 0;
   const runs: Partial<Record<Verb, number>> = {};
+  const counting: Partial<Record<Verb, { from: number; to: number; began: number }>> = {};
+  /** Landings scheduled but not yet arrived, per verb. */
+  const pending: Partial<Record<Verb, number>> = {};
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   $effect(() => {
@@ -43,6 +48,8 @@
     if (p.start !== turnStart) {
       turnStart = p.start;
       playedAt = -1;
+      epoch++;
+      for (const v of Object.keys(pending) as Verb[]) delete pending[v];
       shown = {};
     }
     if (p.at === playedAt) return;
@@ -52,30 +59,41 @@
     for (const item of p.tally) {
       if (shown[item.verb] === item.value) continue;
       if (landing.has(item.verb)) countUp(item.verb, item.value, flight);
-      else set(item.verb, item.value);
+      // A count still on its way gets there itself; the totals (or a jump
+      // to them) set every number exactly.
+      else if (p.ended || !pending[item.verb]) set(item.verb, item.value);
     }
     flying.forEach(spawn);
   }
 
   function set(verb: Verb, value: number) {
     runs[verb] = (runs[verb] ?? 0) + 1;
+    delete counting[verb];
     shown = { ...shown, [verb]: value };
     pops = { ...pops, [verb]: (pops[verb] ?? 0) + 1 };
   }
 
-  /** After `delay`, count from the number on screen up to `to`, then pop. */
+  /** After `delay` (the dots' flight), count from the number on screen up
+   * to `to`, and pop. A later landing on the same number takes over from
+   * wherever the count has got to: it never cancels it (the user's report,
+   * session 82: a run of Credit fires each cut the last count short, so the
+   * number sat still until the totals). */
   function countUp(verb: Verb, to: number, delay: number) {
-    const run = (runs[verb] = (runs[verb] ?? 0) + 1);
+    const run = runs[verb] ?? 0;
+    const turn = epoch;
+    pending[verb] = (pending[verb] ?? 0) + 1;
     setTimeout(() => {
-      if (runs[verb] !== run) return;
-      const from = shown[verb] ?? 0;
-      const began = performance.now();
+      if (turn === epoch) pending[verb] = Math.max(0, (pending[verb] ?? 0) - 1);
+      if (turn !== epoch || (runs[verb] ?? 0) !== run) return;
+      const count = { from: shown[verb] ?? 0, to, began: performance.now() };
+      counting[verb] = count;
       pops = { ...pops, [verb]: (pops[verb] ?? 0) + 1 };
       const frame = (now: number) => {
-        if (runs[verb] !== run) return;
-        const t = Math.min(1, (now - began) / 260);
-        shown = { ...shown, [verb]: t < 1 ? Math.floor(from + (to - from) * t) : to };
+        if (counting[verb] !== count || turn !== epoch) return;
+        const t = Math.min(1, (now - count.began) / countMs(flight));
+        shown = { ...shown, [verb]: t < 1 ? Math.max(count.from, Math.floor(count.from + (count.to - count.from) * t)) : count.to };
         if (t < 1) requestAnimationFrame(frame);
+        else delete counting[verb];
       };
       requestAnimationFrame(frame);
     }, delay);

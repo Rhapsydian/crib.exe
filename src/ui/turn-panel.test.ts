@@ -5,7 +5,7 @@ import type { Effect, SubroutineDefinition } from '../engine/subroutine-types';
 import { ALL_SUBROUTINES } from '../engine/subroutines';
 import { LEAD_IN_MS, Replay } from './replay.svelte';
 import { mergeSteps, stepDelay, TURN_END_MS, type Step } from './timeline';
-import { flightMs, shortEffect, tallyText, turnPanel, type TurnPanelState } from './turn-panel';
+import { countMs, flightMs, shortEffect, tallyText, turnPanel, type TurnPanelState } from './turn-panel';
 
 // The detailed turn display (session 82): turnEnd steps, the panel model,
 // and the replay's jump for the panel's tap.
@@ -169,10 +169,14 @@ describe('turnPanel', () => {
 });
 
 describe('flightMs', () => {
-  it('lands before the next row lights, and never takes longer than 0.4 s', () => {
-    expect(flightMs(0, 1)).toBe(400);
-    expect(flightMs(0, 0.4)).toBeLessThan(stepDelay({ type: 'fire', fire: fireEvent(0, 'a') }, true) * 0.4);
-    expect(flightMs(1, 0.4)).toBeGreaterThanOrEqual(120);
+  it('lands and counts up before the next row lights, at every speed and on both sides', () => {
+    for (const side of [0, 1] as const)
+      for (const scale of [1, 0.7, 0.4]) {
+        const hold = stepDelay({ type: 'fire', fire: fireEvent(side, 'a') }, true) * scale;
+        const flight = flightMs(side, scale);
+        expect(flight).toBeLessThanOrEqual(400);
+        expect(flight + countMs(flight)).toBeLessThan(hold);
+      }
   });
 });
 
