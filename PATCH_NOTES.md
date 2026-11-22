@@ -24,10 +24,12 @@ new card (`src/ui/version-notes.ts`), and this section empties.
 - **Big totals.** The turn's Credit, Ward, Suppress and so on add up in
   big numbers at the bottom. Sparks fly from each subroutine to the
   number it adds to.
-- **Tap to skip.** A tap jumps to the turn's totals, and a second tap
-  closes the panel.
-- **On for everyone.** Settings → Turn display → quiet brings back the
-  old, quicker turns.
+- **Tap to continue.** When a turn finishes, the panel holds its totals
+  until you tap (or press Space or Enter), so there's time to read them.
+  A tap mid-turn jumps straight to the totals.
+- **On for everyone.** In Settings, Turn panel closes → automatically
+  lets the totals go after a moment, and Turn display → quiet brings back
+  the old, quicker turns.
 
 ### Balance
 

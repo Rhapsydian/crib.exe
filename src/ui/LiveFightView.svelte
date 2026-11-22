@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { FightSession, ResultAction } from './fight-session';
   import FightScreen from './FightScreen.svelte';
-  import { Replay, turnDisplay } from './replay.svelte';
+  import { panelClose, Replay, turnDisplay } from './replay.svelte';
   import { readGauges } from '../engine/resolve';
   import { untrack } from 'svelte';
   import { mergeSteps, pointsSummary, stepGauges } from './timeline';
@@ -20,7 +20,7 @@
   // `actions` are the result panel's buttons (fight again / continue).
   let { fight, actions }: { fight: FightSession; actions: ResultAction[] } = $props();
   // The turn display is read once, as the fight opens (session 82).
-  const replay = new Replay(undefined, undefined, turnDisplay() === 'detailed');
+  const replay = new Replay(undefined, undefined, turnDisplay() === 'detailed', panelClose() === 'tap');
   /** Whether a resumed fight has been brought up to the present. */
   let caughtUp = false;
   // Before the screen redraws (session 72, the user's report: INIT

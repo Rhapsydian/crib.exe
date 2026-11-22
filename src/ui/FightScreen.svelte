@@ -264,9 +264,11 @@
       : null,
   );
   const turnUp = $derived(!!turn && (!turn.ended || !!replay?.playing));
-  // The tap: to the turn's totals (its turnEnd on screen), then past them.
+  // The tap: to the turn's totals (its turnEnd on screen), then past them;
+  // waiting on the totals (the panel closes on a tap), it plays on.
   function skipTurn() {
     if (!replay || !turn) return;
+    if (replay.waiting) return replay.continue();
     const end = replay.steps.findIndex((s, i) => i > turn.start && s.type === 'turnEnd');
     if (end < 0) return;
     replay.jumpTo(turn.ended ? end + 2 : end + 1);
@@ -386,7 +388,7 @@
     </div>
 
     <div class="middle">
-    {#if turnUp && turn}<TurnPanel panel={turn} onskip={skipTurn} flight={flightMs(turn.side, replay?.scale ?? 1)} />{/if}
+    {#if turnUp && turn}<TurnPanel panel={turn} waiting={replay?.waiting ?? false} onskip={skipTurn} flight={flightMs(turn.side, replay?.scale ?? 1)} />{/if}
     <div class="table-slot">
       {#if table?.show}
         <ShowPanel show={table.show} />
@@ -460,7 +462,8 @@
     <!-- A steady slot for the prompt / hand / wait, so the screen above
          doesn't shift as it changes or as the hand empties (the user's
          catch, milestone 4). -->
-    <div class="hand-slot">
+    <!-- A tap on the hand while the turn panel waits is a tap on the panel. -->
+    <div class="hand-slot" onclickcapture={() => replay?.waiting && replay.continue()}>
     {#if handReady && f.phase !== 'burner'}
       <Hand hand={f.hand} legal={f.legal} count={f.count} sequence={f.sequence} phase={f.phase === 'discard' ? 'discard' : 'play'} playerIsDealer={f.playerIsDealer} countLimit={f.countLimit} onplay={onplay && play} ondiscard={ondiscard && discard} inactive={replay?.playing ?? false} />
     {:else}

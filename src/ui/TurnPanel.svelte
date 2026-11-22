@@ -18,7 +18,8 @@
   // `flight` is how long a burst flies (flightMs: shorter at faster turn
   // speeds). A tap-skip lands on the totals, which play no bursts; with
   // reduced motion asked for, the numbers just pop.
-  let { panel, onskip, flight = 300 }: { panel: TurnPanelState; onskip: () => void; flight?: number } = $props();
+  // `waiting`: held on the totals until a tap (the panel closes on a tap).
+  let { panel, onskip, flight = 300, waiting = false }: { panel: TurnPanelState; onskip: () => void; flight?: number; waiting?: boolean } = $props();
 
   let root = $state<HTMLElement | null>(null);
   let fx = $state<HTMLElement | null>(null);
@@ -151,7 +152,7 @@
 <button class="turn-panel" bind:this={root} class:them={panel.side === 1} onclick={onskip} aria-label={panel.ended ? 'close the turn' : 'skip to the turn’s totals'}>
   <div class="head">
     <b>▶ {panel.side === 0 ? 'YOUR' : 'THEIR'} TURN</b>
-    <span class="hint">{panel.ended ? 'tap to close' : 'tap to skip'}</span>
+    <span class="hint" class:waiting>{waiting ? 'tap to continue ▸' : panel.ended ? 'tap to close' : 'tap to skip'}</span>
   </div>
   {#each panel.notes.filter((n) => n.tone === 'burner') as note, i (i)}
     <div class="note burner">{note.text}</div>
@@ -235,6 +236,22 @@
     font-size: 10px;
     letter-spacing: 0;
     color: var(--text-dim);
+  }
+  .hint.waiting {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--side);
+    animation: beckon 1.1s ease-in-out infinite;
+  }
+  @keyframes beckon {
+    50% {
+      opacity: 0.45;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hint.waiting {
+      animation: none;
+    }
   }
   .rows {
     flex: 1;

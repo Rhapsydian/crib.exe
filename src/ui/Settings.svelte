@@ -1,5 +1,18 @@
 <script lang="ts">
-  import { SPEEDS, setTurnDisplay, setTurnSpeed, TURN_DISPLAYS, turnDisplay, turnSpeed, type Speed, type TurnDisplay } from './replay.svelte';
+  import {
+    PANEL_CLOSES,
+    panelClose,
+    setPanelClose,
+    SPEEDS,
+    setTurnDisplay,
+    setTurnSpeed,
+    TURN_DISPLAYS,
+    turnDisplay,
+    turnSpeed,
+    type PanelClose,
+    type Speed,
+    type TurnDisplay,
+  } from './replay.svelte';
   import { tips } from './tips.svelte';
   import { decodeProgress, encodeProgress, progressSummary, type ProgressPayload } from './progress-code';
   import { currentProgress, eraseProgress, importProgress } from './progress-store';
@@ -22,6 +35,13 @@
     display = d;
     setTurnDisplay(d);
   }
+  // When the turn panel closes (session 82): on a tap by default.
+  let close = $state<PanelClose>(panelClose());
+  function pickClose(c: PanelClose) {
+    close = c;
+    setPanelClose(c);
+  }
+  const CLOSE_LABEL: Record<PanelClose, string> = { tap: 'on tap', auto: 'automatically' };
   let tipsReset = $state(false);
   // Sound (go-live step 4): a preference, kept when progress is erased.
   let volume = $state(sound.volume);
@@ -89,6 +109,15 @@
     </span>
   </div>
   <div class="dim">Detailed opens a panel on each fight turn: every subroutine as it fires, Hooks and the turn's totals (tap it to skip). Quiet plays turns on the fight screen as before. Takes effect from the next fight.</div>
+  {#if display === 'detailed'}
+    <div class="row">
+      <span>Turn panel closes</span>
+      <span class="seg" role="radiogroup" aria-label="turn panel closes">
+        {#each PANEL_CLOSES as c (c)}<button role="radio" aria-checked={close === c} class:on={close === c} onclick={() => pickClose(c)}>{CLOSE_LABEL[c]}</button>{/each}
+      </span>
+    </div>
+    <div class="dim">On tap holds each turn's totals until you tap to carry on. Automatically lets them go after a moment.</div>
+  {/if}
 
   <div class="caption">TIPS</div>
   <div class="row">

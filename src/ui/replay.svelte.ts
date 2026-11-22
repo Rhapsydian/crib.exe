@@ -37,9 +37,11 @@ export class Replay {
   /** The live gauges as of the latest pause -- at a fight's end, its final
    * state, for the end-of-fight blink (session 63). */
   live = $state.raw<[GaugeReading, GaugeReading] | null>(null);
+  /** Stopped on a turn's totals until the player taps (`waitTurns`). */
+  waiting = $state(false);
 
   /** True while steps are still being played. */
-  playing = $derived(this.shown < this.steps.length || this.holding);
+  playing = $derived(this.shown < this.steps.length || this.holding || this.waiting);
   /** The step on screen right now, while playing. */
   current = $derived(this.playing && this.shown > this.batchStart ? this.steps[this.shown - 1] : null);
   /** The piece firing right now, if the current step is a fire. */
@@ -63,14 +65,20 @@ export class Replay {
    * steps carry `turnEnd`s for the turn panel. Fixed for the replay's
    * life; a fight reads the setting when it opens. */
   readonly detailed: boolean;
+  /** The turn panel closes on a tap (session 82, the default): the replay
+   * stops on each turn's totals (its `turnEnd`) until `continue()`. */
+  readonly waitTurns: boolean;
+  /** The `shown` count whose turnEnd the player let go. */
+  #released = -1;
 
   /** `speedKey` / `defaultSpeed`: where the speed choice is remembered
    * and what it starts at -- Learn to play keeps its own, starting slow
    * (session 61), so a learner's choice never changes normal play's. */
-  constructor(speedKey = SPEED_KEY, defaultSpeed: Speed = 'normal', detailed = false) {
+  constructor(speedKey = SPEED_KEY, defaultSpeed: Speed = 'normal', detailed = false, waitTurns = false) {
     this.#speedKey = speedKey;
     this.speed = loadSpeed(speedKey, defaultSpeed);
     this.detailed = detailed;
+    this.waitTurns = detailed && waitTurns;
   }
 
   /** A new engine pause: the fight's steps so far, and the live gauges. */
@@ -102,6 +110,21 @@ export class Replay {
     this.#clear();
     this.shown = this.steps.length;
     this.holding = false;
+    this.waiting = false;
+    this.#released = this.shown;
+  }
+
+  /** The tap on a turn's totals it's waiting on: play on at once. */
+  continue(): void {
+    if (!this.waiting) return;
+    this.waiting = false;
+    this.#released = this.shown;
+    this.#clear();
+    if (this.shown < this.steps.length) {
+      this.shown++;
+      if (this.shown === this.steps.length) this.holding = true;
+    } else this.holding = false;
+    this.#schedule();
   }
 
   /** Jumps ahead so `n` steps are on screen (the turn panel's tap: to a
@@ -113,8 +136,11 @@ export class Replay {
     this.#clear();
     if (to === this.shown && to === this.steps.length) {
       this.holding = false;
+      this.waiting = false;
+      this.#released = this.shown;
       return;
     }
+    this.waiting = false;
     this.shown = to;
     this.holding = to === this.steps.length;
     this.#schedule();
@@ -134,6 +160,8 @@ export class Replay {
     this.#clear();
     this.shown = 0;
     this.holding = false;
+    this.waiting = false;
+    this.#released = -1;
     this.batchStart = 0;
     this.steps = [];
     this.before = null;
@@ -148,6 +176,12 @@ export class Replay {
 
   #schedule(): void {
     if (this.#timer) return;
+    // Every turnEnd it reaches waits, even one a new batch starts after
+    // (steps that arrive while it waits stay behind it), until let go.
+    if (this.waitTurns && this.steps[this.shown - 1]?.type === 'turnEnd' && this.#released !== this.shown) {
+      this.waiting = true;
+      return;
+    }
     const scale = SPEED_SCALE[this.speed];
     if (this.shown < this.steps.length) {
       const delay = this.shown === this.batchStart ? LEAD_IN_MS : stepDelay(this.steps[this.shown - 1], this.detailed);
@@ -206,6 +240,33 @@ export function turnDisplay(): TurnDisplay {
 export function setTurnDisplay(display: TurnDisplay): void {
   try {
     localStorage.setItem(TURN_DISPLAY_KEY, display);
+  } catch {
+    // Storage blocked: the choice lasts the session.
+  }
+}
+
+/**
+ * When the turn panel closes (session 82): 'tap' holds each turn's totals
+ * until the player taps, 'auto' lets them go after a beat. Tap is the
+ * default for everyone (the user's call: few veterans yet, and they'll
+ * hear about the setting).
+ */
+export type PanelClose = 'tap' | 'auto';
+export const PANEL_CLOSES: PanelClose[] = ['tap', 'auto'];
+const PANEL_CLOSE_KEY = 'cribexe.turnPanelClose';
+
+export function panelClose(): PanelClose {
+  try {
+    const saved = localStorage.getItem(PANEL_CLOSE_KEY);
+    if (saved && (PANEL_CLOSES as string[]).includes(saved)) return saved as PanelClose;
+  } catch {
+    // See cycleSpeed.
+  }
+  return 'tap';
+}
+export function setPanelClose(close: PanelClose): void {
+  try {
+    localStorage.setItem(PANEL_CLOSE_KEY, close);
   } catch {
     // Storage blocked: the choice lasts the session.
   }

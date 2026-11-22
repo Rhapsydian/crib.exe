@@ -223,6 +223,44 @@ describe('Replay in the detailed display', () => {
     expect(replay.playing).toBe(false);
   });
 
+  it('on tap: holds a turn’s totals until the player taps, then plays on at once', () => {
+    const replay = new Replay(undefined, 'slow', true, true);
+    replay.sync(steps, gauges());
+    vi.advanceTimersByTime(60_000);
+    // Turn beat, two fires, then the totals (index 3): it stops there.
+    expect(replay.shown).toBe(4);
+    expect(replay.waiting).toBe(true);
+    vi.advanceTimersByTime(60_000);
+    expect(replay.shown).toBe(4);
+    expect(replay.playing).toBe(true);
+    replay.continue();
+    expect(replay.waiting).toBe(false);
+    expect(replay.shown).toBe(5);
+  });
+
+  it('on tap: a turn that ends a batch keeps the panel up, and new steps wait behind it', () => {
+    const replay = new Replay(undefined, 'slow', true, true);
+    replay.sync(steps.slice(0, 4), gauges());
+    replay.jumpTo(4);
+    expect(replay.waiting).toBe(true);
+    vi.advanceTimersByTime(60_000);
+    expect(replay.playing).toBe(true);
+    replay.sync(steps, gauges());
+    vi.advanceTimersByTime(60_000);
+    expect(replay.shown).toBe(4);
+    replay.continue();
+    expect(replay.shown).toBe(5);
+  });
+
+  it('automatically (and quiet) never wait', () => {
+    expect(new Replay(undefined, 'slow', false, true).waitTurns).toBe(false);
+    const replay = new Replay(undefined, 'slow', true, false);
+    replay.sync(steps, gauges());
+    vi.advanceTimersByTime(60_000);
+    expect(replay.waiting).toBe(false);
+    expect(replay.playing).toBe(false);
+  });
+
   it('never goes back', () => {
     const replay = new Replay(undefined, 'slow', true);
     replay.sync(steps, gauges());
