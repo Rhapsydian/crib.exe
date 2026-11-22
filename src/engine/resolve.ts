@@ -1207,6 +1207,12 @@ export interface FireEvent {
   gauges: [GaugeReading, GaugeReading];
   /** Mods that acted during this fire (either side's), for the UI. */
   mods?: ModTrigger[];
+  /** The Empower folded into `alpha`'s amount (session 82, the turn
+   * display); absent for none. Not read by the engine. */
+  empowered?: number;
+  /** A "next" Empower this fire spent without using it -- its Process
+   * isn't Credit, Suppress or Ward. Not read by the engine. */
+  empowerWasted?: number;
 }
 
 /** One side's meters at a moment, as plain numbers. */
@@ -1512,6 +1518,11 @@ function fireLoadoutOnce(
     let amount = alphaAmount(entry, turn);
     if (beta?.effect.verb === 'enhance' && elevated) amount += beta.effect.amount * scale;
     const alpha = withAmount(definition.alpha as Effect, amount);
+    // For the turn display (session 82): the Empower this Process took, or
+    // a "next" Empower it spent without using.
+    const canEmpower = empowerable(definition.alpha as Effect);
+    const empowered = canEmpower ? turn.empowerNext + turn.empowerRest : 0;
+    const empowerWasted = canEmpower ? 0 : turn.empowerNext;
     // The "next" Empower is spent by whichever piece fires next, whether
     // or not its verb could use it.
     turn.empowerNext = 0;
@@ -1530,7 +1541,19 @@ function fireLoadoutOnce(
 
     if (elevated) state = rootCause(state, side, i);
     if (elevated) state = counterTrace(state, side);
-    events.push({ subroutineId: definition.id, side, alpha, beta: resolved.beta, elevated, charges, immediate: false, gauges: readGauges(state), ...takeMods(state, modMark) });
+    events.push({
+      subroutineId: definition.id,
+      side,
+      alpha,
+      beta: resolved.beta,
+      elevated,
+      charges,
+      immediate: false,
+      gauges: readGauges(state),
+      ...(empowered ? { empowered } : null),
+      ...(empowerWasted ? { empowerWasted } : null),
+      ...takeMods(state, modMark),
+    });
     firedThisTurn.push({ definition, elevated });
   }
 

@@ -33,6 +33,9 @@
           <span class="name"><span class="slot">{i + 1}</span>{row.name}</span>
           <span class="did">{row.state === 'pending' ? '…' : row.state === 'skipped' ? 'skipped' : row.process}</span>
         </div>
+        {#if row.empower && row.state !== 'pending'}
+          <div class="boost" class:wasted={row.empower.wasted}>{row.empower.text}</div>
+        {/if}
         {#if row.hook}
           <div class="hook">
             <div class="line"><span><span class="tag">HOOK</span></span><span class="did">{row.hook.effect}</span></div>
@@ -150,6 +153,16 @@
   .row.firing .did {
     color: var(--side);
     font-weight: 700;
+  }
+  /* Empower it took, right-aligned under what it did; a wasted "next"
+     Empower in the warning colour (session 82). */
+  .boost {
+    text-align: right;
+    font-size: 10.5px;
+    color: var(--side);
+  }
+  .boost.wasted {
+    color: var(--warn);
   }
   .hook {
     margin: 2px 0 0 1.4em;

@@ -296,6 +296,17 @@ describe('fireTurn -- Empower', () => {
     expect(fired.combatState.sides[0].gauge.progress).toBe(3);
   });
 
+  it('records on each fire the Empower it took, and a "next" Empower it spent unused (the turn display, session 82)', () => {
+    const credit = (id: string) => piece(id, { verb: 'credit', amount: 1 });
+    const next = fireTurn(fight([piece('n', { verb: 'empower', amount: 2, scope: 'next' }), credit('a'), credit('b')]), 0, { isDealer: false });
+    expect(next.events.map((e) => e.empowered)).toEqual([undefined, 2, undefined]);
+    const rest = fireTurn(fight([piece('r', { verb: 'empower', amount: 2, scope: 'rest' }), credit('a'), credit('b')]), 0, { isDealer: false });
+    expect(rest.events.map((e) => e.empowered)).toEqual([undefined, 2, 2]);
+    const wasted = fireTurn(fight([piece('n', { verb: 'empower', amount: 5, scope: 'next' }), piece('t', { verb: 'tempo', target: 'own', mode: 'gauge', amount: 0.25 }), credit('a')]), 0, { isDealer: false });
+    expect(wasted.events.map((e) => e.empowerWasted)).toEqual([undefined, 5, undefined]);
+    expect(wasted.events.map((e) => e.empowered)).toEqual([undefined, undefined, undefined]);
+  });
+
   it('does not carry into the next turn', () => {
     const turn1 = fireTurn(fight([piece('a', { verb: 'credit', amount: 1 }), piece('r', { verb: 'empower', amount: 5, scope: 'rest' })]), 0, { isDealer: false });
     const turn2 = fireTurn(turn1.combatState, 0, { isDealer: false });

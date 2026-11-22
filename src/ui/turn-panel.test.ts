@@ -106,6 +106,19 @@ describe('turnPanel', () => {
     expect(p.tally).toEqual(['Credit 1', 'Suppress 1']);
   });
 
+  it('shows Empower where it lands, flags a wasted one, and leaves Empower and Charge out of the tally', () => {
+    const log = [
+      fireEvent(0, 'a', { alpha: { verb: 'empower', amount: 2, scope: 'next' } }),
+      fireEvent(0, 'b', { alpha: credit(3), empowered: 2 }),
+      fireEvent(0, 'c', { alpha: { verb: 'charge', amount: 1, target: 'next' }, empowerWasted: 1 }),
+    ];
+    const s = mergeSteps([turn(0, 0), hand(3)], log, { turnEnds: true });
+    const p = turnPanel(s, 4, loadouts)!;
+    expect(p.rows.map((r) => r.process)).toEqual(['Empower 2 → next', 'Credit 3', 'Charge 1 → the next Hook']);
+    expect(p.rows.map((r) => r.empower)).toEqual([null, { text: '+2 Empower', wasted: false }, { text: 'Empower 1 unused', wasted: true }]);
+    expect(p.tally).toEqual(['Credit 3']);
+  });
+
   it('gives a duplicate its own row per fire, and lists Instant Hooks and strain as notes', () => {
     const log = [fireEvent(0, 'a'), fireEvent(1, 'x', { immediate: true, beta: credit(2) }), fireEvent(0, 'a')];
     const timeline: CombatBeat[] = [turn(0, 0), { kind: 'strain', heat: 1.5, turns: 4, firesBefore: 3 }, hand(3)];
@@ -120,8 +133,8 @@ describe('turnPanel', () => {
 
 describe('shortEffect', () => {
   it('says what an effect did in a few words', () => {
-    expect(shortEffect({ verb: 'empower', amount: 1, scope: 'rest' })).toBe('Empower 1 (every one below)');
-    expect(shortEffect({ verb: 'charge', amount: 1, target: 'next' })).toBe('Charge 1 (the next Hook)');
+    expect(shortEffect({ verb: 'empower', amount: 1, scope: 'rest' })).toBe('Empower 1 → all below');
+    expect(shortEffect({ verb: 'charge', amount: 1, target: 'all' })).toBe('Charge 1 → every other Hook');
     expect(shortEffect({ verb: 'credit', amount: 2, feed: 1 })).toBe('Credit 2 (+1 to their Containment)');
     expect(shortEffect({ verb: 'enhance', amount: 1 })).toBe('Process boosted');
   });

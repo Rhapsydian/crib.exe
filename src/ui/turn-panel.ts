@@ -33,6 +33,9 @@ export interface TurnRow {
   state: RowState;
   /** What its Process did this turn, once fired. */
   process: string | null;
+  /** The Empower its Process took ("+2 Empower"), or a "next" Empower it
+   * spent without using ("Empower 2 unused", `wasted`). */
+  empower: { text: string; wasted: boolean } | null;
   hook: TurnHook | null;
   /** Mods that acted during the fire. */
   mods: string[];
@@ -83,7 +86,7 @@ export function turnPanel(
   const side = turnBeat.beat.side;
   const voice = (text: string) => (side === 1 ? forEnemy(text) : text);
   const defs = loadouts[side];
-  const rows: TurnRow[] = defs.map((d) => ({ name: d.name, state: 'pending', process: null, hook: null, mods: [] }));
+  const rows: TurnRow[] = defs.map((d) => ({ name: d.name, state: 'pending', process: null, empower: null, hook: null, mods: [] }));
   const rowDefs: SubroutineDefinition[] = [...defs];
   const notes: TurnNote[] = [];
   const sums = new Map<Verb, number>();
@@ -105,7 +108,7 @@ export function turnPanel(
       let r = rowDefs.findIndex((d, j) => d.id === fire.subroutineId && rows[j].state === 'pending');
       if (r < 0) {
         const def = loadouts[side].find((d) => d.id === fire.subroutineId);
-        rows.push({ name: def?.name ?? fire.subroutineId, state: 'pending', process: null, hook: null, mods: [] });
+        rows.push({ name: def?.name ?? fire.subroutineId, state: 'pending', process: null, empower: null, hook: null, mods: [] });
         rowDefs.push(def ?? ({ id: fire.subroutineId } as SubroutineDefinition));
         r = rows.length - 1;
       }
@@ -114,6 +117,11 @@ export function turnPanel(
         name: rows[r].name,
         state: i === last ? 'firing' : 'fired',
         process: voice(shortEffect(fire.alpha)),
+        empower: fire.empowered
+          ? { text: `+${fmt(fire.empowered)} Empower`, wasted: false }
+          : fire.empowerWasted
+            ? { text: `Empower ${fmt(fire.empowerWasted)} unused`, wasted: true }
+            : null,
         hook: fire.beta || fire.elevated ? { effect: fire.beta ? voice(shortEffect(fire.beta)) : 'Process boosted', why: def.beta ? voice(describeHook(def)) : '' } : null,
         mods: [...new Set((fire.mods ?? []).map((m) => modName(m.mod, bridgeUpgraded?.[m.side])))],
       };
@@ -131,8 +139,10 @@ export function turnPanel(
   return { side, start, endIndex: ended ? last : null, ended, rows, notes, tally: tallyLines(sums) };
 }
 
-/** The tally's order: the shared verbs, then the enemy-only ones. */
-const TALLY_ORDER: Verb[] = ['credit', 'ward', 'suppress', 'empower', 'tempo', 'disrupt', 'charge', 'trace', 'wipe', 'strip', 'suspend'];
+/** The tally's order: the shared verbs, then the enemy-only ones. Empower
+ * and Charge aren't in it (the user's call, session 82): they act on
+ * other subroutines, so they show where they land, on the rows. */
+const TALLY_ORDER: Verb[] = ['credit', 'ward', 'suppress', 'tempo', 'disrupt', 'trace', 'wipe', 'strip', 'suspend'];
 /** Verbs counted as times used rather than summed amounts. */
 const COUNTED: ReadonlySet<Verb> = new Set(['tempo', 'disrupt']);
 const VERB_NAME: Record<Verb, string> = {
@@ -150,7 +160,7 @@ const VERB_NAME: Record<Verb, string> = {
 };
 
 function add(sums: Map<Verb, number>, effect: BetaEffect): void {
-  if (effect.verb === 'enhance') return;
+  if (effect.verb === 'enhance' || !TALLY_ORDER.includes(effect.verb)) return;
   const n = COUNTED.has(effect.verb) || !('amount' in effect) ? 1 : effect.amount;
   sums.set(effect.verb, (sums.get(effect.verb) ?? 0) + n);
 }
@@ -182,13 +192,13 @@ function body(e: Effect): string {
     case 'ward':
       return `Ward ${fmt(e.amount)}`;
     case 'empower':
-      return `Empower ${fmt(e.amount)} (${e.scope === 'next' ? 'the next one' : 'every one below'})`;
+      return `Empower ${fmt(e.amount)} → ${e.scope === 'next' ? 'next' : 'all below'}`;
     case 'tempo':
       return e.target === 'own' ? 'Tempo: your turns come sooner' : 'Tempo: their turns come later';
     case 'disrupt':
       return { revealHand: 'Disrupt: reveal their hand', revealCrib: 'Disrupt: reveal their crib cards', forceDiscard: 'Disrupt: force a card into the crib' }[e.action];
     case 'charge':
-      return `Charge ${fmt(e.amount)} (${e.target === 'self' ? 'its own Hook' : e.target === 'next' ? 'the next Hook' : 'every other Hook'})`;
+      return `Charge ${fmt(e.amount)} → ${e.target === 'self' ? 'its own Hook' : e.target === 'next' ? 'the next Hook' : 'every other Hook'}`;
     case 'trace':
       return `Trace: they gain ${fmt(e.amount)} Heat`;
     case 'wipe':
