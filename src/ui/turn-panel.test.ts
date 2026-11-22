@@ -5,7 +5,7 @@ import type { Effect, SubroutineDefinition } from '../engine/subroutine-types';
 import { ALL_SUBROUTINES } from '../engine/subroutines';
 import { LEAD_IN_MS, Replay } from './replay.svelte';
 import { mergeSteps, stepDelay, TURN_END_MS, type Step } from './timeline';
-import { shortEffect, turnPanel } from './turn-panel';
+import { flightMs, shortEffect, tallyText, turnPanel, type TurnPanelState } from './turn-panel';
 
 // The detailed turn display (session 82): turnEnd steps, the panel model,
 // and the replay's jump for the panel's tap.
@@ -26,6 +26,8 @@ const fireEvent = (side: 0 | 1, id: string, extra: Partial<FireEvent> = {}): Fir
 const turn = (side: 0 | 1, firesBefore: number): CombatBeat => ({ kind: 'turn', side, firesBefore });
 const hand = (firesBefore: number): CombatBeat => ({ kind: 'hand', handIndex: 1, dealer: 0, firesBefore });
 const def = (id: string, name = id): SubroutineDefinition => ({ id, name }) as SubroutineDefinition;
+/** The tally as "Credit 3" lines, for short expectations. */
+const tally = (p: TurnPanelState) => p.tally.map((t) => `${t.label} ${tallyText(t)}`);
 const kinds = (steps: Step[]) => steps.map((s) => (s.type === 'beat' ? s.beat.kind : s.type));
 /** A player turn: Alpha Credits 3, Beta Wards 2, then a new hand. */
 const steps = mergeSteps([turn(0, 0), hand(2)], [fireEvent(0, 'a', { alpha: credit(3) }), fireEvent(0, 'b', { alpha: { verb: 'ward', amount: 2 } })], { turnEnds: true });
@@ -77,10 +79,10 @@ describe('turnPanel', () => {
     expect(p.side).toBe(0);
     expect(p.rows.map((r) => r.state)).toEqual(['firing', 'pending', 'pending']);
     expect(p.rows[0].process).toBe('Credit 3');
-    expect(p.tally).toEqual(['Credit 3']);
+    expect(tally(p)).toEqual(['Credit 3']);
     const q = turnPanel(steps, 3, loadouts)!;
     expect(q.rows.map((r) => r.state)).toEqual(['fired', 'firing', 'pending']);
-    expect(q.tally).toEqual(['Credit 3', 'Ward 2']);
+    expect(tally(q)).toEqual(['Credit 3', 'Ward 2']);
   });
 
   it('ends on the totals: a subroutine that never fired was skipped', () => {
@@ -103,7 +105,7 @@ describe('turnPanel', () => {
     expect(p.side).toBe(1);
     expect(p.rows[0].hook?.effect).toBe('Suppress 1');
     expect(p.rows[0].hook?.why.length).toBeGreaterThan(0);
-    expect(p.tally).toEqual(['Credit 1', 'Suppress 1']);
+    expect(tally(p)).toEqual(['Credit 1', 'Suppress 1']);
   });
 
   it('shows Empower where it lands, flags a wasted one, and leaves Empower and Charge out of the tally', () => {
@@ -116,7 +118,42 @@ describe('turnPanel', () => {
     const p = turnPanel(s, 4, loadouts)!;
     expect(p.rows.map((r) => r.process)).toEqual(['Empower 2 → next', 'Credit 3', 'Charge 1 → the next Hook']);
     expect(p.rows.map((r) => r.empower)).toEqual([null, { text: '+2 Empower', wasted: false }, { text: 'Empower 1 unused', wasted: true }]);
-    expect(p.tally).toEqual(['Credit 3']);
+    expect(tally(p)).toEqual(['Credit 3']);
+  });
+
+  it('sends each fire’s bursts: Process to its number, Empower to the rows it lands on, a wasted one fizzling', () => {
+    const empNext = [fireEvent(0, 'a', { alpha: { verb: 'empower', amount: 2, scope: 'next' } }), fireEvent(0, 'b', { alpha: credit(3), empowered: 2 })];
+    const s = mergeSteps([turn(0, 0), hand(2)], empNext, { turnEnds: true });
+    expect(turnPanel(s, 2, loadouts)!.bursts).toEqual([{ from: 0, to: { kind: 'row', index: 1 }, tone: 'side', mixed: false }]);
+    expect(turnPanel(s, 3, loadouts)!.bursts).toEqual([{ from: 1, to: { kind: 'tally', verb: 'credit' }, tone: 'side', mixed: false }]);
+    // The totals and the turn beat play no bursts.
+    expect(turnPanel(s, 4, loadouts)!.bursts).toEqual([]);
+    expect(turnPanel(s, 1, loadouts)!.bursts).toEqual([]);
+
+    const rest = mergeSteps([turn(0, 0)], [fireEvent(0, 'a', { alpha: { verb: 'empower', amount: 1, scope: 'rest' } })], { turnEnds: true });
+    expect(turnPanel(rest, 2, loadouts)!.bursts.map((b) => b.to)).toEqual([{ kind: 'row', index: 1 }, { kind: 'row', index: 2 }]);
+
+    const wasted = mergeSteps([turn(0, 0)], [fireEvent(0, 'a'), fireEvent(0, 'b', { alpha: { verb: 'tempo', target: 'own' } as Effect, empowerWasted: 2 })], { turnEnds: true });
+    expect(turnPanel(wasted, 3, loadouts)!.bursts.map((b) => b.to)).toEqual([{ kind: 'fizzle' }, { kind: 'tally', verb: 'tempo' }]);
+  });
+
+  it('mixes Hook dots into a boosted Process, and sends a Hook’s own effect as its own burst', () => {
+    const boosted = mergeSteps([turn(0, 0)], [fireEvent(0, 'a', { elevated: true })], { turnEnds: true });
+    expect(turnPanel(boosted, 2, loadouts)!.bursts).toEqual([{ from: 0, to: { kind: 'tally', verb: 'credit' }, tone: 'side', mixed: true }]);
+    const own = mergeSteps([turn(0, 0)], [fireEvent(0, 'a', { elevated: true, beta: { verb: 'suppress', amount: 1 } })], { turnEnds: true });
+    expect(turnPanel(own, 2, loadouts)!.bursts.map((b) => [b.to, b.tone])).toEqual([
+      [{ kind: 'tally', verb: 'credit' }, 'side'],
+      [{ kind: 'tally', verb: 'suppress' }, 'hook'],
+    ]);
+  });
+
+  it('sends a Charge only to pieces with a turn Hook, as the engine does', () => {
+    const hooked = ALL_SUBROUTINES.find((d) => d.beta && d.beta.shape !== 'immediate')!;
+    const charge = (target: 'next' | 'all') => mergeSteps([turn(0, 0)], [fireEvent(0, 'a', { alpha: { verb: 'charge', amount: 1, target } })], { turnEnds: true });
+    const withHook: [SubroutineDefinition[], SubroutineDefinition[]] = [[def('a'), def('b'), hooked], []];
+    // `next` is the very next piece: no Hook, no Charge.
+    expect(turnPanel(charge('next'), 2, withHook)!.bursts).toEqual([]);
+    expect(turnPanel(charge('all'), 2, withHook)!.bursts.map((b) => b.to)).toEqual([{ kind: 'row', index: 2 }]);
   });
 
   it('gives a duplicate its own row per fire, and lists Instant Hooks and strain as notes', () => {
@@ -128,6 +165,14 @@ describe('turnPanel', () => {
     expect(p.notes.map((n) => n.tone)).toEqual(['instant', 'strain']);
     expect(p.notes[0].text).toBe('Instant Hook · Ex: Credit 2');
     expect(p.notes[1].text).toBe('System strain: +1.5 Heat (4 turns in a row)');
+  });
+});
+
+describe('flightMs', () => {
+  it('lands before the next row lights, and never takes longer than 0.4 s', () => {
+    expect(flightMs(0, 1)).toBe(400);
+    expect(flightMs(0, 0.4)).toBeLessThan(stepDelay({ type: 'fire', fire: fireEvent(0, 'a') }, true) * 0.4);
+    expect(flightMs(1, 0.4)).toBeGreaterThanOrEqual(120);
   });
 });
 

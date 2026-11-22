@@ -141,6 +141,11 @@ export class Replay {
     this.live = null;
   }
 
+  /** How fast steps play: 1 at slow, smaller is faster. */
+  get scale(): number {
+    return SPEED_SCALE[this.speed];
+  }
+
   #schedule(): void {
     if (this.#timer) return;
     const scale = SPEED_SCALE[this.speed];

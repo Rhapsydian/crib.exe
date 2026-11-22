@@ -31,7 +31,7 @@
   import { readGauges } from '../engine/resolve';
   import type { FightHeatContext } from './fight-session';
   import TurnPanel from './TurnPanel.svelte';
-  import { shortEffect, turnPanel } from './turn-panel';
+  import { flightMs, shortEffect, turnPanel } from './turn-panel';
   import { forEnemy } from './describe';
 
   // The chosen fight-screen layout (the user's picks from the P3 mockups):
@@ -386,7 +386,7 @@
     </div>
 
     <div class="middle">
-    {#if turnUp && turn}<TurnPanel panel={turn} onskip={skipTurn} />{/if}
+    {#if turnUp && turn}<TurnPanel panel={turn} onskip={skipTurn} flight={flightMs(turn.side, replay?.scale ?? 1)} />{/if}
     <div class="table-slot">
       {#if table?.show}
         <ShowPanel show={table.show} />

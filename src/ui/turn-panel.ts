@@ -2,7 +2,7 @@ import type { PlayerIndex } from '../engine/game';
 import type { BetaEffect, Effect, SubroutineDefinition, Verb } from '../engine/subroutine-types';
 import { describeHook, fmt, forEnemy } from './describe';
 import { modName } from './kit';
-import { burnerLabel, type Step } from './timeline';
+import { burnerLabel, stepDelay, type Step } from './timeline';
 
 /**
  * The detailed turn display (session 82): a panel over the middle of the fight screen that lists the turn-taker's
@@ -46,6 +46,29 @@ export interface TurnNote {
   tone: 'burner' | 'mod' | 'strain' | 'instant';
 }
 
+/** One number in the tally: "8 CREDIT", or "×2 TEMPO" for a counted verb. */
+export interface TallyItem {
+  verb: Verb;
+  label: string;
+  value: number;
+  counted: boolean;
+}
+
+/** Where a burst of particles goes when a row fires (session 82's impact
+ * pass): to a tally number, to the rows an Empower or Charge lands on, or
+ * nowhere, fizzling on the row (a "next" Empower it couldn't use). */
+export type BurstTarget = { kind: 'tally'; verb: Verb } | { kind: 'row'; index: number } | { kind: 'fizzle' };
+
+export interface Burst {
+  /** The row it leaves from. */
+  from: number;
+  to: BurstTarget;
+  /** 'side' in the turn-taker's colour; 'hook' for a Hook's own effect. */
+  tone: 'side' | 'hook';
+  /** A row whose Hook fired: a bigger burst with Hook dots mixed in. */
+  mixed: boolean;
+}
+
 export interface TurnPanelState {
   side: PlayerIndex;
   /** The turn beat's step index, and its turnEnd's once it is on screen. */
@@ -54,8 +77,13 @@ export interface TurnPanelState {
   ended: boolean;
   rows: TurnRow[];
   notes: TurnNote[];
-  /** What the turn did so far, by verb ("Credit 7", "Ward 2"). */
-  tally: string[];
+  /** What the turn did so far, by verb. */
+  tally: TallyItem[];
+  /** The bursts of the row firing on the last step shown (empty unless a
+   * fire of this side is the last step), and that step's index, so the
+   * screen plays each fire's bursts once. */
+  bursts: Burst[];
+  at: number;
 }
 
 const IN_TURN_BEATS = new Set(['burner', 'mod', 'strain']);
@@ -91,6 +119,7 @@ export function turnPanel(
   const notes: TurnNote[] = [];
   const sums = new Map<Verb, number>();
   const ended = steps[last].type === 'turnEnd';
+  let bursts: Burst[] = [];
 
   for (let i = start + 1; i <= last; i++) {
     const s = steps[i];
@@ -127,6 +156,7 @@ export function turnPanel(
       };
       add(sums, fire.alpha);
       if (fire.beta) add(sums, fire.beta);
+      if (i === last) bursts = burstsFor(fire, r, rowDefs);
     } else if (s.type === 'beat') {
       const b = s.beat;
       // A Burner isn't a fire, so it isn't in the tally: its line says what it does.
@@ -136,7 +166,40 @@ export function turnPanel(
     }
   }
   if (ended) for (const row of rows) if (row.state === 'pending') row.state = 'skipped';
-  return { side, start, endIndex: ended ? last : null, ended, rows, notes, tally: tallyLines(sums) };
+  return { side, start, endIndex: ended ? last : null, ended, rows, notes, tally: tallyItems(sums), bursts, at: last };
+}
+
+type Fire = Extract<Step, { type: 'fire' }>['fire'];
+
+/** A fire's bursts from row `r`: its Process to its tally number (mixed
+ * when its Hook boosted it), an Empower or Charge to the rows it lands on,
+ * a wasted Empower fizzling, and a Hook's own effect to its number. */
+function burstsFor(fire: Fire, r: number, rowDefs: readonly SubroutineDefinition[]): Burst[] {
+  // A Hook that boosts its Process fires elevated with no effect of its own.
+  const mixed = fire.elevated && !fire.beta;
+  const out: Burst[] = [];
+  const toRows = (indexes: number[]) => indexes.forEach((index) => out.push({ from: r, to: { kind: 'row', index }, tone: 'side', mixed }));
+  const below = rowDefs.map((_, j) => j).filter((j) => j > r);
+  const alpha = fire.alpha;
+  if (fire.empowerWasted) out.push({ from: r, to: { kind: 'fizzle' }, tone: 'side', mixed: false });
+  if (alpha.verb === 'empower') toRows(alpha.scope === 'next' ? below.slice(0, 1) : below);
+  else if (alpha.verb === 'charge') {
+    const hooked = (j: number) => !!rowDefs[j].beta && rowDefs[j].beta!.shape !== 'immediate';
+    // As the engine (resolve.ts): `next` is the very next piece, and only
+    // a piece with a turn Hook (not an Instant one) takes a Charge.
+    if (alpha.target === 'next') toRows(below.slice(0, 1).filter(hooked));
+    else if (alpha.target === 'all') toRows(rowDefs.map((_, j) => j).filter((j) => j !== r && hooked(j)));
+  } else if (TALLY_ORDER.includes(alpha.verb)) out.push({ from: r, to: { kind: 'tally', verb: alpha.verb }, tone: 'side', mixed });
+  const beta = fire.beta;
+  if (beta && TALLY_ORDER.includes(beta.verb)) out.push({ from: r, to: { kind: 'tally', verb: beta.verb }, tone: 'hook', mixed: false });
+  return out;
+}
+
+/** How long a burst flies: most of the time a fire holds on screen at
+ * this speed (so it lands before the next row lights), at most 0.4 s. */
+export function flightMs(side: PlayerIndex, speedScale: number): number {
+  const hold = stepDelay({ type: 'fire', fire: { side } as Fire }, true) * speedScale;
+  return Math.round(Math.max(120, Math.min(400, hold * 0.8)));
 }
 
 /** The tally's order: the shared verbs, then the enemy-only ones. Empower
@@ -165,12 +228,12 @@ function add(sums: Map<Verb, number>, effect: BetaEffect): void {
   sums.set(effect.verb, (sums.get(effect.verb) ?? 0) + n);
 }
 
-function tallyLines(sums: Map<Verb, number>): string[] {
-  return TALLY_ORDER.filter((v) => sums.has(v)).map((v) => {
-    const n = sums.get(v)!;
-    return COUNTED.has(v) ? `${VERB_NAME[v]} ×${n}` : `${VERB_NAME[v]} ${fmt(n)}`;
-  });
+function tallyItems(sums: Map<Verb, number>): TallyItem[] {
+  return TALLY_ORDER.filter((v) => sums.has(v)).map((v) => ({ verb: v, label: VERB_NAME[v], value: sums.get(v)!, counted: COUNTED.has(v) }));
 }
+
+/** A tally number as text: "8", "2.5", or "×2" for a counted verb. */
+export const tallyText = (item: Pick<TallyItem, 'value' | 'counted'>) => (item.counted ? `×${item.value}` : fmt(item.value));
 
 /** One effect, short enough for a panel row, in the player's voice
  * (forEnemy re-voices it): "Credit 3", "Ward 2", "Charge 1 (next Hook)". */

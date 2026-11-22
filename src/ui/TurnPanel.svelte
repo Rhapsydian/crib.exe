@@ -1,5 +1,7 @@
 <script lang="ts">
-  import type { TurnPanelState } from './turn-panel';
+  import { untrack } from 'svelte';
+  import type { Verb } from '../engine/subroutine-types';
+  import { tallyText, type Burst, type TurnPanelState } from './turn-panel';
   import RichText from './RichText.svelte';
 
   // The detailed turn display (session 82): the turn-taker's subroutines
@@ -7,7 +9,135 @@
   // Process did, Hook callouts and the turn's tally. The bands above and
   // below (loadout strips, gauges) stay in view and keep moving. A tap
   // jumps to the totals, a second one closes it (`onskip`).
-  let { panel, onskip }: { panel: TurnPanelState; onskip: () => void } = $props();
+  //
+  // The impact pass (session 82): the tally is big numbers, centred, and
+  // each fire sends a burst of dots from the row to the number it adds to
+  // (an Empower or Charge to the rows it lands on); the number counts up
+  // and pops as they land. Dots are plain spans moved with transform and
+  // opacity only, a dozen at most per fire, so they cost next to nothing.
+  // `flight` is how long a burst flies (flightMs: shorter at faster turn
+  // speeds). A tap-skip lands on the totals, which play no bursts; with
+  // reduced motion asked for, the numbers just pop.
+  let { panel, onskip, flight = 300 }: { panel: TurnPanelState; onskip: () => void; flight?: number } = $props();
+
+  let root = $state<HTMLElement | null>(null);
+  let fx = $state<HTMLElement | null>(null);
+  /** Each tally number as on screen, which trails the panel's while dots fly. */
+  let shown = $state<Partial<Record<Verb, number>>>({});
+  /** Bumped to replay a number's pop. */
+  let pops = $state<Partial<Record<Verb, number>>>({});
+  // Not reactive: which turn and step have played, and a count per verb so
+  // a stale count-up (overtaken by a skip) leaves the number alone.
+  let turnStart = -1;
+  let playedAt = -1;
+  const runs: Partial<Record<Verb, number>> = {};
+  const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  $effect(() => {
+    const p = panel;
+    untrack(() => play(p));
+  });
+
+  function play(p: TurnPanelState) {
+    if (p.start !== turnStart) {
+      turnStart = p.start;
+      playedAt = -1;
+      shown = {};
+    }
+    if (p.at === playedAt) return;
+    playedAt = p.at;
+    const flying = !reduced && fx && root ? p.bursts : [];
+    const landing = new Set(flying.flatMap((b) => (b.to.kind === 'tally' ? [b.to.verb] : [])));
+    for (const item of p.tally) {
+      if (shown[item.verb] === item.value) continue;
+      if (landing.has(item.verb)) countUp(item.verb, item.value, flight);
+      else set(item.verb, item.value);
+    }
+    flying.forEach(spawn);
+  }
+
+  function set(verb: Verb, value: number) {
+    runs[verb] = (runs[verb] ?? 0) + 1;
+    shown = { ...shown, [verb]: value };
+    pops = { ...pops, [verb]: (pops[verb] ?? 0) + 1 };
+  }
+
+  /** After `delay`, count from the number on screen up to `to`, then pop. */
+  function countUp(verb: Verb, to: number, delay: number) {
+    const run = (runs[verb] = (runs[verb] ?? 0) + 1);
+    setTimeout(() => {
+      if (runs[verb] !== run) return;
+      const from = shown[verb] ?? 0;
+      const began = performance.now();
+      pops = { ...pops, [verb]: (pops[verb] ?? 0) + 1 };
+      const frame = (now: number) => {
+        if (runs[verb] !== run) return;
+        const t = Math.min(1, (now - began) / 260);
+        shown = { ...shown, [verb]: t < 1 ? Math.floor(from + (to - from) * t) : to };
+        if (t < 1) requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    }, delay);
+  }
+
+  const centre = (el: Element, box: DOMRect) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2 - box.left, y: r.top + r.height / 2 - box.top };
+  };
+
+  /** One burst: dots on an arc from the row's value to its target. */
+  function spawn(b: Burst) {
+    if (!root || !fx) return;
+    const box = root.getBoundingClientRect();
+    const rows = root.querySelectorAll('.rows > .row');
+    const fromEl = rows[b.from]?.querySelector('.line .did');
+    if (!fromEl) return;
+    const from = centre(fromEl, box);
+    const toEl =
+      b.to.kind === 'tally' ? root.querySelector(`.num[data-verb="${b.to.verb}"] b`) : b.to.kind === 'row' ? rows[b.to.index]?.querySelector('.line .did') : null;
+    if (b.to.kind !== 'fizzle' && !toEl) return;
+    const to = toEl ? centre(toEl, box) : from;
+    const count = b.mixed ? 12 : 8;
+    for (let i = 0; i < count; i++) {
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.color = b.to.kind === 'fizzle' ? 'var(--warn)' : b.tone === 'hook' || (b.mixed && i % 2) ? 'var(--mod)' : 'var(--side)';
+      fx.appendChild(dot);
+      const sx = from.x + (Math.random() - 0.5) * 24;
+      const sy = from.y + (Math.random() - 0.5) * 8;
+      let frames: Keyframe[];
+      if (b.to.kind === 'fizzle') {
+        const a = Math.random() * Math.PI * 2;
+        const d = 10 + Math.random() * 16;
+        frames = [
+          { transform: `translate(${sx}px, ${sy}px) scale(1)`, opacity: 1 },
+          { transform: `translate(${sx + Math.cos(a) * d}px, ${sy + Math.sin(a) * d}px) scale(0.2)`, opacity: 0 },
+        ];
+      } else {
+        // A quadratic arc, bowed sideways by a random amount, sampled.
+        const dx = to.x - sx;
+        const dy = to.y - sy;
+        const len = Math.hypot(dx, dy) || 1;
+        const bow = (Math.random() - 0.5) * Math.min(120, len * 0.6);
+        const cx = (sx + to.x) / 2 - (dy / len) * bow;
+        const cy = (sy + to.y) / 2 + (dx / len) * bow;
+        frames = [0, 0.25, 0.5, 0.75, 1].map((t) => {
+          const u = 1 - t;
+          const x = u * u * sx + 2 * u * t * cx + t * t * to.x;
+          const y = u * u * sy + 2 * u * t * cy + t * t * to.y;
+          return { transform: `translate(${x}px, ${y}px) scale(${1 - t * 0.4})`, opacity: t === 1 ? 0.3 : 1 };
+        });
+      }
+      const spread = flight * 0.2;
+      const anim = dot.animate(frames, { duration: flight - spread, delay: (spread * i) / count, easing: 'ease-in', fill: 'backwards' });
+      anim.onfinish = () => dot.remove();
+      anim.oncancel = () => dot.remove();
+    }
+    // An Empower or Charge: the row it lands on pops as the dots arrive.
+    if (b.to.kind === 'row' && toEl) {
+      setTimeout(() => (toEl as HTMLElement).animate([{ transform: 'scale(1.18)' }, { transform: 'scale(1)' }], { duration: 300, easing: 'ease-out' }), flight);
+    }
+  }
 
   // Keep the lit row in view when a long loadout overflows the panel.
   let list = $state<HTMLElement | null>(null);
@@ -18,7 +148,7 @@
   });
 </script>
 
-<button class="turn-panel" class:them={panel.side === 1} onclick={onskip} aria-label={panel.ended ? 'close the turn' : 'skip to the turn’s totals'}>
+<button class="turn-panel" bind:this={root} class:them={panel.side === 1} onclick={onskip} aria-label={panel.ended ? 'close the turn' : 'skip to the turn’s totals'}>
   <div class="head">
     <b>▶ {panel.side === 0 ? 'YOUR' : 'THEIR'} TURN</b>
     <span class="hint">{panel.ended ? 'tap to close' : 'tap to skip'}</span>
@@ -51,11 +181,17 @@
   {/each}
   <div class="tally" class:final={panel.ended}>
     {#if panel.tally.length}
-      {#each panel.tally as item (item)}<span>{item}</span>{/each}
+      {#each panel.tally as item (item.verb)}
+        <div class="num" data-verb={item.verb}>
+          {#key pops[item.verb]}<b class:pop={!!pops[item.verb]}>{tallyText({ value: shown[item.verb] ?? 0, counted: item.counted })}</b>{/key}
+          <span>{item.label}</span>
+        </div>
+      {/each}
     {:else}
       <span class="quiet">…</span>
     {/if}
   </div>
+  <div class="fx" bind:this={fx} aria-hidden="true"></div>
 </button>
 
 <style>
@@ -198,19 +334,76 @@
   .note.strain {
     color: var(--warn);
   }
+  /* The tally (the impact pass): big numbers, centred, side by side. */
   .tally {
+    flex: none;
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 10px;
-    padding-top: 4px;
+    justify-content: center;
+    gap: 4px 26px;
+    padding: 8px 0 2px;
     border-top: 1px dashed var(--line);
-    font-size: 12px;
-    color: var(--side);
   }
-  .tally.final {
-    font-weight: 700;
+  .num {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 3em;
+  }
+  .num b {
+    font-size: 30px;
+    line-height: 1.05;
+    color: var(--side);
+    font-variant-numeric: tabular-nums;
+  }
+  .num span {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .tally.final .num b {
+    text-shadow: 0 0 12px color-mix(in srgb, var(--side) 55%, transparent);
   }
   .tally .quiet {
+    font-size: 22px;
     color: var(--text-dim);
+  }
+  .pop {
+    animation: pop 0.32s ease-out;
+  }
+  @keyframes pop {
+    from {
+      transform: scale(1.35);
+      text-shadow: 0 0 16px var(--side);
+    }
+  }
+  /* The boost a row took pops as it fires. */
+  .row.firing .boost:not(.wasted) {
+    transform-origin: right center;
+    animation: pop 0.32s ease-out;
+  }
+  /* The dots fly over everything in the panel (the user, session 82: they
+     were lost behind the rows), each with a dark ring so it stands out
+     from text in its own colour. */
+  .fx {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .fx :global(.dot) {
+    position: absolute;
+    left: -4px;
+    top: -4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0 25%, currentColor 45%);
+    box-shadow:
+      0 0 0 1.5px var(--bg-raised),
+      0 0 10px 2px currentColor;
+    will-change: transform, opacity;
   }
 </style>
